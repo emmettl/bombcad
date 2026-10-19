@@ -30,6 +30,8 @@ import simd
 //                      [--roomy] [--history out-%.csv]   (open faces 4 m/kg^(1/3) out; the deflection's record)
 //   blastbench twoface [--wu S8] [--wang A] [--yao T4] [--roomy] [--out dir]   (Wu's, Wang's and Yao's slabs;
 //                      --roomy moves every open face out to 4 m/kg^(1/3), as Scenario.openFaceRoom)
+//   --balloon-start on closein, twoface, perimeter, keys, envelope-debris and mendonca --recommended:
+//                      the charge started from the balloon these were recorded on before 18 October 2026
 //   blastbench contact [--tests SN142,SN131] [--dx 0.02] [--refine 2] [--levels 2] [--layers 12] [--time 0.003] [--step-divisor 4] [--charge 1.64] [--progress] [--fastest] [--column] [--no-debris-drag] [--no-contact]
 //   blastbench slab [--history] [--history-csv dir] [--sensitivity [--convergence]] [--layers 16,32] [--strip 25] [--map] [--plan [0.1]]
 //                   [--stiffening [--profile [--line] [--column -44]]]   (where the tension along the span is carried)
@@ -51,6 +53,8 @@ import simd
 //                      [--elastic | --elastic-share 0.12 --memory 0 --heave 0]   (the sand's settling; also for shaking)
 //   blastbench shaking [--tests ssg04-dsw,ssg04-shw,ssg03-dsw] [--shear 80] [--bearing 814] [--samples Samples/FoRDy]
 //                      [--history out-%.csv] [--massless] [--damping 0.2]   (a wall on a footing shaken at its base, against FoRDy's SSG03/SSG04)
+//   blastbench hillside [--mass 500] [--dx 0.25] [--duration 0.1] [--every 0.01]
+//                       (the two-storey frame on a hillside, each column's footing set in the slope)
 //   blastbench gravity [--preset office] [--time 0.3] [--damping 50]
 //                      (a layout's structure under gravity alone, damped: stands, deflects or falls)
 //   blastbench snapshot --out frame.png [--preset street] [--dx 0.25] [--time 0.03] [--mass kg] [--fit-reach Z]
@@ -140,6 +144,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "warehouse": .portalWarehouse
     case "terraced": .terracedHouses
     case "hub": .transportHub
+    case "hillside": .hillsideFrame
     default: .streetCanyon
     }
 }
@@ -169,6 +174,22 @@ func chosenScenario() -> Scenario {
         structure.elementKind = .shell
         structure.elementSize = option("shells").flatMap { Float($0) } ?? 0.25
         if let layers = option("shell-layers").flatMap({ Int($0) }) { structure.shellLayers = layers }
+        scenario.structure = structure
+    }
+    // `--rigid-joints`: steel members sharing their joints' nodes, without connections' hinges.
+    if flag("rigid-joints") { scenario.structure?.steelConnection = nil }
+    // `--straight-members`: steel members without Eurocode 3's bow; `--no-steel-rate`: steel without
+    // its strain-rate law. For finding what changed a result.
+    if flag("straight-members") { scenario.structure?.memberImperfections = false }
+    if flag("no-steel-rate"), var structure = scenario.structure {
+        structure.material.rateLaw = nil
+        structure.solidMaterial = structure.solidMaterial.map {
+            $0.map {
+                var m = $0
+                m.rateLaw = nil
+                return m
+            }
+        }
         scenario.structure = structure
     }
     // `--no-second-crack` carries tension that turns away from fixed crack axes across them.
@@ -269,6 +290,8 @@ func applyChosenAir(_ configuration: inout SolverConfiguration) {
     configuration.afterburning = burning
     configuration.airModel = chosenGas()
     configuration.openFaces = chosenFaces()
+    // `--wall-read`: gauges beside a wall read the pressure at the wall (`gaugesReadWallPressure`).
+    if flag("wall-read") { configuration.gaugesReadWallPressure = true }
 }
 
 /// `--fracture-rate 0.5`: how the fracture energy follows the tensile strain-rate law, and the
@@ -992,6 +1015,10 @@ func runChamber() throws {
         airModel: chosenGas(), openFaces: chosenFaces(),
         refinement: option("refine").flatMap { Int($0) } ?? 1,
         contact: flag("no-contact") ? .off : nil,
+        // Each charge from its own mapped one-dimensional start; `--balloon-start` for the balloon.
+        mappedCharge: !flag("balloon-start"),
+        // The gas losing what it radiates; `--no-radiate` keeps it, as before 19 October 2026.
+        radiativeCooling: flag("no-radiate") ? nil : RadiativeCooling(),
         // `--progress` reports every 10 ms of a long run.
         progress: flag("progress")
             ? { line in
@@ -1324,23 +1351,27 @@ func runValidation() throws {
     for cellSize in cellSizes {
         var column: [(peak: Double, impulse: Double)] = []
         for point in points {
-            var wall = ScenarioPreset.openGround.scenario
-            // The charge `--mass` chose, at the stand-offs its scaled distances give.
-            wall.charge.mass = scenario.charge.mass
-            wall.reflectiveFaces = [.zMin, .xMax]
-            wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
-            wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
-            let solver = try BlastSolver(device: device, scenario: wall, cellSize: cellSize)
-            configure(solver)
-            try solver.load(wall)
-            solver.advance(until: 0.1)
-            let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
-            column.append(
-                (
+            // Each solver let go before the next is made: at 0.125 m one holds 67 million cells,
+            // about 6.7 GB, and eight left to the end of the loop took the Studio into swap.
+            let value = try autoreleasepool { () throws -> (peak: Double, impulse: Double) in
+                var wall = ScenarioPreset.openGround.scenario
+                // The charge `--mass` chose, at the stand-offs its scaled distances give.
+                wall.charge.mass = scenario.charge.mass
+                wall.reflectiveFaces = [.zMin, .xMax]
+                wall.charge.position = SIMD3(64 - Float(point.range(mass: mass)), 32, 0)
+                wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
+                let solver = try BlastSolver(device: device, scenario: wall, cellSize: cellSize)
+                configure(solver)
+                try solver.load(wall)
+                solver.advance(until: 0.1)
+                let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
+                return (
                     Double((solver.gaugeHistories[0].map(\.pressure).max() ?? 0) - wall.atmosphere.pressure)
                         / 1000,
                     Double(solver.impulse(cell.i, cell.j, cell.k))
-                ))
+                )
+            }
+            column.append(value)
         }
         reflected.append(column)
     }
@@ -1411,8 +1442,10 @@ func runGravity(device: MTLDevice) throws {
     let damping = option("damping").flatMap { Float($0) } ?? GravityCheck.damping
     let started = ContinuousClock.now
     var counts = (shells: 0, beams: 0)
+    var hinges = (released: 0, of: 0)
     let check = try GravityCheck.run(model, device: device, duration: duration, damping: damping) {
         counts = ($0.elementCount, $0.beamCount)
+        hinges = ($0.hingesReleased, $0.hingeTurns.count)
     }
     let seconds = (ContinuousClock.now - started) / .seconds(1)
     print(
@@ -1428,6 +1461,7 @@ func runGravity(device: MTLDevice) throws {
             format: "moving weight at %.2f s %.3f m/s, at %.2f s %.3f m/s (falling: %.3f m/s): %@ (%.0f s)",
             duration * 5 / 6, check.settling.early, duration, check.settling.late, 9.81 / damping,
             check.verdict.rawValue, seconds))
+    if hinges.of > 0 { print("\(hinges.released) of \(hinges.of) steel connections fractured") }
 }
 
 func runSnapshot() throws {
@@ -1904,6 +1938,73 @@ func runSnapshot() throws {
                 + (summary.selfWeightSag > 0
                     ? "; sagged \(format(Double(summary.selfWeightSag) * 1000, 0)) mm under its own weight first"
                     : ""))
+        if summary.activeBeams + summary.erodedBeams > 0 {
+            print(
+                "  Members: \(summary.erodedBeams) of \(summary.activeBeams + summary.erodedBeams) beam elements failed, "
+                    + "moved up to \(format(Double(summary.maxBeamDisplacement) * 1000, 0)) mm"
+                    + (summary.hinges > 0
+                        ? "; \(summary.hingesReleased) of \(summary.hinges) connections fractured" : ""))
+        }
+    }
+    // `--hinges`: the steel connections by the height of their joints, 4 m bands: how many have
+    // fractured, and the largest turn.
+    if flag("hinges"), let shells = solver.shells {
+        let positions = shells.referencePositions
+        var moved = [SIMD3<Float>](repeating: .zero, count: positions.count)
+        shells.mutateNodes { nodes in for n in nodes.indices { moved[n] = nodes[n].displacement } }
+        var bands: [Int: (count: Int, released: Int, turn: Float, sideways: SIMD2<Float>)] = [:]
+        for hinge in shells.hingeTurns {
+            let band = Int(positions[hinge.jointNode].z / 4)
+            var entry = bands[band] ?? (0, 0, 0, .zero)
+            entry.count += 1
+            entry.released += hinge.released ? 1 : 0
+            entry.turn = max(entry.turn, hinge.turn)
+            entry.sideways += SIMD2(moved[hinge.jointNode].x, moved[hinge.jointNode].y)
+            bands[band] = entry
+        }
+        // The floors' largest vertical movement, on the horizontal beams' nodes in each band.
+        var sag: [Int: Float] = [:]
+        for beam in shells.beamNodes where beam.axis != 2 {
+            for node in [beam.first, beam.second] {
+                let band = Int(positions[node].z / 4)
+                sag[band] = max(sag[band] ?? 0, abs(moved[node].z))
+            }
+        }
+        for (band, entry) in bands.sorted(by: { $0.key < $1.key }) {
+            print("    floors' beams moved up to \(format(Double(sag[band] ?? 0) * 1000, 0)) mm vertically")
+            let sideways = entry.sideways / Float(entry.count) * 1000
+            print(
+                "  connections at \(4 * band)–\(4 * band + 4) m: \(entry.released) of \(entry.count) fractured, "
+                    + "largest turn \(format(Double(entry.turn), 3)) rad; joints moved "
+                    + "(\(format(Double(sideways.x), 0)), \(format(Double(sideways.y), 0))) mm sideways on average"
+            )
+        }
+        var kinds: [String: (count: Int, released: Int)] = [:]
+        for (hinge, kind) in zip(shells.hingeTurns, shells.hingeJointKinds) {
+            kinds[kind, default: (0, 0)].count += 1
+            kinds[kind, default: (0, 0)].released += hinge.released ? 1 : 0
+        }
+        for (kind, entry) in kinds.sorted(by: { $0.key < $1.key }) {
+            print("  joints held by a \(kind): \(entry.released) of \(entry.count) fractured")
+        }
+        let plastic = shells.hingePlasticTurns
+        if !plastic.isEmpty {
+            let n = Double(plastic.count)
+            print(
+                "  plastic turn, mean (largest): about the vertical "
+                    + "\(format(plastic.reduce(0) { $0 + Double($1.aboutVertical) } / n, 3)) "
+                    + "(\(format(Double(plastic.map(\.aboutVertical).max() ?? 0), 3))) rad, about the horizontal "
+                    + "\(format(plastic.reduce(0) { $0 + Double($1.aboutHorizontal) } / n, 3)) "
+                    + "(\(format(Double(plastic.map(\.aboutHorizontal).max() ?? 0), 3))) rad")
+        }
+    }
+    // `--runaway m`: the active elements with a node moved further than m, by material.
+    if let limit = option("runaway").flatMap(Float.init), let shells = solver.shells {
+        let (counts, nonFinite) = shells.runaway(beyond: limit)
+        print(
+            "Runaway beyond \(format(Double(limit), 0)) m: \(nonFinite) nodes not finite, turned off unit or spinning over 10⁴ rad/s"
+        )
+        for (name, count) in counts.sorted(by: { $0.value > $1.value }) { print("  \(count)  \(name)") }
     }
     if solver.bodies.count > 1 {
         for body in solver.bodies {
@@ -2073,6 +2174,7 @@ func runBeam() throws {
 
 /// A 1 kg charge burst in the air at each scaled distance above rigid ground, against the
 /// Kingery-Bulmash reflected peak and impulse under it (the surface-burst curves at W / 1.8).
+/// `--history path` writes the gauge's history at each height to path-Z.csv.
 func runCloseAir() throws {
     let distances =
         option("z").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [0.3, 0.5, 0.75, 1]
@@ -2107,6 +2209,12 @@ func runCloseAir() throws {
         solver.advance(until: Double(height) / 340 + 0.004)
         let samples = solver.gaugeHistories[0]
         let ambient = scenario.atmosphere.pressure
+        // `--history path`: the gauge's history, one file per height (path-Z.csv), ms and kPa.
+        if let path = option("history") {
+            let rows = samples.map { "\($0.time * 1000),\(($0.pressure - ambient) / 1000)" }
+            try? (["time_ms,overpressure_kpa"] + rows).joined(separator: "\n")
+                .write(toFile: "\(path)-\(format(Double(z), 2)).csv", atomically: true, encoding: .utf8)
+        }
         let peak = (samples.map(\.pressure).max() ?? ambient) - ambient
         var impulse: Float = 0
         for (a, b) in zip(samples, samples.dropFirst()) {
@@ -2909,6 +3017,7 @@ func runTwoFace() throws {
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: yaoElement,
                 duration: duration,
                 afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
+                balloonStart: flag("balloon-start"),
                 adjust: adjust,
                 prepare: { solver in
                     // `--weightless`: the slab without its own weight, as compared before 17 October 2026.
@@ -2975,7 +3084,8 @@ func runTwoFace() throws {
                 refinement: option("refine").flatMap { Int($0) } ?? 2, elementSize: elementSize,
                 duration: duration,
                 heldLengthwise: flag("held"), afterburning: burning, airModel: chosenGas(),
-                openFaces: chosenFaces(), roomy: flag("roomy"), adjust: adjust,
+                openFaces: chosenFaces(), roomy: flag("roomy"), balloonStart: flag("balloon-start"),
+                adjust: adjust,
                 prepare: { solver in
                     prepareTrace(solver)
                     lastStructure = solver
@@ -3037,6 +3147,7 @@ func runTwoFace() throws {
                 edges: option("edges").flatMap { TwoFaceSlabTests.WangEdges(rawValue: $0) }
                     ?? (flag("hinged") ? .hinged : .fixed),
                 afterburning: burning, airModel: chosenGas(), openFaces: chosenFaces(), roomy: flag("roomy"),
+                balloonStart: flag("balloon-start"),
                 adjust: { scenario in
                     adjust(&scenario)
                     if let bond = chosenBondSlip(diameter: test.bar) { scenario.structure?.bondSlip = bond }
@@ -3108,7 +3219,7 @@ func runCloseIn() throws {
             refinement: refinement, mappedCharge: !flag("no-map"), afterburning: burning,
             airModel: chosenGas(), openFaces: chosenFaces(),
             heldLengthwise: !flag("sliding"), stepsPerSample: option("trace") != nil ? 1 : 16,
-            roomy: flag("roomy"),
+            roomy: flag("roomy"), balloonStart: flag("balloon-start"),
             adjust: { scenario in
                 if flag("no-rate") { scenario.structure?.material.rateDependent = false }
                 if let scale = option("charge-scale").flatMap({ Float($0) }) { scenario.charge.mass *= scale }
@@ -4524,7 +4635,9 @@ func runDialPack() throws {
     let radius = cbrt(3 * mass / (4 * .pi * 1600))
     var scenario = Scenario(
         name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
-        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, radius)))
+        // With `--mapped`, on the ground as a surface burst, so that it can be mapped: one radius up
+        // it is neither on the ground nor three cells clear of it.
+        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, flag("mapped") ? 0 : radius)))
     scenario.gauges = []
     // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
     var configuration = SolverConfiguration.recommended.balloonStart
@@ -4536,6 +4649,8 @@ func runDialPack() throws {
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
     configuration.afterburnLimit = chosenBurnLimit()
+    // `--mapped`: the mapped start, its fireball before the grid's clock from the one-dimensional solution.
+    if flag("mapped") { configuration.mappedCharge = true }
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()
@@ -4585,30 +4700,34 @@ func runDialPack() throws {
     let started = ContinuousClock.now
     // With gravity, the gas the cloud's rise would be handed at 1 s, everything at least 500 K.
     var early: CloudHandOver?
-    for target in frameTimes {
-        while solver.time < target - 1e-9 {
+    // Before a mapped start's clock, the fireball from the one-dimensional solution.
+    var oneD: [Double: FireballFrame] = [:]
+    for frame in solver.earlyFireballFrames(for: volume, at: frameTimes) { oneD[frame.time] = frame }
+    for target in frameTimes where oneD[target] != nil || target > solver.time - 1e-9 {
+        while oneD[target] == nil, solver.time < target - 1e-9 {
             let result = solver.advance(steps: 256, timeLimit: target)
             if result.steps == 0 || !result.isStable { break }
         }
         if configuration.gravity != nil, early == nil, solver.time >= 1 - 1e-6 {
             early = solver.cloudHandOver(hotterThan: 500)
         }
-        let frame = solver.fireball(for: volume)
+        let frame = oneD[target] ?? solver.fireball(for: volume)
+        let now = oneD[target]?.time ?? solver.time
         var values: [Float] = []
         for model in models { values += model.exposure.irradiance(frame, at: points) }
         let power = models[0].exposure.radiatedPower(frame)
         if let last {
             for n in values.indices {
-                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (solver.time - last.time)
+                fluence[n] += 0.5 * Double(last.values[n] + values[n]) * (now - last.time)
             }
         }
-        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (solver.time - lastPower.time) }
+        if let lastPower { radiated += 0.5 * (lastPower.power + power) * (now - lastPower.time) }
         for n in values.indices { peak[n] = max(peak[n], values[n]) }
-        last = (solver.time, values)
-        lastPower = (solver.time, power)
+        last = (now, values)
+        lastPower = (now, power)
         lines.append(
             [
-                String(format: "%.5f", solver.time), String(format: "%.2f", 2 * frame.radius),
+                String(format: "%.5f", now), String(format: "%.2f", 2 * frame.radius),
                 String(format: "%.0f", frame.temperature), String(format: "%.0f", frame.hottest),
                 String(format: "%.1f", frame.centre.z), String(format: "%.4g", power),
                 String(format: "%.4g", solver.radiatedEnergy),
@@ -5148,6 +5267,8 @@ func runDigest() throws {
         configureRefinement(&configuration)
         configuration.afterburning = afterburning || flag("recommended")
         configuration.gravity = chosenGravity()
+        // `--mapped`: from the mapped one-dimensional start.
+        if flag("mapped") { configuration.mappedCharge = true }
         var scenario = preset.scenario
         if shells { scenario.structure?.elementKind = .shell }
         // `--terrain flat` lays the floor down as a heightfield, which must change nothing; another
@@ -5322,7 +5443,7 @@ func runSoilColumn() throws {
 /// event (each in an encoder of its own, so the sums leave out the gaps between them), the work
 /// each did per cell, how closely the patches fit the jumps the threshold flags, and the GPU's
 /// cost of an empty dispatch.
-/// `blastbench aircost [--preset street] [--dx 0.5] [--rounds 40] [--steps 4] [--skip]`: the GPU time
+/// `blastbench aircost [--preset street] [--dx 0.5] [--rounds 40] [--steps 4] [--skip] [--cut]`: the GPU time
 /// of a cell's update under each air: the ideal gas with copying faces (the core), hot air alone,
 /// afterburning with the ideal gas, and the recommended air (afterburning, hot air and far-field
 /// faces). Every cell is swept (with `--skip`, still air is skipped, as runs do, and the times
@@ -5343,10 +5464,16 @@ func runAirCost() throws {
     // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
     var recommended = SolverConfiguration.recommended.balloonStart
     recommended.skipStillAir = flag("skip")
-    let airs = [
+    var airs = [
         ("ideal gas, copying faces", core), ("hot air", hot), ("afterburning, ideal gas", burning),
         ("recommended", recommended),
     ]
+    // `--cut`: the recommended air again, with the preset's structure outlined by cut cells.
+    if flag("cut") {
+        var cut = recommended
+        cut.structureCutCells = true
+        airs.append(("recommended, cut structure", cut))
+    }
     let solvers = try airs.map { _, configuration in
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
@@ -5538,9 +5665,14 @@ do {
     case "laminated": try runLaminated(device: device)
     case "hubroof": try runHubRoof(device: device)
     case "facade": try runFacade(device: device)
+    case "walloffset": try runWallOffset(device: device)
+    case "wallpeak": try runWallPeak(device: device)
     case "house": try runHouse(device: device)
+    case "hillside": try runHillside(device: device)
     case "lacroix": try runLacroix(device: device)
     case "nassr": try runNassr(device: device)
+    case "removal": try runColumnRemoval(device: device)
+    case "kenny": try runKenny(device: device)
     case "beam": try runBeam()
     case "shear": try runShearBeam()
     case "pushoff": try runPushOff()
@@ -5556,6 +5688,8 @@ do {
     case "structure": try runStructure()
     case "validate": try runValidation()
     case "products": try runProducts()
+    case "gauging": try runGauging(device: device, cooling: try chosenCooling())
+    case "twocharges": try runTwoCharges(solver: { try makeAirSolver($0, cellSize: $1) })
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.

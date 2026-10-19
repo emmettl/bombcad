@@ -286,6 +286,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case adaptiveSubsteps
     case mappedCharge
     case structureFixedInAir
+    /// Structures' outlines as cut cells (`SolverConfiguration.structureCutCells`).
+    case structureCutCells
     case stationaryWalls
     case closedBoundaries
     case copiedOpenFaces
@@ -297,6 +299,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case importedEnvelopes
     case mapBuildings
     case ventedGlazing
+    /// Gauges beside a wall read the pressure at it (`SolverConfiguration.gaugesReadWallPressure`).
+    case wallReadGauges
     // The structure.
     case shellElements
     case shellSectionShear
@@ -319,10 +323,14 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case interfaceBond
     case smearedMasonry
     case profiledSheets
+    /// Steel beams hinged at their joints by connections that fracture (`StructureModel.steelConnection`).
+    case steelConnections
     case inclinedBars
     case baseConnections
     case jointsBetweenParts
     case footings
+    /// Footings on a terrain: their soil read from the slope round them (`FootingGround`).
+    case footingsOnSlope
     case softGround
     /// Earth or rock under the charge (`SolverConfiguration.ground`): less of its energy for the air.
     case groundCoupling
@@ -377,7 +385,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .terrain: return inputs.scenario.terrain.map { !$0.isFlat } ?? false
         case .terrainStaircase:
             return (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
-                && !config.cutsTerrain(of: inputs.scenario)
+                && !config.cutsTerrain(of: inputs.scenario, cellSize: inputs.cellSize)
         case .deflagration: return inputs.scenario.deflagration != nil
         case .ventPanels: return !(inputs.scenario.ventPanels ?? []).isEmpty
         case .congestion: return !(inputs.scenario.congestion ?? []).isEmpty
@@ -387,6 +395,10 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
             return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
+        case .wallReadGauges: return config.gaugesReadWallPressure
+        // Refined air keeps the staircase (`BlastSolver.setUpStructureCut`).
+        case .structureCutCells:
+            return config.structureCutCells && config.refinement <= 1 && !structures.isEmpty
         case .shellElements:
             return any { model in model.solids.indices.contains { model.elementKind(of: $0) == .shell } }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -411,6 +423,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
+        case .steelConnections: return any { $0.steelConnection != nil }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
         case .baseConnections:
             return any { s in
@@ -427,6 +440,12 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                 (s.fixedBase && s.baseAnchorage?.footing != nil)
                     || s.supportAnchorages.contains { $0?.footing != nil }
             }
+        case .footingsOnSlope:
+            return (inputs.scenario.terrain.map { !$0.isFlat } ?? false)
+                && any { s in
+                    (s.fixedBase && s.baseAnchorage?.footing != nil)
+                        || s.supportAnchorages.contains { $0?.footing != nil }
+                }
         case .softGround: return config.groundStiffness != nil && !structures.isEmpty
         case .groundCoupling: return config.ground.map { $0 != .rigid } ?? false
         case .cyclicSand:
@@ -510,8 +529,11 @@ public enum StandingTable {
         case .radiativeCooling:
             return Entry(
                 title: "Gas losing what it radiates", affects: [.thermal, .cloud], limit: nil,
-                note: "The luminous gas cools as the fireball's volume radiates; the cloud's comparison with "
-                    + "Church's was made without it, and its tops come down a few per cent.",
+                note: "The luminous gas cools as the fireball's volume radiates, by default since 19 October "
+                    + "2026: against a 41 kg test the fireball reaches its measured size and fades within the "
+                    + "second, where without it the gas holds near 2,500 K; it still radiates more than TNT's "
+                    + "measured 4–7%. The cloud's comparison with Church's was made without it, and its tops "
+                    + "come down a few per cent.",
                 document: "thermal-radiation.md#the-gas-losing-what-it-radiates")
         case .gravity:
             return Entry(
@@ -570,6 +592,17 @@ public enum StandingTable {
                 title: "Structure fixed in the air", affects: air + structure, limit: .approximation,
                 note: "The air sees the structure as it was at the start, so breaches do not vent; the "
                     + "comparisons coupled both ways.",
+                document: "structural-model.md#coupling-to-the-air")
+        case .structureCutCells:
+            return Entry(
+                title: "Structures' outlines as cut cells", affects: air + structure, limit: .approximation,
+                note:
+                    "A structure's solid outline, as built, cuts the cells it crosses on unrefined air: a wall's "
+                    + "impulse follows its place within a cell to 2.6% where the whole cells step by up to 6%, but "
+                    + "its peak force runs up to 12% above that line a tenth of a cell off the lattice, and on "
+                    + "coarse air its faces read higher than whole cells do (1,253 against 1,032 N s on 0.25 m "
+                    + "cells, 1,165 against 1,125 on 0.03 m). No measurement was compared; the comparisons ran on "
+                    + "whole cells.",
                 document: "structural-model.md#coupling-to-the-air")
         case .stationaryWalls:
             return Entry(
@@ -650,6 +683,17 @@ public enum StandingTable {
                     + "pitches come within 0.4 to 1.2 of the measured peaks but the coarser three to five times "
                     + "too high, half the pitch giving no more where MERGE's gave seven times.",
                 document: "congestion-model.md")
+        case .wallReadGauges:
+            return Entry(
+                title: "Gauges read at the wall", affects: [.peakOverpressure, .impulse],
+                limit: .approximation,
+                note:
+                    "A gauge within a cell of a wall reads the pressure at it (two shocks, the cell's gas against "
+                    + "its mirror) instead of the cell's mean: reflected peaks 69–93% of Kingery–Bulmash on 0.25 m "
+                    + "cells for 100 kg (32–88% read from the cell), but impulses 113–131% close in on 0.05 m "
+                    + "cells and 119–143% on 0.02 m, as the read counts the cell's speed towards the wall as gas "
+                    + "brought to rest. The reflected bands were derived from the cell's mean, so they do not apply.",
+                document: "air-blast-model.md#reflected-peaks-at-a-wall")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -812,6 +856,21 @@ public enum StandingTable {
                     + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
                     + "screws, which under uplift, their free flange in compression, is the unsafe side.",
                 document: "profiled-sheeting.md#against-adblasts-cladding-tests")
+        case .steelConnections:
+            return Entry(
+                title: "Steel connections that hinge and fracture", affects: [.structuralDamage],
+                limit: .approximation,
+                note:
+                    "Each steel beam that stops at a joint is held to it by a hinge that turns plastically at the "
+                    + "connection's moment and lets the beam go at its fracture turn: a welded flange (WUF-B) or "
+                    + "reduced beam section from NIST TN 1669, a fin plate from Weigand and Berman's thirteen "
+                    + "tests, bolted end plates from Culache's tests loaded in 40 ms. Under a column's removal "
+                    + "the hinged assemblies fail 5–27% past the measured drop at 1.07–1.16 of the measured "
+                    + "load, where rigid joints never fail; but their fracture turns come from those slow tests. "
+                    + "A hinge is independent of rate: from Culache's slow tests it would read bolted end plates "
+                    + "13–41% too strong and 1.5–1.7 times too ductile at a blast's rate, and the welded and "
+                    + "fin-plate types, from slow tests, may be too ductile too.",
+                document: "shell-model.md#steel-connections")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -839,6 +898,16 @@ public enum StandingTable {
                     + "With the sand that settles under cycles (the default), settlement 1.3–1.7 times that "
                     + "measured, and 0.4–1.3 times in eight shaken events; a tenth on the elastic bed.",
                 document: "validation.md#a-footing-rocked-on-dry-sand")
+        case .footingsOnSlope:
+            return Entry(
+                title: "Footings on a slope", affects: structure, limit: .approximation,
+                note:
+                    "Level footings stepped into the slope, their sides buried and their earth pressures set "
+                    + "by the ground round them, their bearing capacity cut by Vesić's (1 − tan β)², 0.88–1.39 "
+                    + "of Meyerhof's on a slope's face and 0.85–1.14 near a 20° crest; their stiffness the level "
+                    + "ground's. Judged on closed forms only: no measured footing near a slope under fast "
+                    + "loading was found.",
+                document: "validation.md#footings-on-a-slope")
         case .softGround:
             return Entry(
                 title: "Soft ground under debris", affects: [.structuralDamage], limit: nil,
@@ -989,7 +1058,7 @@ public enum StandingTable {
         "Scenario.gauges": .input,
         "Scenario.atmosphere": .input,
         "Scenario.reflectiveFaces": .option([.closedBoundaries]),
-        "Scenario.terrain": .option([.terrain]),
+        "Scenario.terrain": .option([.terrain, .footingsOnSlope]),
         "Scenario.attributions": .input,
         "Scenario.envelopeSources": .option([.importedEnvelopes, .mapBuildings]),
         "EnvelopeSource.objectID": .input,
@@ -1089,11 +1158,14 @@ public enum StandingTable {
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
         "SolverConfiguration.openFaces": .option([.copiedOpenFaces]),
+        "SolverConfiguration.structureCutCells": .option([.structureCutCells]),
+        "SolverConfiguration.gaugesReadWallPressure": .option([.wallReadGauges]),
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,
         "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
         "SolverConfiguration.refinementHoldsStructures": .numerical,
+        "SolverConfiguration.refinementCeiling": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
@@ -1138,6 +1210,7 @@ public enum StandingTable {
         "StructureModel.memberImperfections": .option([.perfectMembers]),
         "StructureModel.bucklingCurve": .input,
         "StructureModel.solidBucklingCurves": .input,
+        "StructureModel.steelConnection": .option([.steelConnections]),
         "StructureModel.shellSectionShear": .option([.shellSectionShear]),
         "StructureModel.secondCracks": .option([.noSecondCracks]),
         "StructureModel.bareBars": .option([.noBareBars]),
@@ -1163,6 +1236,7 @@ public enum StandingTable {
         "StructureModel.loadingOverride": .input,
         "StructureModel.regimeDefaults": .input,
         "StructureModel.detectedRegime": .input,
+        "StructureModel.ground": .input,
         "StructureModel.detectedLoading": .input,
         // Materials: properties are inputs; the switches between laws are options.
         "StructureMaterial.name": .input,
@@ -1212,7 +1286,7 @@ public enum StandingTable {
         "Anchorage.closingGap": .input,
         "Anchorage.frictionExponent": .input,
         "Anchorage.frictionReferencePressure": .input,
-        "Anchorage.footing": .option([.footings, .cyclicSand]),
+        "Anchorage.footing": .option([.footings, .cyclicSand, .footingsOnSlope]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
         "Anchorage.betweenParts": .option([.jointsBetweenParts]),
@@ -1537,8 +1611,13 @@ struct StandingScene {
 
     private var sourceAssumptions: [String] {
         var lines = [
-            "The charge is a sphere of hot compressed gas (a bursting balloon), poor within a few charge "
-                + "diameters or cells of it.",
+            has(.mappedCharge)
+                ? "Each charge starts from a fine one-dimensional burst laid on the grid where it has room "
+                    + "(3 cells or more, at most half the way to another charge); one nearer anything is a "
+                    + "sphere of hot compressed gas (a bursting balloon), poor within a few charge diameters or "
+                    + "cells of it."
+                : "The charge is a sphere of hot compressed gas (a bursting balloon), poor within a few charge "
+                    + "diameters or cells of it.",
             "Shocks are smeared over two or three cells.",
         ]
         lines.append(
@@ -2022,6 +2101,12 @@ struct StandingScene {
                         + "curves a, b and c over slenderness 0.2–2; an impact's buckled wavelength 1.03–1.20 times "
                         + "Lindberg's", "shell-model.md#buckling"),
                 StandingEvidence(
+                    "Kenny's strips struck by a drop hammer (steel and aluminium, 137–550 mm, 6.2 m/s)",
+                    "Final deflection of the peak buckle, default bows: 13 of 16 series within half to twice "
+                        + "(steel 1.26–3.68, aluminium 0.71–1.70); with the measured bows 15 of 16 (0.45–1.97); "
+                        + "the buckle near mid-length where the tests' lay near the clamp; the hammer's 10 mm stroke "
+                        + "read from the set-up", "shell-model.md#buckling"),
+                StandingEvidence(
                     "Nassr's steel beams and columns in the open (W150 and W200, 50–250 kg of ANFO)",
                     "With the steel's strain-rate law by grade, unfitted: beams 0.57–1.12 of the measured "
                         + "deflection, columns 0.30–1.61; the beams near elastic and the curtain shot's within 14%; "
@@ -2032,7 +2117,7 @@ struct StandingScene {
                 "steel members compared with one series of blasted beams and columns, within half to twice "
                     + "either way; their yield rising with strain rate by Cowper and Symonds's law, mild steel's "
                     + "constants (Jones) to 300 MPa and ERDC's measured A992 and A572 grade 50 above; their "
-                    + "connections not compared")
+                    + "connections not compared at blast rates")
         }
         if classes.contains(.masonry) {
             level = max(level, .verified)
@@ -2044,15 +2129,17 @@ struct StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Brick walls' debris (Keys, 2016)",
-                    "Loads within 15%; the walls crack at the measured heights but fall as one column, lying "
-                        + "1.0–1.4 m too far out in the open and thrown half as far as measured in a shock tube",
+                    "Loads within 15%; the walls crack at the measured heights but fall as one column where the "
+                        + "tests' folded, so how they come apart is wrong; their debris lies 1.0–1.5 m too far out "
+                        + "in the open, the safe side for its reach, and is thrown half as far as measured in a "
+                        + "shock tube, the unsafe side",
                     "validation.md#brick-walls-debris"
                 ))
             if has(.softGround) {
                 evidence.append(
                     StandingEvidence(
                         "Brick walls' debris on soft ground (Keys, 2016)",
-                        "At 5×10⁷ Pa/m the mean distance 1.11–1.40 m against 0.23–0.64 m measured (1.60–1.64 m "
+                        "At 5×10⁷ Pa/m the mean distance 1.21–1.63 m against 0.23–0.64 m measured (1.62–1.77 m "
                             + "on the hard ground); one run of each wall", "validation.md#brick-walls-debris")
                 )
             }
@@ -2140,8 +2227,8 @@ struct StandingScene {
                 StandingEvidence(
                     "Wu et al.'s slabs with steel in both faces",
                     "Unsafe side under 0.2–0.8 kg, too stiff: 40–70% of the measured peak (S5 and D5 alike with "
-                        + "afterburning and hot air); 0.91 and 1.18–1.19 times under 1.6 kg on today's build, two "
-                        + "shots on one mesh, either air",
+                        + "afterburning and hot air); 0.90 and 1.19 times under 1.6 kg on the mapped start, the open "
+                        + "faces at the clearance rule, two shots on one mesh, in all three roundings",
                     "validation.md#slabs-with-steel-in-both-faces"))
             resolution.append(
                 String(
@@ -2263,8 +2350,9 @@ struct StandingScene {
         if materialClasses.contains(.glass) || materialClasses.contains(.masonry) {
             level = .illustrative
             summary +=
-                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.4 m too far out in "
-                + "the open, and are thrown half as far as measured in a shock tube. Glass breaking up has no comparison."
+                " Masonry breaks into too few pieces: brick walls fall as one column, lying 1.0–1.5 m too far out in "
+                + "the open (the safe side for their reach) and thrown half as far as measured in a shock tube (the "
+                + "unsafe side). Glass breaking up has no comparison."
         }
         return result(
             .structuralDamage, level, summary, evidence: evidence,
@@ -2821,8 +2909,8 @@ struct StandingScene {
         }
         if has(.terrain) {
             effects.append(
-                "Over the terrain, footings and the ground's connection stay level and hold the base at z = 0 "
-                    + "(a stepped base takes a support region a level); a ground point's soil column is level "
+                "Over the terrain, footings stay level, their sides and bearing capacity read from the slope "
+                    + "round them, their stiffness the level ground's; what falls lands along z; a ground point's soil column is level "
                     + "ground's, along the surface's normal; the fireball's radiated power is measured over the "
                     + "floor.")
         }

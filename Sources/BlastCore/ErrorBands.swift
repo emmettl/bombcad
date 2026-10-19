@@ -293,6 +293,11 @@ public enum ValidationTables {
             self.document = document
             quotes = quote
         }
+
+        /// "75–84%".
+        public var percent: String { String(format: "%.0f–%.0f%%", low * 100, high * 100) }
+        /// "0.84–0.99".
+        public var ratio: String { String(format: "%.2f–%.2f", low, high) }
     }
 
     /// Every single figure the bands use. `ErrorBandTests` checks each quote lies under its
@@ -366,9 +371,9 @@ public enum ValidationTables {
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
         Figure(
-            id: "wuLargeToday", low: 0.91, high: 1.19,
+            id: "wuLargeToday", low: 0.90, high: 1.19,
             document: "validation.md#slabs-with-steel-in-both-faces",
-            quote: "0.91 and 1.18–1.19 times the measured peak"),
+            quote: "0.90 and 1.19 times the measured peak"),
         Figure(
             id: "debrisSpeedOverlap", low: 0.9, high: 2.3,
             document: "validation.md#slabs-under-contact-charges",
@@ -438,6 +443,48 @@ public enum ValidationTables {
         Figure(
             id: "ventedMiddle", low: 0.4, high: 0.6, document: "validation.md#summary",
             quote: "lit in the middle, 0.4–0.6"),
+        // Estimates beside a run, against BombCAD's own runs: the standing lines of
+        // `FacadeLoadSurrogate`, `HybridFarField` and `ChargeInference` are worded from these.
+        Figure(
+            id: "surrogateGlassSides", low: 0.75, high: 0.84,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "agrees with the run's for 75–84%"),
+        Figure(
+            id: "surrogateConcrete", low: 0, high: 0.10,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "0–10% of the concrete"),
+        Figure(
+            id: "surrogateStone", low: 0.35, high: 0.42,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "35–42% of the stone"),
+        Figure(
+            id: "surrogateNearPeak", low: 0.85, high: 1.00,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "peaks 0.85–1.00"),
+        Figure(
+            id: "surrogateFarLoads", low: 1.09, high: 1.63,
+            document: "validation.md#the-quick-estimate-against-beiruts-runs",
+            quote: "1.09–1.63 times the run's on the median"),
+        Figure(
+            id: "hybridFarPeak", low: 0.77, high: 1.04,
+            document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
+            quote: "façade peaks 0.77–1.04 of the full run's to 2.5 km"),
+        Figure(
+            id: "hybridFarImpulse", low: 1.04, high: 1.5,
+            document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
+            quote: "impulses 1.04–1.5 times"),
+        Figure(
+            id: "inferredBeirut", low: 0.50, high: 0.54,
+            document: "validation.md#the-charge-from-its-arrivals",
+            quote: "0.50–0.54 kt"),
+        Figure(
+            id: "inferredWithRatios", low: 0.97, high: 1.01,
+            document: "validation.md#the-charge-from-its-arrivals",
+            quote: "0.97–1.01 of it on 2 m cells"),
+        Figure(
+            id: "inferredByCurvesAlone", low: 1.27, high: 1.95,
+            document: "validation.md#the-charge-from-its-arrivals",
+            quote: "1.27–1.95 times the yield"),
     ]
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
@@ -495,20 +542,20 @@ public enum ValidationTables {
     public static let spreads: [Spread] = [
         Spread(
             id: "slab", coefficient: 0.12,
-            quote: "| Contest slab, peak (mm) | 108 | 113 | 107, 12% | 89–126 |"),
+            quote: "| Contest slab, peak (mm) | 109 | 113 | 106, 12% | 89–126 |"),
         Spread(
             id: "wuPeak", coefficient: 0.04,
-            quote: "| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 |"),
+            quote: "| Wu S8, peak (mm) | 18.0 | 16.2 | 16.1, 4% | 15.3–17.1 |"),
         Spread(
-            id: "closeInGauge", coefficient: 0.08,
-            quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 |"),
+            id: "closeInGauge", coefficient: 0.07,
+            quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.45 | 1.45, 7% | 1.29–1.61 |"),
         Spread(
             id: "wallPeak", coefficient: 0.02,
-            quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 691 | 697, 2% | 672–715 |"),
+            quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 677 | 678, 2% | 655–696 |"),
         Spread(
-            id: "wallImpulse", coefficient: 0.01,
+            id: "wallImpulse", coefficient: 0.02,
             quote:
-                "| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,710 | 1,710, 1% | 1,670–1,740 |"
+                "| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,880 | 1,880, 2% | 1,830–1,920 |"
         ),
     ]
 
@@ -722,6 +769,24 @@ extension StandingScene {
             }
             if boxes.contains(where: { Self.crosses($0, from: nearest.position, to: gauge.position) }) {
                 bands.note = "Shielded from the charge, which no comparison was."
+                return bands
+            }
+            if has(.structureCutCells),
+                structures.flatMap(\.solids).contains(where: {
+                    simd_distance(gauge.position, simd_clamp(gauge.position, $0.min, $0.max))
+                        <= inputs.cellSize
+                })
+            {
+                bands.note =
+                    "Beside a structure's cut cells, while the reflected bands were derived on whole cells: its "
+                    + "faces read higher on coarse air (structural-model.md, \"Coupling to the air\")."
+                return bands
+            }
+            if onBox && has(.wallReadGauges) {
+                bands.note =
+                    "Read at the wall, while the reflected bands were derived from the cell beside it: its peaks "
+                    + "come nearer Kingery–Bulmash and its impulses overshoot close in (air-blast-model.md, "
+                    + "\"Reflected peaks at a wall\")."
                 return bands
             }
             let validity =
@@ -1245,8 +1310,10 @@ extension StandingScene {
                                 high: "too flexible",
                                 validity:
                                     "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge; "
-                                    + "on today's build, either air (16.3–16.5 mm on today's, 16.1–16.3 on the ideal "
-                                    + "gas, against 18.0 and 13.9), the record's earlier −20% to +7% from an older one",
+                                    + "on the mapped start with the open faces at the clearance rule, 16.2 and 16.6 mm in "
+                                    + "all three roundings against 18.0 and 13.9 (16.3–16.5 in the harness's box on the "
+                                    + "balloon, 16.1–16.3 on the ideal gas), the record's earlier −20% to +7% from an older "
+                                    + "build",
                                 check: "Wu et al.'s slabs with steel in both faces"),
                             derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
                         ).map { [$0] } ?? []
@@ -1263,7 +1330,7 @@ extension StandingScene {
                                 validity:
                                     "2 to 15 kg at 0.5 and 1 m; 6 elements through, fine air; P7 is left 112 to 146 mm "
                                     + "down on 6 to 12 and holed on 16; with afterburning and hot air the heavy "
-                                    + "charges leave 110–196 mm against 340 and 510",
+                                    + "charges leave 110–196 mm against 340 and 510, P7 121 mm on the mapped start",
                                 check: "Full-scale slabs under close-in charges"),
                             derived:
                                 "6 elements through, calibrated; 6 to 12 leave P7 alike, and on 16 it holes",

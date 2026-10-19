@@ -46,7 +46,7 @@ connections (ties, joist bearings, roof fixings) that the tests show decide how 
 ### Can it use ContinuumKit's law?
 
 ContinuumKit has three of the laws, all from Edgerton's plywood coupons, all released (BombCAD
-pins alpha.26, which adds `TimberFailure`, BombCAD's):
+pins alpha.28; alpha.26 added `TimberFailure`, BombCAD's):
 
 - `SolidMechanics.OrthotropicPlaneStress` (alpha.22): small-strain linear orthotropic plane
   stress in a frame with a grain angle. It has no damage, plasticity or rate effects, and it
@@ -171,7 +171,7 @@ not a detailed model.
    Ottawa CLT panels. Coordinate with Codex first, in case Edgerton's plywood resumes.
    *Done 17 October 2026:*
    - Edgerton is parked, so the criterion was proposed to ContinuumKit as `TimberFailure` (its
-     PR 93, merged, not yet released).
+     PR 93, merged and since released in alpha.26).
    - It is in the shells with CLT layers and equilibrium shear
      ([shell model](shell-model.md#timber)).
    - It is compared with Poulin's panels

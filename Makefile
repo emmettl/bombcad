@@ -1,4 +1,4 @@
-.PHONY: build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere release-check release
+.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected test-impact release-check release
 
 CONFIGURATION ?= release
 
@@ -15,6 +15,10 @@ icons:
 
 app:
 	bash Scripts/build-app.sh "$(CONFIGURATION)"
+
+# An Xcode project for working on the source (Xcode/project.yml; needs `brew install xcodegen`).
+xcode:
+	xcodegen --spec Xcode/project.yml
 
 run: app
 	open dist/BombCAD.app
@@ -58,7 +62,8 @@ lint:
 format:
 	swift format format --in-place --recursive Package.swift Sources Tests Scripts
 
-# The scripts' own tests, and the documents' relative links and anchors (check-doc-links.py).
+# The scripts' own tests, the documents' relative links and anchors (check-doc-links.py), and the
+# GPU structs' layouts on the Swift and Metal sides (check-shader-mirrors.py).
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
@@ -66,7 +71,19 @@ ci-test:
 	python3 Scripts/test-nightly-suspects.py
 	python3 Scripts/test-build-strict.py
 	python3 Scripts/test-concrete-matrix.py
+	python3 Scripts/test-update-homebrew-tap.py
+	python3 Scripts/test-check-affected.py
+	python3 Scripts/test-release-notes.py
+	python3 Scripts/test-check-shader-mirrors.py
+	python3 Scripts/split/test-split.py
+	python3 Scripts/reference/test-kingery-bulmash.py
+	python3 Scripts/reference/test-sdof.py
+	python3 Scripts/reference/test-blast1d.py
+	python3 Scripts/reference/test-compare.py
+	python3 Scripts/protective/test-protective.py
+	python3 Scripts/test-analytic-oracles.py
 	python3 Scripts/check-doc-links.py
+	python3 Scripts/check-shader-mirrors.py
 
 check: lint build-strict test ci-test
 
@@ -84,6 +101,17 @@ check-remote:
 
 check-anywhere:
 	python3 Scripts/remote.py anywhere $(TARGET)
+
+# The pre-push check sized to the change (Scripts/check-affected.py): documents and scripts get
+# lint and ci-test; code the suites that executed it, by the test-impact map; the package's pins,
+# and the core without a map, the full check-anywhere.
+check-affected:
+	python3 Scripts/check-affected.py $(ARGS)
+
+# The test-impact map at HEAD (Scripts/test-impact.py): a coverage build, then each suite alone,
+# the suites under gpu-slot. Nightly on the mini; about an hour.
+test-impact:
+	python3 Scripts/test-impact.py build $(ARGS)
 
 release-check:
 	python3 Scripts/release.py check

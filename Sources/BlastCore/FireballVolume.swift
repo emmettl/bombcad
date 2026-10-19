@@ -319,7 +319,7 @@ extension BlastSolver {
     func cpuLuminousCells(low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float) -> [UInt32] {
         let gamma = configuration.gamma
         let airModel = configuration.airModel
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         var packed = [UInt32](repeating: 0, count: counts.x * counts.y * counts.z)
         let hasProducts = speciesHoldDetonationProducts
         withState { cells in

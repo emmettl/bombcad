@@ -242,8 +242,8 @@ in shells and uniaxial plasticity in beams, on the Green-Lagrange strain, with e
 
   | Yield | D, q | Source | Factor at 10⁻³, 0.3 and 1 /s |
   |---|---|---|---|
-  | To 300 MPa (mild steel, S235, S275) | 40.4 /s, 5 | N. Jones, *Structural Impact*, 1989, Table 8.1 | 1.04, 1.26, 1.35 |
-  | To 400 MPa (S355, A992) | 68.8 /s, 5.8 | Fitted to Murray, Rowell and Thornton's A992, 372 MPa (ERDC, IESS 2018, Table 4), within 2% at 0.002–2 /s | 1.03, 1.24, 1.33 |
+  | To 300 MPa (mild steel, S235, S275) | 40.4 /s, 5 | N. Jones, *Structural Impact*, 1989, Table 8.1 | 1.03, 1.26, 1.35 |
+  | To 400 MPa (S355, A992) | 68.8 /s, 5.8 | Fitted to Murray, Rowell and Thornton's A992, 372 MPa (ERDC, IESS 2018, Table 4), within 2% at 0.002–2 /s | 1.03, 1.25, 1.33 |
   | Above (S420, S460, A572 grade 50) | 94.4 /s, 4.0 | Fitted to their A572 grade 50, 424 MPa (Table 3), within 2% | 1.02, 1.19, 1.27 |
 
   Murray et al.'s steels, tested for UFC 3-340-02's coming steel chapter, rose 1.17–1.25 at
@@ -734,7 +734,7 @@ bowed as Eurocode 3 takes members to be:
   the bow alone would carry. So a bowed member starts unstressed, its axial force bends it through
   the bow, and the bow turns with it.
 - The nodes stay on the straight line for the air, contact and drawing, a few millimetres off.
-- Members of an elastic stand-in (yield above 2 GPa), concrete and timber stay straight.
+- Members of an elastic stand-in (yielding above 5% of its modulus), concrete and timber stay straight.
 
 Pinned S355 struts 50 mm square, loaded by a head mass under gravity raised slowly (load control:
 the largest force the foot carries is the resistance, χ N_pl; `blastbench buckling
@@ -779,9 +779,155 @@ length, after five e-folds of the fastest growth, summed over eight random start
 alone scatters by ±20%. It scales as v^(−0.52), against Gladden et al.'s measured and Lindberg's
 v^(−1/2). The beams buckle about the right wavelength under a sudden load, 3–20% long.
 
+**Against Kenny's drop-hammer tests** (`KennyImpactTest`, `blastbench kenny`;
+Dalhousie PhD, 2001, a scan read from its pages). A 10 kg hammer was dropped at about 6.2 m/s
+onto upright strips 50.8 mm wide, clamped at the foot and held at the head by a slide bearing.
+- **The strips:** CR1018 steel 3.175 mm thick, and 6061-T6 aluminium 3.175 and 4.76 mm thick,
+  unsupported over 137–550 mm.
+- **The measurement** (Table 6-4): each series' mean final sideways deflection of its peak
+  buckle, which lay near the clamp.
+- **The materials:** Kenny's bilinear laws (Table 6-6). The steel takes Jones's mild-steel rate
+  law; the aluminium is taken as rate-independent.
+
+**How the strip is modelled.** Each strip is a line of beams, drawn 6 mm wide of a material
+50.8/6 times as stiff, dense and strong. Its axial stiffness, mass, weak-axis bending, plastic
+moment and wave speeds are therefore the strip's.
+
+**How the hammer is modelled.** It drives the head while the strip pushes back, parts from it
+when the strip stops pushing, and strikes again whenever it catches up. After 10 mm it meets
+the bearing disc and the drop tube stops it. That stroke is read from Kenny's procedure
+(Appendix B.3): the strip stood about 10 mm above the disc, and he measured about 5 mm of
+shortening. Without it the aluminium strips take the whole 192 J and fold 3–4 times too far.
+
+Final deflection over measured, 16 series:
+
+| Bow | Steel, 137–550 mm | Aluminium 3.175 mm | Aluminium 4.76 mm |
+|---|---|---|---|
+| Eurocode 3's, curve c (the default) | 1.44, 1.26, 2.11, 1.35, 2.45, 3.68 | 1.32, 0.98, 0.91, 0.71, 1.19, 1.41 | 1.23, 1.32, 1.70, 0.78 |
+| Kenny's measured β = A₀/L | 1.07, 0.61, 1.10, 0.75, 1.03, 1.97 | 1.04, 0.76, 0.84, 0.65, 0.57, 0.52 | 0.78, 0.88, 0.60, 0.45 |
+
+- **The default bows** give 13 of 16 within half to twice. The slenderest steel strips read 2.5
+  and 3.7 times too far: their Eurocode bow, 2–3 mm, is twice what Kenny measured.
+- **The measured bows** give 15 of 16 within half to twice, mostly a little low.
+- **The buckle is in the wrong place.** The tests' peak buckle lay 51–130 mm above the clamp,
+  where the reflected stress wave doubled. The model's mostly lies near mid-length, where the
+  half-sine bow seeds it.
+- **Rate matters.** Without its rate law the steel reads 1.3–7 times too far (measured bows, no
+  stroke).
+- **The aluminium's numbers rest on the stroke,** which is read, not measured.
+
 No test of a steel column buckling under blast with its measured response has been compared.
 Nassr et al.'s columns under blast with axial load (McMaster, 2012) were loaded to a quarter of
 their capacity, short of buckling.
+
+## Steel connections
+
+Where steel members meet, they share a node unless the model says how they are connected. A
+shared node is a rigid joint that never breaks: only the members' own fibres can fail. Real
+connections turn, and they fracture. Since 18 October 2026, `StructureModel.steelConnection`
+names a connection (`SteelConnection`).
+
+**Where the hinges go.** Each steel beam that stops at another member gets its own end node,
+held to the joint's node by a hinge (`ShellMesh.Hinge`). "Stops at" means the joint is held by a
+column, by a member running on through it, or by a shell. The column, or the through member,
+keeps the joint's node.
+
+**How a hinge acts** (the `shellHinges` kernel, run before the nodes move):
+- **Stiffness.** Half that of a beam element of the same length: rotation 2EI/h about each cross
+  axis, axial and shear 0.5EA/h, torsion G(I₂+I₃)/h.
+  - It can't be stiffer. The beam's end node carries only its share of one element's mass, so a
+    stiffer hinge would need a shorter step.
+  - It is rigid by EN 1993-1-8's measure (§5.2.2.5, S_j ≥ 25EI/L) for a beam over 12.5 elements
+    long.
+- **Plastic moment.** It turns plastically past a fraction of the beam's plastic moment, so the
+  beam's plastic hinge forms in the connection.
+- **Strength along the beam.** Where the connection is weaker than the beam, it yields along the
+  beam as well, pulled or pushed.
+- **Fracture.** It lets the beam go entirely (moment, shear and pull) once its bending turn
+  about the cross axes, elastic and plastic together, reaches the fracture rotation. The tested
+  connections fractured in the same way.
+
+**The connections**, from tests under a column's removal (slow) and under a sudden moment
+(blast rates):
+
+| Connection | Moment / M_p | Fracture turn | Along the beam | Source |
+|---|---|---|---|---|
+| Welded flange, bolted web (WUF-B) | 0.95 | 0.081 rad | as the beam | Sadek et al., NIST TN 1669 (2010) |
+| Reduced beam section (RBS) | 0.8 | 0.14 rad | as the beam | NIST TN 1669; AISC 358 sizes the cut |
+| Single-plate shear (fin plate) | 0.05 | 0.089 rad | 0.13 of the squash load | Weigand and Berman (2016), 13 tests |
+| Extended end plate, bolted | 0.74 | 0.0122 rad | as the beam | Culache (2017), loaded in 40 ms |
+| Flush end plate, bolted | 0.45 | 0.0140 rad | as the beam | Culache (2017), loaded in 40 ms |
+
+How the shear tab's figures were derived:
+- **Fracture turn:** the median of Weigand and Berman's thirteen tests (0.067–0.110 rad).
+- **Moment:** three A325 bolts' shear strength (130 kN each), about the middle bolt at 76 mm
+  pitch, over W18×35's M_p.
+- **Strength along the beam:** the three-bolt tests' median pull (435 kN), over the equivalent
+  rectangle's squash load for W18×35 (4M_p/d = 3,350 kN).
+- **Shear:** left unlimited. The tests held 32–60 kN once their pull had grown, but under gravity
+  the tab carries its beam.
+
+**The column-removal assemblies** (`ColumnRemovalTest`, `blastbench removal`): two spans pushed
+down at the middle column's stub at 0.1 m/s.
+
+| Assembly | Joints | Peak load | Failed at | Measured |
+|---|---|---|---|---|
+| WUF-B, W21×73 on W18×119, 6.10 m spans | rigid | 1,559 kN | none by 1.1 m | 890 kN, 495 mm |
+| | hinged | 1,032 kN | 629 mm (1.27) | |
+| RBS, W24×94 on W24×131, 6.10 m spans | rigid | 2,545 kN | none by 1.1 m | 1,780 kN, 851 mm |
+| | hinged | 1,905 kN | 895 mm (1.05) | |
+| SPS, W18×35 on W14×90, 9.1 m spans | rigid | 569 kN | none by 1.4 m | about 157 kN, 892 mm |
+| | hinged | 181 kN | 941 mm (1.05) | |
+
+The load is read every 5 ms and judged on its mean over 10 mm of drop, because it rings with the
+stub's mass. Weigand and Berman loaded one connection as the two-span system would load it, so
+their stub load is derived: 2(T sin θ + V cos θ), from the eight three-bolt tests' medians (a
+pull of 431 kN, 40 kN shear at the column face, 0.0905 rad).
+
+- **Rigid joints** never fail by the test's drop: the beams' fibres alone carry the catenary.
+- **Hinged, they fail late,** 5–27% past the test's drop. The hinge turns less than the chord
+  rotation the tests quote, because the beams bend too.
+- **The loads read high:** 1.07–1.16 of measured at their peaks.
+- **This is a check, not a validation.** The fracture turns come from these same tests, so they
+  are calibration.
+
+**At blast rates: Culache's end plates.** Culache (Southampton PhD, 2017) broke half-scale
+bolted end-plate moment connections (S355 beams, 12 mm plates, M12 bolts, a 1.1 m lever arm)
+twice each: slowly, over 300 s, and suddenly, the moment rising in about 4 ms and failure
+within 20 ms. A hinge is independent of rate: whichever test its moment and fracture turn are
+taken from, it gives them at any rate. Taken from the slow tests, against the fast ones (Table
+3.5):
+
+| Connection, bolts | Slow: moment, turn | Fast: moment, turn | The slow values over the fast |
+|---|---|---|---|
+| Extended, grade 8.8 | 127 kN m, 1.20° | 90 kN m, 0.70° | moment 1.41, turn 1.71 |
+| Flush, grade 8.8 | 98 kN m, 1.20° | 87 kN m, 0.80° | moment 1.13, turn 1.50 |
+| Extended, stainless A4-70 | 133 kN m, 4.22° | 115 kN m, 4.40° | moment 1.16, turn 0.96 |
+| Flush, stainless A4-70 | 105 kN m, 3.42° | 115 kN m, 3.50° | moment 0.91, turn 0.98 |
+
+- **Carbon-steel bolts.** Bolted connections with ordinary bolts were weaker and broke sooner
+  when loaded fast, their nuts' threads stripping. A hinge from a slow test reads them 13–41% too
+  strong and half again too ductile at a blast's rate.
+- **Stainless bolts** turned as far either way. Their moment rose by 10%, or fell by 14% where
+  the compression flange buckled.
+- **The cause.** The strength the steel gains at a high rate did not reach the connection as a
+  whole. Each configuration was tested once.
+
+So the end plates here take the fast tests' values. The WUF-B, RBS and fin plate take slow
+tests'. No fast test of a welded or fin-plate connection has been compared, and they may be
+too ductile at a blast's rate as the bolted ones would be.
+
+**Not compared:**
+- **Dinu et al.'s** end-plate connections under column loss (Timișoara) are on a server that
+  refuses connections.
+- **EN 1993-1-8's component method** is not used: none of its springs is built.
+
+**In the presets:**
+- **The hub** has extended end plates at a blast's rate, as British portal frames are bolted
+  ([transport hub](transport-hub.md)).
+- **The office** has fin plates. Its front ground-storey columns, which no beam now holds from
+  turning, are lost to the 1 t at the kerb, and 334 of its 480 fin plates fracture by 1 s as the
+  floors above them drop ([office](office-tower.md#on-fin-plates)). With rigid joints it stood.
 
 ## Limitations
 
@@ -845,6 +991,17 @@ their capacity, short of buckling.
     Flanged sections drawn as rectangles (`SteelSection.equivalent`) are stiffer about their
     minor axis than the section, a beam's well above it, so they buckle that way at a higher
     load than they should; their bow is sized for the rectangle.
+12. **Connections are five tested types, independent of rate.** A hinge takes one
+    connection's moment, fracture turn and pull for every beam in the model, scaled to each
+    beam's plastic moment. Connections are not sized to their beams, and there is no component
+    method.
+    - **Rates.** The end plates' values come from tests loaded in 40 ms. The WUF-B's, RBS's and
+      fin plate's come from column-removal tests at about 0.1 m/s. Bolted end plates were 11–29%
+      weaker and broke at 0.58–0.67 of the turn when loaded fast, so the slow types may be too
+      ductile under a blast.
+    - **Fracture.** A hinge fractures on its bending turn alone, not on the pull that grew with
+      it in the tests.
+    - **Shear.** It is unlimited, so a shear tab never fails in shear.
 
 ## Future work
 
@@ -852,11 +1009,27 @@ their capacity, short of buckling.
   elements.
 - **Punching against a test**, before and after punching, and with an eccentric load.
 - **A flanged section's minor axis as it is**, so that a bowed I-section buckles about its weak
-  axis at its own load; and a test of imperfect struts under an impulsive axial load (Kenny's
-  thesis, in [data wanted](data-wanted.md)).
+  axis at its own load.
+- **A buckle that starts where the stress wave starts it.** Kenny's strips buckled near the
+  clamp, where the reflected wave doubled the stress. A half-sine bow puts the model's buckle
+  near mid-length instead. A bow with the measured imperfections' content, or one that
+  scatters, might place it.
 
 ## Sources
 
+- F. Sadek, J. A. Main, H. S. Lew, S. D. Robert, V. P. Chiarito and S. El-Tawil, *An
+  experimental and computational study of steel moment connections under a column removal
+  scenario*, NIST Technical Note 1669, 2010 (open). The WUF-B and RBS assemblies and their
+  fracture rotations.
+- D. Kenny, *Dynamic pulse buckling of slender beams with geometric imperfections subjected to
+  an axial impact*, PhD thesis, Dalhousie University, 2001 (hdl:10222/55746). Tables 6-1 to 6-4
+  and 6-6: the drop-hammer tests on steel and aluminium strips; Appendix B.3, the set-up.
+- A. Culache, *Assessment of steel endplate moment connections with stainless steel bolts
+  subjected to rapid loading rates*, PhD thesis, University of Southampton, 2017
+  (eprints.soton.ac.uk/436596). Table 3.5: bolted end plates loaded over 300 s and in 40 ms.
+- J. M. Weigand and J. W. Berman, "Steel gravity connections subjected to large rotations and
+  axial loads", *Connections VIII*, Boston, 2016 (open, NIST pub 920903). Single-plate shear
+  and bolted angle connections under a column's removal, Table 1.
 - J. R. Gladden, N. Z. Handzy, A. Belmonte and E. Villermaux, "Dynamic buckling and
   fragmentation in brittle rods", *Physical Review Letters* 94, 035503, 2005 (arXiv
   cond-mat/0410642). The preferred wavelength of a rod struck at its end, and its v^(−1/2) scaling

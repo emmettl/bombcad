@@ -18,6 +18,23 @@ struct RunCostTests {
         return configuration
     }
 
+    @Test("The gas cooling is priced: its medium and loss a cell and its slices, and a hundredth more a step")
+    func coolingPriced() {
+        let scenario = ScenarioPreset.openGround.scenario
+        let grid = scenario.grid(cellSize: 0.5)
+        var cooled = SolverConfiguration.recommended
+        cooled.mappedCharge = false
+        var kept = cooled
+        kept.radiativeCooling = nil
+        #expect(
+            RunCost.coarseMemory(grid, configuration: cooled)
+                - RunCost.coarseMemory(grid, configuration: kept)
+                == grid.cellCount * 12 + 52 << 20)
+        let warm = RunCost.estimate(scenario, cellSize: 0.5, configuration: kept, duration: 0.05)
+        let cool = RunCost.estimate(scenario, cellSize: 0.5, configuration: cooled, duration: 0.05)
+        #expect(cool.seconds > warm.seconds && cool.seconds < warm.seconds * 1.02)
+    }
+
     @Test("Whole events come within a factor of two of the times docs/performance.md records")
     func againstRecord() {
         let street = ScenarioPreset.streetCanyon.scenario

@@ -42,9 +42,10 @@ struct NewDistrictTests {
         #expect(throws: (any Error).self) { try model.readMap(Self.folder.appending(path: "heights.asc")) }
     }
 
-    @Test("Lays the district out on the finest cells this Mac holds and prices it before creating")
+    @Test("Lays the district out on the finest uniform cells this Mac holds and prices it before creating")
     func lays() async throws {
         let model = try model()
+        model.airChoice = .uniform
         #expect(model.preview == nil)
         await model.lay()
         let preview = try #require(model.preview, "\(model.message ?? "")")
@@ -60,18 +61,91 @@ struct NewDistrictTests {
         if let finer = NewDistrictModel.cellSizes.last(where: { $0 < preview.cellSize }) {
             #expect(
                 !NewDistrictModel.fits(
-                    layout, radius: 250, clearFaces: true, cellSize: finer, ground: .saturated,
-                    memory: model.memory))
+                    layout, radius: 250, clearFaces: true, air: DistrictAir(cellSize: finer, refined: false),
+                    ground: .saturated, memory: model.memory))
         }
         // The run as the district wants it: uniform cells, the ground, long enough for the farthest.
         let run = try #require(preview.document.runSettings)
         #expect(run.resolution == Resolution(cellSize: preview.cellSize)!.rawValue)
         #expect(!run.sharpShocks && run.shockLevels == nil)
+        #expect(run.terrainCutCells == true)
         #expect(run.ground == .saturated)
         #expect(run.duration == DistrictLayout.duration(radius: 250))
         // The side faces 4 m/kg^(1/3) (40 m) beyond the buildings.
         #expect(preview.scenario.domainSize.x >= 2 * (250 + 40))
         #expect(preview.scenario.terrain != nil)
+    }
+
+    @Test(
+        "Refined air: a base refined once where the shock is, under the roofs' ceiling, against the uniform cells"
+    )
+    func refined() async throws {
+        let model = try model()
+        model.airChoice = .refined
+        await model.lay()
+        let preview = try #require(model.preview, "\(model.message ?? "")")
+        #expect(preview.air.refined && preview.air.finest == preview.air.cellSize / 2)
+        let run = try #require(preview.document.runSettings)
+        #expect(run.resolution == Resolution(cellSize: preview.air.cellSize)!.rawValue)
+        #expect(run.sharpShocks && run.shockLevels == nil && run.shockThreshold == 0.005)
+        // The ceiling: all but the tallest 2% of the buildings (tagged up to 32 m here) and four
+        // base cells over them.
+        let layout = try #require(model.layout)
+        let ceiling = try #require(run.refinementCeiling)
+        #expect(ceiling == layout.refinementCeiling(radius: 250, cellSize: preview.air.cellSize))
+        #expect(ceiling > 6 + 4 * preview.air.cellSize && ceiling <= 32 + 4 * preview.air.cellSize)
+        // The footprints on the finest cells.
+        #expect(
+            preview.scenario.envelopeSources?.allSatisfy {
+                $0.detail.hasSuffix("cells of \(preview.air.finest) m")
+            } == true)
+        // On a staircase of whole cells until the finest level's cut cells stop ringing.
+        #expect(run.terrainCutCells == nil)
+        #expect(preview.cost.memory + preview.historyBudget <= model.memory)
+        #expect(preview.cost.refinementMemory > 0)
+        // The uniform cells it is set against, on the same layout.
+        let other = try #require(preview.alternative)
+        #expect(!other.air.refined)
+        // It reopens refined.
+        let restored = try ProjectDocument(fileWrapper: preview.document.makeArchive().fileWrapper())
+        #expect(restored.runSettings == run)
+    }
+
+    @Test("The advisor takes refined air where it is finer at the façades and no dearer, else uniform cells")
+    func advised() async throws {
+        for memory in [2 << 30, 8 << 30, 32 << 30] {
+            let model = try model(memory: memory)
+            await model.lay()
+            let preview = try #require(model.preview, "\(model.message ?? "")")
+            let layout = try #require(model.layout)
+            func first(_ refined: Bool) -> DistrictAir? {
+                NewDistrictModel.cellSizes.filter { !refined || $0 >= 2 }.map {
+                    DistrictAir(cellSize: $0, refined: refined)
+                }.first {
+                    NewDistrictModel.fits(
+                        layout, radius: 250, clearFaces: true, air: $0, ground: .saturated, memory: memory)
+                }
+            }
+            let (uniform, refined) = (first(false), first(true))
+            let prefers = NewDistrictModel.prefersRefined(
+                layout, radius: 250, clearFaces: true, uniform: uniform, refined: refined, ground: .saturated,
+                memory: memory)
+            // The kind the rule takes, on its finest cells that fit, or coarser where the laid-out
+            // ground and roofs raise the top past the memory.
+            let expected = try #require(prefers ? refined : uniform)
+            #expect(preview.air.refined == expected.refined, "\(memory >> 30) GB")
+            #expect(preview.air.cellSize >= expected.cellSize, "\(memory >> 30) GB")
+            #expect(preview.cost.memory + preview.historyBudget <= memory)
+            if prefers, let uniform, let refined {
+                #expect(refined.finest < uniform.finest)
+                func seconds(_ air: DistrictAir) -> Double {
+                    NewDistrictModel.price(
+                        layout, radius: 250, clearFaces: true, air: air, ground: .saturated, memory: memory
+                    ).cost.seconds
+                }
+                #expect(seconds(refined) <= seconds(uniform))
+            }
+        }
     }
 
     @Test("The project it creates saves and reopens as laid out")

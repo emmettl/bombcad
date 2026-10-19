@@ -41,7 +41,14 @@ The [steel and glass office](docs/office-tower.md) and the [large-panel block of
 
 A signed, notarized build for Apple silicon Macs running macOS 15 or later is on the
 [Releases](https://github.com/emmettl/bombcad/releases) page. Expand the ZIP and move
-`BombCAD.app` to Applications; the `.sha256` file beside it checks the download.
+`BombCAD.app` to Applications; the `.sha256` file beside it checks the download. Or, with
+Homebrew:
+
+```bash
+brew install emmettl/tap/bombcad
+```
+
+which also puts the headless runner on the path as `bombcad`.
 
 ## Building and running
 
@@ -61,6 +68,13 @@ charge or gas cloud and the display; **Edit layout** builds and imports scenes (
 Runs can be saved, compared, swept across parameters on several Macs, and exported for
 rendering. Everything the app does is described in [Using the app](docs/using-the-app.md),
 including `BombCAD run` and the `blastbench` command-line tool.
+
+To work in Xcode, `make xcode` (needs [XcodeGen](https://github.com/yonaskolb/XcodeGen),
+`brew install xcodegen`) writes `Xcode/BombCAD.xcodeproj` from `Xcode/project.yml`. It opens the
+package with all its targets and tests, and a **BombCAD App** scheme that builds the real app as
+`make app` does and runs it under the debugger with Metal frame capture (pick
+`dist/BombCAD.app` the first time it asks). The package stays the build's source of truth; the
+project is generated, not committed.
 
 ## What it models
 
@@ -137,8 +151,10 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Terrain](docs/terrain.md)                  | A heightfield ground the blast sees, DEM import, and slopes checked against shock reflection theory |
 | [Large scenes](docs/large-scenes.md) | Bursts of hundreds of tonnes to kilotonnes over kilometres: accuracy, cost and grids against Kingery–Bulmash, terrain at scale |
 | [Beirut, 2020](docs/beirut-2020.md) | The port explosion over 14,169 map buildings, set against the arrival times and the surveys of glass and structural damage |
+| [Charge inference](docs/charge-inference.md) | The charge's yield and place inferred from observed arrival times (and broken glass), with credible intervals; Beirut's found again |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
+| [Reference calculations](docs/reference-calculations.md) | Independent Python implementations of the published methods, and the comparison script |
 | [Blind tests](docs/blind-tests.md) | The protocol and register of tests predicted on frozen defaults before their measurements are unsealed |
 | [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
@@ -180,11 +196,14 @@ Each model document lists its sources, its limitations and the work that would a
 
 | Target        | Contents                                                             |
 |---------------|----------------------------------------------------------------------|
-| `SceneModel` / `SceneView` | Shared geometry and camera in [SimulationKit](Packages/SimulationKit/README.md) |
+| `SceneModel` / `SceneView` | Shared geometry and camera from [ContinuumKit](https://github.com/emmettl/ContinuumKit) (formerly [SimulationKit](Packages/SimulationKit/README.md)); see [adoption](docs/continuumkit-adoption.md) |
 | `BlastCore`   | Air and structural solvers, materials, scenarios, effects, benchmark data |
 | `BlastRender` | Scene renderer, orbit camera, offscreen snapshots                    |
 | `BombCAD`     | SwiftUI app with the layout editor                                   |
 | `blastbench`  | Command-line throughput, validation and snapshot tool                |
+| `scenebench`  | Command-line benchmarks of building envelopes, streets and districts |
+| `RadialBlast` | The fine one-dimensional spherical start of a blast (`SphericalBlast`) |
+| `rigidboxdemo` | A self-contained HTML replay of the rigid-box mechanics            |
 
 ## Licence
 

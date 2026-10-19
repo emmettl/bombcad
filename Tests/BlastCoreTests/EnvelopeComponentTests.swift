@@ -363,8 +363,10 @@ struct EnvelopeComponentHistoryTests {
         }
     }
 
-    @Test("A window from arrival holds the same bins as one from t = 0, from the bin the air first moved in")
-    func fromArrival() throws {
+    @Test(
+        "A window from arrival holds the same bins as one from t = 0, from the bin the blast reached it in",
+        arguments: [Float(0), 500])
+    func fromArrival(arrivalPa: Float) throws {
         var scene = Scenario(
             name: "Two walls", domainSize: SIMD3(16, 8, 6), boxes: [],
             charge: Charge(mass: 0.2, position: SIMD3(2, 4, 1)))
@@ -376,12 +378,12 @@ struct EnvelopeComponentHistoryTests {
                 name: "Wall \(x)")
         }
         let device = try #require(MTLCreateSystemDefaultDevice())
-        func histories(fromArrival: Bool) throws -> [EnvelopeComponentHistory] {
+        func histories(fromArrival: Bool, threshold: Float = arrivalPa) throws -> [EnvelopeComponentHistory] {
             let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.25)
             try solver.configureEnvelopeComponents(
                 objects: scene.envelopeObjects,
                 options: EnvelopeHistoryOptions(
-                    windowS: 0.05, binMaxima: true, windowFromArrival: fromArrival))
+                    windowS: 0.05, binMaxima: true, windowFromArrival: fromArrival, arrivalPa: threshold))
             _ = solver.advance(steps: 160)
             return try #require(solver.envelopeComponentHistories())
         }
@@ -394,14 +396,37 @@ struct EnvelopeComponentHistoryTests {
         for (a, b) in zip(zero, arrival) {
             let start = Int((b.windowStartS! / b.binS).rounded())
             #expect(b.outerImpulsePaS.count == a.outerImpulsePaS.count - start)
+            // Past an overpressure, the first bin holds only the steps from the one that passed it;
+            // the earlier part of that bin, under the threshold, is left out.
+            let same = arrivalPa > 0 ? 1 : 0
             #expect(
-                a.outerImpulsePaS.dropFirst(start).map(\.bitPattern) == b.outerImpulsePaS.map(\.bitPattern))
+                a.outerImpulsePaS.dropFirst(start + same).map(\.bitPattern)
+                    == b.outerImpulsePaS.dropFirst(same).map(\.bitPattern))
             #expect(
-                a.innerImpulsePaS.dropFirst(start).map(\.bitPattern) == b.innerImpulsePaS.map(\.bitPattern))
-            #expect(a.outerMaxPa!.dropFirst(start).map(\.bitPattern) == b.outerMaxPa!.map(\.bitPattern))
+                a.innerImpulsePaS.dropFirst(start + same).map(\.bitPattern)
+                    == b.innerImpulsePaS.dropFirst(same).map(\.bitPattern))
+            #expect(
+                a.outerMaxPa!.dropFirst(start + same).map(\.bitPattern)
+                    == b.outerMaxPa!.dropFirst(same).map(\.bitPattern))
+            let left = Float(Double(arrivalPa) * b.binS * 1.001) + 1e-9
+            let outerGap: Float = abs(a.outerImpulsePaS[start] - b.outerImpulsePaS[0])
+            let innerGap: Float = abs(a.innerImpulsePaS[start] - b.innerImpulsePaS[0])
+            #expect(outerGap <= left && innerGap <= left)
             #expect(a.peakNetPa.bitPattern == b.peakNetPa.bitPattern)
-            // Before it, the air at the wall was still.
-            #expect(a.outerImpulsePaS.prefix(start).allSatisfy { abs($0) < 1e-6 })
+            if arrivalPa == 0 {
+                // Before it, the air at the wall was still.
+                #expect(a.outerImpulsePaS.prefix(start).allSatisfy { abs($0) < 1e-6 })
+            } else {
+                // Before it, no step on either side passed the threshold; in its first bin one did.
+                #expect(a.outerMaxPa!.prefix(start).allSatisfy { $0 <= arrivalPa })
+                #expect(a.innerMaxPa!.prefix(start).allSatisfy { $0 <= arrivalPa })
+                #expect(max(b.outerMaxPa!.first!, b.innerMaxPa!.first!) > arrivalPa)
+            }
+        }
+        if arrivalPa > 0 {
+            // No earlier than the air's first moving.
+            let waking = try histories(fromArrival: true, threshold: 0)
+            for (a, b) in zip(waking, arrival) { #expect(b.windowStartS! >= a.windowStartS!) }
         }
         // Judged, the two agree, times from t = 0.
         func judged(_ histories: [EnvelopeComponentHistory]) -> [EnvelopeBuildingDamage] {
@@ -417,6 +442,19 @@ struct EnvelopeComponentHistoryTests {
             #expect(abs((a.firstPaneBrokenAtS ?? 0) - (b.firstPaneBrokenAtS ?? 0)) <= 1e-4)
             #expect(abs(a.insidePeakPa - b.insidePeakPa) <= 1e-3 * a.insidePeakPa + 1)
         }
+    }
+
+    @Test("Saved options without the arrival's overpressure start their windows as the air moves")
+    func arrivalDecoding() throws {
+        let options = EnvelopeHistoryOptions(windowS: 0.5, windowFromArrival: true)
+        #expect(options.arrivalPa == 500)
+        var json = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(options)) as? [String: Any])
+        #expect(json["arrivalPa"] as? Double == 500)
+        json["arrivalPa"] = nil
+        let old = try JSONDecoder().decode(
+            EnvelopeHistoryOptions.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(old.arrivalPa == 0)
     }
 
     @Test("Histories repeat bit for bit however the steps are cut into batches")
@@ -502,6 +540,46 @@ struct EnvelopeComponentHistoryTests {
         #expect(
             abs(refinedFine - uniform) < abs(refinedCoarse - uniform),
             "\(refinedFine) \(refinedCoarse) \(uniform)")
+    }
+
+    @Test("A refinement ceiling keeps the refined air below it, at both levels, and changes nothing unset")
+    func refinementCeiling() throws {
+        let scene = Scenario(
+            name: "Open", domainSize: SIMD3(12, 12, 8), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(6, 6, 0.5)))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func run(_ ceiling: Float?) throws -> (rows: [[Int]], digest: [Float]) {
+            var config = SolverConfiguration()
+            config.refinement = 2
+            config.refinementLevels = 2
+            config.refinementMemory = 64 << 20
+            config.refinementCeiling = ceiling
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: 0.25, configuration: config)
+            var rows: [[Int]] = []
+            while solver.time < 0.01 {
+                let batch = solver.advance(steps: 8, timeLimit: 0.01)
+                if batch.steps == 0 { break }
+                let now = solver.refinedBlocksByHeight()
+                rows = rows.isEmpty ? now : zip(rows, now).map { zip($0, $1).map { max($0, $1) } }
+            }
+            let digest = solver.withState { cells in
+                stride(from: 0, to: cells.count, by: 997).map { cells[$0].density + cells[$0].energy }
+            }
+            return (rows, digest)
+        }
+        let free = try run(nil)
+        let capped = try run(2)
+        // Blocks are 4 coarse cells (1 m) high at the first level and 4 of its cells (0.5 m) at the
+        // second. Capped at 2 m, none from 3 m up (a jump just below the ceiling refines the block
+        // round it, which may reach a block over it); some there without.
+        #expect(free.rows[0].dropFirst(3).reduce(0, +) > 0 && free.rows[1].dropFirst(6).reduce(0, +) > 0)
+        #expect(capped.rows[0].dropFirst(3).allSatisfy { $0 == 0 }, "\(capped.rows[0])")
+        #expect(capped.rows[1].dropFirst(6).allSatisfy { $0 == 0 }, "\(capped.rows[1])")
+        #expect(capped.rows[0].prefix(2).reduce(0, +) > 0 && capped.rows[1].prefix(4).reduce(0, +) > 0)
+        // A ceiling above the domain is no ceiling: the same air, bit for bit.
+        let high = try run(100)
+        #expect(high.digest.map(\.bitPattern) == free.digest.map(\.bitPattern))
     }
 
     @Test("Refinement held beside a wall while its air is loaded keeps it fine after the shock has gone")

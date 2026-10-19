@@ -37,6 +37,9 @@ public final class StructureSolver {
         /// Where the air has a second level: its cells along a coarse cell's edge, its grid of
         /// blocks, and where its patches' list and cells start in the first level's buffers.
         var deepRefinement: (ratio: Int, blocks: SIMD3<Int>, patchOffset: Int, cellOffset: Int)?
+        /// Whether the air holds structures' outlines as cut cells: a face then reads the cell it
+        /// lies in, which holds the air against it, not the one half a cell out.
+        var readsCutCells = false
     }
 
     /// Bytes of state per element (`ElementState` in Structure.metal).
@@ -155,16 +158,19 @@ public final class StructureSolver {
     private let jointed: [Bool]
     /// Index into `materials` of every element's material in the low four bits of one byte each;
     /// bits 4 to 6 mark the mortar joints the element holds, across x, y and z.
-    let materialIndexBuffer: MTLBuffer
+    public let materialIndexBuffer: MTLBuffer
     private let loadTableBuffer: MTLBuffer
     private static let maxLoadPoints = 256
     /// Lattice indices of the nodes that belong to at least one element, in ascending order.
     let nodeListBuffer: MTLBuffer
     public let nodeCount: Int
     private let placeholderBuffer: MTLBuffer
-    private let elementPipeline: MTLComputePipelineState
+    private var elementPipeline: MTLComputePipelineState
     /// Builds the element kernel with the work trace compiled in (`tracesWork`).
-    private let traceElementPipeline: () -> MTLComputePipelineState?
+    private var traceElementPipeline: () -> MTLComputePipelineState?
+    /// The element kernel's specialisation and its library, to specialise it again (`readStructureCutCells`).
+    private let elementConstants: MTLFunctionConstantValues
+    private let elementLibrary: MTLLibrary
     private var tracingPipeline: MTLComputePipelineState?
     private let nodePipeline: MTLComputePipelineState
     /// The node kernel with gravity turned from straight down, made when first needed.
@@ -219,6 +225,9 @@ public final class StructureSolver {
     /// Failed concrete as particles (`StructureModel.rubbleParticles`), when the body has them.
     private(set) var rubbleSystem: RubbleSystem?
     private let pairPipeline: MTLComputePipelineState
+    /// What falls lands on the terrain (`StructureTerrain`), and the pass that lands it; nil on level ground.
+    private var terrain: StructureTerrain
+    private let terrainLandingPipeline: MTLComputePipelineState?
     private var stamp: UInt32 = 0
 
     public init(
@@ -275,6 +284,8 @@ public final class StructureSolver {
         var bareHourglass = model.releasesCrushedBareHourglass
         if bareHourglass { constants.setConstantValue(&bareHourglass, type: .bool, index: 21) }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
+        elementConstants = constants
+        elementLibrary = library
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
             var single = single
@@ -312,6 +323,8 @@ public final class StructureSolver {
             try? ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         }
         pairPipeline = try pipeline("structurePairs")
+        terrain = try StructureTerrain(device: device, terrain: model.ground)
+        terrainLandingPipeline = model.ground == nil ? nil : try pipeline("structureTerrainLanding")
         let contactConstants = MTLFunctionConstantValues()
         if rubble { contactConstants.setConstantValue(&rubble, type: .bool, index: 12) }
         contactClearPipeline = try ShaderLibrary.pipeline(
@@ -742,7 +755,7 @@ public final class StructureSolver {
         }
         footings = try FootingSystem(
             device: device, library: library, members: members, entityCount: nodeCount, bodyMass: bodyMass,
-            contactDamping: contactDamping)
+            contactDamping: contactDamping, terrain: model.ground)
     }
 
     /// The footings under the base after the last step, in the order of their connections (the
@@ -917,7 +930,13 @@ public final class StructureSolver {
                     {
                         anchors[3 * index].x += h * h / 4 * share
                         laws[index] = AnchorageParameters(law, material: model.material, elementSize: h)
-                    } else if onGround && nk == 0 && model.baseAnchorage == nil {
+                    } else if model.baseAnchorage == nil
+                        && (model.ground == nil
+                            ? onGround && nk == 0
+                            : model.fixedBase && corner < 4 && (k == 0 || compactIndex(i, j, k - 1) == nil)
+                                && model.isOnGround(point))
+                    {
+                        // On a terrain, the lower faces' nodes within half an element of it.
                         nodes[index].isFixed = true
                     }
                 }
@@ -1053,6 +1072,26 @@ public final class StructureSolver {
             for c in 0..<channels { totals[c] += workSums[n * channels + c] }
         }
         return totals
+    }
+
+    /// Specialises the element kernel for air that holds the structures' outlines as cut cells
+    /// (`SolverConfiguration.structureCutCells`): faces then read the pressure at the wall
+    /// (`cutFaceOverpressure` in Structure.metal). A function constant rather than a uniform's
+    /// branch, so that without it the kernel is as it was, bit for bit.
+    func readStructureCutCells() throws {
+        guard let constants = elementConstants.copy() as? MTLFunctionConstantValues else { return }
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: ShaderLibrary.structureCutConstant)
+        let library = elementLibrary
+        elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
+        // Tracing work's specialisation is the same with its work traced (constant 3).
+        guard let tracing = constants.copy() as? MTLFunctionConstantValues else { return }
+        var traced = true
+        tracing.setConstantValue(&traced, type: .bool, index: 3)
+        traceElementPipeline = {
+            try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
+        }
+        tracingPipeline = nil
     }
 
     public func elementCoordinates(_ index: Int) -> (i: Int, j: Int, k: Int) {
@@ -1881,6 +1920,18 @@ public final class StructureSolver {
             encoder.setBuffer(discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            if let terrainLandingPipeline {
+                encoder.setComputePipelineState(terrainLandingPipeline)
+                encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
+                encoder.setBuffer(fluid?.control ?? placeholderBuffer, offset: 0, index: 1)
+                encoder.setBytes(&uniforms, length: MemoryLayout<StructureUniforms>.stride, index: 2)
+                encoder.setBuffer(nodeListBuffer, offset: 0, index: 3)
+                encoder.setBuffer(anchorBuffer, offset: 0, index: 4)
+                encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 5)
+                encoder.setBuffer(terrain.heights, offset: 0, index: 6)
+                encoder.dispatchThreads(
+                    MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
+            }
             if let rubble = rubbleSystem {
                 encoder.setComputePipelineState(rubble.move)
                 encoder.setBuffer(rubble.particles, offset: 0, index: 0)
@@ -1894,6 +1945,8 @@ public final class StructureSolver {
                 encoder.setBuffer(fluid?.debrisArea ?? placeholderBuffer, offset: 0, index: 8)
                 encoder.setBuffer(fluid?.couplingMap ?? placeholderBuffer, offset: 0, index: 9)
                 encoder.setBuffer(rubble.state, offset: 0, index: 10)
+                encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 11)
+                encoder.setBuffer(terrain.heights, offset: 0, index: 12)
                 encoder.dispatchThreads(
                     MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
@@ -2079,6 +2132,7 @@ public final class StructureSolver {
                 uniforms.fluidDeepCellOffset = UInt32(deep.cellOffset)
             }
             uniforms.fluidCell = fluid.grid.cellSize
+            uniforms.fluidCutCells = fluid.readsCutCells ? 1 : 0
             uniforms.fluidNx = UInt32(fluid.grid.nx)
             uniforms.fluidNy = UInt32(fluid.grid.ny)
             uniforms.fluidNz = UInt32(fluid.grid.nz)

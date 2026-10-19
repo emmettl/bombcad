@@ -62,12 +62,11 @@ struct InterfaceSnapshotTests {
             to: folder.appending(path: "help.png"))
         #expect(ProjectDocument(model: model) == original)
 
-        let suite = "dev.bombcad.interface-review.\(UUID())"
-        let store = try #require(UserDefaults(suiteName: suite))
-        defer { store.removePersistentDomain(forName: suite) }
-        try snapshot(
-            AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 720),
-            appearance: appearance, to: folder.appending(path: "settings.png"))
+        try withTemporaryDefaults { store in
+            try snapshot(
+                AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 720),
+                appearance: appearance, to: folder.appending(path: "settings.png"))
+        }
     }
 
     @Test("Render the New District window laid out on the made-up district", arguments: ["light", "dark"])
@@ -295,6 +294,31 @@ struct InterfaceSnapshotTests {
         var document = ProjectDocument(scenario: scene)
         document.runSettings?.resolution = "coarse"
         return document
+    }
+
+    @Test("Render the Infer Charge sheet empty and with a posterior", arguments: ["light", "dark"])
+    func chargeInference(style: String) async throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        let model = SimulationModel(document: ProjectDocument(scenario: ScenarioPreset.openGround.scenario))
+        let original = ProjectDocument(model: model)
+        let inference = ChargeInferenceModel()
+        try snapshot(
+            ChargeInferenceView(model: model, inference: inference), size: CGSize(width: 600, height: 560),
+            appearance: appearance, to: folder.appending(path: "infer-charge-empty.png"))
+        inference.setObservers(ChargeInferenceSheetTests.observers(), file: "made-up.csv")
+        inference.infersOffset = true
+        inference.steps = 600
+        inference.run()
+        while inference.isRunning { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(inference.result != nil)
+        try snapshot(
+            ChargeInferenceView(model: model, inference: inference).frame(height: 1100),
+            size: CGSize(width: 600, height: 1100), appearance: appearance,
+            to: folder.appending(path: "infer-charge.png"))
+        #expect(ProjectDocument(model: model) == original)
     }
 
     @Test("Render the panels not yet reviewed, whole and at a short height", arguments: ["light", "dark"])

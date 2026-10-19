@@ -416,19 +416,28 @@ extension StructureModel {
         supports.indices.contains { anchorage(ofSupport: $0) == nil && containsSupport($0, at: point) }
     }
 
+    /// Whether `point` stands on the ground, for the clamp and the ground's connection: at z = 0,
+    /// the floor, as always; on a terrain (`ground`) also within half an element of the surface
+    /// under it, as near as a base built of elements can follow a slope.
+    func isOnGround(_ point: SIMD3<Float>) -> Bool {
+        if abs(point.z) < 1e-4 { return true }
+        guard let ground else { return false }
+        return abs(point.z - ground.height(at: point)) <= 0.5 * max(elementSize, shellElementSize ?? 0) + 1e-4
+    }
+
     /// Which connection holds the point: 0 the ground's, 1 + n support region n's; nil clamped
     /// or free. As `connection(at:)`.
     func connectionSlot(at point: SIMD3<Float>) -> Int? {
         guard !isClampedBySupport(at: point) else { return nil }
         if let index = finiteSupportIndex(at: point) { return 1 + index }
-        return fixedBase && abs(point.z) < 1e-4 && baseAnchorage != nil ? 0 : nil
+        return fixedBase && isOnGround(point) && baseAnchorage != nil ? 0 : nil
     }
 
     /// An ideal clamp takes precedence, followed by the last finite support, then the ground.
     func connection(at point: SIMD3<Float>) -> Anchorage? {
         guard !isClampedBySupport(at: point) else { return nil }
         if let index = finiteSupportIndex(at: point) { return anchorage(ofSupport: index) }
-        return fixedBase && abs(point.z) < 1e-4 ? baseAnchorage : nil
+        return fixedBase && isOnGround(point) ? baseAnchorage : nil
     }
 
     /// The connection in `slot`: 0 the ground's, 1 + n support region n's.

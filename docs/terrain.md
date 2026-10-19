@@ -33,7 +33,8 @@ import), `Shaders/Refine.metal` (`refineFill`, the fine cells' outline) and, for
   one-dimensional start treats the terrain as an obstacle it must not reach.
 - **Persistence.** Heights are saved as little-endian 32-bit floats in base64. A scene without
   terrain encodes exactly as before (saved-run fingerprints are unchanged). A project with
-  terrain is scene encoding 8, which older readers refuse rather than open as flat ground.
+  terrain is scene encoding 8 or later (9 with a structural IFC import, 10 with an envelope's
+  glass), which older readers refuse rather than open as flat ground.
 - **Bit-identical when flat.** A flat heightfield gives the same `blastbench digest` hashes as
   no terrain: uniform, refined once and refined twice (`blastbench digest --terrain flat`).
 
@@ -48,8 +49,10 @@ a sloping surface two cells a step, far ahead of the blast. Given up, it balance
 still air gained on the other side of the surface: a closed box over a hill gains 0.08% of its
 mass and energy in 120 steps (0.2% when it was shared, besides the false pressures). Such
 patches are pinned, as all patches whose outlines differ are, so the refined shell along the
-ground is kept once the blast has passed. On [cut cells](#cut-cells) (refined once) none of this
-arises: the fine cells hold what the coarse cell held, share for share, and patches are released.
+ground is kept once the blast has passed. On [cut cells](#cut-cells), refined once or twice, none
+of this arises where only the terrain cuts the cell: the fine cells hold what the coarser cell
+held, share for share, and patches are released. Where a block's fine outline also takes part of
+a cut cell, the cell is filled as a whole cell beside a block is (below).
 
 Rigid blocks too where the air is near still (within 5% of ambient), since 18 October 2026. A block whose edges fall between the coarse cells
 takes part of the cells beside it at a finer level, and sharing the gas squeezed it into what was
@@ -68,6 +71,16 @@ it; before then, and in a room the charge hardly raises (5 kg in 7,300 m³, 1 kP
 placed beside a block give up about what they gain (−0.05–0.1% net in the tests' rooms). A
 narrower band, half the refinement threshold, let the precursor's own disturbance carry it on:
 the 552 m arrival came 20% early. A moving structure's outline always shares its gas.
+
+Restriction likewise, since 18 October 2026: a coarse cut cell where a block's fine outline takes
+some of its fine cells becomes the mean of the air in those left, weighted by their shares, as a
+cell without a cut becomes the mean of its fluid fine cells. Divided by the coarse cell's own
+share, which knows nothing of the block, it came out short by the block's share, as low as half
+the fine air's pressure (`blockedRestriction` in the tests). A released patch leaves such a
+deficit in the coarse air, and once level 2's pool runs out patches come and go. Beirut's 1 km box
+refined twice, which runs out, showed façade loads of −1.5 to −2.5 kPa before the blast and
+arrivals at 0.8 s from 584 to 807 m, the suspected result; the 600 m box, its pool run out too,
+did not show them either way.
 
 ## Importing a DEM
 
@@ -239,7 +252,9 @@ history) over flat ground's on the same cells:
 blastbench scene, or Run ▸ Terrain ▸ Cut cells along its slopes off in the app, for whole cells)
 cuts the ground's surface through the cells instead of rounding it to whole ones, so a slope is
 a slope. Only the terrain is cut; blocks, structures and moving bodies keep their whole cells.
-The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell` and
+File ▸ New District's refined air lays the ground as a staircase for now: cut through the cells,
+a second refined level rang ahead of the shock over Beirut (see [A district from a
+map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell` and
 `redistributeCutDefects` in `Shaders/Solver.metal`, and for refined air `cutGeometryAt`,
 `fineSweepCell`, `refineRedistributeCut` and `refineCutPassUp` in `Shaders/Refine.metal`.
 
@@ -296,8 +311,20 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   (a twelfth air under the silo, 500 t 70 m off), and the run went to NaN. Refined levels apply
   the rule to their own cells as each patch is placed (since 18 October 2026): a block too thin
   for the coarse cells to stand on a sliver can cap a fine one, and refined once the same district
-  ran away 0.04 s in. A coarse cut cell whose fine cells are then all solid keeps what it had. A
-  structure that comes to rest on a sliver during a run is not caught by this rule.
+  ran away 0.04 s in. A coarse cut cell whose fine cells are then all solid keeps what it had.
+- **A structure on a sliver** (since 18 October 2026). A structure standing on the terrain, as on
+  footings stepped into a slope, caps cut cells in the same way, and "Two-storey frame on a
+  hillside" went unstable as the blast reached it. Each time the air's outline is remade
+  (`remaskCapSlivers`, between `remaskPrepare` and `remaskApply`), a cut cell less than half air
+  with the structure solid in the cell above, and any shut in beneath it, becomes solid, its
+  difference for the step dropped; it stays solid for the rest of the run, so that a rocking
+  footing does not open and refill it, even if the structure later slides away or falls (it held
+  less than half a cell of air). The pass runs only where a structure stands on the terrain, so
+  other runs are as they were to the bit. Refined air does not apply it to its own cells yet, so
+  for now refined runs with a structure standing on the terrain (a solid's base below, or within
+  half a metre, an element or an air cell, whichever is most, of the highest ground under its
+  footprint, where that ground is above the floor, `structureStandsOnTerrain`) keep the terrain as
+  a staircase (`cutsTerrain(of:)`); the same rule in `refineRemaskPrepare` is next.
   The two levels can still disagree. A fine sliver whose cell above is air at its own level but
   lies under a block in its parent's cells passes up into a solid cell. That happens where the
   second level's pool is full and the patch above is not placed. What such a column carries up
@@ -308,6 +335,55 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   read a NaN wave speed and was 0.62 s long; it now runs as with a second level that has room.
   A wave speed that is NaN, infinite or negative now stops the batch, unstable, where it would
   have set a step far too long.
+- **A block's cell on a patch's face.** Where a patch's face meets coarser air and the fine cell
+  inside is solid, the fine level gives refluxing the wall's flux through that face. Beside a
+  block standing in cut ground, that flux was the whole face's, while the coarser cut cell outside
+  had recorded its flux through the face times its own aperture, the terrain's open share, its
+  wall taking the rest; the difference, the pressure on the terrain's share, was added to the
+  cut cell every step and scattered by its small share of air. In still air ahead of a blast it
+  stirred hundreds of pascals to kilopascals, refined twice most (once, about a twentieth as
+  much), and arrived in Beirut's south-east as a precursor about 0.7 kPa ahead of the shock and
+  ringing at about 25 Hz. The wall's flux is now taken through the fine face's open share (since
+  19 October 2026): the air ahead stays within a pascal (`TerrainCutCellTests.stillAheadBesideBlock`,
+  3.8 kPa before).
+- **Between a block and the ground.** A cut cell with a block on one side along a sweep and the
+  terrain's solid on the other mirrors itself about its normal into the terrain and plainly into
+  the block. The ghost beyond the block was built from the near ghost before the terrain's mirror
+  replaced it, so the block's face's two states were not each other's mirror and gas passed
+  through it: a street over a hill, its buildings standing in the slope, gained 0.34 kg and
+  0.28 MJ in 60 steps in a closed box (cut cells only; on blocks standing on the ground, nothing).
+  Each ghost beyond a wall is now built from the near ghost as it stands, by its wall's own rule,
+  on every level (since 19 October 2026); the box keeps its gas to round-off
+  (`TerrainCutCellTests.blockInSlopeConserves`, 1.6e-5 of it gained before).
+- **A cell above a hot sliver could floor** (traced and fixed 19 October 2026). Refined once
+  over the 20° slope (the open ground's 100 kg on the recommended air), a fine cell 0.96 air whose
+  lower face is half open, over a sliver a twentieth air full of hot products, has its internal
+  energy taken below nothing once a step from step 26 to 40. It happens in the fine
+  redistribution, never in a sweep, and only in a substep whose sweeps run z first. The z sweep
+  gives the cell the sliver's inflow through its whole face. The y and x sweeps then carry its
+  gas, flowing at 2 km/s along the ground, out at the enthalpy that inflow raised. At the
+  substep's end the redistribution takes back about 0.9 of the inflow: the cell's own difference
+  for its half-open face, and the sliver's share passed up. Part of that energy has already left.
+  With x first the inflow comes last, is taken back before it can leave, and nothing floors. In
+  400 steps (0.08 s) the run floors 44 times, all in that cell and its mirror, and the floor adds
+  3.6 kJ: 1e-5 of the charge's energy, in cells far below ambient pressure, where no peak or
+  impulse is read. Gravity had made such a floored cell a NaN (fixed in `reconstructGravity`).
+  Unrefined, the same strong expansion over small cut cells drained coarse cells 2 m from the
+  charge (the open slope at steps 34–42, the street over a hill at 28–32), in the coarse
+  redistribution; refined twice, 114 cell updates on the slope in 60 steps.
+  Now both redistributions (coarse and fine) give a cell no more of a difference than leaves it a
+  tenth of its density and pressure (`positiveCutShare`, the share found by bisection), and carry
+  the rest on up the column, through whole cells if need be, to cells that can take it; the last
+  cell of air under a block or at the top takes what is left, as before. It is conservative and
+  nothing is drained: over 60 steps no cell of the open slope (unrefined, refined once or twice,
+  with gravity or without) or the street over a hill falls below 0.9 kJ/kg, where before cells
+  reached the floor, and in a closed box with no afterburning the gas's energy holds to the
+  joule where the floors had added 1.2 kJ (unrefined), 3.6 kJ (refined once) and 5.4 kJ (twice).
+  The impulse 2–12 m from the charge moves by 0.05% at most. A cell whose difference leaves it a
+  tenth takes it as it always did: of `blastbench digest`'s 112 cases (`digests2.sh` and gravity
+  without terrain) 84 are unchanged to the bit, and the 28 that move are each a charge over
+  terrain whose redistribution asked some cell for more than nine tenths of its pressure (some to
+  the floor, as on the slope; some short of it, as on the hill, whose impulse moves by 1e-5).
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
@@ -492,8 +568,24 @@ On the Mac mini, unloaded, 2.2 million cells (the ridges on 0.25 m cells):
   [building envelopes](building-envelopes.md#buildings-from-map-data)); uphill, the terrain
   fills in under them.
 - **Footings** sit wherever the nodes they tie are, so a body over a step is connected by a
-  support region a level, each with its own connection and footing at its height. The ground's
-  own connection and clamp still hold only the nodes at z = 0.
+  support region a level, each with its own connection and footing at its height, and stay level,
+  as footings cut into a hillside are. Each reads the ground round it from the terrain
+  ([on a slope](structural-model.md#footings)): its sides buried as deep as the surface stands
+  over its base, its earth pressures for ground rising or falling away, its bearing capacity cut
+  by Vesić's (1 − tan β)² for the ground falling away beyond it. "Two-storey frame on a hillside" stands a frame
+  on six such footings across a 1 in 4 slope.
+- **The clamp and the ground's connection** hold a base where it stands on the terrain: the
+  nodes of its lower faces within half an element of the surface under them (`isOnGround`), as
+  near as a base built of elements can follow a slope; on level ground, the nodes at z = 0 as
+  before. A base on a slope can be built in steps and clamped or connected to the ground as it
+  is, without a support region a level.
+- **What falls lands on the terrain**: a structure's loose nodes, shell and beam nodes and rubble
+  particles stop at the surface under them rather than at z = 0 (`structureTerrainLanding`,
+  `shellTerrainLanding`, `rubbleMove`), with the floor's friction and, if chosen, its soft
+  ground; a node buried at rest, as a base set into a slope, goes no deeper than it started.
+  The landing is along z, with friction in the plan, as on the floor; a pass after the node pass,
+  dispatched only over a terrain, so level ground's runs are bit for bit as they were. Fragments,
+  envelope debris and the hazard outputs already found the surface.
 - **The app's 3D view** draws the terrain as a mesh of its nodes, lit by its normal, with 10 m
   contours, tinted by the blast's field in the air half a cell above it, or, while the thermal
   radiation is shown, painted with the ground's receivers' values. Objects, ground points and
@@ -539,7 +631,7 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
    and drawn after it, see [cratering](cratering.md)), no soil that gives or absorbs (soft ground
    takes a share of a charge's energy before the run, the same place), no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
-3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
+3. **Refinement near the surface, on the staircase.** Placing a patch gains still air on one side of the surface and
    gives up gas on the other (0.08% of a closed box's gas in 120 steps over a hill). Patches along
    the surface are kept once placed. A refined coarse cell records the largest impulse of its fine
    cells, and next to a terrain some of those sit in the staircase's corners: the painted impulse
@@ -560,10 +652,10 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
      edge between nodes crossing an object's edge is not found, as between boxes, and a step is a
      slope one node apart. The single-object studies (`ExperimentalRigidBoxSimulation`, the car's
      and the demos) keep the floor;
-   - footings and the ground's connection stay level: the clamp and the ground's connection hold
-     the nodes at z = 0, under any terrain; a footing's soil is a level half-space whatever the
-     slope (no slope factor on its stiffness or bearing capacity), and its embedment is what is
-     given, not the terrain round it. A stepped base takes a support region a level;
+   - a footing's sides and bearing capacity follow the slope, but its stiffness and radiation are
+     the level half-space's, and its bearing capacity near a steep crest is below Meyerhof's
+     (judged on closed forms only). What lands on the terrain is pushed out along z, not the
+     surface's normal, and slides with the floor's friction in the plan;
    - a fragment step that crosses a ridge and comes down beyond it within one step passes through
      it (steps are far shorter than any hill);
    - blocks and structures cast no shadows on the terrain in the view, nor it on them, and the USD
@@ -573,8 +665,7 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
 
 ## Future work
 
-- **Footings and the ground's connection on a slope**: the base held where it meets the terrain,
-  with slope factors on a footing's soil.
+- **A footing's stiffness on a slope**, given data for it; landing along the surface's normal.
 - **DEM reprojection** (UTM from geographic) and area-averaged downsampling.
 - **Measured terrain shielding** or blast over hills, to validate rather than check.
 - **Landscape scale**: the shielding study holds at 500 t, scaled (see [Large

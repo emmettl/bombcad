@@ -16,9 +16,14 @@ At 0.5 kt on 4 m cells, against the surveys below:
   again from his 30 observers; from 400 m out 25 of 27 arrive within 10% of the observed time.
 - **Holds: the glass's far edge, and its grid.** Beyond 1.5 km the share of façades blown out is
   GEER's W3 (0.07 and 0.02 against 0.09 and 0.02), and the glass has converged by 4 m.
+- **Holds: the silos' shadow close in, and a second set of arrivals.** Behind a block like the
+  silos the model's peaks are Denny et al.'s measured third at 160 m and three fifths at 240 m, and at
+  Stennett et al.'s six observers the shock arrives within 6% of their times.
 - **Does not: the peaks.** They are 0.68–0.78 of Kingery–Bulmash and still rising on finer cells
-  (0.78–0.83 at 3 m); refinement gives 0.80–0.86 on the line, but a disturbance ahead of its
-  shock loads the façades early.
+  (0.78–0.83 at 3 m); refinement, on a staircase ground, gives 0.79–0.86 on the line and arrivals
+  within 3%, and refined once under a ceiling over the roofs it gives the 4 m cells' glass at 0.44 of
+  their run time. The JRC's simulation matches Kingery–Bulmash to 750 m with a charge
+  tuned to it; this one is not tuned.
 - **Does not: the glass close in, or its total.** The model's façades break together: inside
   1.5 km every side has some pane broken (GEER 0.35–0.84) and inside 1.25 km nearly all are blown
   out (GEER 0.17–0.77). It breaks 3.8 times the army's count of broken glass, on a glazed share
@@ -104,6 +109,16 @@ The three nearest observers (250–300 m) saw the shock later than the model and
 both (0.71–0.83 of the observed time at 0.5 kt), as Dewey's lower TNT equivalence close in
 would have it; from 400 m out the model is within 0.83–1.10 of the observed times, 25 of the 27 within
 10%.
+Inferred rather than chosen, with the place left free, the same observers give 0.54 kt (90%:
+0.39–0.85) by Kingery–Bulmash and 0.50 kt with these runs' ratios, and put the charge within 32 m
+of Warehouse 12's centre ([charge inference](charge-inference.md#beirut)).
+
+Stennett et al. (2020) timed the shock in six other videos, 0.5–2 km out (a frame, 33 ms, either
+way), and found 637 t (407–960 t) by Kingery–Bulmash. At their observers the 0.5 kt run arrives at
+0.94, 1.00, 1.02, 1.03, 1.05 and 1.06 of their times from 489 m to 2.07 km: late by a few percent far
+out, as a larger yield would be, or as the day's 30 °C air, whose sound is about 2% faster than the
+model's 15 °C, would make it. Their far observer is 1,996 m away by their table and about 2,080 m
+by their coordinates (the run takes the coordinates).
 
 ### Peak overpressure
 
@@ -111,8 +126,9 @@ On a line north over the basin and the sea, against Kingery–Bulmash at the sam
 0.68 of it at 100 m, 0.74 at 200 m, 0.78 at 500 m, 0.76 at 1 km and 0.77 at 2.4 km, at every
 yield. About 5 points of that is the ground taking a tenth of the charge; the rest is 4 m cells,
 which spread the shock (8 m cells refined twice to 2 m at the shock give 84–94% on the
-landscape benchmark). The JRC's simulation at 1.1 kt (124, 46, 24 and 15 kPa at 300, 500, 750 and
-1,000 m, read second-hand) against this run's 1.1 kt line: 94, 37, 20 and 13 kPa.
+landscape benchmark). The JRC's simulation at 1.1 kt gave 125, 46, 23 and 10.5 kPa at 300, 500,
+750 and 1,000 m against this run's 1.1 kt line's 94, 37, 20 and 13 kPa ([below](#the-jrcs-simulation-valsamos-et-al-2021);
+the 124, 46, 24 and 15 kPa quoted here before, second-hand, were its Kingery–Bulmash values).
 
 ### Glass against the street survey (GEER, 2021)
 
@@ -231,7 +247,11 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
 | Stone heavy, 0.75–1 km (of about 660) | 41 | 132 | 176 |
 | Concrete moderate, 0.5–0.75 km | 33 | 96 | 139 |
 
-- **The glass has converged by 4 m**: 3 m moves the panes broken by at most 0.03. The peaks are
+- **The glass has converged by 4 m**: 3 m moves the panes broken by at most 0.03. These runs
+  opened each component's 0.5 s window when its air woke, a tile ahead of the shock: about 0.13 s
+  before the load on 3 m cells, 0.17–0.2 s on 4 m, and 0.3–0.37 s on 8 m, which kept as little as
+  0.05 s of some loads at 1–1.25 km; part of the 8 m column's lower breakage is that. Windows now
+  open on 500 Pa at the component (building-envelopes.md). The peaks are
   still rising (by a tenth from 4 to 3 m), but the glass is past the edge of breaking where most
   of it stands.
 - **The structure has not**: each grid finer cracks more stone and concrete, as the peaks rise;
@@ -240,16 +260,44 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   cells cut them (4 m on 4 m cells, 8 m on 8 m), and a masonry strip's resistance falls with the
   square of its height: the coarse grids' walls were the weak ones, and stone failed in 102
   buildings at 0.5–0.75 km on 4 m cells where the storey's span gives 7.
-- **Refinement** (8 m refined twice to 2 m at the shock) gives 0.80–0.86 of Kingery–Bulmash on
-  the line to 900 m, more than 3 m cells, in 29 minutes on the mini (43 with the façades held
-  refined while loaded, which changes nothing here). But its finest pool fills within 14 GB, and
-  gauges 0.5–1 km out see something arrive at 0.78–0.84 s whatever their distance, ahead of the
-  shock (1.0–2.3 s there); a smaller scene shows it with room left in the pool, so it was the
-  refinement's own: patches beside buildings raised the air ahead of the shock, flagging the next
-  building. That is fixed (patches in still air give up the gas their fine outline takes;
-  [terrain](terrain.md)), and arrivals are again 3–4% before Kingery–Bulmash. These refined runs'
-  façades were loaded early (concrete moderate at 0.75–1 km in 312 buildings, where 3 m cells have
-  11), so their damage cannot be used; it has not been rerun since the fix.
+- **Refinement** (8 m refined twice to 2 m at the shock, at a jump of 0.005) gives 0.79–0.86 of
+  Kingery–Bulmash on the line to 900 m, more than 3 m cells. Two fixes to the refined air (18
+  October: gas squeezed beside buildings' fine outlines, and cut cells under them restricted
+  short; [terrain](terrain.md)) and the windows opened at 500 Pa (above) bring its façades' loads
+  to the 3 m cells'. A ringing of about ±0.5–0.9 kPa from the ground's cut cells at the finest
+  level still ran ahead of the shock over the city south-east of the charge, at about 2 km/s:
+  gauges there took it for the arrival 300 ms early, and it opened 7–18% of the
+  façades' windows before the load. With the ground as a staircase of whole cells (`--staircase`)
+  it is gone:
+
+  | | 8 m refined twice, staircase | 8 m refined twice, cut cells | 3 m |
+  |---|---|---|---|
+  | Run on the mini | 1,429 s | 2,079 s (finest pool full) | 451 s |
+  | Arrivals at Rigby's observers 250–1,075 m | 0.97–1.03 of Kingery–Bulmash | six 25–52% early | |
+  | Façades' median peak, 0.5–0.75 / 0.75–1 / 1–1.25 / 1.25–1.5 km | 32, 18, 11.5, 8.8 kPa | 29, 17, 11, 8.4 kPa | 30, 18, 12, 8.9 kPa |
+  | Panes broken, same bands | 1.00, 1.00, 0.99, 0.95 | 0.93, 0.88, 0.84, 0.81 | 1.00, 1.00, 0.98, 0.92 |
+  | Stone heavy / failed, 0.5–0.75 km | 262 / 10 | 256 / 9 | 269 / 10 |
+  | Concrete moderate, 0.5–0.75 / 0.75–1 km | 200 / 45 | 195 / 45 | 139 / 11 |
+
+  Refined on the staircase, the glass and the stone are the 3 m cells', the concrete more damaged
+  (its peaks are higher), at 3.2 times the cost. Three quarters of that is the finest level's own
+  sweeps, ghosts and halo (flagging, placing and the recorder under 2%), and its blocks filled the
+  column evenly from the ground to the 320 m top. A ceiling over the ground
+  (`SolverConfiguration.refinementCeiling`: no air refined more than 72 m above it, 40 m for all but
+  the tallest 2% of the buildings and 32 m for the shock's top) with the footprints on the finest
+  cells makes refinement pay; on the same staircase:
+
+  | | 8 m refined once to 4 m, capped | 4 m | 8 m refined twice to 2 m, capped |
+  |---|---|---|---|
+  | Run on the mini | 74 s | 170 s | 645 s (1,429 s uncapped) |
+  | Arrivals, 250–1,075 m | within 2% of the 4 m cells' | | 0.97–1.03 of Kingery–Bulmash |
+  | Façades' median peak, 0.5–0.75 / 0.75–1 / 1–1.25 / 1.25–1.5 km | 24.5, 15.4, 10.4, 8.4 kPa | 27.8, 16.6, 11.2, 8.6 kPa | 28.8, 16.8, 11.0, 8.7 kPa |
+  | Panes broken, 0.75–1 / 1–1.25 / 1.25–1.5 km | 1.00, 0.99, 0.94 | 1.00, 0.99, 0.94 | 1.00, 1.00, 0.97 |
+  | Stone heavy / failed, 0.5–0.75 km | 239 / 7 | 257 / 10 | 249 / 8 |
+
+  Refined once and capped, the glass and the arrivals are the 4 m cells' at 0.44 of their run time,
+  the façades' peaks 2–12% lower and the stone a little less cracked; File ▸ New District now
+  offers that air. A tower above the ceiling takes its upper floors' load on the coarse cells.
 
 ### Structure against the building survey (GEER, 2021)
 
@@ -279,6 +327,72 @@ The model damages the buildings less than the survey found, and nearer the charg
   low, and an earlier version, whose walls stood as tall as the cells, matched GEER's collapses
   by an error.
 
+### The JRC's simulation (Valsamos et al. 2021)
+
+The European Commission's Joint Research Centre simulated the same event in EUROPLEXUS (Valsamos,
+Larcher and Casadei 2021, *Safety Science* 137, 105190, CC BY 4.0), also from OpenStreetMap:
+
+| | JRC (EUROPLEXUS) | BombCAD, this page |
+|---|---|---|
+| Air | Finite volumes, HLLC, second order, ideal gas | Finite volumes, HLLC, second order, ideal gas; afterburning and hot air |
+| Domain | 2,350 × 1,650 m, 150 m high; absorbing faces | 5 × 5 km, 320 m high; far-field faces |
+| Cells | 4.5 million of about 5 m | 125 million of 4 m |
+| Buildings | About 2,500 rigid, from OSM (heights as tagged, or 3 m a level) | 14,169 rigid, from OSM and GHSL's heights, on the ground's terrain |
+| Charge | 1.1 kt TNT, a compressed balloon of 14 m whose energy is calibrated to the peak or the impulse | 0.2, 0.5 and 1.1 kt TNT, its own energy, on saturated ground |
+| Peaks at 300 / 500 / 750 / 1,000 m, 1.1 kt | 125, 46, 23, 10.5 kPa (Kingery–Bulmash 124, 46, 24, 15) | 94, 37, 20, 13 kPa on the line north |
+| Damage | Each building by its peak side-on overpressure (Stephens's 3.5 / 17 / 35 / 83 kPa); glass at 1 kPa | Each wall, roof and pane by its own load (SDOF, E1300) |
+| Against | Copernicus EMS's satellite grading, by eye | GEER's street and building surveys, band by band |
+| Cost | Not given | 25–28 minutes on a base M4 |
+
+- **Its peaks are Kingery–Bulmash's to 750 m** because its charge is tuned to them: the balloon's
+  energy is chosen to give the peak or the impulse. This run's charge is not tuned, so its 4 m cells'
+  spreading of the shock shows (0.68–0.78 of Kingery–Bulmash). At 1 km the JRC's falls to 0.68 of
+  Kingery–Bulmash while this run's line holds 0.84; its 150 m top is the height this page found too
+  low beyond 700 m (above), which may be part of it.
+- **Its damage is a threshold map; this page's is a judgement of each component**, against a survey
+  by distance. The JRC's moderate damage or worse (above 17 kPa) reaches 1.9 km east–west and 1.35 km
+  north–south at 1.1 kt, which the satellite grading supports by eye; at 0.5 kt this page's 0.2 m
+  concrete is barely damaged beyond 750 m (less than GEER found). The thresholds are for buildings as
+  a whole, glazing and partitions included; the SDOF judges the walls alone.
+
+### The grain silos' shadow (Denny et al. 2025)
+
+The grain silos, about 175 m long, 30 m wide and 50 m tall, stood some 80 m from the charge between
+it and the city to the west. Denny et al. (2025, *Shock Waves*, CC BY) fired 1:250 models of them
+(32 g, for 0.5 kt) with gauges at scaled distances Z = 2 and 3 (159 and 238 m at full scale), and
+carried the shadow to Z = 8 (635 m, where the homes begin) in Viper::Blast. The district above does
+not hold the silos as they were: the map has today's remains, 52 × 82 m, at GHSL's 29 m. So their
+block alone was run: 152.25 × 30.5 × 55.3 m, its front face 80 m from 0.5 kt on rigid ground, every
+open face 4 m/kg^(1/3) away, on 2 m and 1 m cells (2 m: 95 s with the block or without, on an M4
+Max), each gauge's peak taken against the same run without the block:
+
+| Gauge (Denny's) | Full scale | BombCAD, 2 m / 1 m | Measured (read from Denny's figures) |
+|---|---|---|---|
+| X2, E2, D2: behind, Z = 2 | 160 m | 0.30–0.31 / 0.30–0.32 | about 0.3–0.4 (60% less, in the text) |
+| X3, E3, D3: behind, Z = 3 | 240 m | 0.56–0.73 / 0.58–0.68 | about 0.5–0.9 (30% less, in the text) |
+| C1: past the front corner | 238 m | 0.76 / 0.78 | about 0.8 |
+| C2: past the back corner | 243 m | 0.37 / 0.38 | about 0.6 |
+| B3: in line with the front face | 240 m | 1.20 / 1.23 | about 1.1–1.3 |
+
+And on, behind the block along the charge's line (Viper's numbers read from Denny's Fig. 29, for
+their rectangular and their detailed silos; the layouts are in `Samples/BeirutSilos`):
+
+| Z (m) | BombCAD, peak / impulse | Viper, peak / impulse |
+|---|---|---|
+| 4 (318 m) | 0.74 / 0.77 | 0.95–0.98 / 0.96 |
+| 5 (397 m) | 0.82 / 0.81 | 1.0 / 1.04 |
+| 8 (635 m) | 0.90 / 0.85 | 0.92 / 1.07 |
+
+- **Where the silos were measured, the model's shadow is theirs**: about a third of the free field's
+  peak 50 m behind them and three fifths 130 m behind, the reflection beside the front face 1.2 times;
+  the one gauge off by much, C2, lies where the shadow's edge passes.
+- **Farther out the two simulations part.** Viper's shadow has gone by Z = 5 and its impulse is
+  above the free field's; the model's peak is still 0.82 there and its impulse stays 0.8–0.85 of the
+  free field's to Z = 8. Both find the homes at 635 m about a tenth below the free field; Denny's
+  far field is numerical only, as they say, and so is this.
+- **For the district:** the silos would take about a tenth off the peaks in a sector to the west to
+  600 m and more, which the district above does not have; its west bands are the less sure for it.
+
 ## What the model can and cannot represent
 
 - **Today's map.** The buildings are those mapped in October 2026: those destroyed and rebuilt,
@@ -297,5 +411,7 @@ The model damages the buildings less than the survey found, and nearer the charg
   top gives the same glass and structure to within a building or two in every band. The side
   faces are not that far from the outer buildings: those beyond about 2.2 km lie within
   4 m/kg^(1/3) of one, so the outer bands are less sure.
+- **No silos as they stood.** The map holds today's remains; run alone, the 2020 block takes about
+  a tenth off the peaks to 600 m and more to the west (above).
 - **One TNT mass.** Dewey's analysis suggests the TNT equivalence of this ammonium nitrate rose
   with distance (0.15 kt close in, 0.7 kt at 1 km); a single mass cannot follow that.

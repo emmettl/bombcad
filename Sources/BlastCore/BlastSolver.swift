@@ -32,7 +32,12 @@ public final class BlastSolver {
     private var exposurePlane: ExposurePlane?
     /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
     /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
-    var mappedStart: (blast: SphericalBlast, centre: SIMD3<Float>, radius: Float)?
+    var mappedStart:
+        [(blast: SphericalBlast, centre: SIMD3<Float>, radius: Float, charge: Charge, mirrors: Int)] =
+            []
+    /// How far out each mapped charge was laid from its one-dimensional solution, m; empty for the
+    /// balloon.
+    public var mappedRadii: [Float] { mappedStart.map(\.radius) }
     /// The latest a mapped start may begin, s: its one-dimensional solution stops there should the
     /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
     /// limit; the app sets half the run's duration. Takes effect at the next `load`.
@@ -90,7 +95,8 @@ public final class BlastSolver {
         let structures = configuration.refinementHoldsStructures.flatMap { threshold in
             bodies.isEmpty ? nil : (bodies.map(\.model), threshold)
         }
-        guard envelopes != nil || structures != nil, !refinementLevels.isEmpty else {
+        let ceiling = refinementLevels.isEmpty ? nil : configuration.refinementCeiling
+        guard envelopes != nil || structures != nil || ceiling != nil, !refinementLevels.isEmpty else {
             facadeBand = nil
             for level in refinementLevels {
                 level.facadeBand = nil
@@ -98,6 +104,7 @@ public final class BlastSolver {
             }
             return
         }
+        let held = envelopes != nil || structures != nil
         let threshold = min(envelopes?.1 ?? .infinity, structures?.1 ?? .infinity)
         if facadeBand == nil {
             facadeBand = device.makeBuffer(length: max(1, grid.cellCount), options: .storageModeShared)
@@ -105,6 +112,20 @@ public final class BlastSolver {
         if let buffer = facadeBand {
             let band = buffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
             memset(band, 0, grid.cellCount)
+            // Bit 2: above the ceiling, the cell's centre more than it above the ground beneath.
+            if let ceiling {
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx {
+                        let ground =
+                            terrain?.height(
+                                at: SIMD2((Float(i) + 0.5) * grid.cellSize, (Float(j) + 0.5) * grid.cellSize))
+                            ?? 0
+                        let first = max(Int(((ground + ceiling) / grid.cellSize - 0.5).rounded(.up)), 0)
+                        guard first < grid.nz else { continue }
+                        for k in first..<grid.nz { band[grid.index(i, j, k)] |= 2 }
+                    }
+                }
+            }
             for model in structures?.0 ?? [] {
                 for solid in model.solids {
                     // The cells whose centres lie within a cell of the solid.
@@ -115,7 +136,7 @@ public final class BlastSolver {
                     guard all(low .<= high) else { continue }
                     for k in low.z...high.z {
                         for j in low.y...high.y {
-                            for i in low.x...high.x { band[grid.index(i, j, k)] = 1 }
+                            for i in low.x...high.x { band[grid.index(i, j, k)] |= 1 }
                         }
                     }
                 }
@@ -126,7 +147,7 @@ public final class BlastSolver {
                 for dz in -1...1 {
                     for dy in -1...1 {
                         for dx in -1...1 where grid.contains(cell.x + dx, cell.y + dy, cell.z + dz) {
-                            band[grid.index(cell.x + dx, cell.y + dy, cell.z + dz)] = 1
+                            band[grid.index(cell.x + dx, cell.y + dy, cell.z + dz)] |= 1
                         }
                     }
                 }
@@ -138,7 +159,8 @@ public final class BlastSolver {
             level.facadeBandParameters = FacadeBandParameters(
                 nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
                 ratio: UInt32(level.parentScale),
-                threshold: threshold, ambient: configuration.ambientPressure, on: facadeBand == nil ? 0 : 1)
+                threshold: held ? threshold : 0, ambient: configuration.ambientPressure,
+                on: held && facadeBand != nil ? 1 : 0, ceiling: ceiling != nil && facadeBand != nil ? 1 : 0)
         }
     }
 
@@ -198,7 +220,7 @@ public final class BlastSolver {
         let dx = grid.cellSize
         let face = dx * dx
         let counts = [grid.nx, grid.ny, grid.nz]
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         func range(_ low: Float, _ high: Float, _ axis: Int) -> Range<Int> {
             let lower = min(max(Int((low / dx - 0.5).rounded(.up)), 0), counts[axis])
             let upper = min(max(Int((high / dx - 0.5).rounded(.up)), lower), counts[axis])
@@ -306,7 +328,7 @@ public final class BlastSolver {
         guard let venting = envelopeVenting else { return [:] }
         let dx = grid.cellSize
         let counts = [grid.nx, grid.ny, grid.nz]
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         func range(_ low: Float, _ high: Float, _ axis: Int) -> Range<Int> {
             let lower = min(max(Int((low / dx - 0.5).rounded(.up)), 0), counts[axis])
             let upper = min(max(Int((high / dx - 0.5).rounded(.up)), lower), counts[axis])
@@ -450,7 +472,7 @@ public final class BlastSolver {
                 })
         else { throw BlastError.allocationFailed("stationary envelope observation before the first step") }
         return UnsafeBufferPointer(
-            start: maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount),
+            start: maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount),
             count: grid.cellCount)
     }
 
@@ -496,7 +518,7 @@ public final class BlastSolver {
             threshold: arrivalThresholdPa, spacing: spacingM)
         // A charge mapped from one dimension has already passed the plane within its mapped radius:
         // there it takes the solution's own peak, impulse and arrival.
-        if let mappedStart {
+        for mappedStart in mappedStart {
             plane.seed(mappedStart.blast, centre: mappedStart.centre, radius: mappedStart.radius)
         }
         exposurePlane = plane
@@ -595,6 +617,8 @@ public final class BlastSolver {
     private var bodyContactPipelines: [String: MTLComputePipelineState] = [:]
     private var tiledCoupling: TiledCoupling?
     private var couplingTiles: MTLBuffer?
+    /// Whether the structures' coupling is laid out in tiles; for the tests.
+    var usesTiledCoupling: Bool { tiledCoupling != nil }
     private var denseCouplingCells = 0
     private let allocateCouplingPipeline: MTLComputePipelineState
     private let wakeCouplingPipeline: MTLComputePipelineState
@@ -628,10 +652,15 @@ public final class BlastSolver {
     private let stillWallBuffer: MTLBuffer
     private var experimentalBoxDefinition: MTLBuffer?
     private var experimentalBoxMask: MTLBuffer?
+    /// The structures' coupling laid over the whole grid, while freestanding objects share the air.
+    private var bodyCouplingWholeGrid = false
     private var experimentalBoxImpulse: MTLBuffer?
     /// The experimental rigid boxes, as last placed; nil for one taken out of the air.
     private var experimentalBoxes: [RigidBoxBody?] = []
     private var experimentalBoxMaxStep: Float = 0
+    /// A longest air step a driver sets while its objects are near a structure (nil for none), so
+    /// that each air step is one of the structure's steps and contact keeps its time.
+    var experimentalStepCeiling: Float?
     var experimentalBoxRemapMode: ExperimentalBoxRemap = .redistribution
 
     let library: MTLLibrary
@@ -642,7 +671,27 @@ public final class BlastSolver {
         var sweepTiles: MTLComputePipelineState
         var collectTiles: MTLComputePipelineState
         var redistributeCutDefects: MTLComputePipelineState
+        var keepStructureCut: MTLComputePipelineState
+        var takeStructureCut: MTLComputePipelineState
     }
+    /// Structures' outlines as cut cells, when `configuration.structureCutCells` laid them at the
+    /// last restart (`StructureCutGeometry`): per cell its record, the records, their walls,
+    /// differences and what each sets aside, and the cells that take what is set aside.
+    struct StructureCutBuffers {
+        var geometry: StructureCutGeometry
+        var index: MTLBuffer
+        var cells: MTLBuffer
+        var records: MTLBuffer
+        var walls: MTLBuffer
+        var targets: MTLBuffer
+        var defects: MTLBuffer
+        var passed: MTLBuffer
+        var receivers: MTLBuffer
+        var shares: MTLBuffer
+        var starts: MTLBuffer
+        var contributors: MTLBuffer
+    }
+    private(set) var structureCut: StructureCutBuffers?
     /// The terrain's cut cells, when `configuration.terrainCutCells` laid them at the last load.
     var terrainCut: TerrainCutBuffers?
     /// `CellKernels` for each gas model used so far, with gravity compiled in or not.
@@ -657,6 +706,10 @@ public final class BlastSolver {
     private let splatPipeline: MTLComputePipelineState
     private let remaskPreparePipeline: MTLComputePipelineState
     private let remaskApplyPipeline: MTLComputePipelineState
+    /// Shuts in the terrain's cut slivers under a structure standing on them (`remaskCapSlivers`).
+    private let remaskCapSliversPipeline: MTLComputePipelineState
+    /// Per column with cut cells, its lowest cell shut in under a structure, plus one (`remaskCapSlivers`).
+    var cappedSliverBuffer: MTLBuffer?
     private let debrisExchangePipeline: MTLComputePipelineState
     private let shellSplatPipeline: MTLComputePipelineState
     private let beamSplatPipeline: MTLComputePipelineState
@@ -682,6 +735,15 @@ public final class BlastSolver {
     private var needsRigidMaskCapture = true
     private let peakBuffer: MTLBuffer
     private let impulseBuffer: MTLBuffer
+    /// The CPU addresses of the state, mask, peak and impulse buffers, taken once: each
+    /// `MTLBuffer.contents()` returns an inner pointer, for which the buffer is retained and
+    /// autoreleased, so every per-cell read through it added an entry to the thread's autorelease
+    /// pool, and on a thread whose pool never drains (a command-line tool, a worker) kept the
+    /// buffer alive. Shared storage: the addresses never move.
+    private let stateContents: [UnsafeMutableRawPointer]
+    let maskContents: UnsafeMutableRawPointer
+    private let peakContents: UnsafeMutableRawPointer
+    private let impulseContents: UnsafeMutableRawPointer
     private let controlBuffer: MTLBuffer
     private let maxSpeedBuffer: MTLBuffer
     private let gaugeLogBuffer: MTLBuffer
@@ -820,6 +882,7 @@ public final class BlastSolver {
         shellEnvelopePipeline = try pipeline("shellBodyEnvelope")
         validateEnvelopesPipeline = try pipeline("validateBodyEnvelopes")
         remaskPreparePipeline = try pipeline("remaskPrepare")
+        remaskCapSliversPipeline = try pipeline("remaskCapSlivers")
         remaskApplyPipeline = try pipeline("remaskApply")
         debrisExchangePipeline = try pipeline("debrisExchange")
         shellSplatPipeline = try pipeline("shellSplat")
@@ -843,6 +906,10 @@ public final class BlastSolver {
         wallVelocityBuffer = stillWallBuffer
         peakBuffer = try buffer(cells * MemoryLayout<Float>.stride, "peak overpressure")
         impulseBuffer = try buffer(cells * MemoryLayout<Float>.stride, "impulse")
+        stateContents = stateBuffers.map { $0.contents() }
+        maskContents = maskBuffer.contents()
+        peakContents = peakBuffer.contents()
+        impulseContents = impulseBuffer.contents()
         controlBuffer = try buffer(MemoryLayout<StepControl>.stride, "step control")
         // The fastest wave and the largest overpressure; with refined levels' own steps, each
         // level's fastest wave.
@@ -878,7 +945,7 @@ public final class BlastSolver {
         texture.label = "visualization"
         visualizationTexture = texture
 
-        memset(maskBuffer.contents(), 0, cells)
+        memset(maskContents, 0, cells)
         memset(rigidMaskBuffer.contents(), 0, cells)
         fill(uniform: Primitive(density: 1.225, pressure: configuration.ambientPressure))
     }
@@ -1069,7 +1136,7 @@ public final class BlastSolver {
     public func speciesTotals() -> (fuel: Double, oxygen: Double) {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
         guard hasSpecies else { return (0, 0) }
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let species = speciesBuffers[current].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
@@ -1130,7 +1197,7 @@ public final class BlastSolver {
     func editState(_ body: (UnsafeMutableBufferPointer<CellState>) throws -> Void) rethrows {
         precondition(!batchInFlight, "Cannot edit state while a batch is in flight")
         frameExtractor?.invalidate()
-        let pointer = stateBuffers[current].contents().bindMemory(
+        let pointer = stateContents[current].bindMemory(
             to: CellState.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
@@ -1154,7 +1221,7 @@ public final class BlastSolver {
         terrainSurface = nil
         terrainCut = nil
         needsRigidMaskCapture = true
-        let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let pointer = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
@@ -1165,7 +1232,7 @@ public final class BlastSolver {
         frameExtractor?.invalidate()
         rigidBoxes = nil
         needsRigidMaskCapture = true
-        let pointer = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let pointer = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         try body(UnsafeMutableBufferPointer(start: pointer, count: grid.cellCount))
     }
 
@@ -1271,6 +1338,8 @@ public final class BlastSolver {
 
     public func setStructures(_ objects: [SceneObject]) throws {
         precondition(!batchInFlight, "Cannot change structures while a batch is in flight")
+        // Freestanding objects are installed after the structures (`installExperimentalBoxes`).
+        guard experimentalBoxes.isEmpty else { throw SceneObjectError.invalidOwnership }
         guard objects.count <= Scenario.maximumStructures, Set(objects.map(\.id)).count == objects.count,
             objects.allSatisfy({ $0.structure != nil })
         else { throw SceneObjectError.invalidOwnership }
@@ -1293,12 +1362,25 @@ public final class BlastSolver {
         debrisAreaBuffer = nil
         wallVelocityBuffer = stillWallBuffer
         if needsRigidMaskCapture {
-            memcpy(rigidMaskBuffer.contents(), maskBuffer.contents(), grid.cellCount)
+            memcpy(rigidMaskBuffer.contents(), maskContents, grid.cellCount)
             needsRigidMaskCapture = false
         }
         // Replacing/removing bodies must clear their old outline outside the new coupling region.
-        memcpy(maskBuffer.contents(), rigidMaskBuffer.contents(), grid.cellCount)
-        guard let first = compiled.first else { return }
+        memcpy(maskContents, rigidMaskBuffer.contents(), grid.cellCount)
+        guard !compiled.isEmpty else { return }
+        try layOutBodyCoupling()
+    }
+
+    /// The structures' coupling buffers: over the region they may reach (or, with several, in
+    /// tiles over the grid when that is smaller), or over the whole grid while freestanding
+    /// objects share the air, whose wall velocities index every cell (`bodyCouplingWholeGrid`).
+    private func layOutBodyCoupling() throws {
+        guard let first = bodies.first else { return }
+        // Laid out afresh: a tiled plan from an earlier layout would leave the buffers sized and
+        // addressed by its slots when the whole grid is now wanted.
+        tiledCoupling = nil
+        couplingTiles = nil
+        let compiled = bodies
         let model = first.model
         // Follow the structure within a few metres of where it starts.
         let bounds = compiled.dropFirst().reduce(model.bounds) { bounds, body in
@@ -1312,8 +1394,12 @@ public final class BlastSolver {
         var origin = SIMD3(low.i, low.j, low.k)
         var dims = SIMD3(high.i - low.i + 1, high.j - low.j + 1, high.k - low.k + 1)
         // Four counters per cell: the number of elements in it and the sum of their velocities.
+        if bodyCouplingWholeGrid {
+            origin = .zero
+            dims = SIMD3(grid.nx, grid.ny, grid.nz)
+        }
         denseCouplingCells = dims.x * dims.y * dims.z
-        if bodies.count > 1, configuration.bodyCouplingLayout != .dense {
+        if bodies.count > 1, configuration.bodyCouplingLayout != .dense, !bodyCouplingWholeGrid {
             let plan = try TiledCoupling(
                 grid: grid, bodies: bodies, requestedCapacity: configuration.bodyCouplingTileCapacity)
             if configuration.bodyCouplingLayout == .tiled || plan.bytes < denseCouplingCells * 80 {
@@ -1399,6 +1485,8 @@ public final class BlastSolver {
             uniforms.deepPatchOffset = UInt32(deep.patchOffset)
             uniforms.deepCellOffset = UInt32(deep.cellOffset)
         }
+        // Freestanding objects' cells are theirs, whatever the structure is built of.
+        uniforms.holdsBoxes = experimentalBoxMask == nil ? 0 : 1
         if let structure = body?.solids ?? (bodies.count == 1 ? structure : nil) {
             let h = structure.model.elementSize
             // A cell is solid when at least a third of it is filled with intact elements. Elements
@@ -1830,7 +1918,36 @@ public final class BlastSolver {
         encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 5)
         encoder.setBuffer(couplingTiles ?? refinementPlaceholder, offset: 0, index: 6)
         encoder.setBuffer(keptAirBuffer ?? refinementPlaceholder, offset: 0, index: 7)
+        encoder.setBuffer(experimentalBoxMask ?? refinementPlaceholder, offset: 0, index: 8)
         encoder.dispatchThreads(size, threadsPerThreadgroup: group)
+
+        // A structure standing on the terrain's cut cells shuts in the slivers under it.
+        if let terrainCut, !terrainCut.geometry.cutColumns.isEmpty,
+            bodies.contains(where: { $0.model.ground != nil })
+        {
+            var dims = SIMD4<UInt32>(
+                UInt32(grid.nx), UInt32(grid.ny), UInt32(grid.nz),
+                UInt32(terrainCut.geometry.cutColumns.count))
+            encoder.setComputePipelineState(remaskCapSliversPipeline)
+            encoder.setBuffer(maskBuffer, offset: 0, index: 0)
+            encoder.setBuffer(rigidMaskBuffer, offset: 0, index: 1)
+            encoder.setBuffer(terrainCut.columns, offset: 0, index: 2)
+            encoder.setBuffer(terrainCut.cutColumns, offset: 0, index: 3)
+            encoder.setBuffer(terrainCut.defects, offset: 0, index: 4)
+            encoder.setBytes(&dims, length: MemoryLayout<SIMD4<UInt32>>.stride, index: 5)
+            if cappedSliverBuffer == nil {
+                cappedSliverBuffer = device.makeBuffer(
+                    length: 4 * terrainCut.geometry.cutColumns.count, options: .storageModeShared)
+                if let cappedSliverBuffer {
+                    memset(cappedSliverBuffer.contents(), 0, cappedSliverBuffer.length)
+                }
+            }
+            encoder.setBuffer(cappedSliverBuffer, offset: 0, index: 6)
+            encoder.dispatchThreads(
+                MTLSize(width: terrainCut.geometry.cutColumns.count, height: 1, depth: 1),
+                threadsPerThreadgroup: MTLSize(
+                    width: remaskCapSliversPipeline.threadExecutionWidth, height: 1, depth: 1))
+        }
 
         encoder.setComputePipelineState(remaskApplyPipeline)
         encoder.setBuffer(maskBuffer, offset: 0, index: 0)
@@ -1867,8 +1984,8 @@ public final class BlastSolver {
 
     /// Direct access to the peak overpressure and impulse fields.
     func setFields(_ body: (UnsafeMutableBufferPointer<Float>, UnsafeMutableBufferPointer<Float>) -> Void) {
-        let peak = peakBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
-        let impulse = impulseBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+        let peak = peakContents.bindMemory(to: Float.self, capacity: grid.cellCount)
+        let impulse = impulseContents.bindMemory(to: Float.self, capacity: grid.cellCount)
         body(
             UnsafeMutableBufferPointer(start: peak, count: grid.cellCount),
             UnsafeMutableBufferPointer(start: impulse, count: grid.cellCount))
@@ -1936,16 +2053,42 @@ public final class BlastSolver {
             var peak = 0.0
             var speed = 0.0
             var settled = false
+            var before: [(displacement: SIMD3<Float>, mass: Float)] = []
             while elapsed < Self.settleLimit {
-                body.advanceAlone(steps: chunk)
+                if elapsed + Double(chunk) * step >= Self.settleLimit { before = body.displacements() }
+                // In a pool of its own: the steps' command buffers, and reading the motion back
+                // (`MTLBuffer.contents()`), autorelease the body's buffers, and settling takes
+                // thousands of steps on a thread whose pool may never drain.
+                let (energy, mass) = autoreleasepool { () -> (Double, Double) in
+                    body.advanceAlone(steps: chunk)
+                    return body.motion()
+                }
                 steps += chunk
                 elapsed += Double(chunk) * step
-                let (energy, mass) = body.motion()
                 speed = mass > 0 ? (2 * energy / mass).squareRoot() : 0
                 peak = max(peak, speed)
                 if elapsed >= Self.settleMinimum && speed <= Self.settleTolerance * peak {
                     settled = true
                     break
+                }
+            }
+            if !settled, !before.isEmpty {
+                // Still moving at the limit: settled all the same if it has come to rest over its last
+                // chunk, its mean speed over it (its displacement's change) within the tolerance. A
+                // joint on a footing chatters at rest, its nodes' speed never falling to 1% of the
+                // sag's, its displacement still (`StructureOnTerrainTests`).
+                let after = body.displacements()
+                var squares = 0.0
+                var mass = 0.0
+                for (old, new) in zip(before, after) {
+                    let moved = Double(simd_length(new.displacement - old.displacement))
+                    squares += Double(new.mass) * moved * moved
+                    mass += Double(new.mass)
+                }
+                let mean = mass > 0 ? (squares / mass).squareRoot() / (Double(chunk) * step) : 0
+                if mean <= Double(Self.settleTolerance) * peak {
+                    settled = true
+                    speed = mean
                 }
             }
             body.damping = damping
@@ -1980,6 +2123,8 @@ public final class BlastSolver {
         time = 0
         stepCount = 0
         clockTicks = 0
+        // The slivers a structure shut in are found again from where it stands (`remaskCapSlivers`).
+        if let cappedSliverBuffer { memset(cappedSliverBuffer.contents(), 0, cappedSliverBuffer.length) }
         exposurePlane?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
         envelopeExposure?.reset()
@@ -2013,6 +2158,8 @@ public final class BlastSolver {
             bodiesInContact = false
         }
 
+        // Structures' cut cells, kept as air before the remask marks the structure.
+        try? setUpStructureCut()
         if hasBody, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()
         {
@@ -2025,13 +2172,13 @@ public final class BlastSolver {
         }
         gaugeHistories = Array(repeating: [], count: gaugeCount)
         resetDebrisExchange()
-        memset(peakBuffer.contents(), 0, peakBuffer.length)
-        memset(impulseBuffer.contents(), 0, impulseBuffer.length)
+        memset(peakContents, 0, peakBuffer.length)
+        memset(impulseContents, 0, impulseBuffer.length)
         maxSpeedBuffer.contents().storeBytes(of: 0, as: UInt64.self)
         airIsAsleep = false
         // Both state buffers start alike, so that a tile never swept holds the same state in each.
         memcpy(
-            stateBuffers[1 - current].contents(), stateBuffers[current].contents(),
+            stateContents[1 - current], stateContents[current],
             stateBuffers[current].length)
         if hasSpecies {
             memcpy(
@@ -2500,7 +2647,9 @@ public final class BlastSolver {
                 // Only the substeps this step is likely to need are encoded, a quarter more than
                 // the step before the last checkpoint took; the air may step no further than
                 // they cover.
-                uniforms.maxStep = 0.999 * Float(substeps) * bodyStep
+                // Freestanding objects in the air keep their own limit too, whichever is shorter.
+                let covered = 0.999 * Float(substeps) * bodyStep
+                uniforms.maxStep = uniforms.maxStep > 0 ? min(uniforms.maxStep, covered) : covered
             }
 
             if asleep {
@@ -2589,6 +2738,11 @@ public final class BlastSolver {
             encoder.setBuffer(terrainCut?.ceilings ?? noSpecies, offset: 0, index: 24)
             // Not read without congestion.
             encoder.setBuffer(congestionBuffer ?? noSpecies, offset: 0, index: 25)
+            // Not read without structures' cut cells.
+            encoder.setBuffer(structureCut?.index ?? noSpecies, offset: 0, index: 26)
+            encoder.setBuffer(structureCut?.records ?? noSpecies, offset: 0, index: 27)
+            encoder.setBuffer(structureCut?.walls ?? noSpecies, offset: 0, index: 28)
+            encoder.setBuffer(structureCut?.defects ?? noSpecies, offset: 0, index: 29)
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
@@ -2615,6 +2769,21 @@ public final class BlastSolver {
                         state: stateBuffers[1 - current],
                         species: hasSpecies ? speciesBuffers[1 - current] : noSpecies)
                     // The merge took over the encoder's pipeline and some of its buffers.
+                    encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
+                    encoder.setBuffer(maskBuffer, offset: 0, index: 2)
+                    encoder.setBuffer(peakBuffer, offset: 0, index: 3)
+                    encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
+                    encoder.setBuffer(controlBuffer, offset: 0, index: 5)
+                    encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 6)
+                    encoder.setBuffer(wallVelocityBuffer, offset: 0, index: 8)
+                    encoder.setBuffer(tileListBuffer, offset: 0, index: 9)
+                    encoder.setBuffer(tileFlagBuffer, offset: 0, index: 10)
+                }
+                if let structureCut, n == axes.count - 1, refinement == nil {
+                    encodeStructureCutRedistribution(
+                        encoder, cut: structureCut, kernels: kernels, uniforms: uniforms,
+                        state: stateBuffers[1 - current],
+                        species: hasSpecies ? speciesBuffers[1 - current] : noSpecies)
                     encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
                     encoder.setBuffer(maskBuffer, offset: 0, index: 2)
                     encoder.setBuffer(peakBuffer, offset: 0, index: 3)
@@ -2677,12 +2846,11 @@ public final class BlastSolver {
             }
             airStage("other")
             if let radiativeCoolingStage, !asleep {
-                // Every few steps, and at the batch's end, the luminous gas loses what it has
-                // radiated since, in the coarse cells; the fine cells under them each lose as much a
-                // volume, as they gain what debris trades with the air.
-                let take =
-                    step == steps - 1
-                    || (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
+                // Every few steps of the run's count, the luminous gas loses what it has radiated
+                // since, in the coarse cells; the fine cells under them each lose as much a volume, as
+                // they gain what debris trades with the air. Not at a batch's end: the time since
+                // carries over, so a run comes out the same however it is batched.
+                let take = (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
                 radiativeCoolingStage.encode(
                     encoder, take: take, state: stateBuffers[current], mask: maskBuffer,
                     species: hasSpecies && configuration.afterburning ? speciesBuffers[current] : nil,
@@ -2722,6 +2890,7 @@ public final class BlastSolver {
                     exchangeRegion: couplingRegion)
                 binding.couplingMap = tiledCoupling == nil ? nil : wallVelocityBuffer
                 binding.couplingMapCount = UInt32(tiledCoupling?.mapCount ?? 0)
+                binding.readsCutCells = structureCut != nil
                 if let refinement {
                     binding.refinement = (
                         refinement.patchOfTile, refinement.fine[0], refinement.fineMask, refinement.ratio,
@@ -3342,7 +3511,7 @@ public final class BlastSolver {
     /// Read-only view of the current conserved state. Solid cells hold stale values.
     public func withState<R>(_ body: (UnsafeBufferPointer<CellState>) throws -> R) rethrows -> R {
         precondition(!batchInFlight, "Cannot read state while a batch is in flight")
-        let pointer = stateBuffers[current].contents().bindMemory(
+        let pointer = stateContents[current].bindMemory(
             to: CellState.self, capacity: grid.cellCount)
         return try body(UnsafeBufferPointer(start: pointer, count: grid.cellCount))
     }
@@ -3352,18 +3521,18 @@ public final class BlastSolver {
     }
 
     public func isSolid(_ i: Int, _ j: Int, _ k: Int) -> Bool {
-        maskBuffer.contents().load(fromByteOffset: grid.index(i, j, k), as: UInt8.self) != 0
+        maskContents.load(fromByteOffset: grid.index(i, j, k), as: UInt8.self) != 0
     }
 
     /// Largest overpressure (Pa) seen so far in a cell.
     public func peakOverpressure(_ i: Int, _ j: Int, _ k: Int) -> Float {
-        peakBuffer.contents().load(
+        peakContents.load(
             fromByteOffset: grid.index(i, j, k) * MemoryLayout<Float>.stride, as: Float.self)
     }
 
     /// Positive-phase impulse (Pa s) accumulated so far in a cell.
     public func impulse(_ i: Int, _ j: Int, _ k: Int) -> Float {
-        impulseBuffer.contents().load(
+        impulseContents.load(
             fromByteOffset: grid.index(i, j, k) * MemoryLayout<Float>.stride, as: Float.self)
     }
 
@@ -3385,7 +3554,7 @@ public final class BlastSolver {
     /// Total mass (kg) and energy (J) of the gas, summed over fluid cells; under the patches of
     /// refined air, over their fluid fine cells.
     public func totals() -> (mass: Double, energy: Double) {
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
         let fine = refinedGas()
         return withState { cells in
@@ -3400,8 +3569,16 @@ public final class BlastSolver {
         }
     }
 
-    /// The share of cell `index` that holds air: its cut cell's, or one.
+    /// The share of cell `index` that holds air: its cut cell's (the terrain's or a structure's), or
+    /// one.
     func fluidShare(_ index: Int) -> Double {
+        if let structure = structureCut?.geometry, structure.index[index] >= 0,
+            terrainCut?.geometry.alpha(
+                index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+                ?? 1 >= 1
+        {
+            return Double(structure.records[Int(structure.index[index])].x)
+        }
         guard let cut = terrainCut?.geometry else { return 1 }
         let i = index % grid.nx
         let j = (index / grid.nx) % grid.ny
@@ -3410,7 +3587,7 @@ public final class BlastSolver {
 
     /// Total momentum of the gas in kg m/s, counted as `totals()` is.
     public func momentum() -> SIMD3<Double> {
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
         let fine = refinedGas()
         return withState { cells in
@@ -3426,7 +3603,7 @@ public final class BlastSolver {
     }
 
     public var fluidCellCount: Int {
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         var count = 0
         for index in 0..<grid.cellCount where mask[index] == 0 { count += 1 }
         return count
@@ -3456,7 +3633,7 @@ public final class BlastSolver {
             + (combinedOccupancyBuffer?.length ?? 0) + (couplingTiles?.length ?? 0)
             + (interactionBuffer?.length ?? 0)
             + (bodyEnvelopeBuffer?.length ?? 0)
-            + (experimentalBoxes.isEmpty ? 0 : wallVelocityBuffer.length)
+            + (experimentalBoxes.isEmpty || hasBody ? 0 : wallVelocityBuffer.length)
     }
 
     /// Structural substeps encoded per fluid step. The fluid step never exceeds the CFL limit
@@ -3496,6 +3673,7 @@ public final class BlastSolver {
         uniforms.airModel = configuration.airModel.rawValue
         refinement?.configure(&uniforms, threshold: configuration.refinementThreshold)
         uniforms.refineMargin = UInt32(max(configuration.refinementMargin, 0))
+        uniforms.gaugeWalls = configuration.gaugesReadWallPressure ? 1 : 0
         if let finerRefinement {
             uniforms.childTileNx = UInt32(finerRefinement.tileDims.x)
             uniforms.childTileNy = UInt32(finerRefinement.tileDims.y)
@@ -3532,7 +3710,7 @@ public final class BlastSolver {
             uniforms.regionNx = UInt32(grid.nx)
             uniforms.regionNy = UInt32(grid.ny)
             uniforms.regionNz = UInt32(grid.nz)
-            uniforms.maxStep = experimentalBoxMaxStep
+            uniforms.maxStep = min(experimentalBoxMaxStep, experimentalStepCeiling ?? .infinity)
         }
         if let limit = configuration.afterburnLimit {
             uniforms.ignitionTemperature = limit.ignitionTemperature
@@ -3560,9 +3738,10 @@ public final class BlastSolver {
         let limit = configuration.afterburnLimit != nil
         let cut = terrainCut != nil
         let porous = congestionBuffer != nil
+        let structureCutOn = structureCut != nil
         let key =
             16 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0) + (cut ? 8 : 0)
-            + (porous ? 1024 : 0)
+            + (porous ? 1024 : 0) + (structureCutOn ? 2048 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -3572,15 +3751,123 @@ public final class BlastSolver {
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
         if cut { constants = ShaderLibrary.withCutCells(constants) }
         if porous { constants = ShaderLibrary.withPorousAir(constants) }
+        if structureCutOn { constants = ShaderLibrary.withStructureCut(constants) }
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library, constants: constants)
         }
         let kernels = CellKernels(
             sweep: try pipeline("sweep"), sweepTiles: try pipeline("sweepTiles"),
             collectTiles: try pipeline("collectTiles"),
-            redistributeCutDefects: try pipeline("redistributeCutDefects"))
+            redistributeCutDefects: try pipeline("redistributeCutDefects"),
+            keepStructureCut: try pipeline("keepStructureCut"),
+            takeStructureCut: try pipeline("takeStructureCut"))
         cellKernelsByModel[key] = kernels
         return kernels
+    }
+
+    /// Shares each structure cut cell's difference over the step out along its wall's normal, in
+    /// `state` just swept (`keepStructureCut`, then `takeStructureCut`, in Solver.metal).
+    private func encodeStructureCutRedistribution(
+        _ encoder: MTLComputeCommandEncoder, cut: StructureCutBuffers, kernels: CellKernels,
+        uniforms: SolverUniforms, state: MTLBuffer, species: MTLBuffer
+    ) {
+        var uniforms = uniforms
+        var count = UInt32(cut.geometry.cells.count)
+        guard count > 0 else { return }
+        encoder.setComputePipelineState(kernels.keepStructureCut)
+        encoder.setBuffer(state, offset: 0, index: 0)
+        encoder.setBuffer(species, offset: 0, index: 1)
+        encoder.setBuffer(cut.cells, offset: 0, index: 2)
+        encoder.setBuffer(cut.records, offset: 0, index: 3)
+        encoder.setBuffer(cut.targets, offset: 0, index: 4)
+        encoder.setBuffer(cut.defects, offset: 0, index: 5)
+        encoder.setBuffer(cut.passed, offset: 0, index: 6)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 7)
+        encoder.setBuffer(controlBuffer, offset: 0, index: 8)
+        encoder.setBuffer(peakBuffer, offset: 0, index: 9)
+        encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 10)
+        encoder.setBuffer(tileFlagBuffer, offset: 0, index: 11)
+        encoder.setBytes(&count, length: 4, index: 12)
+        encoder.dispatchThreads(
+            MTLSize(width: Int(count), height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: min(Int(count), 256), height: 1, depth: 1))
+        var receivers = UInt32(cut.geometry.receivers.count)
+        guard receivers > 0 else { return }
+        encoder.setComputePipelineState(kernels.takeStructureCut)
+        encoder.setBuffer(cut.receivers, offset: 0, index: 2)
+        encoder.setBuffer(cut.shares, offset: 0, index: 3)
+        encoder.setBuffer(cut.starts, offset: 0, index: 4)
+        encoder.setBuffer(cut.contributors, offset: 0, index: 5)
+        encoder.setBytes(&receivers, length: 4, index: 12)
+        encoder.dispatchThreads(
+            MTLSize(width: Int(receivers), height: 1, depth: 1),
+            threadsPerThreadgroup: MTLSize(width: min(Int(receivers), 256), height: 1, depth: 1))
+    }
+
+    /// Lays structures' outlines as cut cells (`configuration.structureCutCells`) from the bodies'
+    /// models as built, and keeps their cells of air from the remask; none with refinement.
+    private func setUpStructureCut() throws {
+        guard configuration.structureCutCells, hasBody, configuration.refinement <= 1 else {
+            structureCut = nil
+            return
+        }
+        // Solid elements only: shells' outlines are their midsurfaces, which a cut cell's air share
+        // does not describe.
+        let solids = bodies.map(\.model).filter { model in
+            model.elementKind == .solid && model.solidElementKind.allSatisfy { ($0 ?? .solid) == .solid }
+        }
+        // The scene's own solids (the terrain below its cut cells, rigid blocks) as they stand before
+        // the structures are counted in.
+        let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let terrainGeometry = terrainCut?.geometry
+        let grid = grid
+        let geometry = StructureCutGeometry(
+            models: solids, grid: grid, scenery: { scenery[$0] != 0 },
+            terrainCut: { index in
+                guard let terrainGeometry else { return false }
+                return terrainGeometry.alpha(
+                    index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny)) < 1
+            })
+        // With no cell cut (a structure on the lattice), the air is as without cut cells, kernels
+        // and all: specialised for them, fast math may round the same sums differently.
+        guard !geometry.cells.isEmpty else {
+            structureCut = nil
+            return
+        }
+        func buffer<T>(_ values: [T], _ label: String) throws -> MTLBuffer {
+            let length = max(values.count * MemoryLayout<T>.stride, 16)
+            guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
+                throw BlastError.allocationFailed(label)
+            }
+            _ = values.withUnsafeBytes { memcpy(buffer.contents(), $0.baseAddress!, $0.count) }
+            buffer.label = label
+            return buffer
+        }
+        let zeros = [SIMD4<Float>](repeating: .zero, count: 2 * max(geometry.cells.count, 1))
+        structureCut = StructureCutBuffers(
+            geometry: geometry, index: try buffer(geometry.index, "structure cut index"),
+            cells: try buffer(geometry.cells, "structure cut cells"),
+            records: try buffer(geometry.records, "structure cut records"),
+            walls: try buffer(geometry.walls, "structure cut walls"),
+            targets: try buffer(geometry.targets, "structure cut targets"),
+            defects: try buffer(zeros, "structure cut differences"),
+            passed: try buffer(zeros, "structure cut passed"),
+            receivers: try buffer(geometry.receivers, "structure cut receivers"),
+            shares: try buffer(geometry.receiverShares, "structure cut receivers' shares"),
+            starts: try buffer(geometry.receiverStarts, "structure cut receivers' starts"),
+            contributors: try buffer(geometry.contributors, "structure cut contributors"))
+        for body in bodies { try body.solids?.readStructureCutCells() }
+        // A cell the terrain's cut cells hold is theirs, and the remask's rules for it stand (a thin
+        // one under a structure turns solid): only the structure's own are kept air.
+        let terrain = terrainCut?.geometry
+        try keepAir(
+            geometry.cells.filter { cell in
+                let index = Int(cell)
+                return
+                    (terrain?.alpha(index % grid.nx, (index / grid.nx) % grid.ny, index / (grid.nx * grid.ny))
+                    ?? 1)
+                    >= 1
+            })
     }
 
     /// Shares each cut cell's difference over the step out up its column, in `state` just swept (see
@@ -3670,11 +3957,34 @@ extension BlastSolver {
         }
         experimentalBoxDefinition = try allocate(
             bodies.count * ExperimentalBoxGeometry.vectorCount * MemoryLayout<SIMD4<Float>>.stride)
+        if hasBody {
+            // Objects beside a structure, in stage 1 on the coarse grid alone: the structure's
+            // coupling is laid over the whole grid so that its wall velocities and the objects'
+            // share one buffer, a cell's at 3 × its index.
+            guard refinement == nil, finerRefinement == nil, stepCount == 0 else {
+                throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+            }
+            bodyCouplingWholeGrid = true
+            try layOutBodyCoupling()
+        }
         experimentalBoxMask = try allocate(grid.cellCount)
         experimentalBoxImpulse = try allocate(grid.cellCount * 6 * MemoryLayout<Float>.stride)
-        wallVelocityBuffer = try allocate(grid.cellCount * 3 * MemoryLayout<Float>.stride)
+        if !hasBody { wallVelocityBuffer = try allocate(grid.cellCount * 3 * MemoryLayout<Float>.stride) }
         experimentalBoxes = []
         try updateExperimentalBoxes(bodies.map { $0 }, initial: true)
+    }
+
+    /// The velocity the air sees a moving solid cell at, with freestanding objects in the air (the
+    /// whole grid's buffer); for the tests.
+    func experimentalWallVelocity(_ i: Int, _ j: Int, _ k: Int) -> SIMD3<Float> {
+        let n = grid.index(i, j, k)
+        let walls = wallVelocityBuffer.contents().bindMemory(to: Float.self, capacity: 3 * grid.cellCount)
+        return SIMD3(walls[3 * n], walls[3 * n + 1], walls[3 * n + 2])
+    }
+
+    /// Which object holds each cell (its index plus one, or zero); for the tests.
+    func experimentalBoxOwner(_ i: Int, _ j: Int, _ k: Int) -> Int {
+        Int(experimentalBoxMask?.contents().load(fromByteOffset: grid.index(i, j, k), as: UInt8.self) ?? 0)
     }
 
     func updateExperimentalBox(_ body: RigidBoxBody, initial: Bool = false) throws {
@@ -3690,6 +4000,53 @@ extension BlastSolver {
             simd_max(SIMD3<Int>((low / grid.cellSize).rounded(.down)) &- margin, .zero),
             simd_min(SIMD3<Int>((high / grid.cellSize).rounded(.up)) &+ margin, dims &- 1)
         )
+    }
+
+    /// The boxes remapped together, from each one's region of coarse cells (nil for a box out of
+    /// the air before and after): those whose regions meet, and then any group whose span, the
+    /// box around its members' regions, meets another's, since each group is remapped over its
+    /// span and two would otherwise write the same cells (an L of boxes and one in its corner).
+    /// No two groups' spans meet. Each group's members are in order, the groups by their first.
+    static func experimentalRemapGroups(_ regions: [(low: SIMD3<Int>, high: SIMD3<Int>)?]) -> [[Int]] {
+        let slots = regions.indices.filter { regions[$0] != nil }
+        var groups: [[Int]] = []
+        var group = Array(regions.indices)
+        func overlap(_ a: (low: SIMD3<Int>, high: SIMD3<Int>), _ b: (low: SIMD3<Int>, high: SIMD3<Int>))
+            -> Bool
+        {
+            all(a.low .<= b.high) && all(b.low .<= a.high)
+        }
+        for b in slots where group[b] == b {
+            var members = [b]
+            var next = 0
+            while next < members.count {
+                for c in slots where group[c] == c && c != b && overlap(regions[members[next]]!, regions[c]!)
+                {
+                    group[c] = b
+                    members.append(c)
+                }
+                next += 1
+            }
+            groups.append(members.sorted())
+        }
+        func span(_ members: [Int]) -> (low: SIMD3<Int>, high: SIMD3<Int>) {
+            members.compactMap { regions[$0] }.reduce(
+                (SIMD3<Int>(repeating: .max), SIMD3<Int>(repeating: .min))
+            ) { (simd_min($0.low, $1.low), simd_max($0.high, $1.high)) }
+        }
+        var merged = true
+        while merged {
+            merged = false
+            search: for a in groups.indices {
+                for b in groups.indices where b > a && overlap(span(groups[a]), span(groups[b])) {
+                    groups[a] = (groups[a] + groups[b]).sorted()
+                    groups.remove(at: b)
+                    merged = true
+                    break search
+                }
+            }
+        }
+        return groups.sorted { $0[0] < $1[0] }
     }
 
     /// Conservative local redistribution when whole cells change occupancy. This is a coarse
@@ -3718,8 +4075,17 @@ extension BlastSolver {
         }
         let geometries = bodies.map(ExperimentalBoxGeometry.init)
         let previous = initial ? geometries : experimentalBoxes.map(ExperimentalBoxGeometry.init)
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let scenery = rigidMaskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        // The cells a structure holds, solid but neither scenery nor an object's: the remap keeps
+        // them and their wall velocities (the structure's remask moves them).
+        let structureHeld: (Int) -> Bool
+        if hasBody, let boxes = experimentalBoxMask {
+            let ownMask = boxes.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+            structureHeld = { mask[$0] != 0 && scenery[$0] == 0 && ownMask[$0] == 0 }
+        } else {
+            structureHeld = { _ in false }
+        }
         // The coarse cells each box holds now, the first box taking a cell two share.
         var owner: [Int: Int] = [:]
         var held = [[Int]](repeating: [], count: bodies.count)
@@ -3768,23 +4134,7 @@ extension BlastSolver {
             var groups: [[Int]] = []
             let slots = bodies.indices.filter { regions[$0] != nil }
             if refinement.useLocalBoxRemap {
-                var group = Array(bodies.indices)
-                func overlap(_ a: Int, _ b: Int) -> Bool {
-                    guard let ra = regions[a], let rb = regions[b] else { return false }
-                    return all(ra.low .<= rb.high) && all(rb.low .<= ra.high)
-                }
-                for b in slots where group[b] == b {
-                    var members = [b]
-                    var next = 0
-                    while next < members.count {
-                        for c in slots where group[c] == c && c != b && overlap(members[next], c) {
-                            group[c] = b
-                            members.append(c)
-                        }
-                        next += 1
-                    }
-                    groups.append(members.sorted())
-                }
+                groups = Self.experimentalRemapGroups(regions)
             } else if !slots.isEmpty {
                 groups = [slots]
             }
@@ -3819,7 +4169,7 @@ extension BlastSolver {
             var next = old
             var inRegion = [Bool](repeating: false, count: grid.cellCount)
             eachCell {
-                next[$0] = scenery[$0]
+                next[$0] = structureHeld($0) ? 1 : scenery[$0]
                 inRegion[$0] = true
             }
             for n in owner.keys { next[n] = 1 }
@@ -3850,9 +4200,14 @@ extension BlastSolver {
         }
         let ownMask = experimentalBoxMask!.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let walls = wallVelocityBuffer.contents().bindMemory(to: Float.self, capacity: 3 * grid.cellCount)
+        var kept = Set<Int>()
         eachCell { n in
-            mask[n] = scenery[n]
+            if structureHeld(n) { kept.insert(n) }
+        }
+        eachCell { n in
             ownMask[n] = 0
+            guard !kept.contains(n) else { return }
+            mask[n] = scenery[n]
             for a in 0..<3 { walls[3 * n + a] = 0 }
         }
         for (b, body) in bodies.enumerated() {
@@ -3902,8 +4257,7 @@ extension BlastSolver {
             let range = experimentalCellRange(geometry.low, geometry.high, margin: 2)
             return (range.low / AirRefinement.patchSize, range.high / AirRefinement.patchSize)
         }
-        return refinement.patches { tile in blocks.contains { all(tile .>= $0.low) && all(tile .<= $0.high) }
-        }
+        return refinement.patches(inBlocks: blocks)
     }
 
     /// The air's impulse and its moment about the centre of mass on all the boxes together.
@@ -3955,21 +4309,23 @@ extension BlastSolver {
         if let refinement {
             let geometries = experimentalBoxes.map(ExperimentalBoxGeometry.init)
             let dx = grid.cellSize / Float(refinement.ratio)
-            refinement.takeBoxFaceImpulses(in: experimentalBoxPatches(refinement)) {
-                cell, axis, side, impulse in
-                var across = cell
-                across[axis] += side == 0 ? -1 : 1
-                let point = (SIMD3<Float>(across) + 0.5) * dx
-                let b =
-                    ExperimentalBoxGeometry.owner(of: point, among: geometries, cellSize: dx)
-                    ?? geometries.indices.min {
-                        simd_distance(geometries[$0].centre, point)
-                            < simd_distance(geometries[$1].centre, point)
-                    }!
-                var face = Double(dx) * (SIMD3<Double>(cell) + 0.5)
-                face[axis] += (side == 0 ? -0.5 : 0.5) * Double(dx)
-                record(b, face: face, axis: axis, impulse: impulse)
-            }
+            refinement.takeBoxFaceImpulses(
+                in: experimentalBoxPatches(refinement),
+                owner: { cell, axis, side in
+                    var across = cell
+                    across[axis] += side == 0 ? -1 : 1
+                    let point = (SIMD3<Float>(across) + 0.5) * dx
+                    return ExperimentalBoxGeometry.owner(of: point, among: geometries, cellSize: dx)
+                        ?? geometries.indices.min {
+                            simd_distance(geometries[$0].centre, point)
+                                < simd_distance(geometries[$1].centre, point)
+                        }!
+                },
+                face: { b, cell, axis, side, impulse in
+                    var face = Double(dx) * (SIMD3<Double>(cell) + 0.5)
+                    face[axis] += (side == 0 ? -0.5 : 0.5) * Double(dx)
+                    record(b, face: face, axis: axis, impulse: impulse)
+                })
         }
         return loads
     }

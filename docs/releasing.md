@@ -84,6 +84,30 @@ Expand the final ZIP somewhere fresh and test that copy, ideally downloaded thro
 another Mac with Gatekeeper enabled: first launch, Metal rendering, a run of each preset, and
 opening and saving a layout.
 
+## The notes
+
+Each change a user would notice adds a fragment under
+[release-notes/next](release-notes/next/README.md) in its own push. Before building, assemble them
+into the version's notes with `python3 Scripts/release-notes.py assemble X.Y.Z`, read the result as
+a whole, and commit it.
+
+## After publishing: the Homebrew cask
+
+The app installs with `brew install emmettl/tap/bombcad`, from the cask in
+[emmettl/homebrew-tap](https://github.com/emmettl/homebrew-tap) (`Casks/bombcad.rb`), which also
+links the app's headless runner as `bombcad`. Once `gh release create` has published the ZIP and
+its `.sha256`, point the cask at it:
+
+```bash
+python3 Scripts/update-homebrew-tap.py 0.5.0
+```
+
+It takes the checksum from the release's own `.sha256`, rewrites the cask's `version` and `sha256`
+and commits that to the tap through the GitHub API (`--dry-run` prints the new cask instead). Then
+check it as Homebrew would: `brew update`, `brew audit --cask --strict --online emmettl/tap/bombcad`
+and `brew style emmettl/tap`. The official homebrew-cask repository needs more evidence of use
+than this project has yet, so the tap is the only route for now.
+
 ## Checked so far
 
 The release tests (`make ci-test`) exercise the script with every external tool stubbed out:
@@ -105,6 +129,8 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.3.0 (7)  | `b524a9d` | `de90ca6f-1803-4cd9-998b-525980d409c6` | Published as v0.3.0; crashes  |
 | 0.3.1 (8)  | `c874a6a` | `21d1ff1a-9ebd-45cf-98d6-712264341f22` | Made with the fix, not published |
 | 0.4.0 (10) | `9482ba7` | `b548eb9b-5031-48cd-800e-124a207db04e` | Published as v0.4.0           |
+| 0.5.0 (11) | `cde4b514` | `da25d621-e049-4f08-99bc-39ca876f0e3d` | Published as v0.5.0           |
+| 0.5.1 (12) | `1b79ae33` | `0db0948d-6e0b-4584-8fcb-c6f0d2c80a77` | Published as v0.5.1           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -189,6 +215,54 @@ Its notes, reviewed independently, are in `docs/release-notes/0.4.0.md`. Its ZIP
 manifest are attached to the GitHub release `v0.4.0`, published on 2026-10-17 with its tag on
 `9482ba7`; the copy downloaded back matched the checksum, validated its stapled ticket, passed
 `codesign --verify --deep --strict` and was accepted by `spctl`.
+
+Build 11 (0.5.0) was prepared on 2026-10-19 from `cde4b514` on the branch `release/0.5.0`:
+`b6a7abec` from main, which passed `make check-anywhere`, then the version, the notes' late
+changes and retaken pictures, and three fixes picked from main (a run on the fine start that
+samples no longer hangs, the release smoke that guards it, and a placement test that no longer
+depends on the Mac's load). A first `make release` on `6b57a0a5` stopped in its tests before
+signing: that placement test, run with every other session's GPU work beside it. With no quiet
+window and `make release` run outside `gpu-slot`, all 347 app and 1182 core tests passed, the
+packaged app ran the small project and the structure on the fine start, and drew its views
+through a change of source, before signing and again before archiving. Apple accepted it
+(submission `da25d621-e049-4f08-99bc-39ca876f0e3d`). A fresh expansion of its ZIP:
+
+- matched the checksum (`222c94d3fe5094be59ac18f4f22a34c634876d6951f086a45c688f411ce30e16`);
+- validated its stapled ticket;
+- passed `codesign --verify --deep --strict`;
+- was accepted by `spctl` as `Notarized Developer ID`;
+- holds the licence text and the four resource bundles its binary links (BombCAD's two,
+  ContinuumKit's contact search and scene render; RadialBlast has none);
+- is version 0.5.0, build 11, arm64;
+- ran the small project and the structure on the fine start from inside its bundle and drew its
+  views through a change of source (`Scripts/release.py smoke`, on that copy);
+- opened one of the user's projects by hand, which the user reported working.
+
+Its notes, reviewed independently, are in `docs/release-notes/0.5.0.md`; on the release page their
+links point at the docs as tagged. Its ZIP, checksum and manifest are attached to the GitHub release
+`v0.5.0`, published on 2026-10-19 with its tag on `cde4b514`; the copy downloaded back matched the
+checksum, validated its stapled ticket, passed `codesign --verify --deep --strict` and was accepted
+by `spctl`. The Homebrew cask (`emmettl/tap/bombcad`) was moved to 0.5.0 by
+`Scripts/update-homebrew-tap.py 0.5.0`, and `brew audit --cask --strict --online` passed.
+
+Build 12 (0.5.1) was prepared on 2026-10-19 from `1b79ae33` on the branch `release/0.5.1`: the
+`v0.5.0` tag with the fixes for 0.5.0's four known limitations picked from main or made on the tag
+(the fine start's clocks in two parts, the refined panes' table, shells' springs and links on a
+restart, each shell's own rule through its thickness), the wave-speed guard made safe from fast
+math, and a fragment test's race. Its full check passed with `make check-anywhere` before the last
+clock fix, and solver digests matched 0.5.0's on all seven cases plain, recommended and refined.
+A first `make release` on `80a183af` stopped in its tests before signing, on that race
+(`FragmentOverlayTests`: a run kept as its last fragment frame landed). The second passed all 347
+app and 1189 core tests, and Apple accepted it (submission `0db0948d-6e0b-4584-8fcb-c6f0d2c80a77`).
+A fresh expansion of its ZIP matched the checksum
+(`9f445554c5f793b0cc100932812b360848d7b518d411b1d25c5a0817b2005765`), validated its stapled
+ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, holds the licence and the same four resource bundles, is 0.5.1, build 12,
+arm64, and ran the small project and the structure on the fine start from inside its bundle. The
+user had said to publish once it was ready. It was published on 2026-10-19 as `v0.5.1`, tag on
+`1b79ae33`, with its notes' links pointing at the docs as tagged; the copy downloaded back matched
+the checksum, validated its ticket, passed `codesign` and was accepted by `spctl`. The Homebrew
+cask was moved to 0.5.1 and `brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.

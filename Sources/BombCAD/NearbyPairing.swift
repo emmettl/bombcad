@@ -105,7 +105,8 @@ enum NearbyPairing {
             throw NearbyError.refused("Pairing cancelled.")
         }
         try await channel.send(.confirm(Exchange.proof(key, "client", transcript)))
-        switch try await channel.receive() {
+        // Sent once the server's user has allowed it too.
+        switch try await channel.receiveAfterCheck() {
         case .confirm(let proof) where Exchange.check(proof, key, "server", transcript):
             return Pairing(peer: server, key: key.withUnsafeBytes { Data($0) })
         case .refuse(let reason): throw NearbyError.refused(reason)
@@ -114,9 +115,13 @@ enum NearbyPairing {
     }
 
     /// The server's side: answers a request to pair; `allow` is shown who asks and the code, and
-    /// returns whether this Mac's user allows it. Returns the pairing to keep.
+    /// returns whether this Mac's user allows it. Returns the pairing.
+    ///
+    /// `keep` is given the pairing before the client is told it holds, so that a session the client
+    /// opens straight after finds the key in use.
     static func answer(
-        over channel: PairingChannel, me: Peer, allow: @escaping @Sendable (Peer, String) async -> Bool
+        over channel: PairingChannel, me: Peer, allow: @escaping @Sendable (Peer, String) async -> Bool,
+        keep: @Sendable (Pairing) async throws -> Void = { _ in }
     ) async throws -> Pairing {
         guard case .request(let client, let commitment) = try await channel.receive() else {
             throw NearbyError.refused("Not a request to pair.")
@@ -135,7 +140,7 @@ enum NearbyPairing {
             clientNonce: clientNonce, serverKey: exchange.publicKey, serverNonce: exchange.nonce)
         // Both the user here and the client's proof, in either order.
         async let allowed = allow(client, code)
-        let reply = try await channel.receive()
+        let reply = try await channel.receiveAfterCheck()
         guard await allowed else {
             try? await channel.send(.refuse("Not allowed on \(me.name)."))
             throw NearbyError.refused("Pairing with \(client.name) not allowed.")
@@ -144,8 +149,10 @@ enum NearbyPairing {
             if case .refuse(let reason) = reply { throw NearbyError.refused(reason) }
             throw NearbyError.refused("\(client.name) did not prove it holds the key.")
         }
+        let pairing = Pairing(peer: client, key: key.withUnsafeBytes { Data($0) })
+        try await keep(pairing)
         try await channel.send(.confirm(Exchange.proof(key, "server", transcript)))
-        return Pairing(peer: client, key: key.withUnsafeBytes { Data($0) })
+        return pairing
     }
 }
 
@@ -153,10 +160,12 @@ enum NearbyError: LocalizedError, Equatable {
     case refused(String)
     case notFound(String)
     case closed
+    /// The other Mac, or the link to it, stopped answering.
+    case timedOut(String)
 
     var errorDescription: String? {
         switch self {
-        case .refused(let reason): reason
+        case .refused(let reason), .timedOut(let reason): reason
         case .notFound(let name): "\(name) is not on the network, or not sharing its GPU."
         case .closed: "The connection closed."
         }
@@ -167,6 +176,13 @@ enum NearbyError: LocalizedError, Equatable {
 protocol PairingChannel: Sendable {
     func send(_ message: NearbyPairing.Message) async throws
     func receive() async throws -> NearbyPairing.Message
+    /// The next message, which the other Mac sends only once its user has checked the code, so
+    /// may take as long as a person does.
+    func receiveAfterCheck() async throws -> NearbyPairing.Message
+}
+
+extension PairingChannel {
+    func receiveAfterCheck() async throws -> NearbyPairing.Message { try await receive() }
 }
 
 /// The Macs this one has paired with, and its own lasting identity. Kept in the Keychain, or, for

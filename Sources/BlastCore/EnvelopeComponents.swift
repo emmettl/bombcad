@@ -322,19 +322,27 @@ public struct EnvelopeHistoryOptions: Codable, Hashable, Sendable {
     /// outside it in the open opening (ids "<owner>/opening/<i>"): what the inside sees once glass
     /// has gone.
     public var openingsAsPanes: Bool
-    /// Start each component's window when the air at its faces first moves, rather than at t = 0,
-    /// so that `windowS` need only cover the load on one component, not the blast's crossing of a
+    /// Start each component's window when the blast reaches it, rather than at t = 0, so that
+    /// `windowS` need only cover the load on one component, not the blast's crossing of a
     /// district: a building 2 km out keeps the few hundred milliseconds that load it.
     public var windowFromArrival: Bool
+    /// With `windowFromArrival`, the overpressure on either side of a component (its faces' mean,
+    /// Pa) that starts its window; 0 starts it when the air at its faces first moves, as before
+    /// 18 October 2026. The air wakes a tile and a margin ahead of the shock, which on 8 m cells
+    /// opened Beirut's windows about 0.35 s before the load (0.13 s on 3 m) and on refined air,
+    /// whose weak disturbances wake it farther ahead, closed many before the load came.
+    public var arrivalPa: Float
     /// Also record each wall, slab, roof and pane's equivalent uniform loads (`EnvelopeComponentHistory
     /// .plate`, `.strip`), which its damage is judged on.
     public var governingBands: Bool
 
     public init(
         windowS: Double, binS: Double = 1e-4, memoryBudget: Int = 256 << 20, binMaxima: Bool = false,
-        openingsAsPanes: Bool = false, windowFromArrival: Bool = false, governingBands: Bool = true
+        openingsAsPanes: Bool = false, windowFromArrival: Bool = false, governingBands: Bool = true,
+        arrivalPa: Float = 500
     ) {
         self.governingBands = governingBands
+        self.arrivalPa = arrivalPa
         self.binS = binS
         self.windowS = windowS
         self.memoryBudget = memoryBudget
@@ -344,10 +352,12 @@ public struct EnvelopeHistoryOptions: Codable, Hashable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case binS, windowS, memoryBudget, binMaxima, openingsAsPanes, windowFromArrival, governingBands
+        case binS, windowS, memoryBudget, binMaxima, openingsAsPanes, windowFromArrival, governingBands,
+            arrivalPa
     }
 
-    /// Options saved before the bands were recorded read as recording them.
+    /// Options saved before the bands were recorded read as recording them, and those saved before
+    /// the arrival's overpressure as starting their windows when the air moves.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         binS = try c.decode(Double.self, forKey: .binS)
@@ -357,6 +367,7 @@ public struct EnvelopeHistoryOptions: Codable, Hashable, Sendable {
         openingsAsPanes = try c.decode(Bool.self, forKey: .openingsAsPanes)
         windowFromArrival = try c.decode(Bool.self, forKey: .windowFromArrival)
         governingBands = try c.decodeIfPresent(Bool.self, forKey: .governingBands) ?? true
+        arrivalPa = try c.decodeIfPresent(Float.self, forKey: .arrivalPa) ?? 0
     }
 }
 
@@ -487,10 +498,12 @@ final class EnvelopeComponentRecorder {
     let stillPressure: MTLBuffer
     /// The bin the coming step starts in and how far into it (`ComponentClock`), kept on the GPU.
     let clock: MTLBuffer
-    /// Each component's first bin: 0, or with `windowFromArrival` the clock's bin when its air
-    /// first moved (`UInt32.max` until then).
+    /// Each component's first bin: 0, or with `windowFromArrival` the clock's bin when the blast
+    /// reached it (`arrivalPa`, or its air's first moving; `UInt32.max` until then).
     let starts: MTLBuffer
     let fromArrival: Bool
+    /// The overpressure that starts a component's window (`EnvelopeHistoryOptions.arrivalPa`).
+    let arrivalPa: Float
     let clockPipeline: MTLComputePipelineState
     let peaks: MTLBuffer
     let bins: MTLBuffer
@@ -850,6 +863,7 @@ final class EnvelopeComponentRecorder {
         self.clock = clock
         self.starts = starts
         fromArrival = options.windowFromArrival
+        arrivalPa = options.arrivalPa
         clockPipeline = try ShaderLibrary.pipeline("advanceEnvelopeClock", in: library)
         markPipeline = try ShaderLibrary.pipeline("markEnvelopeComponents", in: library)
         facePipeline = try ShaderLibrary.pipeline("sampleEnvelopeComponentFaces", in: library)
@@ -907,7 +921,7 @@ final class EnvelopeComponentRecorder {
         Parameters(
             components: UInt32(entryCount), capacity: UInt32(capacity), initial: initial ? 1 : 0,
             maxima: binMaxima ? 1 : 0, binWidth: Float(binS), faces: UInt32(faces.count),
-            fromArrival: fromArrival ? 1 : 0)
+            fromArrival: fromArrival ? 1 : 0, arrivalPa: fromArrival ? arrivalPa : 0)
     }
 
     struct Parameters {
@@ -920,6 +934,7 @@ final class EnvelopeComponentRecorder {
         var fromArrival: UInt32
         var readsRefined: UInt32 = 0
         var skipStill: UInt32 = 0
+        var arrivalPa: Float = 0
     }
 
     func histories(elapsed: Double) -> [EnvelopeComponentHistory] {

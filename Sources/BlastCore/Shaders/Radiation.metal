@@ -1,6 +1,6 @@
 // Radiative cooling of the luminous gas, appended to Solver.metal (after Extract.metal) at compile
 // time. Off unless `SolverConfiguration.radiativeCooling` is set; then, after every `interval`
-// steps' sweeps (and a batch's last), for the time since it was last taken:
+// steps' sweeps of the run's count, for the time since it was last taken:
 //
 //   1. every cell of the awake tiles gets the medium the thermal radiation's volume sees in it:
 //      zero unless it is air at least `luminous` kelvin hot, and then its absorption coefficient
@@ -76,6 +76,18 @@ kernel void radiationClock(const device StepControl &control [[buffer(0)]],
                            uint tid [[thread_position_in_grid]]) {
     if (tid == 0) {
         elapsed += max(control.dt, 0.0f);
+    }
+}
+
+// The time a taking takes the loss for: what has built up since the last, on a step that happened;
+// none on a step after its batch stopped, so that the takings fall on the run's own count of steps
+// however it is batched.
+kernel void radiationGate(const device StepControl &control [[buffer(0)]],
+                          const device float &elapsed [[buffer(1)]],
+                          device float &due [[buffer(2)]],
+                          uint tid [[thread_position_in_grid]]) {
+    if (tid == 0) {
+        due = control.dt > 0.0f ? elapsed : 0.0f;
     }
 }
 
@@ -393,7 +405,7 @@ kernel void radiationTally(const device float *partials [[buffer(0)]],
                            device float *radiated [[buffer(3)]],
                            device float &elapsed [[buffer(4)]],
                            uint tid [[thread_position_in_grid]]) {
-    if (tid != 0 || control.stepIndex == 0) {
+    if (tid != 0 || control.stepIndex == 0 || control.dt <= 0.0f) {
         return;
     }
     elapsed = 0.0f;

@@ -83,18 +83,36 @@ public struct DistrictLayout: Sendable {
         return (wanted / cellSize).rounded(.up) * cellSize
     }
 
+    /// The height above the ground over which a refined district's air need not be refined: all
+    /// but the tallest 2% of the buildings within `radius`, by their tags or the heights grid, and
+    /// four of the air's cells over them for the shock's top. On Beirut's 1 km box, 72 m on 8 m
+    /// cells (40 m and 32), which kept the glass and the arrivals of 4 m cells and cost a third of
+    /// a run refined to the domain's top (docs/beirut-2020.md).
+    public func refinementCeiling(radius: Float, cellSize: Float) -> Float {
+        var placement = MapBuildingPlacement(origin: charge, resolution: cellSize)
+        placement.heightGrid = heights
+        let tall = buildings(within: radius).map { building -> Float in
+            let h = placement.heights(building)
+            return h.top - h.bottom
+        }.sorted()
+        let most = tall.isEmpty ? 0 : tall[min(tall.count - 1, Int(0.98 * Double(tall.count)))]
+        return most + 4 * cellSize
+    }
+
     /// The run's length for buildings within `radius`: the time sound takes to reach the farthest,
     /// plus `window` for its load, to a tenth of a second: 7.8 s for Beirut's 2.5 km (it ran 8 s).
     public static func duration(radius: Float, window: Double = 0.5) -> Double {
         ((Double(radius) / 343 + window) * 10).rounded(.up) / 10
     }
 
-    /// The scene: a square of half side `halfSide` about the charge on `cellSize` cells, with the
+    /// The scene: a square of half side `halfSide` about the charge on `cellSize` cells (its
+    /// footprints on `footprintCells` if given), with the
     /// buildings within `radius` (all of them, nil) placed as envelopes with their constructions
     /// and glazing, on the ground's terrain if there is one, and the top at `height` (nil: by the
     /// open-face rule, `top`).
     public func scene(
-        halfSide: Float, cellSize: Float, radius: Float? = nil, height: Float? = nil, name: String? = nil
+        halfSide: Float, cellSize: Float, radius: Float? = nil, height: Float? = nil, name: String? = nil,
+        footprintCells: Float? = nil
     ) throws -> (scene: Scenario, report: MapBuildingReport) {
         let corner = SIMD2(
             charge.x - Double(halfSide) / (ElevationGrid.metresPerDegree * cos(charge.y * .pi / 180)),
@@ -117,7 +135,9 @@ public struct DistrictLayout: Sendable {
             let tallest = placed.compactMap(\.height).max() ?? 0
             scene.domainSize.z = (scene.terrain?.highest ?? 0) + max(4 * faceClearance, 1_000, 2 * tallest)
         }
-        var placement = MapBuildingPlacement(origin: corner, resolution: cellSize)
+        // The footprints on `footprintCells` (a refined air's finest cells, so that its fine
+        // outlines are the buildings' own), or the air's cells.
+        var placement = MapBuildingPlacement(origin: corner, resolution: footprintCells ?? cellSize)
         placement.heightGrid = heights
         let report = try scene.addMapBuildings(placed, placement: placement)
         scene.attributions = (scene.attributions ?? []) + attributions

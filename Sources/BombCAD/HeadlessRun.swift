@@ -11,7 +11,7 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
-                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
+                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m] [--surrogate <file.json>]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -44,8 +44,9 @@ enum HeadlessRun {
         and writes it as JSON; each building's line is printed too. A structure making rubble
         (rubbleParticles) has its debris flown on to where it lands and judged against the
         hazardous-fragment criteria, as fragments are; --debris-results writes it as JSON.
-        --envelope-window starts each component's history when the air at it first moves and keeps
-        that many seconds of it, not the whole run: across a district, the bins stay fine.
+        --envelope-window starts each component's history when the blast reaches it (500 Pa on
+        either side) and keeps that many seconds of it, not the whole run: across a district, the
+        bins stay fine.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -63,6 +64,11 @@ enum HeadlessRun {
         at it than the time it would take from the blast here).
         --advise prints the cheapest settings of the air that meet a fidelity target, or the best
         within a time, by the standing's error bands and the cost model, and does not run.
+        --surrogate takes a first look at the envelope buildings' damage in seconds, without
+        running the air: each component's load from its distance, facing and the buildings in the
+        way (Kingery–Bulmash corrected by terms fitted to BombCAD's district runs), judged as a
+        run's are. It writes the damage as JSON, marked as an estimate with its error band, and
+        does not run.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
         structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
         given, 10 to 150). A ground type (rock, soilOverSandstone, playa, alluvium, clay,
@@ -113,7 +119,7 @@ enum HeadlessRun {
         /// Where each envelope component's pressure history goes, as JSON.
         var envelopeHistories: URL?
         var envelopeDamage: URL?
-        /// Seconds of each component's history kept from when its air first moves; nil for the
+        /// Seconds of each component's history kept from when the blast reaches it; nil for the
         /// whole run from t = 0.
         var envelopeWindow: Double?
         /// Where the structures' debris landings and their hazard go, as JSON.
@@ -125,6 +131,8 @@ enum HeadlessRun {
         var frameInterval = 1
         /// With `--advise`, the target to advise settings for; the project is then not run.
         var advise: AdvisorTarget?
+        /// With `--surrogate`, where the first look's damage goes; the project is then not run.
+        var surrogate: URL?
 
         /// The consumers `--consumer` can place.
         static let consumerNames = ["fragments", "thermal", "ground"]
@@ -149,6 +157,7 @@ enum HeadlessRun {
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
+                            "surrogate",
                         ]
                         .contains(key)
                     else {
@@ -181,6 +190,7 @@ enum HeadlessRun {
             }
             options.debrisResults = values["debris-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
+            options.surrogate = values["surrogate"].map { URL(filePath: $0) }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
                     throw ProjectFileError.invalid(
@@ -388,6 +398,7 @@ enum HeadlessRun {
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
                 options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
                 options.envelopeHistories, options.envelopeDamage, options.debrisResults, options.standing,
+                options.surrogate,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -720,7 +731,8 @@ enum HeadlessRun {
                 if !started {
                     started = true
                     // A mapped start's clock starts at its solution's time: the frames before it are
-                    // the structure at rest and the air as it is then, no volumes and no fireball.
+                    // the structure at rest, the fireball from the one-dimensional solution and the
+                    // air as it is then, no volumes.
                     let first = max(Int((solver.time / interval - 1e-6).rounded(.up)), 0)
                     if first > 0 {
                         do {
@@ -1005,13 +1017,22 @@ enum HeadlessRun {
     }
 
     /// The frames `0..<count` that fall before a mapped start's clock: the structure at rest into
-    /// the scene, without volumes; no fireball for the thermal radiation; the fragments' and ground
-    /// shock's air as it is at the start.
+    /// the scene, without volumes; the thermal radiation's fireball from the one-dimensional
+    /// solution (none at detonation); the fragments' and ground shock's air as it is at the start.
     @MainActor
     static func sendFramesBefore(
         _ count: Int, solver: BlastSolver, interval: Double, scene: USDSceneWriter?, feeds: [Feed],
         scenario: Scenario
     ) throws {
+        let times = (0..<count).map { Double($0) * interval }
+        var early: [Int: FireballFrame] = [:]
+        for feed in feeds {
+            if case .thermal(let spec, _, _) = feed.consumer.kind {
+                for frame in solver.earlyFireballFrames(for: spec, at: times) {
+                    early[Int((frame.time / interval).rounded())] = frame
+                }
+            }
+        }
         for k in 0..<count {
             try scene?.append(solver.structureSurface(), volume: nil)
             for feed in feeds {
@@ -1025,9 +1046,9 @@ enum HeadlessRun {
                 case .thermal:
                     feed.consumer.send(
                         .fireball(
-                            FireballFrame(
-                                time: Double(k) * interval, volume: 0, centre: .zero, temperature: 0,
-                                hottest: 0)))
+                            early[k]
+                                ?? FireballFrame(
+                                    time: times[k], volume: 0, centre: .zero, temperature: 0, hottest: 0)))
                 case .groundShock(let spec, _):
                     let region = spec.region(cellSize: solver.grid.cellSize)
                     feed.consumer.send(.ground(solver.groundSlice(low: region.low, high: region.high)))
@@ -1073,6 +1094,59 @@ enum HeadlessRun {
             lines.append("  " + crater.summary)
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// The surrogate's first look at the envelope buildings, as written by `--surrogate`.
+    struct FirstLook: Encodable {
+        /// Always true: an estimate, not a run.
+        var estimate = true
+        var method: String
+        var fittedTo: String
+        var standing: [String]
+        var components: Int
+        /// Components outside the distances the estimate was fitted over, their loads extrapolated.
+        var outsideFit: Int
+        var seconds: Double
+        var buildings: [EnvelopeBuildingDamage]
+    }
+
+    /// The first look at the project's envelope buildings (as `--resolution` and `--mass` change
+    /// the inputs), written to `url`; its lines.
+    static func firstLook(_ options: Options, to url: URL) throws -> [String] {
+        let document = try ProjectDocument.read(from: options.project)
+        let inputs = try inputs(for: document, options: options)
+        let scenario = inputs.scenario
+        guard !scenario.envelopeObjects.isEmpty else {
+            throw ProjectFileError.invalid("--surrogate needs envelope buildings.")
+        }
+        let cellSize = Resolution(rawValue: inputs.settings.resolution)!.cellSize
+        let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
+        let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
+            estimate, constructions: { scenario.envelopeConstruction(for: $0) })
+        let look = FirstLook(
+            method: FacadeLoadSurrogate.method, fittedTo: FacadeLoadSurrogate.Coefficients.fitted.fittedTo,
+            standing: FacadeLoadSurrogate.standing, components: estimate.loads.count,
+            outsideFit: estimate.outsideFit,
+            seconds: estimate.seconds + damageS, buildings: buildings)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+        try encoder.encode(look).write(to: url, options: .withoutOverwriting)
+        var lines = [
+            String(
+                format: "Quick estimate, not a run: %d components of %d buildings in %.1f s",
+                estimate.loads.count, buildings.count, look.seconds)
+        ]
+        if estimate.outsideFit > 0 {
+            lines.append(
+                "  \(estimate.outsideFit) components lie outside the distances it was fitted over: their loads are extrapolated."
+            )
+        }
+        lines += buildings.map { building in
+            let name = scenario.object(id: building.id)?.name ?? "Building"
+            return "  \(name): " + EnvelopeDamageSection.summary(building)
+        }
+        lines += FacadeLoadSurrogate.standing.map { "  " + $0 }
+        return lines
     }
 
     /// The advice for `target` on the project's inputs (as `--resolution` and `--mass` change
@@ -1141,6 +1215,16 @@ enum HeadlessRun {
         } catch {
             FileHandle.standardError.write(Data("\(error.localizedDescription)\n\n\(usage)\n".utf8))
             return 2
+        }
+        if let url = options.surrogate {
+            do {
+                for line in try firstLook(options, to: url) { print(line) }
+                return 0
+            } catch {
+                FileHandle.standardError.write(
+                    Data("First look failed: \(error.localizedDescription)\n".utf8))
+                return 1
+            }
         }
         if let target = options.advise {
             do {

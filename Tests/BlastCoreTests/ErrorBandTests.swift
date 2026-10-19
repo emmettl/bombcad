@@ -309,7 +309,7 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         burns.airModel = .thermallyPerfect
         let hot = SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.25, configuration: burns))
         #expect(hot.gauge("Face")?.peak?.document == ValidationTables.burningDocument)
-        #expect(face.peak?.inputSpread == 0.02 && face.impulse?.inputSpread == 0.01)
+        #expect(face.peak?.inputSpread == 0.02 && face.impulse?.inputSpread == 0.02)
         #expect(face.peak?.referenceScatter == 0.08 && face.impulse?.referenceScatter == 0.08)
         // Under-resolved peaks lie outside the tests' scatter; the difference is the model's.
         #expect(
@@ -319,6 +319,33 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let behind = try #require(
             SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.25)).gauge("Behind"))
         #expect(behind.peak == nil && behind.note?.hasPrefix("Shielded") == true)
+        // Read at the wall: the reflected bands, taken from the cell's mean, do not apply.
+        scenario.gauges = [Gauge("Face", at: SIMD3(wall.min.x - 0.1, (wall.min.y + wall.max.y) / 2, 1))]
+        var atWall = SolverConfiguration()
+        atWall.gaugesReadWallPressure = true
+        let inputs = StandingInputs(scenario: scenario, cellSize: 0.25, configuration: atWall)
+        #expect(inputs.options.contains(.wallReadGauges))
+        let readFace = try #require(SceneStanding(inputs).gauge("Face"))
+        #expect(readFace.peak == nil && readFace.impulse == nil)
+        #expect(readFace.note?.hasPrefix("Read at the wall") == true)
+        // Beside a structure's cut cells: an approximation, and not the whole cells' bands.
+        var cut = SolverConfiguration()
+        cut.structureCutCells = true
+        let cutInputs = StandingInputs(scenario: scenario, cellSize: 0.25, configuration: cut)
+        #expect(cutInputs.options.contains(.structureCutCells))
+        let cutStanding = SceneStanding(cutInputs)
+        #expect(cutStanding[.impulse].map { $0.level >= .approximation } == true)
+        #expect(
+            cutStanding[.impulse]?.options.contains(StandingTable.entry(for: .structureCutCells).title)
+                == true)
+        let cutFace = try #require(cutStanding.gauge("Face"))
+        #expect(cutFace.peak == nil && cutFace.impulse == nil)
+        #expect(cutFace.note?.hasPrefix("Beside a structure's cut cells") == true)
+        // Refined air keeps whole cells, so the option does not apply.
+        cut.refinement = 2
+        #expect(
+            !StandingInputs(scenario: scenario, cellSize: 0.25, configuration: cut).options.contains(
+                .structureCutCells))
     }
 
     @Test func structuresTakeBandsByRegimeMeshAndMaterial() throws {

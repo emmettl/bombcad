@@ -11,4 +11,12 @@ import Testing
 /// CI's test step stops at 45.
 extension Trait where Self == TimeLimitTrait {
     static var hangLimit: Self { .timeLimit(.minutes(10)) }
+
+    /// For a test of connections between Macs nearby (over loopback here) that runs little else:
+    /// every step of a connection has a deadline of its own in the app (`NearbyWorkers.connectLimit`
+    /// and the rest, 20–30 s), so a stalled handshake fails in well under this instead of holding
+    /// the run, and its GPU slot, for the whole hang limit. Three minutes, not one: inside a full
+    /// check on a loaded Studio (19 October 2026) two of these tests, which run a case on the GPU
+    /// between the connections, passed alone in seconds but went past a minute.
+    static var networkLimit: Self { .timeLimit(.minutes(3)) }
 }

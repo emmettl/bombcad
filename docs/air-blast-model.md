@@ -227,20 +227,26 @@ air (next) it does not.
 
 ### A finely resolved start
 
-Since 18 October 2026 a lone charge starts from a one-dimensional solution instead of the
+Since 18 October 2026 each charge starts from a one-dimensional solution instead of the
 balloon (`SolverConfiguration.mappedCharge`, on in `recommended` and, with afterburning and hot
 air, in the app's runs; a project saved before then keeps the balloon). The blast is solved with
 spherical symmetry (the same MUSCL–Hancock and HLLC scheme, with the face areas 4πr² and the
 pressure's geometric source), on a radial grid of a twentieth of the charge's radius, from a
 sphere of the charge's own size (TNT's density). It reaches as far as it can before meeting
-anything: 0.8 of the distance to the nearest block, structure, ground that is not flat or open
-face, at most 64 cells and 6 m/kg^(1/3). A charge on the ground spreads as one of twice the
-mass, mirrored. The state is then laid onto the grid (each cell averaged over 64 samples, the
-radial momentum turned into vectors) and the clock set to the time that took. Gauges, cells and
+anything: 0.8 of the distance to the nearest block, structure, pane, ground that is not flat or
+open face, half the way to the nearest other charge, at most 64 cells and 6 m/kg^(1/3). A charge
+on the ground spreads as one of twice the mass, mirrored; on more reflecting faces (a model's
+mirror planes, a corner of them), as one of 2, 4 or 8 times the mass. The state is then laid onto the grid (each cell averaged over 64 samples, the
+radial momentum turned into vectors) and the clock set to the time that took. With several
+charges, all are solved to one time, the earliest at which any shock reaches its radius (the
+others then still within theirs), and each is laid in the cells nearer it than any other charge,
+which its radius keeps it to; alike charges share one solution. Gauges, cells and
 the injury plane (`configureExposurePlane`) the shock has already passed take their histories,
 peaks, impulses and arrivals from the one-dimensional solution. Where it cannot reach three
-cells, or with dissociating air, gravity, sub-grid mixing, radiative cooling, the afterburning
-limit or more than one charge, the balloon starts it instead.
+cells the balloon starts that charge instead, laid as the others are mapped, at their clock
+(the balloon stands for its charge some time after it fired anyway); with dissociating air,
+gravity, sub-grid mixing, radiative cooling or the afterburning limit, every charge. The model
+has no delays between charges: all fire together.
 
 **Its gas.** The one-dimensional solution has the air's own gas, the ideal gas or hot air (the
 same vibrational energy, in double precision), and with afterburning carries the products and the
@@ -261,7 +267,7 @@ its products burn (to 1%; `MappedChargeTests`).
 
 - **Impulse:** within 5–15% at every grid beyond 1 m/kg^(1/3). It holds beyond the mapped radius,
   so nothing is counted twice. Refined, the patches placed at the restart take their coarse
-  cells' impulse again once the passage is laid down (`Refinement.reseedImpulseBase`); without
+  cells' impulse again once the passage is laid down (`AirRefinement.reseedImpulseBase`); without
   that the impulse beyond 6 m was lost (5–38%).
 - **Close in:** at 0.5–0.75 m/kg^(1/3) the incident impulse reads 125–175%, where
   Kingery–Bulmash rests on few tests.
@@ -278,7 +284,9 @@ of a surface burst's ground-level curves close in, where the wave off the ground
 **Its cost** is the one-dimensional solution's own, on the CPU before the run: about 4 s out to 4
 m/kg^(1/3) and 8 s to 6 on an M4 Max, whatever the charge (`blastbench mapped-cost`), which the
 run advisor adds (`RunCost.mappedStartSeconds`). It is solved once for each charge, gas and
-reach and kept (the last four), so a scene run again starts at once. The solver is its own
+reach and kept (the last four), so a scene run again starts at once. The fireball before the grid's clock, for the thermal
+radiation, comes from the same solution kept at the frames' times ([before the grid's
+clock](thermal-radiation.md#before-the-grids-clock)). The solver is its own
 module (`RadialBlast`), built optimised even for tests, which would otherwise take many minutes
 over it. In the app the solution stops at half the run's duration if its shock has not reached
 the radius by then, so that a short run still steps the grid (`BlastSolver.mappedStartLatest`).
@@ -538,8 +546,6 @@ air share one sub-grid model. Charges keep Smagorinsky's, bit for bit.
 
 ## Skipping still air
 
-## Skipping still air
-
 Air the blast has not yet reached is in exactly the uniform state it was filled with, and a
 sweep leaves such a cell unchanged when every cell its update reads is in that state too. So
 the grid is cut into tiles of 8 × 8 × 8 cells, and only the awake tiles are swept:
@@ -747,6 +753,74 @@ The threshold decides how far out the refinement follows a shock: at the default
 20 kPa, at 0.005 beyond 40 m/kg^(1/3), after which the peak falls to the coarse cells' share (see
 [Large scenes](large-scenes.md#against-kingerybulmash-to-40-mkg13)).
 
+## Reflected peaks at a wall
+
+A reflected peak read beside a wall comes out low wherever the cells there are coarse against the
+charge, the unsafe side for glass, envelope components and injury. Traced 18 October 2026.
+
+**Where it is lost.** `blastbench wallpeak` bursts 100 kg on rigid ground before a rigid wall,
+then again without the wall. At 2 m/kg^(1/3) on 0.25 m cells, against Kingery–Bulmash's
+reflected peak of 1,058 kPa:
+- The incident shock the grid brings to the wall is 10% low, smeared over cells. Its normal
+  reflection (Rankine–Hugoniot) would be 87% of the reflected peak.
+- The gauge, reading the mean pressure of the cell against the wall, takes 69%: the reflected
+  shock smeared over that cell too.
+- Read as the pressure at the wall instead (the cell's gas against its mirror, two shocks), the
+  same cell gives 93%.
+
+So most of the loss is in reading the cell, not in the incident wave.
+
+**By cells per charge length.** The cell read's fraction of Kingery–Bulmash's reflected peak
+depends on the scaled distance Z and on N = W^(1/3)/Δx, the cells across the charge's scaled
+length. At Z = 1, 100 kg on 0.25 m cells (N = 18.6) reads 40%, and 1 kg on 0.05 m cells (N = 20)
+38%. Uniform cells; on the same runs the reflected impulse is 7–18% high from 1.5 m/kg^(1/3) out
+on 0.25 m cells for 100 kg (within 6% on the ideal gas and the balloon start; see
+[validation](validation.md#the-mapped-start-18-october)):
+
+| Z (m/kg^(1/3)) | N = 9.3 | N = 18.6 | N = 20 | N = 37 | N = 50 |
+|---|---|---|---|---|---|
+| 0.3 | | | 17% | | 36% |
+| 0.5 | | | 21% | | 54% |
+| 0.75 | 15% | 32% | 29% | 57% | 61% |
+| 1 | 22% | 40% | 38% | 62% | 69% |
+| 1.5 | 34% | 55% | | 76% | |
+| 2 | 45% | 64% | | 83% | |
+| 3 | 60% | 77% | | 92% | |
+| 4 | 68% | 83% | | 95% | |
+| 5–6 | 72–74% | 87–88% | | 97% | |
+
+N = 9.3, 18.6 and 37 are 100 kg on 0.5, 0.25 and 0.125 m cells (`blastbench validate`); N = 20
+and 50 are 1 kg 0.3–1 m above rigid ground on 0.05 and 0.02 m cells (`blastbench closeair`).
+Refinement at the wall counts as its finest cells.
+
+**Read at the wall (an option, `gaugesReadWallPressure`, `--wall-read`).** A gauge within a cell
+of a solid cell or a reflective face of the domain reads the pressure at that wall, from whatever
+cell it reads, at any level.
+- Peaks: 69–93% of Kingery–Bulmash on 0.25 m cells for 100 kg (from 32–88%), 46–80% on 0.5 m
+  (from 15–74%); close in, 48–61% on 0.05 m (from 17–38%) and 82–96% on 0.02 m (from 36–69%).
+- Impulse overshoots close in: 113–131% on 0.05 m and 119–143% on 0.02 m, from 61–103%. While the
+  pressure at a wall rises, the cell beside it keeps a mean speed towards it, and the two-shock
+  read counts that speed as gas brought to rest. It does not shrink as the cells do. The surplus
+  comes at the peak, not in the tail: on 0.02 m cells it is all there within 0.05–0.1 ms of the
+  arrival (+520 of +500 Pa s at Z 0.5, +83 of +91 at Z 1; `closeair --history`), so the read's spike
+  is too broad, not the wall cell's pressure held too long. A peak taken from the read at the wall
+  and an impulse from the cell beside it would come within 82–96% and 84–103% close in, but only
+  the gauges would have it: glass, envelope components and injury read their own surfaces.
+- Tyndall's test 1 (0.25 m air refined twice, open faces 4 m/kg^(1/3) away, as in
+  [validation](validation.md#cross-laminated-timber-buildings-at-tyndall)): the
+  front's reflected peak goes from 25.1 to 26.8 kPa against the measured 34.8, and its impulse
+  from 140 to 150 kPa ms against 137. Its gap is the incident wave: the free field reads 12.3 kPa
+  against the measured 16.6, whichever way the front is read, and the front already reaches the
+  normal reflection of the model's own incident (25.9 kPa).
+- It costs nothing measurable: six neighbours per gauge per step, on the thread that logs the
+  gauges.
+
+So it is for peaks alone (a peak's injury, a peak field), not for loads whose history matters
+(envelope components, glass, structures), and stays off. For those, the table says how far the
+peaks fall short and refinement at the wall is the remedy. Turned on, it is a model option of its
+own in the standing ("Gauges read at the wall", an approximation for peaks and impulses): a gauge
+it reads at a wall takes no band, since the reflected bands were derived from the cell's mean.
+
 ## Freezing the air
 
 When a deformable structure is present, the air is frozen (its sweeps are skipped) once either
@@ -791,7 +865,9 @@ UFC 3-340-02, lowest for light charges.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
    Refinement (above) gives the peaks of a grid twice or four times as fine, in one level, or four
-   times as fine in two; there are no more than two levels.
+   times as fine in two; there are no more than two levels. Reflected peaks read beside a wall fall
+   further short; [Reflected peaks at a wall](#reflected-peaks-at-a-wall) gives how far, by cells
+   per charge length.
 3. **Open boundaries reflect a little.** The far-field faces (see [Open faces](#open-faces))
    treat each face's waves as acoustic and head-on, so neither strong nor oblique waves leave
    exactly; the copying faces before them (zero-gradient, or "transmissive") were not exactly
@@ -817,8 +893,9 @@ UFC 3-340-02, lowest for light charges.
 4. **One gas.** Detonation products are treated as air: by default as an ideal gas of γ = 1.4,
    or as thermally perfect air, so the fireball's composition, and its temperature, are not
    realistic. The mapped start can carry them as detonation products (JWL, an option), which
-   moves open-air loads too little to adopt; in contact, never mapped, they stay air. It loses the heat it radiates only with radiative cooling on, and then only above
-   the luminous temperature, as a grey gas with soot, into black, cold surroundings.
+   moves open-air loads too little to adopt; in contact, never mapped, they stay air. It loses the heat it radiates (by default since 19 October 2026,
+   [radiative cooling](thermal-radiation.md#the-gas-losing-what-it-radiates)) only above the
+   luminous temperature, as a grey gas with soot, into black, cold surroundings.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
    ghost states, and its surface jumps a cell at a time. The gas is conserved within 0.3% as it
    does; see the structural model's coupling notes.
@@ -832,12 +909,21 @@ UFC 3-340-02, lowest for light charges.
   ([above](#a-finely-resolved-start)); in contact, where the charge is too near anything to be
   mapped, a ball of air at the charge's density delivers about twice the products' impulse
   ([Hupfauf](validation.md#slabs-under-contact-charges)), and the products would need a second
-  gas on the grid. (Dissociation of the air is done, as an option; it changes the checked loads
+  gas on the grid. Deferred (18 October 2026) as larger than one validated regime warrants. The
+  plan, if contact charges become a priority:
+  - a products tracer per cell, as the grid's fuel species is only the unburnt products and
+    vanishes as they burn, so the species' layout changes;
+  - the products' JWL, beside the air's laws, at every call of the gas law (some 44, in the
+    solver, refinement, extraction, deflagration, gravity and structure shaders), in single
+    precision up to some 10 GPa;
+  - the tracer carried through refinement's transfers and the cut cells;
+  - wave bounds that do not assume an ideal gas's Roe average (Davis's, as in the
+    one-dimensional start).
+
+  It touches the refinement and cut-cell kernels, so it would be planned with their owners. (Dissociation of the air is done, as an option; it changes the checked loads
   by under 1%.)
-- **A mapped start for each charge.** Scenes of several charges (the chamber's four) start from
-  the balloon, as one solution cannot hold two centres. Each could be solved in one dimension
-  and mapped until their shells meet; as the solutions are kept by start, alike charges would
-  cost one solve.
+- **Delays between charges**: every charge fires at once. A delayed one would need its own
+  start on the clock, its one-dimensional solution laid when the grid reaches its time.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: patches placed and released over a fine outline without the gas

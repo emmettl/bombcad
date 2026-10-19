@@ -21,11 +21,16 @@ struct ModelImportView: View {
     }
     var draft: Draft?
     var chooseBuildingElements: ((Draft) -> Void)?
+    /// The button that goes back to the building's source: an IFC's elements, a plan's layers.
+    var chooseBuildingElementsLabel = "Choose IFC elements…"
     @Bindable var model: SimulationModel
     @Environment(\.dismiss) private var dismiss
     @State private var scale: Float = 1
     @State private var yUp = false
     @State private var corner = SIMD3<Double>(1, 1, 0)
+    /// Opens in the corner's first field, under Units & placement (open to start with), so that Tab
+    /// moves on from there.
+    @FocusState private var focusedCorner: Int?
     @State private var deformable = false
     @State private var fixedBase = true
     @State private var material = StructureMaterial.reinforcedConcrete
@@ -58,8 +63,10 @@ struct ModelImportView: View {
     static let offeredReinforcement: Float = 0.003
     init(
         mesh: ImportedMesh, filename: String, existing: ImportedModel? = nil, model: SimulationModel,
-        draft: Draft? = nil, chooseBuildingElements: ((Draft) -> Void)? = nil
+        draft: Draft? = nil, chooseBuildingElements: ((Draft) -> Void)? = nil,
+        chooseBuildingElementsLabel: String = "Choose IFC elements…"
     ) {
+        self.chooseBuildingElementsLabel = chooseBuildingElementsLabel
         self.mesh = mesh
         self.filename = filename
         self.existing = existing
@@ -123,7 +130,7 @@ struct ModelImportView: View {
                 Text("\(existing == nil ? "Import" : "Update") \(filename)").font(.title2)
                 Spacer()
                 if let chooseBuildingElements {
-                    Button("Choose IFC elements…") {
+                    Button(chooseBuildingElementsLabel) {
                         chooseBuildingElements(
                             Draft(
                                 scale: scale, yUp: yUp, corner: corner,
@@ -263,6 +270,8 @@ struct ModelImportView: View {
                 .keyboardShortcut(.defaultAction)
             }
         }.padding(20).frame(width: 1120, height: 780)
+            .defaultFocus($focusedCorner, 0)
+            .task { focusedCorner = 0 }
             .onChange(of: scale) { schedulePreview() }.onChange(of: yUp) { schedulePreview() }
             .onChange(of: corner) { schedulePreview() }.onChange(of: resolution) { schedulePreview() }
             .onChange(of: domainSize) { schedulePreview() }.onChange(of: deformable) { schedulePreview() }
@@ -371,7 +380,9 @@ struct ModelImportView: View {
             TextField(
                 "Corner \(["X","Y","Z"][axis]) (m)",
                 value: Binding(get: { corner[axis] }, set: { corner[axis] = $0 }),
-                format: .number.precision(.fractionLength(0...4)))
+                format: .number.precision(.fractionLength(0...4))
+            )
+            .focused($focusedCorner, equals: axis)
         }
         Text("The lowest corner is placed here; simulation Z points upward.").font(.caption)
         HStack {

@@ -331,4 +331,176 @@ struct TerrainCutCellTests {
         #expect(abs(after.mass / before.mass - 1) < 1e-3, "mass \(after.mass / before.mass - 1)")
         #expect(abs(after.energy / before.energy - 1) < 1e-3, "energy \(after.energy / before.energy - 1)")
     }
+
+    @Test(
+        "Under a block's fine outline, a coarse cut cell restricted from its fine cells holds their air's mean"
+    )
+    func blockedRestriction() throws {
+        // Ground at 1.41 m, so the coarse cells from 1 to 2 m are cut (0.59 air); a block from
+        // x = 20.6 m, so the coarse cell from 20 to 21 m stays air while the fine cells from 20.5
+        // m are the block's. Restricted over the coarse share, which knows nothing of the block,
+        // that cell held half its fine air's density.
+        var scenario = Scenario(
+            name: "Block on cut ground", domainSize: SIMD3(48, 48, 16),
+            boxes: [Box(min: SIMD3(20.6, 18, 0), max: SIMD3(30, 30, 3))],
+            charge: Charge(mass: 100, position: SIMD3(15, 24, 2.5)))
+        scenario.reflectiveFaces = .all
+        scenario.terrain = Terrain.sampled(
+            domain: scenario.domainSize, spacing: 0.5, source: "block on cut ground"
+        ) {
+            p in
+            1.4 + 0.0005 * p.x
+        }
+        var configuration = cut()
+        configuration.refinement = 2
+        configuration.refinementThreshold = 0.02
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 1, configuration: configuration)
+        let geometry = try #require(solver.terrainCut?.geometry)
+        #expect(
+            geometry.alpha(20, 24, 1) > 0.5 && geometry.alpha(20, 24, 1) < 1 && !solver.isSolid(20, 24, 1))
+        var checked = 0
+        for _ in 0..<12 {
+            _ = solver.advance(steps: 8)
+            let level = try #require(solver.refinement)
+            guard level.holdsAny(from: SIMD3(20, 24, 1), through: SIMD3(20, 24, 1)) else { continue }
+            let fine = level.fineReader()
+            // The block's fine cells are solid; the air's are those at x = 40.
+            #expect(fine(SIMD3(41, 48, 3)) == nil)
+            let pressures = [SIMD3(40, 48, 3), SIMD3(40, 49, 3), SIMD3(40, 48, 2), SIMD3(40, 49, 2)]
+                .compactMap {
+                    fine($0).map { solver.primitive(of: $0.state).pressure }
+                }
+            guard let low = pressures.min(), let high = pressures.max() else { continue }
+            let coarse = solver.primitive(20, 24, 1).pressure
+            #expect(
+                coarse > 0.99 * low && coarse < 1.01 * high, "coarse \(coarse) Pa, fine \(low)-\(high) Pa")
+            checked += 1
+        }
+        #expect(checked > 0)
+    }
+
+    @Test("Refined twice, the air ahead of a blast beside a block on cut ground stays still")
+    func stillAheadBesideBlock() throws {
+        // A slope with a block whose base lies below it, the charge up the slope: the patches reach
+        // the block before the blast does. A block's fine cell on a patch's face once gave the
+        // coarser cell outside the wall's flux over the whole face, though that cell had recorded
+        // only the terrain's open share; the difference pushed small cut cells beside the block by
+        // hundreds of pascals in still air.
+        func ground(_ p: SIMD2<Float>) -> Float { 1 + 0.08 * p.x + 0.3 * sin(p.y * 0.7) }
+        let block = SIMD2<Float>(10, 4)
+        let base = ground(block + 1.5)
+        var scenario = Scenario(
+            name: "Block on a slope", domainSize: SIMD3(24, 12, 8),
+            boxes: [
+                Box(min: SIMD3(block.x, block.y, base - 0.6), max: SIMD3(block.x + 3, block.y + 3, base + 3))
+            ],
+            charge: Charge(mass: 2, position: SIMD3(3, 6, ground(SIMD2(3, 6)) + 1)))
+        scenario.terrain = Terrain.sampled(
+            domain: scenario.domainSize, spacing: 0.25, source: "block on a slope"
+        ) {
+            ground($0)
+        }
+        var configuration = cut()
+        configuration.refinement = 2
+        configuration.refinementLevels = 2
+        configuration.refinementThreshold = 0.005
+        configuration.refinementMemory = 512 << 20
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+        let grid = solver.grid
+        let ambient = scenario.atmosphere.pressure
+        var worst: Float = 0
+        var reached = false
+        var refinedAtBlock = false
+        while !reached {
+            _ = solver.advance(steps: 10)
+            // The second level's patches over the block (its parent's cells, twice the coarse).
+            refinedAtBlock =
+                refinedAtBlock
+                || solver.finerRefinement?.holdsAny(
+                    from: SIMD3(19, 7, 2) &* 2, through: SIMD3(27, 15, 12) &* 2) == true
+            var front: Float = 0
+            var cells: [(distance: Float, overpressure: Float)] = []
+            for k in 0..<grid.nz {
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx where !solver.isSolid(i, j, k) {
+                        let overpressure = solver.primitive(i, j, k).pressure - ambient
+                        let distance = simd_distance(
+                            (SIMD3<Float>(Float(i), Float(j), Float(k)) + 0.5) * grid.cellSize,
+                            scenario.charge.position)
+                        if overpressure > 2000 { front = max(front, distance) }
+                        cells.append((distance, overpressure))
+                    }
+                }
+            }
+            for cell in cells where cell.distance > front + 2 { worst = max(worst, abs(cell.overpressure)) }
+            // Until the blast has passed the block.
+            reached = front > 13 || solver.time > 0.05
+        }
+        #expect(refinedAtBlock)
+        #expect(worst < 5, "\(worst) Pa ahead of the blast")
+    }
+
+    @Test("A block buried in a slope, the blast between it and the ground: a closed box keeps its gas")
+    func blockInSlopeConserves() throws {
+        // Cells between the block's face and the rising ground along the same sweep took the
+        // ground's mirror on one side and the block's on the other; the ghost beyond the block was
+        // built from the near ghost before the ground's mirror replaced it, so the block's face had
+        // a flux of mass through it, and the box gained gas as the blast went by.
+        func ground(_ p: SIMD2<Float>) -> Float { 1 + 1.5 * max(p.y - 4.5, 0) }
+        var scenario = Scenario(
+            name: "Block in a slope", domainSize: SIMD3(16, 10, 12),
+            boxes: [Box(min: SIMD3(6, 2, 0), max: SIMD3(10, 5, 6))],
+            charge: Charge(mass: 2, position: SIMD3(8, 8, ground(SIMD2(8, 8)) + 1)))
+        scenario.reflectiveFaces = .all
+        scenario.terrain = Terrain.sampled(
+            domain: scenario.domainSize, spacing: 0.25, source: "block in a slope"
+        ) {
+            ground($0)
+        }
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5, configuration: cut())
+        let before = solver.totals()
+        _ = solver.advance(steps: 80)
+        let after = solver.totals()
+        #expect(abs(after.mass / before.mass - 1) < 1e-6, "mass \(after.mass / before.mass - 1)")
+    }
+
+    @Test(
+        "Beside a charge on a slope no cut cell is drained to the pressure floor, and a closed box keeps its energy"
+    )
+    func noCellDrained() throws {
+        // The open ground's 100 kg on the recommended air over a 20° slope, closed and without
+        // afterburning: from step 34 the sweep's strong expansion left cells whose redistributed
+        // difference took them below nothing, and the floor added 1.2 kJ by step 45.
+        var configuration = SolverConfiguration.recommended
+        configuration.afterburning = false
+        // The gas radiating its heat away would take energy from the box.
+        configuration.radiativeCooling = nil
+        configuration.reflectiveFaces = .all
+        var scenario = ScenarioPreset.openGround.scenario
+        let domain = scenario.domainSize
+        scenario.replaceTerrain(with: .slope(domain: domain, spacing: 1, foot: 0.3 * domain.x, angle: 20))
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+        let start = solver.totals()
+        let mask = solver.maskBuffer.contents().bindMemory(to: UInt8.self, capacity: solver.grid.cellCount)
+        var lowest = Float.infinity
+        for _ in 0..<45 {
+            #expect(solver.advance(steps: 1).isStable)
+            solver.withState { cells in
+                for n in cells.indices where mask[n] == 0 {
+                    let c = cells[n]
+                    let kinetic =
+                        0.5
+                        * (c.momentumX * c.momentumX + c.momentumY * c.momentumY + c.momentumZ * c.momentumZ)
+                        / c.density
+                    lowest = min(lowest, (c.energy - kinetic) / c.density)
+                }
+            }
+        }
+        let end = solver.totals()
+        #expect(lowest > 1_000, "the lowest specific internal energy, \(lowest) J/kg")
+        #expect(abs(end.energy - start.energy) < 200, "energy \(start.energy) J -> \(end.energy) J")
+    }
 }

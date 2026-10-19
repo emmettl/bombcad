@@ -284,7 +284,7 @@ public enum ValidationEnsemble {
                 EnsembleOutput(
                     key: "residual", name: "residual deflection there", unit: "mm",
                     measured: Double(wuTest.residual ?? 0) * 1000, measuredVariation: nil),
-            ], estimatedSeconds: 79),
+            ], estimatedSeconds: 1000),
         EnsembleCase(
             id: "chiquito-s1", title: "Chiquito et al.'s S1–S3, 2 kg at 1 m over a slab, coupled",
             inputs: [
@@ -301,7 +301,7 @@ public enum ValidationEnsemble {
                 EnsembleOutput(
                     key: "far", name: "peak at G3, 2 m", unit: "MPa", measured: 0.5,
                     measuredVariation: scatter([0.47, 0.525, 0.58])),
-            ], estimatedSeconds: 33),
+            ], estimatedSeconds: 300),
         EnsembleCase(
             id: "kb-wall",
             title: "100 kg on a rigid wall at 2 m/kg^(1/3), 0.25 m cells, against Kingery–Bulmash",
@@ -389,9 +389,13 @@ public enum ValidationEnsemble {
             throw BlastError.allocationFailed("No Metal device")
         }
         let start = ContinuousClock.now
-        // An output that did not happen (a beam that never failed) is left out.
-        let outputs = try KernelRounding.$current.withValue(sample.rounding) {
-            try outputs(sample, device: device).filter(\.value.isFinite)
+        // An output that did not happen (a beam that never failed) is left out. In a pool of its own:
+        // what building a solver autoreleases keeps it alive until a pool drains, and an ensemble's
+        // runs, one after another on a worker's thread, kept every one's memory.
+        let outputs = try autoreleasepool {
+            try KernelRounding.$current.withValue(sample.rounding) {
+                try outputs(sample, device: device).filter(\.value.isFinite)
+            }
         }
         let took = start.duration(to: .now)
         return EnsembleOutcome(
@@ -494,8 +498,10 @@ public enum ValidationEnsemble {
             test.standoff = Float(value("standoff", Double(wuTest.standoff ?? 0.5)))
             var concrete = values
             concrete["fc"] = value("fc", 0.8 * 47e6) * value("cylinder")
+            // Today's air and start, every open face at the clearance rule (rerun 18 October 2026; the
+            // first run, of 11 October, was on the ideal gas in the harness's box).
             let result = try TwoFaceSlabTests.run(
-                device: device, test: test,
+                device: device, test: test, roomy: true,
                 adjust: { scenario in
                     if let material = scenario.structure?.material {
                         scenario.structure?.material = perturbed(material, concrete)
@@ -507,7 +513,7 @@ public enum ValidationEnsemble {
             test.charge *= Float(value("mass"))
             test.standoff = Float(value("standoff", Double(chiquitoTest.standoff)))
             let result = try CloseInSlabTest.run(
-                device: device, test: test,
+                device: device, test: test, roomy: true,
                 adjust: { scenario in
                     if let material = scenario.structure?.material {
                         scenario.structure?.material = perturbed(material, values)
@@ -542,10 +548,9 @@ public enum ValidationEnsemble {
         wall.reflectiveFaces = [.zMin, .xMax]
         wall.charge.position = SIMD3(64 - standoff, 32, 0)
         wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
-        // The air every run ships with (`SolverConfiguration.recommended`).
+        // The air every run ships with (`SolverConfiguration.recommended`), the mapped start with it.
         let solver = try BlastSolver(
-            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-            device: device, scenario: wall, cellSize: wallCell, configuration: .recommended.balloonStart)
+            device: device, scenario: wall, cellSize: wallCell, configuration: .recommended)
         solver.advance(until: 0.1)
         let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
         return [

@@ -162,9 +162,13 @@ exact whatever the step; the peak of each side, and of the net (outer less inner
 is kept from every step. Options: the bin width; the window; a memory budget (256 MB by default)
 that widens the bins to a whole multiple when needed and says so; per-bin maxima (twice the
 memory); openings recorded as panes in the open opening, for what the inside sees once glass
-has gone; and windows that start when a component's air first wakes (`windowFromArrival`, the
+has gone; and windows that start when the blast reaches a component (`windowFromArrival`, the
 start in `windowStartS`), so that across a district the window need cover only one building's
-load. Steps past the window are not binned and the history says `truncated`. Components with no
+load. Since 18 October 2026 the blast has reached it when either side's mean overpressure passes
+500 Pa (`arrivalPa`; 0 for the air's first waking, as before, and as options saved before then
+read). The air wakes a tile and a margin ahead of the shock: on Beirut's 8 m cells that opened the
+windows about 0.35 s before the load (0.13 s on 3 m), and on refined air, whose weak disturbances
+woke it farther ahead, closed most of a 0.5 s window before the load came. Steps past the window are not binned and the history says `truncated`. Components with no
 face on the air are left out. In refined air a face reads the finest cells against it (their mean), not its coarse
 cell, which averages them over the whole cell: on a wall facing 0.5 kg at 3 m, 0.5 m cells refined
 to 0.25 m read 24.3 kPa fine and 21.9 kPa coarse, against 24.4 kPa on uniform 0.25 m cells.
@@ -390,7 +394,8 @@ Envelopes** for a group of them, turns an attached rigid import into a building 
   kept. Element identities, materials and the link to the source are not kept; Undo restores the
   import.
 
-Limits are the envelopes': 2,048 solids and 256 openings a building, 2,048 fragments in a scene.
+Limits are the envelopes': 2,048 solids and 256 openings a building, and 262,144 rigid blocks
+across a scene.
 
 **Checked against the same building as rigid obstacles** (`EnvelopeImportStudyTests`, run with
 `BOMBCAD_ENVELOPE_STUDY=<folder>`; 10 kg 8 m in front, 80 ms, surfaces recorded on both, the
@@ -851,9 +856,9 @@ is. A close-in charge loads a slab's middle most:
 
 The rows under measured loads do not use the recorder and are unchanged.
 
-**Under the measured loads the measured peak lies between the bounds** on all eight: the simply
-supported strip, the right edges for the simulator's pin and roller, reads 0.97–2.59 of the
-measured peak, the safe side; the fixed one a tenth or less. The strip's far-range strengths are
+**Under the measured loads the measured peak lies between the bounds** on seven of the eight: the
+simply supported strip, the right edges for the simulator's pin and roller, reads 0.97–2.59 of the
+measured peak, the safe side except HSCV3's 0.97; the fixed one a sixth or less. The strip's far-range strengths are
 elastic–perfectly plastic, where the contest slab's bars harden by 64% beyond yield; the record's
 own SBEDS figure for the contest slab is 239 mm, as far over. **Under the model's own close-in
 loads it reads low, as the detailed model does**: Wu's slabs at 0.45–1.42 simply supported, the
@@ -1052,8 +1057,8 @@ what its frame holds). Annealed stays the default. `LaminatedGlass.facade` is 6 
 - **It tears** when the membrane's average strain, (8/3)(x/a)², reaches the cracked laminate's
   failure strain. For PVB this is Hooper's: about 150% for 1.52 and 2.28 mm, 20% for 0.76 mm,
   10% for 0.38 mm. For ionoplast it is 120%.
-- **It pulls out** when the tension at the edge, building up to T by 6.7% of the span (Hooper's
-  cracked-laminate yield strain), passes what the frame holds. Structural silicone holds 1.1 MPa
+- **It pulls out** when the tension at the edge, building up to T by a deflection of 6.7% of the span
+  (where the membrane strain reaches 1.2%, Hooper's cracked-laminate yield strain), passes what the frame holds. Structural silicone holds 1.1 MPa
   over its bite, the strength Hooper recommends designing to; a deep clamp (nil) holds.
 - **Hazard.** A pane cracked and held is GSA's condition 2 (ASTM F1642: no hazard). A torn or
   pulled-out pane is thrown whole, as an annealed one is.
@@ -1085,6 +1090,22 @@ What this says:
 - **Tearing is the weakest part.** An average-strain criterion reads the tears at the edges late.
   Hooper's 0.76 mm pane tore at about 0.11 of its span; Zhang's 1.52 mm one began at 0.23;
   Osnes's held at 0.4. No single span ratio fits all three.
+- **An edge test from the transverse wave was tried and not adopted** (19 October 2026). Once the
+  glass cracks, a kink runs in from each held edge at c = √(T / ρA) (Hooper measured 15–37 m/s
+  after cracking, Table 3.10), and the strip behind it meets the frame at atan(v / c), stretched by
+  √(1 + (v / c)²) − 1. Tearing the strip at the interlayer's failure strain left every 1.52 mm pane
+  as it was (it needs v / c above 2.3), but tore Hooper's 0.76 mm pane the moment it cracked, at
+  2.9 ms and 21 m/s, against 8.5 ms and 31 m/s measured: three times early where the average
+  strain was twice late. The single degree of freedom carries the bending pane's speed into the
+  crack, and the formula then gives 72% at the edge where Hooper's image correlation read 13% as
+  that pane tore, and 15% held by the 1.52 mm ones (§3.4). The peak speed behind his v / c ≈ 2 for
+  that test came after it tore. Fitting the threshold to the one pane that tore at its edges would
+  be tuning. A founded edge model needs the bridging ligament: Hooper's single-crack tests (Table
+  5.3) show its strain rising past 150% at 8 mm (0.38 mm PVB) and 24 mm (0.76 mm) of opening at
+  0.1 m/s, held back by the interlayer delaminating from the fragments, faster for thick sheets. That
+  wants the crack's opening at the frame, which the shells give and the single degree of freedom
+  does not; the shells (meshed panes) let the large panes go on cracking too. Left until more
+  blast tests on thin interlayers tear at their edges.
 
 The standing is an approximation, with the evidence above in its line.
 

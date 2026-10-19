@@ -632,6 +632,19 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
             Prim w = primOf(outside, u);
             Prim wall = mirrored(w, float3(fineWall[own])[axis]);
             Flux f = layer == 1u ? riemannFlux(w, wall, u) : riemannFlux(wall, w, u);
+            // With the terrain's cut cells, through the face's open part only: the coarse cell
+            // recorded its flux there times its own aperture, the terrain's share of the face, and
+            // its wall takes the rest. A block's cell over cut ground would otherwise give the whole
+            // face's wall flux, and the difference, the pressure on the terrain's share, would be
+            // added to the coarse cell every step: in still air, beside a block on a slope.
+            if (cutCells && terrain.enabled != 0) {
+                CutGeometry g = cutGeometryAt(tile * int(side) + inside, u.dx / float(u.refineRatio),
+                                              cutSamples(u, terrain), terrain, terrainHeights);
+                float aperture = layer == 1u ? g.low[1 + axis] : g.high[axis];
+                f.mass *= aperture;
+                f.momentum *= aperture;
+                f.energy *= aperture;
+            }
             uint face = 2u * axis + (layer == 1u ? 0u : 1u);
             addFlux(fineFlux, registerSlot(patch, face, a, b, side), f, axis, levelStep(control, u));
         }
@@ -775,6 +788,9 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             from.w = 1;
             mirror.w = -1.0f;
         } else {
+            // An open face beyond the next cell: its ghost as that cell builds it, as on the
+            // coarse grid (`sweepCell`), so that the face between them takes one flux.
+            if (farFieldFaces(u)) { wP2 = farFieldGhost(wP1, 1.0f, u); }
             from.w = 1;
         }
     } else {
@@ -797,6 +813,7 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             from.x = -1;
             mirror.x = -1.0f;
         } else {
+            if (farFieldFaces(u)) { wM2 = farFieldGhost(wM1, -1.0f, u); }
             from.x = -1;
         }
     } else {
@@ -825,15 +842,24 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             at[axis] += offset;
             return cutGeometryAt(at, dxFineCut, cutSamples(u, terrain), terrain, terrainHeights);
         };
-        if (kindP1 == kindWall && groundP1 && cut) {
+        bool mirrorP1 = kindP1 == kindWall && groundP1 && cut;
+        bool mirrorM1 = kindM1 == kindWall && groundM1 && cut;
+        if (mirrorP1 || mirrorM1) {
             float3 normal = toSweep(cutGeometryNormal(here), axis);
-            wP1 = mirroredAbout(w0, normal);
-            wP2 = mirroredAbout(wM1, normal);
-        }
-        if (kindM1 == kindWall && groundM1 && cut) {
-            float3 normal = toSweep(cutGeometryNormal(here), axis);
-            wM1 = mirroredAbout(w0, normal);
-            wM2 = mirroredAbout(wP1, normal);
+            if (mirrorP1) {
+                wP1 = mirroredAbout(w0, normal);
+            }
+            if (mirrorM1) {
+                wM1 = mirroredAbout(w0, normal);
+            }
+            // The ghost beyond each wall mirrors the near ghost across the cell as it now stands,
+            // by that wall's own rule, as on the coarse grid (see `sweepCell`).
+            if (kindP1 == kindWall) {
+                wP2 = mirrorP1 ? mirroredAbout(wM1, normal) : mirrored(wM1, speedP1);
+            }
+            if (kindM1 == kindWall) {
+                wM2 = mirrorM1 ? mirroredAbout(wP1, normal) : mirrored(wP1, speedM1);
+            }
         }
         if (kindP1 == kindFluid && groundP2) {
             CutGeometry next = geometryAt(1);
@@ -1221,9 +1247,23 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
     float lastShare = 1.0f;
     int lastZ = 0;
     // Adds `change` (mass, momentum) and `changeEnergy` (fuel, oxygen, energy) for its whole
-    // volume to fine cell `index`, holding `share` of air.
-    auto apply = [&](int index, float4 change, float4 changeEnergy, float share, int z) {
+    // volume to fine cell `index`, holding `share` of air. Unless `whole`, it takes no more than
+    // leaves it positive (`positiveCutShare`), and what it could not take is returned, for the
+    // cells above.
+    struct Left {
+        float4 change;
+        float4 changeEnergy;
+    };
+    auto apply = [&](int index, float4 change, float4 changeEnergy, float share, int z, bool whole) -> Left {
+        Left left = {float4(0.0f), float4(0.0f)};
         Cell c = fine[index];
+        float taken = whole ? 1.0f : positiveCutShare(c, change, changeEnergy, share, u);
+        if (taken < 1.0f) {
+            left.change = change - taken * change;
+            left.changeEnergy = changeEnergy - taken * changeEnergy;
+            change *= taken;
+            changeEnergy *= taken;
+        }
         c.rho += change.x / share;
         c.mx += change.y / share;
         c.my += change.z / share;
@@ -1243,6 +1283,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
         }
         float ambient = airGravity ? gravityAmbientOf(gravityTable, z, u) : u.ambientPressure;
         recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+        return left;
     };
     // What a column carries up and cannot pass on, stopped by a block above the terrain, goes to
     // its last cell of air, taken as at least half air. That cell may be a sliver between the
@@ -1265,7 +1306,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
                 // Solid: the terrain's beneath the air, or a block above it, which what is still
                 // carried up cannot pass; the last cell of air takes it (`blockedShare`).
                 if (last >= 0 && (any(passed != 0.0f) || any(passedEnergy != 0.0f))) {
-                    apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
+                    apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ, true);
                     passed = float4(0.0f);
                     passedEnergy = float4(0.0f);
                 }
@@ -1295,7 +1336,9 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
                 }
             }
             if (any(change != 0.0f) || any(changeEnergy != 0.0f)) {
-                apply(index, change, changeEnergy, share, f.z);
+                Left left = apply(index, change, changeEnergy, share, f.z, false);
+                passed += left.change;
+                passedEnergy += left.changeEnergy;
             }
             last = index;
             lastShare = share;
@@ -1319,7 +1362,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
             passedUp[slot] += passed;
             passedUp[slot + 1] += passedEnergy;
         } else if (last >= 0) {
-            apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
+            apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ, true);
         }
     }
 }
@@ -1659,7 +1702,13 @@ static inline float2 speciesMean(int3 cell, uint patch, int3 tile, const device 
 
 // With the terrain's cut cells, a coarse cut cell's state from its fine cells: their air weighted by
 // their shares, over the coarse cell's own share (`coarseShare`), so that it holds what they hold.
-// Its fuel and oxygen likewise into `species`.
+// Its fuel and oxygen likewise into `species`. Where a rigid block's fine outline takes some of
+// them, over the shares of those left instead, the mean of the air there, as a cell without a cut
+// takes it (`fineMean`): over the coarse share, which knows nothing of the block, the coarse cell
+// came out short by the block's share, a fall in pressure that flagged the blocks beside for
+// refinement and, once its patch was released (as patches come and go when the pool runs out),
+// stayed in the coarse air. Beirut's 1 km box refined twice showed a precursor of -1.5 to -2.5 kPa
+// at the façades and arrivals at 0.8 s from 584 to 807 m, which this is suspected of.
 static inline Cell cutMean(int3 cell, uint patch, int3 tile, const device Cell *fine, const device uchar *fineMask,
                            const device float4 *fineCut, float coarseShare, const device float2 *fineSpecies,
                            bool takeSpecies, thread float2 &species, constant SolverUniforms &u) {
@@ -1667,12 +1716,16 @@ static inline Cell cutMean(int3 cell, uint patch, int3 tile, const device Cell *
     Cell sum = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     species = float2(0.0f);
     bool withSpecies = takeSpecies && u.afterburnEnergy > 0.0f;
+    bool blocked = false;
+    float shares = 0.0f;
     for (int n = 0; n < r * r * r; ++n) {
         uint child = fineIndex(patch, cell * r + int3(n % r, (n / r) % r, n / (r * r)), tile, u);
+        blocked = blocked || (fineMask[child] & 2) != 0;
         if ((fineMask[child] & 1) != 0) {
             continue;
         }
         float share = fineCut[2 * child].x;
+        shares += share;
         Cell f = fine[child];
         sum.rho += share * f.rho;
         sum.mx += share * f.mx;
@@ -1683,7 +1736,7 @@ static inline Cell cutMean(int3 cell, uint patch, int3 tile, const device Cell *
             species += share * fineSpecies[child];
         }
     }
-    float inverse = 1.0f / (float(r * r * r) * coarseShare);
+    float inverse = blocked && shares > 0.0f ? 1.0f / shares : 1.0f / (float(r * r * r) * coarseShare);
     sum.rho *= inverse;
     sum.mx *= inverse;
     sum.my *= inverse;
@@ -1875,14 +1928,22 @@ struct FacadeBand {
     float threshold;
     float ambient;
     uint on;
-    uint pad;
+    uint ceiling;  // 1: the band's bit 2 marks the coarse cells above the refinement's ceiling
 };
+
+// Above the refinement's ceiling (`SolverConfiguration.refinementCeiling`): never flagged.
+static inline bool aboveCeiling(int3 cell, const device uchar *band, constant FacadeBand &b) {
+    if (b.ceiling == 0) return false;
+    int3 c = cell / int(b.ratio);
+    if (any(c < 0) || c.x >= int(b.nx) || c.y >= int(b.ny) || c.z >= int(b.nz)) return false;
+    return (band[uint(c.x) + b.nx * (uint(c.y) + b.ny * uint(c.z))] & 2) != 0;
+}
 
 static inline bool heldByBand(int3 cell, float p, const device uchar *band, constant FacadeBand &b) {
     if (b.on == 0) return false;
     int3 c = cell / int(b.ratio);
     if (any(c < 0) || c.x >= int(b.nx) || c.y >= int(b.ny) || c.z >= int(b.nz)) return false;
-    return band[uint(c.x) + b.nx * (uint(c.y) + b.ny * uint(c.z))] != 0 && fabs(p - b.ambient) > b.threshold;
+    return (band[uint(c.x) + b.nx * (uint(c.y) + b.ny * uint(c.z))] & 1) != 0 && fabs(p - b.ambient) > b.threshold;
 }
 
 static inline void flagCell(int3 cell, const device Cell *coarse, const device uchar *mask, device uchar *wanted,
@@ -1897,7 +1958,7 @@ static inline void flagCell(int3 cell, const device Cell *coarse, const device u
         float3 high = boxDefinition[boxVectors*b+7].xyz+2.0f*u.dx;
         if (all(point >= low) && all(point <= high)) { flagAround(cell,wanted,u); return; }
     }
-    if (mask[index] != 0) {
+    if (mask[index] != 0 || aboveCeiling(cell, band, held)) {
         return;
     }
     float p = cellPressureOf(coarse[index], u);
@@ -1997,7 +2058,7 @@ kernel void refineFlagFine(const device Cell *parent [[buffer(0)]],
     int3 cell = origin + int3(position % uint(side), (position / uint(side)) % uint(side), position / uint(side * side));
     int3 dims = int3(u.nx, u.ny, u.nz);
     uint index = patch * cells + position;
-    if (any(cell >= dims) || (parentMask[index] & 1) != 0) {
+    if (any(cell >= dims) || (parentMask[index] & 1) != 0 || aboveCeiling(cell, band, held)) {
         return;
     }
     float p = cellPressureOf(parent[index], u);

@@ -58,11 +58,18 @@ public struct SceneViewState {
         /// read.
         public var states: MTLBuffer
         public var stateStride: Int
+        /// Each element's material, one byte each in the instances' order, its low four bits an
+        /// index into `palette` (`StructureSolver.materialIndexBuffer`); nil draws every element
+        /// in the palette's first colour.
+        public var materialIndex: MTLBuffer?
+        /// The materials' colours (`MaterialAppearance.palette`).
+        public var palette: [SIMD4<Float>]
 
         public init(
             origin: SIMD3<Float>, elementSize: Float, ex: Int, ey: Int, ez: Int, elementCount: Int,
             instances: MTLBuffer, nodes: MTLBuffer, nodeMap: MTLBuffer, flags: MTLBuffer, states: MTLBuffer,
-            stateStride: Int
+            stateStride: Int, materialIndex: MTLBuffer? = nil,
+            palette: [SIMD4<Float>] = MaterialAppearance.palette([])
         ) {
             self.origin = origin
             self.elementSize = elementSize
@@ -76,6 +83,8 @@ public struct SceneViewState {
             self.flags = flags
             self.states = states
             self.stateStride = stateStride
+            self.materialIndex = materialIndex
+            self.palette = palette
         }
     }
 
@@ -99,11 +108,15 @@ public struct SceneViewState {
         public var beamDamage: MTLBuffer
         /// Bit n set where material n, of the first 32, is transparent, and drawn as glass.
         public var transparentMaterials: UInt32
+        /// The materials' colours, by the elements' and beams' material index
+        /// (`MaterialAppearance.palette`).
+        public var palette: [SIMD4<Float>]
 
         public init(
             elementCount: Int, beamCount: Int, elements: MTLBuffer, beams: MTLBuffer, nodes: MTLBuffer,
             reference: MTLBuffer, flags: MTLBuffer, beamFlags: MTLBuffer, damage: MTLBuffer,
-            beamDamage: MTLBuffer, transparentMaterials: UInt32
+            beamDamage: MTLBuffer, transparentMaterials: UInt32,
+            palette: [SIMD4<Float>] = MaterialAppearance.palette([])
         ) {
             self.elementCount = elementCount
             self.beamCount = beamCount
@@ -116,6 +129,7 @@ public struct SceneViewState {
             self.damage = damage
             self.beamDamage = beamDamage
             self.transparentMaterials = transparentMaterials
+            self.palette = palette
         }
 
         /// The materials drawn as glass, as `transparentMaterials`.
@@ -143,7 +157,9 @@ extension SceneViewState {
                             ey: structure.ey, ez: structure.ez, elementCount: structure.elementCount,
                             instances: structure.instanceBuffer, nodes: structure.nodeBuffer,
                             nodeMap: structure.nodeMapBuffer, flags: structure.flagBuffer,
-                            states: structure.stateBuffer, stateStride: StructureSolver.stateStride)
+                            states: structure.stateBuffer, stateStride: StructureSolver.stateStride,
+                            materialIndex: structure.materialIndexBuffer,
+                            palette: MaterialAppearance.palette(structure.materials))
                     },
                     shells: body.shells.map { shells in
                         Shells(
@@ -153,7 +169,8 @@ extension SceneViewState {
                             reference: shells.referenceBuffer, flags: shells.flagBuffer,
                             beamFlags: shells.beamFlagBuffer, damage: shells.displayBuffer,
                             beamDamage: shells.beamDisplayBuffer,
-                            transparentMaterials: Shells.transparentMask(shells.materials))
+                            transparentMaterials: Shells.transparentMask(shells.materials),
+                            palette: MaterialAppearance.palette(shells.materials))
                     })
             })
     }
@@ -196,10 +213,14 @@ public struct ViewSetup: Sendable, Equatable {
         /// For every lattice node, its index among the frames' displacements, or `UInt32.max`.
         public var nodeMap: [UInt32]
         public var nodeCount: Int
+        /// Each initial element's material byte, and the materials' colours
+        /// (`SceneViewState.Solids`); empty from a sender before them, drawn in one colour.
+        public var materialIndex: [UInt8]
+        public var palette: [SIMD4<Float>]
 
         public init(
             origin: SIMD3<Float>, elementSize: Float, ex: Int, ey: Int, ez: Int, instances: [UInt32],
-            nodeMap: [UInt32], nodeCount: Int
+            nodeMap: [UInt32], nodeCount: Int, materialIndex: [UInt8] = [], palette: [SIMD4<Float>] = []
         ) {
             self.origin = origin
             self.elementSize = elementSize
@@ -209,6 +230,8 @@ public struct ViewSetup: Sendable, Equatable {
             self.instances = instances
             self.nodeMap = nodeMap
             self.nodeCount = nodeCount
+            self.materialIndex = materialIndex
+            self.palette = palette
         }
     }
 
@@ -222,10 +245,12 @@ public struct ViewSetup: Sendable, Equatable {
         /// Every node's reference position; `w` is unread.
         public var reference: [SIMD4<Float>]
         public var transparentMaterials: UInt32
+        /// The materials' colours; empty from a sender before them.
+        public var palette: [SIMD4<Float>]
 
         public init(
             elements: Data, elementCount: Int, beams: Data, beamCount: Int, reference: [SIMD4<Float>],
-            transparentMaterials: UInt32
+            transparentMaterials: UInt32, palette: [SIMD4<Float>] = []
         ) {
             self.elements = elements
             self.elementCount = elementCount
@@ -233,6 +258,7 @@ public struct ViewSetup: Sendable, Equatable {
             self.beamCount = beamCount
             self.reference = reference
             self.transparentMaterials = transparentMaterials
+            self.palette = palette
         }
     }
 }
@@ -321,7 +347,10 @@ extension ViewSetup {
                             ey: structure.ey, ez: structure.ez,
                             instances: ViewFrame.read(structure.instanceBuffer, structure.elementCount),
                             nodeMap: ViewFrame.read(structure.nodeMapBuffer, nodes),
-                            nodeCount: structure.nodeCount)
+                            nodeCount: structure.nodeCount,
+                            materialIndex: ViewFrame.read(
+                                structure.materialIndexBuffer, structure.elementCount),
+                            palette: MaterialAppearance.palette(structure.materials))
                     },
                     shells: body.shells.map { shells in
                         let nodes =
@@ -336,7 +365,8 @@ extension ViewSetup {
                             beams: bytes(shells.beamBuffer, shells.beamCount),
                             beamCount: shells.beamCount,
                             reference: ViewFrame.read(shells.referenceBuffer, nodes),
-                            transparentMaterials: SceneViewState.Shells.transparentMask(shells.materials))
+                            transparentMaterials: SceneViewState.Shells.transparentMask(shells.materials),
+                            palette: MaterialAppearance.palette(shells.materials))
                     })
             })
     }
@@ -466,7 +496,11 @@ public final class ViewUpload {
                         flags: try empty(cells, "view solid flags"),
                         states: try empty(
                             solids.instances.count * Self.solidStateStride, "view solid damage"),
-                        stateStride: Self.solidStateStride)
+                        stateStride: Self.solidStateStride,
+                        materialIndex: solids.materialIndex.count == solids.instances.count
+                            && !solids.materialIndex.isEmpty
+                            ? try filled(solids.materialIndex, "view solid materials") : nil,
+                        palette: solids.palette.isEmpty ? MaterialAppearance.palette([]) : solids.palette)
                 },
                 shells: try body.shells.map { shells in
                     guard shells.elementCount == 0 || shells.elements.count % shells.elementCount == 0,
@@ -483,7 +517,8 @@ public final class ViewUpload {
                         beamFlags: try empty(shells.beamCount, "view beam flags"),
                         damage: try empty(shells.elementCount * 4, "view shell damage"),
                         beamDamage: try empty(shells.beamCount * 4, "view beam damage"),
-                        transparentMaterials: shells.transparentMaterials)
+                        transparentMaterials: shells.transparentMaterials,
+                        palette: shells.palette.isEmpty ? MaterialAppearance.palette([]) : shells.palette)
                 })
         }
         view = SceneViewState(field: field, fieldCellSize: setup.fieldCellSize, bodies: bodies)

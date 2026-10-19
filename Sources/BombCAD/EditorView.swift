@@ -142,6 +142,7 @@ struct EditorView: View {
                             )
                             Button("Remove", systemImage: "trash") { model.removeEnvelope(id: object.id) }
                                 .labelStyle(.iconOnly)
+                                .accessibilityLabel("Remove \(object.name)")
                         }
                         EnvelopeConstructionEditor(model: model, id: object.id)
                     }
@@ -715,6 +716,7 @@ private struct GaugeRow: View {
                 Button("Remove", systemImage: "trash", role: .destructive, action: remove)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
+                    .accessibilityLabel("Remove gauge \(gauge.name)")
             }
             if isSelected {
                 TextField("Name", text: $gauge.name)
@@ -750,6 +752,7 @@ private struct GaugeRow: View {
         .multilineTextAlignment(.trailing)
         .frame(width: 62)
         .labelsHidden()
+        .accessibilityLabel("\(gauge.name), position \(["X", "Y", "Z"][axis]) (m)")
     }
 }
 
@@ -781,6 +784,7 @@ private struct BoxRow: View {
                 Button("Remove", systemImage: "trash", role: .destructive, action: remove)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
+                    .accessibilityLabel("Remove \(title)")
             }
             if isSelected {
                 Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 4) {
@@ -813,12 +817,14 @@ private struct BoxRow: View {
         return String(format: "%.3g × %.3g × %.3g m", size.x, size.y, size.z)
     }
 
-    private func field(_ title: String, _ value: Binding<Double>) -> some View {
-        TextField(title, value: value, format: .number.precision(.fractionLength(0...3)))
+    private func field(_ field: String, _ value: Binding<Double>) -> some View {
+        TextField(field, value: value, format: .number.precision(.fractionLength(0...3)))
             .textFieldStyle(.roundedBorder)
             .multilineTextAlignment(.trailing)
             .frame(width: 62)
             .labelsHidden()
+            // With two boxes open, "Corner X (m)" alone would not say whose.
+            .accessibilityLabel("\(title), \(field.prefix(1).lowercased() + field.dropFirst())")
     }
 
     private func snap(_ value: Double) -> Float { (Float(value) / step).rounded() * step }

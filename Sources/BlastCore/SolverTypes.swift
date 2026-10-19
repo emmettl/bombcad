@@ -56,15 +56,19 @@ public struct SolverConfiguration: Sendable, Hashable {
         // The fine one-dimensional start, since 18 October 2026 (docs/air-blast-model.md, "A finely
         // resolved start"); the harnesses validated on the balloon before then take `balloonStart`.
         configuration.mappedCharge = true
+        // The fireball's gas losing the heat it radiates, since 19 October 2026
+        // (docs/thermal-radiation.md, "The gas losing what it radiates").
+        configuration.radiativeCooling = RadiativeCooling()
         return configuration
     }
 
-    /// This configuration with the charge started from the balloon of hot gas, as every comparison
-    /// recorded before 18 October 2026 was; each harness so pinned is listed in validation.md, "Still
-    /// on the balloon start", until it is rerun on the mapped start.
+    /// This configuration as the comparisons recorded before 18 October 2026 were run: the charge
+    /// started from the balloon of hot gas, the fireball keeping the heat it radiates. Each harness
+    /// so pinned is listed in validation.md, "Still on the balloon start", until it is rerun.
     public var balloonStart: SolverConfiguration {
         var configuration = self
         configuration.mappedCharge = false
+        configuration.radiativeCooling = nil
         return configuration
     }
 
@@ -174,6 +178,17 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// gave 3.8 times it. Not with gravity, whose ambient changes with height: there the faces
     /// copy. Far field in `recommended`.
     public var openFaces: OpenFaces = .copy
+    /// Whether structures' outlines are cut cells: a cell a structure's solids cross holds the air
+    /// it has and its faces open as far as they are (`StructureCutGeometry`), rather than the
+    /// structure taking whole cells. From the structures as built, without refinement. Off by default.
+    public var structureCutCells = false
+    /// Whether a gauge beside a wall (a solid cell, or a reflective face of the domain, within a cell
+    /// of its point) reads the pressure at the wall: its cell's gas against its mirror across the
+    /// wall, two shocks or two rarefactions, rather than the cell's mean. A reflected shock is
+    /// smeared over cells and the cell beside the wall reads it low (69% of Kingery–Bulmash's
+    /// reflected peak at 2 m/kg^(1/3) on 0.25 m cells for 100 kg); read at the wall it comes within
+    /// what the incident shock had lost on its way (93%). Off by default.
+    public var gaugesReadWallPressure = false
     /// Smallest radius, in cells, of the sphere a charge's energy is deposited into.
     public var minimumBalloonCells: Float = 2
     /// Refine the air where the blast's shock is by this ratio, 2 or 4: each block of 4 x 4 x 4
@@ -194,6 +209,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// passed (the reflections, the second swing, the venting) on the finest cells. With both
     /// set, the band holds past the lower. Nil holds nothing.
     public var refinementHoldsStructures: Float?
+    /// No air is refined more than this many metres above the ground beneath it (the terrain, or
+    /// the domain's floor): over a district, the shock's top above the roofs, which loads no façade
+    /// (docs/beirut-2020.md, "What cell size the glass and the damage need"). It caps the bands held
+    /// beside envelopes and structures (`refinementHoldsEnvelopes`, `refinementHoldsStructures`)
+    /// too: a face above it is loaded on the coarse cells. Nil, the default, refines at any height.
+    public var refinementCeiling: Float?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October
@@ -280,9 +301,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     public init() {}
 
     /// Whether `scenario`'s terrain is cut through the cells when it loads: it has slopes and cut
-    /// cells are on.
-    public func cutsTerrain(of scenario: Scenario) -> Bool {
+    /// cells are on. For now, refined air with a structure standing on the terrain keeps the
+    /// staircase: the structure shuts in thin cut cells under it, which are made solid on the
+    /// coarse grid (`remaskCapSlivers`) but not yet on a level of refinement.
+    public func cutsTerrain(of scenario: Scenario, cellSize: Float = 0) -> Bool {
         terrainCutCells && (scenario.terrain.map { !$0.isFlat } ?? false)
+            && !(refinement > 1 && scenario.structureStandsOnTerrain(cellSize: cellSize))
     }
 }
 
@@ -396,6 +420,7 @@ struct SolverUniforms {
     var ownSteps: UInt32 = 0
     var refineLevel: UInt32 = 0
     var sweepAxes: UInt32 = 0
+    var gaugeWalls: UInt32 = 0
 }
 
 /// Layout matches `StepControl` in `Solver.metal`.
