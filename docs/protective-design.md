@@ -483,11 +483,24 @@ are shipped):
     {"name": "laminated", "kind": "laminated", "costPerM2": 5},
     {"name": "infill", "kind": "infill", "costPerM2": 6}
   ],
-  "standOffs": [{"name": "close the crossing", "cost": 80, "moves": [{"threat": 0, "x": 700, "y": 640}]}],
+  "standOffs": [
+    {"name": "close the crossing", "cost": 80, "line": "Crossing"},
+    {"name": "bollards on the square", "cost": 150, "moves": [{"threat": 0, "x": 700, "y": 580}]}
+  ],
+  "barriers": [{"name": "wall on the quay", "cost": 120, "from": [650, 660], "to": [750, 660], "height": 4}],
   "draws": 32
 }
 ```
 
+- **Site-wide changes.** Stand-offs and barriers, each with the user's cost.
+  - **A stand-off** names one of the scene's stand-off lines (`line`): each threat on the side it
+    guards is stopped a metre outside it (`StandOffLine.stopPoint`). Or it gives the threats' new
+    places as `moves`.
+  - **A barrier** is a wall along x or y (`from`, `to`, `height`, `thickness`, 0.3 m unless
+    given), built on the ground under it. The surrogate's lines over the ground cross it, as they
+    cross a building.
+  - A plan with a site-wide change is not confirmed on a run's histories, which were made without
+    it.
 - **Sides and chances.** Each map building side (those with a glazing mix) is one side of the
   search. Its chance of failing is the chance that some pane is thrown worse than its target
   condition, from the façade load surrogate's loads under each threat (moved by the stand-offs in
@@ -524,10 +537,13 @@ are shipped):
 
 What it still lacks:
 
-- **Barriers** (roadmap #63): a wall the surrogate's raster sees, and terms for thin walls, which
-  the surrogate was not fitted on. The inputs file's `barriers` is refused until then.
-- **Stand-off lines from the scene:** today each stand-off is given as moves of the threats it keeps
-  back; #63's lines will give the stopping place. The app's sheet searches glazing only until then.
+- **Barriers that shield.** A barrier is a site-wide change: a wall along x or y, built as
+  `Scenario.addBarrier` builds it on the ground, which the surrogate's raster sees as it sees the
+  scene's fixed blocks (crossed, blocked length, shadow). The surrogate was fitted on buildings
+  only, though. A 10 m wall 10 m in front of a façade takes about 2% off its peak, so a barrier
+  rarely earns its cost in a plan. It needs the refit with barrier runs (#64's fine cells), judged
+  against the published barrier tests.
+- **Wall retrofits and close-in loads** (the surrogate's terms are held below Z = 4.6).
 - **Wall retrofits and close-in loads** (the surrogate's terms are held below Z = 4.6).
 
 In the app, **Simulation ▸ Protective Design…** runs the same search on the scene's charges and
@@ -617,10 +633,10 @@ Built on 19 October 2026: the changes a plan can make, as parts of the scene.
   - Kingery–Bulmash outside its fits for the closest sides (counted in each plan's standing).
 
   Its plans illustrate the method, not any real building.
-- Only the search over glazing (film among it) and stand-offs, the glass's chances and their
-  confirmation on a run are built in BombCAD (`scenebench protect`, and the app's sheet for
-  glazing). Walls and barriers are not in the search yet; stage 3 built them as constructions and
-  scene elements ([above](#changes-as-constructions-stage-3)).
+- Only the search over glazing (film among it), stand-offs and barriers, the glass's chances and
+  their confirmation on a run are built in BombCAD (`scenebench protect`; the app's sheet for
+  glazing and the scene's stand-off lines). Wall retrofits are not in the search yet, and barriers
+  shield only as much as the surrogate's building terms allow (above).
 
 ## Sources
 

@@ -32,6 +32,26 @@ final class ProtectionPlannerModel {
     /// Draws of the load's scatter and the glass's strength for each side's chance.
     var draws = 32
 
+    /// A stand-off line of the scene's the search may put up, with its cost: each charge it guards
+    /// against stopped at it (`StandOffLine.stopPoint`).
+    struct Line: Identifiable, Equatable {
+        var name: String
+        var allowed: Bool
+        var cost: Double
+        var id: String { name }
+    }
+
+    /// The scene's stand-off lines, as offered; none allowed until given a cost.
+    var lines: [Line] = []
+
+    /// Offers `scenario`'s stand-off lines, keeping what was set for those already offered.
+    func offerLines(of scenario: Scenario) {
+        let known = Dictionary(lines.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
+        lines = (scenario.standOffLines ?? []).map {
+            known[$0.name] ?? Line(name: $0.name, allowed: false, cost: 0)
+        }
+    }
+
     struct PlanRow: Identifiable {
         var id: Int
         var label: String
@@ -62,7 +82,10 @@ final class ProtectionPlannerModel {
             glazing: changes.filter(\.allowed).map {
                 ProtectionModel.Glazing(name: $0.name, kind: $0.kind, costPerM2: $0.costPerM2)
             },
-            standOffs: nil, barriers: nil, draws: draws, seed: 1)
+            standOffs: lines.filter(\.allowed).map {
+                ProtectionModel.StandOff(name: "stand-off at \($0.name)", cost: $0.cost, line: $0.name)
+            },
+            barriers: nil, draws: draws, seed: 1)
     }
 
     /// Searches `scenario` on cells `cellSize` m across, off the main thread.
@@ -115,11 +138,14 @@ final class ProtectionPlannerModel {
         for (s, option) in plan.choices.enumerated() where option != 0 {
             counts[model.problem.sides[s].options[option].glazing, default: 0] += 1
         }
-        guard !counts.isEmpty else { return "nothing" }
-        return counts.sorted { $0.key < $1.key }.map {
-            "\($0.key) on \($0.value) side\($0.value == 1 ? "" : "s")"
-        }
-        .joined(separator: "; ")
+        let site = plan.site.map { model.problem.site[$0].name }
+        guard !counts.isEmpty || !site.isEmpty else { return "nothing" }
+        return
+            (site
+            + counts.sorted { $0.key < $1.key }.map {
+                "\($0.key) on \($0.value) side\($0.value == 1 ? "" : "s")"
+            })
+            .joined(separator: "; ")
     }
 
     /// The selected plan's sides by building: (axis, outward, residual chance), for the view.

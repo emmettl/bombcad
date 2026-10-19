@@ -116,11 +116,74 @@ struct ProtectionSearchTests {
         #expect(best.meets)
         #expect(best.chances.allSatisfy { $0 <= 0.1 })
         #expect(ProtectionSearch.greedy(problem).cost >= best.cost - 1e-9)
-        // Barriers wait for a scene element the loads see.
-        var walls = inputs
-        walls.barriers = ["along the front"]
+    }
+
+    @Test("A barrier wall is in the loads' way; a scene's stand-off line stops the charge at it")
+    func barriersAndLines() throws {
+        var scene = try FacadeGlassProbabilityTests.row()
+        // A fence 5 m east of the domain's edge guarding the buildings (east of it), the charge 5 m inside.
+        scene.standOffLines = [
+            StandOffLine(name: "Fence", points: [SIMD2(5, 0), SIMD2(5, 60)], guardsLeft: false)
+        ]
+        let inputs = ProtectionModel.Inputs(
+            threats: [.init(mass: 100, x: 10, y: 30)],
+            target: .init(worseThan: "3b", chance: 0.1, buildings: nil),
+            glazing: [.init(name: "laminated", kind: .laminated, costPerM2: 5)],
+            standOffs: [
+                .init(name: "the fence", cost: 30, line: "Fence"),
+                .init(name: "moved by hand", cost: 30, moves: [.init(threat: 0, x: 4, y: 30)]),
+            ],
+            barriers: [
+                .init(
+                    name: "a wall", cost: 60, from: SIMD2(20, 15), to: SIMD2(20, 45), height: 10,
+                    thickness: 0.5)
+            ],
+            draws: 4, seed: 1)
+        let model = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)
+        let problem = model.problem
+        #expect(problem.site.map(\.name) == ["the fence", "moved by hand", "a wall"])
+        let front = try #require(model.names.firstIndex { $0.hasSuffix("west") })
+        let asBuilt = problem.chance([], front, 0)
+        #expect(asBuilt > 0.5)
+        // The fence stops the charge a metre outside it, as the moves given by hand do.
+        #expect(problem.chance([0], front, 0) == problem.chance([1], front, 0))
+        #expect(problem.chance([0], front, 0) <= asBuilt)
+        // The wall, 10 m high between them, is in the loads' way: crossed, its shadow over the front.
+        // The surrogate was not fitted on barriers and takes little off for it (2% of the peak here,
+        // docs/protective-design.md): no more than the chance as built.
+        var walled = scene
+        let id = try walled.addBarrier(from: SIMD2(20, 15), to: SIMD2(20, 45), height: 10, thickness: 0.5)
+        let wall = try #require(walled.object(id: id)?.fixedBox)
+        let objects = scene.envelopeObjects
+        let plain = FacadeLoadSurrogate.Raster(objects: objects, terrain: nil, cell: 2)
+        let shielded = FacadeLoadSurrogate.Raster(objects: objects, blocks: [wall], terrain: nil, cell: 2)
+        let strips = objects[0].envelope!.components(owner: objects[0].id, cellSize: 2).filter {
+            $0.kind == .facade && $0.axis == 0 && $0.outward < 0
+        }
+        #expect(!strips.isEmpty)
+        for strip in strips {
+            let open = FacadeLoadSurrogate.features(
+                strip, owner: 0, charge: SIMD3(10, 30, 0.5), raster: plain)
+            let behind = FacadeLoadSurrogate.features(
+                strip, owner: 0, charge: SIMD3(10, 30, 0.5), raster: shielded)
+            #expect(open.buildingsCrossed == 0 && behind.buildingsCrossed == 1 && behind.shadowM > 0)
+            #expect(
+                FacadeLoadSurrogate.predict(behind, mass: 5, cellSize: 2).peakPa
+                    < FacadeLoadSurrogate.predict(open, mass: 5, cellSize: 2).peakPa)
+        }
+        #expect(problem.chance([2], front, 0) <= asBuilt)
+        // A line the scene lacks, and a wall the scene cannot build, are refused.
+        var unknown = inputs
+        unknown.standOffs = [.init(name: "nowhere", cost: 1, line: "Gate")]
         #expect(throws: ProtectionModel.InputError.self) {
-            _ = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: walls)
+            _ = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: unknown)
+        }
+        var slanted = inputs
+        slanted.barriers = [
+            .init(name: "slanted", cost: 1, from: SIMD2(15, 15), to: SIMD2(25, 45), height: 3)
+        ]
+        #expect(throws: ProtectionModel.InputError.self) {
+            _ = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: slanted)
         }
     }
 }

@@ -270,8 +270,8 @@ charges) are for the command line only.
 **Simulation ▸ Protective Design…** looks for the least costly glazing changes that keep each
 building side's chance of glass thrown worse than a target under the chance you accept, against
 the scene's charges. It is the [`scenebench protect`](protective-design.md#in-bombcad-scenebench-protect)
-search in a sheet, without the stand-offs and barriers for now, and needs buildings with a glazing
-mix (a district from a map, or constructions given glazing).
+search in a sheet, with the scene's stand-off lines but not yet barriers, and needs buildings with
+a glazing mix (a district from a map, or constructions given glazing).
 
 ![The Protective Design sheet on the two glazed blocks in the tests](protective-design-sheet.png)
 
@@ -281,6 +281,8 @@ mix (a district from a map, or constructions given glazing).
 - **Changes allowed**: security film (7 mil, wet glazed), toughened glass, laminated glass, or
   filling the window in, each with your cost per square metre of glass. The costs shown are only
   their usual order; none are shipped.
+- **Stand-off lines**: the scene's, each with your cost for putting it up. A plan that takes one
+  stops each charge on the side the line guards a metre outside it.
 - **Search** runs off the main thread: the quick estimate's loads on every glazed side, each side's
   chance for every change, then every plan's cost. Two blocks take seconds; the made-up district's
   200 sides take about half a minute.

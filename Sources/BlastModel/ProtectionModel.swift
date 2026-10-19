@@ -68,16 +68,57 @@ public enum ProtectionModel {
         }
     }
 
-    /// A stand-off line: the threats it keeps back, each moved to where it would be stopped.
+    /// A stand-off line: the threats it keeps back, each moved to where it would be stopped. Either
+    /// one of the scene's lines by name (`Scenario.standOffLines`), each threat it guards against
+    /// moved to its stop point (`StandOffLine.stopPoint`), or the moves given.
     public struct StandOff: Codable, Sendable {
         public struct Move: Codable, Sendable {
             public var threat: Int
             public var x: Double
             public var y: Double
+
+            public init(threat: Int, x: Double, y: Double) {
+                self.threat = threat
+                self.x = x
+                self.y = y
+            }
         }
         public var name: String
         public var cost: Double
-        public var moves: [Move]
+        /// The scene's stand-off line it puts up, by name.
+        public var line: String?
+        public var moves: [Move]?
+
+        public init(name: String, cost: Double, line: String? = nil, moves: [Move]? = nil) {
+            self.name = name
+            self.cost = cost
+            self.line = line
+            self.moves = moves
+        }
+    }
+
+    /// A barrier wall the site may build, along x or y between two points on the plan, standing on
+    /// the lowest ground under it (`Scenario.addBarrier`): the surrogate's loads see it as they see
+    /// the scene's fixed blocks, buildings crossed and shadow behind it.
+    public struct Barrier: Codable, Sendable {
+        public var name: String
+        public var cost: Double
+        public var from: SIMD2<Float>
+        public var to: SIMD2<Float>
+        public var height: Float
+        public var thickness: Float?
+
+        public init(
+            name: String, cost: Double, from: SIMD2<Float>, to: SIMD2<Float>, height: Float,
+            thickness: Float? = nil
+        ) {
+            self.name = name
+            self.cost = cost
+            self.from = from
+            self.to = to
+            self.height = height
+            self.thickness = thickness
+        }
     }
 
     /// The target: no pane of a side thrown worse than `worseThan` (a GSA condition: "3a", "3b",
@@ -106,15 +147,14 @@ public enum ProtectionModel {
         public var target: Target
         public var glazing: [Glazing]
         public var standOffs: [StandOff]?
-        /// Barrier walls: not yet (they need the wall as a scene element the surrogate's raster
-        /// sees, roadmap #63); refused if given.
-        public var barriers: [String]?
+        /// Barrier walls the site may build; after the stand-offs among the site-wide changes.
+        public var barriers: [Barrier]?
         public var draws: Int?
         public var seed: UInt64?
 
         public init(
             threats: [Threat], target: Target, glazing: [Glazing], standOffs: [StandOff]? = nil,
-            barriers: [String]? = nil, draws: Int? = nil, seed: UInt64? = nil
+            barriers: [Barrier]? = nil, draws: Int? = nil, seed: UInt64? = nil
         ) {
             self.threats = threats
             self.target = target
@@ -200,14 +240,51 @@ public enum ProtectionModel {
 
     public enum InputError: Error, CustomStringConvertible {
         case condition(String)
-        case barriers
+        case line(String)
+        case standOff(String)
+        case barrier(String, String)
         case noGlass
 
         public var description: String {
             switch self {
             case .condition(let text): "\(text) is not a GSA condition (1, 2, 3a, 3b, 4, 5)"
-            case .barriers: "barrier walls are not yet a scene element the loads see (roadmap #63)"
+            case .line(let name): "the scene has no stand-off line named \(name)"
+            case .standOff(let name): "the stand-off \(name) names neither a line of the scene's nor moves"
+            case .barrier(let name, let why): "the barrier \(name): \(why)"
             case .noGlass: "no building has glazing to protect"
+            }
+        }
+    }
+
+    /// Each stand-off's moves: those given, or each threat stopped at the scene's line.
+    static func moves(_ inputs: Inputs, scene: Scenario) throws -> [[StandOff.Move]] {
+        try (inputs.standOffs ?? []).map { standOff in
+            if let name = standOff.line {
+                guard let line = scene.standOffLines?.first(where: { $0.name == name }) else {
+                    throw InputError.line(name)
+                }
+                return inputs.threats.enumerated().map { n, threat in
+                    let stop = line.stopPoint(for: SIMD2(Float(threat.x), Float(threat.y)))
+                    return StandOff.Move(threat: n, x: Double(stop.x), y: Double(stop.y))
+                }
+            }
+            guard let moves = standOff.moves else { throw InputError.standOff(standOff.name) }
+            return moves
+        }
+    }
+
+    /// Each barrier's wall, as `Scenario.addBarrier` builds it on `scene`'s ground.
+    static func barrierBoxes(_ inputs: Inputs, scene: Scenario) throws -> [Box] {
+        try (inputs.barriers ?? []).map { barrier in
+            var scratch = scene
+            do {
+                let id = try scratch.addBarrier(
+                    from: barrier.from, to: barrier.to, height: barrier.height,
+                    thickness: barrier.thickness ?? 0.3)
+                guard let box = scratch.object(id: id)?.fixedBox else { throw SceneObjectError.missingObject }
+                return box
+            } catch {
+                throw InputError.barrier(barrier.name, "\(error)")
             }
         }
     }
@@ -224,9 +301,11 @@ public enum ProtectionModel {
         scene: Scenario, cellSize: Float, inputs: Inputs,
         coefficients: FacadeLoadSurrogate.Coefficients = .fitted
     ) throws -> Model {
-        guard (inputs.barriers ?? []).isEmpty else { throw InputError.barriers }
         let objects = scene.envelopeObjects
-        let raster = FacadeLoadSurrogate.Raster(objects: objects, terrain: scene.terrain, cell: cellSize)
+        let raster = FacadeLoadSurrogate.Raster(
+            objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
+        let moves = try Self.moves(inputs, scene: scene)
+        let walls = try Self.barrierBoxes(inputs, scene: scene)
         var sides: [Side] = []
         for (n, object) in objects.enumerated() {
             guard let mix = scene.envelopeConstruction(for: object.id).glazing, let envelope = object.envelope
@@ -260,10 +339,13 @@ public enum ProtectionModel {
                 }
         }
         let searchSides = zip(sides, options).map { ProtectionSearch.Side(name: $0.name, options: $1) }
-        let site = (inputs.standOffs ?? []).map { ProtectionSearch.SiteChange(name: $0.name, cost: $0.cost) }
+        let site =
+            (inputs.standOffs ?? []).map { ProtectionSearch.SiteChange(name: $0.name, cost: $0.cost) }
+            + (inputs.barriers ?? []).map { ProtectionSearch.SiteChange(name: $0.name, cost: $0.cost) }
         let evaluator = Evaluator(
             sides: sides, objects: objects, raster: raster, inputs: inputs, cellSize: cellSize,
-            coefficients: coefficients)
+            coefficients: coefficients, moves: moves, walls: walls, blocks: scene.boxes,
+            terrain: scene.terrain)
         let problem = ProtectionSearch.Problem(sides: searchSides, site: site, targetChance: accepted) {
             site, side, option in
             evaluator.chance(site: site, side: side, option: option)
@@ -308,12 +390,19 @@ public enum ProtectionModel {
         let draws: Int
         package let seed: UInt64
         package let table = FacadeLoadSurrogate.GlassTable(binS: 0.7e-3)
+        /// Each stand-off's moves, and each barrier's wall: the site-wide changes, stand-offs first.
+        let moves: [[StandOff.Move]]
+        let walls: [Box]
+        let blocks: [Box]
+        let terrain: Terrain?
         private let lock = NSLock()
         private var features: [[Int]: [FacadeLoadSurrogate.Features]] = [:]
+        private var rasters: [[Int]: FacadeLoadSurrogate.Raster] = [:]
 
         init(
             sides: [Side], objects: [SceneObject], raster: FacadeLoadSurrogate.Raster, inputs: Inputs,
-            cellSize: Float, coefficients: FacadeLoadSurrogate.Coefficients
+            cellSize: Float, coefficients: FacadeLoadSurrogate.Coefficients, moves: [[StandOff.Move]] = [],
+            walls: [Box] = [], blocks: [Box] = [], terrain: Terrain? = nil
         ) {
             self.sides = sides
             self.objects = objects
@@ -321,15 +410,19 @@ public enum ProtectionModel {
             self.inputs = inputs
             self.cellSize = cellSize
             self.coefficients = coefficients
+            self.moves = moves
+            self.walls = walls
+            self.blocks = blocks
+            self.terrain = terrain
             draws = max(1, inputs.draws ?? 64)
             seed = inputs.seed ?? 1
         }
 
-        /// The threats with the stand-offs `site` in place.
+        /// The threats with the stand-offs among `site` in place.
         func threats(_ site: [Int]) -> [Threat] {
             var threats = inputs.threats
-            for i in site {
-                for move in inputs.standOffs![i].moves where threats.indices.contains(move.threat) {
+            for i in site where i < moves.count {
+                for move in moves[i] where threats.indices.contains(move.threat) {
                     threats[move.threat].x = move.x
                     threats[move.threat].y = move.y
                 }
@@ -337,9 +430,25 @@ public enum ProtectionModel {
             return threats
         }
 
-        /// `side`'s strips' features with a charge at `threat`'s place, remembered.
-        func features(_ side: Int, _ threat: Threat) -> [FacadeLoadSurrogate.Features] {
-            let key = [side, Int(threat.x * 1000), Int(threat.y * 1000)]
+        /// The barriers among `site`, by their index among the barriers.
+        func barriers(_ site: [Int]) -> [Int] { site.filter { $0 >= moves.count }.map { $0 - moves.count } }
+
+        /// The raster with `barriers` built, remembered.
+        func raster(_ barriers: [Int]) -> FacadeLoadSurrogate.Raster {
+            guard !barriers.isEmpty else { return raster }
+            lock.lock()
+            defer { lock.unlock() }
+            if let known = rasters[barriers] { return known }
+            let made = FacadeLoadSurrogate.Raster(
+                objects: objects, blocks: blocks + barriers.map { walls[$0] }, terrain: terrain,
+                cell: cellSize)
+            rasters[barriers] = made
+            return made
+        }
+
+        /// `side`'s strips' features with a charge at `threat`'s place and `barriers` built, remembered.
+        func features(_ side: Int, _ threat: Threat, barriers: [Int] = []) -> [FacadeLoadSurrogate.Features] {
+            let key = [side, Int(threat.x * 1000), Int(threat.y * 1000)] + barriers
             lock.lock()
             if let known = features[key] {
                 lock.unlock()
@@ -347,6 +456,7 @@ public enum ProtectionModel {
             }
             lock.unlock()
             let s = sides[side]
+            let raster = raster(barriers)
             let ground = raster.terrain?.height(at: SIMD2(Float(threat.x), Float(threat.y))) ?? 0
             let charge = SIMD3(Float(threat.x), Float(threat.y), ground + 0.5)
             let made = s.strips.map {
@@ -365,10 +475,11 @@ public enum ProtectionModel {
             let mix = option == 0 ? s.mix : inputs.glazing[option - 1].applied(to: s.mix)
             guard mix.glazedFraction > 0 else { return 0 }
             let threats = threats(site)
+            let built = barriers(site)
             let total = threats.reduce(0) { $0 + $1.weight }
             var chance = 0.0
             for threat in threats where threat.weight > 0 {
-                let features = features(side, threat)
+                let features = features(side, threat, barriers: built)
                 let middle = features.map(\.distanceM).sorted()[features.count / 2]
                 let scatter = FacadeLoadSurrogate.Uncertainty().scatter(atZ: middle / cbrt(threat.mass))
                 var sum = 0.0

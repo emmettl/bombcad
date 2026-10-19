@@ -53,6 +53,7 @@ struct ProtectionPlannerView: View {
         }
         .frame(width: 640, alignment: .leading).frame(minHeight: 560, alignment: .top)
         .onChange(of: planner.selected) { model.showProtectionPlan(planner.selectedChances) }
+        .onAppear { planner.offerLines(of: model.settings.scenario) }
         .onDisappear { model.showProtectionPlan([:]) }
     }
 
@@ -98,9 +99,25 @@ struct ProtectionPlannerView: View {
                 }
             }
             Text(
-                "The costs are yours, in any unit: the ones shown are only the usual order (film cheapest, then toughened and laminated glass, then filling the window in). Stand-off lines and barriers are searched headless (scenebench protect) until the scene can hold them."
+                "The costs are yours, in any unit: the ones shown are only the usual order (film cheapest, then toughened and laminated glass, then filling the window in). Barrier walls are searched headless (scenebench protect): the loads take little off for one yet (docs/protective-design.md)."
             )
             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !planner.lines.isEmpty {
+                Text("Stand-off lines").font(.headline).padding(.top, 4)
+                ForEach($planner.lines) { $line in
+                    HStack {
+                        Toggle(line.name, isOn: $line.allowed).frame(width: 240, alignment: .leading)
+                        TextField("Cost", value: $line.cost, format: .number).frame(width: 70)
+                            .disabled(!line.allowed)
+                            .accessibilityLabel("\(line.name): cost of putting it up")
+                        Text("for the line").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Text(
+                    "The scene's lines: each charge on the side a line guards is stopped a metre outside it."
+                )
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
