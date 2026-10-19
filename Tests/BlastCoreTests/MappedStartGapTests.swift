@@ -4,6 +4,7 @@ import RadialBlast
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The mapped start's choices that `MappedChargeTests` leaves unchecked: which configurations fall
 /// back to the balloon, how far a charge is mapped (its caps, vent panels and shaped ground), the

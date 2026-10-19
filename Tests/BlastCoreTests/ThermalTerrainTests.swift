@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("The terrain hides the fireball from what is behind it", .gpuThreads)
 struct ThermalTerrainTests {

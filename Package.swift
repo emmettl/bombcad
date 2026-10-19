@@ -15,7 +15,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/emmettl/ContinuumKit.git",
-            exact: "0.1.0-alpha.28")
+            exact: "0.1.0-alpha.29")
     ],
     targets: [
         // The fine one-dimensional start of a blast (`SphericalBlast`), optimised in debug builds
@@ -24,12 +24,24 @@ let package = Package(
         .target(
             name: "RadialBlast",
             swiftSettings: [.unsafeFlags(["-O"], .when(configuration: .debug))]),
+        // The model without the GPU: scenarios, structures, materials and the calculations
+        // that run on the CPU. It imports no Metal, so it also builds and is tested on Linux
+        // (Scripts/split/, .github/workflows/linux-blastmodel.yml).
+        .target(
+            name: "BlastModel",
+            dependencies: [
+                "RadialBlast",
+                .product(name: "CompressibleFlow", package: "continuumkit"),
+                .product(name: "GeometryImport", package: "continuumkit"),
+                .product(name: "Numerics", package: "continuumkit"),
+                .product(name: "SceneModel", package: "continuumkit"),
+            ]),
         // Shaders are copied verbatim and compiled at runtime so that `swift build`,
         // `swift test` and Xcode all behave identically.
         .target(
             name: "BlastCore",
             dependencies: [
-                "RadialBlast",
+                "BlastModel", "RadialBlast",
                 .product(name: "SceneModel", package: "continuumkit"),
                 .product(name: "GeometryImport", package: "continuumkit"),
                 .product(name: "CompressibleFlow", package: "continuumkit"),
@@ -52,17 +64,38 @@ let package = Package(
         .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
+        .testTarget(
+            name: "BlastModelTests",
+            dependencies: [
+                "BlastModel", "RadialBlast", .product(name: "SolidMechanics", package: "continuumkit"),
+            ]),
         // ContinuumKit's SolidMechanics is the reference the shells' timber law is checked against.
         .testTarget(
             name: "BlastCoreTests",
             dependencies: [
-                "BlastCore", "RadialBlast", .product(name: "SolidMechanics", package: "continuumkit"),
+                "BlastCore", "BlastModel", "RadialBlast",
+                .product(name: "SolidMechanics", package: "continuumkit"),
             ]),
         .testTarget(
             name: "BombCADTests",
             dependencies: [
-                "BombCAD", "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "continuumkit"),
+                "BombCAD", "BlastCore", "BlastModel", "BlastRender",
+                .product(name: "DocumentKit", package: "continuumkit"),
             ]),
     ],
     swiftLanguageModes: [.v6]
 )
+
+// Metal, AppKit and SwiftUI do not exist on Linux, and ContinuumKit leaves its Metal and
+// AppKit products out there, so on Linux the package is BlastModel, its tests and
+// RadialBlast. The Mac builds everything as before. RadialBlast imports simd, which on
+// Linux is ContinuumKit's stand-in: depending on Numerics, which depends on it there,
+// makes sure it is built first.
+#if os(Linux)
+    let linuxTargets: Set<String> = ["RadialBlast", "BlastModel", "BlastModelTests"]
+    package.targets.removeAll { !linuxTargets.contains($0.name) }
+    package.products.removeAll()
+    for target in package.targets where target.name == "RadialBlast" {
+        target.dependencies.append(.product(name: "Numerics", package: "continuumkit"))
+    }
+#endif

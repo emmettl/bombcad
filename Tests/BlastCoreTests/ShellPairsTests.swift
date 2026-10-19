@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Connections between two parts of a shell body", .gpuThreads)
 struct ShellPairsTests {

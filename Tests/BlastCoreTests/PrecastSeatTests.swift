@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A precast beam's seat cycled along its corbel, against Batalha et al.'s tests
 /// (`PrecastSeatTest`, data in `Samples/PrecastSeat`).

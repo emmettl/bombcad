@@ -1,3 +1,4 @@
+import BlastModel
 import Foundation
 import Metal
 import simd
@@ -276,20 +277,6 @@ public final class MetalThermalVisibility: ThermalVisibility, @unchecked Sendabl
             marchPipeline = try device.makeComputePipelineState(function: march)
         }
     }
-}
-
-/// The terrain as the kernels read it (`ThermalTerrain` in Thermal.metal).
-struct TerrainSightUniforms {
-    var originX: Float
-    var originY: Float
-    var spacing: Float
-    var reach: Float
-    var columns: UInt32
-    var rows: UInt32
-    /// The first cell's primitive in the acceleration structure; all of them are boxes with no
-    /// terrain.
-    var firstCell: UInt32
-    var present: UInt32
 }
 
 extension ThermalExposure {

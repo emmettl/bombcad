@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The car's shell in the air, following the rigid box's coupling checks. Numerical and
 /// mechanical consistency only; nothing here is compared with a blast experiment.

@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A batch that would pass its time limit stops short, and its remaining steps are of zero length;
 /// the step after it is shortened to land on the limit. Steps of zero length change nothing.

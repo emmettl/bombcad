@@ -1,0 +1,232 @@
+import Foundation
+import simd
+
+/// What a run of a scene is expected to cost: its cells, steps and updates, the GPU memory it
+/// holds and the time it takes on an unloaded M4 Max, from the throughput measured in
+/// docs/performance.md and checked against timed runs there and in docs/large-scenes.md. A
+/// loaded Mac takes longer; the estimate is good to about a factor of two (see
+/// `RunCost.calibration`).
+public struct RunCostEstimate: Sendable, Equatable {
+    /// The coarse grid's cells, and its steps over the run.
+    public var cells: Int
+    public var steps: Int
+    /// Coarse cell-updates swept, the still air skipped left out.
+    public var coarseUpdates: Double
+    /// Refined cell-updates, each a fine cell's sweep in one of its level's own steps.
+    public var fineUpdates: Double
+    /// Structural element-updates, each an element's substep.
+    public var elementUpdates: Double
+    /// GPU memory held, in bytes: the coarse grid's and the pools the refined levels grow to
+    /// (`refinementMemory`), whole, as the run wants them for all the refinement it asks for.
+    public var memory: Int
+    /// Seconds on an unloaded M4 Max.
+    public var seconds: Double
+    /// The share of the domain each level of refinement's patches hold, first and second, on
+    /// average over the run; zero unrefined.
+    public var refinedShare: SIMD2<Double> = .zero
+    /// The most coarse cells each level is expected to hold at once (the busiest bin), from which
+    /// the pool it needs is reckoned.
+    public var peakRefinedCells: SIMD2<Double> = .zero
+    /// The memory the refined levels' pools are expected to grow to, in bytes, part of `memory`;
+    /// more than `SolverConfiguration.refinementMemory` allows means the shock is refined less
+    /// than asked where the pools run out.
+    public var refinementMemory = 0
+
+    /// The memberwise initialiser, written out so that BlastCore can use it.
+    package init(
+        cells: Int,
+        steps: Int,
+        coarseUpdates: Double,
+        fineUpdates: Double,
+        elementUpdates: Double,
+        memory: Int,
+        seconds: Double,
+        refinedShare: SIMD2<Double> = .zero,
+        peakRefinedCells: SIMD2<Double> = .zero,
+        refinementMemory: Int = 0
+    ) {
+        self.cells = cells
+        self.steps = steps
+        self.coarseUpdates = coarseUpdates
+        self.fineUpdates = fineUpdates
+        self.elementUpdates = elementUpdates
+        self.memory = memory
+        self.seconds = seconds
+        self.refinedShare = refinedShare
+        self.peakRefinedCells = peakRefinedCells
+        self.refinementMemory = refinementMemory
+    }
+}
+
+public enum RunCost {
+    /// Coarse cell-updates a second, each three directional sweeps: 2.1 to 2.6 billion on the
+    /// street when every cell is swept (docs/performance.md, "Air solver"), 1.8 billion with the
+    /// rest of a step's work, as the unrefined runs there take on average.
+    public static let cellUpdatesPerSecond = 1.8e9
+    /// A fine cell's update with its ghost cells against a coarse one's (docs/performance.md,
+    /// "Refinement").
+    public static let fineUpdateCost = 1.6
+    /// Afterburning and hot air against an ideal gas, per cell-update: the street at 0.25 m takes
+    /// twice as long, of which a shorter step is part (docs/performance.md, "Air solver").
+    public static let afterburningUpdateCost = 1.6
+    /// The terrain cut through the cells against its staircase, per cell-update: 6–13% more a step
+    /// over the ridges on 2.2 million cells, 15–25% with gravity (docs/terrain.md, "The cut cells'
+    /// cost").
+    public static let terrainCutUpdateCost = 1.1
+    /// The gas losing what it radiates, per cell-update: 5% more a step and 4% fewer steps on the
+    /// street (docs/thermal-radiation.md, "With the gas cooling").
+    public static let radiativeCoolingUpdateCost = 1.01
+    /// Its medium and loss a cell, and the directions' slices (docs/thermal-radiation.md).
+    public static let radiativeCoolingBytesPerCell = 12
+    public static let radiativeCoolingSliceBytes = 52 << 20
+    /// Element-updates a second with contact (docs/performance.md, "Structural solver").
+    public static let elementUpdatesPerSecond = 3.0e8
+    /// The time step against still air's: about a third, from the fireball's hot gas (0.34 on the
+    /// street, 0.32 to 0.42 at 500 t), and less with afterburning.
+    public static let stepShare: Float = 0.36
+    public static let burningStepShare: Float = 0.31
+    /// The refined air's thickness about a shock, in the coarse cells of the first level and the
+    /// first level's cells of the second. The patches over the street's shock on 0.25 m cells
+    /// (4,000 to 5,000 blocks of 4 cells) make about 7, but the refined runs on record take 2.2
+    /// to 3.4 times what that shell alone would cost: patches flagged behind the shock, kept
+    /// where outlines differ, and their ghost cells; 18 matches them.
+    public static let shellCells: Float = 18
+    /// Seconds a step costs whatever the grid (launching its kernels, the tiles' list, the
+    /// gauges), and more with two levels of refinement (their patches' bookkeeping): fitted to every
+    /// run of `blastbench advise --calibrate --time` on a quiet Mac (load under 2), on which a step
+    /// of its own costs nothing measurable and a step in two levels 1.2 ms.
+    public static let stepOverhead = 0.0
+    public static let twoLevelStepOverhead = 0.0012
+    /// Close in, the patches do not move on with the shock: the fireball, the secondary shock and
+    /// the ground's reflections keep the air refined from the shock's arrival until `coreTime`
+    /// s/kg^(1/3) after the burst, within `coreRange` m/kg^(1/3) of the charge for a level of
+    /// cells 0.04 m/kg^(1/3) across, and as the square root of the cells' size within a level of
+    /// finer ones (0.57 for 0.02 m/kg^(1/3)), where the smooth air between the jumps differs less
+    /// from cell to cell. Fitted to the refined share of 1 kg 0.5 m above rigid ground in domains
+    /// 1.5 to 6 m across (`blastbench profile --closein --width`, refined once and twice from
+    /// 0.04 m and once from 0.02 m; docs/performance.md, "Uniform when the patches cover most").
+    /// Coarser cells than those are held at `coreRange`: the open ground's refined runs show
+    /// nothing more.
+    public static let coreTime = 0.006
+    public static let coreRange = 0.8
+    public static let coreRangeExponent = 0.5
+
+    /// The scaled range within which a level of cells of `cell` m is held close in, for a charge
+    /// of `scale` kg^(1/3), in metres.
+    package static func coreRange(cell: Double, scale: Double) -> Double {
+        coreRange * min(1, pow(cell / scale / 0.04, coreRangeExponent)) * scale
+    }
+
+    /// With adaptive substeps (`SolverConfiguration.refinementOwnSteps`), the share of its
+    /// substeps a refined level is expected to take: all of them while the patches hold the
+    /// fireball close in (until `coreTime` s/kg^(1/3) after the burst, as for the refined share),
+    /// and `ownStepsLaterShare` of them after, once the fireball, smooth and left coarse, holds the
+    /// fastest wave. Against `blastbench profile --refine-own-steps` on the recommended air: 1.0,
+    /// 0.84, 0.76 and 0.70 for the close-in burst 1.5, 2, 3.5 and 6 m across (1.0, 0.82, 0.76 and
+    /// 0.67 measured), 0.67 for open ground and 0.66 for the street (0.63 and 0.70).
+    public static let ownStepsLaterShare = 0.6
+
+    public static func ownStepsShare(_ scenario: Scenario, duration: Double) -> Double {
+        guard duration > 0 else { return 1 }
+        let charges = [scenario.charge] + (scenario.additionalCharges ?? [])
+        let held = charges.filter { $0.mass > 0 }.map { coreTime * cbrt(Double($0.mass)) }.max() ?? 0
+        let early = min(held, duration) / duration
+        return early + (1 - early) * ownStepsLaterShare
+    }
+
+    /// GPU memory a block of refined air takes, ratio 2 (`SolverConfiguration.refinementMemory`).
+    public static let blockBytes = 63_000.0
+    /// The patches each level's pool grows to, first and second, for each block the busiest bin
+    /// is expected to hold (`peakRefinedCells`). On the 500 t burst over rigid ground refined
+    /// twice to 2 m at a threshold of 0.005 (docs/large-scenes.md, "The refined pool's memory"),
+    /// the pools, growing ahead, held 1.04 and 0.79 of the blocks estimated in a domain a quarter
+    /// as high as it is wide, and 1.81 and 1.03 under a top at 320 m (Beirut's), where the
+    /// estimate's coarse sampling of the height misses more of the shell: priced on the larger,
+    /// so that a setting said to fit does.
+    public static let poolShares = SIMD2(1.8, 1.05)
+
+    /// The coarse grid's memory, in bytes, without the refined levels'.
+    public static func coarseMemory(_ grid: Grid, configuration: SolverConfiguration) -> Int {
+        grid.cellCount * (configuration.afterburning ? burningBytesPerCell : bytesPerCell)
+            + (configuration.radiativeCooling == nil
+                ? 0 : grid.cellCount * radiativeCoolingBytesPerCell + radiativeCoolingSliceBytes)
+    }
+    /// Air bytes a cell: 57, with the fuel and oxygen 73 (docs/large-scenes.md).
+    public static let bytesPerCell = 57
+    public static let burningBytesPerCell = 73
+
+    /// The overpressure, in pascals, above which the refined cells follow a shock flagged at
+    /// `threshold`, as `ValidationTables.refinementReach` has it.
+    public static func refinementReach(threshold: Float, ambient: Float = 101_325) -> Float {
+        Float(ValidationTables.refinementReach(threshold: Double(threshold), ambient: Double(ambient)))
+    }
+
+    /// The fine one-dimensional start's own time, s, on the CPU before the run: for each charge as
+    /// far out as its caps allow (the cells, the scaled reach, 0.8 of the way to the domain's
+    /// nearest open or reflecting face and half the way to the nearest other charge; the blocks,
+    /// which may hold it closer, are not looked at, so it errs high), alike charges solved once.
+    package static func mappedStartSeconds(
+        _ scenario: Scenario, cellSize: Float, configuration: SolverConfiguration
+    )
+        -> Double
+    {
+        guard configuration.mappedCharge, configuration.airModel != .dissociating,
+            configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
+            scenario.deflagration == nil
+        else { return 0 }
+        let charges = [scenario.charge] + (scenario.additionalCharges ?? [])
+        var solved: Set<SIMD2<Float>> = []
+        var seconds = 0.0
+        for (k, charge) in charges.enumerated() where charge.mass > 0 {
+            let c = charge.position
+            let size = scenario.domainSize
+            var nearest = Float.infinity
+            // A charge on the ground, or on another reflecting face, is mirrored by it.
+            let faces: [(BoundaryFaces, Float)] = [
+                (.xMin, c.x), (.xMax, size.x - c.x), (.yMin, c.y), (.yMax, size.y - c.y),
+                (.zMax, size.z - c.z),
+            ]
+            for (face, distance) in faces
+            where !(distance <= 0.5 * cellSize && scenario.reflectiveFaces.contains(face)) {
+                nearest = min(nearest, distance)
+            }
+            if c.z > 0.5 * cellSize { nearest = min(nearest, c.z) }
+            let scale = cbrt(charge.mass)
+            var radius = min(
+                0.8 * nearest, configuration.mappedChargeCells * cellSize,
+                configuration.mappedChargeScaledReach * scale)
+            for (j, other) in charges.enumerated() where j != k {
+                radius = min(radius, 0.5 * simd_distance(other.position, c))
+            }
+            guard radius >= 3 * cellSize, solved.insert(SIMD2(charge.mass, radius)).inserted else { continue }
+            seconds += mappedStartSeconds(scaledReach: Double(radius / scale))
+        }
+        return seconds
+    }
+
+    /// The one-dimensional solution's time, s, out to `z` m/kg^(1/3), whatever the charge (its grid is
+    /// a twentieth of the charge's radius, at least 2,000 cells): 2.3 s to 1, 3.7 to 4, 8.4 to 6 and
+    /// 17.2 to 8 on an M4 Max (`blastbench mapped-cost --z 1,2,4,6,8`, 18 October 2026, its gas law's
+    /// exponentials shared). Within 2,000 cells the steps, and so the time, grow as the reach; beyond,
+    /// as its square.
+    public static func mappedStartSeconds(scaledReach z: Double) -> Double {
+        z <= 4 ? 1.85 + 0.46 * z : 3.69 * pow(z / 4, 2.2)
+    }
+
+    /// The blast's arrival time (s) and incident overpressure (Pa) at `range` from a surface burst
+    /// of `mass` kg, from the Kingery–Bulmash curves; beyond their reach the shock travels at the
+    /// speed of sound and weakens as the curves' last decade does.
+    package static func blast(range: Double, mass: Double) -> (arrival: Double, overpressure: Double) {
+        let scale = cbrt(max(mass, 1e-9))
+        let z = range / scale
+        if z < 0.2 { return (0, .infinity) }
+        if let point = KingeryBulmash.point(at: min(z, 40)) {
+            if z <= 40 { return (point.scaledArrival * scale, point.incidentPressure) }
+            return (
+                point.scaledArrival * scale + (range - 40 * scale) / 343,
+                point.incidentPressure * pow(40 / z, 1.4)
+            )
+        }
+        return (range / 343, 0)
+    }
+}

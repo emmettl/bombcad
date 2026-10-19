@@ -1,3 +1,4 @@
+import BlastModel
 import Foundation
 import RadialBlast
 import simd

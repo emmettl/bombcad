@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The transport hub sample (`ScenarioPreset.transportHub`): the train shed's frames, Vierendeel
 /// trusses, purlins and glass meshed as shells and beams, and the concourse beside it an envelope

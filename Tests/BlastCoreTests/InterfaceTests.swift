@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Joints between materials, and glass.
 @Suite("Interfaces and glass", .gpuThreads)

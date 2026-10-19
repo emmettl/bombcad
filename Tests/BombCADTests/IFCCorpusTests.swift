@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 @testable import BombCAD
 
 /// Imports one IFC file of a corpus, headless, as the app would: as rigid obstacles made an

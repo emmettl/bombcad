@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// "Twelve-storey office, steel and glass" (docs/office-tower.md).
 @Suite("Office tower")

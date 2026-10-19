@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A smooth pulse, sin² over `duration` from time zero, `peak` Pa at its middle: its integral
 /// from zero to t, Pa·s.

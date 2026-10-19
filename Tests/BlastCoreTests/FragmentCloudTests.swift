@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Uniform air over a 100 m cube of 10 m cells, as two slices `duration` apart.
 private func uniform(

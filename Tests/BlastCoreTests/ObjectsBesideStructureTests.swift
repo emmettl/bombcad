@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Freestanding objects and a deformable structure in the air together, stage 1: their masks and
 /// wall velocities coexist (`installExperimentalBoxes` beside `setStructures`). A box held in place

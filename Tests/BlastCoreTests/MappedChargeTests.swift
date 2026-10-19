@@ -5,6 +5,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The blast's first moments solved in one dimension and mapped onto the grid.
 @Suite("Mapped charge", .gpuThreads)

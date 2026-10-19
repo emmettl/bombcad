@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Structures' outlines as cut cells (`SolverConfiguration.structureCutCells`).
 @Suite("Structures' outlines as cut cells", .gpuThreads)

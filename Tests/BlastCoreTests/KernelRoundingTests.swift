@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A run can build the kernels with another rounding (`KernelRounding`), for the rounding
 /// ensemble: each rounds differently, and all agree closely before anything fails.

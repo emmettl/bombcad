@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The shell solver's pure helpers: the rules of quadrature through a shell's thickness and the
 /// factors of the simplified modified compression field theory worked out for each section when

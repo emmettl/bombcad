@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Stationary building envelopes", .serialized, .gpuThreads)
 struct BuildingEnvelopeTests {

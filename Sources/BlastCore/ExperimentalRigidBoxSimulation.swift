@@ -1,3 +1,4 @@
+import BlastModel
 import Metal
 import simd
 

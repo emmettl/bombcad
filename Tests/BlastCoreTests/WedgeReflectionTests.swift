@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A plane shock on a slope: the theory, and the air solver against it.
 @Suite("Wedge reflection", .gpuThreads)

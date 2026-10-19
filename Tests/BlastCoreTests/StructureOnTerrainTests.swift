@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A structure standing on the scene's terrain (`StructureModel.ground`): held at the ground's
 /// height there, and landing on the surface, not z = 0, when it falls.

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Afterburning's extinction limit.
 @Suite("Afterburning's extinction limit", .gpuThreads)

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Refined levels taking only the substeps their own waves need.
 @Suite("Refinement with each level's own steps")

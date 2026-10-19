@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// IFC elements meshed as a structure of shells and beams (`IFCStructure`), from elements built
 /// of boxes here so that the converter is not needed.

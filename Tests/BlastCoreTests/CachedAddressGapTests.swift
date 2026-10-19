@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The cell reads through the buffers' addresses cached once (eb60092e, and 2da843b2 after a merge
 /// had left them assigned to themselves): reads after the state's two buffers swap, after an edit

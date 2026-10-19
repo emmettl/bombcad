@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// `SolverConfiguration.groundStiffness` reaches each structure's solid elements when a scene loads.
 @Suite("Soft ground in the configuration")

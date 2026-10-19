@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Bodies meshed partly with solid elements and partly with shells, tied together.
 @Suite("Mixed bodies", .gpuThreads)

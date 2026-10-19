@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Scene object ownership", .gpuThreads)
 struct SceneObjectTests {

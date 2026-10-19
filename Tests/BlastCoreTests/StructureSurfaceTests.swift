@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Structure surface and USD export", .gpuThreads)
 struct StructureSurfaceTests {

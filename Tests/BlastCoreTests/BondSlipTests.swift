@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Bars that slip in their concrete (`BondSlip`), against the fib Model Code 2010's crack
 /// spacing and tension stiffening for a reinforced tie.

@@ -1,0 +1,266 @@
+import Foundation
+import simd
+
+/// Closed-domain smooth pressure pulse around a held clipped box. This is not blast validation.
+public enum ExperimentalConnectedLoadStudy {
+    public struct Result: Codable, Sendable {
+        public let cellSize: Double
+        public let rotation: Double
+        public let duration: Double
+        public let cfl: Double
+        public let pulseAmplitude: Double
+        public let pulseEnergy: Double
+        public let requestedPulseEnergy: Double?
+        public let wallIntegration: String
+        public let bodyWallPatches: Int
+        public let bodyWallSamples: Int
+        public let transport: String
+        public let rejectedSteps: Int
+        public let initialization: String
+        public let maximumQuadratureVolumeResidual: Double
+        public let steps: Int
+        public let groups: Int
+        public let initialMass: Double
+        public let initialEnergy: Double
+        public let relativeMassChange: Double
+        public let relativeEnergyChange: Double
+        public let bodyImpulse: SIMD3<Double>
+        public let bodyAngularImpulse: SIMD3<Double>
+        public let domainImpulse: SIMD3<Double>
+        public let momentumBudgetResidual: SIMD3<Double>
+        public let wallWork: Double
+        public let minimumPressure: Double
+        public let maximumSpeed: Double
+
+        /// The memberwise initialiser, written out so that BlastCore can use it.
+        package init(
+            cellSize: Double,
+            rotation: Double,
+            duration: Double,
+            cfl: Double,
+            pulseAmplitude: Double,
+            pulseEnergy: Double,
+            requestedPulseEnergy: Double?,
+            wallIntegration: String,
+            bodyWallPatches: Int,
+            bodyWallSamples: Int,
+            transport: String,
+            rejectedSteps: Int,
+            initialization: String,
+            maximumQuadratureVolumeResidual: Double,
+            steps: Int,
+            groups: Int,
+            initialMass: Double,
+            initialEnergy: Double,
+            relativeMassChange: Double,
+            relativeEnergyChange: Double,
+            bodyImpulse: SIMD3<Double>,
+            bodyAngularImpulse: SIMD3<Double>,
+            domainImpulse: SIMD3<Double>,
+            momentumBudgetResidual: SIMD3<Double>,
+            wallWork: Double,
+            minimumPressure: Double,
+            maximumSpeed: Double
+        ) {
+            self.cellSize = cellSize
+            self.rotation = rotation
+            self.duration = duration
+            self.cfl = cfl
+            self.pulseAmplitude = pulseAmplitude
+            self.pulseEnergy = pulseEnergy
+            self.requestedPulseEnergy = requestedPulseEnergy
+            self.wallIntegration = wallIntegration
+            self.bodyWallPatches = bodyWallPatches
+            self.bodyWallSamples = bodyWallSamples
+            self.transport = transport
+            self.rejectedSteps = rejectedSteps
+            self.initialization = initialization
+            self.maximumQuadratureVolumeResidual = maximumQuadratureVolumeResidual
+            self.steps = steps
+            self.groups = groups
+            self.initialMass = initialMass
+            self.initialEnergy = initialEnergy
+            self.relativeMassChange = relativeMassChange
+            self.relativeEnergyChange = relativeEnergyChange
+            self.bodyImpulse = bodyImpulse
+            self.bodyAngularImpulse = bodyAngularImpulse
+            self.domainImpulse = domainImpulse
+            self.momentumBudgetResidual = momentumBudgetResidual
+            self.wallWork = wallWork
+            self.minimumPressure = minimumPressure
+            self.maximumSpeed = maximumSpeed
+        }
+    }
+    package enum Failure: Error { case invalidConfiguration, stepLimit }
+    public static func run(
+        cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],
+        duration: Double = 0.0005, pulseAmplitude: Double = 40000,
+        cfls: [Double] = [0.2], targetPulseEnergy: Double? = nil, volumeAverage: Bool = false,
+        limited: Bool = false, surfaceQuadrature: Bool = false,
+        progress: (Result) throws -> Void = { _ in }
+    ) throws -> [Result] {
+        guard duration.isFinite && duration > 0, pulseAmplitude.isFinite && pulseAmplitude >= 0,
+            cfls.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 0.5 }),
+            targetPulseEnergy.map({ $0.isFinite && $0 >= 0 }) ?? true
+        else {
+            throw Failure.invalidConfiguration
+        }
+        var results: [Result] = []
+        for h in cellSizes {
+            for angle in rotations {
+                let domain = try ExperimentalConnectedGasStudy.domain(
+                    cellSize: h, rotation: angle, surfaceQuadrature: surfaceQuadrature)
+                func pulse(_ point: SIMD3<Double>) -> Double {
+                    let offset = (point - SIMD3(0.45, 1.18, 1.10)) / SIMD3(0.14, 0.18, 0.18)
+                    return exp(-0.5 * simd_length_squared(offset))
+                }
+                var quadratureResidual = 0.0
+                var gasCentres = domain.centres
+                let weights = try domain.cells.indices.map { n -> Double in
+                    guard volumeAverage || limited else { return pulse(domain.centres[n]) }
+                    guard domain.cells[n].volume > 0 else { return 0 }
+                    let nodes = domain.geometry.gasQuadrature(
+                        lower: domain.centres[n] - SIMD3(repeating: h / 2), cellSize: h)
+                    let volume = nodes.reduce(0) { $0 + $1.weight }
+                    let residual = abs(volume - domain.cells[n].volume) / (h * h * h)
+                    guard volume.isFinite && volume > 0 && residual < 1e-8 else {
+                        throw Failure.invalidConfiguration
+                    }
+                    quadratureResidual = max(quadratureResidual, residual)
+                    gasCentres[n] = nodes.reduce(SIMD3<Double>.zero) { $0 + $1.weight * $1.point } / volume
+                    guard volumeAverage else { return pulse(domain.centres[n]) }
+                    return nodes.reduce(0) { $0 + $1.weight * pulse($1.point) } / volume
+                }
+                var coefficient = 0.0
+                var correction = 0.0
+                for n in domain.cells.indices {
+                    let term = domain.cells[n].volume * weights[n] / (1.4 - 1) - correction
+                    let next = coefficient + term
+                    correction = (next - coefficient) - term
+                    coefficient = next
+                }
+                guard coefficient > 0 && coefficient.isFinite else { throw Failure.invalidConfiguration }
+                let amplitude = targetPulseEnergy.map { $0 / coefficient } ?? pulseAmplitude
+                guard amplitude.isFinite else { throw Failure.invalidConfiguration }
+                let initial = domain.cells.indices.map {
+                    FractionalGasTransport.Cell(
+                        volume: domain.cells[$0].volume, density: 1.225,
+                        pressure: 101325 + amplitude * weights[$0])
+                }
+                let plan = try ConnectedGasGroups.build(
+                    cells: initial, centres: domain.centres,
+                    nominalVolume: h * h * h, faces: domain.faces, boundaries: domain.boundaries)
+                let faces = plan.faces.map {
+                    FractionalEulerFlux.Face(a: $0.a, b: $0.b, normal: $0.normal, area: $0.area)
+                }
+                let loadBoundaries = ConnectedGasGroups.sampledBoundaries(plan.boundaries)
+                let walls = loadBoundaries.map {
+                    FractionalEulerFlux.Wall(cell: $0.cell, normal: $0.normal, area: $0.area)
+                }
+                let reconstruction: LimitedGroupedGasFlux.Geometry? =
+                    try limited
+                    ? .init(
+                        centres: plan.groups.map { group in
+                            group.members.reduce(SIMD3<Double>.zero) {
+                                $0 + initial[$1].volume * gasCentres[$1]
+                            } / group.cell.volume
+                        }, faces: plan.faces, boundaries: loadBoundaries) : nil
+                for cfl in cfls {
+                    var cells = plan.groups.map(\.cell)
+                    let before = totalAmount(initial)
+                    var elapsed = 0.0
+                    var steps = 0
+                    var rejectedSteps = 0
+                    var bodyImpulse = SIMD3<Double>.zero
+                    var angularImpulse = SIMD3<Double>.zero
+                    var domainImpulse = SIMD3<Double>.zero
+                    var wallWork = 0.0
+                    while elapsed < duration {
+                        let traces = try reconstruction?.traces(cells)
+                        let limit = try FractionalEulerFlux.maximumStep(
+                            cells, faces: traces?.faces ?? faces, walls: traces?.walls ?? walls, cfl: cfl)
+                        var step = min(reconstruction == nil ? limit : 0.99 * limit, duration - elapsed)
+                        guard steps < 10000 && step > 0 && elapsed + step > elapsed else {
+                            throw Failure.stepLimit
+                        }
+                        let update: FractionalEulerFlux.Result
+                        if let reconstruction, let traces {
+                            var accepted: FractionalEulerFlux.Result?
+                            for _ in 0..<24 {
+                                do {
+                                    accepted = try reconstruction.advance(
+                                        cells, traces: traces, duration: step, cfl: cfl)
+                                    break
+                                } catch LimitedGroupedGasFlux.Failure.stageLimit(let allowed) {
+                                    step = min(step / 2, 0.99 * allowed)
+                                } catch FractionalGasTransport.Failure.invalidState {
+                                    step /= 2
+                                }
+                                rejectedSteps += 1
+                                guard step > 0 && elapsed + step > elapsed else { throw Failure.stepLimit }
+                            }
+                            guard let accepted else { throw Failure.stepLimit }
+                            update = accepted
+                        } else {
+                            update = try FractionalEulerFlux.advanceWithWalls(
+                                cells, faces: faces, walls: walls, duration: step, cfl: cfl)
+                        }
+                        cells = update.cells
+                        for n in loadBoundaries.indices {
+                            let patch = loadBoundaries[n]
+                            if patch.owner == 1 {
+                                bodyImpulse += update.wallImpulses[n]
+                                angularImpulse += simd_cross(
+                                    patch.centroid - domain.bodyCentre, update.wallImpulses[n])
+                            } else {
+                                domainImpulse += update.wallImpulses[n]
+                            }
+                        }
+                        wallWork += update.wallWork.reduce(0, +)
+                        elapsed += step
+                        steps += 1
+                    }
+                    let scattered = try plan.scatter(cells)
+                    let after = totalAmount(scattered)
+                    let result = Result(
+                        cellSize: h, rotation: angle, duration: duration, cfl: cfl,
+                        pulseAmplitude: amplitude, pulseEnergy: amplitude * coefficient,
+                        requestedPulseEnergy: targetPulseEnergy,
+                        wallIntegration: surfaceQuadrature ? "bodySurfaceDegree2" : "centroid",
+                        bodyWallPatches: plan.boundaries.filter { $0.owner == 1 }.count,
+                        bodyWallSamples: loadBoundaries.filter { $0.owner == 1 }.count,
+                        transport: limited ? "limitedSSPRK2" : "constantEuler", rejectedSteps: rejectedSteps,
+                        initialization: volumeAverage ? "gasAverage" : "cellCentre",
+                        maximumQuadratureVolumeResidual: quadratureResidual, steps: steps,
+                        groups: cells.count, initialMass: before[0], initialEnergy: before[4],
+                        relativeMassChange: after[0] / before[0] - 1,
+                        relativeEnergyChange: after[4] / before[4] - 1,
+                        bodyImpulse: bodyImpulse, bodyAngularImpulse: angularImpulse,
+                        domainImpulse: domainImpulse,
+                        momentumBudgetResidual: SIMD3(
+                            after[1] - before[1], after[2] - before[2], after[3] - before[3]) + bodyImpulse
+                            + domainImpulse,
+                        wallWork: wallWork, minimumPressure: cells.map { $0.pressure() }.min()!,
+                        maximumSpeed: cells.map { simd_length($0.velocity) }.max()!)
+                    results.append(result)
+                    try progress(result)
+                }
+            }
+        }
+        return results
+    }
+
+    /// Compensated diagnostics avoid confusing thousands of cell-sum roundoff errors
+    /// with transport drift. Individual flux packets are unchanged.
+    private static func totalAmount(_ cells: [FractionalGasTransport.Cell]) -> SIMD8<Double> {
+        var total = SIMD8<Double>.zero
+        var correction = SIMD8<Double>.zero
+        for cell in cells {
+            let adjusted = cell.amount - correction
+            let next = total + adjusted
+            correction = (next - total) - adjusted
+            total = next
+        }
+        return total
+    }
+}

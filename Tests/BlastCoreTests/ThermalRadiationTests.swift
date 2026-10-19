@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Thermal radiation from the fireball", .gpuThreads)
 struct ThermalRadiationTests {

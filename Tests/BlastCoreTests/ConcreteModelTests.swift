@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Checks the concrete and reinforcement model against its own uniaxial curves and against
 /// the standard section analysis for a reinforced beam.

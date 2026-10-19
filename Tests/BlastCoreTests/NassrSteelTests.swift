@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Nassr's steel beams and columns blasted in the open (`NassrSteelTest`): the model's mid-span
 /// deflection against the measured, as validation.md's table records it, so a change that moves

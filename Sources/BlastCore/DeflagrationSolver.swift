@@ -1,75 +1,7 @@
+import BlastModel
 import Foundation
 import Metal
 import simd
-
-/// Layout matches `DeflagrationUniforms` in `Deflagration.metal`.
-struct DeflagrationUniforms {
-    var nx: UInt32 = 0
-    var ny: UInt32 = 0
-    var nz: UInt32 = 0
-    var dx: Float = 0
-    var ignitionCell: UInt32 = 0
-    var heat: Float = 0
-    var cloudFraction: Float = 0
-    var stoichiometricFraction: Float = 0
-    var lowerLimit: Float = 0
-    var upperLimit: Float = 0
-    var speedScale: Float = 0
-    var speedPower: Float = 0
-    var speedWidth: Float = 0
-    var speedFactor: Float = 1
-    var wrinklingRadius: Float = 0
-    var wrinklingPower: Float = 0
-    var wrinklingLimit: Float = 0
-    var turbulenceScale: Float = 0
-    var velocityPerViscosity: Float = 0
-    var ignitionX: Float = 0
-    var ignitionY: Float = 0
-    var ignitionZ: Float = 0
-    var densityFloor: Float = 0
-    var ambientPressure: Float = 0
-    var gamma: Float = 0
-    var airModel: UInt32 = 0
-    var panelCellCount: UInt32 = 0
-    var unburntDensity: Float = 0
-    var unburntGamma: Float = 0
-    var expansionRatio: Float = 0
-    var kinematicViscosity: Float = 0
-    var externalFactor: Float = 1
-    var regionMinX: Float = 0
-    var regionMinY: Float = 0
-    var regionMinZ: Float = 0
-    var regionMaxX: Float = 0
-    var regionMaxY: Float = 0
-    var regionMaxZ: Float = 0
-    var marksteinNumber: Float = 0
-    /// A tabulated laminar burning velocity (`FlammableGas.burningVelocityTable`): how many points,
-    /// their equivalence ratios and speeds (m/s); none uses Gülder's fit above.
-    var speedTableCount: UInt32 = 0
-    var speedPhi: SpeedTable = DeflagrationUniforms.emptyTable
-    var speedValue: SpeedTable = DeflagrationUniforms.emptyTable
-
-    typealias SpeedTable = (
-        Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float,
-        Float, Float
-    )
-    static let emptyTable: SpeedTable = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    static let speedTableCapacity = 16
-
-    /// Puts `points` (equivalence ratio, m/s) in the table.
-    mutating func setSpeedTable(_ points: [SIMD2<Float>]) {
-        precondition(points.count <= Self.speedTableCapacity, "at most 16 burning-velocity points")
-        speedTableCount = UInt32(points.count)
-        withUnsafeMutableBytes(of: &speedPhi) { raw in
-            let values = raw.bindMemory(to: Float.self)
-            for (n, point) in points.enumerated() { values[n] = point.x }
-        }
-        withUnsafeMutableBytes(of: &speedValue) { raw in
-            let values = raw.bindMemory(to: Float.self)
-            for (n, point) in points.enumerated() { values[n] = point.y }
-        }
-    }
-}
 
 /// The GPU side of a deflagration: the flame, if there is one, and the vent panels, which also
 /// serve a charge (see `Deflagration.metal`).
@@ -337,19 +269,6 @@ final class DeflagrationStage {
             openTimes[n] = Double(ticks) * StepControl.tick
         }
     }
-}
-
-/// What has burnt so far, and when the panels opened.
-public struct DeflagrationState: Sendable, Hashable {
-    /// Unburnt mixture left, kg, and what was laid down.
-    public var unburnt: Double
-    public var initialUnburnt: Double
-    /// Volume of the cells of mostly cloud gas that is mostly burnt, m³.
-    public var burntVolume: Double
-    /// When each panel with a release pressure opened (s), in scenario order, or nil.
-    public var panelOpenTimes: [Double?]
-
-    public var burntFraction: Double { initialUnburnt > 0 ? 1 - unburnt / initialUnburnt : 0 }
 }
 
 extension BlastSolver {

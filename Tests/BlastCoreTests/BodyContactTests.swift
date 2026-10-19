@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Independent deformable bodies meeting through contact. Mechanical checks, with the air
 /// unaware of the bodies so that only contact moves momentum between them.
