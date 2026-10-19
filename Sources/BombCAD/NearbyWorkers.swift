@@ -18,10 +18,12 @@ enum NearbyWorkers {
 
     /// How long a connection has to open, TLS handshake and all, before it is dropped as stalled:
     /// a Mac on the local network does it in milliseconds, but one that stops answering half-way
-    /// would otherwise be waited for for ever.
-    static let connectLimit = Duration.seconds(20)
+    /// would otherwise be waited for for ever. A minute, not 20 s: on a Studio loaded to 150 by
+    /// other runs (19 October 2026) a connection over loopback took past 20 s, and a stall is still
+    /// caught well inside the run's own wait.
+    static let connectLimit = Duration.seconds(60)
     /// How long the other Mac has for each message of an exchange that waits on no one.
-    static let messageLimit = Duration.seconds(30)
+    static let messageLimit = Duration.seconds(60)
     /// How long the other Mac's user has to check a pairing code.
     static let checkLimit = Duration.seconds(300)
 
