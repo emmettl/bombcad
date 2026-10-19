@@ -154,6 +154,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Charge inference](docs/charge-inference.md) | The charge's yield and place inferred from observed arrival times (and broken glass), with credible intervals; Beirut's found again |
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
+| [Reference calculations](docs/reference-calculations.md) | Independent Python implementations of the published methods, and the comparison script |
 | [Blind tests](docs/blind-tests.md) | The protocol and register of tests predicted on frozen defaults before their measurements are unsealed |
 | [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |
@@ -195,11 +196,14 @@ Each model document lists its sources, its limitations and the work that would a
 
 | Target        | Contents                                                             |
 |---------------|----------------------------------------------------------------------|
-| `SceneModel` / `SceneView` | Shared geometry and camera in [SimulationKit](Packages/SimulationKit/README.md) |
+| `SceneModel` / `SceneView` | Shared geometry and camera from [ContinuumKit](https://github.com/emmettl/ContinuumKit) (formerly [SimulationKit](Packages/SimulationKit/README.md)); see [adoption](docs/continuumkit-adoption.md) |
 | `BlastCore`   | Air and structural solvers, materials, scenarios, effects, benchmark data |
 | `BlastRender` | Scene renderer, orbit camera, offscreen snapshots                    |
 | `BombCAD`     | SwiftUI app with the layout editor                                   |
 | `blastbench`  | Command-line throughput, validation and snapshot tool                |
+| `scenebench`  | Command-line benchmarks of building envelopes, streets and districts |
+| `RadialBlast` | The fine one-dimensional spherical start of a blast (`SphericalBlast`) |
+| `rigidboxdemo` | A self-contained HTML replay of the rigid-box mechanics            |
 
 ## Licence
 

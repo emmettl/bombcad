@@ -231,7 +231,8 @@ Compression follows, for a compressive strain ε with peak strain ε_c and stren
 multiplied by K = 1 + 4.1 σ_lat / f_c, where σ_lat is the smaller of the compressive stresses
 the other two axes carry, capped at the unconfined strength (so K ≤ 5.1). The strain at peak
 and the softening range grow by 1 + 5(K − 1), so confined concrete is far more ductile. K
-follows its target through a running average over 50 time steps: applied instantly, the
+follows its target through the same running average as the strain rate (over the
+[strain-rate window](#the-strain-rate-window), 100 µs by default): applied instantly, the
 coupling between axes is several times stiffer than the elastic solid and breaks the explicit
 time-step limit. Every axis's K follows its target, including one in tension, so that an axis
 coming back into compression does not start from a stale one.
@@ -831,7 +832,7 @@ An option (`StructureModel.extremeFibreCracking`; `blastbench ... --extreme-fibr
 constant 19, so bodies without it are unchanged. It is not a default.
 
 **What it fixes.** A one-point element judges cracking at its centre. The bottom layer of a slab n
-elements deep has its centre 1/(2n) of the depth in, so the section cracks at about 1 + 1/n times its
+elements deep has its centre 1/(2n) of the depth in, so the section cracks at about n/(n − 1) times its
 cracking moment: 1.14 on 8 elements. Most members are unaffected, since their bars give them a plastic
 moment well above their cracking moment. A lightly reinforced slab or wall is different: its plastic
 moment lies below its cracking moment (Mendonça's slabs: 3.7 against 5.0 kN m/m), so its strength is
@@ -1190,7 +1191,8 @@ instead:
 | Masonry (brick) | 225 × 75 mm | 2 MPa, 80 N/m | 0.25 MPa, 18 N/m | 0.35 MPa, 0.75, 125 N/m |
 | Concrete block | 450 × 225 mm | 0.9 MPa, 60 N/m | 0.2 MPa, 10 N/m | 0.28 MPa, 0.75, 100 N/m |
 
-So blockwork shows its joints on the layouts' 62.5 mm elements, and brickwork only on elements
+So blockwork shows its joints on elements of 112.5 mm or less (the Blockwork wall layout's
+75 mm elements, for example), and brickwork only on elements
 of 37.5 mm or less; coarser meshes, and shells, keep the wall's one strength.
 
 **Where the joints are.** Each masonry piece is laid from its own base in running bond: a bed
@@ -1287,7 +1289,7 @@ matter.
 9. **Crushing spread over a band wider than an element** (`crushBand`), tried as the fix for
    that hinge. It made things worse: the fine mesh collapsed with any band from 50 mm to
    200 mm, and the coarse mesh did not change at all. (After step 12 a 50 mm band makes no
-   difference.) The option is kept, at zero (one element), for the sensitivity study.
+   difference.) The option was later retired; a saved model that sets it is told so when it loads.
 10. **A mesh-convergence check**, with 16 elements through the thickness. The slab collapses.
    Before anything fails it is already softer than the 8-layer mesh, because its compression
    zone crushes to several per cent while its bars barely yield: compressive softening
@@ -1556,7 +1558,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 6. **Confined strength is capped** at about five times the unconfined strength; above it only
    the compaction curve raises the pressure, so the strength does not grow with pressure as
    in real concrete under triaxial load. The compaction curve's constants are for a 48 MPa
-   concrete and are used unscaled. Under the close-in slabs' charges this is not what matters:
+   concrete and are used unscaled for structural concrete (bulk modulus 12 GPa or more); only
+   softer materials have the curve's rise scaled by K / 12 GPa. Under the close-in slabs' charges this is not what matters:
    the shock squeezes the concrete under the charge nearly equally every way (117 MPa down and
    99 MPa across at the face, a mean of about four times f_c, compacting it by 1.3%), so the
    difference between its stresses stays under 40 MPa, far below its strength by this law or
@@ -1566,11 +1569,12 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    past the curve's locking point, where it is three to twenty times stiffer than elastic, and
    the explicit step, set by the elastic wave speed, runs away within 50 µs; those runs take a
    quarter of it.
-7. **Reinforcement is perfectly bonded and smeared.** There is no bond slip, bar buckling or
-   lap failure, and bars are placed by the element, not individually. Dowel action is a cap on
+7. **Reinforcement is perfectly bonded and smeared by default.** Bond slip (`bondSlip`), inclined
+   bars (`inclinedBars`) and discrete bars (`discreteBars`) are options; without them there is no
+   bond slip, bar buckling or lap failure, and bars are placed by the element, not individually. Dowel action is a cap on
    the shear stress, mobilised as soon as a crack forms rather than over the first millimetre
-   or so of slip, and inclined bars (such as the diagonal bars across a chamfer) can only be
-   represented by their components along the lattice axes. Rupture is
+   or so of slip, and, unless the inclined-bars option is used, inclined bars (such as the
+   diagonal bars across a chamfer) are represented by their components along the lattice axes. Rupture is
    judged over a debonded length, but a bar's stress still follows the strain of the element
    it sits in, so where a crack gathers into one element the bar there carries its full
    strength while that element stretches. Under cyclic
@@ -1585,8 +1589,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
    layer that comes off (12 through the 0.15 m slab; on 6 the crack falls inside the face's
    element and the slab behind catches the layer up). With both, the layer under the charge
    flies off, over 0.4% of the face. Each element's tensile rate factor is frozen when it
-   first cracks, from a running average over 50 steps (about 0.2 ms there) that has caught only
-   part of a wave rising in 30 µs: the face cracks at 1.3 times its static strength, where
+   first cracks, from a running average (then over 50 steps, about 0.2 ms there; now over the 100 µs
+   strain-rate window) that has caught only part of a wave rising in 30 µs: the face cracks at 1.3 times its static strength, where
    spalling tests find several times. See
    [Validation](validation.md#what-stops-the-spall-and-the-breach).
 9. **Crack spacing and aggregate size are inputs**, not predictions; so is the crushing length.
@@ -1646,9 +1650,8 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   for charges in contact from the products' own equation of state, which gives about half the
   impulse of the present ball of hot air, should come before any removal rule is judged; then a
   rule for rubble the slab drives out, and a strain rate for the tensile strength that follows a
-  stress wave (an average over a fixed time rather than 50 steps); and how the slab's own
+  stress wave (the 100 µs window, the default since 12 October 2026, is a fixed time but still longer than a 30 µs rise); and how the slab's own
   bending, which the tests' damage follows, comes out a third to a half of the tests'.
-- **Discrete bars** as truss elements for heavily reinforced joints and inclined bars.
 - **Masonry on coarse elements and shells**: strengths that differ across and along the bed
   joints, standing for joints the mesh cannot show; and a test of a masonry wall under blast
   to check either.

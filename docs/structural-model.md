@@ -34,8 +34,9 @@ stops where bodies come close. See [contact between bodies](multiple-object-scen
 The structure is the union of axis-aligned boxes (walls, slabs, columns) minus other boxes
 (openings), filled with cubic elements on a regular lattice. An opening cuts the boxes it
 crosses but not one it holds whole, so a pane set in a wall's opening stays. An element exists wherever a
-lattice cell's centre lies inside the body. The built-in layouts use elements of 62.5 mm, or
-125 mm for the two-storey frame.
+lattice cell's centre lies inside the body. Most built-in solid layouts use elements of 62.5 mm or 125 mm
+(50 mm for the close-in column, 75 mm for the blockwork wall); the shell layouts use 0.25 m or
+0.5 m.
 
 Because the mesh is a lattice, there is no connectivity table: an element finds its eight nodes
 from its lattice position. Nodes on the ground plane are clamped when the structure has a fixed
@@ -151,13 +152,15 @@ How it works (`BlastSolver.settleStructures()`):
   deformation, stresses and any cracking from its own weight stay.
 - **Falling bodies:** a body that is still moving after 1 s, such as one falling or not standing,
   is put back undeformed. It then starts as it did before.
-- **Chattering joints** (since 18 October 2026): a body whose nodes still move at 1 s but whose
+- **Still, if not quiet** (since 18 October 2026): a body whose nodes still move at 1 s but whose
   displacement over the last 5 ms part has stood still, its mean speed over the part (the change
-  of its displacement over the part's time) within 1% of the largest, has settled all the same. A
-  joint on a footing chatters at rest: the nodes it ties move at a few cm/s and microns, the
-  footing's and the body's oscillation never damped out between the joint and the footing's own
-  motion, and the frame on a hillside's footings stalled at 1.3% of its largest speed, level
-  footings too. Bodies that settled before the limit settle as they did.
+  of its displacement over the part's time) within 1% of the largest, has settled all the same.
+  Bodies that settled before the limit settle as they did. It was added for bodies on footings,
+  whose joints chattered at rest at a few cm/s and microns and never came below 1%: the joint
+  was worked out from the scene's positions, tens of metres rounded to microns, and its stiffness
+  turned the rounding into a fresh traction every step. It is now worked out from displacements
+  ([footings](#footings)), and the frame on a hillside settles in 0.18 s; the rule stays for any
+  other body that rings without moving.
 
 It is left out, so that the run is as before, bit for bit:
 - with the option off;
@@ -852,6 +855,16 @@ the level footing's (Gazetas has no slope factor), the soil's radiation is the l
 half-space's, the pressure at rest is Jáky's for level ground, and cohesive soil's own slope
 factor (Vesić's 1 − 2β / (π + 2) on cohesion) is not needed, the soil being sand.
 
+**The joint to the footing** is worked out from displacements alone (`footingJoint`): the
+point's place relative to the footing's top as its own displacement less the footing's and less
+how the footing's turning has carried it, never as the difference of two positions. A scene's
+positions are tens of metres, rounded to microns in single precision, and the joint's stiffness
+(E/h, 2.4 × 10¹¹ Pa/m for concrete on 0.125 m elements) turned that rounding into about a
+megapascal of traction, fresh every step: a frame on footings 26 m from the origin chattered at
+rest at 4-8 cm/s and never settled (until 18 October 2026). Rerun since, FoRCy's slow test moved
+by under 0.004 in its moment ratios and FoRDy's shaken events by up to 2.4 mrad in their peak
+rotations ([validation](validation.md#a-footing-shaken-on-dry-sand)).
+
 **Not modelled.** The footing is rigid, rectangular and flat-bottomed. Embedded, the soil
 against its sides is springs with limits, its rocking past their reach a spring on the footing
 with its own limit; the soil's radiation from the sides, and a gap left by soil that has given
@@ -1310,7 +1323,7 @@ shock, and the drag and pressure-gradient push on loose debris.
    run twice sometimes eroded a different number of elements); it now has a mark of its
    own, read as bare bars for the rest of the pass. The nodes in a contact grid cell
    were stored, and their forces summed, in the order threads arrived; each cell is now
-   emptied in one pass and filled in the next with an atomic-minimum chain that keeps its four
+   emptied in one pass and filled in the next with an atomic-minimum chain that keeps its eight
    lowest-numbered nodes in ascending order, whatever the timing. That also decides which
    nodes a crowded cell drops.
 6. **Uniform element size.** A large building at fine resolution needs many elements, and the

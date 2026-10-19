@@ -267,7 +267,7 @@ its products burn (to 1%; `MappedChargeTests`).
 
 - **Impulse:** within 5–15% at every grid beyond 1 m/kg^(1/3). It holds beyond the mapped radius,
   so nothing is counted twice. Refined, the patches placed at the restart take their coarse
-  cells' impulse again once the passage is laid down (`Refinement.reseedImpulseBase`); without
+  cells' impulse again once the passage is laid down (`AirRefinement.reseedImpulseBase`); without
   that the impulse beyond 6 m was lost (5–38%).
 - **Close in:** at 0.5–0.75 m/kg^(1/3) the incident impulse reads 125–175%, where
   Kingery–Bulmash rests on few tests.
@@ -546,8 +546,6 @@ air share one sub-grid model. Charges keep Smagorinsky's, bit for bit.
 
 ## Skipping still air
 
-## Skipping still air
-
 Air the blast has not yet reached is in exactly the uniform state it was filled with, and a
 sweep leaves such a cell unchanged when every cell its update reads is in that state too. So
 the grid is cut into tiles of 8 × 8 × 8 cells, and only the awake tiles are swept:
@@ -755,6 +753,65 @@ The threshold decides how far out the refinement follows a shock: at the default
 20 kPa, at 0.005 beyond 40 m/kg^(1/3), after which the peak falls to the coarse cells' share (see
 [Large scenes](large-scenes.md#against-kingerybulmash-to-40-mkg13)).
 
+## Reflected peaks at a wall
+
+A reflected peak read beside a wall comes out low wherever the cells there are coarse against the
+charge, the unsafe side for glass, envelope components and injury. Traced 18 October 2026.
+
+**Where it is lost.** `blastbench wallpeak` bursts 100 kg on rigid ground before a rigid wall,
+then again without the wall. At 2 m/kg^(1/3) on 0.25 m cells, against Kingery–Bulmash's
+reflected peak of 1,058 kPa:
+- The incident shock the grid brings to the wall is 10% low, smeared over cells. Its normal
+  reflection (Rankine–Hugoniot) would be 87% of the reflected peak.
+- The gauge, reading the mean pressure of the cell against the wall, takes 69%: the reflected
+  shock smeared over that cell too.
+- Read as the pressure at the wall instead (the cell's gas against its mirror, two shocks), the
+  same cell gives 93%.
+
+So most of the loss is in reading the cell, not in the incident wave.
+
+**By cells per charge length.** The cell read's fraction of Kingery–Bulmash's reflected peak
+depends on the scaled distance Z and on N = W^(1/3)/Δx, the cells across the charge's scaled
+length. At Z = 1, 100 kg on 0.25 m cells (N = 18.6) reads 40%, and 1 kg on 0.05 m cells (N = 20)
+38%. Uniform cells; the reflected impulse is within 6% beyond 1.5 m/kg^(1/3) on 0.25 m cells for
+100 kg (validation):
+
+| Z (m/kg^(1/3)) | N = 9.3 | N = 18.6 | N = 20 | N = 37 | N = 50 |
+|---|---|---|---|---|---|
+| 0.3 | | | 17% | | 36% |
+| 0.5 | | | 21% | | 54% |
+| 0.75 | 15% | 32% | 29% | 57% | 61% |
+| 1 | 22% | 40% | 38% | 62% | 69% |
+| 1.5 | 34% | 55% | | 76% | |
+| 2 | 45% | 64% | | 83% | |
+| 3 | 60% | 77% | | 92% | |
+| 4 | 68% | 83% | | 102% | |
+| 5–6 | 72–74% | 87–88% | | 101–102% | |
+
+N = 9.3, 18.6 and 37 are 100 kg on 0.5, 0.25 and 0.125 m cells (`blastbench validate`); N = 20
+and 50 are 1 kg 0.3–1 m above rigid ground on 0.05 and 0.02 m cells (`blastbench closeair`).
+Refinement at the wall counts as its finest cells.
+
+**Read at the wall (an option, `gaugesReadWallPressure`, `--wall-read`).** A gauge within a cell
+of a solid cell or a reflective face of the domain reads the pressure at that wall, from whatever
+cell it reads, at any level.
+- Peaks: 69–93% of Kingery–Bulmash on 0.25 m cells for 100 kg (from 32–88%), 46–80% on 0.5 m
+  (from 15–74%); close in, 48–61% on 0.05 m (from 17–38%) and 82–96% on 0.02 m (from 36–69%).
+- Impulse overshoots close in: 113–131% on 0.05 m and 119–143% on 0.02 m, from 61–103%. While the
+  pressure at a wall rises, the cell beside it keeps a mean speed towards it, and the two-shock
+  read counts that speed as gas brought to rest for the whole positive phase. It does not shrink
+  as the cells do.
+- Tyndall's test 1 (0.25 m air refined twice): the front's reflected peak goes from 25.1 to
+  26.8 kPa against the measured 34.8, and its impulse from 140 to 150 kPa ms against 137. Its gap
+  is the incident wave: the free field reads 9.8 kPa against the measured 16.6, and the front
+  already exceeds the normal reflection of the model's own incident (20.4 kPa).
+- It costs nothing measurable: six neighbours per gauge per step, on the thread that logs the
+  gauges.
+
+So it is for peaks alone (a peak's injury, a peak field), not for loads whose history matters
+(envelope components, glass, structures), and stays off. For those, the table says how far the
+peaks fall short and refinement at the wall is the remedy.
+
 ## Freezing the air
 
 When a deformable structure is present, the air is frozen (its sweeps are skipped) once either
@@ -799,7 +856,9 @@ UFC 3-340-02, lowest for light charges.
 2. **Shocks are smeared over two or three cells**, so peak overpressure is under-predicted near
    the charge, where the wave is thin compared with a cell. Impulse is much less affected.
    Refinement (above) gives the peaks of a grid twice or four times as fine, in one level, or four
-   times as fine in two; there are no more than two levels.
+   times as fine in two; there are no more than two levels. Reflected peaks read beside a wall fall
+   further short; [Reflected peaks at a wall](#reflected-peaks-at-a-wall) gives how far, by cells
+   per charge length.
 3. **Open boundaries reflect a little.** The far-field faces (see [Open faces](#open-faces))
    treat each face's waves as acoustic and head-on, so neither strong nor oblique waves leave
    exactly; the copying faces before them (zero-gradient, or "transmissive") were not exactly

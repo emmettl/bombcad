@@ -39,6 +39,7 @@ func runTyndall(device: MTLDevice) throws {
                     c.airSleepCrossings = 0
                 }
                 if flag("copy-faces") { c.openFaces = .copy }
+                if flag("wall-read") { c.gaugesReadWallPressure = true }
                 configureRefinement(&c)
             },
             progress: flag("progress") ? { print("  " + $0) } : nil)
