@@ -724,6 +724,13 @@ extension StandingScene {
                 bands.note = "Shielded from the charge, which no comparison was."
                 return bands
             }
+            if onBox && has(.wallReadGauges) {
+                bands.note =
+                    "Read at the wall, while the reflected bands were derived from the cell beside it: its peaks "
+                    + "come nearer Kingery–Bulmash and its impulses overshoot close in (air-blast-model.md, "
+                    + "\"Reflected peaks at a wall\")."
+                return bands
+            }
             let validity =
                 String(
                     format: "%.2f m/kg^(1/3) from the charge, cells of %.3f m/kg^(1/3) near the shock",

@@ -319,6 +319,15 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         let behind = try #require(
             SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.25)).gauge("Behind"))
         #expect(behind.peak == nil && behind.note?.hasPrefix("Shielded") == true)
+        // Read at the wall: the reflected bands, taken from the cell's mean, do not apply.
+        scenario.gauges = [Gauge("Face", at: SIMD3(wall.min.x - 0.1, (wall.min.y + wall.max.y) / 2, 1))]
+        var atWall = SolverConfiguration()
+        atWall.gaugesReadWallPressure = true
+        let inputs = StandingInputs(scenario: scenario, cellSize: 0.25, configuration: atWall)
+        #expect(inputs.options.contains(.wallReadGauges))
+        let readFace = try #require(SceneStanding(inputs).gauge("Face"))
+        #expect(readFace.peak == nil && readFace.impulse == nil)
+        #expect(readFace.note?.hasPrefix("Read at the wall") == true)
     }
 
     @Test func structuresTakeBandsByRegimeMeshAndMaterial() throws {
