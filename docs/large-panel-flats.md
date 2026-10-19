@@ -10,7 +10,7 @@ They are showcases, run on the model as it stands. Nothing here has been compare
 measurement; the gas flat is set against the inquiry's own estimates of what each wall needed
 to give ([below](#against-the-inquirys-estimates)). Collapse has been compared once, blind, and missed (see the [standing](#its-standing)).
 
-![The street charge, 4 s: the east bay's lower storeys down in the street, its top three hanging off the cross wall, the west bays standing](large-panel-street-4000ms.png)
+![The street charge, 4 s: the east bay's lower storeys down in the street, its top floors hanging off the cross wall, and the west bays' lowest storeys crushed, the block sunk on them](large-panel-street-4000ms.png)
 
 ## The building
 
@@ -114,8 +114,12 @@ off and drops, and the bay's floors, losing their flank-end bearing, hinge down 
 wall, where the continuous floor cracks over it (5.0 m at 1 s, 6.5 m at 1.5 s). From 2 s the
 bay's lower floors tear off the cross wall and fall into the street; by 4 s nine storeys of the
 bay lie in a pile in front of the block, 24,891 elements failed, and its top three floors still
-hang, cantilevered off the cross wall. The two west bays stand. It is the mechanism of Ronan
-Point's corner, the floors of one bay falling once the wall at their end is gone, set off from
+hang, cantilevered off the cross wall. The two west bays stand. Run again on 0.5.0's build (the
+picture above) the east bay goes the same way, but by 4 s the west bays' lowest storeys have
+crushed too and the whole block has sunk on them, with 26,689 elements failed. After failure a
+run is one draw among roundings of its arithmetic ([fast math and the
+build](performance.md#fast-math-and-the-build)), so whether the west bays stand is not settled
+by either run. It is the mechanism of Ronan Point's corner, the floors of one bay falling once the wall at their end is gone, set off from
 below rather than from the eighteenth floor.
 
 | Charge at 8 m | What happens |

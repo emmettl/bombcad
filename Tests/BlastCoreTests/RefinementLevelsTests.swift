@@ -194,6 +194,30 @@ struct RefinementLevelsTests {
         #expect(same)
     }
 
+    @Test(
+        "A first level that runs out of memory part way through growing leaves both levels in the same buffers"
+    )
+    func failedGrowth() throws {
+        var configuration = twoLevels()
+        configuration.refinementStartMemory = 1 << 20
+        let solver = try closedBox(configuration)
+        let first = try #require(solver.refinement)
+        let second = try #require(solver.finerRefinement)
+        let held = first.maxPatches
+        // Its fifth allocation fails: after the three shared buffers were made and swapped, as they
+        // were, among its own buffers.
+        first.allocationsBeforeFailure = 5
+        // Checked straight after the failed attempt: a later one that succeeds would make the
+        // buffers alike again, with the second level's cells lost.
+        for _ in 0..<60 where first.allocationsBeforeFailure != nil {
+            #expect(solver.advance(steps: 1).isStable)
+        }
+        #expect(first.allocationsBeforeFailure == nil, "growth was never tried")
+        #expect(first.fineMask === second.fineMask && first.fine[0] === second.fine[0])
+        #expect(second.cellOffset == first.maxPatches * first.side * first.side * first.side)
+        #expect(first.maxPatches >= held)
+    }
+
     @Test("A pool that starts small and grows steps exactly as one made at full size", arguments: [1, 2])
     func growingPool(levels: Int) throws {
         var configuration = twoLevels()
