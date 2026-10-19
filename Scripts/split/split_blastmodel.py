@@ -690,10 +690,19 @@ def widen_access(dry_run: bool = False) -> dict:
         _, _, d = item
         if d.name and d.name in core_idents:
             promote(item, "BlastCore names it")
-        elif d.kind in ("init", "subscript") or (d.kind == "func" and d.name and
-                                                 not re.match(r"^\w", d.name)):
+        elif d.kind in ("init", "subscript"):
             p = owner_type(d)
             if p is not None and p.name.split(".")[-1] in core_idents:
+                promote(item, "BlastCore names its type")
+        elif d.kind == "func" and d.name and not re.match(r"^\w", d.name):
+            # An operator only on a top-level type BlastCore names. A nested type's name proves
+            # little (`CloudRise.State` is not BlastCore's own `State`s, though BlastCore names
+            # `CloudRise`), and each operator widened joins the overloads every target of the
+            # package sees: CloudRise.State's `+` and `*` were enough to time out the type checker
+            # on a SwiftUI body in BombCAD (ThermalSection) at c09d058f. Should BlastCore need an
+            # operator of a nested type, the Mac build says so.
+            p = owner_type(d)
+            if p is not None and "." not in p.path and p.name in core_idents:
                 promote(item, "BlastCore names its type")
     # What a widened declaration's signature names must be at least as visible.
     while queue:
