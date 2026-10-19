@@ -3,10 +3,10 @@ import CompressibleFlow
 /// Planar wall reference supplied by exact-tagged ContinuumKit.
 /// Positive normal velocity is toward the wall, measured relative to the wall.
 /// Geometry, wall motion, timestep, impulse/work and transport policy remain app-owned.
-package enum IdealGasWallRiemann {
-    package enum Failure: Error { case invalidState }
-    package struct Result {
-        package let pressure: Double
+enum IdealGasWallRiemann {
+    enum Failure: Error { case invalidState }
+    struct Result {
+        let pressure: Double
         /// Legacy incident-state rate estimate; not an exact shock-front velocity.
         let signalSpeed: Double
         let vacuum: Bool

@@ -862,12 +862,12 @@ public final class USDSceneWriter {
 }
 
 /// UTF-8 text with fast fixed-point numbers: a frame of a large body holds millions of them.
-package struct Text {
-    package var bytes: [UInt8] = []
+struct Text {
+    var bytes: [UInt8] = []
 
-    package mutating func append(_ string: String) { bytes.append(contentsOf: string.utf8) }
+    mutating func append(_ string: String) { bytes.append(contentsOf: string.utf8) }
 
-    package mutating func append(_ value: Float, decimals: Int = 4) {
+    mutating func append(_ value: Float, decimals: Int = 4) {
         guard value.isFinite else {
             bytes.append(UInt8(ascii: "0"))
             return
@@ -893,7 +893,7 @@ package struct Text {
         for _ in 0..<(digits - (bytes.count - start)) { bytes.insert(UInt8(ascii: "0"), at: start) }
     }
 
-    package mutating func append(_ point: SIMD3<Float>) {
+    mutating func append(_ point: SIMD3<Float>) {
         bytes.append(UInt8(ascii: "("))
         append(point.x)
         bytes.append(contentsOf: [UInt8(ascii: ","), UInt8(ascii: " ")])

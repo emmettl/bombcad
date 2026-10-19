@@ -315,8 +315,8 @@ public enum TwoFaceSlabTests {
     }
 
     /// A probe: its name and the lattice node it reads, with the axis along which the slab bends.
-    package struct Probe {
-        package var name: String
+    struct Probe {
+        var name: String
         package var node: (Int, Int, Int)
     }
 

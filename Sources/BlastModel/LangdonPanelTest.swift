@@ -102,8 +102,8 @@ public enum LangdonPanelTest {
         }
     }
 
-    package struct Fixture: Decodable {
-        package var tests: [Panel]
+    struct Fixture: Decodable {
+        var tests: [Panel]
     }
 
     /// The panels of `Fixtures/Langdon2003/panels.json`.

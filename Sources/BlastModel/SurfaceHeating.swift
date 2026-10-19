@@ -368,8 +368,8 @@ public struct SurfaceHeating: Sendable {
         public let material: [Int]
         /// The columns the receivers are reckoned through, and each receiver's: one a material and
         /// thickness of solid, those cut off at the same depth shared.
-        package let columns: [Column]
-        package let column: [Int]
+        let columns: [Column]
+        let column: [Int]
 
         /// Gives each receiver on `grids` its material, by `spec` and the scene's own materials.
         public init(spec: SurfaceHeatingSpec, grids: [ThermalSurfaceGrid], scene: FragmentScene) {
@@ -394,7 +394,7 @@ public struct SurfaceHeating: Sendable {
         }
 
         /// A grid's material, resolved, and how thick the solid behind it is, nil under the ground.
-        package static func resolve(spec: SurfaceHeatingSpec, grid: ThermalSurfaceGrid, scene: FragmentScene)
+        static func resolve(spec: SurfaceHeatingSpec, grid: ThermalSurfaceGrid, scene: FragmentScene)
             -> (material: HeatedMaterial, thickness: Float?)
         {
             var labels = [grid.surface]
@@ -460,7 +460,7 @@ public struct SurfaceHeating: Sendable {
     public private(set) var peakTemperature: [Float]
     private var lastTime: Double?
     private var lastIrradiance: [Float] = []
-    package let nodes: Int
+    let nodes: Int
     /// Each column's capacities then conductances, `2 nodes − 1` a column, and its face.
     private let coefficients: [Double]
     private let faces: [Column.Face]
@@ -557,27 +557,27 @@ public struct SurfaceHeating: Sendable {
 /// One material's column of cells into its surface, as finite volumes: a node at the surface, at
 /// each cell's far face and at every interface between layers, each holding the heat capacity of
 /// the half cells either side of it, joined to the next by its cell's conductance.
-package struct Column: Sendable, Equatable {
+struct Column: Sendable, Equatable {
     /// In J/(m² K), one a node.
-    package var capacity: [Double]
+    var capacity: [Double]
     /// In W/(m² K), between each node and the next.
     var conductance: [Double]
     /// Depth of each node, in metres.
-    package var depth: [Double]
+    var depth: [Double]
     var absorptivity: Double
-    package var emissivity: Double
+    var emissivity: Double
     /// The back face's, where the material is thinner than the column would be; nil for a column
     /// cut off in a deeper solid, through which no heat flows.
-    package var back: Double?
+    var back: Double?
 
     /// What a step needs of a column besides its capacities and conductances, with no arrays to
     /// count references to as the cores share it.
-    package struct Face: Sendable {
-        package var nodes: Int
+    struct Face: Sendable {
+        var nodes: Int
         var absorptivity: Double
-        package var emissivity: Double
+        var emissivity: Double
         /// The back face's emissivity; negative where no heat flows through the back.
-        package var back: Double
+        var back: Double
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
         package init(
@@ -593,13 +593,13 @@ package struct Column: Sendable, Equatable {
         }
     }
 
-    package var face: Face {
+    var face: Face {
         Face(nodes: capacity.count, absorptivity: absorptivity, emissivity: emissivity, back: back ?? -1)
     }
 
-    package static let stefanBoltzmann = 5.670_374e-8
+    static let stefanBoltzmann = 5.670_374e-8
     /// TR-BDF2's split, 2 − √2.
-    package static let gamma = 2 - 2.0.squareRoot()
+    static let gamma = 2 - 2.0.squareRoot()
 
     /// `material`'s column in front of a solid `solid` metres thick, nil without end.
     package init(_ material: HeatedMaterial, solid: Float?, spec: SurfaceHeatingSpec) {
@@ -665,7 +665,7 @@ package struct Column: Sendable, Equatable {
     }
 
     /// The ratio by which `cells` cells, the first `first` thick, grow to fill `length`.
-    package static func ratio(first: Double, length: Double, cells: Int) -> Double {
+    static func ratio(first: Double, length: Double, cells: Int) -> Double {
         guard first * Double(cells) < length else { return 1 }
         var (low, high) = (1.0, 2.0)
         func fill(_ r: Double) -> Double { first * (pow(r, Double(cells)) - 1) / (r - 1) }
@@ -678,9 +678,9 @@ package struct Column: Sendable, Equatable {
     }
 
     /// Scratch space for one column's step: five rows of `nodes`.
-    package final class Work {
-        package let nodes: Int
-        package let buffer: UnsafeMutablePointer<Double>
+    final class Work {
+        let nodes: Int
+        let buffer: UnsafeMutablePointer<Double>
 
         init(nodes: Int) {
             self.nodes = nodes
@@ -690,15 +690,15 @@ package struct Column: Sendable, Equatable {
 
         deinit { buffer.deallocate() }
 
-        package var diagonal: UnsafeMutablePointer<Double> { buffer }
+        var diagonal: UnsafeMutablePointer<Double> { buffer }
         var rhs: UnsafeMutablePointer<Double> { buffer + nodes }
         var flux: UnsafeMutablePointer<Double> { buffer + 2 * nodes }
-        package var start: UnsafeMutablePointer<Double> { buffer + 3 * nodes }
-        package var stage: UnsafeMutablePointer<Double> { buffer + 4 * nodes }
+        var start: UnsafeMutablePointer<Double> { buffer + 3 * nodes }
+        var stage: UnsafeMutablePointer<Double> { buffer + 4 * nodes }
     }
 
     /// The net heat into each node, in W/m², at temperatures `t` and absorbed-to-be irradiance `q`.
-    package static func heat(
+    static func heat(
         _ t: UnsafePointer<Double>, q: Double, ambient: Double, convection: Double, face: Face,
         g: UnsafePointer<Double>, into out: UnsafeMutablePointer<Double>
     ) {
@@ -761,7 +761,7 @@ package struct Column: Sendable, Equatable {
     /// γ of the way, then the second-order backward difference to the end, each implicit with the
     /// losses linearised about the temperatures it starts from. Second order and L-stable, so the
     /// fine cells at the surface neither limit the step nor ring.
-    package func step(
+    func step(
         _ t: UnsafeMutablePointer<Double>, dt: Double, from: Double, to: Double, ambient: Double,
         convection: Double, work: Work
     ) {
@@ -775,7 +775,7 @@ package struct Column: Sendable, Equatable {
     }
 
     /// As `step`, given the column's face, capacities `c` and conductances `g`.
-    package static func step(
+    static func step(
         _ t: UnsafeMutablePointer<Double>, dt: Double, from: Double, to: Double, ambient: Double,
         convection: Double, work: Work, face: Face, c: UnsafePointer<Double>, g: UnsafePointer<Double>
     ) {

@@ -11,7 +11,7 @@ package struct RigidCarBody {
     package private(set) var body: RigidBoxBody
     /// Tyre contact points from the shell's geometric centre, in body coordinates (x forward,
     /// y left, z up): front left, front right, rear left, rear right.
-    package let tyres: [SIMD3<Double>]
+    let tyres: [SIMD3<Double>]
 
     package init(body: RigidBoxBody, tyres: [SIMD3<Double>]) {
         precondition(tyres.count == 4)
@@ -50,7 +50,7 @@ package struct RigidCarBody {
     }
 
     /// Kinetic plus gravitational potential energy, with zero potential at the ground.
-    package func mechanicalEnergy(gravity: Double = 9.81) -> Double {
+    func mechanicalEnergy(gravity: Double = 9.81) -> Double {
         body.kineticEnergy + body.mass * gravity * body.position.z
     }
 

@@ -89,7 +89,7 @@ public struct CPUThermalVisibility: ThermalVisibility {
     }
 
     /// Whether `box` lies across the segment from `start` to `end`; an end inside it counts.
-    package static func blocks(_ box: Box, from start: SIMD3<Float>, to end: SIMD3<Float>) -> Bool {
+    static func blocks(_ box: Box, from start: SIMD3<Float>, to end: SIMD3<Float>) -> Bool {
         let delta = end - start
         var low: Float = 0
         var high: Float = 1

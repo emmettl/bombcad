@@ -250,13 +250,13 @@ public enum IFCReinforcement {
     /// shell's two directions and the depth of its bars' centres from that face, the mean
     /// weighted by steel. Bars are counted by their volume over the shell's face, so that a bar
     /// shorter than the wall counts for its share; through-thickness bars (links) are left out.
-    package struct ShellMats {
+    struct ShellMats {
         /// Per face (low, high), per in-plane axis: steel per metre (m²/m) and its depth (m).
-        package var areas: [[Float]] = [[0, 0, 0], [0, 0, 0]]
+        var areas: [[Float]] = [[0, 0, 0], [0, 0, 0]]
         var depths: [Float] = [0, 0]
         package var steel: [Float] = [0, 0]
-        package var links = 0
-        package var bars = 0
+        var links = 0
+        var bars = 0
     }
 
     static func shellMats(_ bars: [Bar], box: Box, axis k: Int, transform: (SIMD3<Float>) -> SIMD3<Float>)
@@ -293,12 +293,12 @@ public enum IFCReinforcement {
     /// beam) are merged into at most eight (the beam's limit), each at the steel-weighted middle
     /// of those nearest one of the section's corners or the middles of its sides; the rest are
     /// ties, as a ratio of their volume to the beam's.
-    package struct BeamBars {
+    struct BeamBars {
         /// Position in the section (m, from its centre) and area (m²).
-        package var bars: [(position: SIMD2<Float>, area: Float)] = []
-        package var tieRatio: Float = 0
+        var bars: [(position: SIMD2<Float>, area: Float)] = []
+        var tieRatio: Float = 0
         var longitudinal = 0
-        package var ties = 0
+        var ties = 0
     }
 
     static func beamBars(_ bars: [Bar], box: Box, axis k: Int, transform: (SIMD3<Float>) -> SIMD3<Float>)
@@ -359,7 +359,7 @@ public enum IFCReinforcement {
 
     /// The structure's reinforcement for one member: regions (`ReinforcementLayer`) for the
     /// reinforcement read from the IFC, and what it was, in words; nil where the IFC gives none.
-    package static func layers(
+    static func layers(
         for hosted: Hosted, box: Box, isShell: Bool, elementSize h: Float,
         transform: (SIMD3<Float>) -> SIMD3<Float>
     ) -> (layers: [ReinforcementLayer], description: String)? {

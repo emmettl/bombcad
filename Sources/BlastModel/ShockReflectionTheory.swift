@@ -61,7 +61,7 @@ public enum ShockReflectionTheory {
     /// The state behind a regular reflection's incident shock, for a plane shock of Mach `shock`
     /// meeting a wedge of `wedge` radians, seen from the reflection point: the Mach number of
     /// the flow there and the deflection the reflected shock must undo.
-    package static func incident(shock: Double, wedge: Double, gamma: Double) -> (
+    static func incident(shock: Double, wedge: Double, gamma: Double) -> (
         mach: Double, deflection: Double
     ) {
         let ahead = shock / cos(wedge)

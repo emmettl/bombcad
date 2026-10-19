@@ -13,9 +13,9 @@ extension ImportedMesh {
         public var ifcClass: String? = nil
         public var storey: String? = nil
     }
-    package struct FaceLabel: Sendable, Hashable, Codable {
-        package var object: String?
-        package var group: String?
+    struct FaceLabel: Sendable, Hashable, Codable {
+        var object: String?
+        var group: String?
     }
     public func bounds(of part: Part) -> Box {
         let points = part.triangleIndices.flatMap { n in
@@ -33,8 +33,8 @@ extension ImportedMesh {
     }
 }
 
-package enum MeshParts {
-    package static func make(_ triangles: [ImportedMesh.Triangle], labels: [ImportedMesh.FaceLabel]?) throws
+enum MeshParts {
+    static func make(_ triangles: [ImportedMesh.Triangle], labels: [ImportedMesh.FaceLabel]?) throws
         -> [ImportedMesh.Part]
     {
         if let labels {

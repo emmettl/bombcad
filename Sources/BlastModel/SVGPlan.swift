@@ -58,19 +58,19 @@ extension DXFDrawing {
 }
 
 /// An SVG document as a tree of elements, from Foundation's parser.
-package struct SVGTree {
-    package final class Node {
-        package let name: String
+struct SVGTree {
+    final class Node {
+        let name: String
         let attributes: [String: String]
-        package var children: [Node] = []
+        var children: [Node] = []
         package init(name: String, attributes: [String: String]) {
             self.name = name
             self.attributes = attributes
         }
     }
 
-    package var root: Node?
-    package var ids: [String: Node] = [:]
+    var root: Node?
+    var ids: [String: Node] = [:]
 
     init(data: Data) throws {
         let parser = XMLParser(data: data)
@@ -89,11 +89,11 @@ package struct SVGTree {
     }
 
     private final class Builder: NSObject, XMLParserDelegate {
-        package var root: Node?
-        package var stack: [Node] = []
-        package var ids: [String: Node] = [:]
+        var root: Node?
+        var stack: [Node] = []
+        var ids: [String: Node] = [:]
         /// An element closed by another's name, or a close with nothing open.
-        package var malformed = false
+        var malformed = false
 
         func parser(
             _ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?,
@@ -117,10 +117,10 @@ package struct SVGTree {
 }
 
 /// An affine map of the plane: (x, y) to (a x + c y + e, b x + d y + f), as SVG writes it.
-package struct SVGTransform {
-    package var a = 1.0, b = 0.0, c = 0.0, d = 1.0, e = 0.0, f = 0.0
+struct SVGTransform {
+    var a = 1.0, b = 0.0, c = 0.0, d = 1.0, e = 0.0, f = 0.0
 
-    package func apply(_ p: SIMD2<Double>) -> SIMD2<Double> {
+    func apply(_ p: SIMD2<Double>) -> SIMD2<Double> {
         SIMD2(a * p.x + c * p.y + e, b * p.x + d * p.y + f)
     }
 
@@ -166,10 +166,10 @@ package struct SVGTransform {
 }
 
 /// Walks an SVG tree into a drawing's entities.
-package struct SVGReader {
-    package let ids: [String: SVGTree.Node]
+struct SVGReader {
+    let ids: [String: SVGTree.Node]
     var entities: [DXFDrawing.Entity] = []
-    package var blocks: [String: DXFDrawing.Block] = [:]
+    var blocks: [String: DXFDrawing.Block] = [:]
     /// The largest angle an arc's piece spans, radians.
     static let arcStep = Double.pi / 12
 
@@ -316,7 +316,7 @@ package struct SVGReader {
     }
 
     /// A path's subpaths as points, curves and arcs flattened, and whether each is closed.
-    package static func path(_ d: String) -> [(points: [SIMD2<Double>], closed: Bool)] {
+    static func path(_ d: String) -> [(points: [SIMD2<Double>], closed: Bool)] {
         // Tokens: command letters and numbers (an arc's flags may run together: "a5 5 0 015 5").
         var tokens: [Either] = []
         enum Either {

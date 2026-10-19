@@ -65,7 +65,7 @@ extension ScenarioPreset {
             return material
         }
 
-        package static let thickness: Float = 0.025
+        static let thickness: Float = 0.025
     }
 
     /// A roof covering resting on its battens: on its weight alone, with friction, its nails

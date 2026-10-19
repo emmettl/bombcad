@@ -331,7 +331,7 @@ public struct SoilColumn: Sendable {
         case mass, massDamping, displacement, velocity, previous, peakVelocity, peakDisplacement
         case peakAcceleration, peakUpwardAcceleration
 
-        package var perNode: Bool { rawValue >= Field.mass.rawValue }
+        var perNode: Bool { rawValue >= Field.mass.rawValue }
     }
 
     private func offset(_ field: Field) -> Int { Self.offset(field, elements: elements) }

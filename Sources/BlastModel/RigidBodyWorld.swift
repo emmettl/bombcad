@@ -34,7 +34,7 @@ package struct RigidBodyWorld {
         package let supports: [SIMD3<Double>]
         /// Friction against the ground, static blocks and other members (the pair takes the
         /// smaller coefficients).
-        package let friction: RigidBoxBody.Ground
+        let friction: RigidBoxBody.Ground
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
         package init(
@@ -58,10 +58,10 @@ package struct RigidBodyWorld {
     /// A node of a deformable structure: a point, or a sphere of `radius`, of mass
     /// `1 / inverseMass` (immovable where that is zero).
     package struct Node {
-        package var position: SIMD3<Double>
+        var position: SIMD3<Double>
         package var velocity: SIMD3<Double>
         package let inverseMass: Double
-        package let radius: Double
+        let radius: Double
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
         package init(
@@ -83,7 +83,7 @@ package struct RigidBodyWorld {
         package let other: Party
         /// World contact point: one of the member's corners or supports, or a corner of the other
         /// body or block.
-        package let point: SIMD3<Double>
+        let point: SIMD3<Double>
         package let normal: SIMD3<Double>
         /// Impulses over the step (N s).
         package var normalImpulse = 0.0
@@ -94,9 +94,9 @@ package struct RigidBodyWorld {
     }
 
     package private(set) var members: [Member]
-    package let blocks: [Box]
+    let blocks: [Box]
     /// The ground's shape; nil for the floor, z = 0 (a flat terrain is the floor).
-    package var terrain: Terrain? {
+    var terrain: Terrain? {
         didSet { if terrain?.isFlat == true { terrain = nil } }
     }
     /// The structure's nodes for the next step; contact changes their velocities.
@@ -138,7 +138,7 @@ package struct RigidBodyWorld {
         members.reduce(.zero) { $0 + $1.body.mass * $1.body.linearVelocity }
     }
     /// About the world origin.
-    package var angularMomentum: SIMD3<Double> {
+    var angularMomentum: SIMD3<Double> {
         members.reduce(.zero) {
             $0 + $1.body.angularMomentum + simd_cross($1.body.position, $1.body.mass * $1.body.linearVelocity)
         }
@@ -697,7 +697,7 @@ package struct RigidBodyWorld {
 
     /// How far `point` is above the terrain, along the surface's normal under it (the distance to
     /// the tangent plane there), and that normal.
-    package static func clearance(_ point: SIMD3<Double>, above terrain: Terrain) -> (
+    static func clearance(_ point: SIMD3<Double>, above terrain: Terrain) -> (
         gap: Double, normal: SIMD3<Double>
     ) {
         let (height, normal) = terrain.surface(at: SIMD2(point.x, point.y))
@@ -706,8 +706,8 @@ package struct RigidBodyWorld {
 
     /// A node of the terrain, with the normals of the four cells round it.
     package struct TerrainNode {
-        package let position: SIMD3<Double>
-        package let normals: [SIMD3<Double>]
+        let position: SIMD3<Double>
+        let normals: [SIMD3<Double>]
         /// Their mean direction.
         package var normal: SIMD3<Double> { simd_normalize(normals.reduce(.zero, +)) }
     }

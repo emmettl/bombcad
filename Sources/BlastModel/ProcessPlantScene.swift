@@ -141,7 +141,7 @@ public enum ProcessPlantScene {
     /// of 1/4 in (6.35 mm) plate, flat here where the real plate is corrugated, on 0.1 m steel bars
     /// standing for its HSS frame (the stiffness of an HSS 6 × 6 × 3/8, at twice its mass) at about
     /// 1.5 m: seven columns along each long wall, as the units tested by Omega-Risk had.
-    package static var module: StructureModel {
+    static var module: StructureModel {
         let x = drum.x + 37
         return steelBox(
             at: SIMD3(x, 34, 0), size: SIMD3(3.66, 12.2, 3.14), plate: 0.00635, frame: 0.1, spacing: 1.5,
@@ -162,7 +162,7 @@ public enum ProcessPlantScene {
     /// and the roof stand 0.2 m inside the footprint's whole-metre lines, where they hold a centre
     /// on 0.5, 0.25 and 0.125 m cells alike. The panes fill their openings; the glass's own
     /// thickness is the construction's (`EnvelopeConstruction.glassThicknessM`).
-    package static func envelope(
+    static func envelope(
         x: ClosedRange<Float>, y: ClosedRange<Float>, height: Float, wall: Float, windows: Int
     ) throws -> BuildingEnvelope {
         let inset: Float = 0.2

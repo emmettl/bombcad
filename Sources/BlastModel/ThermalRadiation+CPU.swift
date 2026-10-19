@@ -198,7 +198,7 @@ public struct ThermalSurfaceGrid: Sendable, Equatable {
         indices.reserveCapacity(columns * rows)
     }
 
-    package mutating func add(
+    mutating func add(
         _ point: SIMD3<Float>, column: Int, row: Int, buried: Bool, first: inout Int,
         normal: SIMD3<Float>? = nil
     ) {
@@ -358,7 +358,7 @@ public struct ThermalExposure: Sendable {
 
     /// The fireball of `frame` as the volume model marches it, if that is the model and the frame
     /// has its cells.
-    package func medium(_ frame: FireballFrame) -> ThermalMedium? {
+    func medium(_ frame: FireballFrame) -> ThermalMedium? {
         guard spec.fireball == .volume, march != nil, frame.volume > 0, let cells = frame.cells else {
             return nil
         }

@@ -5,11 +5,11 @@ import simd
 /// BlastModel, so that each call reaches what BlastModel's own code reaches.
 /// Tests/BlastModelTests/LinuxSIMDParityTests.swift compares them with the digests recorded on
 /// Linux, so that a run on the Mac shows whether the two agree bit for bit.
-package enum SIMDParity {
-    package static let samples = 4096
+enum SIMDParity {
+    static let samples = 4096
 
     /// A digest (FNV-1a, 64 bits, of each result's bits; every NaN counts alike) by function name.
-    package static func digests() -> [String: UInt64] {
+    static func digests() -> [String: UInt64] {
         var out: [String: UInt64] = [:]
         func record(_ name: String, _ body: (inout Digest, inout Inputs) -> Void) {
             var digest = Digest()
@@ -87,7 +87,7 @@ package enum SIMDParity {
 
     /// The two ways clang could have compiled `simd_cross`, written out, for telling which one
     /// Apple's is when its digest differs from the one recorded.
-    package static func crossVariants() -> (rounded: UInt64, fused: UInt64) {
+    static func crossVariants() -> (rounded: UInt64, fused: UInt64) {
         var rounded = Digest()
         var fused = Digest()
         var inputs = Inputs()
@@ -103,8 +103,8 @@ package enum SIMDParity {
         return (rounded.value, fused.value)
     }
 
-    package struct Digest {
-        package var value: UInt64 = 0xcbf2_9ce4_8422_2325
+    struct Digest {
+        var value: UInt64 = 0xcbf2_9ce4_8422_2325
 
         mutating func add(bits: UInt64) {
             for shift in stride(from: 0, to: 64, by: 8) {
@@ -135,7 +135,7 @@ package enum SIMDParity {
     }
 
     /// Fixed pseudo-random inputs (SplitMix64), the same on every machine.
-    package struct Inputs {
+    struct Inputs {
         var state: UInt64 = 0x2545_f491_4f6c_dd1d
 
         mutating func next() -> UInt64 {

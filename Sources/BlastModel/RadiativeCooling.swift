@@ -36,13 +36,13 @@ public struct RadiativeCooling: Sendable, Hashable, Codable {
 
 /// Mirrors `RadiationUniforms` in Radiation.metal.
 package struct RadiationUniforms {
-    package var luminous: Float
-    package var absorption: Float
-    package var sootAbsorption: Float
+    var luminous: Float
+    var absorption: Float
+    var sootAbsorption: Float
     package var hasSpecies: UInt32
-    package var largestShare: Float
-    package var luminousEnergy: Float
-    package var capacity: UInt32
+    var largestShare: Float
+    var luminousEnergy: Float
+    var capacity: UInt32
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
     package init(

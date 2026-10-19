@@ -73,8 +73,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
 
     /// Reinforcement of the deformable presets: 12 mm bars at 200 mm centres, both ways, in
     /// each face (565 mm² per metre), with their centres 40 mm below the surface.
-    package static let barArea: Float = 565e-6
-    package static let barDepth: Float = 0.04
+    static let barArea: Float = 565e-6
+    static let barDepth: Float = 0.04
 
     public var scenario: Scenario {
         var result = authoredScenario

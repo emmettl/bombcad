@@ -34,9 +34,9 @@ public struct ImportPlacementReport: Sendable, Hashable {
         }
         return result
     }
-    package struct Subtraction {
-        package var boxes: [Box]
-        package var complete: Bool
+    struct Subtraction {
+        var boxes: [Box]
+        var complete: Bool
     }
     /// `solid` less the openings that cross it; an opening that holds it whole (a pane set in a
     /// wall's opening) leaves it alone, as in `StructureModel.occupies`.

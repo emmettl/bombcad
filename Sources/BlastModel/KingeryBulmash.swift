@@ -64,7 +64,7 @@ public enum KingeryBulmash {
     /// One piece of a fitted curve: the value is exp(sum of c_i (ln Z)^i) over `range` of scaled
     /// distance Z (m / kg^(1/3)).
     private struct Fit {
-        package var range: ClosedRange<Double>
+        var range: ClosedRange<Double>
         var coefficients: [Double]
     }
 

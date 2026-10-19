@@ -369,7 +369,7 @@ public struct ProfiledSheet: Sendable, Hashable {
 
     /// Scales `steel` to stand for `share` of a strip of the profile `strip` wide in a rectangle
     /// `width` by the profile's depth: as stiff and strong in bending along the span, as heavy.
-    package func scaled(_ name: String, share: Float, strip: Float, width: Float) -> StructureMaterial {
+    func scaled(_ name: String, share: Float, strip: Float, width: Float) -> StructureMaterial {
         let (area, secondMoment, modulus) = profile.perWidth
         let depth = profile.depth
         let stiffness = share * secondMoment * strip / (width * depth * depth * depth / 12)
@@ -408,7 +408,7 @@ public struct ProfiledSheet: Sendable, Hashable {
     /// Builds the sheet in `model` from solid `index`, its region: that solid becomes the skin
     /// and the ribs are appended. Returns their indices, the skin first.
     @discardableResult
-    package func build(in model: inout StructureModel, at index: Int) -> [Int] {
+    func build(in model: inout StructureModel, at index: Int) -> [Int] {
         let size = model.shellElementSize ?? model.elementSize
         let mid = 0.5 * (region.min[normal] + region.max[normal])
         let half = profile.depth / 2

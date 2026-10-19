@@ -282,9 +282,9 @@ package struct BeamElementData {
     package var width: Float
     package var depth: Float
     package var length: Float
-    package var barCount: UInt32
-    package var tieRatio: Float
-    package var bowed: Float = 0
+    var barCount: UInt32
+    var tieRatio: Float
+    var bowed: Float = 0
     var padding1: Float = 0
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
@@ -323,16 +323,16 @@ package struct ShellElementData {
     package var n3: UInt32
     package var axis: UInt32
     package var material: UInt32
-    package var barCount: UInt32
+    var barCount: UInt32
     package var thickness: Float
     package var a: Float
     package var b: Float
     /// Another member's element facing this one below and above it (-1: none), for the air's
     /// load (`ShellMesh.shields`).
-    package var shieldBelow: Int32 = -1
-    package var shieldAbove: Int32 = -1
+    var shieldBelow: Int32 = -1
+    var shieldAbove: Int32 = -1
     /// The solid it was made from, whose laminated glass fragments as one.
-    package var pane: UInt32 = 0
+    var pane: UInt32 = 0
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
     package init(

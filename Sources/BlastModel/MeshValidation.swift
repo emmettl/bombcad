@@ -4,14 +4,14 @@ import simd
 /// Validation is independent of grid resolution: even sub-cell intersections are unsafe.
 /// A closed, orientable surface may have nested shells, but surfaces must not cross or touch
 /// except at the shared vertices/edges of their own triangulation.
-package enum MeshValidation {
-    package struct Edge: Hashable {
-        package var a: SIMD3<Float>
-        package var b: SIMD3<Float>
+enum MeshValidation {
+    struct Edge: Hashable {
+        var a: SIMD3<Float>
+        var b: SIMD3<Float>
     }
-    package struct Use {
-        package var face: Int
-        package var direction: Int
+    struct Use {
+        var face: Int
+        var direction: Int
     }
     static func orientations(_ triangles: [ImportedMesh.Triangle]) throws -> [Int] {
         func less(_ a: SIMD3<Float>, _ b: SIMD3<Float>) -> Bool {
@@ -94,8 +94,8 @@ package enum MeshValidation {
 
     private struct Face {
         package var points: [SIMD3<Double>]
-        package var low: SIMD3<Double>
-        package var high: SIMD3<Double>
+        var low: SIMD3<Double>
+        var high: SIMD3<Double>
         package init(_ t: ImportedMesh.Triangle) {
             points = [SIMD3<Double>(t.a), SIMD3<Double>(t.b), SIMD3<Double>(t.c)]
             low = simd_min(points[0], simd_min(points[1], points[2]))
@@ -103,14 +103,14 @@ package enum MeshValidation {
         }
     }
     private struct Node {
-        package var low: SIMD3<Double>
-        package var high: SIMD3<Double>
-        package var start: Int
+        var low: SIMD3<Double>
+        var high: SIMD3<Double>
+        var start: Int
         package var count: Int
-        package var left = -1
-        package var right = -1
+        var left = -1
+        var right = -1
     }
-    package static func validate(
+    static func validate(
         _ triangles: [ImportedMesh.Triangle], pairLimit: Int = 2_000_000,
         nodeLimit: Int = 20_000_000, coordinateUnits: String = "source units"
     ) throws {

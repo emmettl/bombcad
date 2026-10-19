@@ -56,7 +56,7 @@ public enum PushOffTest {
     }
 
     /// Builds a specimen from millimetres and N/mm².
-    package static func specimen(
+    static func specimen(
         _ name: String, cube: Float, path: [(Float, Float)], shear: [(Float, Float)], normal: [(Float, Float)]
     ) -> Specimen {
         Specimen(

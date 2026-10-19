@@ -36,7 +36,7 @@ package struct StructureCutGeometry {
     /// Cells with less air than this are solid.
     static let minimumShare: Float = 0.05
     /// A cell this full or more takes others' differences.
-    package static let receivingShare: Float = 0.5
+    static let receivingShare: Float = 0.5
 
     /// `scenery` says whether a cell (by grid index) is solid without the structures (the terrain
     /// below its cut cells, rigid blocks), `terrainCut` whether the terrain's cut cells hold it: a
@@ -232,10 +232,10 @@ package struct StructureCutGeometry {
 
 /// A body's elements as the air sees them: which cells of its lattice of `elementSize` hold one.
 private struct ElementLattice {
-    package let origin: SIMD3<Float>
-    package let h: Float
-    package let counts: SIMD3<Int>
-    package let present: [Bool]
+    let origin: SIMD3<Float>
+    let h: Float
+    let counts: SIMD3<Int>
+    let present: [Bool]
 
     init(model: StructureModel) {
         // As `StructureSolver` lays its elements out.
@@ -256,8 +256,8 @@ private struct ElementLattice {
         self.present = present
     }
 
-    package var low: SIMD3<Float> { origin }
-    package var high: SIMD3<Float> { origin + SIMD3<Float>(counts) * h }
+    var low: SIMD3<Float> { origin }
+    var high: SIMD3<Float> { origin + SIMD3<Float>(counts) * h }
 
     func holds(_ e: SIMD3<Int>) -> Bool {
         all(e .>= 0) && all(e .< counts) && present[e.x + counts.x * (e.y + counts.y * e.z)]

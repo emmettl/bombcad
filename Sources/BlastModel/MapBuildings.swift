@@ -231,7 +231,7 @@ extension MapBuilding {
     }
 
     /// Even-odd containment of `point` in `ring`.
-    package static func contains(_ ring: [SIMD2<Double>], _ point: SIMD2<Double>) -> Bool {
+    static func contains(_ ring: [SIMD2<Double>], _ point: SIMD2<Double>) -> Bool {
         var inside = false
         var j = ring.count - 1
         for i in ring.indices {
@@ -247,14 +247,14 @@ extension MapBuilding {
 }
 
 private final class OSMReader: NSObject, XMLParserDelegate {
-    package struct Way {
-        package var id: Int64
+    struct Way {
+        var id: Int64
         var refs: [Int64] = []
         var tags: [String: String] = [:]
     }
     package struct Member {
         var ref: Int64
-        package var role: String
+        var role: String
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
         package init(
@@ -265,12 +265,12 @@ private final class OSMReader: NSObject, XMLParserDelegate {
             self.role = role
         }
     }
-    package struct Relation {
-        package var id: Int64
-        package var members: [Member] = []
+    struct Relation {
+        var id: Int64
+        var members: [Member] = []
         var tags: [String: String] = [:]
     }
-    package var nodes: [Int64: SIMD2<Double>] = [:]
+    var nodes: [Int64: SIMD2<Double>] = [:]
     var ways: [Way] = []
     var relations: [Relation] = []
     private var way: Way?

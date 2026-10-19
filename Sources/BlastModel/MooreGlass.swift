@@ -8,9 +8,9 @@ import Foundation
 /// bending stress down once it deflects more than about a third of its thickness, when the
 /// largest stress moves from the centre towards the corners.
 public enum MooreGlassCurves {
-    package struct Curves {
+    struct Curves {
         var aspect: Double
-        package var deflection: [SIMD2<Double>]
+        var deflection: [SIMD2<Double>]
         var centreStress: [SIMD2<Double>]
         var cornerStress: [SIMD2<Double>]
     }
@@ -29,7 +29,7 @@ public enum MooreGlassCurves {
     }
 
     /// The larger of the centre's and the corners' stress where each is given.
-    package static func stress(_ c: Curves, _ load: Double) -> Double {
+    static func stress(_ c: Curves, _ load: Double) -> Double {
         var largest = 0.0
         if load <= c.centreStress.last!.x { largest = value(c.centreStress, load) }
         if load >= c.cornerStress.first!.x { largest = max(largest, value(c.cornerStress, load)) }
@@ -39,7 +39,7 @@ public enum MooreGlassCurves {
     /// Log-log interpolation; below the curve's first load, in proportion to the load (the
     /// curves begin where the plate is still nearly linear), and beyond its last, along its last
     /// segment.
-    package static func value(_ curve: [SIMD2<Double>], _ load: Double) -> Double {
+    static func value(_ curve: [SIMD2<Double>], _ load: Double) -> Double {
         guard load > curve[0].x else { return curve[0].y * load / curve[0].x }
         let i = curve.firstIndex { $0.x >= load } ?? curve.count - 1
         let (p, q) = (curve[max(i - 1, 0)], curve[max(i, 1)])

@@ -53,7 +53,7 @@ public enum LargePanelBlock {
     ]
 
     /// The block's corner in the domain.
-    package static let origin = SIMD3<Float>(4, 4, 0)
+    static let origin = SIMD3<Float>(4, 4, 0)
 
     /// The base of storey `s` (0 at the ground).
     public static func base(ofStorey s: Int) -> Float { Float(s) * storeyHeight }

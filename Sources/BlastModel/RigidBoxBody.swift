@@ -129,8 +129,8 @@ package struct RigidBoxBody {
 extension RigidBoxBody {
     /// Inelastic contact against the plane z = 0, with a circular Coulomb friction cone.
     package struct Ground {
-        package let staticFriction: Double
-        package let slidingFriction: Double
+        let staticFriction: Double
+        let slidingFriction: Double
 
         package init(staticFriction: Double = 0.6, slidingFriction: Double = 0.5) {
             precondition(staticFriction.isFinite && slidingFriction.isFinite)

@@ -36,12 +36,12 @@ package struct TerrainUniforms {
 /// (0, 0, 0)'s fine cells.
 package struct PaneLookup {
     package var count: UInt32 = 0
-    package var nx: UInt32 = 0
-    package var ny: UInt32 = 0
-    package var nz: UInt32 = 0
-    package var coarseDx: Float = 0
+    var nx: UInt32 = 0
+    var ny: UInt32 = 0
+    var nz: UInt32 = 0
+    var coarseDx: Float = 0
     var pad0: Float = 0
-    package var pad1: Float = 0
+    var pad1: Float = 0
     var pad2: Float = 0
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
@@ -69,16 +69,16 @@ package struct PaneLookup {
 /// Refine.metal's `FacadeBand`: the coarse grid's size, the ratio from a level's cells to coarse
 /// ones, the overpressure (Pa) above which the band holds refinement, the ambient pressure, on.
 package struct FacadeBandParameters {
-    package var nx: UInt32 = 0
-    package var ny: UInt32 = 0
-    package var nz: UInt32 = 0
-    package var ratio: UInt32 = 1
-    package var threshold: Float = 0
-    package var ambient: Float = 0
-    package var on: UInt32 = 0
+    var nx: UInt32 = 0
+    var ny: UInt32 = 0
+    var nz: UInt32 = 0
+    var ratio: UInt32 = 1
+    var threshold: Float = 0
+    var ambient: Float = 0
+    var on: UInt32 = 0
     /// 1 where the band's bit 2 marks the coarse cells above the refinement's ceiling
     /// (`SolverConfiguration.refinementCeiling`), never refined; 0 for none.
-    package var ceiling: UInt32 = 0
+    var ceiling: UInt32 = 0
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
     package init(

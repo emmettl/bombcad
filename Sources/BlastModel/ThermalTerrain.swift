@@ -16,7 +16,7 @@ public struct TerrainSight: Sendable {
     public let terrain: Terrain
     /// Each cell's highest node, (columns + 1) × (rows + 1) cells, x fastest; cell (a, b) lies
     /// between nodes a − 1 and a along x, the first and last beyond the nodes.
-    package let tops: [Float]
+    let tops: [Float]
     /// Each row of cells' highest node.
     let rowTops: [Float]
     /// How far beyond the nodes the outer ring of cells runs, in metres.
@@ -43,23 +43,23 @@ public struct TerrainSight: Sendable {
 
     var cellColumns: Int { terrain.columns + 1 }
     var cellRows: Int { terrain.rows + 1 }
-    package var cellCount: Int { cellColumns * cellRows }
+    var cellCount: Int { cellColumns * cellRows }
 
     /// The nodes either side of cell `a` along an axis of `count` nodes: the same node twice
     /// beyond the edge.
-    package static func nodes(_ a: Int, _ count: Int) -> (Int, Int) {
+    static func nodes(_ a: Int, _ count: Int) -> (Int, Int) {
         (min(max(a - 1, 0), count - 1), min(max(a, 0), count - 1))
     }
 
     /// The span of cell `a` along an axis whose nodes start at `origin`.
-    package static func span(_ a: Int, _ count: Int, origin: Float, spacing: Float) -> (Float, Float) {
+    static func span(_ a: Int, _ count: Int, origin: Float, spacing: Float) -> (Float, Float) {
         let low = a == 0 ? origin - reach : origin + Float(a - 1) * spacing
         let high = a == count ? origin + Float(count - 1) * spacing + reach : origin + Float(a) * spacing
         return (low, high)
     }
 
     /// A margin above a cell's top within which rounding could still put a point under it.
-    package static func margin(_ top: Float) -> Float { Float(0.001).addingProduct(1e-5, abs(top)) }
+    static func margin(_ top: Float) -> Float { Float(0.001).addingProduct(1e-5, abs(top)) }
 
     /// Each cell's box, from the floor to its highest node, for the GPU's acceleration structure.
     package var cellBounds: [Box] {
@@ -77,17 +77,17 @@ public struct TerrainSight: Sendable {
     }
 
     /// One cell's patch as the test reads it.
-    package struct Patch {
-        package var x0, y0, x1, y1: Float
+    struct Patch {
+        var x0, y0, x1, y1: Float
         var h00, h10, h01, h11: Float
         /// The highest of the four.
-        package var top: Float
+        var top: Float
         /// The reciprocal of the spacing along x and y, zero beyond the nodes, where the surface
         /// does not change along that axis.
         var sx, sy: Float
     }
 
-    package func patch(_ a: Int, _ b: Int) -> Patch {
+    func patch(_ a: Int, _ b: Int) -> Patch {
         let t = terrain
         let (i0, i1) = Self.nodes(a, t.columns)
         let (j0, j1) = Self.nodes(b, t.rows)
@@ -103,7 +103,7 @@ public struct TerrainSight: Sendable {
     }
 
     /// The height of `point` above the patch: negative below it.
-    package static func clearance(_ p: Patch, _ point: SIMD3<Float>) -> Float {
+    static func clearance(_ p: Patch, _ point: SIMD3<Float>) -> Float {
         let fx = (point.x - p.x0) * p.sx
         let fy = (point.y - p.y0) * p.sy
         let bottom = p.h00.addingProduct(fx, p.h10 - p.h00)
@@ -136,14 +136,14 @@ public struct TerrainSight: Sendable {
     }
 
     /// The point `start` + t `delta`.
-    package static func point(_ start: SIMD3<Float>, _ delta: SIMD3<Float>, _ t: Float) -> SIMD3<Float> {
+    static func point(_ start: SIMD3<Float>, _ delta: SIMD3<Float>, _ t: Float) -> SIMD3<Float> {
         SIMD3(
             start.x.addingProduct(t, delta.x), start.y.addingProduct(t, delta.y),
             start.z.addingProduct(t, delta.z))
     }
 
     /// The clearance's rate of change with t at `point`, and half its second derivative (constant).
-    package static func slope(_ p: Patch, _ point: SIMD3<Float>, _ delta: SIMD3<Float>) -> (Float, Float) {
+    static func slope(_ p: Patch, _ point: SIMD3<Float>, _ delta: SIMD3<Float>) -> (Float, Float) {
         let fx = (point.x - p.x0) * p.sx
         let fy = (point.y - p.y0) * p.sy
         let bx = delta.x * p.sx
@@ -157,7 +157,7 @@ public struct TerrainSight: Sendable {
 
     /// Whether the segment from `start` by `delta` passes below the patch: its clearance at the
     /// ends of its run over the cell, and at the turning point between if the clearance curves up.
-    package static func blocks(_ p: Patch, _ start: SIMD3<Float>, _ delta: SIMD3<Float>) -> Bool {
+    static func blocks(_ p: Patch, _ start: SIMD3<Float>, _ delta: SIMD3<Float>) -> Bool {
         var low: Float = 0
         var high: Float = 1
         guard clip(p, start, delta, &low, &high) else { return false }
@@ -174,7 +174,7 @@ public struct TerrainSight: Sendable {
 
     /// Where the ray from `origin` along `direction` first goes below the patch, if before
     /// `limit`; `low` if it starts below it.
-    package static func entry(_ p: Patch, _ origin: SIMD3<Float>, _ direction: SIMD3<Float>, _ limit: Float)
+    static func entry(_ p: Patch, _ origin: SIMD3<Float>, _ direction: SIMD3<Float>, _ limit: Float)
         -> Float?
     {
         var low: Float = 0
@@ -204,7 +204,7 @@ public struct TerrainSight: Sendable {
 
     /// Every cell the segment from `start` by `delta` may pass under (a few more besides, which
     /// the exact test turns away), passed to `visit` until it returns true.
-    package func cells(
+    func cells(
         from start: SIMD3<Float>, by delta: SIMD3<Float>, _ visit: (Int, Int) -> Bool
     ) -> Bool {
         let t = terrain

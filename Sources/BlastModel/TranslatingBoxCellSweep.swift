@@ -3,9 +3,9 @@ import simd
 /// Axis-aligned, constant-translation reference. Crossings split overlap topology;
 /// two-point Gaussian time quadrature integrates the resulting quadratic volume rate.
 /// Rotation requires a separate event treatment and is explicitly rejected here.
-package enum TranslatingBoxCellSweep {
-    package enum Failure: Error { case unsupportedOrientation }
-    package struct Result {
+enum TranslatingBoxCellSweep {
+    enum Failure: Error { case unsupportedOrientation }
+    struct Result {
         let volumeChange: Double
         let sweptVolume: Double
         let gasWork: Double

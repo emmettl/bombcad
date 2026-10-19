@@ -4,27 +4,27 @@ import simd
 /// of three cell/solid planes supply topology events, including edge/edge crossings.
 /// Between events areas are quadratic and first moments/volumes cubic in time, so two
 /// Gauss nodes suffice. This supplies geometry, not wet-cell states or a gas integrator.
-package struct TranslatingBoxSpaceTimeGeometry {
-    package enum Failure: Error { case illConditionedOrientation }
-    package struct WallSample {
-        package let point: SIMD3<Double>
-        package let time: Double  // Relative to this interval's initial pose.
+struct TranslatingBoxSpaceTimeGeometry {
+    enum Failure: Error { case illConditionedOrientation }
+    struct WallSample {
+        let point: SIMD3<Double>
+        let time: Double  // Relative to this interval's initial pose.
         let areaTime: Double  // Positive dA dt weight, not a mean area.
     }
-    package struct PatchIntegral {
+    struct PatchIntegral {
         package let normal: SIMD3<Double>  // Outward from gas, for both open and wall patches.
         var areaTime = 0.0
         /// Integral of (x - fixed cell centre) dA dt, in m³ s.
         var firstMomentTime = SIMD3<Double>.zero
         var timeWeightedArea = 0.0  // Integral of t dA dt, in m² s².
-        package var samples: [WallSample]? = nil
+        var samples: [WallSample]? = nil
     }
-    package struct Result {
+    struct Result {
         let initialGasVolume: Double
         let finalGasVolume: Double
         let gasVolumeTime: Double
-        package let openFaces: [PatchIntegral]  // -x,+x,-y,+y,-z,+z.
-        package let walls: [PatchIntegral]  // Body-axis -x,+x,-y,+y,-z,+z, gas normals.
+        let openFaces: [PatchIntegral]  // -x,+x,-y,+y,-z,+z.
+        let walls: [PatchIntegral]  // Body-axis -x,+x,-y,+y,-z,+z, gas normals.
         let eventTimes: [Double]
         let evaluations: Int
 
@@ -66,8 +66,8 @@ package struct TranslatingBoxSpaceTimeGeometry {
         }
     }
     private struct Basis {
-        package let indices: [Int]
-        package let inverse: simd_double3x3
+        let indices: [Int]
+        let inverse: simd_double3x3
     }
     private let body: RigidBoxBody
     private let velocity: SIMD3<Double>

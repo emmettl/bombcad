@@ -44,7 +44,7 @@ extension ImportedMesh {
             self.inventory = inventory.sorted { $0.id < $1.id }
             self.includedIDs = includedIDs.sorted()
         }
-        package func validate(converted: Set<String>) throws {
+        func validate(converted: Set<String>) throws {
             func validID(_ id: String) -> Bool {
                 id.count == 22
                     && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "$") }

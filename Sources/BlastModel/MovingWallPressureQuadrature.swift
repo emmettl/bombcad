@@ -2,12 +2,12 @@ import simd
 
 /// Prescribed pressure traces integrated on a translating wall. This is a load/quadrature
 /// reference, not an Euler solution or feedback into the moving-group time integrator.
-package enum MovingWallPressureQuadrature {
-    package enum Failure: Error { case invalidSamples, invalidPressure }
-    package struct Load {
-        package let impulse: SIMD3<Double>
-        package let angularImpulse: SIMD3<Double>
-        package let work: Double
+enum MovingWallPressureQuadrature {
+    enum Failure: Error { case invalidSamples, invalidPressure }
+    struct Load {
+        let impulse: SIMD3<Double>
+        let angularImpulse: SIMD3<Double>
+        let work: Double
 
         /// The same pressure packet applies with opposite signs to gas and body.
         func gasReaction(cell: Int) -> FractionalGasTransport.WallExchange {

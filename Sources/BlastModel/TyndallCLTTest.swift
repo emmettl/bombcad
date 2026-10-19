@@ -117,7 +117,7 @@ public enum TyndallCLTTest {
 
     /// E1 CLT as Poulin's panels (`PoulinCLTTest.material`), its outer lamellae along
     /// `grainAxis`, with the dynamic increase Poulin found.
-    package static func material(lamellae: Int, grainAxis: Int) -> StructureMaterial {
+    static func material(lamellae: Int, grainAxis: Int) -> StructureMaterial {
         var material = PoulinCLTTest.material(plies: lamellae, rate: 1.28)
         material.timber?.grainAxis = grainAxis
         material.name = "E1 CLT, \(lamellae) lamellae"

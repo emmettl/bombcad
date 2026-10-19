@@ -113,7 +113,7 @@ public enum LaminatedShellTest {
     }
 
     /// The silicone's pull-out law per metre of edge for an edge capacity `capacity` (N/m).
-    package static func silicone(_ capacity: Double) -> SpringLaw {
+    static func silicone(_ capacity: Double) -> SpringLaw {
         SpringLaw(
             stiffness: Float(capacity / 0.02), yield: Float(capacity), hardening: Float(-capacity / 0.005))
     }

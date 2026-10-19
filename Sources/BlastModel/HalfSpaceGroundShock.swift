@@ -100,10 +100,10 @@ public final class HalfSpaceGroundShock: @unchecked Sendable {
     public let setup: HalfSpaceSetup
     package let points: [SIMD2<Float>]
     let depths: [Float]
-    package let receivers: [ElasticReceiver]
+    let receivers: [ElasticReceiver]
     private var loads: [GroundLoad]
     /// The load's averaging window, s.
-    package let window: Double
+    let window: Double
     let crater: (radius: Double, energy: Double, impedance: Double, speed: Double)?
 
     // Per receiver: peaks, displacements and the history at each frame.
@@ -113,9 +113,9 @@ public final class HalfSpaceGroundShock: @unchecked Sendable {
     public private(set) var peakResultant: [Double]
     private(set) var peakStress: [Double]
     private(set) var peakAcceleration: [Double]
-    package private(set) var displacement: [Double]
-    package private(set) var peakDisplacement: [Double]
-    package private(set) var arrivals: [Double?]
+    private(set) var displacement: [Double]
+    private(set) var peakDisplacement: [Double]
+    private(set) var arrivals: [Double?]
     private(set) var verticalHistory: [[Float]]
     private(set) var radialHistory: [[Float]]
     private var previous: [ElasticReading]
@@ -206,7 +206,7 @@ public final class HalfSpaceGroundShock: @unchecked Sendable {
     /// The air on the ground averaged round each of the grid's surface rings at a frame: the
     /// overpressure now and the peak and positive impulse so far, sampled round the ring at
     /// about a cell's spacing where the slice holds the ground.
-    package func rings(_ slice: GroundSlice) -> [(overpressure: Float, peak: Float, impulse: Float)?] {
+    func rings(_ slice: GroundSlice) -> [(overpressure: Float, peak: Float, impulse: Float)?] {
         let extent = SIMD2(Float(slice.grid.x), Float(slice.grid.y)) * slice.cellSize
         return grid.surfaceRadii.map { r in
             // Two samples a cell round the ring at most: enough to average the cells it crosses.

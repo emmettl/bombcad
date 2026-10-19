@@ -18,7 +18,7 @@ public enum UFCSpallBreach {
         }
     }
 
-    package static let foot = 0.3048
+    static let foot = 0.3048
     static let pound = 0.453_592_37
     static let psi = 6_894.757
 

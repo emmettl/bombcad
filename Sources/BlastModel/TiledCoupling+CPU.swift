@@ -6,9 +6,9 @@ public enum BodyCouplingLayout: String, Sendable, CaseIterable {
 
 /// Coarse boundary pages. The air solution and its refinement pool are separate allocations.
 package struct TiledCoupling {
-    package static let side = 4
-    package static let cells = side * side * side
-    package let tileDims: SIMD3<Int>
+    static let side = 4
+    static let cells = side * side * side
+    let tileDims: SIMD3<Int>
     package let mapCount: Int
     package let capacity: Int
     package var capacityCells: Int { capacity * Self.cells }
@@ -19,8 +19,8 @@ package struct TiledCoupling {
     /// them besides the air's own margin, the larger of its element size and its shells' envelope
     /// margin (`StructuralBody`'s).
     package struct Footprint {
-        package var bounds: Box
-        package var reach: Float
+        var bounds: Box
+        var reach: Float
 
         package init(bounds: Box, reach: Float) {
             self.bounds = bounds

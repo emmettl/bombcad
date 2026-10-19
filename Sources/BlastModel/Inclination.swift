@@ -73,7 +73,7 @@ public struct Inclination: Sendable, Hashable, Codable {
         self.frame = frame
     }
 
-    package func validate() throws {
+    func validate() throws {
         guard rise == 0 || rise == 1, thickness.isFinite, thickness > 0 else {
             throw ImportedMesh.ImportError.invalid(
                 "An inclined plane rises along x or y and has a positive thickness.")
@@ -93,7 +93,7 @@ public struct Inclination: Sendable, Hashable, Codable {
     /// The plane in `box`: where its midsurface starts (its low edge's first corner), the unit
     /// vector along that edge (`along`, horizontal), the unit vector up the slope (`up`), the
     /// lengths of each, and its unit normal (up out of the plane, `along` × `up`).
-    package func plane(in box: Box) -> (
+    func plane(in box: Box) -> (
         origin: SIMD3<Float>, along: SIMD3<Float>, up: SIMD3<Float>, lengths: SIMD2<Float>,
         normal: SIMD3<Float>
     ) {
@@ -134,7 +134,7 @@ public struct Inclination: Sendable, Hashable, Codable {
     }
 
     /// The midsurface's height above (x, y), if the point lies in the box's plan.
-    package func height(at point: SIMD2<Float>, in box: Box, tolerance: Float = 1e-4) -> Float? {
+    func height(at point: SIMD2<Float>, in box: Box, tolerance: Float = 1e-4) -> Float? {
         guard frame == nil else { return nil }
         guard point.x >= box.min.x - tolerance, point.x <= box.max.x + tolerance,
             point.y >= box.min.y - tolerance, point.y <= box.max.y + tolerance

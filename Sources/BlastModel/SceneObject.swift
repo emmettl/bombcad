@@ -160,9 +160,9 @@ public struct SceneObject: Sendable, Hashable, Identifiable {
     }
 
     /// Ownership is encoded beside the legacy geometry, without duplicating numerical inputs.
-    package struct Ownership: Codable {
-        package var id: UUID
-        package var name: String
+    struct Ownership: Codable {
+        var id: UUID
+        var name: String
         var sourceModelID: UUID?
         var preferredSolidElementSize: Float?
         var solidIDs: [UUID]

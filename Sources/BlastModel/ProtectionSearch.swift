@@ -74,10 +74,10 @@ public enum ProtectionSearch {
     }
 
     /// The chances asked so far, so that a search asks each once.
-    package final class ChanceCache: @unchecked Sendable {
-        package struct Key: Hashable {
+    final class ChanceCache: @unchecked Sendable {
+        struct Key: Hashable {
             var site: [Int]
-            package var side: Int
+            var side: Int
             var option: Int
         }
         private let lock = NSLock()
@@ -86,7 +86,7 @@ public enum ProtectionSearch {
 
         init(_ chance: @escaping @Sendable ([Int], Int, Int) -> Double) { self.chance = chance }
 
-        package func value(_ site: [Int], _ side: Int, _ option: Int) -> Double {
+        func value(_ site: [Int], _ side: Int, _ option: Int) -> Double {
             let key = Key(site: site, side: side, option: option)
             lock.lock()
             if let value = known[key] {

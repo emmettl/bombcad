@@ -90,32 +90,32 @@ package struct ShellMesh {
     /// two-way and punching, not the one-way strength of a section, decides it.
     package var punchingZone: [Bool] = []
     /// Breakpoints along each axis.
-    package var grid: [[Float]] = [[], [], []]
+    var grid: [[Float]] = [[], [], []]
 
     /// Most bar layers an element can carry.
     static let maxBars = 4
 
     private struct Plate {
-        package var solid: Int
-        package var axis: Int
-        package var box: Box
-        package var thickness: Float
+        var solid: Int
+        var axis: Int
+        var box: Box
+        var thickness: Float
         /// Midsurface coordinate along `axis`.
-        package var mid: Float
+        var mid: Float
         /// In-plane extents, after being made to end on the plates they meet.
-        package var low: SIMD3<Float>
-        package var high: SIMD3<Float>
+        var low: SIMD3<Float>
+        var high: SIMD3<Float>
     }
 
     private struct Column {
-        package var solid: Int
-        package var axis: Int
-        package var box: Box
+        var solid: Int
+        var axis: Int
+        var box: Box
         /// Centreline: the middle of the section, along the other two axes.
-        package var centre: SIMD3<Float>
+        var centre: SIMD3<Float>
         /// Ends along `axis`, after being made to end on the plates they meet.
-        package var low: Float
-        package var high: Float
+        var low: Float
+        var high: Float
     }
 
     /// Cover from a column's face to the centre of its corner bars.
@@ -1074,7 +1074,7 @@ package struct ShellMesh {
     /// on its toe bears at the face, as solid elements' corner nodes do.
     /// An element's own axes, in order, and its normal: the global axes after its `axis`, or for
     /// an element at a pitch (axis 3), along its first and second edges from its corners.
-    package func frame(of element: Element) -> (
+    func frame(of element: Element) -> (
         first: SIMD3<Float>, second: SIMD3<Float>, normal: SIMD3<Float>
     ) {
         guard element.axis == 3 else {

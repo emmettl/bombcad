@@ -224,7 +224,7 @@ public struct IFCStructure: Sendable {
     static func snap(_ elementSize: Float) -> Float { 0.5 * elementSize + 0.01 }
     /// A support region under `box`'s foot, reaching `reach` above and below its underside, so
     /// as to hold the points of its underside wherever the mesh has put them.
-    package static func foot(of box: Box, reach: Float) -> Box {
+    static func foot(of box: Box, reach: Float) -> Box {
         Box(
             min: SIMD3(box.min.x - 0.01, box.min.y - 0.01, box.min.z - reach),
             max: SIMD3(box.max.x + 0.01, box.max.y + 0.01, box.min.z + reach))
@@ -1561,14 +1561,14 @@ public struct IFCStructure: Sendable {
         )
     }
 
-    package struct Shape {
-        package var element: ImportedMesh.BuildingElement
+    struct Shape {
+        var element: ImportedMesh.BuildingElement
         /// Its source parts: its own, or an assembly's.
-        package var parts: [Int]
+        var parts: [Int]
         var triangles: [ImportedMesh.Triangle]
-        package var box: Box
+        var box: Box
         var aligned: Bool
-        package var volume: Float
+        var volume: Float
     }
 
     // MARK: - Classification
@@ -1584,7 +1584,7 @@ public struct IFCStructure: Sendable {
         return .other
     }
 
-    package enum Kind { case concrete, block, masonry, steel, glass, timber, nonstructural, unknown }
+    enum Kind { case concrete, block, masonry, steel, glass, timber, nonstructural, unknown }
 
     /// What a material's name says it is.
     static func classify(_ name: String) -> Kind {
@@ -1608,11 +1608,11 @@ public struct IFCStructure: Sendable {
         return .unknown
     }
 
-    package struct Reading {
-        package var material: StructureMaterial
-        package var source: String
+    struct Reading {
+        var material: StructureMaterial
+        var source: String
         var assumed: Bool
-        package var thickness: Float?
+        var thickness: Float?
         var notes: [String]
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
@@ -1632,7 +1632,7 @@ public struct IFCStructure: Sendable {
     }
 
     /// The material and structural thickness `layers` give, or the default.
-    package static func material(of layers: [Layer], default fallback: StructureMaterial) -> Reading {
+    static func material(of layers: [Layer], default fallback: StructureMaterial) -> Reading {
         let structural = layers.filter {
             ![.nonstructural, .unknown, .timber, .glass].contains(classify($0.name))
         }
@@ -1717,7 +1717,7 @@ public struct IFCStructure: Sendable {
 
     /// Holes through a plate: rectangles of its plane through which a ray across it meets none
     /// of its faces, sampled every `spacing`, as boxes through its thickness.
-    package static func holes(in shape: Shape, box: Box, axis k: Int, spacing: Float) -> [Box] {
+    static func holes(in shape: Shape, box: Box, axis k: Int, spacing: Float) -> [Box] {
         let (i, j) = ((k + 1) % 3, (k + 2) % 3)
         let ni = min(800, max(1, Int((box.size[i] / spacing).rounded(.up))))
         let nj = min(800, max(1, Int((box.size[j] / spacing).rounded(.up))))
@@ -1789,8 +1789,7 @@ public struct IFCStructure: Sendable {
 
     /// How far a footing's plan reaches from `point` along `axis` one way, sampled every 25 mm
     /// with rays down through it.
-    package static func reach(of shape: Shape, from point: SIMD3<Float>, axis: Int, direction: Float) -> Float
-    {
+    static func reach(of shape: Shape, from point: SIMD3<Float>, axis: Int, direction: Float) -> Float {
         let step: Float = 0.025
         var distance: Float = 0
         while distance < 20 {
@@ -1815,12 +1814,12 @@ public struct IFCStructure: Sendable {
         return distance
     }
 
-    package static func contains(_ box: Box, _ point: SIMD3<Float>) -> Bool {
+    static func contains(_ box: Box, _ point: SIMD3<Float>) -> Bool {
         let slack: Float = 0.05
         return (0..<3).allSatisfy { point[$0] >= box.min[$0] - slack && point[$0] <= box.max[$0] + slack }
     }
 
-    package static func kind(_ member: Member, _ box: Box) -> String {
+    static func kind(_ member: Member, _ box: Box) -> String {
         switch member.role {
         case .beam:
             return box.size.z >= box.size.x && box.size.z >= box.size.y ? "column" : "beam"
