@@ -47,7 +47,7 @@ ground pressures streamed frame by frame, as the soil column is now.
   (`GroundLoad`, averaged over a few steps). Near the charge, inside the crater's radius, the
   air's pressure on rigid ground would drive the soil far beyond anything elastic. That region
   needs a source equal to what the charge couples into the ground. The crater's stage 1 already
-  gives the ground's share of the energy (0.1 of the charge on earth or rock). The proposal is
+  gives the ground's share of the energy (a third of the charge's energy for a burst on the surface, `CraterEstimate.groundShare`). The proposal is
   to deliver that share as an equivalent pressure on the crater's surface, calibrated once
   against UFC 3-340-01's direct-induced relation and checked against Xia.
 - **Its output:** at each ground point, sampled at its range and depth, the vertical and radial
@@ -100,7 +100,7 @@ process, since RoomCAD's structure-borne sound and Edgerton's impact waves could
 
 ## The cost
 
-For a 1 t surface burst judged to 50 m out and 25 m down, on 0.1 m cells (about ten cells a
+For a 1 t surface burst judged to 50 m out and 25 m down, on 0.1 m cells (about a hundred cells a
 wavelength at 200 Hz in 2,000 m/s soil), the grid is 500 × 250 = 125,000 cells, plus the
 perfectly matched layer. The step is set by the P-wave speed, about 25 µs, so 0.3 s takes
 12,000 steps, or about 1.5 × 10⁹ cell-updates. That is a few seconds on the GPU, or a minute
@@ -114,7 +114,7 @@ of cells, as costly as the air.
 | Source | What it tests | Standing |
 |---|---|---|
 | Xia et al. 2022, 1 t at 21 and 42 m, 0.5 m deep (`Fixtures/XiaChen2022`) | The outrunning regime: vertical against horizontal, peak velocities, attenuation from 21 to 42 m | In hand; the soil not measured, the two records disagreeing |
-| Prairie Flat (500 t, WES TR N-72-2) with the Watching Hill soil data | Gauges 84–1,150 ft out, at 1.5 to 30 ft deep, both sides of the outrunning limit (about 560 ft); the soil's layers | To fetch ([data wanted](data-wanted.md#to-fetch)) |
+| Prairie Flat (500 short tons, WES TR N-72-2) with the Watching Hill soil data | Gauges 84–1,150 ft out, at 1.5 to 30 ft deep, both sides of the outrunning limit (about 560 ft); the soil's layers | To fetch ([data wanted](data-wanted.md#to-fetch)) |
 | Pre-Dice Throw II (100 t TNT and 120 t ANFO; DNA 4363F) | Motion at 305–1,220 m beside four agencies' blind predictions; the site's refraction profile is in USGS OFR 77-143 (in hand) | To fetch |
 | Dial Pack, Distant Plain, Mixed Company and Middle Gust (WES reports) | Repeats on the same soils; a wet site against a dry one | To fetch |
 | Humble Redwood III (IRIS, network 8H): 91 kg TNT 2 m up, geophones | Far-field surface waves, open | Open; far field only, no near overpressure |

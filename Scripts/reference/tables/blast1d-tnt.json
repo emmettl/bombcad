@@ -1,0 +1,135 @@
+{
+ "charge": "tnt",
+ "mass": 1.0,
+ "energy_per_kg": 4294478.527607362,
+ "scaled": true,
+ "charge_density": 1630.0,
+ "cells_charge": 150,
+ "air_cell": 0.003,
+ "steps": 149541,
+ "energy_initial": 13776017380.342808,
+ "energy_final": 13776011824.232,
+ "energy_error": -4.033176392000576e-07,
+ "gauges": [
+  {
+   "z": 0.3,
+   "peak_overpressure": 7412859.274681604,
+   "impulse": 101.98475688158655,
+   "arrival_time": 7.160952906271177e-05,
+   "positive_duration": 0.00011441047201258361,
+   "complete": true
+  },
+  {
+   "z": 0.4,
+   "peak_overpressure": 5507415.389921242,
+   "impulse": 106.25098443352373,
+   "arrival_time": 0.00011092040982494875,
+   "positive_duration": 5.930743890615806e-05,
+   "complete": true
+  },
+  {
+   "z": 0.5,
+   "peak_overpressure": 4098018.718678696,
+   "impulse": 122.93277261720272,
+   "arrival_time": 0.00015627826543964074,
+   "positive_duration": 5.640137383294952e-05,
+   "complete": true
+  },
+  {
+   "z": 0.75,
+   "peak_overpressure": 1900456.0614266042,
+   "impulse": 150.56297747273254,
+   "arrival_time": 0.00030392869323887074,
+   "positive_duration": 0.00042169616761811437,
+   "complete": true
+  },
+  {
+   "z": 1.0,
+   "peak_overpressure": 984429.4434974722,
+   "impulse": 122.6409223768828,
+   "arrival_time": 0.0005098436560883791,
+   "positive_duration": 0.0006883633719269646,
+   "complete": true
+  },
+  {
+   "z": 1.5,
+   "peak_overpressure": 344442.9623927196,
+   "impulse": 87.434369592552,
+   "arrival_time": 0.0011230484322018314,
+   "positive_duration": 0.0009520923651693759,
+   "complete": true
+  },
+  {
+   "z": 2.0,
+   "peak_overpressure": 172595.49257418554,
+   "impulse": 72.04055353927475,
+   "arrival_time": 0.0019672799328756254,
+   "positive_duration": 0.0013282726045617918,
+   "complete": true
+  },
+  {
+   "z": 3.0,
+   "peak_overpressure": 74345.92369496365,
+   "impulse": 52.38841048305772,
+   "arrival_time": 0.004085926162390124,
+   "positive_duration": 0.0019323800561056852,
+   "complete": true
+  },
+  {
+   "z": 4.0,
+   "peak_overpressure": 43648.54842376718,
+   "impulse": 40.52404765420657,
+   "arrival_time": 0.006500622946289435,
+   "positive_duration": 0.0023651955756985744,
+   "complete": true
+  },
+  {
+   "z": 5.0,
+   "peak_overpressure": 30738.84571838862,
+   "impulse": 32.83087206014699,
+   "arrival_time": 0.009069689654625518,
+   "positive_duration": 0.0026733542516955353,
+   "complete": true
+  },
+  {
+   "z": 6.0,
+   "peak_overpressure": 23186.28720491733,
+   "impulse": 27.485806702178362,
+   "arrival_time": 0.011734330557274958,
+   "positive_duration": 0.0029141196268915523,
+   "complete": true
+  },
+  {
+   "z": 8.0,
+   "peak_overpressure": 15202.06635182901,
+   "impulse": 20.749777572941852,
+   "arrival_time": 0.01720680775241318,
+   "positive_duration": 0.0032750861722442536,
+   "complete": true
+  },
+  {
+   "z": 10.0,
+   "peak_overpressure": 11118.154861599003,
+   "impulse": 16.655731435362235,
+   "arrival_time": 0.022792641591409087,
+   "positive_duration": 0.0035238397207236344,
+   "complete": true
+  },
+  {
+   "z": 15.0,
+   "peak_overpressure": 6421.606107589803,
+   "impulse": 11.103910303053413,
+   "arrival_time": 0.03701132065670805,
+   "positive_duration": 0.003959212335862307,
+   "complete": true
+  },
+  {
+   "z": 20.0,
+   "peak_overpressure": 4387.975117137932,
+   "impulse": 8.323912205108584,
+   "arrival_time": 0.05139898704487797,
+   "positive_duration": 0.004266564402494663,
+   "complete": true
+  }
+ ]
+}
