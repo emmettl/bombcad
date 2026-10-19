@@ -256,7 +256,7 @@ extension BlastSolver {
                 Double(air.pressure), 1.00001 * Double(air.pressure) / (Double(air.density) * gasConstant)
             )
         }
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         struct Sums {
             var mass = 0.0
             var heat = 0.0

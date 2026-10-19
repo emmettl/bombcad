@@ -24,7 +24,7 @@ extension BlastSolver {
             to: CellState.self, capacity: refinement.maxPatches * cells)
         let fineMask = refinement.fineMask.contents().bindMemory(
             to: UInt8.self, capacity: refinement.maxPatches * cells)
-        let coarseMask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let coarseMask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let dims = refinement.tileDims
         let volume =
             Double(grid.cellSize / Float(r)) * Double(grid.cellSize / Float(r))
