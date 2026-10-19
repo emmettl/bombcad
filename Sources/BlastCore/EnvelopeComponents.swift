@@ -42,7 +42,7 @@ final class EnvelopeComponentRecorder {
     /// its coarse cell, which averages them over the whole cell: the reflected load at a wall is
     /// sharper than the cell beside it. Off only to compare.
     var readsRefinedAir = true
-    /// Components to a threadgroup, a SIMD group of 32 lanes each (Solver.metal).
+    /// Components to a threadgroup, a SIMD group of 32 lanes each (SolverEnvelopes.metal).
     static let componentsPerGroup = 4
 
     let components: [EnvelopeComponent]

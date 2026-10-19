@@ -77,7 +77,9 @@ package struct SVGTree {
         let builder = Builder()
         parser.delegate = builder
         parser.shouldResolveExternalEntities = false
-        guard parser.parse(), let root = builder.root else {
+        // Linux's parser (FoundationXML over libxml2) can recover from a tag left open or closed by
+        // another's name and still say it parsed; the builder's own count of open elements decides.
+        guard parser.parse(), !builder.malformed, builder.stack.isEmpty, let root = builder.root else {
             throw DXFDrawing.ReadError(
                 message:
                     "Not an SVG: \(parser.parserError?.localizedDescription ?? "it does not read as XML").")
@@ -90,6 +92,8 @@ package struct SVGTree {
         package var root: Node?
         package var stack: [Node] = []
         package var ids: [String: Node] = [:]
+        /// An element closed by another's name, or a close with nothing open.
+        package var malformed = false
 
         func parser(
             _ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?,
@@ -106,7 +110,8 @@ package struct SVGTree {
         func parser(
             _ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?
         ) {
-            _ = stack.popLast()
+            let local = name.split(separator: ":").last.map(String.init) ?? name
+            if stack.popLast()?.name != local { malformed = true }
         }
     }
 }

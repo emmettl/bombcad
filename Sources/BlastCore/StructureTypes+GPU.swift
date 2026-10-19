@@ -18,7 +18,9 @@ extension KernelMathMode {
 extension ShaderLibrary {
     static func make(device: MTLDevice) throws -> MTLLibrary {
         let files = [
-            "Solver", "Refine", "Structure", "Rubble", "Shell", "BodyContact", "Footing", "Extract",
+            "Solver", "SolverSweep", "SolverCutCells", "SolverCongestion", "SolverStep", "SolverEnvelopes",
+            "SolverVenting", "SolverVisualization", "Refine", "Structure", "Rubble", "Shell", "BodyContact",
+            "Footing", "Extract",
             "Radiation",
             "Gravity",
             "Deflagration", "Mixing",

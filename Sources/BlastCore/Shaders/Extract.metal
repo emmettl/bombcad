@@ -166,7 +166,7 @@ kernel void extractLuminousCells(
         kelvin | (uint(as_type<ushort>(half(min(products, 65504.0f)))) << 16), uint(as_type<ushort>(half(air))));
 }
 
-// The visualisation field (updateVisualization in Solver.metal: r overpressure, g peak and a
+// The visualisation field (updateVisualization in SolverVisualization.metal: r overpressure, g peak and a
 // shock indicator, all over ambient, b impulse) every `layout.x`-th cell along each axis, as half4
 // texels, x fastest, for a view of the run drawn elsewhere. Each texel keeps its block's extremes
 // rather than their mean, so a front one cell thick still shows: the largest peak, impulse and

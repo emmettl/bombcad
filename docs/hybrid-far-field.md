@@ -103,7 +103,17 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
   the mode's method, its standing and the match. `scenebench hybrid-judge` sets it against a full
   run's saved loads; unlike `district-hybrid`, it fits the trend only when given `--trend-from`
   (500 m for a hand-over at 1 km), and otherwise carries the match on flat.
-- **In the app:** File ▸ New District with **Near field and far field** on (the default when the
+- **In the app:**
+
+  ![Beirut at 0.5 kt in the app: the air run to the hand-over at 950 m on 3 m cells, painted with its pressure and its buildings' damage, and the 7,245 buildings beyond judged after the run on the far field (blue: glass broken; pale: none)](hybrid-far-field-app.png)
+
+  Beirut at 0.5 kt through New District on a Studio, cells left to the advisor: the whole district
+  would have taken 5 m cells, so it handed over at 950 m on uniform 3 m cells. The run and the
+  judgement of the 7,245 far buildings took 8 minutes, the judgement 91 s of it, matched at the
+  hand-over at peak ×1.06 and impulse ×1.27 (`HybridDistrictImageTests`). On uniform 4 m cells
+  given by hand, the same near run went unstable after 2 minutes; that is under investigation.
+
+  File ▸ New District with **Near field and far field** on (the default when the
   radius reaches 1.25 times the hand-over). The sheet hands over at 12 m/kg^(1/3), rounded to 50 m,
   and draws the hand-over on the map. Lay Out weighs that against this Mac's memory and the run's
   time, with the cells left to the advisor.

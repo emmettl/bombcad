@@ -255,8 +255,8 @@ cuts the ground's surface through the cells instead of rounding it to whole ones
 a slope. Only the terrain is cut; blocks, structures and moving bodies keep their whole cells.
 File ▸ New District's refined air lays the ground as a staircase for now: cut through the cells,
 a second refined level rang ahead of the shock over Beirut (see [A district from a
-map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastModel/TerrainCutCells.swift` (the geometry), `sweepCell` and
-`redistributeCutDefects` in `Sources/BlastCore/Shaders/Solver.metal`, and for refined air `cutGeometryAt`,
+map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastModel/TerrainCutCells.swift` (the geometry), `sweepCell` in
+`Sources/BlastCore/Shaders/SolverSweep.metal`, `redistributeCutDefects` in `Sources/BlastCore/Shaders/SolverCutCells.metal`, and for refined air `cutGeometryAt`,
 `fineSweepCell`, `refineRedistributeCut` and `refineCutPassUp` in `Shaders/Refine.metal`.
 
 - **Geometry, once.** For each cell the surface crosses: its share of air, α, and the share of

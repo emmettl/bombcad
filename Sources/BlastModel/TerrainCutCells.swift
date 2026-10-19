@@ -5,7 +5,7 @@ import simd
 /// cell the surface crosses, the share of its volume above the surface (alpha) and of each face open
 /// to the air (the apertures), worked out once, since the ground does not move. The air is then
 /// updated in them as Klein, Bates and Nikiforakis's dimensionally split cut cells are (see
-/// `sweepCell` in Solver.metal) with flux redistribution after each step (`redistributeCutDefects`).
+/// `sweepCell` in SolverSweep.metal) with flux redistribution after each step (`redistributeCutDefects`).
 ///
 /// In a column of a heightfield the fluid share never falls going up, so a column's cut cells
 /// are one run: below it the cells are solid, above it whole. The surface's quadrature takes

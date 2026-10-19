@@ -8,8 +8,8 @@
 # any conflicts there as usual) and hold no merges. Then each of its commits is cut by the same
 # plan in a temporary worktree (what the commit adds that the plan does not name goes with what is
 # above it) and committed again, on the split, as `<branch>-split`, with its message and author.
-# The branch itself is left as it is. Check first that the split's commit is what the script makes
-# of its parent; if it is not (the split was edited after the script), this stops.
+# The branch itself is left as it is. What the split's commit holds beyond the script's cut of its
+# parent (comments fixed by hand) is applied to each commit too.
 set -euo pipefail
 
 split=${1:?usage: port-over-solver-split.sh <the split commit>}
@@ -39,7 +39,8 @@ trap cleanup EXIT
 git worktree add --quiet --detach "$work" "$base"
 tools=("$root/Scripts/split/split_solver.py")
 
-# The tree the script makes of a commit: its own tree, cut, formatted.
+# The tree the script makes of a commit: its own tree, cut, formatted (and the split's edits by
+# hand, once they are known).
 cut_tree() {
     git -C "$work" checkout --quiet --force --detach "$1"
     git -C "$work" clean --quiet -fd -- Sources
@@ -50,12 +51,19 @@ cut_tree() {
         (cd "$work" && echo "$changed" | xargs swift format format --in-place)
     fi
     git -C "$work" add -A
+    if [[ -s "$scratch/by-hand.patch" ]]; then
+        git -C "$work" apply --3way "$scratch/by-hand.patch" > /dev/null 2>&1 \
+            || { echo "error: the split's own edits do not apply to $1; port it by hand" >&2; exit 1; }
+        git -C "$work" add -A
+    fi
     git -C "$work" write-tree
 }
 
-if [[ "$(cut_tree "$base")" != "$(git rev-parse "$split^{tree}")" ]]; then
-    echo "error: the split's commit is not what the script makes of its parent; port by hand" >&2
-    exit 1
+# What the split's commit has beyond the script's cut of its parent (comments fixed by hand, a
+# conflict resolved): applied again to each commit's cut.
+git diff --binary "$(cut_tree "$base")" "$split^{tree}" > "$scratch/by-hand.patch"
+if [[ -s "$scratch/by-hand.patch" ]]; then
+    echo "the split's commit differs from the script's cut in $(grep -c '^diff --git' "$scratch/by-hand.patch") file(s); applying that to each commit"
 fi
 
 parent=$split

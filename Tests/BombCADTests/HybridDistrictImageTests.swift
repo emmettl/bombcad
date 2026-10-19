@@ -8,8 +8,8 @@ import simd
 @testable import BombCAD
 
 /// The guide's picture of a district run near the charge and judged far (docs/hybrid-far-field.md):
-/// Beirut at 0.5 kt through File ▸ New District on 4 m cells, handing over at 12 m/kg^(1/3)
-/// (950 m), drawn once the far field is judged. Only with `BOMBCAD_HYBRID_IMAGE` (the PNG to write)
+/// Beirut at 0.5 kt through File ▸ New District on the advisor's air, handing over at 12 m/kg^(1/3)
+/// (950 m, or nearer as the advisor brings it in), drawn once the far field is judged. Only with `BOMBCAD_HYBRID_IMAGE` (the PNG to write)
 /// and `BOMBCAD_HYBRID_INPUTS` (the folder holding Beirut's OSM/, DEM/ and GHSL/ files, as
 /// docs/beirut-2020.md fetches them); in an optimised build, as the far field judges 14,000
 /// buildings.
@@ -38,14 +38,16 @@ struct HybridDistrictImageTests {
         district.ground = .saturated
         district.radius = 2_500
         district.nearAndFar = true
-        district.cellSize = 4
+        // The advisor's air and hand-over, or the cells given.
+        district.cellSize = Self.environment["BOMBCAD_HYBRID_CELLS"].flatMap(Float.init)
         let laid = ContinuousClock.now
         await district.lay()
         let preview = try #require(district.preview, "\(district.message ?? "")")
         let far = try #require(preview.far)
         print(
             "Laid out in \(laid.duration(to: .now)): \(preview.report.placed.count) buildings in the air, "
-                + "\(far.buildings.count) beyond \(far.handoverM) m")
+                + "\(far.buildings.count) beyond \(far.handoverM) m, \(preview.air.title); "
+                + "\(preview.handoverReason ?? ""); \(RunAdvisor.duration(preview.cost.seconds)) unloaded")
 
         let model = SimulationModel(document: preview.document, playbackSpeed: .unlimited)
         model.farFieldUncertainty.samples = 16
