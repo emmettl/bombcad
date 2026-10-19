@@ -506,6 +506,7 @@ struct SidebarView: View {
                 .font(.caption)
                 .foregroundStyle(.orange)
             }
+            AdditionalChargesView(model: model)
         }
     }
 

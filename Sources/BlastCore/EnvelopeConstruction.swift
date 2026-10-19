@@ -60,6 +60,12 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// Laminated glass in every pane, which holds together once cracked (`LaminatedGlass`); nil for
     /// monolithic annealed glass (left out of the JSON, which older records lack).
     public var laminate: LaminatedGlass?
+    /// Security film on every pane's (monolithic) glass, which holds its fragments once cracked
+    /// (`SecurityFilm`); nil for none, and ignored on laminated glass (left out of the JSON).
+    public var film: SecurityFilm?
+    /// The monolithic glass is thermally toughened, breaking at four times annealed glass's
+    /// strength (`EnvelopePanel.filmedGlass`); nil or false for annealed (left out of the JSON).
+    public var glassToughened: Bool?
     /// The pane a façade strip is taken to hold (a block's storey strip, as map buildings have),
     /// width and height, m: nil for `assumedFacadePane`, zero for none.
     public var facadePaneM: SIMD2<Float>?
@@ -128,14 +134,37 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     }
 
     /// A pane a × b (m, either way round) of this construction's glass, as the one-way model
-    /// judges it: annealed on Moore's large-deflection plate, or laminated
-    /// (`EnvelopePanel.laminatedGlass`).
+    /// judges it: annealed or toughened on Moore's large-deflection plate, filmed
+    /// (`EnvelopePanel.filmedGlass`), or laminated (`EnvelopePanel.laminatedGlass`).
     public func pane(a: Double, b: Double) -> SDOFSystem {
         if let laminate {
             return EnvelopePanel.laminatedGlass(laminate, a: a, b: b)
         }
+        let toughened = glassToughened == true
+        if let film {
+            return EnvelopePanel.filmedGlass(
+                film, thickness: Double(glassThicknessM), toughened: toughened, a: a, b: b)
+        }
         return EnvelopePanel.largeDeflectionGlass(
-            thickness: Double(glassThicknessM), material: .annealedGlass, a: a, b: b)
+            thickness: Double(glassThicknessM), material: toughened ? .toughenedGlass : .annealedGlass, a: a,
+            b: b, sixtySecondStrength: toughened ? 4 * GlassStrength.sixtySecond(area: a * b) : nil)
+    }
+
+    /// Plain annealed panes, which the damage path builds once for each size.
+    public var hasPlainGlass: Bool { laminate == nil && film == nil && glassToughened != true }
+
+    /// The panes' glass holds together once cracked, laminated or filmed: held in the frame, or
+    /// gone from it whole.
+    public var holdsFragments: Bool { laminate != nil || film != nil }
+
+    /// The glass alone, m: the laminate's plies, or the monolithic pane.
+    public var glassAloneM: Double { laminate.map { $0.plies.reduce(0, +) } ?? Double(glassThicknessM) }
+
+    /// What a pane is in the damage record.
+    public var paneMaterial: EnvelopeComponentDamage.Material {
+        if laminate != nil { return .laminatedGlass }
+        if film != nil { return .filmedGlass }
+        return glassToughened == true ? .toughenedGlass : .annealedGlass
     }
 
     /// The thickness a wall of `kind` takes unless said: 215 mm of masonry, a sheet's profile

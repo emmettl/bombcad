@@ -47,10 +47,13 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         public var tearRatio: Double
         public var plateauDeflection: Double
         public var edgeCapacity: Double?
+        /// Held while it is pushed in, gone once it first moves back out (daylight security film,
+        /// `SecurityFilm.Anchorage.daylight`); nil for no such release (left out of the JSON).
+        public var releasesOnRebound: Bool?
 
         public init(
             tension: Double, shape: Double, span: Double, tearRatio: Double, plateauDeflection: Double,
-            edgeCapacity: Double?
+            edgeCapacity: Double?, releasesOnRebound: Bool? = nil
         ) {
             self.tension = tension
             self.shape = shape
@@ -58,14 +61,16 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
             self.tearRatio = tearRatio
             self.plateauDeflection = plateauDeflection
             self.edgeCapacity = edgeCapacity
+            self.releasesOnRebound = releasesOnRebound
         }
 
         /// The resistance at deflection `x`, Pa, either way.
         public func resistance(at x: Double) -> Double { shape * tension * x / (span * span) }
 
-        /// Whether it has torn or pulled out at deflection `x`.
-        public func isLost(at x: Double) -> Bool {
+        /// Whether it has torn or pulled out at deflection `x`, moving at `v` (inward positive).
+        public func isLost(at x: Double, velocity v: Double = 0) -> Bool {
             if abs(x) / span >= tearRatio { return true }
+            if releasesOnRebound == true, v < 0 { return true }
             if let edgeCapacity, tension * min(abs(x) / plateauDeflection, 1) > edgeCapacity { return true }
             return false
         }
@@ -279,7 +284,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.passedAt = time
                 response.velocityPassing = v
             }
-            if cracked, !broken, let membrane, membrane.isLost(at: x) {
+            if cracked, !broken, let membrane, membrane.isLost(at: x, velocity: v) {
                 broken = true
                 response.lostResistanceAt = time
                 response.velocityAtLoss = v

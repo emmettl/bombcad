@@ -130,6 +130,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.3.1 (8)  | `c874a6a` | `21d1ff1a-9ebd-45cf-98d6-712264341f22` | Made with the fix, not published |
 | 0.4.0 (10) | `9482ba7` | `b548eb9b-5031-48cd-800e-124a207db04e` | Published as v0.4.0           |
 | 0.5.0 (11) | `cde4b514` | `da25d621-e049-4f08-99bc-39ca876f0e3d` | Published as v0.5.0           |
+| 0.5.1 (12) | `1b79ae33` | `0db0948d-6e0b-4584-8fcb-c6f0d2c80a77` | Published as v0.5.1           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -243,6 +244,25 @@ links point at the docs as tagged. Its ZIP, checksum and manifest are attached t
 checksum, validated its stapled ticket, passed `codesign --verify --deep --strict` and was accepted
 by `spctl`. The Homebrew cask (`emmettl/tap/bombcad`) was moved to 0.5.0 by
 `Scripts/update-homebrew-tap.py 0.5.0`, and `brew audit --cask --strict --online` passed.
+
+Build 12 (0.5.1) was prepared on 2026-10-19 from `1b79ae33` on the branch `release/0.5.1`: the
+`v0.5.0` tag with the fixes for 0.5.0's four known limitations picked from main or made on the tag
+(the fine start's clocks in two parts, the refined panes' table, shells' springs and links on a
+restart, each shell's own rule through its thickness), the wave-speed guard made safe from fast
+math, and a fragment test's race. Its full check passed with `make check-anywhere` before the last
+clock fix, and solver digests matched 0.5.0's on all seven cases plain, recommended and refined.
+A first `make release` on `80a183af` stopped in its tests before signing, on that race
+(`FragmentOverlayTests`: a run kept as its last fragment frame landed). The second passed all 347
+app and 1189 core tests, and Apple accepted it (submission `0db0948d-6e0b-4584-8fcb-c6f0d2c80a77`).
+A fresh expansion of its ZIP matched the checksum
+(`9f445554c5f793b0cc100932812b360848d7b518d411b1d25c5a0817b2005765`), validated its stapled
+ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, holds the licence and the same four resource bundles, is 0.5.1, build 12,
+arm64, and ran the small project and the structure on the fine start from inside its bundle. The
+user had said to publish once it was ready. It was published on 2026-10-19 as `v0.5.1`, tag on
+`1b79ae33`, with its notes' links pointing at the docs as tagged; the copy downloaded back matched
+the checksum, validated its ticket, passed `codesign` and was accepted by `spctl`. The Homebrew
+cask was moved to 0.5.1 and `brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.

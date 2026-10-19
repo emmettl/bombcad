@@ -195,8 +195,9 @@ The charge is a "bursting balloon": a sphere of hot, dense gas at rest.
   normalised over fluid cells only. A charge on the ground or against a wall therefore releases
   all of its energy into the air; a charge on rigid ground behaves like a free-air charge of
   twice the mass.
-- A scenario can fire several charges at once (`additionalCharges`); each is laid down the
-  same way.
+- A scenario can fire several charges (`additionalCharges`), each the same way, together or
+  each its own delay after the main one (`Charge.delay`; delayed charges, under [a finely
+  resolved start](#a-finely-resolved-start)).
 
 ### Afterburning
 
@@ -245,8 +246,33 @@ the injury plane (`configureExposurePlane`) the shock has already passed take th
 peaks, impulses and arrivals from the one-dimensional solution. Where it cannot reach three
 cells the balloon starts that charge instead, laid as the others are mapped, at their clock
 (the balloon stands for its charge some time after it fired anyway); with dissociating air,
-gravity, sub-grid mixing, radiative cooling or the afterburning limit, every charge. The model
-has no delays between charges: all fire together.
+gravity, sub-grid mixing, radiative cooling or the afterburning limit, every charge.
+
+**Delayed charges** (19 October 2026). A charge given a delay (`Charge.delay`, seconds after the
+main charge, which always fires at t = 0) fires when the run's clock reaches it:
+
+- **At the start.** The grid's clock starts at the earliest time any mapped charge's shock,
+  counted from its own firing, reaches its radius. A charge that fires before then is laid with
+  the others at that time, its solution solved to that time less its delay; its gauges', cells'
+  and the injury plane's records are moved later by its delay.
+- **During the run.** Each batch stops at the next charge's time
+  (`BlastSolver.fireDueCharges`). As the balloon (no fine start, or no room to map it), it is
+  added to the air there and then. With the fine start, it is mapped if the air within its radius
+  is still (overpressure under 2% of the ambient, speed under 5 m/s) and no other charge's shock
+  (by Kingery–Bulmash's arrival for twice its mass, so early) reaches it before its solution has
+  reached its radius; it is then laid at that later time, over the still air, its peaks and
+  impulses added to what the cells had and its records spliced into the gauges'. Otherwise, or
+  if the air there has been disturbed after all by the time it is due, it is the balloon, and
+  the run's firings (`BlastSolver.firings`) say why.
+- After any, the air there is woken (still tiles, a sleeping air; the air does not fall asleep
+  while a charge is still to fire), the time step measured again and grown from a sixth of the
+  CFL limit, as at the start. Refined patches already over the charge take their share of it in
+  their own cells; elsewhere the refinement takes it up from the coarse cells at the next regrid,
+  a blocky start for the balloon.
+- **Not modelled:** the fireball's first moments of a charge laid during the run (the thermal
+  record's frames before the grid's clock come only from the charges laid at the start);
+  fragments, ground shock and the hazard rings, which follow the main charge; the afterburning
+  rate, set by the largest charge laid so far.
 
 **Its gas.** The one-dimensional solution has the air's own gas, the ideal gas or hot air (the
 same vibrational energy, in double precision), and with afterburning carries the products and the

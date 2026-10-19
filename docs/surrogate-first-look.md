@@ -109,9 +109,12 @@ logarithm), at 0.5 kt:
 | 28–40 | 90,093 | 1.36 (0.60) | 1.63 (0.79) |
 
 Within Z = 3 (238 m; 287 strips, all outside the fitted range and marked so) the surrogate gives
-eight times the run's peak. There the run's façades stand among the port's silos and warehouses,
-and their loads fall far below Kingery–Bulmash's; the made-up districts' nearest strips, in the
-open, came to 1.26 times.
+eight times the run's peak, but that comparison does not stand: the saved loads it reads were
+stored as 16-bit floats, which clipped every peak at 65.5 kPa (fixed in 983409a8, after these
+runs), and every strip there is at that cap. The cap reaches 540 m at 0.5 kt (Z ≈ 7) and 670 m
+at 1.1 kt; in the made-up districts it held the fit's targets down within 555 m at 500 t (2% of
+its strips). The near-field terms and these near bands wait for a refit on loads saved without
+the cap.
 
 Glass by building side, against the run's and GEER's shares (as the
 [Beirut page](beirut-2020.md#glass-as-a-mix-of-panes) compares them), at 0.5 kt:
@@ -202,5 +205,4 @@ district, 75–84%.
   rather than a 4 m run's.
 - Roofs, thin walls and panes, from runs of the presets with detailed envelopes.
 - A street-canyon term, and a learned model if the linear terms stop improving.
-- Probabilities from the scatter: a side's chance of each glass state, from the fit's spread
-  (Horizons item 4).
+- Probabilities from the scatter: done for the glass, [glass by chance](glass-probability.md).

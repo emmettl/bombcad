@@ -28,7 +28,8 @@ public struct DebrisLaunch: Codable, Sendable, Equatable {
     ///   102.5 mm (or the wall, if thinner);
     /// - concrete and reinforced blockwork, rubble (UFC 3-340-02 §4-57's unlaced elements): cubes
     ///   of half its thickness, 50 mm at least;
-    /// - annealed glass, shards 50 mm square; laminated glass, the pane whole;
+    /// - annealed glass, shards 50 mm square; toughened, dice 8 mm square; laminated or filmed
+    ///   glass, the pane whole;
     /// - profiled sheeting, the sheet between its rails, a metre wide;
     /// - cross-laminated timber, strips 0.3 m wide over its span.
     static func piece(
@@ -41,7 +42,9 @@ public struct DebrisLaunch: Codable, Sendable, Equatable {
             let edge = max(t / 2, 0.05)
             return SIMD3(edge, edge, min(edge, t))
         case .annealedGlass: return SIMD3(0.05, 0.05, t)
-        case .laminatedGlass: return SIMD3(Float(pane?.x ?? 1), Float(pane?.y ?? 1), t)
+        case .laminatedGlass, .filmedGlass: return SIMD3(Float(pane?.x ?? 1), Float(pane?.y ?? 1), t)
+        // EN 12150-1's fragmentation test: 40 or more pieces in a 50 mm square, about 8 mm each.
+        case .toughenedGlass: return SIMD3(0.008, 0.008, t)
         case .profiledSteel: return SIMD3(Float(span), 1, t)
         case .crossLaminatedTimber: return SIMD3(Float(span), 0.3, t)
         }
