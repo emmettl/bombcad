@@ -79,15 +79,16 @@ struct NearbyDeadlineGapTests {
     /// The limits as the app ships them, and as its messages say them. `stalls` passes its own
     /// limit of one second to every step, so nothing else looks at these values; a slip to
     /// milliseconds or hours would pass every other test.
-    @Test("The deadlines are 20 s to connect, 30 s a message and 5 minutes for a code check")
+    @Test("The deadlines are a minute to connect, a minute a message and 5 minutes for a code check")
     func limits() {
-        #expect(NearbyWorkers.connectLimit == .seconds(20))
-        #expect(NearbyWorkers.messageLimit == .seconds(30))
+        #expect(NearbyWorkers.connectLimit == .seconds(60))
+        #expect(NearbyWorkers.messageLimit == .seconds(60))
         #expect(NearbyWorkers.checkLimit == .seconds(300))
-        // The wording follows the test process's locale (here "20 seconds" and "5 minutes"), so
-        // only the numbers are checked, and that five minutes is said in minutes, not as 300 seconds.
-        #expect(ConnectionChannel.describe(NearbyWorkers.connectLimit).contains("20"))
-        #expect(ConnectionChannel.describe(NearbyWorkers.messageLimit).contains("30"))
+        // The wording follows the test process's locale (here "1 minute" and "5 minutes"), so only
+        // the numbers are checked, and that the minutes are said in minutes, not as seconds.
+        let minute = ConnectionChannel.describe(NearbyWorkers.connectLimit)
+        #expect(minute.contains("1") && !minute.contains("60"), "\(minute)")
+        #expect(ConnectionChannel.describe(NearbyWorkers.messageLimit) == minute)
         let check = ConnectionChannel.describe(NearbyWorkers.checkLimit)
         #expect(check.contains("5") && !check.contains("300"))
     }

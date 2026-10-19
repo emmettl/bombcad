@@ -29,7 +29,10 @@ public enum StandingFingerprint {
         // The estimates beside a run, worded from the figures.
         parts.append(
             "estimates "
-                + canonical([FacadeLoadSurrogate.standing, HybridFarField.standing, ChargeInference.standing])
+                + canonical([
+                    FacadeLoadSurrogate.standing, FacadeLoadSurrogate.glassStanding, HybridFarField.standing,
+                    ChargeInference.standing,
+                ])
         )
         for preset in ScenarioPreset.allCases.sorted(by: { $0.rawValue < $1.rawValue }) {
             let inputs = StandingInputs(

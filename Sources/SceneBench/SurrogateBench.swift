@@ -21,6 +21,12 @@ enum SurrogateBench {
         args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
     }
 
+    /// `--centre lon,lat`, as `DistrictInputs` reads it.
+    static func centre(_ args: [String]) -> SIMD2<Double> {
+        let parts = value(args, "centre").map { $0.split(separator: ",").compactMap { Double($0) } } ?? []
+        return parts.count == 2 ? SIMD2(parts[0], parts[1]) : SIMD2(35.519042, 33.901425)
+    }
+
     /// A district run's saved strips, each found in the scene laid out again.
     struct Reference {
         var scene: Scenario

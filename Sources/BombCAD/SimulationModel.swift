@@ -704,18 +704,59 @@ final class SimulationModel {
     private(set) var estimatingEnvelopeDamage = false
     /// Why the glazing is not vented though asked to be, or empty.
     private(set) var envelopeVentingStatus = ""
+    /// How each charge fired after the main one was laid down in the last run, and when.
+    private(set) var firingNotes: [String] = []
     /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
     var showsEnvelopeDamage = true {
         didSet { applyEnvelopeDamageColours() }
     }
 
     private func applyEnvelopeDamageColours() {
+        guard showsEnvelopeDamage else {
+            renderer?.setEnvelopeDamage([:])
+            return
+        }
+        if envelopeColouring != .damage, !envelopeGlassChances.isEmpty {
+            // Each side by its chance, from the quick estimate's draws.
+            let bySide = Dictionary(grouping: envelopeGlassChances, by: \.owner)
+            renderer?.setEnvelopeDamage(
+                bySide.mapValues { sides in
+                    EnvelopeChanceColour.code(
+                        sides.map {
+                            (
+                                $0.axis, $0.outward,
+                                envelopeColouring == .someBroken
+                                    ? $0.someBroken
+                                    : envelopeColouring == .blownOut ? $0.blownOut : $0.thrownPast3b
+                            )
+                        })
+                })
+            return
+        }
         renderer?.setEnvelopeDamage(
-            showsEnvelopeDamage
-                ? Dictionary(
-                    uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
-                : [:])
+            Dictionary(uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) }))
     }
+
+    /// What the view colours envelopes by: their damage, or (from a quick estimate) each side's
+    /// chance that some glass breaks, or that it is blown out.
+    enum EnvelopeColouring: String, CaseIterable, Identifiable {
+        case damage = "Damage"
+        case someBroken = "Chance glass breaks"
+        case blownOut = "Chance blown out"
+        case thrownPast3b = "Chance glass thrown past 3 m (GSA 3b)"
+        var id: Self { self }
+    }
+
+    var envelopeColouring = EnvelopeColouring.damage {
+        didSet { applyEnvelopeDamageColours() }
+    }
+
+    /// Each building side's glass chances from the quick estimate (`FacadeLoadSurrogate`'s
+    /// draws), the glass alone; empty without one.
+    private(set) var envelopeGlassChances: [FacadeLoadSurrogate.SideGlass] = []
+    /// How far the quick estimate's charge may be off: its yield within this factor either way,
+    /// nine times in ten; 1 for exactly the scene's.
+    var quickEstimateYieldWithin = 1.5
 
     @ObservationIgnored private var lastEnvelopeDamage = ContinuousClock.now
     /// How long the last judgement took: a district's runs into seconds, so while running it is
@@ -731,12 +772,20 @@ final class SimulationModel {
         let cellSize = settings.resolution.cellSize
         estimatingEnvelopeDamage = true
         envelopeDamageStatus = "Estimating…"
+        // Nine times in ten within the factor: 1.645 standard deviations of its logarithm.
+        let uncertainty = FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(quickEstimateYieldWithin) / 1.645)
         Task { [weak self] in
-            let (loads, buildings, outside, seconds) = await Task.detached(priority: .userInitiated) {
+            let (loads, buildings, outside, chances, seconds) = await Task.detached(priority: .userInitiated)
+            {
                 let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
                 let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
                     estimate, constructions: { scenario.envelopeConstruction(for: $0) })
-                return (estimate.loads, buildings, estimate.outsideFit, estimate.seconds + damageS)
+                let (chances, chancesS) = FacadeLoadSurrogate.glassProbabilities(
+                    scene: scenario, cellSize: cellSize, uncertainty: uncertainty)
+                return (
+                    estimate.loads, buildings, estimate.outsideFit, chances,
+                    estimate.seconds + damageS + chancesS
+                )
             }.value
             guard let self else { return }
             self.estimatingEnvelopeDamage = false
@@ -747,6 +796,7 @@ final class SimulationModel {
             }
             self.envelopeDamage = buildings
             self.envelopeLoads = loads
+            self.envelopeGlassChances = chances
             self.envelopeDamageIsEstimate = true
             self.envelopeDamageStatus = String(
                 format: "Quick estimate in %.1f s: not a run. Run the scene for its damage.", seconds)
@@ -789,6 +839,7 @@ final class SimulationModel {
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
             strikes: strikes, vented: vented)
         envelopeDamageIsEstimate = false
+        envelopeGlassChances = []
         envelopeLoads = loads
         applyEnvelopeDamageColours()
     }
@@ -2501,6 +2552,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeDamageIsEstimate = false
+        envelopeGlassChances = []
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -2541,6 +2593,7 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeDamageIsEstimate = false
+        envelopeGlassChances = []
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -2620,8 +2673,10 @@ final class SimulationModel {
                                 }
                                 // Close-in charges breach concrete by UFC 3-340-02's curves; the
                                 // main charge's casing, if it is cased, from its fragments.
+                                var main = scenario.charge
+                                main.delay = nil
                                 try solver.setEnvelopeCloseIn(
-                                    charges: [(scenario.charge, fragmentSpec?.casingMass ?? 0)]
+                                    charges: [(main, fragmentSpec?.casingMass ?? 0)]
                                         + (scenario.additionalCharges ?? []).map { ($0, 0) },
                                     constructions: { scenario.envelopeConstruction(for: $0) })
                             } catch {
@@ -2830,6 +2885,18 @@ final class SimulationModel {
 
     private func finish() {
         isRunning = false
+        firingNotes = (solver?.firings ?? []).map { firing in
+            let how =
+                switch firing.how {
+                case .balloon: "as a ball of hot gas"
+                case .mapped: "from its one-dimensional solution"
+                case .balloonInsteadOfMapped: "as a ball of hot gas, not mapped"
+                }
+            return String(
+                format: "The charge fired at %.2f ms was laid %@ at %.2f ms.",
+                firing.charge.firingTime * 1000, how,
+                firing.laidAt * 1000) + (firing.note.map { " " + $0 } ?? "")
+        }
         if let solver, let snapshot = solver.exposureSnapshot() {
             injuryField = InjuryField(
                 snapshot, centre: SIMD2(scenario.charge.position.x, scenario.charge.position.y),

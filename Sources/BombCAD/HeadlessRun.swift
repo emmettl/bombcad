@@ -11,7 +11,9 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
-                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m] [--surrogate <file.json>]
+                           [--charge <kg>@<x>,<y>,<z>[+<delay ms>]]…
+                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
+                           [--surrogate <file.json> [--surrogate-yields <samples.csv> | --surrogate-yield-within <factor>]]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -68,7 +70,12 @@ enum HeadlessRun {
         running the air: each component's load from its distance, facing and the buildings in the
         way (Kingery–Bulmash corrected by terms fitted to BombCAD's district runs), judged as a
         run's are. It writes the damage as JSON, marked as an estimate with its error band, and
-        does not run.
+        does not run. With it each map building side's chance that its glass breaks and that it is
+        blown out, drawn over the yield (from `scenebench infer-charge --samples`' masses with
+        --surrogate-yields, or within --surrogate-yield-within either way nine times in ten, 1.5 by
+        default), each building's glass strength and the estimate's own scatter: the glass only.
+        --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
+        main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
         structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
         given, 10 to 150). A ground type (rock, soilOverSandstone, playa, alluvium, clay,
@@ -86,6 +93,8 @@ enum HeadlessRun {
         var csv: URL?
         var resolution: Resolution?
         var mass: Float?
+        /// Further charges, after the project's own.
+        var charges: [Charge] = []
         var duration: Double?
         /// With `--ground`, what the structures' debris lands on: soil of this subgrade modulus
         /// (Pa/m), or, as `.some(nil)`, the hard ground.
@@ -133,6 +142,10 @@ enum HeadlessRun {
         var advise: AdvisorTarget?
         /// With `--surrogate`, where the first look's damage goes; the project is then not run.
         var surrogate: URL?
+        /// The first look's yields to draw its glass chances over: a posterior's samples (their
+        /// first column the log10 of the mass in kg), or within a factor either way.
+        var surrogateYields: URL?
+        var surrogateYieldWithin = 1.5
 
         /// The consumers `--consumer` can place.
         static let consumerNames = ["fragments", "thermal", "ground"]
@@ -140,10 +153,28 @@ enum HeadlessRun {
         /// Where the consumer `name` runs: "local", an SSH host or "auto".
         func place(_ name: String) -> String { consumers[name] ?? "local" }
 
+        /// A charge from `<kg>@<x>,<y>,<z>[+<delay ms>]`.
+        static func charge(_ text: String) throws -> Charge {
+            let invalid = ProjectFileError.invalid(
+                "--charge takes <kg>@<x>,<y>,<z>[+<delay ms>], such as 10@20,15,0+5.")
+            let parts = text.split(separator: "@", maxSplits: 1)
+            guard parts.count == 2, let mass = Float(parts[0]), mass > 0 else { throw invalid }
+            let placed = parts[1].split(separator: "+", maxSplits: 1)
+            let numbers = placed[0].split(separator: ",").compactMap { Float($0) }
+            guard numbers.count == 3 else { throw invalid }
+            var delay: Float?
+            if placed.count == 2 {
+                guard let ms = Float(placed[1]), ms >= 0, ms.isFinite else { throw invalid }
+                delay = ms > 0 ? ms / 1000 : nil
+            }
+            return Charge(mass: mass, position: SIMD3(numbers[0], numbers[1], numbers[2]), delay: delay)
+        }
+
         static func parse(_ arguments: [String]) throws -> Options {
             var positional: [String] = []
             var values: [String: String] = [:]
             var workers: [String] = []
+            var charges: [Charge] = []
             var index = 0
             while index < arguments.count {
                 let argument = arguments[index]
@@ -157,16 +188,19 @@ enum HeadlessRun {
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
-                            "surrogate",
+                            "surrogate", "surrogate-yields", "surrogate-yield-within", "charge",
                         ]
                         .contains(key)
                     else {
                         throw ProjectFileError.invalid("Unknown option \(argument).")
                     }
-                    guard index + 1 < arguments.count, values[key] == nil || key == "worker" else {
+                    guard index + 1 < arguments.count,
+                        values[key] == nil || key == "worker" || key == "charge"
+                    else {
                         throw ProjectFileError.invalid("Give \(argument) one value.")
                     }
                     if key == "worker" { workers.append(arguments[index + 1]) }
+                    if key == "charge" { charges.append(try Self.charge(arguments[index + 1])) }
                     values[key] = arguments[index + 1]
                     index += 2
                 } else {
@@ -176,6 +210,7 @@ enum HeadlessRun {
             }
             guard positional.count == 1 else { throw ProjectFileError.invalid("Name one project to run.") }
             var options = Options(project: URL(filePath: positional[0]))
+            options.charges = charges
             options.name = values["name"]
             options.out = values["out"].map { URL(filePath: $0) }
             options.csv = values["csv"].map { URL(filePath: $0) }
@@ -191,6 +226,19 @@ enum HeadlessRun {
             options.debrisResults = values["debris-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
             options.surrogate = values["surrogate"].map { URL(filePath: $0) }
+            options.surrogateYields = values["surrogate-yields"].map { URL(filePath: $0) }
+            if let text = values["surrogate-yield-within"] {
+                guard let factor = Double(text), factor >= 1, factor.isFinite else {
+                    throw ProjectFileError.invalid("--surrogate-yield-within takes a factor of 1 or more.")
+                }
+                options.surrogateYieldWithin = factor
+            }
+            if options.surrogateYields != nil || values["surrogate-yield-within"] != nil,
+                options.surrogate == nil
+            {
+                throw ProjectFileError.invalid(
+                    "--surrogate-yields and --surrogate-yield-within need --surrogate.")
+            }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
                     throw ProjectFileError.invalid(
@@ -427,6 +475,9 @@ enum HeadlessRun {
             inputs = try ParameterSweepPlan(prefix: "Run", parameter: .chargeMass([mass])).prepare(
                 from: inputs)[0]
                 .inputs
+        }
+        if !options.charges.isEmpty {
+            inputs.scenario.additionalCharges = (inputs.scenario.additionalCharges ?? []) + options.charges
         }
         if let duration = options.duration {
             inputs.settings.duration = duration
@@ -886,6 +937,7 @@ enum HeadlessRun {
         // The blast's hazards: the safety standards' distances, the minimum safe distance (with the
         // fragments' hazard, when flown) and the injury at standing height over the run.
         model.setFragmentHazard(fragments?.hazard)
+        streams += model.firingNotes
         // The structures' rubble flown on to land, while the scene can still take its ring.
         let debris = model.debrisResult()
         if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }
@@ -1108,6 +1160,9 @@ enum HeadlessRun {
         var outsideFit: Int
         var seconds: Double
         var buildings: [EnvelopeBuildingDamage]
+        /// Each map building side's glass chances, and what they were drawn over.
+        var glass: [FacadeLoadSurrogate.SideGlass]
+        var glassDrawnOver: String
     }
 
     /// The first look at the project's envelope buildings (as `--resolution` and `--mass` change
@@ -1123,11 +1178,29 @@ enum HeadlessRun {
         let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
         let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
             estimate, constructions: { scenario.envelopeConstruction(for: $0) })
+        var uncertainty = FacadeLoadSurrogate.Uncertainty(
+            yieldLogSD: log(options.surrogateYieldWithin) / 1.645)
+        var drawnOver = String(
+            format: "yield within ×%.2f nine times in ten, glass strength, the estimate's scatter",
+            options.surrogateYieldWithin)
+        if let url = options.surrogateYields {
+            let lines = try String(contentsOf: url, encoding: .utf8).split(whereSeparator: \.isNewline)
+            uncertainty.masses = lines.dropFirst().compactMap { line in
+                line.split(separator: ",").first.flatMap { Double($0) }.map { pow(10, $0) }
+            }
+            guard !uncertainty.masses.isEmpty else {
+                throw ProjectFileError.invalid("No masses (log10 kg, first column) in \(url.path).")
+            }
+            drawnOver = "yields from \(url.lastPathComponent), glass strength, the estimate's scatter"
+        }
+        let (glass, glassS) = FacadeLoadSurrogate.glassProbabilities(
+            scene: scenario, cellSize: cellSize, uncertainty: uncertainty)
         let look = FirstLook(
             method: FacadeLoadSurrogate.method, fittedTo: FacadeLoadSurrogate.Coefficients.fitted.fittedTo,
-            standing: FacadeLoadSurrogate.standing, components: estimate.loads.count,
-            outsideFit: estimate.outsideFit,
-            seconds: estimate.seconds + damageS, buildings: buildings)
+            standing: FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding,
+            components: estimate.loads.count, outsideFit: estimate.outsideFit,
+            seconds: estimate.seconds + damageS + glassS, buildings: buildings,
+            glass: glass, glassDrawnOver: drawnOver)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
         try encoder.encode(look).write(to: url, options: .withoutOverwriting)
@@ -1145,7 +1218,16 @@ enum HeadlessRun {
             let name = scenario.object(id: building.id)?.name ?? "Building"
             return "  \(name): " + EnvelopeDamageSection.summary(building)
         }
-        lines += FacadeLoadSurrogate.standing.map { "  " + $0 }
+        if !glass.isEmpty {
+            let some = glass.map(\.someBroken).reduce(0, +) / Double(glass.count)
+            let blown = glass.map(\.blownOut).reduce(0, +) / Double(glass.count)
+            lines.append(
+                String(
+                    format:
+                        "  Glass chances of %d building sides (%@): some broken %.2f, blown out %.2f on average",
+                    glass.count, drawnOver, some, blown))
+        }
+        lines += (FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding).map { "  " + $0 }
         return lines
     }
 

@@ -4669,6 +4669,40 @@ With the gas losing what it radiates (the default since 19 October 2026), the 10
 moves by 0.4% or less in every peak, impulse and arrival (`blastbench validate --mass 100
 --radiate`), so its tables stand.
 
+#### Delayed charges (19 October)
+
+A charge fired after the main one is laid down when the run's clock reaches it
+([how](air-blast-model.md#a-finely-resolved-start)). `blastbench delayedcharges`: two 1 kg
+surface bursts 4.6 m apart on rigid ground, the second fired 0, 1, 5 or 20 ms after the first, on
+today's start at 0.2 m cells, against the same scene run without interruption on cells four
+times finer (0.05 m), both charges as the balloon, the second laid at its firing time. Gauges at
+Z 2, 3, 4 and 6 beyond and beside the second, beyond the first and between them, 1.5 m up; the
+peak and arrival of the whole record, and its impulse:
+
+| Delay | The second laid | Second's waves: peak / impulse | First's: peak / impulse | Arrivals |
+|---|---|---|---|---|
+| 0 ms | mapped with the first | 0.66–0.68 / 1.01–1.07 | 0.70–0.74 / 1.07–1.09 | 0.14–0.47 ms early |
+| 1 ms | mapped during the run, at 2.10 ms | 0.65–0.69 / 1.01–1.05 | 0.70–0.74 / 1.08 | 0.12–0.51 ms early |
+| 5 ms | the balloon: the first's blast was passing (50 kPa, 111 m/s) | 0.64–0.74 / 1.05–1.14 | 0.70–0.74 / 1.02–1.06 | within 0.36 ms |
+| 20 ms | the balloon: still not still (4.6 kPa, 9 m/s) | 0.62–0.68 / 1.00–1.06 | 0.70–0.74 / 1.07–1.08 | within 0.48 ms |
+
+- **The delay adds nothing of its own.** The second charge's waves stand to the finer run as the
+  first's do, at every delay, whether it was mapped with the first, mapped during the run or laid
+  as the balloon; the peaks' shortfall, the same for the undelayed first charge, is 0.2 m cells'
+  for 1 kg (0.2 m/kg^(1/3)), against cells a quarter that size.
+- **Arrivals** of the second's waves come within half a millisecond of the finer run's, early by
+  as much as the mapped first charge's (the balloon of the finer run starts slower close in), and
+  laid as the balloon, from on time close in to 0.48 ms early at Z 6.
+- **Fallback.** Fired into the first's passing blast, or its tail, the second is the balloon, as
+  laying a solution over moving air would erase it; there its impulse reads up to 14% high,
+  against 7% mapped. The stillness asked (2% of ambient, 5 m/s) is strict: 20 ms after the first,
+  its tail still moves the air 9 m/s there.
+- **Not compared with tests.** No open test of delayed charges with gauges in tables was found:
+  Zaker's sequential explosions (IIT Research Institute, 1969, DTIC AD0861625) and the DIPOLE
+  WEST non-simultaneous bursts (BRL Report 1921, 1976, ADA031985) are the candidates, unread
+  while DTIC was down for maintenance on 19 October; Chen et al. (Sensors 2023) fired six charges
+  with 0–30 ms delays into a confined tube, plotted only.
+
 #### The products' own equation of state (18 October)
 
 The mapped start with its products as TNT's detonation products (JWL, the LLNL handbook's set;
@@ -5972,13 +6006,31 @@ The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), aga
   deviation 0.14–0.26); beyond it, 1.09–1.63 times the run's on the median, over the hills and
   near the run's open faces, and far more scattered.
 - **Outside its fitted range** (Z = 4.6–38.7 m/kg^(1/3)) its terms are held at the range's end and
-  the components marked as extrapolated; within Z = 3 of Beirut's charge, among the port's silos and
-  warehouses, it gives eight times the run's peak.
+  the components marked as extrapolated. Within Z = 3 of Beirut's charge it gives eight times the
+  run's peak, but there the saved loads were capped at 65.5 kPa (16-bit floats, fixed in 983409a8),
+  as within about Z = 7 in the runs it was fitted to: the near field awaits a refit.
 - **Time:** 22–28 s over Beirut's 724,512 components on the Studio, against 25–41 minutes for a
   full run on the CI mini (25–28 as the Beirut page timed its runs, 27–41 timed again for the
   hybrid comparison).
 
 Standing: an approximation for the glass across a district, illustrative for walls and roofs.
+
+### The glass chances against Beirut's runs and survey
+
+The [glass chances](glass-probability.md#judged), each building side's chance of some glass
+broken and of being blown out, drawn a hundred times over the yield, each building's glass
+strength and the surrogate's scatter (its spread taken from the made-up districts, not Beirut):
+
+- **Against the runs**, drawn over their three yields: blown out, Brier score 0.020, against 0.108
+  giving every side the mean chance; each tenth of chance within 0.05 of the share of runs. Glass
+  thrown worse than GSA's condition 3b: skill 0.72, each tenth within 0.06. Some glass broken:
+  skill 0.62, the middle chances a little high. All three pass the protective-design report's
+  test, each tenth of chance holding 200 sides or more within 0.1 of the share seen.
+- **Against GEER's survey** of 8,227 façades, drawn over the inferred yield: not calibrated (skill
+  −1.2 and −1.0). They share the glass model's over-breaking: blown out 0.91 at 0.75–1 km where
+  GEER saw 0.27, and no one glass strength brings both classes into line.
+
+Standing: an approximation of a run's spread for the glass; not of the event's.
 
 ### The hybrid far field against Beirut's runs
 
