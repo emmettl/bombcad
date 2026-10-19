@@ -52,24 +52,24 @@ def main():
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="bombcad-gas-reference-") as directory:
         package = Path(directory)
-        for folder in ["Sources/BlastCore", "Tests/BlastCoreTests"]:
+        for folder in ["Sources/BlastModel", "Tests/BlastModelTests"]:
             (package / folder).mkdir(parents=True)
         pin = json.loads((ROOT / "Package.resolved").read_text())["pins"][0]
         assert pin["identity"] == "continuumkit"
         version = pin["state"]["version"]
         products = ['.product(name: "CompressibleFlow", package: "continuumkit")']
-        if "import Numerics" in (ROOT / "Sources/BlastCore/FiniteVolumePressureFit.swift").read_text():
+        if "import Numerics" in (ROOT / "Sources/BlastModel/FiniteVolumePressureFit.swift").read_text():
             products.append('.product(name: "Numerics", package: "continuumkit")')
         (package / "Package.swift").write_text(f'''// swift-tools-version: 6.4
 import PackageDescription
 let package = Package(name: "GroupedReference", platforms: [.macOS(.v15)],
     dependencies: [.package(url: "https://github.com/emmettl/ContinuumKit.git", exact: "{version}")],
     targets: [
-        .target(name: "BlastCore", dependencies: [{', '.join(products)}]),
-        .testTarget(name: "BlastCoreTests", dependencies: ["BlastCore"])
+        .target(name: "BlastModel", dependencies: [{', '.join(products)}]),
+        .testTarget(name: "BlastModelTests", dependencies: ["BlastModel"])
     ])
 ''')
-        for names, folder in [(SOURCES, "Sources/BlastCore"), (TESTS, "Tests/BlastCoreTests")]:
+        for names, folder in [(SOURCES, "Sources/BlastModel"), (TESTS, "Tests/BlastModelTests")]:
             for name in names:
                 shutil.copyfile(ROOT / folder / f"{name}.swift", package / folder / f"{name}.swift")
         command = ["swift", "test", "--package-path", str(package)]

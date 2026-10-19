@@ -24,7 +24,7 @@ The [portal-frame warehouse sample](#the-portal-frame-warehouse-sample) uses bot
   ([comparison](#against-adblasts-cladding-as-an-envelope)).
 - Cladding torn off deforming purlins is not compared.
 
-The code is in `Sources/BlastCore/ProfiledSheet.swift` (profiles, section properties, the shell
+The code is in `Sources/BlastModel/ProfiledSheet.swift` (profiles, section properties, the shell
 model), `ProfiledSheetResponse.swift` (the one-way model), `LangdonPanelTest.swift` and
 `blastbench langdon` (the comparison), and `PortalWarehousePreset.swift`.
 

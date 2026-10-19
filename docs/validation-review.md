@@ -1,7 +1,7 @@
 # Independent review of the validation record
 
 A review of BombCAD's [validation record](validation.md), its [evidential standing](standing.md)
-(`StandingTable` in `Sources/BlastCore/EvidentialStanding.swift`), the
+(`StandingTable` in `Sources/BlastModel/EvidentialStanding.swift`), the
 [roadmap](roadmap.md)'s standing and limitations, [data wanted](data-wanted.md) and the model
 documents, made on 10 October 2026 by a session that had no part in building or judging any
 of the comparisons. It reads them as an outside structural or blast engineer would: are the

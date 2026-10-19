@@ -89,7 +89,7 @@ for variant in ['original','shared']:
 
 with tempfile.TemporaryDirectory(prefix='qr-provenance-controls-') as scratch:
     for name,file,mutate in [
-        ('source hash','source/Sources/BlastCore/FiniteVolumePressureFit.swift',lambda s:s+'\n'),
+        ('source hash','source/Sources/BlastModel/FiniteVolumePressureFit.swift',lambda s:s+'\n'),
         ('compiled arithmetic','shared/source/Sources/ReconstructionCapture/ConservedGasReconstruction.swift',lambda s:s.replace('0.99 * low','0.98 * low')),
         ('dirty producer','environment.json',lambda s:s.replace('"workingTreeDirty": false','"workingTreeDirty": true')),
         ('published dependency pin','shared/Package.resolved',lambda s:s.replace('00eac5537843c85c3c25a7ecef1120f49e8aa469','0'*40)),

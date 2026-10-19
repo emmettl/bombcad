@@ -373,7 +373,7 @@ resolved boundary as well.
 ## Envelopes from imports and map data
 
 Envelopes can also come from geometry made elsewhere, so that a neighbourhood of real buildings
-costs what its blocks cost. The code is `Sources/BlastCore/EnvelopeImport.swift`,
+costs what its blocks cost. The code is `Sources/BlastModel/EnvelopeImport.swift`,
 `MapBuildings.swift` and, for IFC windows and doors, `Sources/BombCAD/IFCOpenings.swift`. Each
 envelope made this way records where it came from (`Scenario.envelopeSources`), which sets its
 [standing](standing.md): an approximation for imports, illustrative for map data.

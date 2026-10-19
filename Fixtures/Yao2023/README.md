@@ -25,5 +25,5 @@ Figure 3.
 displacements are read from there, as the sensors read from the slab resting on its supports.
 Before 17 October 2026 it was compared without its weight (`--weightless`).
 
-`TwoFaceSlabTests.yaoTests` (Sources/BlastCore/YaoSlabTests.swift) holds the same values for
+`TwoFaceSlabTests.yaoTests` (Sources/BlastModel/YaoSlabTests.swift) holds the same values for
 `blastbench twoface --yao`. See docs/validation.md, "Yao's large slabs".

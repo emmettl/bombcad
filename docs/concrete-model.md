@@ -3,7 +3,7 @@
 This is the material law used for reinforced concrete, plain concrete and masonry. It is
 evaluated once per element per time step in `structureElements` in
 `Sources/BlastCore/Shaders/Structure.metal`; its parameters are in `StructureMaterial` in
-`Sources/BlastCore/StructureTypes.swift`.
+`Sources/BlastModel/StructureTypes.swift`.
 
 A second, much simpler material (von Mises plasticity with a failure strain) is kept for
 verification problems with exact answers. It is not described here.

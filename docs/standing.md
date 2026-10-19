@@ -140,7 +140,7 @@ table's identity.
 Where the validation record supports it, a result also carries a numeric band: model over
 measured (or over the reference), the way the model errs and whether that is the safe or the
 unsafe side, where the band holds, and the section it comes from (`ErrorBand` in
-`Sources/BlastCore/ErrorBands.swift`). Outside what was compared there is no band, and the
+`Sources/BlastModel/ErrorBands.swift`). Outside what was compared there is no band, and the
 standing says why.
 
 - **Each gauge** has its own band, from its scaled distance and whether it sits on a face (the
@@ -230,7 +230,7 @@ change to the record fails the test until the table follows.
 ## The table and keeping it current
 
 The content is one reviewed table in code, `StandingTable` in
-`Sources/BlastCore/EvidentialStanding.swift`. When the validation record or the limitations table
+`Sources/BlastModel/EvidentialStanding.swift`. When the validation record or the limitations table
 changes, change the table with it.
 
 **Its identity is derived, not numbered** (`StandingFingerprint`, since 18 October 2026). It is a

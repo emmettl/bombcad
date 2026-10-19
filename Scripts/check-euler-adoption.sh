@@ -16,7 +16,7 @@ root,output=map(Path,sys.argv[1:3]);baseline=sys.argv[3]
 def git(*args):return subprocess.check_output(['git',*args],cwd=root,text=True).strip()
 original=subprocess.check_output(['git','show',baseline+':Sources/BlastCore/FractionalEulerFlux.swift'],cwd=root)
 assert hashlib.sha256(original).hexdigest()=='d80e566a9938f665d71ee00bb813e934bb5febff1a112920200fd47560c818c5'
-paths=git('ls-files','Sources/BlastCore','Fixtures/EulerAdoptionBenchmark','Scripts/check-euler-adoption.sh','Scripts/verify-euler-adoption-output.py','Package.swift','Package.resolved').splitlines()
+paths=git('ls-files','Sources/BlastCore','Sources/BlastModel','Fixtures/EulerAdoptionBenchmark','Scripts/check-euler-adoption.sh','Scripts/verify-euler-adoption-output.py','Package.swift','Package.resolved').splitlines()
 pin=next(p['state'] for p in json.loads((root/'Package.resolved').read_text())['pins'] if p['identity']=='continuumkit')
 env={'corePin':pin,'schemaVersion':1,'candidate':git('rev-parse','HEAD'),'baseline':baseline,'workingTreeDirty':bool(git('status','--porcelain')),'sourceHashes':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in paths},'hardware':subprocess.check_output(['sysctl','-n','machdep.cpu.brand_string'],text=True).strip(),'os':platform.platform(),'swift':subprocess.check_output(['swift','--version'],text=True).strip(),'scope':'clean current app and immutable pre-adoption numerical source, with identical explicitly copied comparison fixture'}
 (output/'environment.json').write_text(json.dumps(env,indent=2,sort_keys=True)+'\n')

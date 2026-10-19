@@ -7,7 +7,7 @@ sixteen per metre each way; as shells it needs sixteen elements of 250 mm per sq
 0.5 m, the concrete building runs 10 to 35 times faster and the three-storey building about twice
 as fast; on finer cells the air takes most of the time (see [Performance](performance.md)).
 
-The code is `Sources/BlastCore/ShellMesh.swift`, `ShellSolver.swift` and
+The code is `Sources/BlastModel/ShellMesh.swift`, `Sources/BlastCore/ShellSolver.swift` and
 `Shaders/Shell.metal`. Choose them with `StructureModel.elementKind = .shell`; `elementSize` is
 then the elements' size along the members, and `shellLayers` (8 by default) the number of layers
 through a shell's thickness. In the app, the structure section has an **Elements** picker. IFC

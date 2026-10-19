@@ -7,9 +7,10 @@ neighbourhood or a small landscape: shielding behind a rise, reflection up a slo
 arrives late and weakened over a crest. Flat ground stays the default and is unchanged to the
 last bit.
 
-The code is `Sources/BlastCore/Terrain.swift` (the heightfield), `ElevationGrid.swift` (DEM
-import), `Shaders/Refine.metal` (`refineFill`, the fine cells' outline) and, for the checks,
-`ShockReflectionTheory.swift`, `WedgeReflectionStudy.swift` and `Sources/blastbench/TerrainBench.swift`.
+The code is `Sources/BlastModel/Terrain.swift` (the heightfield), `ElevationGrid.swift` (DEM
+import), `Sources/BlastCore/Shaders/Refine.metal` (`refineFill`, the fine cells' outline) and, for
+the checks, `Sources/BlastModel/ShockReflectionTheory.swift`, `WedgeReflectionStudy.swift` and
+`Sources/blastbench/TerrainBench.swift`.
 
 ![A 100 kg surface burst beside a 12.8 m hill, 90 ms on: reflection up its face, the shadow behind it, and the diffracted waves closing in behind on the centreline](terrain-hill.png)
 
@@ -254,8 +255,8 @@ cuts the ground's surface through the cells instead of rounding it to whole ones
 a slope. Only the terrain is cut; blocks, structures and moving bodies keep their whole cells.
 File ▸ New District's refined air lays the ground as a staircase for now: cut through the cells,
 a second refined level rang ahead of the shock over Beirut (see [A district from a
-map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell` and
-`redistributeCutDefects` in `Shaders/Solver.metal`, and for refined air `cutGeometryAt`,
+map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastModel/TerrainCutCells.swift` (the geometry), `sweepCell` and
+`redistributeCutDefects` in `Sources/BlastCore/Shaders/Solver.metal`, and for refined air `cutGeometryAt`,
 `fineSweepCell`, `refineRedistributeCut` and `refineCutPassUp` in `Shaders/Refine.metal`.
 
 - **Geometry, once.** For each cell the surface crosses: its share of air, α, and the share of

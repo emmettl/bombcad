@@ -7,7 +7,7 @@ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--variant',choice
 root=Path(__file__).resolve().parents[1];fixtures=root/'Fixtures/QRReconstructionAdoption'
 spec=importlib.util.spec_from_file_location('reference_sources',root/'Scripts/check-grouped-gas-reference.py');reference=importlib.util.module_from_spec(spec);spec.loader.exec_module(reference)
 sources=args.output/'Sources/CoupledCapture';sources.mkdir(parents=True,exist_ok=True);bindings=[]
-def instrument(name,raw,callback):
+def instrument(name,path,raw,callback):
     text=raw;patches=[]
     def patch(old,new,label):
         nonlocal text
@@ -17,7 +17,7 @@ def instrument(name,raw,callback):
     for item in reversed(patches):
         assert restored.count(item['traced'])==1;restored=restored.replace(item['traced'],item['original'])
     assert restored==raw,'unchanged coupled arithmetic/control flow'
-    (sources/(name+'.swift')).write_text(text);bindings.append({'path':'Sources/BlastCore/'+name+'.swift','sourceSHA256':hashlib.sha256(raw.encode()).hexdigest(),'compiledSHA256':hashlib.sha256(text.encode()).hexdigest(),'patches':patches})
+    (sources/(name+'.swift')).write_text(text);bindings.append({'path':path,'sourceSHA256':hashlib.sha256(raw.encode()).hexdigest(),'compiledSHA256':hashlib.sha256(text.encode()).hexdigest(),'patches':patches})
 def moving(patch):
     anchor='''        let advanced = try FractionalEulerFlux.advanceWithWalls(
             cells, faces: faces, walls: walls, duration: plan.duration, cfl: cfl)'''
@@ -50,6 +50,9 @@ def trajectory(patch):
     anchor='''                        let plan = domain.plan
                         let nextBody = body.translated(by: step * velocity)'''
     patch(anchor,'                        QRCoupledTrace.record("trajectory-step", ["before": cells, "result": r, "plan": domain.plan, "body": body, "elapsed": elapsed, "step": step, "velocity": velocity, "target": target, "steps": steps])\n'+anchor,'observe every accepted actual trajectory state and geometry')
+# Where a file named by its path at the original checkpoint lives in this tree: Sources/BlastModel
+# since the BlastModel split.
+def current(path):return path if (root/path).exists() else path.replace('Sources/BlastCore/','Sources/BlastModel/',1)
 hooks={'MovingConnectedGasGroups':moving,'ExperimentalVolumePressureFitStudy':volume,'LimitedGroupedGasFlux':stationary,'ExperimentalWallReflectionStudy':reflection,'ExperimentalMovingTrajectoryStudy':trajectory}
 for name in reference.SOURCES:
     path='Sources/BlastCore/'+name+'.swift'
@@ -58,8 +61,8 @@ for name in reference.SOURCES:
         protected=json.loads((fixtures/'CoupledOriginalSources.json').read_text())['sources'][path]
         assert hashlib.sha256(raw.encode()).hexdigest()==protected['sha256'], 'protected complete original gas source'
         assert hashlib.sha1(b'blob '+str(len(raw.encode())).encode()+b'\0'+raw.encode()).hexdigest()==protected['blob']
-    else:raw=(root/path).read_text()
-    instrument(name,raw,hooks.get(name,lambda _:None))
+    else:path=current(path);raw=(root/path).read_text()
+    instrument(name,path,raw,hooks.get(name,lambda _:None))
 for name in ['CoupledTrace.swift','CoupledMain.swift']:shutil.copyfile(fixtures/name,sources/('main.swift' if name=='CoupledMain.swift' else name))
 version='0.1.0-alpha.16' if args.variant=='original' else '0.1.0-alpha.19';products=['.product(name: "CompressibleFlow", package: "continuumkit")']
 if args.variant=='shared':products.append('.product(name: "Numerics", package: "continuumkit")')

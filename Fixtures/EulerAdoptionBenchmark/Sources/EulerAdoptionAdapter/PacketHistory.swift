@@ -2,6 +2,10 @@ import Foundation
 import simd
 
 @testable import BlastCore
+// The numerics are in BlastModel since the BlastModel split; the original checkpoint has no such module.
+#if canImport(BlastModel)
+    @testable import BlastModel
+#endif
 
 struct PacketCell: Codable {
     let volume: Double

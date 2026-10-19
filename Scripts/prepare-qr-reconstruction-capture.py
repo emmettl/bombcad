@@ -12,9 +12,11 @@ for path,entry in manifest['sources'].items():
 args.output.mkdir(parents=True,exist_ok=True)
 sources=args.output/'Sources/ReconstructionCapture';sources.mkdir(parents=True,exist_ok=True)
 bindings=[]
+# Where a file the snapshot names lives in this tree: Sources/BlastModel since the BlastModel split.
+def current(path):return path if (root/path).exists() else path.replace('Sources/BlastCore/','Sources/BlastModel/',1)
 def instrument(path,callback):
     entry=manifest['sources'][path]
-    raw=(fixtures/entry['snapshot']).read_text() if args.variant=='original' else (root/path).read_text()
+    raw=(fixtures/entry['snapshot']).read_text() if args.variant=='original' else (root/current(path)).read_text()
     text=raw;patches=[]
     def patch(old,new,label):
         nonlocal text
@@ -27,7 +29,7 @@ def instrument(path,callback):
         restored=restored.replace(item['traced'],item['original'])
     assert restored==raw,'byte-exact original/shared arithmetic restoration'
     output=sources/Path(path).name;output.write_text(text)
-    bindings.append({'path':path,'variant':args.variant,'sourceSHA256':hashlib.sha256(raw.encode()).hexdigest(),'compiledSHA256':hashlib.sha256(text.encode()).hexdigest(),'patches':patches})
+    bindings.append({'path':path if args.variant=='original' else current(path),'variant':args.variant,'sourceSHA256':hashlib.sha256(raw.encode()).hexdigest(),'compiledSHA256':hashlib.sha256(text.encode()).hexdigest(),'patches':patches})
 def pressure(patch):
     if args.variant=='original':patch('    private struct QR {','    struct QR {','fixture-only QR type visibility')
     patch('        private let weights: [Double]','        private let weights: [Double]\n        private let traceStencil: Int','fixture-only stable stencil identity')

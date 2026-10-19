@@ -129,7 +129,7 @@ through the perfectly matched layer; agreement with the column where the front i
 
 ## Stage 1: the solver and its checks
 
-`AxisymmetricElasticGrid` and `AxisymmetricElasticStepper` (`Sources/BlastCore/AxisymmetricElastic.swift`):
+`AxisymmetricElasticGrid` and `AxisymmetricElasticStepper` (`Sources/BlastModel/AxisymmetricElastic.swift`):
 Virieux's velocity–stress grid in (r, z), its radial derivatives in conservative form so that
 the axis carries no singularity, the surface loaded through σ_zz with σ_rz mirrored above it,
 and a convolutional perfectly matched layer on the far side and the bottom. It runs on the CPU;

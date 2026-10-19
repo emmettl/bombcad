@@ -94,7 +94,7 @@ the slot.
 
 A few tests run a whole study: a building settled under its own weight and then loaded, an
 assembly pushed to failure, a convergence sweep. Since 19 October 2026 such a test can carry the
-`.fullStudy` trait (`Tests/BlastCoreTests/FullStudies.swift`, and the same in BombCADTests), which
+`.fullStudy` trait (`Tests/BlastModelTests/FullStudies.swift`, and the same in BombCADTests), which
 runs it only with `BOMBCAD_FULL_STUDIES=1` in the environment. The nightly full check sets it, and
 so does `make release` (`Scripts/release.py`); the pre-push checks (`make check-affected`,
 `make check`, `make check-anywhere`) and the test-impact map don't. A gated test's suite keeps a

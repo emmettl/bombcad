@@ -18,7 +18,7 @@ def verify(output):
         for variant,version,revision in pins:
             binding=json.loads((output/variant/'bindings.json').read_text())
             need(binding['variant']==variant and binding['originalRevision']==manifest['revision'],'complete binding source identity')
-            need(len(binding['sources'])==34 and {b['path'] for b in binding['sources']}==set(manifest['sources']),'complete actual CPU source support')
+            need(len(binding['sources'])==34 and {Path(b['path']).name for b in binding['sources']}=={Path(p).name for p in manifest['sources']} and (variant!='original' or {b['path'] for b in binding['sources']}==set(manifest['sources'])),'complete actual CPU source support')
             pin=json.loads((output/variant/'Package.resolved').read_text())['pins'];need(len(pin)==1 and pin[0]['identity']=='continuumkit' and pin[0]['state']=={'version':version,'revision':revision},'exact coupled dependency pin')
             for b in binding['sources']:
                 compiled=output/variant/'source/Sources/CoupledCapture'/Path(b['path']).name
