@@ -296,7 +296,7 @@ The 1 km box (2 km square, 320 m top, 0.5 kt) on three grids, uniform cells:
   | Stone heavy / failed, 0.5–0.75 km | 239 / 7 | 257 / 10 | 249 / 8 |
 
   Refined once and capped, the glass and the arrivals are the 4 m cells' at 0.44 of their run time,
-  the façades' peaks 4–12% lower and the stone a little less cracked; File ▸ New District now
+  the façades' peaks 2–12% lower and the stone a little less cracked; File ▸ New District now
   offers that air. A tower above the ceiling takes its upper floors' load on the coarse cells.
 
 ### Structure against the building survey (GEER, 2021)
