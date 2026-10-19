@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Replays the current branch's commits over the air solver's split, so that a change made to
+# BlastSolver.swift or Solver.metal before the split lands in the files the split made:
+#
+#     Scripts/split/port-over-solver-split.sh <the split's commit on main>
+#
+# The branch must first sit on the commit just before the split (`git rebase <split>^`, resolving
+# any conflicts there as usual) and hold no merges. Then each of its commits is cut by the same
+# plan in a temporary worktree (what the commit adds that the plan does not name goes with what is
+# above it) and committed again, on the split, as `<branch>-split`, with its message and author.
+# The branch itself is left as it is. Check first that the split's commit is what the script makes
+# of its parent; if it is not (the split was edited after the script), this stops.
+set -euo pipefail
+
+split=${1:?usage: port-over-solver-split.sh <the split commit>}
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+branch=$(git symbolic-ref --quiet --short HEAD || true)
+[[ -n "$branch" ]] || { echo "error: not on a branch" >&2; exit 1; }
+split=$(git rev-parse --verify "$split^{commit}")
+base=$(git rev-parse "$split^")
+if ! git merge-base --is-ancestor "$base" HEAD; then
+    echo "error: $branch does not sit on $base (the split's parent); git rebase $base first" >&2
+    exit 1
+fi
+if [[ -n "$(git rev-list --merges "$base..HEAD")" ]]; then
+    echo "error: $branch has merges since $base; rebase it onto $base first" >&2
+    exit 1
+fi
+if git show-ref --quiet "refs/heads/$branch-split"; then
+    echo "error: $branch-split exists already" >&2
+    exit 1
+fi
+
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/solver-port.XXXXXX")
+work="$scratch/tree"
+cleanup() { git worktree remove --force "$work" 2>/dev/null || true; rm -rf "$scratch"; }
+trap cleanup EXIT
+git worktree add --quiet --detach "$work" "$base"
+tools=("$root/Scripts/split/split_solver.py")
+
+# The tree the script makes of a commit: its own tree, cut, formatted.
+cut_tree() {
+    git -C "$work" checkout --quiet --force --detach "$1"
+    git -C "$work" clean --quiet -fd -- Sources
+    python3 "${tools[@]}" split --root "$work" --lenient > "$scratch/log" || { cat "$scratch/log" >&2; exit 1; }
+    local changed
+    changed=$(git -C "$work" status --porcelain -- Sources | awk '{print $2}' | grep '\.swift$' || true)
+    if [[ -n "$changed" ]]; then
+        (cd "$work" && echo "$changed" | xargs swift format format --in-place)
+    fi
+    git -C "$work" add -A
+    git -C "$work" write-tree
+}
+
+if [[ "$(cut_tree "$base")" != "$(git rev-parse "$split^{tree}")" ]]; then
+    echo "error: the split's commit is not what the script makes of its parent; port by hand" >&2
+    exit 1
+fi
+
+parent=$split
+for commit in $(git rev-list --reverse "$base..HEAD"); do
+    tree=$(cut_tree "$commit")
+    parent=$(
+        GIT_AUTHOR_NAME=$(git log -1 --format=%an "$commit") \
+        GIT_AUTHOR_EMAIL=$(git log -1 --format=%ae "$commit") \
+        GIT_AUTHOR_DATE=$(git log -1 --format=%aD "$commit") \
+        git commit-tree "$tree" -p "$parent" -F <(git log -1 --format=%B "$commit"))
+    echo "  $(git log -1 --format='%h %s' "$commit" | cut -c1-90)"
+done
+git branch "$branch-split" "$parent"
+echo "made $branch-split; build it, then point $branch at it (git reset --keep $branch-split)"
