@@ -354,7 +354,10 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   reached the floor, and in a closed box with no afterburning the gas's energy holds to the
   joule where the floors had added 1.2 kJ (unrefined), 3.6 kJ (refined once) and 5.4 kJ (twice).
   The impulse 2–12 m from the charge moves by 0.05% at most. A cell whose difference leaves it a
-  tenth takes it as it always did, so a run in which none would be drained is unchanged to the bit.
+  tenth takes it as it always did: of `blastbench digest`'s 112 cases (`digests2.sh` and gravity
+  without terrain) 84 are unchanged to the bit, and the 28 that move are each a charge over
+  terrain whose redistribution asked some cell for more than nine tenths of its pressure (some to
+  the floor, as on the slope; some short of it, as on the hill, whose impulse moves by 1e-5).
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
