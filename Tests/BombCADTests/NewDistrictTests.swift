@@ -236,6 +236,8 @@ struct NewDistrictTests {
         #expect(reopened.farField == far)
         // Run it: the far buildings judged once the run ends.
         let app = SimulationModel(document: reopened, playbackSpeed: .unlimited)
+        // A few draws: a debug build draws the glass's chances slowly.
+        app.farFieldUncertainty.samples = 4
         #expect(app.farFieldSet == far)
         while !app.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
         app.run()
@@ -248,7 +250,37 @@ struct NewDistrictTests {
         let match = try #require(app.farField)
         #expect(match.peak > 0 && match.peak.isFinite && match.impulse > 0 && match.seedStrips > 0)
         #expect(app.farFieldStatus.hasPrefix("Far field estimate"))
+        // The far buildings' glass chances, side by side.
+        #expect(!app.farFieldGlass.isEmpty)
+        #expect(Set(app.farFieldGlass.map(\.owner)).isSubset(of: Set(far.buildings.map(\.id))))
+        #expect(app.farFieldGlass.allSatisfy { (0...1).contains($0.someBroken) })
         // The project written back keeps the far set.
         #expect(ProjectDocument(model: app).farField == far)
+    }
+
+    @Test("The advisor hands over only where the whole district would not run on 4 m cells within the hour")
+    func advisedHandover() throws {
+        let model = try model()
+        let layout = try #require(model.layout)
+        func advised(_ memory: Int, radius: Float = 450, cellSize: Float? = nil) -> (Float?, String) {
+            NewDistrictModel.advisedHandover(
+                layout, radius: radius, scaled: 100, clearFaces: true, cellSize: cellSize, ground: .saturated,
+                memory: memory)
+        }
+        // Roomy: the whole district on 4 m cells, and no far field.
+        let roomy = advised(32 << 30)
+        #expect(roomy.0 == nil && roomy.1.contains("no far field"))
+        // Tight, the whole district on cells coarser than 4 m but the air to the hand-over on 4 m: at it.
+        func cell(_ radius: Float, _ memory: Int) -> Float {
+            NewDistrictModel.advisedCell(
+                layout, radius: radius, clearFaces: true, ground: .saturated, memory: memory) ?? .infinity
+        }
+        let memory = try #require((2...64).map { $0 << 20 }.first { cell(450, $0) > 4 && cell(100, $0) <= 4 })
+        #expect(advised(memory).0 == 100)
+        // Tighter: brought in by tenths, to half of it and no nearer than 50 m.
+        let tighter = try #require(advised(memory / 2).0)
+        #expect(tighter >= 50 && tighter <= 100)
+        // Cells chosen: the hand-over as asked.
+        #expect(advised(32 << 30, cellSize: 4).0 == 100)
     }
 }

@@ -253,11 +253,13 @@ extension FacadeLoadSurrogate {
 
     /// The chances of `sides` for a charge of `mass` kg (unless `uncertainty` gives masses to draw),
     /// and with `keepDraws` each draw's outcome too: per side, the chance some pane breaks and
-    /// whether it is blown out, draw by draw.
+    /// whether it is blown out, draw by draw. With `farField`, each strip's load is carried as that
+    /// far field carries it (`HybridFarField.apply`).
     public static func glassProbabilities(
         sides: [GlassSideStrips], mass base: Double, cellSize: Float,
         uncertainty: Uncertainty = Uncertainty(),
-        binS: Double = 0.7e-3, coefficients: Coefficients = .fitted, keepDraws: Bool = false
+        binS: Double = 0.7e-3, coefficients: Coefficients = .fitted, keepDraws: Bool = false,
+        farField: HybridFarField? = nil
     ) -> (sides: [SideGlass], draws: [[GlassDraw]]?) {
         let draws = max(1, uncertainty.samples)
         let masses = (0..<draws).map { k -> Double in
@@ -312,6 +314,7 @@ extension FacadeLoadSurrogate {
                             var p = predict(
                                 strip.features, mass: mass, cellSize: Double(cellSize),
                                 coefficients: coefficients)
+                            if let farField { p = farField.apply(p, distanceM: strip.features.distanceM) }
                             p.peakPa *= exp(errors.x)
                             p.impulsePaS *= exp(errors.y)
                             sidePeak = max(sidePeak, p.peakPa)

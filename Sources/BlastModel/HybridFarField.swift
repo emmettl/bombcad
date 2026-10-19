@@ -174,16 +174,20 @@ extension HybridFarField {
         /// Components judged on the far field beyond the distances the surrogate was fitted over
         /// (`FacadeLoadSurrogate.Prediction.outsideFit`): extrapolated.
         public var outsideFit: Int
+        /// The judged buildings' façade sides' glass chances on the far field, when asked for.
+        public var glass: [FacadeLoadSurrogate.SideGlass] = []
         public var seconds: Double
     }
 
     /// After a near run of `near` on cells `cellSize`, whose components recorded `histories`, the
     /// far set `far` judged on the far field carried from it: the match over the run's façade strips
     /// from `trendFrom` (half the hand-over) and `seedFrom` (0.8 of it) to the hand-over, and its
-    /// arrivals against Kingery–Bulmash's from 500 m.
+    /// arrivals against Kingery–Bulmash's from 500 m. With `glass`, the judged buildings' glass
+    /// chances too, drawn over it on the far field (`FacadeLoadSurrogate.glassProbabilities`).
     public static func judge(
         near: Scenario, far set: FarFieldSet, histories: [EnvelopeComponentHistory], cellSize: Float,
-        seedFrom: Double? = nil, trendFrom: Double? = nil, nearBeyond: Bool = true
+        seedFrom: Double? = nil, trendFrom: Double? = nil, nearBeyond: Bool = true,
+        glass uncertainty: FacadeLoadSurrogate.Uncertainty? = nil
     ) throws -> Judgement {
         let start = ContinuousClock.now
         let handover = Double(set.handoverM)
@@ -247,9 +251,20 @@ extension HybridFarField {
         estimate.loads = loads
         let (buildings, _, _) = FacadeLoadSurrogate.damage(
             estimate, constructions: { combined.envelopeConstruction(for: $0) })
+        var glass: [FacadeLoadSurrogate.SideGlass] = []
+        if let uncertainty {
+            let sides = FacadeLoadSurrogate.glassSides(scene: combined, cellSize: cellSize).filter {
+                judged.contains($0.owner)
+            }
+            glass =
+                FacadeLoadSurrogate.glassProbabilities(
+                    sides: sides, mass: mass, cellSize: cellSize, uncertainty: uncertainty, farField: farField
+                ).sides
+        }
         let took = start.duration(to: .now)
         return Judgement(
             farField: farField, buildings: buildings, nearStrips: samples.count, outsideFit: outsideFit,
+            glass: glass,
             seconds: Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18)
     }
 }

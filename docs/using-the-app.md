@@ -203,11 +203,17 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   a staircase of whole cells for now: cut through the cells, a second refined level rang ahead of
   the shock over Beirut ([Beirut's page](beirut-2020.md#what-cell-size-the-glass-and-the-damage-need)).
 - **Near field and far field** (on when the radius reaches 1.25 times the hand-over, drawn on the
-  map at 12 m/kg^(1/3), to 50 m) runs the air only to the hand-over and its faces' clearance. The
+  map at 12 m/kg^(1/3), to 50 m) runs the air only to the hand-over and its faces' clearance. Lay
+  Out weighs it against this Mac: with the cells left to the advisor, the whole district runs in
+  the air when it fits on 4 m cells within an hour (no far field is needed). Otherwise the
+  hand-over is brought in by tenths, to half of it and no nearer than 50 m, until the near run
+  does; the sheet says which and why. The
   buildings beyond are kept beside the project, never voxelised, and judged in seconds when the run
   ends on the load carried from it: painted with their damage and listed under **Far field
   (estimate)** in Envelope damage, walls and roofs at the surrogate's standing, glass close to a
-  full run's to about 1.5 km at Beirut's yields
+  full run's to about 1.5 km at Beirut's yields. Their sides' glass chances are drawn over the far
+  field's scatter and the glass's strength, and the view can colour by them as by the quick
+  estimate's
   ([a city in minutes](hybrid-far-field.md#using-it)).
 - **Lay Out** places the buildings and shows, before anything is created, how many were placed, the
   air's size and cells, the memory and the time unloaded and as this Mac's runs have gone, and

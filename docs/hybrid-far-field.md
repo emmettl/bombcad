@@ -105,10 +105,18 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
   (500 m for a hand-over at 1 km), and otherwise carries the match on flat.
 - **In the app:** File ▸ New District with **Near field and far field** on (the default when the
   radius reaches 1.25 times the hand-over). The sheet hands over at 12 m/kg^(1/3), rounded to 50 m,
-  and draws the hand-over on the map. The project's air reaches the hand-over; the buildings beyond
+  and draws the hand-over on the map. Lay Out weighs that against this Mac's memory and the run's
+  time, with the cells left to the advisor.
+  - **No far field** while the whole district runs in the air on 4 m cells (those the surrogate
+    was fitted on) within an hour unloaded.
+  - **Otherwise the hand-over is brought in** by tenths, to half of it and no nearer than 50 m,
+    until the near run does. The sheet says which, and why
+    (`NewDistrictModel.advisedHandover`). The project's air reaches the hand-over; the buildings beyond
   it are kept beside it (saved as `farField.json`, never voxelised) and drawn with the rest. When the run
   ends they are judged in seconds on the cores and painted with their damage, labelled "far field
-  estimate" in the Envelope damage section with the match and its standing. The app carries the
+  estimate" in the Envelope damage section with the match and its standing. Their sides' glass
+  chances are drawn over the far field's scatter and each building's glass strength, as the
+  quick estimate's are (`HybridFarField.judge(..., glass:)`), and the view colours by them. The app carries the
   trend to 1.5 times the hand-over and holds it from there (`FarFieldSet.trendReachDefault`; see
   below).
 

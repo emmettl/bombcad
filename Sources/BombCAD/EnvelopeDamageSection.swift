@@ -15,14 +15,17 @@ struct EnvelopeDamageSection: View {
                 StandingRow(model: model, kinds: [.envelopeDamage])
                 Toggle("Show damage in the view", isOn: $model.showsEnvelopeDamage)
                     .help("Colour each envelope by its damage instead of the air's pressure.")
-                if model.envelopeGlassChances.isEmpty || model.envelopeColouring == .damage {
+                let chances = !model.envelopeGlassChances.isEmpty || !model.farFieldGlass.isEmpty
+                if !chances || model.envelopeColouring == .damage {
                     Legend()
                 }
-                if !model.envelopeGlassChances.isEmpty {
+                if chances {
                     Picker("Colour by", selection: $model.envelopeColouring) {
                         ForEach(SimulationModel.EnvelopeColouring.allCases) { Text($0.rawValue).tag($0) }
                     }
-                    .help("Each building side's chance, from the quick estimate's draws: the glass only.")
+                    .help(
+                        "Each building side's chance, from the quick estimate's draws or, beyond the hand-over, the "
+                            + "far field's: the glass only.")
                     if model.envelopeColouring != .damage { ChanceLegend() }
                     Text(
                         "Chances for the glass only, drawn over the yield, each building's glass strength and the "
@@ -388,6 +391,15 @@ struct FarFieldSection: View {
                         }
                         .font(.caption)
                     }
+                }
+                if !model.farFieldGlass.isEmpty {
+                    Text(
+                        String(
+                            format:
+                                "Glass chances on %d building sides beyond the hand-over, drawn over the far field's scatter and the glass's strength: colour the view by them under Envelope building damage.",
+                            model.farFieldGlass.count)
+                    )
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(HybridFarField.standing, id: \.self) {
                     Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(

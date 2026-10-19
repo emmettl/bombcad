@@ -763,21 +763,7 @@ final class SimulationModel {
         }
         if envelopeColouring != .damage, !envelopeGlassChances.isEmpty {
             // Each side by its chance, from the quick estimate's draws.
-            let bySide = Dictionary(grouping: envelopeGlassChances, by: \.owner)
-            renderer?.setEnvelopeDamage(
-                bySide.mapValues { sides in
-                    EnvelopeChanceColour.code(
-                        sides.map { side -> (Int, Int, Double) in
-                            let chance: Double =
-                                switch envelopeColouring {
-                                case .someBroken: side.someBroken
-                                case .blownOut: side.blownOut
-                                case .openingsBlownOut: side.openingsBlownOut
-                                default: side.thrownPast3b
-                                }
-                            return (side.axis, side.outward, chance)
-                        })
-                })
+            renderer?.setEnvelopeDamage(chanceCodes(envelopeGlassChances))
             return
         }
         renderer?.setEnvelopeDamage(
@@ -792,6 +778,7 @@ final class SimulationModel {
         didSet {
             guard farFieldSet != oldValue else { return }
             farFieldDamage = []
+            farFieldGlass = []
             farField = nil
             farFieldStatus = ""
             applyFarFieldColours()
@@ -802,14 +789,37 @@ final class SimulationModel {
     private(set) var farField: HybridFarField?
     private(set) var farFieldStatus = ""
     private(set) var judgingFarField = false
+    /// The far buildings' glass chances on the far field, side by side (`HybridFarField.judge`).
+    private(set) var farFieldGlass: [FacadeLoadSurrogate.SideGlass] = []
+    /// What the far field's glass chances are drawn over: its scatter and the glass's strength.
+    @ObservationIgnored var farFieldUncertainty = FacadeLoadSurrogate.Uncertainty()
+
+    /// Each building's colour code by its sides' glass chances, as the view's colouring asks.
+    private func chanceCodes(_ chances: [FacadeLoadSurrogate.SideGlass]) -> [UUID: Int] {
+        Dictionary(grouping: chances, by: \.owner).mapValues { sides in
+            EnvelopeChanceColour.code(
+                sides.map { side -> (Int, Int, Double) in
+                    let chance: Double =
+                        switch envelopeColouring {
+                        case .someBroken: side.someBroken
+                        case .blownOut: side.blownOut
+                        case .openingsBlownOut: side.openingsBlownOut
+                        default: side.thrownPast3b
+                        }
+                    return (side.axis, side.outward, chance)
+                })
+        }
+    }
 
     private func applyFarFieldColours() {
-        renderer?.setFarField(
-            farFieldSet,
-            damage: showsEnvelopeDamage
-                ? Dictionary(
+        let codes: [UUID: Int] =
+            !showsEnvelopeDamage
+            ? [:]
+            : envelopeColouring != .damage && !farFieldGlass.isEmpty
+                ? chanceCodes(farFieldGlass)
+                : Dictionary(
                     uniqueKeysWithValues: farFieldDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
-                : [:])
+        renderer?.setFarField(farFieldSet, damage: codes)
     }
 
     /// Judges the far set on the far field carried from the run just finished, away from the main
@@ -819,12 +829,14 @@ final class SimulationModel {
             let histories = solver.envelopeComponentHistories()
         else { return }
         let (near, cellSize, steps) = (scenario, grid?.cellSize ?? settings.resolution.cellSize, stepCount)
+        let uncertainty = farFieldUncertainty
         judgingFarField = true
         farFieldStatus = "Judging the far field…"
         Task.detached(priority: .userInitiated) { [weak self] in
             let result = Result {
                 try HybridFarField.judge(
-                    near: near, far: set, histories: histories, cellSize: cellSize, nearBeyond: false)
+                    near: near, far: set, histories: histories, cellSize: cellSize, nearBeyond: false,
+                    glass: uncertainty)
             }
             await MainActor.run {
                 guard let self else { return }
@@ -833,6 +845,7 @@ final class SimulationModel {
                 switch result {
                 case .success(let judged):
                     self.farFieldDamage = judged.buildings
+                    self.farFieldGlass = judged.glass
                     self.farField = judged.farField
                     self.farFieldStatus =
                         String(
@@ -845,6 +858,7 @@ final class SimulationModel {
                             : "")
                 case .failure(let error):
                     self.farFieldDamage = []
+                    self.farFieldGlass = []
                     self.farFieldStatus = "The far field could not be judged: \(error)"
                 }
                 self.applyFarFieldColours()
@@ -2782,6 +2796,7 @@ final class SimulationModel {
         envelopeDamage = []
         envelopeDamageIsEstimate = false
         farFieldDamage = []
+        farFieldGlass = []
         farField = nil
         farFieldStatus = ""
         envelopeGlassChances = []
@@ -2827,6 +2842,7 @@ final class SimulationModel {
         envelopeDamage = []
         envelopeDamageIsEstimate = false
         farFieldDamage = []
+        farFieldGlass = []
         farField = nil
         farFieldStatus = ""
         envelopeGlassChances = []

@@ -46,6 +46,8 @@ struct DistrictPreview: Sendable {
     var within: Int
     /// With a near field and a far field, the buildings beyond the air, judged after the run.
     var far: FarFieldSet? { document.farField }
+    /// Why the advisor handed over where it did, or ran it all in the air though asked for a far field.
+    var handoverReason: String?
 
     var cellSize: Float { air.cellSize }
     var scenario: Scenario { document.scenario }
@@ -122,8 +124,59 @@ final class NewDistrictModel {
         return radius >= 1.25 * h ? h : nil
     }
 
-    /// The hand-over these inputs take, if any.
+    /// The hand-over these inputs take, if any, before the advisor weighs this Mac's memory and the
+    /// run's cost (`advisedHandover`); the laid-out preview has the one taken.
     var handover: Float? { nearAndFar ? Self.handover(mass: mass, radius: radius) : nil }
+
+    /// The cells the façade load surrogate was fitted on, m: the whole district in the air on these
+    /// or finer within `handoverSeconds` needs no far field.
+    nonisolated static let handoverCells: Float = 4
+    /// The longest run the advisor plans for in the air, unloaded, s.
+    nonisolated static let handoverSeconds = 3_600.0
+
+    /// The hand-over the advisor takes from `scaled` (`handover(mass:radius:)`), and why: none while
+    /// the whole district runs in the air on `handoverCells` or finer (the finest that fit `memory`)
+    /// within `handoverSeconds`; otherwise `scaled`, brought in by tenths, to half of it and no
+    /// nearer than 50 m, until the near run does. With cells chosen, `scaled` as it is.
+    nonisolated static func advisedHandover(
+        _ layout: DistrictLayout, radius: Float, scaled: Float, clearFaces: Bool, cellSize: Float?,
+        ground: GroundType, memory: Int
+    ) -> (handover: Float?, reason: String) {
+        // Whether a run of the buildings within `r` fits on fine enough cells within the hour, and
+        // what it would take.
+        if cellSize != nil { return (scaled, "Cells chosen: handed over at 12 m/kg^(1/3).") }
+        func affordable(_ r: Float) -> (fits: Bool, takes: String) {
+            guard
+                let cell = advisedCell(
+                    layout, radius: r, clearFaces: clearFaces, ground: ground, memory: memory)
+            else { return (false, "fits no cells on this Mac") }
+            guard cell <= handoverCells else { return (false, "takes \(Resolution.metres(cell)) cells") }
+            let seconds = price(
+                layout, radius: r, clearFaces: clearFaces, air: DistrictAir(cellSize: cell, refined: false),
+                ground: ground, memory: memory
+            ).cost.seconds
+            return (
+                seconds <= handoverSeconds,
+                "takes \(Resolution.metres(cell)) cells and " + RunAdvisor.duration(seconds) + " unloaded"
+            )
+        }
+        let whole = affordable(radius)
+        if whole.fits {
+            return (nil, "The whole district in the air \(whole.takes) here: no far field needed.")
+        }
+        let least = max(50, ((scaled / 2) / 10).rounded() * 10)
+        var handover = scaled
+        while handover > least, !affordable(handover).fits {
+            handover = max(least, ((handover * 0.9) / 10).rounded() * 10)
+        }
+        return (
+            handover,
+            "The whole district in the air \(whole.takes) here; "
+                + (handover == scaled
+                    ? "handed over at 12 m/kg^(1/3)."
+                    : "the hand-over brought in from \(Int(scaled)) m for the near run to fit.")
+        )
+    }
     /// The cells chosen (the refined air's base); nil for the finest that fits this Mac.
     var cellSize: Float?
     /// The GPU memory the run may take, bytes: this Mac's share for the air.
@@ -224,12 +277,20 @@ final class NewDistrictModel {
     /// finest that fit `memory`), and what its run costs.
     nonisolated static func preview(
         _ layout: DistrictLayout, radius: Float, clearFaces: Bool, air choice: AirChoice = .advised,
-        cellSize: Float? = nil, ground: GroundType, memory: Int, handover: Float? = nil
+        cellSize: Float? = nil, ground: GroundType, memory: Int, handover scaled: Float? = nil
     ) throws -> DistrictPreview {
         let within = layout.buildings(within: radius).count
         guard within > 0 else {
             throw MapBuilding.Failure.malformed("no building lies within \(Int(radius)) m of the charge")
         }
+        // Asked for a far field, the advisor weighs it against running the whole district.
+        let advised = scaled.map {
+            advisedHandover(
+                layout, radius: radius, scaled: $0, clearFaces: clearFaces, cellSize: cellSize,
+                ground: ground,
+                memory: memory)
+        }
+        let handover = advised?.handover
         // With a hand-over the air reaches only it, and its faces' clearance beyond.
         let airRadius = handover ?? radius
         let duration = DistrictLayout.duration(radius: airRadius)
@@ -313,7 +374,7 @@ final class NewDistrictModel {
                 }
                 return DistrictPreview(
                     document: document, report: made.report, cost: cost, historyBudget: history, air: air,
-                    alternative: other, within: within)
+                    alternative: other, within: within, handoverReason: advised?.reason)
             } catch {
                 if candidates.isEmpty { throw error }
             }
@@ -620,7 +681,7 @@ struct NewDistrictView: View {
                     model.handover.map {
                         String(
                             format:
-                                "Hand-over at %.0f m (Z %.0f m/kg^(1/3)): the air reaches it and its open faces' clearance; the buildings beyond are judged after the run.",
+                                "Hand-over at up to %.0f m (Z %.0f m/kg^(1/3)): the air reaches it and its open faces' clearance; the buildings beyond are judged after the run. Lay Out weighs it against this Mac's memory and the run's time.",
                             $0, $0 / cbrt(model.mass))
                     }
                         ?? "The district reaches too little beyond the hand-over for a far field: the air takes it all."
@@ -663,6 +724,10 @@ struct NewDistrictView: View {
                                 "Far field: %d buildings beyond %.0f m, kept beside the scene and judged after the run in about %@ on this Mac's cores (an estimate).",
                             far.buildings.count, Double(far.handoverM), RunAdvisor.duration(far.judgeSeconds))
                     )
+                }
+                if let reason = preview.handoverReason {
+                    Text(reason).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if let other = preview.alternative {
                     Text("Instead, \(other.air.title): " + costLine(other.cost, preview: preview))
@@ -741,7 +806,8 @@ struct DistrictMapView: View {
                     let r = CGFloat(Double(model.radius) * frame.pixelsPerMetre)
                     // The domain, its side faces kept clear of the buildings or not: with a far field,
                     // the near box about the hand-over, drawn as a dashed circle.
-                    let handover = model.handover
+                    let handover =
+                        model.preview.map { $0.far.map { Float($0.handoverM) } } ?? model.handover
                     let reach = handover ?? model.radius
                     let half = CGFloat(
                         Double(
