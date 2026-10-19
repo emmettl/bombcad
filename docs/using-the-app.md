@@ -381,11 +381,90 @@ expensive previews.
 
 ## From architectural plans
 
-BombCAD reads buildings as IFC, not as drawings. An architect's floor plan reaches it through a
-free BIM program that turns the plan's lines into walls, slabs and openings by storey. The steps
-below use FreeCAD's BIM workbench; Bonsai, Blender's IFC add-on, works too.
-[Samples/Plans](../Samples/Plans/README.md) holds the worked example, a two-storey house with
-cavity walls, as a DXF plan, the FreeCAD script that raises it, and the IFC it writes.
+An architect's floor plan reaches BombCAD by one of two routes:
+
+- **In BombCAD, from the DXF.** Quick, for plain buildings: square walls, flat floors, the same
+  plan on every storey or one plan per storey's openings. It is described below.
+- **Through a BIM program, as IFC.** For anything more: angled or curved walls, pitched roofs,
+  storeys that differ, columns and beams. FreeCAD's BIM workbench (or Bonsai, Blender's IFC
+  add-on) raises the plan into a model, and BombCAD imports the IFC. See
+  [through FreeCAD](#through-freecad-as-ifc).
+
+[Samples/Plans](../Samples/Plans/README.md) holds a worked example for both routes, a two-storey
+house with cavity walls, and plans cut from two real buildings.
+
+### In BombCAD, from the DXF
+
+**Import Model…** (or drop the file) with a plan saved as **ASCII DXF**. A binary DXF, DWG or PDF
+has to be saved as ASCII DXF first. BombCAD reads lines, polylines (with their arcs), arcs,
+circles and blocks, on their layers. A sheet then asks what the plan means:
+
+- **Units**: from the drawing's header where it gives them; otherwise BombCAD guesses from the
+  plan's size (millimetres if it spans more than 200 units) and asks you to check.
+- **Layers**: each layer is marked **Walls**, **Doors**, **Windows**, **Floor outline** or
+  **Ignore**, guessed from its name ("WALL", "A-WALL", "DOOR", "GLAZ"…; a wall layer named for
+  partitions or interior walls gets 100 mm block). A wall layer takes a
+  construction, such as a cavity wall of brick and block, solid brick, block or concrete, and so
+  the wall's layers and materials. Any layer may be put on one storey only, which is how a plan
+  with each storey's windows on its own layer is read.
+- **Storeys**: how many, floor to floor, the floor and roof slabs' thickness, a flat roof, and a
+  ground-bearing slab.
+- **Openings**: door head, window sill and head (each storey's own), and whether a gap in a wall
+  with nothing drawn in it is a door or a window.
+
+The preview shows the drawing with the walls found filled, windows blue and doors red, with notes
+on what was read and what was assumed. **Preview building** raises it and opens the same review
+as an IFC building ([structures from IFC](structural-editing.md#structures-from-ifc)): keep it as
+rigid obstacles or turn on **Deformable shells and beams**. **Back to the plan…** returns to the
+sheet.
+
+How the plan is read:
+
+- **Walls drawn by both faces**, as architects draw them, are read as the regions the wall
+  layer's lines enclose: a region no wider than 0.6 m over most of it is wall, wider is a room.
+  Overlapping outlines and the lines between a wall's leaves stay inside one wall. Each wall's
+  thickness is the drawing's, its build-up the layer's construction.
+- **Walls drawn by centrelines** (lines that enclose only rooms) take their construction's
+  thickness. Where walls meet, they are carried to each other's far face at a corner, and to the
+  midline at a T, so that they join.
+- **Openings**: a block or a group of lines on a door or window layer names the opening it sits
+  in, or in a wall drawn by its centreline, cuts one. A door or window drawn just past a wall's
+  end, beside a pier or a corner, carries the wall across it. A gap of 0.3–6 m in a wall's line
+  with nothing drawn in it is taken as the kind you chose in an outer wall and as a doorway in an
+  inside one, and the notes say so.
+- **Floors**: closed polylines on a floor-outline layer (square-cornered), else the walls' outer
+  rectangle.
+- Only walls square to the plan's axes are read. Angled and curved walls are left out, and the
+  notes give their number and length; for them, take the IFC route.
+
+How it does on real plans (`FloorPlanTests`, `PlanHouseStudyTests`):
+
+- **The example house**, drawn by centrelines, gives the same building as the FreeCAD route:
+  13 shells (8 cavity walls as their brick leaf carrying the block's mass, 2 block partitions,
+  3 slabs), 5 panes of annealed glass and the door as a hole. Its members meet without the
+  89 mm gaps FreeCAD leaves. Under the 20 kg charge described below, the front reads the same
+  126 kPa; the front wall's brick leaf breaks at both storeys as it does from the IFC (274 of
+  6,021 elements removed, against 179 of 5,597); the side and back walls move 7–43 mm (8–53 mm
+  from the IFC), the partitions 25–33 mm (26–34 mm) and the roof 24 mm (11 mm). The plan's
+  roof spans the whole outline over the walls, where FreeCAD's sits within them.
+- **The Duplex Apartment** (buildingSMART's sample), its two floors cut from its IFC as an
+  architect's plan is drawn, by both faces. The reader finds the four 417 mm outer walls whole
+  and the 124 mm partitions. On the ground floor it places all 10 openings the cut crosses (the
+  IFC's 4 windows and the 6 of its 8 doors that appear in the cut). The stair core reads
+  as thick blocks of wall (520–740 mm), where the IFC has several walls overlapping. On the first
+  floor, the dormers' angled lines are left out and the notes say so.
+- **The small house** (buildingSMART's Building-Architecture): its three walls of 200 mm.
+  A 24 mm wall is thinner than the thinnest a plan's lines are read as (50 mm).
+
+These plans are drawn cleanly, as cuts from models. A drawing with hatching, dimensions or
+furniture on its wall layer needs those layers set to **Ignore**, and walls that are not quite
+closed at their ends can be lost; the preview shows what was found.
+
+### Through FreeCAD, as IFC
+
+BombCAD reads such a building as IFC. The steps below use FreeCAD's BIM workbench; Bonsai works
+too. The worked example in Samples/Plans gives the DXF plan, the FreeCAD script that raises it, and
+the IFC it writes.
 
 1. **The plan.** Export it from the CAD program as DXF, in millimetres. It helps to put each kind
    of line on its own layer: the walls' centrelines (or one face), and the doors' and windows'
