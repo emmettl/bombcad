@@ -161,7 +161,7 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   of each whose run fits this Mac's memory with the components' histories, by its cost model, and
   takes the refined air where that is both finer at the façades and no dearer; **Cells** sets a size
   instead (the refined air's base). Over Beirut, 8 m refined so to 4 m gave the glass and the
-  arrivals of 4 m cells in 0.44 of their run time, the façades' peaks 4–12% lower; a tower above
+  arrivals of 4 m cells in 0.44 of their run time, the façades' peaks 2–12% lower; a tower above
   the ceiling takes its upper floors' load on the coarse cells. The refined air takes the ground as
   a staircase of whole cells for now: cut through the cells, a second refined level rang ahead of
   the shock over Beirut ([Beirut's page](beirut-2020.md#what-cell-size-the-glass-and-the-damage-need)).
@@ -419,8 +419,8 @@ What the importer makes of the example's house:
   its mass is carried by the brick (its density 1.72 times its own), and the report says so. A
   layer's material is read by its material's name. The converter gives only the layer's own name
   ("Outer leaf"), which says nothing of what it is made of, so the name is found in the IFC itself.
-- **Windows** become 6 mm panes of annealed glass, unless the IFC names another glass, and the
-  **door** an open hole. **Slabs** become shells of C30/37, unreinforced unless asked. The
+- **Windows** become panes of annealed glass, 6 mm thick unless the IFC gives the glass's
+  thickness, and the **door** an open hole. **Slabs** become shells of C30/37, unreinforced unless asked. The
   ground-bearing slab rests on the ground.
 - **Connections**: walls are tied where they meet, and to the slabs, closing the gaps of up to
   89 mm that FreeCAD leaves between a slab's edge and a wall's midsurface. The walls stand on the

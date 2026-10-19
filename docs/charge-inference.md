@@ -98,7 +98,7 @@ Stennett et al.'s six videos (their distances, the place held at the warehouse):
 ## Broken glass
 
 `--glass` adds GEER's survey of 9,183 street façades (classes W0–W3; DesignSafe PRJ-3030, read
-from its shapefile, each façade at its segment's centre, its outward normal from `Azimuth_N`):
+from its shapefile, each façade at the centre of its segment's bounding box, its outward normal from `Azimuth_N`):
 in each 250 m band of distance from the charge, how many façades were damaged (W1 or worse)
 against the mean chance the envelope glass model gives a 150 m² façade of the apartments' mix of
 panes under Kingery–Bulmash's pulse, side-on, or reflected for a façade facing the charge, as a
@@ -162,7 +162,7 @@ last estimate, until the yield moves under 5% (at most three runs):
 (In the order 0.5, 1, 2, 5 t.)
 
 - **Kingery–Bulmash alone finds the place, not the yield.** BombCAD's shock reaches these
-  observers up to a sixth sooner than Kingery–Bulmash's (its arrivals 0.73–1.03 of the curves'
+  observers up to a quarter sooner than Kingery–Bulmash's (its arrivals 0.73–1.03 of the curves'
   at 4 m, 0.84–1.03 at 2 m, the nearest the earliest), and a bigger charge is the curves' way of
   saying so: 1.3–2 times the truth, the finer grid the nearer. The posterior is confident and
   wrong, as model data have no scatter to widen it (the observers come out 0.6% off the model):
