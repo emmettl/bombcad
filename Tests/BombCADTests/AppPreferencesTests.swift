@@ -7,16 +7,9 @@ import Testing
 @MainActor
 @Suite("Application preferences", .serialized)
 struct AppPreferencesTests {
-    private func withStore(_ body: (UserDefaults) throws -> Void) throws {
-        let name = "dev.bombcad.preferences-test.\(UUID().uuidString)"
-        let store = try #require(UserDefaults(suiteName: name))
-        defer { store.removePersistentDomain(forName: name) }
-        try body(store)
-    }
-
     @Test("Preferences round-trip and invalid stored choices fall back safely")
     func persistence() throws {
-        try withStore { store in
+        try withTemporaryDefaults { store in
             #expect(AppPreferences.load(from: store) == AppPreferences())
             var preferences = AppPreferences()
             preferences.resolution = .coarse
@@ -68,7 +61,7 @@ struct AppPreferencesTests {
     func sweepHosts() throws {
         #expect(AppPreferences.hosts(" mini \n\nstudio.local\nmini\n") == ["mini", "studio.local"])
         #expect(AppPreferences.text(["a", "b", "a", " "]) == "a\nb")
-        try withStore { store in
+        try withTemporaryDefaults { store in
             store.set("scrimply-ci-tb", forKey: AppPreferences.Key.legacySweepHost)
             store.set(true, forKey: AppPreferences.Key.sweepUsesRemote)
             var preferences = AppPreferences.load(from: store)
@@ -87,7 +80,7 @@ struct AppPreferencesTests {
 
     @Test("Restoring defaults changes only owned preference keys")
     func reset() throws {
-        try withStore { store in
+        try withTemporaryDefaults { store in
             store.set("keep", forKey: "unrelated")
             var custom = AppPreferences()
             custom.resolution = .fine

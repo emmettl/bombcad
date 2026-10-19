@@ -62,12 +62,11 @@ struct InterfaceSnapshotTests {
             to: folder.appending(path: "help.png"))
         #expect(ProjectDocument(model: model) == original)
 
-        let suite = "dev.bombcad.interface-review.\(UUID())"
-        let store = try #require(UserDefaults(suiteName: suite))
-        defer { store.removePersistentDomain(forName: suite) }
-        try snapshot(
-            AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 720),
-            appearance: appearance, to: folder.appending(path: "settings.png"))
+        try withTemporaryDefaults { store in
+            try snapshot(
+                AppSettingsView().defaultAppStorage(store), size: CGSize(width: 480, height: 720),
+                appearance: appearance, to: folder.appending(path: "settings.png"))
+        }
     }
 
     @Test("Render the New District window laid out on the made-up district", arguments: ["light", "dark"])

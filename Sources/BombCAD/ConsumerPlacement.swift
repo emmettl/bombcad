@@ -230,35 +230,36 @@ enum ConsumerProbe {
     @MainActor
     static func probe(
         _ name: String, kind: ConsumerKind, inputs: SimulationInputs, workers: [(String, SweepWorkerClient)],
-        into costs: inout ConsumerCosts
+        into costs: inout ConsumerCosts, timeout: Duration? = .seconds(30)
     ) async {
         guard case .thermal = kind else { return }
         let frames = fireballs(
             scenario: inputs.scenario,
             cellSize: Resolution(rawValue: inputs.settings.resolution)?.cellSize ?? 0.25,
             radius: radius(scenario: inputs.scenario, costs: costs))
-        if let here = await measure(LocalFrameConsumer(kind), frames: frames) {
+        if let here = await measure(LocalFrameConsumer(kind), frames: frames, timeout: timeout) {
             costs.measured(name, kind: kind, place: "local", seconds: here.seconds, usesGPU: here.usesGPU)
         }
         for (host, client) in workers {
             let probe = RemoteFrameConsumer(client: client, kind: kind, ownsClient: false)
             defer { probe.cancel() }
-            if let there = await measure(probe, frames: frames) {
+            if let there = await measure(probe, frames: frames, timeout: timeout) {
                 costs.measured(name, kind: kind, place: host, seconds: there.seconds)
             }
         }
     }
 
     /// `consumer`'s seconds a frame over `frames` after the first, and whether it used this Mac's
-    /// GPU; nil if it has not answered within `timeout`.
+    /// GPU; nil if it has not answered within `timeout` (nil: however long it takes, as the tests
+    /// ask, so that a loaded Mac cannot fail them).
     @MainActor
     static func measure(
-        _ consumer: any FrameConsumer, frames: [FireballFrame], timeout: Duration = .seconds(30)
+        _ consumer: any FrameConsumer, frames: [FireballFrame], timeout: Duration? = .seconds(30)
     ) async -> (seconds: Double, usesGPU: Bool)? {
-        let deadline = ContinuousClock.now + timeout
+        let deadline = timeout.map { ContinuousClock.now + $0 }
         func reached(_ frame: Int) async -> Bool {
             while consumer.report.frame < frame {
-                guard ContinuousClock.now < deadline else { return false }
+                guard deadline.map({ ContinuousClock.now < $0 }) ?? true else { return false }
                 try? await Task.sleep(for: .milliseconds(2))
             }
             return true
