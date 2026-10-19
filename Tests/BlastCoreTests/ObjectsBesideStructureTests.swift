@@ -1,6 +1,7 @@
 import Foundation
 import Metal
 import Testing
+import simd
 
 @testable import BlastCore
 
@@ -119,5 +120,53 @@ struct ObjectsBesideStructureTests {
         // changes it apart (each run's change over the empty domain's).
         let apart = plateAlone.massChange + boxAlone.massChange - neither.massChange
         #expect(abs(both.massChange - apart) <= 1e-4 * both.mass)
+    }
+
+    @Test("A box thrown into a wall in the air stops against it as it does without air")
+    func thrownIntoWall() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "This test needs a Metal device")
+        // A 0.4 m box of 50 kg, 5 mm from a fixed 0.2 m wall of a soft elastic material, at 5 m/s.
+        let material = StructureMaterial.elastic(density: 2400, youngsModulus: 3e9, poissonRatio: 0.2)
+        let model = StructureModel(
+            solids: [Box(min: SIMD3(2, 0, 0), max: SIMD3(2.2, 2, 1.5))], material: material, elementSize: 0.1,
+            fixedBase: true)
+        var scene = Scenario(
+            name: "Box and wall", domainSize: SIMD3(4, 2, 3), boxes: [],
+            charge: Charge(mass: 0, position: SIMD3(0.5, 1, 0.3)), structure: model,
+            rigidObjects: [
+                try RigidObjectDefinition(
+                    name: "Box", shape: .box(size: SIMD3(repeating: 0.4)),
+                    position: SIMD3(2 - 0.005 - 0.2, 1, 0.75),
+                    mass: 50)
+            ])
+        scene.reflectiveFaces = .all
+        let reference = try ExperimentalRigidStructureSimulation(device: device, scenario: scene)
+        reference.gravity = .zero
+        reference.ground = false
+        reference.applyImpulse(SIMD3(250, 0, 0), to: 0)
+        reference.advance(steps: Int((0.03 / reference.timeStep).rounded(.up)))
+
+        var configuration = SolverConfiguration()
+        configuration.refinement = 1
+        let inAir = try ExperimentalRigidWorldSimulation(
+            device: device, scenario: scene, cellSize: 0.1, configuration: configuration)
+        inAir.gravity = .zero
+        try inAir.applyImpulse(SIMD3(250, 0, 0), to: 0)
+        let start = inAir.linearMomentum
+        var airImpulse = SIMD3<Double>.zero
+        while inAir.air.time < 0.03 {
+            try inAir.advance(steps: 1)
+            airImpulse += inAir.lastImpulse
+        }
+        let box = inAir.members[0]
+        print(
+            "Reaction \(inAir.reaction.x) N s in the air, \(reference.reaction.x) without; box \(box.velocity.x) "
+                + "against \(reference.members[0].velocity.x) m/s; the air's impulse \(airImpulse.x) N s")
+        // The box's momentum went into the wall and the air.
+        #expect(
+            simd_length(inAir.linearMomentum - start + inAir.reaction - airImpulse) < 1e-6
+                * simd_length(start))
+        #expect(abs(inAir.reaction.x / reference.reaction.x - 1) < 0.15)
+        #expect(abs(box.velocity.x - reference.members[0].velocity.x) < 0.5)
     }
 }

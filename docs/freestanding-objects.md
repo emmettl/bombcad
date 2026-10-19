@@ -398,8 +398,8 @@ mechanics checked against theory, not validated vehicle or furniture models.
   cells, and a cell trapped between them trades gas with air a cell or two away.
 - The coupling still runs on the CPU every step, now well below the air's time in populated
   scenes (above); moving the outline pass to the GPU would cut it further.
-- Objects striking a deformable structure do so without air, and corners pressed into a face
-  between its nodes are not found; the motion run in the app refuses a deformable structure.
+- Corners pressed into a structure's face between its nodes are not found, in the air or
+  without it; the motion run in the app refuses a deformable structure (stage 3).
 - Edge-on-edge contact between boxes crossed at an angle is not found; contact is inelastic
   and first order in time; the stack test settles but does not prove stability of tall piles.
 - Locked wheels, rigid suspension, no crushing; the saloon is illustrative, and furniture is
@@ -426,8 +426,25 @@ mechanics checked against theory, not validated vehicle or furniture models.
   **Refused for now.** The objects' own fine resolution
   (`SolverConfiguration.refinement`) and refined air are refused beside a structure, and
   structures must be set before the objects. The whole-grid layout costs a remask over every cell
-  at each structure step, and that has not been timed on a large scene. Contact between the objects
-  and the structure (d), and the app's and headless runs (e), are the stages left.
+  at each structure step, and that has not been timed on a large scene.
+- **Stage 2, contact in the air** (19 October 2026). `ExperimentalRigidWorldSimulation` takes a
+  scene's structures, on the coarse grid. While an object is within 0.5 m of a structure, each air
+  step is held to one of the structure's steps (`experimentalStepCeiling`). After each air step,
+  the nodes the objects strike take part in the objects' contact, as in
+  `ExperimentalRigidStructureSimulation`, and their new velocities go back to the structure. The
+  reaction on the structure is recorded (`reaction`).
+
+  `ObjectsBesideStructureTests` throws a 0.4 m, 50 kg box at 5 m/s into a fixed elastic wall
+  5 mm away, in a closed domain with no charge, and compares it with the same throw without air
+  over 30 ms:
+  - **The reaction** is 266 N s in the air, against 259 N s without.
+  - **The box** rebounds at 0.32 m/s, against 0.17 m/s.
+  - **The air** takes 0.47 N s.
+  - **The budget:** the box's momentum lost equals the wall's reaction plus the air's impulse,
+    to 10⁻⁶.
+
+  Scenes without a structure take their old path. The app's and headless runs (e) are the stage
+  left.
 - Objects and a deformable structure in the air together need, as found on 18 October 2026:
   (a) one layout for the coarse wall velocities, which a structure's coupling indexes by its
   region or sparse tiles and the objects over the whole grid; (b) the structure's remask, coarse
