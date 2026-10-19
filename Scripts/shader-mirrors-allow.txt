@@ -34,4 +34,3 @@ size ShellBar = Sources/BlastCore/ShellSolver.swift:barStride : the shell bars' 
 
 # Deliberate differences.
 allow copy-members BeamMeshElement=BeamElement : the renderer does not draw the bow, so it keeps `padding0` where the solver has `bowed`; same layout
-allow layout PaneLookup=PaneLookup : BUG, reported in the shader mirrors review (18 October 2026): Swift's `pad` is a SIMD3<Float> at offset 32, so the header EnvelopeVenting writes ahead of the sorted pane cells is 48 bytes where Refine.metal reads 32; delete this line with the fix (three Float pads)
