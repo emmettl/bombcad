@@ -379,6 +379,66 @@ A spatial hierarchy limits intersection checking to overlapping triangle bounds,
 validation limits must be simplified; they are not imported with incomplete checks. A scanline-work budget also limits
 expensive previews.
 
+## From architectural plans
+
+BombCAD reads buildings as IFC, not as drawings. An architect's floor plan reaches it through a
+free BIM program that turns the plan's lines into walls, slabs and openings by storey. The steps
+below use FreeCAD's BIM workbench; Bonsai, Blender's IFC add-on, works too.
+[Samples/Plans](../Samples/Plans/README.md) holds the worked example, a two-storey house with
+cavity walls, as a DXF plan, the FreeCAD script that raises it, and the IFC it writes.
+
+1. **The plan.** Export it from the CAD program as DXF, in millimetres. It helps to put each kind
+   of line on its own layer: the walls' centrelines (or one face), and the doors' and windows'
+   widths along their walls. A scanned drawing has to be traced first; FreeCAD can trace over an
+   image (BIM ▸ 2D drafting, with the image on a plane).
+2. **FreeCAD** (freecad.org, `brew install --cask freecad`). Open the DXF (File ▸ Import), switch
+   to the BIM workbench, and for each storey:
+   - **Walls**: select a wall's lines, then BIM ▸ Wall. Give its height (floor to floor) and
+     width, and its layers as a **multi-material** (BIM ▸ Multi-material). Name each layer's
+     material by what it is, such as "Facing brick" or "Aggregate concrete block", since that name
+     is what BombCAD reads (see below).
+   - **Windows and doors**: BIM ▸ Window, choose a preset, give its size, and place it in its wall
+     at its sill height. It cuts its own opening.
+   - **Floors and roof**: draw a rectangle over the inside, then BIM ▸ Slab, with a thickness and
+     a concrete material whose name gives its grade ("Concrete C30/37").
+   - **Storeys**: select each storey's walls, openings and slab, then BIM ▸ Level; then BIM ▸
+     Building and BIM ▸ Site over the levels.
+3. **IFC**: select the site, then File ▸ Export ▸ Industry Foundation Classes (*.ifc), IFC 4.
+   FreeCAD 1.1 leaves a wall's layers out of the file and calls every wall movable; its
+   development branch does too. Run the example's `add_wall_layers` on the exported file in
+   FreeCAD's Python console, or export from Bonsai, which writes the layers itself. Without them,
+   BombCAD takes the walls as the default material (it says so).
+4. **BombCAD**: **Import Model…**, choose the IFC, keep every element, and turn on **Deformable
+   shells and beams** ([structures from IFC](structural-editing.md#structures-from-ifc)). Then
+   place the charge and run.
+
+What the importer makes of the example's house:
+
+- **Walls**: each wall becomes a shell of its thickest load-bearing layer: the cavity walls as
+  their 102.5 mm brick leaf, the partitions as block. The block leaf's stiffness is left out, but
+  its mass is carried by the brick (its density 1.72 times its own), and the report says so. A
+  layer's material is read by its material's name. The converter gives only the layer's own name
+  ("Outer leaf"), which says nothing of what it is made of, so the name is found in the IFC itself.
+- **Windows** become 6 mm panes of annealed glass, unless the IFC names another glass, and the
+  **door** an open hole. **Slabs** become shells of C30/37, unreinforced unless asked. The
+  ground-bearing slab rests on the ground.
+- **Connections**: walls are tied where they meet, and to the slabs, closing the gaps of up to
+  89 mm that FreeCAD leaves between a slab's edge and a wall's midsurface. The walls stand on the
+  ground on assumed starter bars.
+- **Meshes**: FreeCAD's windows and openings give meshes that are not closed solids. The
+  importer remakes them from their pieces and lists them.
+
+**Under a blast** (`PlanHouseStudyTests`, with `BOMBCAD_PLAN_STUDY` set to a folder for its
+report). Twenty kilograms of TNT on the ground 10 m before the front wall's middle, in air of 0.25 m
+cells whose open faces keep the clearance rule ([open faces](air-blast-model.md#open-faces-near-a-structure)),
+run for 0.15 s in about 30 s on an M4 Max:
+- the front reads 126 kPa reflected;
+- the front wall's brick leaf breaks at both storeys and is thrown into the house, its pieces 2.6–2.9 m in by the end, 179 of the 5,597 elements removed;
+- the side and back walls move 8–53 mm, the partitions 26–34 mm, the roof 11 mm.
+
+That is what an unreinforced leaf of brick would be expected to do under such a load. It is not
+compared with a test, so it stands as an illustration of the route, not of the walls.
+
 ## Results, tests and the command line
 
 Gauge and deflection histories export

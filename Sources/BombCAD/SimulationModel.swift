@@ -690,6 +690,11 @@ final class SimulationModel {
     /// The loads the damage was last judged on, for the debris.
     @ObservationIgnored private var envelopeLoads: [EnvelopeComponentLoad] = []
     private(set) var envelopeDamageStatus = ""
+    /// True while `envelopeDamage` is the surrogate's quick estimate rather than a run's
+    /// (`quickEstimate`).
+    private(set) var envelopeDamageIsEstimate = false
+    /// True while the quick estimate is being made.
+    private(set) var estimatingEnvelopeDamage = false
     /// Why the glazing is not vented though asked to be, or empty.
     private(set) var envelopeVentingStatus = ""
     /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
@@ -709,6 +714,38 @@ final class SimulationModel {
     /// How long the last judgement took: a district's runs into seconds, so while running it is
     /// made again only after twenty times that.
     @ObservationIgnored private var envelopeDamageCost = Duration.zero
+
+    /// A first look at the envelope buildings' damage without running the air
+    /// (`FacadeLoadSurrogate`): seconds for a district, shown as an estimate until a run's
+    /// damage replaces it.
+    func quickEstimate() {
+        let scenario = settings.scenario
+        guard !scenario.envelopeObjects.isEmpty, !estimatingEnvelopeDamage else { return }
+        let cellSize = settings.resolution.cellSize
+        estimatingEnvelopeDamage = true
+        envelopeDamageStatus = "Estimating…"
+        Task { [weak self] in
+            let (loads, buildings, seconds) = await Task.detached(priority: .userInitiated) {
+                let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
+                let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
+                    estimate, constructions: { scenario.envelopeConstruction(for: $0) })
+                return (estimate.loads, buildings, estimate.seconds + damageS)
+            }.value
+            guard let self else { return }
+            self.estimatingEnvelopeDamage = false
+            // A run judged meanwhile, or the scene changed: the estimate is stale.
+            guard self.settings.scenario == scenario, self.stepCount == 0 else {
+                self.envelopeDamageStatus = ""
+                return
+            }
+            self.envelopeDamage = buildings
+            self.envelopeLoads = loads
+            self.envelopeDamageIsEstimate = true
+            self.envelopeDamageStatus = String(
+                format: "Quick estimate in %.1f s: not a run. Run the scene for its damage.", seconds)
+            self.applyEnvelopeDamageColours()
+        }
+    }
 
     /// Judges each envelope building from the recorder's histories so far, if it records them.
     func refreshEnvelopeDamage() {
@@ -738,6 +775,7 @@ final class SimulationModel {
         envelopeDamage = EnvelopeDamageAssessment.assess(
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
             strikes: strikes, vented: vented)
+        envelopeDamageIsEstimate = false
         envelopeLoads = loads
         applyEnvelopeDamageColours()
     }
@@ -2432,6 +2470,7 @@ final class SimulationModel {
     private func requestRebuild() {
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDamageIsEstimate = false
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -2468,6 +2507,7 @@ final class SimulationModel {
         stopGroundShock()
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDamageIsEstimate = false
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
