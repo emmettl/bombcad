@@ -304,7 +304,10 @@ on that one axis:
 - **Integration through the thickness:** three Gauss–Lobatto points in each lamella (three to
   five through one), which is exact for their elastic bending. One rule over the whole thickness
   would not be, since the stiffness jumps from lamella to lamella. Lobatto's points include the
-  faces, where timber breaks in bending; with Gauss–Legendre's, a panel broke 12% late.
+  faces, where timber breaks in bending; with Gauss–Legendre's, a panel broke 12% late. Each
+  shell takes its own material's rule: a concrete or masonry shell beside timber ones keeps the
+  Gauss–Legendre points the others use, and timber in beams changes no shell's rule (until 19
+  October 2026 any timber in the model put every shell on the timber's rule).
 - **Shear through the thickness:** the section's shear force is its shear stiffness times the
   shells' transverse shear strain. In each direction that stiffness is the shear analogy's, as EN
   1995-1-1:2025 takes for CLT: a² / (t₁/2G₁ + Σ tᵢ/Gᵢ + tₙ/2Gₙ). Here a is the distance between
