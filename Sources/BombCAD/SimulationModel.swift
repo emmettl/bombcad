@@ -708,6 +708,71 @@ final class SimulationModel {
                 ? Dictionary(
                     uniqueKeysWithValues: envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
                 : [:])
+        applyFarFieldColours()
+    }
+
+    // MARK: - The far field
+
+    /// A district's buildings beyond its near field (New District's near field and far field): kept
+    /// beside the scene, outside its air, drawn after it and judged after each run.
+    var farFieldSet: FarFieldSet? {
+        didSet {
+            guard farFieldSet != oldValue else { return }
+            farFieldDamage = []
+            farField = nil
+            farFieldStatus = ""
+            applyFarFieldColours()
+        }
+    }
+    /// The far buildings' damage from the last run's far field, its match and how it went.
+    private(set) var farFieldDamage: [EnvelopeBuildingDamage] = []
+    private(set) var farField: HybridFarField?
+    private(set) var farFieldStatus = ""
+    private(set) var judgingFarField = false
+
+    private func applyFarFieldColours() {
+        renderer?.setFarField(
+            farFieldSet,
+            damage: showsEnvelopeDamage
+                ? Dictionary(
+                    uniqueKeysWithValues: farFieldDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
+                : [:])
+    }
+
+    /// Judges the far set on the far field carried from the run just finished, away from the main
+    /// thread (`HybridFarField.judge`); a run started meanwhile discards it.
+    private func judgeFarField() {
+        guard let set = farFieldSet, let solver, stepCount > 0,
+            let histories = solver.envelopeComponentHistories()
+        else { return }
+        let (near, cellSize, steps) = (scenario, grid?.cellSize ?? settings.resolution.cellSize, stepCount)
+        judgingFarField = true
+        farFieldStatus = "Judging the far field…"
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = Result {
+                try HybridFarField.judge(
+                    near: near, far: set, histories: histories, cellSize: cellSize, nearBeyond: false)
+            }
+            await MainActor.run {
+                guard let self else { return }
+                self.judgingFarField = false
+                guard self.farFieldSet == set, self.stepCount == steps, !self.isRunning else { return }
+                switch result {
+                case .success(let judged):
+                    self.farFieldDamage = judged.buildings
+                    self.farField = judged.farField
+                    self.farFieldStatus = String(
+                        format:
+                            "Far field estimate: %d buildings beyond %.0f m in %.1f s, matched to the run's %d façade strips (peak ×%.2f, impulse ×%.2f at the hand-over).",
+                        judged.buildings.count, Double(set.handoverM), judged.seconds, judged.nearStrips,
+                        judged.farField.peak, judged.farField.impulse)
+                case .failure(let error):
+                    self.farFieldDamage = []
+                    self.farFieldStatus = "The far field could not be judged: \(error)"
+                }
+                self.applyFarFieldColours()
+            }
+        }
     }
 
     @ObservationIgnored private var lastEnvelopeDamage = ContinuousClock.now
@@ -878,6 +943,7 @@ final class SimulationModel {
             groundShockSpec = document.groundShock
             thermalSpec = document.thermal
             cloudSpec = document.cloud
+            farFieldSet = document.farField
             projectArchive = document.archive
             projectDocumentID = document.documentID
             if let run = document.runSettings {
@@ -1032,6 +1098,7 @@ final class SimulationModel {
         groundShockSpec = document.groundShock
         thermalSpec = document.thermal
         cloudSpec = document.cloud
+        farFieldSet = document.farField
         projectArchive = document.archive
         projectDocumentID = document.documentID
         if let run = document.runSettings {
@@ -2471,6 +2538,9 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeDamageIsEstimate = false
+        farFieldDamage = []
+        farField = nil
+        farFieldStatus = ""
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -2508,6 +2578,9 @@ final class SimulationModel {
         envelopeExposure = []
         envelopeDamage = []
         envelopeDamageIsEstimate = false
+        farFieldDamage = []
+        farField = nil
+        farFieldStatus = ""
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -2638,6 +2711,7 @@ final class SimulationModel {
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
             renderer.setScene(scenario, solver: solver)
+            applyFarFieldColours()
             sceneVersion += 1
         }
     }
@@ -2804,6 +2878,7 @@ final class SimulationModel {
         }
         publishTraces()
         refreshEnvelopeDebris()
+        judgeFarField()
         if fragments != nil || thermal != nil || groundShock != nil {
             let (gpu, elapsed) = (blastGPUSeconds, time)
             Task { [weak self] in await self?.recordCosts(blastGPUSeconds: gpu, elapsed: elapsed) }

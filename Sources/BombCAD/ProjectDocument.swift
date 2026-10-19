@@ -230,6 +230,9 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var thermal: ThermalSpec?
     /// The fireball's rise and cloud to follow after each run, saved as `cloud.json`.
     var cloud: CloudSpec?
+    /// A district's buildings beyond its near field, judged after the run on the far field carried
+    /// from it (docs/hybrid-far-field.md), saved as `farField.json`.
+    var farField: FarFieldSet?
     var runSettings: ProjectRunSettings?
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
@@ -267,6 +270,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         groundShock = model.groundShockSpec
         thermal = model.thermalSpec
         cloud = model.cloudSpec
+        farField = model.farFieldSet
         scenario = model.sweep.baseline?.scenario ?? model.settings.scenario
         runSettings = model.sweep.baseline?.settings ?? ProjectRunSettings(model: model)
         viewSettings = ProjectViewSettings(model: model)
@@ -380,6 +384,11 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             try spec.validate()
             cloud = spec
         }
+        if let data = archive.files["farField.json"] {
+            let set = try JSONDecoder().decode(FarFieldSet.self, from: data)
+            try set.validate()
+            farField = set
+        }
         self.archive = archive
         documentID = archive.manifest.documentID
     }
@@ -438,6 +447,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
             files["cloud.json"] = try ProjectArchive.encodeJSON(cloud)
         } else {
             files.removeValue(forKey: "cloud.json")
+        }
+        if let farField {
+            try farField.validate()
+            files["farField.json"] = try ProjectArchive.encodeJSON(farField)
+        } else {
+            files.removeValue(forKey: "farField.json")
         }
         try SavedRunStore.write(savedRuns, manifest: &manifest, files: &files)
         // Preserve embedded assets and unknown optional files when a project is re-saved.

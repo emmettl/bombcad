@@ -199,10 +199,20 @@ public enum RunCost {
                     }
                     guard arrival < duration else { continue }
                     swept += 1 - arrival / duration
-                    // Above the refinement's ceiling over the ground, nothing is refined.
+                    // Above the refinement's ceiling over the ground, nothing is refined: from the top of
+                    // the block of four cells that holds it, as the flags refine whole blocks; but never
+                    // near a charge (`refinementCeilingExemption`).
                     let capped =
-                        configuration.refinementCeiling.map {
-                            point.z > (scenario.terrain?.height(at: SIMD2(point.x, point.y)) ?? 0) + $0
+                        configuration.refinementCeiling.map { ceiling in
+                            let block = 4 * cellSize
+                            let ground = scenario.terrain?.height(at: SIMD2(point.x, point.y)) ?? 0
+                            let top = (ceiling / block).rounded(.up) * block
+                            return point.z > ground + top
+                                && !charges.contains {
+                                    $0.mass > 0
+                                        && simd_distance(point, $0.position)
+                                            < SolverConfiguration.refinementCeilingExemption * cbrt($0.mass)
+                                }
                         } ?? false
                     if Float(overpressure) >= reach && configuration.refinement > 1 && !capped {
                         hold(

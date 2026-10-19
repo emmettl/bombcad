@@ -206,11 +206,15 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// set, the band holds past the lower. Nil holds nothing.
     public var refinementHoldsStructures: Float?
     /// No air is refined more than this many metres above the ground beneath it (the terrain, or
-    /// the domain's floor): over a district, the shock's top above the roofs, which loads no façade
+    /// the domain's floor), but for the refined blocks that hold a cell below it, up to four cells
+    /// higher, and the air within `refinementCeilingExemption` of a charge: over a district, the shock's top above the roofs, which loads no façade
     /// (docs/beirut-2020.md, "What cell size the glass and the damage need"). It caps the bands held
     /// beside envelopes and structures (`refinementHoldsEnvelopes`, `refinementHoldsStructures`)
     /// too: a face above it is loaded on the coarse cells. Nil, the default, refines at any height.
     public var refinementCeiling: Float?
+    /// About each charge, out to this many m/kg^(1/3), the air is refined whatever the ceiling: a
+    /// charge raised above it keeps its near field sharp.
+    public static let refinementCeilingExemption: Float = 3
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October

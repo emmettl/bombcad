@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 /// A district's far field carried by the façade load surrogate from where its near field, run in
 /// the air, hands over (Horizons 3, "City scale in minutes"; docs/hybrid-far-field.md). The
@@ -19,12 +20,21 @@ public struct HybridFarField: Codable, Sendable, Equatable {
     public var arrival: Double
     /// The strips the seed was taken from.
     public var seedStrips: Int
+    /// How far beyond the hand-over the trend is carried, as a multiple of it, the ratio held
+    /// from there on; nil carries it all the way.
+    public var trendReach: Double?
+    /// The mean logarithm of distance over the hand-over at which the seeds were taken (they lie
+    /// just inside it): the trend is carried from there, so that it meets them where they were
+    /// measured; nil for the hand-over itself.
+    public var seedLogDistance: Double?
 
     public init(
         handoverM: Double, peak: Double = 1, impulse: Double = 1, peakSlope: Double = 0,
         impulseSlope: Double = 0,
-        arrival: Double = 1, seedStrips: Int = 0
+        arrival: Double = 1, seedStrips: Int = 0, trendReach: Double? = nil, seedLogDistance: Double? = nil
     ) {
+        self.trendReach = trendReach
+        self.seedLogDistance = seedLogDistance
         self.handoverM = handoverM
         self.peak = peak
         self.impulse = impulse
@@ -68,6 +78,7 @@ public struct HybridFarField: Codable, Sendable, Equatable {
             let sxy = points.reduce(0) { $0 + ($1.0 - mx) * ($1.1 - my) }
             return sxx > 0 ? sxy / sxx : 0
         }
+        var seedX: [Double] = []
         var peakSeed: [Double] = []
         var impulseSeed: [Double] = []
         var peakTrend: [(Double, Double)] = []
@@ -79,6 +90,7 @@ public struct HybridFarField: Codable, Sendable, Equatable {
                 s.nearImpulsePaS > 0 && s.predicted.impulsePaS > 0
                 ? log(s.nearImpulsePaS / s.predicted.impulsePaS) : nil
             if s.distanceM >= seedFromM {
+                if p != nil { seedX.append(x) }
                 if let p { peakSeed.append(p) }
                 if let i { impulseSeed.append(i) }
             }
@@ -94,14 +106,16 @@ public struct HybridFarField: Codable, Sendable, Equatable {
         return HybridFarField(
             handoverM: handoverM, peak: exp(median(peakSeed)), impulse: exp(median(impulseSeed)),
             peakSlope: slope(peakTrend), impulseSlope: slope(impulseTrend),
-            arrival: arrivalRatios.isEmpty ? 1 : exp(median(arrivalRatios)), seedStrips: peakSeed.count)
+            arrival: arrivalRatios.isEmpty ? 1 : exp(median(arrivalRatios)), seedStrips: peakSeed.count,
+            seedLogDistance: seedX.isEmpty ? nil : seedX.reduce(0, +) / Double(seedX.count))
     }
 
     /// The surrogate's `prediction` for a strip `distanceM` from the charge, carried as the far field.
     public func apply(_ prediction: FacadeLoadSurrogate.Prediction, distanceM: Double)
         -> FacadeLoadSurrogate.Prediction
     {
-        let x = log(max(distanceM, 1) / handoverM)
+        let reach = trendReach.map { $0 * handoverM } ?? .infinity
+        let x = log(min(max(distanceM, 1), reach) / handoverM) - (seedLogDistance ?? 0)
         var p = prediction
         p.peakPa *= peak * exp(peakSlope * x)
         p.impulsePaS *= impulse * exp(impulseSlope * x)
@@ -124,4 +138,108 @@ public struct HybridFarField: Codable, Sendable, Equatable {
         "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
         "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
     ]
+}
+
+extension HybridFarField {
+    /// The first positive phase's impulse of a net history, Pa s: from its start through its rise
+    /// past half its peak, until it first falls below zero.
+    public static func firstImpulse(_ net: [Double], binS: Double) -> Double {
+        let peak = net.max() ?? 0
+        guard peak > 0 else { return 0 }
+        var impulse = 0.0
+        var risen = false
+        for p in net {
+            if p >= 0.5 * peak { risen = true }
+            if risen, p < 0 { break }
+            impulse += max(p, 0) * binS
+        }
+        return impulse
+    }
+
+    /// The far set judged after a near run (and, with `nearBeyond`, the near buildings beyond the
+    /// hand-over).
+    public struct Judgement: Sendable {
+        public var farField: HybridFarField
+        /// The buildings judged on the far field: every far one, and every near one whose plan
+        /// centre lies beyond the hand-over (its components there on the far field, those inside on
+        /// the run's histories).
+        public var buildings: [EnvelopeBuildingDamage]
+        /// The near run's strips the match was taken from.
+        public var nearStrips: Int
+        public var seconds: Double
+    }
+
+    /// After a near run of `near` on cells `cellSize`, whose components recorded `histories`, the
+    /// far set `far` judged on the far field carried from it: the match over the run's façade strips
+    /// from `trendFrom` (half the hand-over) and `seedFrom` (0.8 of it) to the hand-over, and its
+    /// arrivals against Kingery–Bulmash's from 500 m.
+    public static func judge(
+        near: Scenario, far set: FarFieldSet, histories: [EnvelopeComponentHistory], cellSize: Float,
+        seedFrom: Double? = nil, trendFrom: Double? = nil, nearBeyond: Bool = true
+    ) throws -> Judgement {
+        let start = ContinuousClock.now
+        let handover = Double(set.handoverM)
+        let combined = try set.combined(with: near)
+        var estimate = FacadeLoadSurrogate.estimate(scene: combined, cellSize: cellSize)
+        let charge = combined.charge.position
+        let mass = Double(combined.charge.mass)
+        var recorded: [String: EnvelopeComponentHistory] = [:]
+        for history in histories where !history.invalid { recorded[history.component.id] = history }
+        let distances = estimate.features.map(\.distanceM)
+        let seedFromM = seedFrom ?? 0.8 * handover
+        let trendFromM = trendFrom ?? 0.5 * handover
+        var samples: [Sample] = []
+        var arrivals: [(simulatedS: Double, kingeryBulmashS: Double, distanceM: Double)] = []
+        for (n, component) in estimate.components.enumerated() where component.kind == .facade {
+            let d = distances[n]
+            guard d < handover, let history = recorded[component.id] else { continue }
+            let load = EnvelopeComponentLoad(history)
+            let net = load.netPa
+            if d >= min(seedFromM, trendFromM) {
+                samples.append(
+                    Sample(
+                        distanceM: d, nearPeakPa: net.max() ?? 0,
+                        nearImpulsePaS: firstImpulse(net, binS: load.binS),
+                        predicted: estimate.predictions[n]))
+            }
+            if d >= 500, let arrived = history.windowStartS {
+                arrivals.append(
+                    (arrived, FacadeLoadSurrogate.base(estimate.features[n], mass: mass).arrival, d))
+            }
+        }
+        var farField = fit(
+            handoverM: handover, seedFromM: seedFromM, trendFromM: trendFromM, samples: samples,
+            arrivals: arrivals)
+        farField.trendReach = set.trendReach
+        // The buildings to judge: the far ones, and the near ones beyond the hand-over.
+        let farIDs = Set(set.buildings.map(\.id))
+        var judged = farIDs
+        for object in nearBeyond ? near.envelopeObjects : [] {
+            guard let blocks = object.envelope?.blocks, !blocks.isEmpty else { continue }
+            let low = blocks.map(\.min).reduce(SIMD3<Float>(repeating: .greatestFiniteMagnitude), simd_min)
+            let high = blocks.map(\.max).reduce(SIMD3<Float>(repeating: -.greatestFiniteMagnitude), simd_max)
+            let c = 0.5 * (low + high)
+            if Double(simd_length(SIMD2(c.x - charge.x, c.y - charge.y))) >= handover {
+                judged.insert(object.id)
+            }
+        }
+        var loads: [EnvelopeComponentLoad] = []
+        for (n, component) in estimate.components.enumerated() where judged.contains(component.owner) {
+            if distances[n] < handover, let history = recorded[component.id] {
+                loads.append(EnvelopeComponentLoad(history))
+            } else {
+                loads.append(
+                    FacadeLoadSurrogate.load(
+                        component, farField.apply(estimate.predictions[n], distanceM: distances[n]),
+                        binS: estimate.loads[n].binS))
+            }
+        }
+        estimate.loads = loads
+        let (buildings, _, _) = FacadeLoadSurrogate.damage(
+            estimate, constructions: { combined.envelopeConstruction(for: $0) })
+        let took = start.duration(to: .now)
+        return Judgement(
+            farField: farField, buildings: buildings, nearStrips: samples.count,
+            seconds: Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18)
+    }
 }

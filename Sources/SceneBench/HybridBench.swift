@@ -90,10 +90,6 @@ enum HybridBench {
         }
         var nearOf: [[Int32]: Int] = [:]
         for (m, strip) in near.strips.enumerated() { nearOf[key(near, strip.component)] = m }
-        func distance(_ component: EnvelopeComponent) -> Double {
-            let p = FacadeLoadSurrogate.outerFace(component).centre
-            return Double(simd_length(SIMD2(p.x - charge.x, p.y - charge.y)))
-        }
 
         // Each full strip inside the fair part of the full run: its surrogate prediction and, inside
         // the hand-over, the near run's history.
@@ -102,11 +98,17 @@ enum HybridBench {
         }
         let clock = ContinuousClock.now
         var computed = [FacadeLoadSurrogate.Prediction?](repeating: nil, count: kept.count)
+        var featureDistance = [Double](repeating: 0, count: kept.count)
         computed.withUnsafeMutableBufferPointer { out in
-            SurrogateBench.concurrentlyEach(kept.count) { m in
-                let (_, n, component) = full.strips[kept[m]]
-                let f = FacadeLoadSurrogate.features(component, owner: n, charge: charge, raster: full.raster)
-                out[m] = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: cell)
+            featureDistance.withUnsafeMutableBufferPointer { far in
+                SurrogateBench.concurrentlyEach(kept.count) { m in
+                    let (_, n, component) = full.strips[kept[m]]
+                    let f = FacadeLoadSurrogate.features(
+                        component, owner: n, charge: charge, raster: full.raster)
+                    out[m] = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: cell)
+                    // From the charge to the face, as `district-hybrid` and `HybridFarField.judge` take it.
+                    far[m] = f.distanceM
+                }
             }
         }
         let predictions = computed.map { $0! }
@@ -117,7 +119,7 @@ enum HybridBench {
         var samples: [HybridFarField.Sample] = []
         for (m, i) in kept.enumerated() {
             let component = full.strips[i].component
-            let d = distance(component)
+            let d = featureDistance[m]
             guard d >= min(seedFrom, trendFrom ?? seedFrom), d < handover,
                 let j = nearOf[key(full, component)]
             else { continue }
@@ -137,11 +139,13 @@ enum HybridBench {
         }
         let fullReport = try report(value("full-report"))
         let nearReport = try report(value("near-report"))
-        let far = HybridFarField.fit(
+        var far = HybridFarField.fit(
             handoverM: handover, seedFromM: seedFrom, trendFromM: trendFrom, samples: samples,
             arrivals: (nearReport?.arrivals ?? []).compactMap { a in
                 a.simulatedS.flatMap { s in a.kingeryBulmashS.map { (s, $0, a.distanceM) } }
             })
+        // `--trend-reach r`: the trend carried to r times the hand-over, held from there.
+        far.trendReach = value("trend-reach").flatMap(Double.init)
         print(
             String(
                 format:
@@ -176,7 +180,7 @@ enum HybridBench {
                         SurrogateBench.firstImpulse(net, binS: binS)
                     )
                 }
-                let d = distance(component)
+                let d = featureDistance[m]
                 let run = judged(full.net(s), binS: strip.binS)
                 var prediction = predictions[m]
                 let surrogate = FacadeLoadSurrogate.load(component, prediction, binS: strip.binS)
@@ -383,6 +387,7 @@ enum HybridBench {
         // Each component's load: the near run's history, or the far field's pulse.
         var nearCount = 0
         var farCount = 0
+        var unmatched = 0
         for n in estimate.components.indices {
             let component = estimate.components[n]
             if let j = nearOfComponent[n] {
@@ -394,7 +399,10 @@ enum HybridBench {
                     innerPa: [Double](repeating: 0, count: net.count), supportEdges: component.supportEdges,
                     outward: component.outward)
                 nearCount += 1
-            } else if distances[n] >= handover {
+            } else {
+                // Beyond the hand-over, and any strip inside it the near run does not hold, on the far
+                // field (never the surrogate unmatched).
+                if distances[n] < handover { unmatched += 1 }
                 estimate.loads[n] = FacadeLoadSurrogate.load(
                     component, far.apply(estimate.predictions[n], distanceM: distances[n]),
                     binS: estimate.loads[n].binS)
@@ -431,8 +439,9 @@ enum HybridBench {
         print(
             String(
                 format:
-                    "Near field: %d façade strips from the near run (%@); far field: %d components beyond %.0f m (peak ×%.3f, impulse ×%.3f, slopes %.3f, %.3f); loads %.1f s, damage %.1f s",
-                nearCount, nearReport.map { String(format: "%.0f s", $0.wallS) } ?? "–", farCount, handover,
+                    "Near field: %d façade strips from the near run (%@), %d inside it on the far field; far field: %d components beyond %.0f m (peak ×%.3f, impulse ×%.3f, slopes %.3f, %.3f); loads %.1f s, damage %.1f s",
+                nearCount, nearReport.map { String(format: "%.0f s", $0.wallS) } ?? "–", unmatched, farCount,
+                handover,
                 far.peak,
                 far.impulse, far.peakSlope, far.impulseSlope, farFieldS, damageS))
         print("Sides with some glass broken | GEER W1+; blown out | GEER W3:")

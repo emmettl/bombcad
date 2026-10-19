@@ -571,15 +571,56 @@ struct EnvelopeComponentHistoryTests {
         let free = try run(nil)
         let capped = try run(2)
         // Blocks are 4 coarse cells (1 m) high at the first level and 4 of its cells (0.5 m) at the
-        // second. Capped at 2 m, none from 3 m up (a jump just below the ceiling refines the block
-        // round it, which may reach a block over it); some there without.
-        #expect(free.rows[0].dropFirst(3).reduce(0, +) > 0 && free.rows[1].dropFirst(6).reduce(0, +) > 0)
-        #expect(capped.rows[0].dropFirst(3).allSatisfy { $0 == 0 }, "\(capped.rows[0])")
-        #expect(capped.rows[1].dropFirst(6).allSatisfy { $0 == 0 }, "\(capped.rows[1])")
+        // second. Capped at 2 m, none from 4 m up: the sphere left free about the charge reaches
+        // 2.9 m, and a jump just below it refines the block round it, which may reach the block over
+        // it. Some there without.
+        #expect(
+            free.rows[0].dropFirst(4).reduce(0, +) > 0 && free.rows[1].dropFirst(8).reduce(0, +) > 0,
+            "\(free.rows) \(capped.rows)")
+        #expect(capped.rows[0].dropFirst(4).allSatisfy { $0 == 0 }, "\(capped.rows[0])")
+        #expect(capped.rows[1].dropFirst(8).allSatisfy { $0 == 0 }, "\(capped.rows[1])")
         #expect(capped.rows[0].prefix(2).reduce(0, +) > 0 && capped.rows[1].prefix(4).reduce(0, +) > 0)
         // A ceiling above the domain is no ceiling: the same air, bit for bit.
         let high = try run(100)
         #expect(high.digest.map(\.bitPattern) == free.digest.map(\.bitPattern))
+    }
+
+    @Test(
+        "A solver loaded again without its ceiling runs as one that never had it; a raised charge stays refined"
+    )
+    func refinementCeilingReused() throws {
+        let scene = Scenario(
+            name: "Open", domainSize: SIMD3(12, 12, 8), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(6, 6, 0.5)))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        var config = SolverConfiguration()
+        config.refinement = 2
+        config.refinementLevels = 2
+        config.refinementMemory = 64 << 20
+        func digest(_ solver: BlastSolver) -> [UInt32] {
+            solver.withState { cells in
+                stride(from: 0, to: cells.count, by: 997).map {
+                    (cells[$0].density + cells[$0].energy).bitPattern
+                }
+            }
+        }
+        // Run with a ceiling, then load the same solver again without it, as the app reuses one.
+        var capped = config
+        capped.refinementCeiling = 2
+        let reused = try BlastSolver(device: device, scenario: scene, cellSize: 0.25, configuration: capped)
+        _ = reused.advance(steps: 24)
+        reused.configuration.refinementCeiling = nil
+        try reused.load(scene)
+        _ = reused.advance(steps: 24)
+        let fresh = try BlastSolver(device: device, scenario: scene, cellSize: 0.25, configuration: config)
+        _ = fresh.advance(steps: 24)
+        #expect(digest(reused) == digest(fresh))
+        // A charge 5 m up, over a 2 m ceiling: its near field (3 m/kg^(1/3), 2.4 m) is refined still.
+        var raised = scene
+        raised.charge.position.z = 5
+        let high = try BlastSolver(device: device, scenario: raised, cellSize: 0.25, configuration: capped)
+        _ = high.advance(steps: 16)
+        #expect(high.refinedBlocksByHeight()[0].dropFirst(3).reduce(0, +) > 0)
     }
 
     @Test("Refinement held beside a wall while its air is loaded keeps it fine after the shock has gone")

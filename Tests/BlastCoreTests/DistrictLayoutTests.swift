@@ -1,4 +1,5 @@
 import Foundation
+import Metal
 import Testing
 import simd
 
@@ -64,7 +65,9 @@ struct DistrictLayoutTests {
         let half = layout.halfSide(radius: 250, cellSize: 4)
         let (scene, report) = try layout.scene(halfSide: half, cellSize: 4, radius: 250)
         #expect(scene.domainSize.x == 2 * half && scene.domainSize.y == 2 * half)
-        #expect(report.placed.count == layout.buildings(within: 250).count)
+        // All but the centre block, which holds the charge and would bury it.
+        #expect(report.placed.count == layout.buildings(within: 250).count - 1)
+        #expect(report.skipped.map(\.reason) == ["holds the charge"])
         #expect(scene.envelopeObjects.count == report.placed.count)
         // Each with a construction and a glazing mix; the brick ones from their tag.
         for object in scene.envelopeObjects {
@@ -97,6 +100,47 @@ struct DistrictLayoutTests {
         #expect(ground.elevations.max()! < dem.elevations.max()!)
     }
 
+    @Test(
+        "A charge on a building goes off on refined air as on uniform cells: the building over it is left out"
+    )
+    func chargeOnBuilding() throws {
+        // The fixture's charge lies inside its centre block; footprints on the refined air's finest cells.
+        let layout = try Self.layout()
+        let half = layout.halfSide(radius: 100, cellSize: 10)
+        let (scene, report) = try layout.scene(halfSide: half, cellSize: 10, radius: 100, footprintCells: 5)
+        #expect(report.skipped.map(\.reason) == ["holds the charge"])
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        // The largest overpressure 40–60 m from the charge after 0.15 s.
+        func peak(refined: Bool) throws -> Float {
+            var config = SolverConfiguration.recommended
+            if refined {
+                config.refinement = 2
+                config.refinementCeiling = layout.refinementCeiling(radius: 100, cellSize: 10)
+            }
+            let solver = try BlastSolver(device: device, scenario: scene, cellSize: 10, configuration: config)
+            _ = solver.advance(until: 0.15)
+            let grid = solver.grid
+            var largest: Float = 0
+            for k in 0..<grid.nz {
+                for j in 0..<grid.ny {
+                    for i in 0..<grid.nx {
+                        let centre = (SIMD3(Float(i), Float(j), Float(k)) + 0.5) * 10
+                        let d = simd_length(
+                            SIMD2(centre.x, centre.y)
+                                - SIMD2(scene.charge.position.x, scene.charge.position.y))
+                        if d >= 40, d <= 60 { largest = max(largest, solver.peakOverpressure(i, j, k)) }
+                    }
+                }
+            }
+            return largest
+        }
+        let uniform = try peak(refined: false)
+        let refined = try peak(refined: true)
+        // Kingery–Bulmash gives about 30 kPa at 50 m for 1 t on the ground.
+        #expect(
+            uniform > 10_000 && refined > 10_000 && abs(refined / uniform - 1) < 0.5, "\(uniform) \(refined)")
+    }
+
     @Test("Without a ground the district stands on the floor")
     func flat() throws {
         let layout = try Self.layout(ground: false)
@@ -106,5 +150,46 @@ struct DistrictLayoutTests {
         #expect(
             scene.domainSize.z
                 == layout.top(chargeZ: 0, highestRoof: report.placed.map(\.top).max()!, cellSize: 5))
+    }
+
+    @Test(
+        "Split at a hand-over: the near box's buildings in the air, the rest beside it where the full layout puts them"
+    )
+    func hybrid() throws {
+        let layout = try Self.layout()
+        let near = layout.halfSide(radius: 150, cellSize: 4)
+        let (scene, far, report) = try layout.hybrid(
+            handoverM: 150, nearHalfSide: near, radius: 480, halfSide: 488, cellSize: 4)
+        #expect(scene.domainSize.x == 2 * near && report.placed.count == scene.envelopeObjects.count)
+        // Every building the full layout places is in one set or the other, never both: one the near
+        // scene places even in part stays in the air.
+        let (full, fullReport) = try layout.scene(halfSide: 488, cellSize: 4, radius: 480)
+        #expect(Set(scene.envelopeObjects.map(\.id)).isDisjoint(with: Set(far.buildings.map(\.id))))
+        let inNear = Set(report.placed.map(\.id))
+        let farIDs = Set(fullReport.placed.filter { !inNear.contains($0.id) }.map(\.objectID))
+        let expected = full.envelopeObjects.filter { farIDs.contains($0.id) }
+        #expect(!expected.isEmpty && expected.count == far.buildings.count)
+        #expect(report.placed.count + far.buildings.count == fullReport.placed.count)
+        // The far ones in the near scene's coordinates, as the full layout places them.
+        let shift = SIMD3<Float>(near - 488, near - 488, 0)
+        for (original, building) in zip(expected, far.buildings) {
+            let blocks = building.envelope.blocks
+            #expect(original.name == building.name)
+            #expect(
+                zip(try #require(original.envelope).blocks, blocks).allSatisfy {
+                    $0.min + shift == $1.min && $0.max + shift == $1.max
+                })
+            #expect(far.construction(for: building.id).objectID == building.id)
+        }
+        // The whole district's ground, moved likewise.
+        let terrain = try #require(far.terrain)
+        let p = SIMD2<Float>(-50, 400)
+        #expect(abs(terrain.height(at: p) - full.terrain!.height(at: p - SIMD2(shift.x, shift.y))) < 1e-4)
+        // It saves and reopens, and the combined scene holds both sets for the far field's lines.
+        try far.validate()
+        let decoded = try JSONDecoder().decode(FarFieldSet.self, from: JSONEncoder().encode(far))
+        #expect(decoded == far)
+        let combined = try far.combined(with: scene)
+        #expect(combined.envelopeObjects.count == scene.envelopeObjects.count + far.buildings.count)
     }
 }

@@ -28,6 +28,8 @@ struct NewDistrictTests {
         model.ground = .saturated
         model.radius = 250
         model.memory = memory
+        // The whole district in the air unless a test asks for a far field.
+        model.nearAndFar = false
         return model
     }
 
@@ -51,7 +53,8 @@ struct NewDistrictTests {
         let preview = try #require(model.preview, "\(model.message ?? "")")
         let layout = try #require(model.layout)
         #expect(preview.within == layout.buildings(within: 250).count)
-        #expect(preview.report.placed.count == preview.within)
+        // All but the centre block, which holds the charge.
+        #expect(preview.report.placed.count == preview.within - 1)
         // The advisor's cells: they fit, and the next finer do not.
         #expect(
             preview.cellSize
@@ -209,5 +212,43 @@ struct NewDistrictTests {
         #expect(simd_length(frame.lonLat(drawn) - point) < 1e-9)
         // North up, east right.
         #expect(drawn.x > 200 && drawn.y > 120)
+    }
+
+    @Test(
+        "Near field and far field: the air to the hand-over, the rest judged after the run, both kept on saving",
+        .hangLimit)
+    func nearAndFar() async throws {
+        let model = try model()
+        model.nearAndFar = true
+        model.airChoice = .uniform
+        model.cellSize = 5
+        // 1 t: the hand-over at 12 m/kg^(1/3), 120 m, to 50 m.
+        #expect(model.handover == 100)
+        await model.lay()
+        let preview = try #require(model.preview, "\(model.message ?? "")")
+        let far = try #require(preview.far)
+        #expect(far.handoverM == 100 && far.trendReach == FarFieldSet.trendReachDefault)
+        #expect(!far.buildings.isEmpty && !preview.scenario.envelopeObjects.isEmpty)
+        // The air reaches the hand-over and its faces' clearance, and runs until it is loaded.
+        #expect(preview.scenario.domainSize.x == 2 * (100 + 40))
+        #expect(preview.document.runSettings?.duration == DistrictLayout.duration(radius: 100))
+        let reopened = try ProjectDocument(fileWrapper: preview.document.makeArchive().fileWrapper())
+        #expect(reopened.farField == far)
+        // Run it: the far buildings judged once the run ends.
+        let app = SimulationModel(document: reopened, playbackSpeed: .unlimited)
+        #expect(app.farFieldSet == far)
+        while !app.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        app.run()
+        while app.isRunning || app.hasPendingGPUWork || app.judgingFarField || app.farFieldDamage.isEmpty {
+            try #require(app.errorMessage == nil)
+            try #require(!app.farFieldStatus.hasPrefix("The far field could not"), "\(app.farFieldStatus)")
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(Set(app.farFieldDamage.map(\.id)) == Set(far.buildings.map(\.id)))
+        let match = try #require(app.farField)
+        #expect(match.peak > 0 && match.peak.isFinite && match.impulse > 0 && match.seedStrips > 0)
+        #expect(app.farFieldStatus.hasPrefix("Far field estimate"))
+        // The project written back keeps the far set.
+        #expect(ProjectDocument(model: app).farField == far)
     }
 }

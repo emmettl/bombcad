@@ -41,8 +41,11 @@ struct DistrictPreview: Sendable {
     var air: DistrictAir
     /// The other kind of air that fits, priced on the same layout, to set against `air`.
     var alternative: Priced?
-    /// Buildings within the radius; those placed are in `report`.
+    /// Buildings within the radius; those placed in the air are in `report`, those beyond the
+    /// hand-over in `far`.
     var within: Int
+    /// With a near field and a far field, the buildings beyond the air, judged after the run.
+    var far: FarFieldSet? { document.farField }
 
     var cellSize: Float { air.cellSize }
     var scenario: Scenario { document.scenario }
@@ -104,6 +107,20 @@ final class NewDistrictModel {
     }
 
     var airChoice = AirChoice.advised
+    /// Run the air only to a hand-over and judge the buildings beyond it after the run on the far
+    /// field carried from it (`FarFieldSet`; docs/hybrid-far-field.md).
+    var nearAndFar = true
+
+    /// The hand-over the advisor takes for `mass` kg and buildings within `radius`: where the shock
+    /// has become weak and nearly spherical, 12 m/kg^(1/3) (1 km at 0.5 kt, as Beirut was judged),
+    /// to 50 m; nil where the district reaches no further than a quarter beyond it.
+    nonisolated static func handover(mass: Float, radius: Float) -> Float? {
+        let h = max((12 * cbrt(max(mass, 1)) / 50).rounded() * 50, 50)
+        return radius >= 1.25 * h ? h : nil
+    }
+
+    /// The hand-over these inputs take, if any.
+    var handover: Float? { nearAndFar ? Self.handover(mass: mass, radius: radius) : nil }
     /// The cells chosen (the refined air's base); nil for the finest that fits this Mac.
     var cellSize: Float?
     /// The GPU memory the run may take, bytes: this Mac's share for the air.
@@ -180,14 +197,14 @@ final class NewDistrictModel {
         }
         isWorking = true
         message = nil
-        let (radius, clear, choice, cell, ground, memory) = (
-            radius, clearFaces, airChoice, cellSize, ground, memory
+        let (radius, clear, choice, cell, ground, memory, handover) = (
+            radius, clearFaces, airChoice, cellSize, ground, memory, handover
         )
         let result = await Task.detached(priority: .userInitiated) {
             Result {
                 try Self.preview(
                     layout, radius: radius, clearFaces: clear, air: choice, cellSize: cell, ground: ground,
-                    memory: memory)
+                    memory: memory, handover: handover)
             }
         }.value
         isWorking = false
@@ -203,20 +220,22 @@ final class NewDistrictModel {
     /// finest that fit `memory`), and what its run costs.
     nonisolated static func preview(
         _ layout: DistrictLayout, radius: Float, clearFaces: Bool, air choice: AirChoice = .advised,
-        cellSize: Float? = nil, ground: GroundType, memory: Int
+        cellSize: Float? = nil, ground: GroundType, memory: Int, handover: Float? = nil
     ) throws -> DistrictPreview {
         let within = layout.buildings(within: radius).count
         guard within > 0 else {
             throw MapBuilding.Failure.malformed("no building lies within \(Int(radius)) m of the charge")
         }
-        let duration = DistrictLayout.duration(radius: radius)
+        // With a hand-over the air reaches only it, and its faces' clearance beyond.
+        let airRadius = handover ?? radius
+        let duration = DistrictLayout.duration(radius: airRadius)
         let history = historyBudget(memory: memory)
         func fitting(refined: Bool) -> [DistrictAir] {
             let sizes = cellSize.map { [$0] } ?? cellSizes.filter { !refined || $0 >= 2 }
             return sizes.map { DistrictAir(cellSize: $0, refined: refined) }.filter {
                 cellSize != nil
                     || fits(
-                        layout, radius: radius, clearFaces: clearFaces, air: $0, ground: ground,
+                        layout, radius: airRadius, clearFaces: clearFaces, air: $0, ground: ground,
                         memory: memory)
             }
         }
@@ -231,7 +250,7 @@ final class NewDistrictModel {
         case .advised:
             candidates =
                 prefersRefined(
-                    layout, radius: radius, clearFaces: clearFaces, uniform: uniform.first,
+                    layout, radius: airRadius, clearFaces: clearFaces, uniform: uniform.first,
                     refined: refined.first,
                     ground: ground, memory: memory) ? refined + uniform : uniform + refined
         }
@@ -244,14 +263,30 @@ final class NewDistrictModel {
         while true {
             let air = candidates.removeFirst()
             do {
-                let half = layout.halfSide(radius: radius, cellSize: air.cellSize, clearFaces: clearFaces)
-                let made = try layout.scene(
-                    halfSide: half, cellSize: air.cellSize, radius: radius,
-                    name: String(format: "District at %.4f, %.4f", layout.charge.y, layout.charge.x),
-                    footprintCells: air.refined ? air.finest : nil)
+                let half = layout.halfSide(radius: airRadius, cellSize: air.cellSize, clearFaces: clearFaces)
+                let name = String(format: "District at %.4f, %.4f", layout.charge.y, layout.charge.x)
+                let made: (scene: Scenario, report: MapBuildingReport)
+                var far: FarFieldSet?
+                if let handover {
+                    // The near box's buildings in the air, those beyond it beside the scene.
+                    let split = try layout.hybrid(
+                        handoverM: handover, nearHalfSide: half, radius: radius,
+                        halfSide: radius + 2 * air.cellSize, cellSize: air.cellSize, name: name,
+                        footprintCells: air.refined ? air.finest : nil)
+                    made = (split.near, split.report)
+                    far = split.far
+                    far?.trendReach = FarFieldSet.trendReachDefault
+                } else {
+                    made = try layout.scene(
+                        halfSide: half, cellSize: air.cellSize, radius: radius, name: name,
+                        footprintCells: air.refined ? air.finest : nil)
+                }
                 var document = ProjectDocument(scenario: made.scene)
+                document.farField = far
+                // The scene's own run settings, before either kind of air changes them.
+                let base = document.runSettings
                 let run = settings(
-                    document.runSettings, air: air, ground: ground, duration: duration,
+                    base, air: air, ground: ground, duration: duration,
                     ceiling: layout.refinementCeiling(radius: radius, cellSize: air.cellSize))
                 document.runSettings = run
                 try ProjectDocument.validate(made.scene)
@@ -268,7 +303,7 @@ final class NewDistrictModel {
                         air: other,
                         cost: estimate(
                             settings(
-                                document.runSettings, air: other, ground: ground, duration: duration,
+                                base, air: other, ground: ground, duration: duration,
                                 ceiling: layout.refinementCeiling(radius: radius, cellSize: other.cellSize)),
                             made.scene, memory: memory))
                 }
@@ -355,7 +390,8 @@ final class NewDistrictModel {
             shockLevels: run.shockLevels ?? 1, gravity: run.gravity ?? false,
             shockThreshold: run.shockThreshold ?? 0.1,
             adaptiveSubsteps: run.adaptiveSubsteps ?? false, terrainCutCells: run.cutsTerrain(over: scenario),
-            outlineByOverlap: run.countsByOverlap(over: scenario), refinementCeiling: run.refinementCeiling)
+            outlineByOverlap: run.countsByOverlap(over: scenario), mappedStart: run.startsMapped,
+            refinementCeiling: run.refinementCeiling)
         let cellSize = (Resolution(rawValue: run.resolution) ?? .medium).cellSize
         configuration.fitRefinementMemory(scenario.grid(cellSize: cellSize), memory: memory)
         return RunCost.estimate(
@@ -565,6 +601,23 @@ struct NewDistrictView: View {
                     "The open faces release a blast that grazes them; kept 4 m/kg^(1/3) from the charge and the "
                         + "buildings, they do not reach the buildings' loads. The top is always kept so from the charge."
                 )
+            Toggle("Near field + far field", isOn: $model.nearAndFar)
+                .help(
+                    "Run the air only to a hand-over where the shock has become weak and nearly spherical, and judge "
+                        + "the buildings beyond it after the run on the far field carried from it: minutes, not tens of "
+                        + "minutes, for a city. An estimate beyond the hand-over (docs/hybrid-far-field.md).")
+            if model.nearAndFar {
+                Text(
+                    model.handover.map {
+                        String(
+                            format:
+                                "Hand-over at %.0f m (Z %.0f m/kg^(1/3)): the air reaches it and its open faces' clearance; the buildings beyond are judged after the run.",
+                            $0, $0 / cbrt(model.mass))
+                    }
+                        ?? "The district reaches too little beyond the hand-over for a far field: the air takes it all."
+                )
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             Picker("Air", selection: $model.airChoice) {
                 ForEach(NewDistrictModel.AirChoice.allCases) { Text($0.title).tag($0) }
             }
@@ -588,10 +641,20 @@ struct NewDistrictView: View {
                 let size = preview.scenario.domainSize
                 Text(
                     String(
-                        format: "%d of %d buildings within %.0f m placed; %.0f × %.0f × %.0f m of air, %@.",
-                        preview.report.placed.count, preview.within, model.radius, size.x, size.y, size.z,
-                        preview.air.title))
+                        format:
+                            "%d buildings within %.0f m: %d in the air, %d beside it; %.0f × %.0f × %.0f m of air, %@.",
+                        preview.within, model.radius, preview.report.placed.count,
+                        preview.far?.buildings.count ?? 0,
+                        size.x, size.y, size.z, preview.air.title))
                 Text(costLine(preview.cost, preview: preview))
+                if let far = preview.far {
+                    Text(
+                        String(
+                            format:
+                                "Far field: %d buildings beyond %.0f m, kept beside the scene and judged after the run in about %@ on this Mac's cores (an estimate).",
+                            far.buildings.count, Double(far.handoverM), RunAdvisor.duration(far.judgeSeconds))
+                    )
+                }
                 if let other = preview.alternative {
                     Text("Instead, \(other.air.title): " + costLine(other.cost, preview: preview))
                         .foregroundStyle(.secondary)
@@ -607,6 +670,12 @@ struct NewDistrictView: View {
                 if !preview.report.skipped.isEmpty {
                     Text("Left out: \(preview.report.skipped.count) (too small, outside or under a cell).")
                         .foregroundStyle(.secondary)
+                }
+                if preview.report.skipped.contains(where: { $0.reason == "holds the charge" }) {
+                    Text(
+                        "The building over the charge is left out: the charge would be buried in its solid block. A charge inside a building is beyond the envelope model."
+                    )
+                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                 }
                 Text(
                     "What holds over a city and what does not: docs/beirut-2020.md. Structure results are not converged at these cells."
@@ -656,12 +725,22 @@ struct DistrictMapView: View {
                 if let charge = model.charge {
                     let centre = frame.point(charge)
                     let r = CGFloat(Double(model.radius) * frame.pixelsPerMetre)
-                    // The domain, its side faces kept clear of the buildings or not.
+                    // The domain, its side faces kept clear of the buildings or not: with a far field,
+                    // the near box about the hand-over, drawn as a dashed circle.
+                    let handover = model.handover
+                    let reach = handover ?? model.radius
                     let half = CGFloat(
                         Double(
-                            model.layout?.halfSide(
-                                radius: model.radius, cellSize: 1, clearFaces: model.clearFaces)
-                                ?? model.radius) * frame.pixelsPerMetre)
+                            model.layout?.halfSide(radius: reach, cellSize: 1, clearFaces: model.clearFaces)
+                                ?? reach) * frame.pixelsPerMetre)
+                    if let handover {
+                        let h = CGFloat(Double(handover) * frame.pixelsPerMetre)
+                        context.stroke(
+                            Path(
+                                ellipseIn: CGRect(
+                                    x: centre.x - h, y: centre.y - h, width: 2 * h, height: 2 * h)),
+                            with: .color(.orange), style: StrokeStyle(lineWidth: 1.2, dash: [5, 3]))
+                    }
                     context.stroke(
                         Path(
                             CGRect(x: centre.x - half, y: centre.y - half, width: 2 * half, height: 2 * half)),

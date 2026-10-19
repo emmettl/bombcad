@@ -5,7 +5,8 @@ kilometre at 0.5 kt the shock is weak and nearly spherical, yet the full Beirut 
 it on 4 m cells for another 6 s and 3 km. The hybrid mode runs the air in 3-D only out to a
 hand-over radius. Beyond it, each façade's load comes from the [façade load
 surrogate](surrogate-first-look.md), matched to the near run where both hold. It is the first step
-of [Horizons](roadmap.md#horizons) item 3, "City scale in minutes".
+of [Horizons](roadmap.md#horizons) item 3, "City scale in minutes". It is in the app under File ▸
+New District, and headless in SceneBench.
 
 ## What holds and what does not
 
@@ -74,6 +75,12 @@ façade peak over the full run's (median):
 | 2–2.5 km | 0.23 / 0.07 (0.15) | 0.66 / 0.51 (0.77) | 0.94 / 0.95 (1.00) | 0.77 / 0.88 / 1.00 |
 | 2.5–3 km | 0.02 / 0.01 (0.04) | 0.18 / 0.18 (0.47) | 0.65 / 0.78 (0.97) | 1.03 / 1.12 / 1.29 |
 
+Carrying the trend only to 1.5 times the hand-over and holding it beyond, as the app does, moves
+the share broken at 1.75–2 km to 0.43, 0.96 and 1.00, at 2–2.5 km to 0.11, 0.69 and 0.99, and at
+2.5–3 km to 0.03, 0.38 and 0.95 (0.2, 0.5 and 1.1 kt). That is closer to the full run at 0.2 kt
+and at 2–2.5 km at 0.5 kt, and further at 2.5–3 km at the larger yields. Carrying it to twice the
+hand-over lands between the two (`--trend-reach`).
+
 Beyond about 2.2 km the full run's own side faces lie near the buildings
 ([Beirut](beirut-2020.md#what-the-model-can-and-cannot-represent)), so its far bands are the less
 sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over to 2.5 km, and up to
@@ -94,8 +101,14 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
   `district.json` holds each building's damage, as `BombCAD run --envelope-damage` writes it, with
   the mode's method, its standing and the match. `scenebench hybrid-judge` sets it against a full
   run's saved loads.
-- **In the app:** not yet. A project holds only the buildings inside its air, so the far field's
-  buildings need a place to live first (see Future work).
+- **In the app:** File ▸ New District with **Near field and far field** on (the default when the
+  radius reaches 1.25 times the hand-over). The sheet hands over at 12 m/kg^(1/3), rounded to 50 m,
+  and draws the hand-over on the map. The project's air reaches the hand-over; the buildings beyond
+  it are kept beside it (saved as `farField.json`, never voxelised) and drawn with the rest. When the run
+  ends they are judged in seconds on the cores and painted with their damage, labelled "far field
+  estimate" in the Envelope damage section with the match and its standing. The app carries the
+  trend to 1.5 times the hand-over and holds it from there (`FarFieldSet.trendReachDefault`; see
+  below).
 
 ## Limitations
 
@@ -109,8 +122,9 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
 
 ## Future work
 
-- **A district mode in the app.** File ▸ New District would make the near box a project and keep
-  the far buildings beside it, judged after the run.
 - **A hand-over chosen by the run**, where the shock has weakened past a threshold, rather than
   given.
-- **The trend damped** toward the surrogate's own form far out, which held better at 0.2 kt.
+- **The trend damped** toward the surrogate's own form far out, which held better at 0.2 kt. The
+  reach held at 1.5 times the hand-over is a first, cheap form of it.
+- **Far buildings in the app's other views.** They are painted in the viewport and the map, but
+  picking, the inspector and the damage table's per-component rows hold only the near buildings.

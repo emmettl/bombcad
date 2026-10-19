@@ -294,6 +294,9 @@ public final class SceneRenderer {
     private var gridItems: MTLBuffer?
     private let gaugeBuffer: MTLBuffer
     private var boxCount = 0
+    private var ventPanels: [Box] = []
+    /// The far buildings' blocks, each with its damage code and its look.
+    private var farBlocks: [(Box, Float, Float)] = []
     /// The scenario's blocks, at the start of the box buffer; closed vent panels follow them.
     private var rigidBoxCount = 0
     private var gaugeCount = 0
@@ -437,13 +440,37 @@ public final class SceneRenderer {
 
     /// The vent panels still closed, drawn as blocks after the scenario's own.
     public func setVentPanels(_ panels: [Box]) {
-        let count = min(panels.count, Self.maxBoxes - rigidBoxCount)
-        let boxes = boxBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxBoxes * 2)
-        for (n, box) in panels.prefix(count).enumerated() {
-            boxes[2 * (rigidBoxCount + n)] = SIMD4(box.min, 0)
-            boxes[2 * (rigidBoxCount + n) + 1] = SIMD4(box.max, 0)
+        ventPanels = panels
+        writeAppendedBoxes()
+    }
+
+    /// A district's far buildings (`FarFieldSet`), drawn after the scenario's blocks and its vent
+    /// panels, outside its domain: by their walls' construction, or coloured by `damage[id]` as
+    /// `setEnvelopeDamage` colours the scenario's own once the far field has judged them.
+    public func setFarField(_ set: FarFieldSet?, damage: [UUID: Int] = [:]) {
+        farBlocks = (set?.buildings ?? []).flatMap { building -> [(Box, Float, Float)] in
+            let look = MaterialAppearance(set!.construction(for: building.id).walls).blockCode
+            let code = Float(damage[building.id] ?? 0)
+            return building.envelope.blocks.map { ($0, code, look) }
         }
-        boxCount = rigidBoxCount + count
+        writeAppendedBoxes()
+    }
+
+    /// The blocks after the scenario's own: the vent panels, then the far buildings', as many as fit.
+    private func writeAppendedBoxes() {
+        let boxes = boxBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: Self.maxBoxes * 2)
+        var index = rigidBoxCount
+        for box in ventPanels where index < Self.maxBoxes {
+            boxes[2 * index] = SIMD4(box.min, 0)
+            boxes[2 * index + 1] = SIMD4(box.max, 0)
+            index += 1
+        }
+        for (box, code, look) in farBlocks where index < Self.maxBoxes {
+            boxes[2 * index] = SIMD4(box.min, code)
+            boxes[2 * index + 1] = SIMD4(box.max, look)
+            index += 1
+        }
+        boxCount = index
         buildGrid()
     }
 

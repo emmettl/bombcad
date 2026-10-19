@@ -411,7 +411,8 @@ extension Scenario {
     /// Places `buildings` as stationary envelopes, each its own building of solid boxes extruded
     /// from its footprint (rasterised at `placement.resolution`) from the ground (the lowest point
     /// of the terrain under it, if there is one) to its height. Footprints with fewer than three
-    /// distinct corners or no area, outside the scene, or under a cell are left out, and a later
+    /// distinct corners or no area, outside the scene, under a cell or over the charge are left out
+    /// (a charge inside a solid block would not go off), and a later
     /// building gives up the cells of an earlier one it overlaps; the report says which. The
     /// attribution is added to the scene's. Nothing changes if the scene would not hold them.
     @discardableResult
@@ -430,6 +431,9 @@ extension Scenario {
         let columns = Int((domainSize.x / r).rounded(.up))
         let rows = Int((domainSize.y / r).rounded(.up))
         var taken = Set<Int>()
+        let chargeCell =
+            min(max(Int(charge.position.x / r), 0), columns - 1)
+            + columns * min(max(Int(charge.position.y / r), 0), rows - 1)
         for building in buildings {
             // Local metres; duplicates and closing points dropped.
             var rings: [[SIMD2<Double>]] = []
@@ -478,6 +482,11 @@ extension Scenario {
                 }
             }
             report.overlapCells += overlap
+            // A footprint over the charge's cell would bury it in a solid block, and no blast leave it.
+            guard charge.mass <= 0 || !cells.contains(chargeCell) else {
+                report.skipped.append((building.id, "holds the charge"))
+                continue
+            }
             guard !cells.isEmpty else {
                 report.skipped.append(
                     (

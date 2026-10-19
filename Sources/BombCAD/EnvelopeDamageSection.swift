@@ -283,3 +283,51 @@ struct EnvelopeDamageSection: View {
         }
     }
 }
+
+/// A district's far buildings (`FarFieldSet`): how many lie beyond the hand-over, and once a run has
+/// finished, their damage judged on the far field carried from it, with the mode's standing beside
+/// it (docs/hybrid-far-field.md).
+struct FarFieldSection: View {
+    @Bindable var model: SimulationModel
+
+    var body: some View {
+        if let set = model.farFieldSet {
+            Section("Far field (estimate)") {
+                Text(
+                    String(
+                        format:
+                            "%d buildings beyond the air, kept beside the scene: judged after each run on the far field carried from it past %.0f m.",
+                        set.buildings.count, Double(set.handoverM))
+                )
+                .font(.caption).fixedSize(horizontal: false, vertical: true)
+                if model.judgingFarField { ProgressView().controlSize(.small) }
+                if !model.farFieldStatus.isEmpty {
+                    // An estimate must never pass for a run.
+                    Text(model.farFieldStatus).font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if !model.farFieldDamage.isEmpty {
+                    let counts = Dictionary(grouping: model.farFieldDamage, by: EnvelopeDamageSection.code)
+                        .mapValues(\.count)
+                    ForEach(counts.keys.sorted(), id: \.self) { code in
+                        HStack {
+                            Circle().fill(EnvelopeDamageSection.colour(code))
+                                .overlay(Circle().stroke(.secondary.opacity(0.5)))
+                                .frame(width: 9, height: 9)
+                            Text(
+                                code > 0 && code <= EnvelopeDamageColour.labels.count
+                                    ? EnvelopeDamageColour.labels[code - 1] : "Not judged")
+                            Spacer()
+                            Text("\(counts[code] ?? 0)").foregroundStyle(.secondary)
+                        }
+                        .font(.caption)
+                    }
+                }
+                ForEach(HybridFarField.standing, id: \.self) {
+                    Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
+                        horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+}

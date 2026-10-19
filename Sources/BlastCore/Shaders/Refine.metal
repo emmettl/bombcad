@@ -1915,11 +1915,14 @@ static inline void flagCell(int3 cell, const device Cell *coarse, const device u
         float3 high = boxDefinition[boxVectors*b+7].xyz+2.0f*u.dx;
         if (all(point >= low) && all(point <= high)) { flagAround(cell,wanted,u); return; }
     }
-    if (mask[index] != 0 || aboveCeiling(cell, band, held)) {
+    if (mask[index] != 0) {
         return;
     }
+    // Above the ceiling a cell is never refined, but its pairs are still looked at, so that a jump
+    // to a cell below it (ground rising beyond) refines that side.
+    bool capped = aboveCeiling(cell, band, held);
     float p = cellPressureOf(coarse[index], u);
-    if (heldByBand(cell, p, band, held)) {
+    if (!capped && heldByBand(cell, p, band, held)) {
         flagAround(cell, wanted, u);
     }
     // Each pair of neighbours is looked at once, from its lower cell, and marks around both cells,
@@ -1935,13 +1938,19 @@ static inline void flagCell(int3 cell, const device Cell *coarse, const device u
         if (mask[nextIndex] != 0) {
             continue;
         }
+        bool nextCapped = aboveCeiling(next, band, held);
+        if (capped && nextCapped) {
+            continue;
+        }
         float q = cellPressureOf(coarse[nextIndex], u);
         if (fabs(q - p) > u.refineThreshold * min(p, q)) {
             sharp = true;
-            flagAround(next, wanted, u);
+            if (!nextCapped) {
+                flagAround(next, wanted, u);
+            }
         }
     }
-    if (sharp) {
+    if (sharp && !capped) {
         flagAround(cell, wanted, u);
     }
 }
@@ -2015,11 +2024,12 @@ kernel void refineFlagFine(const device Cell *parent [[buffer(0)]],
     int3 cell = origin + int3(position % uint(side), (position / uint(side)) % uint(side), position / uint(side * side));
     int3 dims = int3(u.nx, u.ny, u.nz);
     uint index = patch * cells + position;
-    if (any(cell >= dims) || (parentMask[index] & 1) != 0 || aboveCeiling(cell, band, held)) {
+    if (any(cell >= dims) || (parentMask[index] & 1) != 0) {
         return;
     }
+    bool capped = aboveCeiling(cell, band, held);
     float p = cellPressureOf(parent[index], u);
-    if (heldByBand(cell, p, band, held)) {
+    if (!capped && heldByBand(cell, p, band, held)) {
         flagAround(cell, wanted, u);
     }
     bool sharp = false;
@@ -2033,13 +2043,19 @@ kernel void refineFlagFine(const device Cell *parent [[buffer(0)]],
         if (parentSolid(parentMask, nextIndex, u)) {
             continue;
         }
+        bool nextCapped = aboveCeiling(next, band, held);
+        if (capped && nextCapped) {
+            continue;
+        }
         float q = cellPressureOf(parent[nextIndex], u);
         if (fabs(q - p) > u.refineThreshold * min(p, q)) {
             sharp = true;
-            flagAround(next, wanted, u);
+            if (!nextCapped) {
+                flagAround(next, wanted, u);
+            }
         }
     }
-    if (sharp) {
+    if (sharp && !capped) {
         flagAround(cell, wanted, u);
     }
 }

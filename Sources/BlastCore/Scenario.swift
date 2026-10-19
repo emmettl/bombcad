@@ -502,6 +502,12 @@ extension BlastSolver {
                 mapped, mappings: mappings, among: charges(of: scenario).map(\.position), gauges: gaugeCentres
             )
         }
+        // The refinement's ceiling spares each charge's near field (`refinementCeilingExemption`).
+        ceilingExemptions = charges(of: scenario).filter { $0.mass > 0 }.map {
+            (position: $0.position, radius: SolverConfiguration.refinementCeilingExemption * cbrt($0.mass))
+        }
+        // Every load: a solver loaded again without a ceiling must not keep the last one's.
+        applyFacadeBand()
     }
 
     /// A charge laid down from its own one-dimensional solution: which of the scene's charges

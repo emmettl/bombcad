@@ -128,6 +128,7 @@ struct SidebarView: View {
             GroundShockSection(model: model)
             EnvelopeExposureSection(model: model)
             EnvelopeDamageSection(model: model)
+            FarFieldSection(model: model)
 
             if let summary = model.structureSummary {
                 Section(model.settings.scenario.structuralObjects.count > 1 ? "All structures" : "Structure")
