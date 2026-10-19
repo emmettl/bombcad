@@ -2,24 +2,24 @@
  "about": "Written by Scripts/split/import-graph.py --write; the rules are in Scripts/split/blastcore_graph.py.",
  "sources": "Sources/BlastCore",
  "tests_folder": "Tests/BlastCoreTests",
- "input_sha256": "c45f1efd44845ebdd10d696b31c464177c082cb288b561e71396cb1510874747",
+ "input_sha256": "5b8758e6c7ba4bb782d9cf3474654b1cb7942fe60cbc57e1d427dcf8a0562021",
  "counts": {
   "sources": {
-   "cpu": 149,
+   "cpu": 157,
    "gpu": 19,
-   "mixed": 77,
-   "mixed_clean": 77,
-   "moves": 226
+   "mixed": 78,
+   "mixed_clean": 78,
+   "moves": 235
   },
   "tests": {
-   "cpu": 86,
-   "gpu": 124,
+   "cpu": 91,
+   "gpu": 126,
    "mixed": 7,
    "mixed_blocked": 7,
-   "moves": 86
+   "moves": 91
   },
-  "tests_moving": 426,
-  "tests_total": 1324
+  "tests_moving": 446,
+  "tests_total": 1356
  },
  "seams": [
   "shell-fibres-across"
@@ -682,6 +682,7 @@
     "ExposurePlane",
     "ExposurePlaneSnapshot",
     "FacadeBandParameters",
+    "Firing",
     "FrameExtractor",
     "FrameRequest",
     "GaugeSample",
@@ -689,6 +690,7 @@
     "KingeryBulmash",
     "MixedStructure",
     "PaneLookup",
+    "PendingFiring",
     "Primitive",
     "RadiativeCoolingStage",
     "RigidBoxBody",
@@ -1903,6 +1905,60 @@
    ]
   },
   {
+   "path": "Sources/BlastCore/DelayedCharges.swift",
+   "imports": [
+    "Foundation",
+    "RadialBlast",
+    "simd"
+   ],
+   "declares": [
+    "BlastSolver.NotMapped",
+    "Firing",
+    "Firing.How",
+    "PendingFiring",
+    "PendingFiring.Stage"
+   ],
+   "extends": [
+    "BlastSolver"
+   ],
+   "uses": [
+    "CellState",
+    "Charge",
+    "KingeryBulmash"
+   ],
+   "gpu_api": [],
+   "class": "mixed",
+   "moves": true,
+   "clean": true,
+   "cut": [
+    {
+     "unit": "struct PendingFiring",
+     "lines": [
+      7,
+      21
+     ],
+     "reason": "its var stage uses PendingFiring.Stage (DelayedCharges.swift), which stays, and it is a stored property"
+    },
+    {
+     "unit": "extension BlastSolver",
+     "lines": [
+      43,
+      295
+     ],
+     "reason": "uses BlastSolver (BlastSolver.swift), which stays"
+    }
+   ],
+   "kept": [
+    {
+     "unit": "struct Firing",
+     "lines": [
+      24,
+      41
+     ]
+    }
+   ]
+  },
+  {
    "path": "Sources/BlastCore/DiscreteBars.swift",
    "imports": [
     "Foundation",
@@ -2361,14 +2417,18 @@
     "Scenario"
    ],
    "uses": [
+    "EnvelopeComponentDamage",
     "EnvelopePanel",
+    "GlassStrength",
     "GlazingMix",
     "IFCStructure",
     "LaminatedGlass",
     "SDOFSystem",
+    "SecurityFilm",
     "SheetProfile",
     "SteelProperties",
-    "StructureMaterial"
+    "StructureMaterial",
+    "WallLiner"
    ],
    "gpu_api": [],
    "class": "cpu",
@@ -2454,8 +2514,8 @@
     {
      "unit": "extension BlastSolver",
      "lines": [
-      265,
-      280
+      268,
+      283
      ],
      "reason": "uses BlastSolver (BlastSolver.swift), which stays"
     }
@@ -2465,8 +2525,8 @@
      "unit": "struct EnvelopeDebris",
      "member": "func make",
      "lines": [
-      93,
-      100
+      96,
+      103
      ],
      "reason": "it calls the other make(loads:components:...), which stays (found by the Linux build: the analysis does not tell overloads apart)"
     },
@@ -2474,8 +2534,8 @@
      "unit": "struct EnvelopeDebris",
      "member": "func make #2",
      "lines": [
-      104,
-      147
+      107,
+      150
      ],
      "reason": "uses EnvelopeDebris.thrown (EnvelopeDebris.swift), which stays"
     },
@@ -2483,8 +2543,8 @@
      "unit": "struct EnvelopeDebris",
      "member": "func thrown",
      "lines": [
-      150,
-      225
+      153,
+      228
      ],
      "reason": "uses EnvelopeComponentRecorder.shape (EnvelopeComponents.swift), which stays"
     }
@@ -2494,37 +2554,37 @@
      "unit": "struct DebrisLaunch",
      "lines": [
       8,
-      49
+      52
      ]
     },
     {
      "unit": "struct EnvelopeDebris",
      "lines": [
-      63,
-      263
+      66,
+      266
      ],
      "cut_members": [
       {
        "member": "func make",
        "lines": [
-        93,
-        100
+        96,
+        103
        ],
        "reason": "it calls the other make(loads:components:...), which stays (found by the Linux build: the analysis does not tell overloads apart)"
       },
       {
        "member": "func make #2",
        "lines": [
-        104,
-        147
+        107,
+        150
        ],
        "reason": "uses EnvelopeDebris.thrown (EnvelopeDebris.swift), which stays"
       },
       {
        "member": "func thrown",
        "lines": [
-        150,
-        225
+        153,
+        228
        ],
        "reason": "uses EnvelopeComponentRecorder.shape (EnvelopeComponents.swift), which stays"
       }
@@ -2533,8 +2593,8 @@
     {
      "unit": "extension Scenario",
      "lines": [
-      282,
-      297
+      285,
+      300
      ]
     }
    ]
@@ -2617,13 +2677,19 @@
     "FacadeGlass",
     "GlazingBreakage",
     "GlazingMix",
+    "GlazingMix.Glass",
     "GlazingMix.Pane"
    ],
    "extends": [
     "GlassStrength"
    ],
    "uses": [
-    "EnvelopeDamageAssessment"
+    "EnvelopeDamageAssessment",
+    "EnvelopePanel",
+    "GlazingHazard",
+    "LaminatedGlass",
+    "SDOFSystem",
+    "SecurityFilm"
    ],
    "gpu_api": [],
    "class": "cpu",
@@ -2743,23 +2809,23 @@
      "unit": "class EnvelopeVenting",
      "lines": [
       12,
-      553
+      554
      ],
      "reason": "its let wallBuffer uses MTLBuffer, and it is a stored property"
     },
     {
      "unit": "extension EnvelopeVenting",
      "lines": [
-      614,
-      638
+      615,
+      639
      ],
      "reason": "uses EnvelopeVenting (EnvelopeVenting.swift), which stays"
     },
     {
      "unit": "extension EnvelopeVenting #2",
      "lines": [
-      640,
-      649
+      641,
+      650
      ],
      "reason": "uses EnvelopeVenting (EnvelopeVenting.swift), which stays"
     }
@@ -2768,8 +2834,8 @@
     {
      "unit": "struct EnvelopeVentingSnapshot",
      "lines": [
-      556,
-      612
+      557,
+      613
      ]
     }
    ],
@@ -3958,7 +4024,7 @@
      "unit": "class ExposurePlane",
      "lines": [
       25,
-      95
+      105
      ],
      "reason": "its let buffer uses MTLBuffer, and it is a stored property"
     }
@@ -3975,6 +4041,37 @@
    "dropped_imports": [
     "Metal"
    ]
+  },
+  {
+   "path": "Sources/BlastCore/FacadeGlassProbability.swift",
+   "imports": [
+    "Foundation",
+    "simd"
+   ],
+   "declares": [
+    "EnvelopeChanceColour",
+    "FacadeLoadSurrogate.GlassOutcome",
+    "FacadeLoadSurrogate.GlassSideStrips",
+    "FacadeLoadSurrogate.GlassTable",
+    "FacadeLoadSurrogate.Random",
+    "FacadeLoadSurrogate.SideGlass",
+    "FacadeLoadSurrogate.Uncertainty"
+   ],
+   "extends": [
+    "FacadeLoadSurrogate"
+   ],
+   "uses": [
+    "EnvelopeDamageAssessment",
+    "GlazingBreakage",
+    "GlazingHazard",
+    "GlazingMix",
+    "Scenario",
+    "ValidationTables",
+    "concurrently"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
   },
   {
    "path": "Sources/BlastCore/FacadeLoadSurrogate.swift",
@@ -4390,12 +4487,15 @@
    "declares": [
     "FloorPlan",
     "FloorPlan.Analysis",
+    "FloorPlan.AngledOpening",
+    "FloorPlan.AngledWall",
     "FloorPlan.Construction",
     "FloorPlan.Line",
     "FloorPlan.Opening",
     "FloorPlan.OpeningKind",
     "FloorPlan.Options",
     "FloorPlan.Role",
+    "FloorPlan.Slant",
     "FloorPlan.SolidPiece",
     "FloorPlan.Wall"
    ],
@@ -5479,6 +5579,7 @@
     "Footing",
     "IFCReinforcement",
     "ImportedMesh",
+    "Inclination",
     "ShellMesh",
     "Soil",
     "StructureMaterial",
@@ -5722,6 +5823,27 @@
     "ImportedMesh",
     "StructureMaterial",
     "StructureModel"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
+  },
+  {
+   "path": "Sources/BlastCore/Inclination.swift",
+   "imports": [
+    "Foundation",
+    "simd"
+   ],
+   "declares": [
+    "Inclination",
+    "Inclination.Frame"
+   ],
+   "extends": [
+    "StructureModel"
+   ],
+   "uses": [
+    "Box",
+    "ImportedMesh"
    ],
    "gpu_api": [],
    "class": "cpu",
@@ -7318,6 +7440,27 @@
    ]
   },
   {
+   "path": "Sources/BlastCore/PitchedRoof.swift",
+   "imports": [
+    "Foundation",
+    "simd"
+   ],
+   "declares": [
+    "PitchedRoof"
+   ],
+   "extends": [
+    "StructureModel"
+   ],
+   "uses": [
+    "Box",
+    "Inclination",
+    "ScenarioPreset"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
+  },
+  {
    "path": "Sources/BlastCore/PlanarPistonWave.swift",
    "imports": [
     "Foundation",
@@ -7709,6 +7852,62 @@
    "moves": true
   },
   {
+   "path": "Sources/BlastCore/ProtectionModel.swift",
+   "imports": [
+    "Foundation",
+    "simd"
+   ],
+   "declares": [
+    "ProtectionModel",
+    "ProtectionModel.Evaluator",
+    "ProtectionModel.Glazing",
+    "ProtectionModel.InputError",
+    "ProtectionModel.Inputs",
+    "ProtectionModel.Model",
+    "ProtectionModel.Side",
+    "ProtectionModel.StandOff",
+    "ProtectionModel.Target",
+    "ProtectionModel.Threat"
+   ],
+   "extends": [],
+   "uses": [
+    "EnvelopeComponent",
+    "EnvelopeConstruction",
+    "FacadeLoadSurrogate",
+    "GlazingHazard",
+    "GlazingMix",
+    "LaminatedGlass",
+    "ProtectionSearch",
+    "Scenario",
+    "SceneObject",
+    "SecurityFilm",
+    "concurrently"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
+  },
+  {
+   "path": "Sources/BlastCore/ProtectionSearch.swift",
+   "imports": [
+    "Foundation"
+   ],
+   "declares": [
+    "ProtectionSearch",
+    "ProtectionSearch.ChanceCache",
+    "ProtectionSearch.Option",
+    "ProtectionSearch.Plan",
+    "ProtectionSearch.Problem",
+    "ProtectionSearch.Side",
+    "ProtectionSearch.SiteChange"
+   ],
+   "extends": [],
+   "uses": [],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
+  },
+  {
    "path": "Sources/BlastCore/PushOffTest.swift",
    "imports": [
     "Foundation",
@@ -7915,23 +8114,23 @@
      "unit": "class AirRefinement",
      "lines": [
       11,
-      1707
+      1768
      ],
      "reason": "its let patchOfTile uses MTLBuffer, and it is a stored property"
     },
     {
      "unit": "extension AirRefinement",
      "lines": [
-      1709,
-      1978
+      1770,
+      2039
      ],
      "reason": "uses AirRefinement (Refinement.swift), which stays"
     },
     {
      "unit": "extension AirRefinement #2",
      "lines": [
-      2007,
-      2039
+      2068,
+      2100
      ],
      "reason": "uses AirRefinement (Refinement.swift), which stays"
     }
@@ -7940,22 +8139,22 @@
     {
      "unit": "struct TerrainUniforms",
      "lines": [
-      1981,
-      1989
+      2042,
+      2050
      ]
     },
     {
      "unit": "struct PaneLookup",
      "lines": [
-      1996,
-      2005
+      2057,
+      2066
      ]
     },
     {
      "unit": "struct FacadeBandParameters",
      "lines": [
-      2043,
-      2054
+      2104,
+      2115
      ]
     }
    ],
@@ -8617,6 +8816,27 @@
    ]
   },
   {
+   "path": "Sources/BlastCore/SVGPlan.swift",
+   "imports": [
+    "Foundation",
+    "simd"
+   ],
+   "declares": [
+    "SVGReader",
+    "SVGTransform",
+    "SVGTree",
+    "SVGTree.Builder",
+    "SVGTree.Node"
+   ],
+   "extends": [
+    "DXFDrawing"
+   ],
+   "uses": [],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
+  },
+  {
    "path": "Sources/BlastCore/Scenario.swift",
    "imports": [
     "Foundation",
@@ -8649,8 +8869,10 @@
     "Deflagration",
     "EnvelopeConstruction",
     "EnvelopeSource",
+    "Firing",
     "Grid",
     "ImportedModel",
+    "PendingFiring",
     "Primitive",
     "RigidCarDefinition",
     "RigidObjectDefinition",
@@ -8674,16 +8896,16 @@
     {
      "unit": "extension BlastSolver",
      "lines": [
-      337,
-      778
+      360,
+      855
      ],
      "reason": "uses BlastSolver (BlastSolver.swift), which stays"
     },
     {
      "unit": "func cellRange",
      "lines": [
-      780,
-      784
+      857,
+      861
      ]
     }
    ],
@@ -8692,49 +8914,49 @@
      "unit": "struct Charge",
      "lines": [
       7,
-      21
+      29
      ]
     },
     {
      "unit": "struct Gauge",
      "lines": [
-      23,
-      33
+      31,
+      41
      ]
     },
     {
      "unit": "extension Scenario",
      "lines": [
-      35,
-      72
+      43,
+      80
      ]
     },
     {
      "unit": "struct Atmosphere",
      "lines": [
-      74,
-      81
+      82,
+      89
      ]
     },
     {
      "unit": "struct Scenario",
      "lines": [
-      84,
-      196
+      92,
+      219
      ]
     },
     {
      "unit": "extension Scenario #2",
      "lines": [
-      198,
-      335
+      221,
+      358
      ]
     },
     {
      "unit": "extension Box",
      "lines": [
-      786,
-      809
+      863,
+      886
      ]
     }
    ],
@@ -8802,6 +9024,29 @@
     "Box",
     "ImportPlacementReport",
     "Scenario"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
+  },
+  {
+   "path": "Sources/BlastCore/SecurityFilm.swift",
+   "imports": [
+    "Foundation"
+   ],
+   "declares": [
+    "SecurityFilm",
+    "SecurityFilm.Anchorage"
+   ],
+   "extends": [
+    "EnvelopePanel"
+   ],
+   "uses": [
+    "Anchorage",
+    "GlassStrength",
+    "ImportedMesh",
+    "LaminatedGlass",
+    "SDOFSystem"
    ],
    "gpu_api": [],
    "class": "cpu",
@@ -8892,6 +9137,7 @@
     "BlastError",
     "Box",
     "Column",
+    "Inclination",
     "StructureMaterial",
     "StructureModel"
    ],
@@ -8956,15 +9202,15 @@
      "unit": "class ShellSolver",
      "lines": [
       214,
-      1979
+      2006
      ],
      "reason": "its let device uses MTLDevice, and it is a stored property"
     },
     {
      "unit": "struct MemberShearBuffers",
      "lines": [
-      1990,
-      2121
+      2017,
+      2148
      ],
      "reason": "its let strength uses MTLBuffer, and it is a stored property"
     }
@@ -9192,6 +9438,7 @@
     "GaugeSample",
     "OpenFaces",
     "Primitive",
+    "RefinementRegion",
     "RiemannSolver",
     "SolverConfiguration",
     "SolverUniforms",
@@ -9505,7 +9752,7 @@
      "unit": "extension ShellSolver",
      "lines": [
       165,
-      235
+      245
      ],
      "reason": "uses ShellSolver (ShellSolver.swift), which stays"
     }
@@ -9596,6 +9843,7 @@
     "BondSlip",
     "BucklingCurve",
     "DiscreteBar",
+    "Inclination",
     "ProfiledSheet",
     "SheetAssignment",
     "SheetFastening",
@@ -9621,8 +9869,8 @@
     {
      "unit": "struct BuildProbe",
      "lines": [
-      1652,
-      1677
+      1669,
+      1694
      ],
      "reason": "its var mathMode uses MTLMathMode, and it is a stored property"
     }
@@ -9632,8 +9880,8 @@
      "unit": "enum KernelRounding",
      "member": "var mathMode",
      "lines": [
-      1620,
-      1620
+      1637,
+      1637
      ],
      "reason": "uses MTLMathMode"
     },
@@ -9641,8 +9889,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func make",
      "lines": [
-      1681,
-      1757
+      1698,
+      1774
      ],
      "reason": "uses MTLCompileOptions, MTLDevice, MTLLibrary, MetalContactSearch"
     },
@@ -9650,8 +9898,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func withCutCells",
      "lines": [
-      1779,
-      1783
+      1796,
+      1800
      ],
      "reason": "uses MTLFunctionConstantValues"
     },
@@ -9659,8 +9907,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func withStructureCut",
      "lines": [
-      1794,
-      1798
+      1811,
+      1815
      ],
      "reason": "uses MTLFunctionConstantValues"
     },
@@ -9668,8 +9916,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func withPorousAir",
      "lines": [
-      1801,
-      1805
+      1818,
+      1822
      ],
      "reason": "uses MTLFunctionConstantValues"
     },
@@ -9677,8 +9925,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func withBurnLimit",
      "lines": [
-      1808,
-      1812
+      1825,
+      1829
      ],
      "reason": "uses MTLFunctionConstantValues"
     },
@@ -9686,8 +9934,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func withMixing",
      "lines": [
-      1815,
-      1819
+      1832,
+      1836
      ],
      "reason": "uses MTLFunctionConstantValues"
     },
@@ -9695,8 +9943,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func withGravity",
      "lines": [
-      1822,
-      1826
+      1839,
+      1843
      ],
      "reason": "uses MTLFunctionConstantValues"
     },
@@ -9704,8 +9952,8 @@
      "unit": "enum ShaderLibrary",
      "member": "func pipeline",
      "lines": [
-      1831,
-      1839
+      1848,
+      1856
      ],
      "reason": "uses MTLComputePipelineState, MTLFunctionConstantValues, MTLLibrary"
     }
@@ -9792,70 +10040,70 @@
      "unit": "struct StructureModel",
      "lines": [
       693,
-      1214
+      1231
      ]
     },
     {
      "unit": "struct StructureNode",
      "lines": [
-      1218,
-      1282
+      1235,
+      1299
      ]
     },
     {
      "unit": "enum ElementFlag",
      "lines": [
-      1284,
-      1291
+      1301,
+      1308
      ]
     },
     {
      "unit": "struct StructureSummary",
      "lines": [
-      1293,
-      1347
+      1310,
+      1364
      ]
     },
     {
      "unit": "struct StructureUniforms",
      "lines": [
-      1350,
-      1443
+      1367,
+      1460
      ]
     },
     {
      "unit": "struct MaterialParameters",
      "lines": [
-      1447,
-      1534
+      1464,
+      1551
      ]
     },
     {
      "unit": "struct CouplingUniforms",
      "lines": [
-      1537,
-      1591
+      1554,
+      1608
      ]
     },
     {
      "unit": "enum ContactMode",
      "lines": [
-      1594,
-      1600
+      1611,
+      1617
      ]
     },
     {
      "unit": "enum KernelRounding",
      "lines": [
-      1608,
-      1641
+      1625,
+      1658
      ],
      "cut_members": [
       {
        "member": "var mathMode",
        "lines": [
-        1620,
-        1620
+        1637,
+        1637
        ],
        "reason": "uses MTLMathMode"
       }
@@ -9864,71 +10112,71 @@
     {
      "unit": "enum ShaderLibrary",
      "lines": [
-      1680,
-      1840
+      1697,
+      1857
      ],
      "cut_members": [
       {
        "member": "func make",
        "lines": [
-        1681,
-        1757
+        1698,
+        1774
        ],
        "reason": "uses MTLCompileOptions, MTLDevice, MTLLibrary, MetalContactSearch"
       },
       {
        "member": "func withCutCells",
        "lines": [
-        1779,
-        1783
+        1796,
+        1800
        ],
        "reason": "uses MTLFunctionConstantValues"
       },
       {
        "member": "func withStructureCut",
        "lines": [
-        1794,
-        1798
+        1811,
+        1815
        ],
        "reason": "uses MTLFunctionConstantValues"
       },
       {
        "member": "func withPorousAir",
        "lines": [
-        1801,
-        1805
+        1818,
+        1822
        ],
        "reason": "uses MTLFunctionConstantValues"
       },
       {
        "member": "func withBurnLimit",
        "lines": [
-        1808,
-        1812
+        1825,
+        1829
        ],
        "reason": "uses MTLFunctionConstantValues"
       },
       {
        "member": "func withMixing",
        "lines": [
-        1815,
-        1819
+        1832,
+        1836
        ],
        "reason": "uses MTLFunctionConstantValues"
       },
       {
        "member": "func withGravity",
        "lines": [
-        1822,
-        1826
+        1839,
+        1843
        ],
        "reason": "uses MTLFunctionConstantValues"
       },
       {
        "member": "func pipeline",
        "lines": [
-        1831,
-        1839
+        1848,
+        1856
        ],
        "reason": "uses MTLComputePipelineState, MTLFunctionConstantValues, MTLLibrary"
       }
@@ -9937,64 +10185,64 @@
     {
      "unit": "extension StructureMaterial",
      "lines": [
-      1844,
-      1885
+      1861,
+      1902
      ]
     },
     {
      "unit": "extension StructureModel",
      "lines": [
-      1887,
-      2031
+      1904,
+      2054
      ]
     },
     {
      "unit": "enum RetiredKey",
      "lines": [
-      2036,
-      2043
+      2059,
+      2066
      ]
     },
     {
      "unit": "extension StructureModel #2",
      "lines": [
-      2045,
-      2109
+      2068,
+      2132
      ]
     },
     {
      "unit": "extension Box",
      "lines": [
-      2111,
-      2116
+      2134,
+      2139
      ]
     },
     {
      "unit": "struct LocalBuckling",
      "lines": [
-      2123,
-      2139
+      2146,
+      2162
      ]
     },
     {
      "unit": "struct SpringSupport",
      "lines": [
-      2147,
-      2185
+      2170,
+      2208
      ]
     },
     {
      "unit": "struct SpringLaw",
      "lines": [
-      2190,
-      2200
+      2213,
+      2223
      ]
     },
     {
      "unit": "enum SteelRateLaw",
      "lines": [
-      2205,
-      2224
+      2228,
+      2247
      ]
     }
    ],
@@ -10072,6 +10320,7 @@
     "Box",
     "Charge",
     "Gauge",
+    "Inclination",
     "Scenario",
     "StructureMaterial",
     "StructureModel",
@@ -10094,7 +10343,9 @@
    ],
    "extends": [],
    "uses": [
-    "ShellSolver"
+    "ScenarioPreset",
+    "ShellSolver",
+    "StructureModel"
    ],
    "gpu_api": [],
    "class": "gpu",
@@ -11122,6 +11373,24 @@
    "reasons": [
     "uses BlastSolver (BlastSolver.swift), which stays"
    ]
+  },
+  {
+   "path": "Sources/BlastCore/WallLiner.swift",
+   "imports": [
+    "Foundation"
+   ],
+   "declares": [
+    "WallLiner"
+   ],
+   "extends": [
+    "SDOFSystem"
+   ],
+   "uses": [
+    "ImportedMesh"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true
   },
   {
    "path": "Sources/BlastCore/WedgeReflectionStudy.swift",
@@ -12439,6 +12708,43 @@
    ]
   },
   {
+   "path": "Tests/BlastCoreTests/DelayedChargeTests.swift",
+   "imports": [
+    "Foundation",
+    "Metal",
+    "Testing",
+    "simd",
+    {
+     "module": "BlastCore",
+     "attributes": [
+      "@testable"
+     ]
+    }
+   ],
+   "declares": [
+    "DelayedChargeTests"
+   ],
+   "extends": [],
+   "uses": [
+    "BlastSolver",
+    "Charge",
+    "Gauge",
+    "GaugeSample",
+    "Scenario",
+    "SolverConfiguration"
+   ],
+   "gpu_api": [
+    "MTLCreateSystemDefaultDevice"
+   ],
+   "class": "gpu",
+   "moves": false,
+   "tests": 4,
+   "reasons": [
+    "uses MTLCreateSystemDefaultDevice",
+    "its file imports Metal"
+   ]
+  },
+  {
    "path": "Tests/BlastCoreTests/DiscreteBarTests.swift",
    "imports": [
     "Foundation",
@@ -12700,6 +13006,7 @@
     "EnvelopeDamageAssessment",
     "EnvelopeHistoryOptions",
     "Primitive",
+    "RefinementRegion",
     "Scenario",
     "SceneObject",
     "SceneStanding",
@@ -12714,7 +13021,7 @@
    ],
    "class": "gpu",
    "moves": false,
-   "tests": 21,
+   "tests": 22,
    "reasons": [
     "its file imports Metal",
     "uses MTLCreateSystemDefaultDevice"
@@ -12768,6 +13075,7 @@
    "uses": [
     "Box",
     "EnvelopeBuildingDamage",
+    "EnvelopeChanceColour",
     "EnvelopeComponentLoad",
     "EnvelopeConstruction",
     "EnvelopeDamageAssessment",
@@ -12779,7 +13087,7 @@
    "gpu_api": [],
    "class": "cpu",
    "moves": true,
-   "tests": 9
+   "tests": 10
   },
   {
    "path": "Tests/BlastCoreTests/EnvelopeDebrisTests.swift",
@@ -13473,6 +13781,39 @@
    ]
   },
   {
+   "path": "Tests/BlastCoreTests/FacadeGlassProbabilityTests.swift",
+   "imports": [
+    "Foundation",
+    "Testing",
+    "simd",
+    {
+     "module": "BlastCore",
+     "attributes": [
+      "@testable"
+     ]
+    }
+   ],
+   "declares": [
+    "FacadeGlassProbabilityTests"
+   ],
+   "extends": [],
+   "uses": [
+    "Box",
+    "BuildingEnvelope",
+    "Charge",
+    "EnvelopeBuildingDamage",
+    "EnvelopeConstruction",
+    "EnvelopeDamageAssessment",
+    "FacadeLoadSurrogate",
+    "GlazingMix",
+    "Scenario"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true,
+   "tests": 5
+  },
+  {
    "path": "Tests/BlastCoreTests/FacadeLoadSurrogateTests.swift",
    "imports": [
     "Foundation",
@@ -13728,12 +14069,13 @@
     "DXFDrawing",
     "FloorPlan",
     "IFCStructure",
+    "ShellMesh",
     "StructureMaterial"
    ],
    "gpu_api": [],
    "class": "cpu",
    "moves": true,
-   "tests": 3
+   "tests": 8
   },
   {
    "path": "Tests/BlastCoreTests/FootingSlopeTests.swift",
@@ -14209,6 +14551,24 @@
     "uses MTLCreateSystemDefaultDevice",
     "its file imports Metal"
    ]
+  },
+  {
+   "path": "Tests/BlastCoreTests/FullStudies.swift",
+   "imports": [
+    "Foundation",
+    "Testing"
+   ],
+   "declares": [
+    "FullStudies"
+   ],
+   "extends": [
+    "Trait"
+   ],
+   "uses": [],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true,
+   "tests": 0
   },
   {
    "path": "Tests/BlastCoreTests/GPUThreads.swift",
@@ -14709,7 +15069,7 @@
    ],
    "class": "gpu",
    "moves": false,
-   "tests": 18,
+   "tests": 19,
    "reasons": [
     "uses MTLCreateSystemDefaultDevice",
     "its file imports Metal"
@@ -14927,6 +15287,44 @@
    "tests": 4,
    "reasons": [
     "uses MTLCreateSystemDefaultDevice, MTLDevice",
+    "its file imports Metal"
+   ]
+  },
+  {
+   "path": "Tests/BlastCoreTests/InclinedShellTests.swift",
+   "imports": [
+    "Foundation",
+    "Metal",
+    "Testing",
+    "simd",
+    {
+     "module": "BlastCore",
+     "attributes": [
+      "@testable"
+     ]
+    }
+   ],
+   "declares": [
+    "InclinedShellTests"
+   ],
+   "extends": [],
+   "uses": [
+    "Box",
+    "Inclination",
+    "PitchedRoof",
+    "ShellMesh",
+    "ShellSolver",
+    "StructureMaterial",
+    "StructureModel"
+   ],
+   "gpu_api": [
+    "MTLCreateSystemDefaultDevice"
+   ],
+   "class": "gpu",
+   "moves": false,
+   "tests": 4,
+   "reasons": [
+    "uses MTLCreateSystemDefaultDevice",
     "its file imports Metal"
    ]
   },
@@ -16376,6 +16774,33 @@
    ]
   },
   {
+   "path": "Tests/BlastCoreTests/ProtectionSearchTests.swift",
+   "imports": [
+    "Foundation",
+    "Testing",
+    {
+     "module": "BlastCore",
+     "attributes": [
+      "@testable"
+     ]
+    }
+   ],
+   "declares": [
+    "ProtectionSearchTests",
+    "ProtectionSearchTests.Scenario"
+   ],
+   "extends": [],
+   "uses": [
+    "ProtectionModel",
+    "ProtectionSearch",
+    "Scenario"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true,
+   "tests": 3
+  },
+  {
    "path": "Tests/BlastCoreTests/PunchingTests.swift",
    "imports": [
     "Foundation",
@@ -17074,7 +17499,7 @@
    ],
    "class": "gpu",
    "moves": false,
-   "tests": 14,
+   "tests": 15,
    "reasons": [
     "uses MTLCreateSystemDefaultDevice, MTLDevice",
     "its file imports Metal",
@@ -17157,6 +17582,40 @@
     "uses MTLCreateSystemDefaultDevice",
     "its file imports Metal"
    ]
+  },
+  {
+   "path": "Tests/BlastCoreTests/SecurityFilmTests.swift",
+   "imports": [
+    "Foundation",
+    "Testing",
+    {
+     "module": "BlastCore",
+     "attributes": [
+      "@testable"
+     ]
+    }
+   ],
+   "declares": [
+    "SecurityFilmTests",
+    "SecurityFilmTests.Shot"
+   ],
+   "extends": [],
+   "uses": [
+    "Anchorage",
+    "Box",
+    "EnvelopeComponentLoad",
+    "EnvelopeConstruction",
+    "EnvelopeDamageAssessment",
+    "EnvelopePanel",
+    "GlazingHazard",
+    "LaminatedGlassMeasurements",
+    "SDOFResponse",
+    "SecurityFilm"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true,
+   "tests": 3
   },
   {
    "path": "Tests/BlastCoreTests/SettleTests.swift",
@@ -18354,6 +18813,7 @@
    "extends": [],
    "uses": [
     "BlastSolver",
+    "PartPairs",
     "ScenarioPreset",
     "SceneStanding",
     "ShellMesh",
@@ -18365,7 +18825,7 @@
    ],
    "class": "gpu",
    "moves": false,
-   "tests": 2,
+   "tests": 3,
    "reasons": [
     "uses MTLCreateSystemDefaultDevice",
     "its file imports Metal"
@@ -19083,6 +19543,39 @@
     "uses MTLCreateSystemDefaultDevice",
     "its file imports Metal"
    ]
+  },
+  {
+   "path": "Tests/BlastCoreTests/WallLinerTests.swift",
+   "imports": [
+    "Foundation",
+    "Testing",
+    {
+     "module": "BlastCore",
+     "attributes": [
+      "@testable"
+     ]
+    }
+   ],
+   "declares": [
+    "WallLinerTests"
+   ],
+   "extends": [],
+   "uses": [
+    "Box",
+    "EnvelopeComponentLoad",
+    "EnvelopeConstruction",
+    "EnvelopeDamageAssessment",
+    "EnvelopePanel",
+    "LaminatedGlassMeasurements",
+    "SDOFResponse",
+    "SDOFSystem",
+    "StructureMaterial",
+    "WallLiner"
+   ],
+   "gpu_api": [],
+   "class": "cpu",
+   "moves": true,
+   "tests": 3
   },
   {
    "path": "Tests/BlastCoreTests/WallStencilSensitivityTests.swift",
