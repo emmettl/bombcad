@@ -95,6 +95,10 @@ struct FloorPlanView: View {
                         metres("Floor to floor", $options.storeyHeight)
                         metres("Floors and roof, thick", $options.slabThickness)
                         Toggle("Flat roof slab", isOn: $options.roof)
+                        Toggle("Floors and roof inside the outer walls", isOn: $options.slabsInsideWalls)
+                            .help(
+                                "As a BIM model lays them: the outer walls run each storey's full height and the slabs sit between them. Off: the slabs lie over the whole outline, on the walls."
+                            )
                         Toggle(
                             "Ground-bearing slab",
                             isOn: Binding(

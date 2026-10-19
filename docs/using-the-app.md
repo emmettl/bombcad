@@ -476,12 +476,16 @@ How it does on real plans (`FloorPlanTests`, `PlanHouseStudyTests`):
 
 - **The example house**, drawn by centrelines, gives the same building as the FreeCAD route:
   13 shells (8 cavity walls as their brick leaf carrying the block's mass, 2 block partitions,
-  3 slabs), 5 panes of annealed glass and the door as a hole. Its members meet without the
-  89 mm gaps FreeCAD leaves. Under the 20 kg charge described below, the front reads the same
-  126 kPa; the front wall's brick leaf breaks at both storeys as it does from the IFC (274 of
-  6,021 elements removed, against 179 of 5,597); the side and back walls move 7–43 mm (8–53 mm
-  from the IFC), the partitions 25–33 mm (26–34 mm) and the roof 24 mm (11 mm). The plan's
-  roof spans the whole outline over the walls, where FreeCAD's sits within them.
+  3 slabs), 5 panes of annealed glass and the door as a hole. Its floors and roof sit inside the
+  outer walls, which run each storey's full height, as FreeCAD lays them (**Floors and roof inside
+  the outer walls**, on by default; off, they lie over the whole outline, on the walls), and the
+  ties close the same 89 mm gaps. Under the 20 kg charge described below, the front reads the
+  same 126 kPa; the front wall's brick leaf breaks at both storeys as it does from the IFC (265 of
+  5,789 elements removed, against 179 of 5,597); the first floor moves 3.4 mm (3.5 from the IFC),
+  the side and back walls 8–33 mm (8–53 mm), the partitions 11–24 mm (26–34 mm) and the roof
+  29 mm (11 mm). The roofs differ where the broken front wall tears away from a side wall: the
+  plan's at the front right corner, which its side wall's top follows, FreeCAD's at the front
+  left; after a wall fails, such motions move with the smallest change.
 - **The Duplex Apartment** (buildingSMART's sample), its two floors cut from its IFC as an
   architect's plan is drawn, by both faces. The reader finds the four 417 mm outer walls whole
   and the 124 mm partitions. On the ground floor it places all 10 openings the cut crosses (the
