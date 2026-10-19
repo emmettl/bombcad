@@ -37,8 +37,16 @@ enum SurrogateBench {
             guard let path = SurrogateBench.value(args, "loads") else {
                 throw BlastError.allocationFailed("--loads folder")
             }
+            try self.init(
+                args, loads: path,
+                radius: Float(SurrogateBench.value(args, "radius").flatMap(Double.init) ?? 1000))
+        }
+
+        /// The run whose strips are saved in `path`, laid out again from `args`' inputs on a
+        /// square of half side `radius`.
+        init(_ args: [String], loads path: String, radius: Float) throws {
             let inputs = try DistrictInputs.read(args)
-            radius = Float(SurrogateBench.value(args, "radius").flatMap(Double.init) ?? 1000)
+            self.radius = radius
             (scene, _) = try inputs.scene(radius: radius)
             cellSize = inputs.cellSize
             objects = scene.envelopeObjects

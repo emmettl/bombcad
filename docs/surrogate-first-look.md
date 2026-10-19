@@ -150,6 +150,8 @@ district, 75–84%.
 - **Headless**: `BombCAD run project.bombcad --surrogate first-look.json` writes the buildings'
   damage as `--envelope-damage` would, marked as an estimate with its method and standing, and
   does not run (`--resolution` and `--mass` change the inputs as for a run).
+- **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
+  run of its near field with these loads, matched to the run where they meet.
 - **Bench**: `scenebench surrogate-extract` and `surrogate-judge` (Sources/SceneBench/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
   `bombcad/surrogate`.
