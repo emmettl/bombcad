@@ -44,10 +44,10 @@ For each envelope component with a face on the air (`FacadeLoadSurrogate`):
    `KingeryBulmash`): the incident peak and impulse, raised toward the reflected ones by the square
    of its facing, at its scaled distance Z = R / W^(1/3).
 3. **The fitted terms.** The logarithm of its peak (and of its impulse) over the base is a sum
-   of eleven terms: a constant, facing, facing away, log(1 + buildings crossed), the length inside
-   them, log Z and its square, height, ridge and ground rise (each over W^(1/3)), and the cell's
-   size over W^(1/3). A run's loads depend on its cells (a shock spans several of them), so the
-   surrogate gives the loads of a run on the project's cells, not converged ones.
+   of eleven terms: a constant, facing, facing away, log(1 + buildings crossed), log Z and its
+   square, the length inside them, height, ridge and ground rise (each over W^(1/3)), and the
+   logarithm of the cell's size over W^(1/3) (`FacadeLoadSurrogate.terms`). A run's loads depend
+   on its cells (a shock spans several of them), so the surrogate gives the loads of a run on the project's cells, not converged ones.
 4. **Its pulse.** A triangle of that peak and impulse, lasting twice the impulse over the peak,
    rising to its peak over a fitted share of that time (0.2–0.35 on 4 m cells: behind buildings
    the load builds up over tens of milliseconds as the streets fill). On its own training district
@@ -150,6 +150,8 @@ district, 75–84%.
 - **Headless**: `BombCAD run project.bombcad --surrogate first-look.json` writes the buildings'
   damage as `--envelope-damage` would, marked as an estimate with its method and standing, and
   does not run (`--resolution` and `--mass` change the inputs as for a run).
+- **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
+  run of its near field with these loads, matched to the run where they meet.
 - **Bench**: `scenebench surrogate-extract` and `surrogate-judge` (Sources/SceneBench/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
   `bombcad/surrogate`.
