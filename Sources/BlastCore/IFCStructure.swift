@@ -103,11 +103,15 @@ public struct IFCStructure: Sendable {
         /// Pairs of members (`Connection.key`) the user chose to leave untied: the second is drawn
         /// back from the first by `untiedGap(elementSize:thickness:)`.
         public var untied: Set<String>
+        /// Whether a plate laid at one pitch, as a roof's slope, is meshed as a shell in its own
+        /// plane (`Inclination`), tied to the walls under it; otherwise, as any element not
+        /// square to the axes, it is kept as a rigid obstacle.
+        public var inclinedPlates: Bool
 
         public init(
             elementSize: Float = 0.25, defaultMaterial: StructureMaterial = .reinforcedConcrete,
             reinforcement: Float? = nil, base: Anchorage = .dowelled(ratio: BaseConnection.dowelRatio),
-            gap: Float = 0.1, untied: Set<String> = []
+            gap: Float = 0.1, untied: Set<String> = [], inclinedPlates: Bool = false
         ) {
             self.elementSize = elementSize
             self.defaultMaterial = defaultMaterial
@@ -115,6 +119,7 @@ public struct IFCStructure: Sendable {
             self.base = base
             self.gap = gap
             self.untied = untied
+            self.inclinedPlates = inclinedPlates
         }
 
         public init(from decoder: Decoder) throws {
@@ -125,6 +130,7 @@ public struct IFCStructure: Sendable {
             base = try c.decode(Anchorage.self, forKey: .base)
             gap = try c.decode(Float.self, forKey: .gap)
             untied = try c.decodeIfPresent(Set<String>.self, forKey: .untied) ?? []
+            inclinedPlates = try c.decodeIfPresent(Bool.self, forKey: .inclinedPlates) ?? false
         }
     }
 
@@ -348,6 +354,11 @@ public struct IFCStructure: Sendable {
 
         /// Each solid's whole element, finishes and all: a gap to a wall's trimmed layers is no gap.
         var envelopes: [Box] = []
+        /// Plates at a pitch (`Options.inclinedPlates`), added once the boxes square to the axes
+        /// have been fitted to each other, which they take no part in.
+        var pitched:
+            [(member: Int, box: Box, inclination: Inclination, material: StructureMaterial, shape: Shape)] =
+                []
         func add(_ box: Box, _ material: StructureMaterial, _ shape: Shape) -> Int {
             solids.append(box)
             envelopes.append(shape.box)
@@ -383,6 +394,35 @@ public struct IFCStructure: Sendable {
                 || element.name.localizedCaseInsensitiveContains("finish")
             switch Self.family(element.ifcClass) {
             case .plate:
+                if !shape.aligned, options.inclinedPlates, let fit = Self.pitchedPlane(shape.triangles) {
+                    if finishes && picked == nil {
+                        member.notes.append(
+                            "A finish at a pitch: kept as a rigid obstacle, not load-bearing.")
+                        break
+                    }
+                    let reading = read()
+                    var inclination = fit.inclination
+                    if let thickness = reading.thickness, thickness < inclination.thickness - 1e-3 {
+                        member.notes.append(
+                            "Shell \(Self.millimetres(thickness)) thick, its structural layer, of "
+                                + "\(Self.millimetres(inclination.thickness)) overall.")
+                        inclination.thickness = thickness
+                    } else {
+                        member.notes.append(
+                            "Shell \(Self.millimetres(inclination.thickness)) thick, from its geometry.")
+                    }
+                    member.notes.append(
+                        "Laid at its pitch, \(Int(inclination.pitch(in: fit.box).rounded()))°, as a shell in its own "
+                            + "plane, the walls under it cut to its line and tied to it by the base's connection."
+                    )
+                    member.notes += reading.notes
+                    member.role = .shell
+                    member.material = reading.material.name
+                    member.materialSource = reading.source
+                    member.assumed = reading.assumed
+                    pitched.append((members.count, fit.box, inclination, reading.material, shape))
+                    break
+                }
                 guard shape.aligned else {
                     member.notes.append(
                         "Not square to the axes (inclined or curved): kept as a rigid obstacle.")
@@ -728,6 +768,13 @@ public struct IFCStructure: Sendable {
                     + "nodes); none was read from the IFC.")
         }
 
+        var inclinations: [Int: Inclination] = [:]
+        for plate in pitched {
+            let index = add(plate.box, plate.material, plate.shape)
+            members[plate.member].solid = index
+            inclinations[index] = plate.inclination
+        }
+
         // The base: footings' tops, or the lowest member.
         let bodies = structural.compactMap { members[$0].solid }.filter { !panes.map(\.index).contains($0) }
         guard !bodies.isEmpty else {
@@ -776,6 +823,30 @@ public struct IFCStructure: Sendable {
         model.solidMaterial = solidMaterials.map { $0 == options.defaultMaterial ? nil : $0 }
         model.solidSourceParts = modelID == nil ? [] : solidParts
         model.solidReinforcement = Array(repeating: .none, count: solids.count)
+        // Plates at a pitch, each tied to the walls under it that reach it.
+        for (index, inclination) in inclinations.sorted(by: { $0.key < $1.key }) {
+            model.setInclination(inclination, of: index)
+            let roof = solids[index]
+            var law = options.base
+            law.betweenParts = true
+            law.solids = [index]
+            for wall in solids.indices where inclinations[wall] == nil && thinAxis(solids[wall]) != 2 {
+                let box = solids[wall]
+                guard box.max.x > roof.min.x, box.min.x < roof.max.x, box.max.y > roof.min.y,
+                    box.min.y < roof.max.y, box.max.z >= roof.min.z - options.gap, box.min.z < roof.min.z
+                else { continue }
+                let h = options.elementSize
+                model.supports.append(
+                    Box(
+                        min: SIMD3(
+                            max(box.min.x, roof.min.x) - h / 2, max(box.min.y, roof.min.y) - h / 2,
+                            roof.min.z - h),
+                        max: SIMD3(
+                            min(box.max.x, roof.max.x) + h / 2, min(box.max.y, roof.max.y) + h / 2,
+                            roof.max.z + 0.1)))
+                model.supportAnchorages.append(law)
+            }
+        }
 
         // Footings: under each wall or column that stands on one, its own, set into the soil.
         var standing = Set<Int>()
@@ -1323,6 +1394,54 @@ public struct IFCStructure: Sendable {
     }
 
     /// An element turned into the structure's frame.
+    /// The midsurface of a plate laid at one pitch, rising along x or y: the box it runs
+    /// diagonally through and how it lies in it, its thickness that of the plate square to it.
+    /// Nil unless eight tenths of its surface is its two faces (within 3°), flat and at 5° to 60°.
+    static func pitchedPlane(_ triangles: [ImportedMesh.Triangle]) -> (box: Box, inclination: Inclination)? {
+        var faces: [(normal: SIMD3<Float>, area: Float)] = []
+        var total: Float = 0
+        for t in triangles {
+            let normal = simd_cross(t.b - t.a, t.c - t.a)
+            let area = simd_length(normal)
+            guard area > 0 else { continue }
+            total += area
+            faces.append((normal / area, area))
+        }
+        // The faces' mean normal, up; then again over those near it, leaving the edges out.
+        func mean(within cosine: Float, of around: SIMD3<Float>?) -> SIMD3<Float>? {
+            var sum = SIMD3<Float>.zero
+            for face in faces where abs(face.normal.z) > 0.2 {
+                let up = face.normal.z < 0 ? -face.normal : face.normal
+                if let around, simd_dot(up, around) < cosine { continue }
+                sum += face.area * up
+            }
+            return simd_length(sum) > 0 ? simd_normalize(sum) : nil
+        }
+        guard total > 0, let first = mean(within: -1, of: nil),
+            let normal = mean(within: cos(Float(10) * .pi / 180), of: first)
+        else { return nil }
+        let flat = faces.filter { abs(simd_dot($0.normal, normal)) > cos(Float(3) * .pi / 180) }.reduce(0) {
+            $0 + $1.area
+        }
+        let pitch = acos(min(normal.z, 1)) * 180 / .pi
+        let rise = abs(normal.x) >= abs(normal.y) ? 0 : 1
+        guard flat >= 0.8 * total, (5...60).contains(pitch), abs(normal[1 - rise]) < sin(Float(3) * .pi / 180)
+        else { return nil }
+        let points = triangles.flatMap { [$0.a, $0.b, $0.c] }
+        let levels = points.map { simd_dot($0, normal) }
+        let low = levels.min() ?? 0
+        let high = levels.max() ?? 0
+        let middle = (low + high) / 2
+        let projected = points.map { $0 - (simd_dot($0, normal) - middle) * normal }
+        let box = Box(
+            min: projected.reduce(SIMD3<Float>(repeating: .infinity), simd_min),
+            max: projected.reduce(SIMD3<Float>(repeating: -.infinity), simd_max))
+        guard (0..<3).allSatisfy({ box.size[$0] > 1e-3 }), high - low > 1e-3 else { return nil }
+        return (
+            box, Inclination(rise: rise, upwards: normal[rise] < 0, thickness: high - low, trimsWalls: true)
+        )
+    }
+
     struct Shape {
         var element: ImportedMesh.BuildingElement
         /// Its source parts: its own, or an assembly's.

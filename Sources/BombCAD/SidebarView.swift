@@ -409,12 +409,18 @@ struct SidebarView: View {
             if model.settings.detailedCharge {
                 Toggle("Fine start of the blast", isOn: $model.settings.mappedStart)
                     .help(
-                        "Solves a lone charge's first moments on a fine radial grid and maps them onto the "
+                        "Solves each charge's first moments on a fine radial grid and maps them onto the "
                             + "air once the shock has spread as far as it can before meeting anything, instead "
                             + "of starting from a ball of hot gas a few cells across. Peaks close in come within "
                             + "about a sixth of Kingery-Bulmash for charges of 10 kg and more, where the ball leaves "
                             + "them a third to a half low. Off, as "
                             + "before 18 October 2026.")
+                Toggle("Fireball cools as it radiates", isOn: $model.settings.radiativeCooling)
+                    .help(
+                        "Takes the heat the fireball radiates out of its gas, through the thermal radiation's "
+                            + "medium. Against a 41 kg test the fireball then grows to its measured size and fades "
+                            + "within a second; without it, it stays near 2,500 K. Blast loads change by under half "
+                            + "a per cent. Off, as before 19 October 2026.")
             }
             if !model.settings.scenario.structuralObjects.isEmpty {
                 Toggle("Outline structures by overlap", isOn: $model.settings.outlineByOverlap)

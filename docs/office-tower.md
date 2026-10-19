@@ -83,8 +83,9 @@ once when a run started, and the frame sagged its 7 mm while the blast was on it
 ## The blast
 
 Run with `blastbench snapshot --preset office --dx 0.5 --time 3 --frames 0.05,0.25,1,2`: 1,000 kg
-at the kerb, 5 m from the front façade, on 0.5 m air. This run and its images are from before 18
-October 2026, on rigid joints. On fin plates, see [below](#on-fin-plates).
+at the kerb, 5 m from the front façade, on 0.5 m air. This run is from before 18 October 2026, on
+rigid joints; its two images were taken again on 19 October with `--rigid-joints`, in the
+materials' colours. On fin plates, see [below](#on-fin-plates).
 
 | Time | What happens |
 |---|---|

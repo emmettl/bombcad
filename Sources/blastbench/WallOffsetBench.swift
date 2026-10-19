@@ -4,9 +4,11 @@ import Metal
 import simd
 
 /// `blastbench walloffset [--dx 0.25] [--offsets 0,0.1,...] [--time 0.012] [--mass 1] [--thickness 0.3]
-/// [--element dx/2] [--cut] [--probe]`: a free wall 2 m high, 3 m wide and 0.3 m thick, its face about 3 m from a surface burst, placed at a
+/// [--element dx/2] [--cut] [--probe] [--plane]`: a free wall 2 m high, 3 m wide and 0.3 m thick, its face about 3 m from a surface burst, placed at a
 /// fraction of a cell off the lattice: the momentum the air has given it by the end and its
 /// largest force, which a wall's outline drawn in whole cells makes depend on the offset.
+/// `--plane`: the wall across a closed channel 1 m square instead, struck by a plane blast from
+/// air at 8 atmospheres in its first 1.5 m, whose loads hardly depend on the offset at all.
 func runWallOffset(device: MTLDevice) throws {
     let dx = option("dx").flatMap { Float($0) } ?? 0.25
     let mass = option("mass").flatMap { Float($0) } ?? 1
@@ -23,7 +25,11 @@ func runWallOffset(device: MTLDevice) throws {
     print("  offset (cells)  face x m   front N s (3 ms)  per 1/R   peak force kN")
     for offset in offsets {
         let face = 5 + offset * dx
-        let wall = Box(min: SIMD3(face, 1.5, 0), max: SIMD3(face + thickness, 4.5, 2))
+        let plane = flag("plane")
+        let wall =
+            plane
+            ? Box(min: SIMD3(face, 0, 0), max: SIMD3(face + thickness, 1, 1))
+            : Box(min: SIMD3(face, 1.5, 0), max: SIMD3(face + thickness, 4.5, 2))
         var model = StructureModel(
             solids: [wall], material: .elastic(density: 2400, youngsModulus: 30e9, poissonRatio: 0.2),
             elementSize: element, fixedBase: false)
@@ -31,10 +37,13 @@ func runWallOffset(device: MTLDevice) throws {
         // A gauge in the air 1 m before the wall's face as placed on the lattice, at mid-height:
         // the incident and reflected waves the air itself makes, before any reading of it onto
         // the wall.
-        let scenario = Scenario(
-            name: "Wall offset", domainSize: SIMD3(10, 6, 4), boxes: [],
-            charge: Charge(mass: mass, position: SIMD3(2, 3, 0)),
-            gauges: [Gauge("Front", at: SIMD3(4.01, 3.01, 1.01))], structure: model)
+        var scenario = Scenario(
+            name: "Wall offset", domainSize: plane ? SIMD3(10, 1, 1) : SIMD3(10, 6, 4), boxes: [],
+            charge: Charge(
+                mass: plane ? 1e-6 : mass, position: plane ? SIMD3(0.5, 0.5, 0.5) : SIMD3(2, 3, 0)),
+            gauges: [Gauge("Front", at: plane ? SIMD3(4.01, 0.51, 0.51) : SIMD3(4.01, 3.01, 1.01))],
+            structure: model)
+        if plane { scenario.reflectiveFaces = .all }
         var configuration = SolverConfiguration.recommended
         configureRefinement(&configuration)
         applyChosenMask(&configuration)
@@ -44,6 +53,14 @@ func runWallOffset(device: MTLDevice) throws {
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: dx, configuration: configuration)
         guard let structure = solver.structure else { continue }
+        if plane {
+            // The plane blast: the channel's first 1.5 m at 8 atmospheres and four times the density.
+            solver.fill { i, _, _ in
+                Float(i) * dx < 1.5
+                    ? Primitive(density: 4 * 1.225, pressure: 8 * 101325)
+                    : Primitive(density: 1.225, pressure: 101325)
+            }
+        }
         structure.gravity = 0
         structure.groundContact = false
         var history: [(time: Double, momentum: Double)] = [(0, 0)]

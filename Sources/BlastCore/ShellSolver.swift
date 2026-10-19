@@ -388,7 +388,15 @@ public final class ShellSolver {
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library)
         }
-        elementPipeline = try pipeline("shellElements")
+        // Elements at a pitch compiled in only for a body that has them.
+        if model.hasInclinedSolids {
+            let constants = MTLFunctionConstantValues()
+            var pitched = true
+            constants.setConstantValue(&pitched, type: .bool, index: 25)
+            elementPipeline = try ShaderLibrary.pipeline("shellElements", in: library, constants: constants)
+        } else {
+            elementPipeline = try pipeline("shellElements")
+        }
         beamPipeline = try pipeline("beamElements")
         debrisAreaPipeline = try pipeline("shellDebrisAreas")
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -863,6 +871,8 @@ public final class ShellSolver {
         for (owner, list) in points.enumerated() where !list.isEmpty {
             for slot in Set(list.map(\.slot)).sorted() {
                 guard let law = model.connection(inSlot: slot), let grid = cells[slot] else { continue }
+                // Only the faces of the solids the joint names, if it names any.
+                if let solids = law.solids, members[owner].isDisjoint(with: solids) { continue }
                 let region = model.supports[slot - 1]
                 let area = list.filter { $0.slot == slot }.reduce(0) { $0 + $1.area }
                 let at = positions[owner]
@@ -879,6 +889,7 @@ public final class ShellSolver {
                             for k in -ring...ring where max(abs(i), abs(j), abs(k)) == ring {
                                 for n in grid[centre &+ SIMD3(i, j, k)] ?? []
                                 where n != owner && members[n].isDisjoint(with: members[owner])
+                                    && law.partners.map({ !members[n].isDisjoint(with: $0) }) ?? true
                                     && simd_dot(at - positions[n], law.across) > -1e-3 * h
                                 {
                                     let distance = simd_distance(at, positions[n])
@@ -923,6 +934,22 @@ public final class ShellSolver {
                 pair.law.stiffnessAndTension.x, pair.law.stiffnessAndTension.y,
                 pair.law.closing.x > 0 ? pair.law.closing.y : 0)
             anchorFrequencySquared = max(anchorFrequencySquared, stiffest * pair.area / pair.reducedMass)
+        }
+    }
+
+    /// The `count` fastest nodes: their speed, reference position and the solids they belong to.
+    public func fastestNodes(_ count: Int) -> [(speed: Float, position: SIMD3<Float>, solids: [Int])] {
+        var owners = [Set<Int>](repeating: [], count: mesh.positions.count)
+        for element in mesh.elements {
+            for c in 0..<4 { owners[Int(element.nodes[c])].insert(element.solid) }
+        }
+        for beam in mesh.beams { for end in 0..<2 { owners[Int(beam.nodes[end])].insert(beam.solid) } }
+        var speeds: [(speed: Float, node: Int)] = []
+        mutateNodes { nodes in
+            for n in nodes.indices { speeds.append((simd_length(SIMD3<Float>(nodes[n].velocity)), n)) }
+        }
+        return speeds.sorted { $0.speed > $1.speed }.prefix(count).map {
+            ($0.speed, mesh.positions[$0.node], owners[$0.node].sorted())
         }
     }
 

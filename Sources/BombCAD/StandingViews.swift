@@ -12,7 +12,8 @@ extension ProjectRunSettings {
         gravity: Bool = false, shockThreshold: Float = 0.1, adaptiveSubsteps: Bool = false,
         terrainCutCells: Bool = true,
         groundStiffness: Float? = nil, ground: GroundType? = nil, outlineByOverlap: Bool = true,
-        settlesStructures: Bool = true, mappedStart: Bool = false, refinementCeiling: Float? = nil
+        settlesStructures: Bool = true, mappedStart: Bool = false, refinementCeiling: Float? = nil,
+        radiativeCooling: RadiativeCooling? = nil
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
@@ -30,6 +31,8 @@ extension ProjectRunSettings {
         configuration.settlesStructures = settlesStructures
         // The fine one-dimensional start, with the afterburning and hot air it was checked with.
         configuration.mappedCharge = detailedCharge && mappedStart
+        // The fireball losing what it radiates, with the afterburning that makes one.
+        configuration.radiativeCooling = detailedCharge ? radiativeCooling : nil
         configuration.refinementCeiling = sharpShocks ? refinementCeiling : nil
     }
 
@@ -45,7 +48,8 @@ extension ProjectRunSettings {
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
             groundStiffness: groundStiffness, ground: ground,
             outlineByOverlap: countsByOverlap(over: scenario), mappedStart: mappedStart == true,
-            refinementCeiling: refinementCeiling)
+            refinementCeiling: refinementCeiling,
+            radiativeCooling: cools ? RadiativeCooling() : nil)
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,

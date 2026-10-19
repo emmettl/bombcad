@@ -56,6 +56,49 @@ Anything else, a block as long as it is wide, cannot be meshed this way.
    with the node, so the base can rock on its toe (see
    [base connections](structural-model.md#base-connections)).
 
+### Shells at a pitch
+
+A solid can be laid as a plane at a pitch (`Inclination`), as a roof's slope is: the plane runs
+diagonally through the solid's box, from its bottom along its low side to its top along its high
+side, rising along x or y.
+
+- **Mesh.** It is meshed in its own plane, outside the lattice of the boxes square to the axes:
+  its elements are `elementSize` or less a side, along the low edge and up the slope. Two slopes
+  meeting along an edge, a roof's two slopes at its ridge, share their nodes there (nodes within
+  0.1 mm are one). It never shares nodes with a wall: it is joined to what holds it up by
+  [joints between parts](structural-model.md#base-connections). A joint's `solids` name the slope,
+  so that it ties only the slope's faces, and its `partners` name what the slope may bear on.
+  Otherwise, on a steep slope, the tiles of a lower course lie under the rafters further up,
+  nearer than the wall, and the slope and its tiles would hold each other up. A joint whose
+  region a slope now crosses, as a gable's cavity ties up to the ridge, wants the same: tied at
+  their edges, the slope and tiles flew apart there.
+- **Elements.** Each element takes its axes from its corners, the first edge along the slope's low
+  edge, the second up it, the normal out of the plane. The element's strains, bars and timber
+  grain are read in those axes (a timber slope's `grainAxis` 2 runs up the slope). The kernel
+  takes this path only behind a function constant, so models without a pitched plane run as
+  before to the bit.
+- **Gables.** With `trimsWalls`, the walls under the plane lose their elements whose centres lie
+  above it, so a wall run up to the ridge becomes a gable, stepped by up to half an element.
+- **Air.** Parallel planes at a pitch shield each other's facing faces, as a cavity wall's leaves
+  do ([coupling to the air](#coupling-to-the-air)). So the tiles and the slope 62.5 mm under them,
+  in one air cell, do not both take the whole blast; the air shut between them is a spring.
+- **Checked.** A plate 2 m long cantilevered from its low edge at 30° deflects, square to itself,
+  within 2% as the same plate laid flat under the share of its weight across it
+  (`InclinedShellTests`). No pitched roof under blast was found to compare with.
+
+**A pitched roof** (`StructureModel.addPitchedRoof`, the app's *Add Pitched Roof*) puts two slopes
+over a structure's plan from the tops of its walls. Each slope is rafters smeared into a timber
+plate (`rafteredRoof`): 100 × 50 mm C16 rafters at 400 mm with their battens, 50 mm thick, 9
+kg/m², their bending capacity per metre. Its covering hangs on battens over it on its nibs
+(`pitchedCoveringSeat`, below). The end walls across the ridge are raised to it and cut to gables.
+Each slope bears level on every wall under it that reaches its eaves, as a rafter's birdsmouth
+seats it on the wall plate, by the joist pocket's law (friction 0.7, a little cohesion, no
+nails). Rafters this size span about 2.5 m up the slope under tiles (building control's span
+tables, e.g. Eden District Council's), so a wider roof needs a purlin or wall under it, added as
+a piece of its own. An IFC roof slab at one pitch can be brought in the same way (*Roof slabs at
+a pitch as shells at their pitch* on import, `IFCStructure.Options.inclinedPlates`). It is
+fitted to its faces' plane and tied to the walls under it by the base connection.
+
 ## Elements
 
 **Shells.**
@@ -409,8 +452,25 @@ houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m sto
 - **Floors and roof:** timber joists, 47 × 200 mm C24 at 400 mm under 22 mm boards. The 125 mm
   mesh cannot hold the joists, so each floor is smeared into a 98 mm timber plate with the
   joists' bending stiffness, mass and bending capacity per metre, spanning between the party
-  walls and gables. The pitched roof is a flat roof of the same make at the eaves, since boxes
-  square to the axes cannot pitch.
+  walls and gables. The top floor's plate is the ceiling.
+- **The roof:** pitched at 40°, its ridge along the row over the middle of its depth, the
+  gables and party walls run up to it and cut to its line ([shells at a
+  pitch](#shells-at-a-pitch)).
+  - **Pitch.** Plain clay tiles want at least 35° (BS 5534; the makers' data). No survey of
+    1930s houses' pitches was found, so 40° is an assumption within what the tiles allow.
+  - **Slopes.** Rafters smeared into a timber plate (`rafteredRoof`), not beams: the 125 mm
+    mesh cannot hold 50 mm rafters, as it cannot the joists. A purlin runs under each
+    slope at mid-slope (100 × 175 mm C24, assumed), built into the gables and party walls.
+  - **Seats.** The rafters bear level on the front and back walls' tops and on the purlins,
+    house by house, and on the gables and party walls, each by the joist pocket's law below.
+  - **Covering.** It hangs on its battens over each slope (`pitchedCoveringSeat`). BS 5534 nails
+    every tile of every fifth course twice (Marley's and Wienerberger's summaries), and the rest
+    hang on their nibs. So the seat holds the covering along the slope (5 kPa, ten times the
+    downhill share of the tiles at 40°; no measured strength of nibs or nails was found) until it
+    has lifted 25 mm off its battens or slid 10 mm off its nibs. After that it rests on friction
+    0.5 alone.
+  - **The flat roof** of before (`terracedRow(pitch: nil)`) remains, with the covering's seat
+    below.
 - **Joists' seats** (`joistPocket`): each plate stops 25 mm short of the walls. At the party walls
   and gables its edge rests in a pocket 100 mm deep, unstrapped as before the 1980s (LABC: older
   walls get no restraint from the floors). The joist bears on the brick, can lift off it, and is
@@ -420,9 +480,9 @@ houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m sto
   0.04, lost over 2 mm) on the joists' bearing. The brickwork above the pocket does not hold the
   joist down. The front and back walls get no restraint from the floors.
 - **Roof covering** (`RoofCovering`): plain clay tiles, 73.2 kg/m² as laid (Keymer's), or
-  concrete interlocking tiles (50 kg/m², Marley) or Welsh slate (about 25 kg/m²). It is a layer
-  25 mm thick over the whole row, resting on the roof and the walls' tops by its weight and
-  friction 0.5 (`roofCoveringSeat`). The nails that BS 5534 puts in every fourth or fifth course
+  concrete interlocking tiles (50 kg/m², Marley) or Welsh slate (about 25 kg/m²). On the flat
+  roof it is a layer 25 mm thick over the whole row, resting on the roof and the walls' tops by
+  its weight and friction 0.5 (`roofCoveringSeat`). The nails that BS 5534 puts in every fourth or fifth course
   of plain tiles and in every slate are left out, since no measured pull-out was found, so
   suction greater than its weight lifts it. It holds together weakly (10 kPa of tension), so once
   lifted it breaks up into pieces about an element across and is thrown as debris. It sits 60 mm
@@ -434,8 +494,12 @@ houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m sto
   The storey height is assumed. Pre-1919 terraces, a third of them, have solid one-brick walls
   instead.
 
-At rest the floors' seats carry the floors' weight within 3%, the covering rests on the roof
-and walls with its weight, and the ties carry nothing (`TerracedHousesTests`).
+![The terraced row 100 ms after 25 kg in the street, 10 m in front: its 40° roof, gables and open windows, coloured by damage](terraced-row.png)
+
+At rest the floors' seats carry the floors' weight within 3%, and the ties carry nothing
+(`TerracedHousesTests`). Under the pitched roof the tiles hang on the slopes with their weight,
+the rafters' seats carry the slopes and tiles within 5%, and nothing slides; on the flat roof
+the covering rests on the roof and walls with its weight.
 `blastbench house` runs the row under any charge and grades each house by the wartime damage
 categories (`TerracedRowDamage`); its comparison with bombed houses is in
 [validation](validation.md#terraced-houses-against-wartime-bomb-damage).
@@ -961,7 +1025,8 @@ too ductile at a blast's rate as the bolted ones would be.
 8. **Damage reads higher on larger elements** for the same crack, since the removal strain is
    the removal width over the element size.
 9. **Structures from IFC are only as square as their boxes.** Each wall, slab and member is
-   one box square to the axes: inclined and curved elements stay rigid, a wall's layers become
+   one box square to the axes. Curved elements stay rigid, and so do inclined ones unless they
+   are plates at one pitch and that is asked for. A wall's layers become
    its one structural layer, flanged steel a rectangle of equal bending stiffness (about twice
    as stiff axially), and members that meet are tied rigidly. Parallel plates a little apart
    are moved onto one midsurface (by up to a quarter of an element), as the mesh's lines run

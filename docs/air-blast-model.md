@@ -893,8 +893,9 @@ UFC 3-340-02, lowest for light charges.
 4. **One gas.** Detonation products are treated as air: by default as an ideal gas of γ = 1.4,
    or as thermally perfect air, so the fireball's composition, and its temperature, are not
    realistic. The mapped start can carry them as detonation products (JWL, an option), which
-   moves open-air loads too little to adopt; in contact, never mapped, they stay air. It loses the heat it radiates only with radiative cooling on, and then only above
-   the luminous temperature, as a grey gas with soot, into black, cold surroundings.
+   moves open-air loads too little to adopt; in contact, never mapped, they stay air. It loses the heat it radiates (by default since 19 October 2026,
+   [radiative cooling](thermal-radiation.md#the-gas-losing-what-it-radiates)) only above the
+   luminous temperature, as a grey gas with soot, into black, cold surroundings.
 5. **Moving solids are a staircase of whole cells.** A moving wall pushes the gas through its
    ghost states, and its surface jumps a cell at a time. The gas is conserved within 0.3% as it
    does; see the structural model's coupling notes.

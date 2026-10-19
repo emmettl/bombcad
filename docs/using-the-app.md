@@ -52,7 +52,10 @@ block by block with its mortar joints, and the internal-explosion test
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
-pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). **Add
+pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). **Add Pitched
+Roof** (for a structure of shells) sets a pitch, the ridge's direction and the covering. It puts
+two raftered slopes over the structure from its walls' tops and raises the end walls to gables
+([shells at a pitch](shell-model.md#shells-at-a-pitch)). **Add
 Independent Structure** adds another structure, up to sixteen, each with its own materials,
 supports, mesh and results (**Editing structure** picks which one the edits go to; imports make
 one each); they share the air, and meet through contact if they come close. You can move
@@ -190,6 +193,38 @@ Out shows what it costs before the project is made. What such a run gets right a
 1.5 km against the structure, is on [Beirut's page](beirut-2020.md#what-holds-and-what-does-not).
 The made-up district in `Fixtures/SyntheticDistrict` (a map, heights and terrain) tries the window
 in seconds.
+
+## Inferring the charge from arrivals
+
+**Simulation ▸ Infer Charge from Arrivals…** works back from when observers saw or heard the shock
+arrive to the charge: its yield in TNT and its place, each with its uncertainty, and if asked a
+clock offset common to every observer and the burst's height. It is
+[`scenebench infer-charge`](charge-inference.md) in a sheet, by Kingery–Bulmash's arrival times.
+- **Choose Arrivals…** reads a CSV with `name,lat,lon,earliest_s,latest_s`, each arrival a window
+  of time after the explosion (a video frame, or a sound's onset and the frame before it), or
+  Rigby et al.'s table as published. The reference point, about which the place is searched,
+  starts at the observers' centre.
+- **The search**: the air's temperature (a hot day lowers the yield the same arrivals give), the
+  yields searched (even in their logarithm, 1 t to 10 kt to start), the search radius about the
+  reference point, and whether to infer a clock offset or a height.
+- **Broken glass** (GEER's façade shapefile, its `.dbf` beside it, or a CSV
+  `lat,lon,class[,normal_azimuth_deg]`) is off unless chosen and turned on. It is illustrative: on
+  Beirut it fits no yield and pulls the result towards a small charge
+  ([broken glass](charge-inference.md#broken-glass)), and the standing falls to illustrative with it.
+- **Infer** samples the posterior on this Mac's processor, with progress, in about a second for
+  arrivals alone (half a minute with thousands of façades); Cancel stops it and keeps nothing.
+
+The result gives the yield's median and its 68% and 90% intervals, the place (its longitude and
+latitude, its distance from the reference point, and the radii holding half and 90% of the
+samples), the offset and height where inferred, and how far the observers lie off the model. A plan
+draws the observers, the reference point, the place's samples and the circles about the median,
+north up. The standing is the table's ([estimates beside a run](validation.md#the-charge-from-its-arrivals)).
+
+**Place Charge at Median** puts the scene's charge at the median place and yield, given the
+longitude and latitude of the scene's corner (0, 0), as a map import takes them; the height, if
+inferred, becomes the charge's. It needs the simulation reset, and says so if the place lies outside
+the scene. BombCAD's own ratios (`--correction`, which bring the yield within 3% on BombCAD's
+charges) are for the command line only.
 
 ## Importing models
 

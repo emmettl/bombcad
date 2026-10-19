@@ -179,6 +179,10 @@ struct SimulationSettings: Equatable {
     /// onto the grid (`SolverConfiguration.mappedCharge`), by default since 18 October 2026; off, as
     /// before, from a sphere of hot gas a few cells across.
     var mappedStart = true
+    /// With afterburning and hot air, the fireball's gas loses the heat it radiates
+    /// (`SolverConfiguration.radiativeCooling`, the thermal description's medium), by default since
+    /// 19 October 2026; off, as before, it keeps it and stays hot.
+    var radiativeCooling = true
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -463,6 +467,9 @@ final class SimulationModel {
     /// the menus open.
     var showsParameterSweep = false
     var showsRunComparison = false
+    /// The Infer Charge sheet, and its observers and posterior, kept while the window is open.
+    var showsChargeInference = false
+    let chargeInference = ChargeInferenceModel()
     /// Asked of the views that own them from the menus, and cleared there: choosing a model to
     /// import, naming the run to keep, and saving the results as CSV.
     var requestsModelImport = false
@@ -970,6 +977,7 @@ final class SimulationModel {
                 settings.ventsGlazing = run.ventsGlazing(over: scenario)
                 settings.settlesStructures = run.settlesStructures(over: scenario)
                 settings.mappedStart = run.startsMapped
+                settings.radiativeCooling = run.cools
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
@@ -1125,6 +1133,7 @@ final class SimulationModel {
             settings.ventsGlazing = run.ventsGlazing(over: document.scenario)
             settings.settlesStructures = run.settlesStructures(over: document.scenario)
             settings.mappedStart = run.startsMapped
+            settings.radiativeCooling = run.cools
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
@@ -1337,6 +1346,7 @@ final class SimulationModel {
         settings.ventsGlazing = inputs.settings.ventsGlazing(over: inputs.scenario)
         settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
         settings.mappedStart = inputs.settings.startsMapped
+        settings.radiativeCooling = inputs.settings.cools
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
@@ -1626,6 +1636,20 @@ final class SimulationModel {
         let centre = settings.scenario.domainSize / 2
         let wall = Box(x: centre.x...(centre.x + 0.25), y: (centre.y - 2)...(centre.y + 2), height: 3)
         editStructure { $0.solids.append(wall) }
+        selection = componentSelection(.solid, at: (editedStructure?.solids.count ?? 1) - 1)
+    }
+
+    /// Puts a pitched roof over the edited structure's plan, from eaves at the tops of its walls
+    /// (`StructureModel.addPitchedRoof`). Only a structure meshed as shells takes one: the slopes
+    /// cut the walls under them to their line as shells.
+    func addPitchedRoof(_ roof: PitchedRoof) {
+        guard let body = editedStructure, body.isAllShells else { return }
+        let pieces = body.solids.indices.filter { body.inclination(of: $0) == nil }.map { body.solids[$0] }
+        guard let first = pieces.first else { return }
+        let plan = pieces.dropFirst().reduce(first) {
+            Box(min: simd_min($0.min, $1.min), max: simd_max($0.max, $1.max))
+        }
+        editStructure { $0.addPitchedRoof(roof, over: plan, eaves: plan.max.z) }
         selection = componentSelection(.solid, at: (editedStructure?.solids.count ?? 1) - 1)
     }
 
@@ -2574,7 +2598,10 @@ final class SimulationModel {
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
             ground: settings.ground == .rigid ? nil : settings.ground,
             outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
-            mappedStart: settings.mappedStart, refinementCeiling: settings.refinementCeiling)
+            mappedStart: settings.mappedStart, refinementCeiling: settings.refinementCeiling,
+            // The gas's own radiation, whatever the thermal overlay reckons: the overlay changes
+            // nothing in the air.
+            radiativeCooling: settings.radiativeCooling ? RadiativeCooling() : nil)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
         // A mapped start begins no later than halfway through the run, so that the grid has the rest.
         solver.mappedStartLatest = duration / 2

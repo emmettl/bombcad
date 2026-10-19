@@ -603,6 +603,60 @@ do {
         }
         exit(0)
     }
+    if arguments.contains("--car-wall") {
+        // A saloon broadside to a reinforced concrete wall, blown into it by a charge on its far
+        // side, the wall deformable and then a rigid block: --mass=20 --distance=3 --gap=0.3
+        // --duration=0.2
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        func option(_ name: String) -> String? {
+            arguments.first(where: { $0.hasPrefix("--\(name)=") }).map {
+                String($0.dropFirst(name.count + 3))
+            }
+        }
+        let charge = option("mass").flatMap(Float.init) ?? 20
+        let distance = option("distance").flatMap(Double.init) ?? 3
+        let gap = option("gap").flatMap(Double.init) ?? 0.3
+        let duration = option("duration").flatMap(Double.init) ?? 0.2
+        // 0.2 m thick, 6 m long and 2.5 m high, clamped at its base, with a mat in each face.
+        let wall = Box(min: SIMD3(10, 7, 0), max: SIMD3(10.2, 13, 2.5))
+        var model = StructureModel(solids: [wall], elementSize: 0.1, fixedBase: true)
+        model.addMat(to: wall, thicknessAxis: 0, areaPerMetre: 565e-6, depth: 0.04)
+        let side = 10 - gap - 1.55 / 2
+        let car = try RigidCarDefinition.saloon(
+            name: "Saloon", position: SIMD3(side, 10, 0),
+            orientation: SIMD4(0, 0, sin(Double.pi / 4), cos(Double.pi / 4)))
+        for deformable in [true, false] {
+            var scene = Scenario(
+                name: "Car and wall", domainSize: SIMD3(24, 20, 8), boxes: deformable ? [] : [wall],
+                charge: Charge(mass: charge, position: SIMD3(Float(side - 1.55 / 2 - distance), 10, 0.5)),
+                structure: deformable ? model : nil)
+            scene.rigidCars = [car]
+            let started = Date.timeIntervalSinceReferenceDate
+            let r = try FreestandingMotion.compute(
+                device: device, scenario: scene, duration: duration, frameInterval: 0.01,
+                cellSize: deformable ? nil : 0.1, refinement: deformable ? nil : 1
+            ) { time in
+                print(String(format: "  %@: %.3f s", deformable ? "deformable" : "rigid", time))
+                fflush(stdout)
+            }
+            let object = r.objects[0]
+            print(
+                String(
+                    format:
+                        "%@ wall, %.0f kg at %.1f m, gap %.2f m: %d cells of %.2g m, %.3f s in %d steps, %.0f s. Car moved %.2f m (x %.2f), peak %.2f m/s, peak tilt %.1f°, overturned %@; wall's reaction %@%@",
+                    deformable ? "Deformable" : "Rigid", charge, distance, gap, r.cells, r.cellSize,
+                    r.duration,
+                    r.steps, Date.timeIntervalSinceReferenceDate - started, simd_length(object.displacement),
+                    object.displacement.x, object.peakSpeed, object.peakTilt,
+                    object.overturned ? "yes" : "no",
+                    r.structureReaction.map { String(format: "%.0f N s", $0.x) } ?? "not recorded",
+                    r.failure.map { "; stopped: \($0)" } ?? ""))
+            fflush(stdout)
+        }
+        exit(0)
+    }
     if let populated = arguments.first(where: { $0.hasPrefix("--populated") }) {
         // --populated[=carPark,furnishedRoom,crowdedPen] --duration=0.2 [--free-only] [--cases=0.15x2]
         guard let device = MTLCreateSystemDefaultDevice() else {

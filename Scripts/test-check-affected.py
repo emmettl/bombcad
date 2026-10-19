@@ -37,6 +37,7 @@ class TierTests(unittest.TestCase):
         self.assertEqual(check.tier(["Scripts/reference/compare.py", "Scripts/reference/tables/blast1d-tnt.json"]),
                          "documents")
         self.assertEqual(check.tier(["Scripts/analytic/sedov.py"]), "documents")
+        self.assertEqual(check.tier(["Scripts/protective/model.py"]), "documents")
 
 
 class SuiteTests(unittest.TestCase):
@@ -346,6 +347,114 @@ class MapHelperTests(unittest.TestCase):
             self.assertEqual((found["commit"], found["distance"]), (commits[1], 1))
             # A map of a commit after the base isn't used.
             self.assertEqual(impact.newest_map(maps, commits[0], root=root)["commit"], commits[0])
+
+
+# MARK: - Where the build and tests run
+
+STATUS = """memory budget 26 GB of 36 GB RAM
+slot 1: pid 44898 since 09:51 in blissful-proskuriakova-55513a (8 GB): make check-affected
+slot 2: pid 21139 since 11:17 in eager-jang-174d10 (2 GB): make check-affected
+slot 3: free
+waiting: pid 12107 since 11:12: 8 GB beirut1k: scenebench district-compare --osm x.osm
+waiting: pid 13509 since 11:13: 1 GB cool-williams-3272be: swift test --skip-build --filter
+waiting: pid 17538 since 11:15: 5 GB roofs: .build/release/blastbench house --mass 96
+"""
+
+
+def mini(lock=None, lanes=(), runners=(), all_runners=(), quiet=False, load=2.4, free=77, pressure=1):
+    return {"load": load, "cores": 10, "gpu": 0.1, "gpuTop": [], "lock": lock, "lanes": list(lanes),
+            "runners": list(runners), "allRunners": list(all_runners), "quiet": quiet, "freePercent": free,
+            "pressure": pressure}
+
+
+class WhereTests(unittest.TestCase):
+    settings = dict(check.remote.DEFAULTS, host="mini")
+
+    def decide(self, queue, state, **arguments):
+        asked = []
+
+        def ask():
+            asked.append(True)
+            return state
+        arguments.setdefault("mem", self.settings["laneGB"])
+        arguments.setdefault("host", "mini")
+        where, why = check.decide(queue, ask, self.settings, **arguments)
+        return where, why, bool(asked)
+
+    def test_the_queue_is_read_from_gpu_slot_status(self):
+        queue = check.parse_queue(STATUS)
+        self.assertEqual(queue, {"held": [8, 2], "waiting": [8, 1, 5], "budget": 26})
+        self.assertTrue(check.studio_busy(queue))
+        self.assertFalse(check.studio_busy(queue, min_waiting=4))
+        self.assertEqual(check.parse_queue(""), {"held": [], "waiting": [], "budget": None})
+
+    def test_a_short_line_stays_here_without_asking_the_mini(self):
+        queue = {"held": [4, 2], "waiting": [1, 1], "budget": 26}
+        where, why, asked = self.decide(queue, mini())
+        self.assertEqual(where, "here")
+        self.assertIn("short: 2 waiting", why)
+        self.assertFalse(asked)
+
+    def test_a_long_line_and_a_free_mini_go_there(self):
+        where, why, asked = self.decide(check.parse_queue(STATUS), mini())
+        self.assertEqual(where, "there", why)
+        self.assertIn("3 waiting", why)
+        self.assertTrue(asked)
+
+    def test_declared_memory_past_the_budget_counts_as_busy(self):
+        queue = {"held": [14, 8], "waiting": [6], "budget": 26}
+        self.assertEqual(self.decide(queue, mini())[0], "there")
+
+    def test_a_long_line_but_a_taken_mini_stays_here(self):
+        queue = check.parse_queue(STATUS)
+        for state, words in [
+            (None, "did not answer"),
+            (mini(runners=["Developer/actions-runner"]), "runners are busy"),
+            (mini(quiet=True), "nightly window"),
+            (mini(load=14), "its load is 14.0"),
+            (mini(lock={"what": "BombCAD worker"}), "another BombCAD job holds it (BombCAD worker)"),
+        ]:
+            with self.subTest(words=words):
+                where, why, _ = self.decide(queue, state)
+                self.assertEqual(where, "here")
+                self.assertIn(words, why)
+
+    def test_a_second_lane_beside_a_declared_job(self):
+        queue = check.parse_queue(STATUS)
+        lane = {"lane": 1, "pid": 1, "what": "check-steps from a (7 GB)", "mem": 7}
+        busy_lane = mini(lock=lane, lanes=[lane], load=12)
+        self.assertEqual(self.decide(queue, busy_lane)[0], "there")
+        # Not beside a job that declared nothing, nor when memory or the runners say no.
+        undeclared = dict(lane, mem=None, what="make check from b")
+        for state, words in [
+            (mini(lock=undeclared, lanes=[undeclared]), "declares no memory"),
+            (mini(lock=lane, lanes=[lane], free=40), "40% of its memory is free"),
+            (mini(lock=lane, lanes=[lane], pressure=2), "pressure is not normal"),
+            (mini(lock=lane, lanes=[lane], all_runners=["Developer/edgerton-runner"]), "edgerton-runner"),
+            (mini(lock=lane, lanes=[lane, dict(lane, lane=2)]), "lanes are taken"),
+        ]:
+            with self.subTest(words=words):
+                where, why, _ = self.decide(queue, state)
+                self.assertEqual(where, "here")
+                self.assertIn(words, why)
+        # A full check declares nothing: never in a second lane.
+        self.assertEqual(self.decide(queue, busy_lane, mem=None)[0], "here")
+
+    def test_overrides_and_holding_a_slot(self):
+        short = {"held": [], "waiting": [], "budget": 26}
+        self.assertEqual(self.decide(short, mini(), forced="remote")[:2], ("there", "--remote"))
+        self.assertEqual(self.decide(check.parse_queue(STATUS), mini(), forced="local")[:2], ("here", "--local"))
+        where, why, asked = self.decide(check.parse_queue(STATUS), mini(), in_slot=True)
+        self.assertEqual(where, "here")
+        self.assertIn("already holds a gpu-slot slot", why)
+        self.assertFalse(asked)
+        self.assertEqual(self.decide(None, mini())[0], "here")
+        self.assertIn("no other Mac", self.decide(check.parse_queue(STATUS), mini(), host=None)[1])
+
+    def test_the_steps_are_the_same_here_and_there(self):
+        self.assertEqual(check.steps(["AirTests", "GlassTests"]),
+                         [["make", "build-strict"], ["make", "ifc-converter"],
+                          ["swift", "test", "--filter", r"\.(AirTests|GlassTests)(/|$)"]])
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 release time, so sessions never edit the same notes file.
 
     python3 Scripts/release-notes.py add <topic>        write next/<topic>.md from the template
-    python3 Scripts/release-notes.py assemble 0.6.0     append them to 0.6.0.md by kind, remove them
+    python3 Scripts/release-notes.py assemble 0.6.0     add them to 0.6.0.md by kind, remove them
     python3 Scripts/release-notes.py check              every fragment well formed (ci-test)
 """
 
@@ -43,6 +43,28 @@ def assembled(parts):
     return "\n\n".join(sections) + "\n"
 
 
+def merged(existing, parts):
+    """`existing` notes with `parts` added by kind: each kind's fragments at the end of its own
+    "## " section where the notes already have one, else in a new section after the rest."""
+    lines = existing.rstrip("\n").split("\n")
+    missing = []
+    for kind, heading in KINDS.items():
+        bodies = [body for k, body in parts if k == kind]
+        if not bodies:
+            continue
+        try:
+            start = lines.index(f"## {heading}")
+        except ValueError:
+            missing += [(kind, body) for body in bodies]
+            continue
+        end = next((n for n in range(start + 1, len(lines)) if lines[n].startswith("## ")), len(lines))
+        while end > start + 1 and not lines[end - 1].strip():
+            end -= 1
+        lines[end:end] = ["", "\n\n".join(bodies)]
+    text = "\n".join(lines) + "\n"
+    return text + ("\n" + assembled(missing) if missing else "")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -69,7 +91,7 @@ def main(argv=None):
         print("No fragments to assemble.")
         return 0
     existing = notes.read_text() if notes.exists() else f"# BombCAD {arguments.version}\n"
-    notes.write_text(existing.rstrip("\n") + "\n\n" + assembled([(k, b) for _, k, b in parts]))
+    notes.write_text(merged(existing, [(k, b) for _, k, b in parts]))
     for path, _, _ in parts:
         path.unlink()
     print(f"{len(parts)} fragment(s) assembled into {notes.relative_to(ROOT)}; check the wording, then commit")
