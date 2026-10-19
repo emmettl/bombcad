@@ -6,8 +6,9 @@ It looks at what this branch changes against origin/main (committed, staged, uns
 untracked files) and runs one of four tiers:
 
 - documents and Python scripts only (docs/, Markdown, images, Scripts/*.py, the reference
-  calculations in Scripts/reference/ and their tables, the analytic oracles in
-  Scripts/analytic/): lint and the scripts' tests and links (`ci-test`); no Swift build, no GPU.
+  calculations in Scripts/reference/ and their tables, the protective-design prototype in
+  Scripts/protective/, the analytic oracles in Scripts/analytic/): lint and the scripts' tests
+  and links (`ci-test`); no Swift build, no GPU.
 - covered, when a test-impact map (Scripts/test-impact.py) exists for the merge base or a commit
   behind it: lint, the strict build, `ci-test`, and the Swift suites that executed a changed
   function when the map was built. A shader change counts as a change to the Swift lines that
@@ -52,7 +53,7 @@ CORE = [
 ALWAYS_FULL = re.compile(r"^Package\.(swift|resolved)$")
 SHADER = re.compile(r"^Sources/[^/]+/Shaders/[^/]+\.metal$")
 # Documents and the Python scripts, which ci-test covers on its own.
-DOCUMENT = re.compile(r"(^docs/|\.md$|\.png$|\.jpg$|\.svg$|^LICENSE$|^Scripts/(analytic/|reference/)?[^/]+\.py$|"
+DOCUMENT = re.compile(r"(^docs/|\.md$|\.png$|\.jpg$|\.svg$|^LICENSE$|^Scripts/(analytic/|protective/|reference/)?[^/]+\.py$|"
                       r"^Scripts/reference/tables/[^/]+\.json$)")
 # Suites that changes elsewhere often trip: the standing parses the docs and options, the
 # layout test guards the renderer's copies of the solver's structs.

@@ -326,8 +326,12 @@ most are about reaching an answer for less, with the full solver kept as the ref
    and clock offset are not resolved by them, and GEER's glass biases the yield (the glass model
    breaks more than the survey saw). Next: damage that calibrates (the structural survey, or glass
    once the envelope model matches GEER), and BombCAD's own runs as the forward model in the loop.
-6. **Protective design.** The least set of glazing, wall and stand-off changes that meets a
-   hazard target, which needs item 2's speed.
+6. **Protective design** (scoped, prototyped outside the app). The least set of glazing, wall
+   and stand-off changes that meets a hazard target, which needs item 2's speed. A design and a
+   toy prototype in `Scripts/protective/` find the cheapest plans of film, stand-off and barriers
+   for made-up sites in seconds, and show the answer turning on how much buildings and barriers
+   shield, which the surrogate does not yet give at design stand-offs
+   ([protective design](protective-design.md)).
 
 Under all of them is raw speed: everything kept on the GPU (no CPU remaps), compact storage for
 coarse levels, smarter steps, and work spread across Macs
