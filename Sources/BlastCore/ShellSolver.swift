@@ -305,6 +305,10 @@ public final class ShellSolver {
     private let hingePipeline: MTLComputePipelineState?
     private let hingeLayout: (records: Int, starts: Int, entries: Int)
     private let linkLayout: (records: Int, starts: Int, entries: Int)
+    /// The load table from the spring supports on (their records, then the links' and the
+    /// hinges'), as built: `reset()` puts it back, so that no support, link or hinge carries its
+    /// yielding or release into the next run.
+    private var connectionRecords: (offset: Int, bytes: [UInt8])?
     /// Nodes tied rigidly to a column's node at a slab.
     public var tieCount: Int { mesh.ties.count }
     private let incidenceStartBuffer: MTLBuffer
@@ -572,6 +576,7 @@ public final class ShellSolver {
         var fibreStarts: [UInt32] = [0]
         var fibreGeometry: [SIMD4<Float>] = []
         try model.validateAnchorages()
+        try model.steelConnection?.validate()
         var fibreLaws: [AnchorageParameters] = []
         var slots: [Int] = []
         if let stiffness = model.connectionStiffness {
@@ -741,6 +746,17 @@ public final class ShellSolver {
                 from: starts, byteCount: starts.count * 4)
             (loadTableBuffer.contents() + hingeLayout.entries).copyMemory(
                 from: entries, byteCount: entries.count * 4)
+        }
+        if !springs.isEmpty || !mesh.links.isEmpty || !mesh.hinges.isEmpty {
+            let start = loadTableBuffer.contents() + springOffset
+            connectionRecords = (
+                springOffset,
+                Array(
+                    UnsafeBufferPointer(
+                        start: start.bindMemory(
+                            to: UInt8.self, capacity: loadTableBuffer.length - springOffset),
+                        count: loadTableBuffer.length - springOffset))
+            )
         }
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
@@ -951,6 +967,10 @@ public final class ShellSolver {
         settledDisplacements = nil
         footings?.reset()
         pairs?.reset()
+        if let connectionRecords {
+            (loadTableBuffer.contents() + connectionRecords.offset).copyMemory(
+                from: connectionRecords.bytes, byteCount: connectionRecords.bytes.count)
+        }
         memset(failureGateBuffer.contents(), 0, failureGateBuffer.length)
         failedAtCheckpoint = nil
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)

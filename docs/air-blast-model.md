@@ -773,8 +773,9 @@ So most of the loss is in reading the cell, not in the incident wave.
 **By cells per charge length.** The cell read's fraction of Kingery–Bulmash's reflected peak
 depends on the scaled distance Z and on N = W^(1/3)/Δx, the cells across the charge's scaled
 length. At Z = 1, 100 kg on 0.25 m cells (N = 18.6) reads 40%, and 1 kg on 0.05 m cells (N = 20)
-38%. Uniform cells; the reflected impulse is within 6% beyond 1.5 m/kg^(1/3) on 0.25 m cells for
-100 kg (validation):
+38%. Uniform cells; on the same runs the reflected impulse is 7–18% high from 1.5 m/kg^(1/3) out
+on 0.25 m cells for 100 kg (within 6% on the ideal gas and the balloon start; see
+[validation](validation.md#the-mapped-start-18-october)):
 
 | Z (m/kg^(1/3)) | N = 9.3 | N = 18.6 | N = 20 | N = 37 | N = 50 |
 |---|---|---|---|---|---|
@@ -785,8 +786,8 @@ length. At Z = 1, 100 kg on 0.25 m cells (N = 18.6) reads 40%, and 1 kg on 0.05 
 | 1.5 | 34% | 55% | | 76% | |
 | 2 | 45% | 64% | | 83% | |
 | 3 | 60% | 77% | | 92% | |
-| 4 | 68% | 83% | | 102% | |
-| 5–6 | 72–74% | 87–88% | | 101–102% | |
+| 4 | 68% | 83% | | 95% | |
+| 5–6 | 72–74% | 87–88% | | 97% | |
 
 N = 9.3, 18.6 and 37 are 100 kg on 0.5, 0.25 and 0.125 m cells (`blastbench validate`); N = 20
 and 50 are 1 kg 0.3–1 m above rigid ground on 0.05 and 0.02 m cells (`blastbench closeair`).
@@ -805,16 +806,20 @@ cell it reads, at any level.
   is too broad, not the wall cell's pressure held too long. A peak taken from the read at the wall
   and an impulse from the cell beside it would come within 82–96% and 84–103% close in, but only
   the gauges would have it: glass, envelope components and injury read their own surfaces.
-- Tyndall's test 1 (0.25 m air refined twice): the front's reflected peak goes from 25.1 to
-  26.8 kPa against the measured 34.8, and its impulse from 140 to 150 kPa ms against 137. Its gap
-  is the incident wave: the free field reads 9.8 kPa against the measured 16.6, and the front
-  already exceeds the normal reflection of the model's own incident (20.4 kPa).
+- Tyndall's test 1 (0.25 m air refined twice, open faces 4 m/kg^(1/3) away, as in
+  [validation](validation.md#cross-laminated-timber-buildings-at-tyndall)): the
+  front's reflected peak goes from 25.1 to 26.8 kPa against the measured 34.8, and its impulse
+  from 140 to 150 kPa ms against 137. Its gap is the incident wave: the free field reads 12.3 kPa
+  against the measured 16.6, whichever way the front is read, and the front already reaches the
+  normal reflection of the model's own incident (25.9 kPa).
 - It costs nothing measurable: six neighbours per gauge per step, on the thread that logs the
   gauges.
 
 So it is for peaks alone (a peak's injury, a peak field), not for loads whose history matters
 (envelope components, glass, structures), and stays off. For those, the table says how far the
-peaks fall short and refinement at the wall is the remedy.
+peaks fall short and refinement at the wall is the remedy. Turned on, it is a model option of its
+own in the standing ("Gauges read at the wall", an approximation for peaks and impulses): a gauge
+it reads at a wall takes no band, since the reflected bands were derived from the cell's mean.
 
 ## Freezing the air
 

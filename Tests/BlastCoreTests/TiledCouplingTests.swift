@@ -265,4 +265,29 @@ struct TiledCouplingTests {
             }
         }
     }
+
+    @Test("Objects beside two structures in tiles take the whole grid's layout, as with dense coupling")
+    func objectsBesideTiledStructures() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let scene = try MultiBodyTests().scene(clamped: false)
+        func make(_ layout: BodyCouplingLayout) throws -> BlastSolver {
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: 0.5, configuration: configuration(layout))
+            #expect(solver.usesTiledCoupling == (layout == .tiled))
+            // A 1 m box between the walls and away from the charge, moving at 2 m/s as far as the
+            // air can tell: its wall velocities are written by grid index.
+            var box = try RigidBoxBody(mass: 50, size: SIMD3(repeating: 1), position: SIMD3(5, 6.5, 0.5))
+            box.applyImpulse(SIMD3(0, 100, 0))
+            try solver.installExperimentalBoxes([box])
+            #expect(!solver.usesTiledCoupling)
+            return solver
+        }
+        let dense = try make(.dense)
+        let tiled = try make(.tiled)
+        for solver in [dense, tiled] {
+            #expect(solver.advance(until: 0.004).isStable)
+            #expect(solver.experimentalWallVelocity(10, 13, 1) == SIMD3(0, 2, 0))
+        }
+        compare(dense, tiled)
+    }
 }

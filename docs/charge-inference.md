@@ -19,7 +19,8 @@ not used for one ([below](#broken-glass)).
 scenebench infer-charge --observers Rigby2020_ESM1_radius_time.csv --centre 35.519042,33.901425 --correction final2-200000/comparison.json,final2-500000/comparison.json,final2-1100000/comparison.json --out posterior.json --samples samples.csv
 ```
 
-It takes about a second (arrivals only) or half a minute (with 9,000 façades), on the CPU.
+It takes about a second (arrivals only) or half a minute (with 9,000 façades), on the CPU. It prints
+its standing, also under `standing` in `--out`'s JSON ([validation](validation.md#the-charge-from-its-arrivals)).
 
 ## The model
 
@@ -98,7 +99,8 @@ Stennett et al.'s six videos (their distances, the place held at the warehouse):
 ## Broken glass
 
 `--glass` adds GEER's survey of 9,183 street façades (classes W0–W3; DesignSafe PRJ-3030, read
-from its shapefile, each façade at its segment's centre, its outward normal from `Azimuth_N`):
+from its shapefile, each façade at the centre of its segment's bounding box, its outward normal from `Azimuth_N`,
+which the layer holds in degrees though its README says radians):
 in each 250 m band of distance from the charge, how many façades were damaged (W1 or worse)
 against the mean chance the envelope glass model gives a 150 m² façade of the apartments' mix of
 panes under Kingery–Bulmash's pulse, side-on, or reflected for a façade facing the charge, as a
@@ -114,11 +116,11 @@ It biases the result rather than tightening it:
   peaks are 0.72 of Kingery–Bulmash's side-on at their distance (median; 0.30–1.09 between the
   tenth and ninetieth percentiles, by area), falling from 1.06 at 300–750 m to 0.53 beyond 2 km,
   and their impulses 0.57. Taken as a log-normal exposure (`--exposure 0.6 --exposure-spread 0.85`),
-  the glass still breaks 0.77–0.99 of façades at 0.5 kt.
+  the glass still breaks 0.73–0.99 of façades at 0.5 kt.
 - **So the glass wants a small charge, or no exposure fits.** With that exposure and the place
-  held, arrivals and glass together give 0.025 kt; free, 0.004 kt and the place 490 m off, at the
-  search's edge. The yield it gives moves 3,000-fold over a 30-fold range of assumed exposure
-  (0.003 kt at 1, 0.11 at 0.3, 0.85 at 0.1, 9.7 at 0.03, each with a spread of 1): the glass
+  held, arrivals and glass together give 0.010 kt; free, 0.014 kt and the place 487 m off, at the
+  search's edge. The yield it gives moves 2,000-fold over a 30-fold range of assumed exposure
+  (0.004 kt at 1, 0.076 at 0.3, 0.84 at 0.1, 9.3 at 0.03, each with a spread of 1): the glass
   alone cannot tell yield from exposure, and GEER's share falls with distance more steeply than
   any one yield's curve.
 - This is the [Beirut page](beirut-2020.md#glass-against-the-street-survey-geer-2021)'s finding
@@ -162,7 +164,7 @@ last estimate, until the yield moves under 5% (at most three runs):
 (In the order 0.5, 1, 2, 5 t.)
 
 - **Kingery–Bulmash alone finds the place, not the yield.** BombCAD's shock reaches these
-  observers up to a sixth sooner than Kingery–Bulmash's (its arrivals 0.73–1.03 of the curves'
+  observers up to a quarter sooner than Kingery–Bulmash's (its arrivals 0.73–1.03 of the curves'
   at 4 m, 0.84–1.03 at 2 m, the nearest the earliest), and a bigger charge is the curves' way of
   saying so: 1.3–2 times the truth, the finer grid the nearer. The posterior is confident and
   wrong, as model data have no scatter to widen it (the observers come out 0.6% off the model):

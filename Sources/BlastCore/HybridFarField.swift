@@ -130,14 +130,19 @@ public struct HybridFarField: Codable, Sendable, Equatable {
 
     /// Its standing, from Beirut against the full 4 m runs at 0.2, 0.5 and 1.1 kt, handing over at
     /// 1 km (docs/hybrid-far-field.md).
-    public static let standing = [
-        "Inside the hand-over: the near run's own loads, which on Beirut were the full run's (peaks 1.00, scatter 3–8%).",
-        "Beyond it, against the full run: façade peaks 0.77–1.04 of its to 2.5 km, impulses 1.04–1.5 times; sides "
-            + "with some glass broken within 0.03 of its to 1.5 km at every yield, to 2 km at 0.5 kt and to 2.5 km "
-            + "at 1.1 kt, 0.13–0.25 under at 1.5–2.5 km at 0.2 kt; blown-out shares up to 0.22 apart in a band.",
-        "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
-        "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
-    ]
+    public static let standing: [String] = {
+        let peak = ValidationTables.figure("hybridFarPeak")
+        let impulse = ValidationTables.figure("hybridFarImpulse")
+        return [
+            "Inside the hand-over: the near run's own loads, which on Beirut were the full run's (peaks 1.00, scatter 3–8%).",
+            "Beyond it, against the full run: façade peaks \(peak.ratio) of its to 2.5 km, impulses \(impulse.ratio) "
+                + "times; sides with some glass broken within 0.03 of its to 1.5 km at every yield, to 2 km at 0.5 kt "
+                + "and to 2.5 km at 1.1 kt, 0.13–0.25 under at 1.5–2.5 km at 0.2 kt; blown-out shares up to 0.22 "
+                + "apart in a band.",
+            "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
+            "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
+        ]
+    }()
 }
 
 extension HybridFarField {

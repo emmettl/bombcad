@@ -98,4 +98,37 @@ struct ChargeInferenceTests {
         }
         #expect(abs(total - 1) < 1e-9)
     }
+
+    @Test("A clock offset that would put an arrival at or before the explosion is impossible, not a NaN")
+    func offsetBeforeTheExplosion() {
+        let mass = 50_000.0
+        let arrivals = ChargeInference.syntheticArrivals(
+            massKg: mass, east: 0, north: 0, places: Self.places(massKg: mass, east: 0, north: 0),
+            spread: 0.03,
+            frame: 1.0 / 30, seed: 5)
+        var settings = Self.settings()
+        settings.offsetRange = -2...2
+        // An offset of -2 s brings every arrival nearer than about 600 m to before the explosion.
+        let likelihood = ChargeInference.arrivalLogLikelihood(
+            [log10(mass), 0, 0, log(0.03), -2], arrivals: arrivals, settings: settings)
+        #expect(likelihood == -.infinity)
+        let posterior = ChargeInference.infer(arrivals: arrivals, settings: settings)
+        #expect(posterior.summaries.allSatisfy { [$0.p05, $0.median, $0.p95].allSatisfy(\.isFinite) })
+        let found = posterior.summary("log10MassKg")!
+        #expect((found.p05...found.p95).contains(log10(mass)), "\(found)")
+        #expect(found.p95 - found.p05 > 0.01, "an interval falsely tiny: \(found)")
+    }
+
+    @Test("No steps asked for still gives samples")
+    func noSteps() {
+        let mass = 50_000.0
+        let arrivals = ChargeInference.syntheticArrivals(
+            massKg: mass, east: 0, north: 0, places: Self.places(massKg: mass, east: 0, north: 0),
+            spread: 0.03,
+            frame: 1.0 / 30, seed: 6)
+        var settings = Self.settings()
+        settings.steps = 0
+        let posterior = ChargeInference.infer(arrivals: arrivals, settings: settings)
+        #expect(!posterior.samples.isEmpty && posterior.summary("log10MassKg") != nil)
+    }
 }

@@ -100,7 +100,8 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
 
   `district.json` holds each building's damage, as `BombCAD run --envelope-damage` writes it, with
   the mode's method, its standing and the match. `scenebench hybrid-judge` sets it against a full
-  run's saved loads.
+  run's saved loads; unlike `district-hybrid`, it fits the trend only when given `--trend-from`
+  (500 m for a hand-over at 1 km), and otherwise carries the match on flat.
 - **In the app:** File ▸ New District with **Near field and far field** on (the default when the
   radius reaches 1.25 times the hand-over). The sheet hands over at 12 m/kg^(1/3), rounded to 50 m,
   and draws the hand-over on the map. The project's air reaches the hand-over; the buildings beyond

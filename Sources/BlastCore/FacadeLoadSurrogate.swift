@@ -262,7 +262,7 @@ public enum FacadeLoadSurrogate {
         return false
     }
 
-    /// The few terms fitted to BombCAD's runs (`scenebench surrogate-fit`): the logarithm of a
+    /// The few terms fitted to BombCAD's runs (`Scripts/fit-surrogate.py`): the logarithm of a
     /// component's peak load (or impulse) over its base, Kingery–Bulmash's incident value raised
     /// toward the reflected one by the square of its facing, is a sum of these times its
     /// features (`terms`).
@@ -302,10 +302,17 @@ public enum FacadeLoadSurrogate {
     ]
 
     /// `features`' terms for a charge of `mass` kg on the air's cells `cellSize` m across (a run's
-    /// loads depend on its cells: the surrogate gives the run's, not the converged ones).
-    public static func terms(_ f: Features, mass: Double, cellSize: Double) -> [Double] {
+    /// loads depend on its cells: the surrogate gives the run's, not the converged ones). With
+    /// `scaledRange`, the scaled distance's terms are held at its ends beyond it: a fitted
+    /// quadratic in log Z carried past the runs it was fitted to would drive the correction to
+    /// nothing close in (Kingery–Bulmash's base still follows the distance).
+    public static func terms(
+        _ f: Features, mass: Double, cellSize: Double, scaledRange: ClosedRange<Double>? = nil
+    ) -> [Double] {
         let root = cbrt(mass)
-        let z = log(max(f.distanceM / root, 0.2))
+        var scaled = max(f.distanceM / root, 0.2)
+        if let scaledRange { scaled = min(max(scaled, scaledRange.lowerBound), scaledRange.upperBound) }
+        let z = log(scaled)
         return [
             1, max(f.cosIncidence, 0), max(-f.cosIncidence, 0), log(1 + Double(f.buildingsCrossed)),
             f.blockedM / root, z, f.heightM / root, f.ridgeM / root, f.groundRiseM / root, z * z,
@@ -321,6 +328,9 @@ public enum FacadeLoadSurrogate {
         public var riseShare: Double
         /// When the blast reaches it, s.
         public var arrivalS: Double
+        /// It lies outside the scaled distances the terms were fitted over
+        /// (`Coefficients.scaledRange`), where they are held at the range's end: extrapolated.
+        public var outsideFit = false
     }
 
     /// Kingery–Bulmash's base for `features`: (peak Pa, impulse Pa s, arrival s), the incident
@@ -336,9 +346,15 @@ public enum FacadeLoadSurrogate {
             (point.scaledIncidentImpulse + facing
                 * (point.scaledReflectedImpulse - point.scaledIncidentImpulse))
             * root
-        // Beyond the curves, the incident peak and impulse fall as 1/r.
-        let far = f.distanceM / root > 40 ? 40 / (f.distanceM / root) : 1
-        return (peak * far, impulse * far, point.scaledArrival * root * f.distanceM / (z * root))
+        // Beyond the curves, the incident peak and impulse fall as 1/r, and the shock goes on at
+        // the speed of sound (as `ChargeInference`); within 0.2 the arrival goes to nothing with r.
+        let scaled = f.distanceM / root
+        let far = scaled > 40 ? 40 / scaled : 1
+        let arrival =
+            scaled > 40
+            ? point.scaledArrival * root + (f.distanceM - 40 * root) / 340.3
+            : point.scaledArrival * root * f.distanceM / (z * root)
+        return (peak * far, impulse * far, arrival)
     }
 
     /// `features`' load for a charge of `mass` kg, as a run on cells `cellSize` m across would
@@ -346,14 +362,18 @@ public enum FacadeLoadSurrogate {
     public static func predict(
         _ f: Features, mass: Double, cellSize: Double, coefficients: Coefficients = .fitted
     ) -> Prediction {
+        // No charge, no load (and no arrival).
+        guard mass > 0, mass.isFinite else {
+            return Prediction(peakPa: 0, impulsePaS: 0, riseShare: 0, arrivalS: 0)
+        }
         let (peak, impulse, arrival) = base(f, mass: mass)
-        let x = terms(f, mass: mass, cellSize: cellSize)
+        let x = terms(f, mass: mass, cellSize: cellSize, scaledRange: coefficients.scaledRange)
         let p = zip(coefficients.peak, x).reduce(0) { $0 + $1.0 * $1.1 }
         let i = zip(coefficients.impulse, x).reduce(0) { $0 + $1.0 * $1.1 }
         let r = zip(coefficients.rise, x).reduce(0) { $0 + $1.0 * $1.1 }
         return Prediction(
             peakPa: peak * exp(p), impulsePaS: impulse * exp(i), riseShare: min(max(r, 0), 0.9),
-            arrivalS: arrival)
+            arrivalS: arrival, outsideFit: !coefficients.scaledRange.contains(f.distanceM / cbrt(mass)))
     }
 
     /// The steps a pulse's peak and impulse are rounded to, as a share of each: far finer than
@@ -411,6 +431,9 @@ public enum FacadeLoadSurrogate {
         /// The predicted loads as a run's recorder would give them, for `EnvelopeDamageAssessment`.
         public var loads: [EnvelopeComponentLoad]
         public var seconds: Double
+
+        /// The components outside the distances the terms were fitted over, their loads extrapolated.
+        public var outsideFit: Int { predictions.filter(\.outsideFit).count }
     }
 
     public static func estimate(
@@ -459,16 +482,28 @@ extension FacadeLoadSurrogate {
         + "Kingery–Bulmash's incident and reflected values corrected by terms fitted to BombCAD's district "
         + "runs, as a triangular pulse into the same SDOF damage as a run's histories. An estimate, not a run."
 
-    /// Its standing: how it compared with a full run it was not fitted to (docs/surrogate-first-look.md).
-    public static let standing = [
-        "An estimate, not a run. Against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:",
-        "Glass: each building side's state (none broken, some, blown out) agreed with the run's for 75–84% of "
-            + "sides, never two states apart; the share of sides broken by distance came within 0.1 of the run's to 2 km.",
-        "Walls and roofs: not to be relied on. Of the components either called damaged, 8–27% of the concrete and "
-            + "37–46% of the stone took the run's level. Run the scene for the structure.",
-        "Loads: peak and impulse within about ×1.3 of the run's to Z 20 m/kg^(1/3); further out, over hills and "
-            + "near the run's open faces, up to ×1.6–2 high.",
-    ]
+    /// Its standing: how it compared with a full run it was not fitted to, worded from the
+    /// standing table's figures (validation.md, "Estimates beside a run").
+    public static let standing: [String] = {
+        let glass = ValidationTables.figure("surrogateGlassSides")
+        let concrete = ValidationTables.figure("surrogateConcrete")
+        let stone = ValidationTables.figure("surrogateStone")
+        let near = ValidationTables.figure("surrogateNearPeak")
+        let far = ValidationTables.figure("surrogateFarLoads")
+        return [
+            "An estimate, not a run. Against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:",
+            "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
+                + "of sides deep in the district, never two states apart; the share of sides broken by distance came "
+                + "within 0.1 of the run's to 2 km.",
+            "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
+                + "concrete and \(stone.percent) of the stone took the run's level. Run the scene for the structure.",
+            "Loads: peaks \(near.ratio) of the run's on the median to Z 20 m/kg^(1/3), each scattered by about ×1.3; "
+                + "further out, over hills and near the run's open faces, \(far.ratio) times on the median and far "
+                + "more scattered.",
+            "Outside Z 4.6–38.7 m/kg^(1/3), the distances it was fitted over, its terms are held at the range's "
+                + "end and its loads extrapolated: marked as such.",
+        ]
+    }()
 
     /// `estimate`'s damage, each building judged on its components' pulses as a run's are on
     /// their histories (`EnvelopeDamageAssessment`), the SDOF responses remembered between them;

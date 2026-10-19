@@ -339,28 +339,35 @@ public final class SDOFResponseMemo: @unchecked Sendable {
         var watch: Double?
     }
 
+    /// One of the memo's parts, by its keys' hash: its own lock and its own responses. The parts
+    /// are classes in a `let` array, so that writing one never touches the array the others are
+    /// read through.
+    private final class Shard: @unchecked Sendable {
+        let lock = NSLock()
+        var responses: [Key: SDOFResponse] = [:]
+    }
+
     private static let shardCount = 64
-    private let locks = (0..<SDOFResponseMemo.shardCount).map { _ in NSLock() }
-    private var shards = [[Key: SDOFResponse]](repeating: [:], count: SDOFResponseMemo.shardCount)
+    private let shards = (0..<SDOFResponseMemo.shardCount).map { _ in Shard() }
     /// Responses integrated, and found remembered.
     public private(set) var misses = 0
     public private(set) var hits = 0
 
     func response(_ key: Key, _ make: () -> SDOFResponse) -> SDOFResponse {
-        let shard = abs(key.hashValue % Self.shardCount)
-        locks[shard].lock()
-        if let known = shards[shard][key] {
-            locks[shard].unlock()
+        let shard = shards[abs(key.hashValue % Self.shardCount)]
+        shard.lock.lock()
+        if let known = shard.responses[key] {
+            shard.lock.unlock()
             Self.countLock.lock()
             hits += 1
             Self.countLock.unlock()
             return known
         }
-        locks[shard].unlock()
+        shard.lock.unlock()
         let made = make()
-        locks[shard].lock()
-        shards[shard][key] = made
-        locks[shard].unlock()
+        shard.lock.lock()
+        shard.responses[key] = made
+        shard.lock.unlock()
         Self.countLock.lock()
         misses += 1
         Self.countLock.unlock()

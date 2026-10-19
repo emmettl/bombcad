@@ -97,6 +97,12 @@ level and summary, the resolution notes and what is not modelled), and each Open
 The headless standing covers the models fed alongside the run; the run it keeps covers what that
 run keeps, which does not include those models' results.
 
+**Estimates beside a run** (the quick estimate, the hybrid far field and charge inference) are
+not scenes, so they carry no `SceneStanding`; each prints a few lines of standing in the app, its
+JSON and its command, worded from the same table's figures
+([estimates beside a run](validation.md#estimates-beside-a-run)), and those lines are part of the
+table's identity.
+
 ## Error bands
 
 Where the validation record supports it, a result also carries a numeric band: model over

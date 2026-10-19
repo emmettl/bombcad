@@ -1,7 +1,9 @@
 # A first look in seconds: the façade load surrogate
 
 A district run takes tens of minutes: Beirut's 125 million cells and 738,000 envelope components
-take 25–28 minutes on the CI mini. The surrogate gives a first look at the same buildings'
+took 25–28 minutes each on the CI mini for the [Beirut page](beirut-2020.md#cost)'s runs at 0.2,
+0.5 and 1.1 kt, and 27–41 minutes (1,604–2,464 s) when the same runs were timed again for the
+[hybrid comparison](hybrid-far-field.md). The surrogate gives a first look at the same buildings'
 damage in about half a minute, without running the air. It predicts each component's load from
 where the component stands, then judges that load with the same damage model a run uses. It is
 the first step of [Horizons](roadmap.md#horizons) item 2, "Answers in seconds", and it is an
@@ -15,18 +17,19 @@ Judged against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not f
 - **Holds: the glass across the district.** Each building side's glass state (none broken, some,
   blown out, as GEER classed façades) agrees with the run's for 75–84% of the 28,991 sides, and is
   never two states apart. By distance band, the share of sides with some glass broken and the
-  share blown out come within about 0.1 of the run's to 2 km (and up to 0.17 for 0.5 kt's blown
+  share blown out come within about 0.1 of the run's to 2 km (and up to 0.16 for 0.5 kt's blown
   out at 1.25–1.5 km).
 - **Holds: the speed.** The whole first look over Beirut's 724,512 components takes 22–28 s on
-  the Studio while other jobs share it: 7–10 s for the loads, 14–22 s for the damage. On a
+  the Studio while other jobs share it: 7–10 s for the loads, 14–22 s for the damage, against
+25–41 minutes for a full run on the CI mini. On a
   made-up district of 7,235 buildings it takes 2–3 s against the run's 69–105 s on the same Mac.
 - **Does not: walls and roofs.** Of the components either the run or the surrogate calls damaged,
-  8–27% of the concrete and 37–46% of the stone take the run's level; on its own training
-  districts the share is 11–19% and 41–46%. The few damaged components lie close in, where one
+  0–10% of the concrete and 35–42% of the stone take the run's level; on its own training
+  districts the share is 12–17% and 42–53%. The few damaged components lie close in, where one
   wrong factor of 1.3 moves a wall across a level. Run the scene for the structure.
 - **Does not: the far edge.** Beyond Z = 20 m/kg^(1/3) (1.6 km at 0.5 kt), over Beirut's hills
   and toward its run's open faces, the surrogate's loads are 1.1–1.6 times the run's on the
-  median, and at 2.5–3 km it breaks glass on 0.47 of sides where the run broke 0.18.
+  median, and at 2.5–3 km it breaks glass on 0.48 of sides where the run broke 0.18.
 
 ## How it predicts a load
 
@@ -44,10 +47,10 @@ For each envelope component with a face on the air (`FacadeLoadSurrogate`):
    `KingeryBulmash`): the incident peak and impulse, raised toward the reflected ones by the square
    of its facing, at its scaled distance Z = R / W^(1/3).
 3. **The fitted terms.** The logarithm of its peak (and of its impulse) over the base is a sum
-   of eleven terms: a constant, facing, facing away, log(1 + buildings crossed), the length inside
-   them, log Z and its square, height, ridge and ground rise (each over W^(1/3)), and the cell's
-   size over W^(1/3). A run's loads depend on its cells (a shock spans several of them), so the
-   surrogate gives the loads of a run on the project's cells, not converged ones.
+   of eleven terms: a constant, facing, facing away, log(1 + buildings crossed), log Z and its
+   square, the length inside them, height, ridge and ground rise (each over W^(1/3)), and the
+   logarithm of the cell's size over W^(1/3) (`FacadeLoadSurrogate.terms`). A run's loads depend
+   on its cells (a shock spans several of them), so the surrogate gives the loads of a run on the project's cells, not converged ones.
 4. **Its pulse.** A triangle of that peak and impulse, lasting twice the impulse over the peak,
    rising to its peak over a fitted share of that time (0.2–0.35 on 4 m cells: behind buildings
    the load builds up over tens of milliseconds as the streets fill). On its own training district
@@ -96,11 +99,19 @@ logarithm), at 0.5 kt:
 
 | Z, m/kg^(1/3) | Strips | Peak | Impulse |
 |---|---|---|---|
-| 7–10 | 9,008 | 0.84 (0.26) | 0.81 (0.15) |
-| 10–14 | 27,155 | 0.95 (0.23) | 0.89 (0.14) |
-| 14–20 | 62,928 | 0.99 (0.23) | 1.01 (0.16) |
-| 20–28 | 124,465 | 1.08 (0.38) | 1.28 (0.27) |
-| 28–40 | 90,093 | 1.34 (0.60) | 1.63 (0.79) |
+| 0–3 | 287 | 8.28 (0.79) | 4.10 (0.67) |
+| 3–5 | 209 | 0.68 (0.27) | 0.81 (0.13) |
+| 5–7 | 1,492 | 0.77 (0.29) | 0.78 (0.14) |
+| 7–10 | 9,008 | 0.85 (0.26) | 0.81 (0.15) |
+| 10–14 | 27,155 | 0.96 (0.23) | 0.89 (0.14) |
+| 14–20 | 62,928 | 1.00 (0.23) | 1.01 (0.16) |
+| 20–28 | 124,465 | 1.09 (0.38) | 1.28 (0.28) |
+| 28–40 | 90,093 | 1.36 (0.60) | 1.63 (0.79) |
+
+Within Z = 3 (238 m; 287 strips, all outside the fitted range and marked so) the surrogate gives
+eight times the run's peak. There the run's façades stand among the port's silos and warehouses,
+and their loads fall far below Kingery–Bulmash's; the made-up districts' nearest strips, in the
+open, came to 1.26 times.
 
 Glass by building side, against the run's and GEER's shares (as the
 [Beirut page](beirut-2020.md#glass-as-a-mix-of-panes) compares them), at 0.5 kt:
@@ -109,15 +120,15 @@ Glass by building side, against the run's and GEER's shares (as the
 |---|---|---|---|---|
 | 0.5–0.75 km | 1.00 / 1.00 | 0.84 | 1.00 / 1.00 | 0.77 |
 | 0.75–1 km | 1.00 / 1.00 | 0.62 | 1.00 / 1.00 | 0.28 |
-| 1–1.25 km | 1.00 / 1.00 | 0.39 | 0.96 / 0.92 | 0.17 |
-| 1.25–1.5 km | 1.00 / 1.00 | 0.35 | 0.59 / 0.42 | 0.18 |
-| 1.5–1.75 km | 0.99 / 1.00 | 0.38 | 0.07 / 0.16 | 0.09 |
+| 1–1.25 km | 1.00 / 1.00 | 0.39 | 0.96 / 0.93 | 0.17 |
+| 1.25–1.5 km | 1.00 / 1.00 | 0.35 | 0.59 / 0.43 | 0.18 |
+| 1.5–1.75 km | 0.99 / 1.00 | 0.38 | 0.07 / 0.17 | 0.09 |
 | 1.75–2 km | 0.91 / 0.98 | 0.28 | 0.01 / 0.01 | 0.02 |
-| 2–2.5 km | 0.66 / 0.76 | 0.26 | 0.00 / 0.00 | 0.15 |
-| 2.5–3 km | 0.18 / 0.47 | 0.11 | 0.00 / 0.00 | 0.04 |
+| 2–2.5 km | 0.66 / 0.77 | 0.26 | 0.00 / 0.00 | 0.15 |
+| 2.5–3 km | 0.18 / 0.48 | 0.11 | 0.00 / 0.00 | 0.04 |
 
 At 0.2 kt the shares with some broken come within 0.1 everywhere (0.84 / 0.82 at 1.5–1.75 km,
-0.62 / 0.52 at 1.75–2 km); at 1.1 kt they match to 2 km and run high beyond (0.65 / 0.97 at
+0.62 / 0.53 at 1.75–2 km); at 1.1 kt they match to 2 km and run high beyond (0.65 / 0.97 at
 2.5–3 km). Against GEER the surrogate inherits the run's verdict: too much glass broken close in,
 the far edge about right.
 
@@ -125,20 +136,20 @@ Each strip or side's state, rows the run and columns the surrogate, at 0.5 kt:
 
 | Glass (sides) | W0 | W1–2 | W3 |
 |---|---|---|---|
-| W0 | 3,502 | 4,231 | 0 |
-| W1–2 | 1,128 | 12,769 | 752 |
-| W3 | 0 | 1,019 | 5,590 |
+| W0 | 3,411 | 4,322 | 0 |
+| W1–2 | 1,067 | 12,797 | 785 |
+| W3 | 0 | 993 | 5,616 |
 
 | Concrete (strips) | None | Moderate | Heavy | Hazardous | Failed |
 |---|---|---|---|---|---|
-| None | 315,115 | 1 | 0 | 0 | 0 |
-| Moderate | 202 | 28 | 17 | 23 | 58 |
-| Heavy | 15 | 18 | 6 | 23 | 70 |
-| Hazardous | 0 | 0 | 0 | 7 | 52 |
+| None | 315,115 | 0 | 0 | 0 | 1 |
+| Moderate | 199 | 3 | 0 | 0 | 126 |
+| Heavy | 15 | 18 | 0 | 0 | 99 |
+| Hazardous | 0 | 0 | 0 | 0 | 59 |
 | Failed | 0 | 0 | 0 | 0 | 2 |
 
 Glass's misses are mostly one way at each end: sides the run left whole that the surrogate breaks
-far out (4,231), and sides the run blew out that it leaves with some panes whole close in. In
+far out (4,322), and sides the run blew out that it leaves with some panes whole close in. In
 sight of the charge and behind one to three buildings, 89–97% of sides agree; deep in the
 district, 75–84%.
 
@@ -161,6 +172,11 @@ district, 75–84%.
 - **Fitted to two made-up districts on 4 m cells.** Other cells are reached only through the
   cell term, fitted over 0.05–0.15 of W^(1/3); other building types (thin walls, panes, roofs) are
   given the façade strips' terms. Roofs' loads are not fitted at all.
+- **Only between Z = 4.6 and 38.7 m/kg^(1/3)**, the distances it was fitted over (the fit's 2nd
+  to 98th percentiles). Beyond them the terms in log Z are held at the range's end, so that close
+  in the correction cannot fall away as the fitted quadratic would (to a few hundredths of the
+  base at Z = 1), while Kingery–Bulmash's base still follows the distance. Those components are
+  marked as extrapolated: counted in the app's status and in `--surrogate`'s `outsideFit`.
 - **It copies the runs, artefacts and all.** On 4 m cells a run's façade peaks are 0.45–0.57 of
   Kingery–Bulmash's reflected ones even in sight of the charge; the surrogate gives those, not the
   reflected peak a finer run would.

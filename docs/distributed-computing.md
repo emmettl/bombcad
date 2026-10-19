@@ -589,7 +589,7 @@ the decoding on the watcher included. What it found:
 **Drawn here by the app's renderer.** The renderer draws from a `SceneViewState`, which a run
 elsewhere can fill (`ViewSetup` once, a `ViewFrame` each frame, uploaded by `ViewUpload`, all in
 BlastRender). `watch --scene <stride>` has the worker send those too (`SceneViewCodec`, binary,
-compressed as the rest; protocol 12 adds `viewSetup`), and `--render <folder>` draws each frame
+compressed as the rest; protocol 12 adds `viewSetup`, 13 its materials' colours), and `--render <folder>` draws each frame
 with `SceneRenderer` on this Mac and writes PNG images. The field goes at every stride-th cell
 along each axis, cut down on the GPU (`coarsenField` in ViewField.metal): each coarse texel keeps
 its block's largest peak, impulse and shock indicator and its overpressure of largest magnitude,
