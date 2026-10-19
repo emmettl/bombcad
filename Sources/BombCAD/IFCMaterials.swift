@@ -7,11 +7,17 @@ import Foundation
 
 /// The materials each IFC element is made of, from the converter's metadata: its material layers
 /// (with their thicknesses, in metres) where the IFC gives a layer set, else its materials' names.
+/// A layer is named by its material where `layerMaterials` (`IFCStep.layerMaterials`) finds it, the
+/// metadata giving only the layer's own name.
 enum IFCMaterials {
     /// `metresPerUnit` scales thicknesses where the metadata gives no length unit of its own.
-    static func decode(_ data: Data, metresPerUnit: Float = 1) throws -> [String: [IFCStructure.Layer]] {
+    static func decode(
+        _ data: Data, metresPerUnit: Float = 1,
+        layerMaterials: [String: [[(material: String, thickness: Double)]]] = [:]
+    ) throws -> [String: [IFCStructure.Layer]] {
         let parser = Reader()
         parser.scale = metresPerUnit
+        parser.layerMaterials = layerMaterials
         let document = XMLParser(data: data)
         document.delegate = parser
         document.shouldResolveExternalEntities = false
@@ -32,6 +38,10 @@ enum IFCMaterials {
         /// Material definitions by id: their layers (thickness in project units).
         private var definitions: [String: [(name: String, thickness: Float?)]] = [:]
         private var defining: (depth: Int, id: String)?
+        /// The layer set being defined's name, and how many of its layers have been read.
+        private var setName = ""
+        private var layerIndex = 0
+        var layerMaterials: [String: [[(material: String, thickness: Double)]]] = [:]
         /// Each product's references to material definitions, by GlobalId.
         private var references: [String: [String]] = [:]
         private var products: [(depth: Int, id: String)] = []
@@ -58,6 +68,8 @@ enum IFCMaterials {
             case "materials":
                 if let id = attributes["id"], depth == 3 {
                     defining = (depth, id)
+                    setName = attributes["LayerSetName"] ?? ""
+                    layerIndex = 0
                     if name == "IfcMaterial" {
                         definitions[id] = [(String((attributes["Name"] ?? "").prefix(200)), nil)]
                     } else {
@@ -68,8 +80,24 @@ enum IFCMaterials {
                         || name == "IfcMaterialConstituent" || name == "IfcMaterialProfile"
                 {
                     let thickness = attributes["LayerThickness"].flatMap(Float.init)
-                    definitions[current.id, default: []].append(
-                        (String((attributes["Name"] ?? attributes["Category"] ?? "").prefix(200)), thickness))
+                    var label = attributes["Name"] ?? attributes["Category"] ?? ""
+                    if name == "IfcMaterialLayer" {
+                        // The layer's material, from the set of that name whose layer here matches.
+                        let index = layerIndex
+                        layerIndex += 1
+                        let material = layerMaterials[setName]?.lazy.compactMap { layers -> String? in
+                            guard index < layers.count else { return nil }
+                            let layer = layers[index]
+                            if let thickness,
+                                abs(layer.thickness - Double(thickness)) > 1e-6 * max(1, layer.thickness)
+                            {
+                                return nil
+                            }
+                            return layer.material
+                        }.first
+                        if let material, !material.isEmpty { label = material }
+                    }
+                    definitions[current.id, default: []].append((String(label.prefix(200)), thickness))
                 }
             case "decomposition":
                 if let id = attributes["id"], id.count == 22 {

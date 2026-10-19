@@ -11,7 +11,7 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
-                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
+                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m] [--surrogate <file.json>]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -64,6 +64,11 @@ enum HeadlessRun {
         at it than the time it would take from the blast here).
         --advise prints the cheapest settings of the air that meet a fidelity target, or the best
         within a time, by the standing's error bands and the cost model, and does not run.
+        --surrogate takes a first look at the envelope buildings' damage in seconds, without
+        running the air: each component's load from its distance, facing and the buildings in the
+        way (Kingery–Bulmash corrected by terms fitted to BombCAD's district runs), judged as a
+        run's are. It writes the damage as JSON, marked as an estimate with its error band, and
+        does not run.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
         structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
         given, 10 to 150). A ground type (rock, soilOverSandstone, playa, alluvium, clay,
@@ -126,6 +131,8 @@ enum HeadlessRun {
         var frameInterval = 1
         /// With `--advise`, the target to advise settings for; the project is then not run.
         var advise: AdvisorTarget?
+        /// With `--surrogate`, where the first look's damage goes; the project is then not run.
+        var surrogate: URL?
 
         /// The consumers `--consumer` can place.
         static let consumerNames = ["fragments", "thermal", "ground"]
@@ -150,6 +157,7 @@ enum HeadlessRun {
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
+                            "surrogate",
                         ]
                         .contains(key)
                     else {
@@ -182,6 +190,7 @@ enum HeadlessRun {
             }
             options.debrisResults = values["debris-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
+            options.surrogate = values["surrogate"].map { URL(filePath: $0) }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
                     throw ProjectFileError.invalid(
@@ -389,6 +398,7 @@ enum HeadlessRun {
                 options.out, options.csv, options.usd, options.vdb, options.fragmentResults,
                 options.thermalResults, options.cloudResults, options.groundResults, options.envelopeResults,
                 options.envelopeHistories, options.envelopeDamage, options.debrisResults, options.standing,
+                options.surrogate,
             ]
             .compactMap({ $0 })
             where FileManager.default.fileExists(atPath: url.path) {
@@ -1086,6 +1096,51 @@ enum HeadlessRun {
         return lines.joined(separator: "\n")
     }
 
+    /// The surrogate's first look at the envelope buildings, as written by `--surrogate`.
+    struct FirstLook: Encodable {
+        /// Always true: an estimate, not a run.
+        var estimate = true
+        var method: String
+        var fittedTo: String
+        var standing: [String]
+        var components: Int
+        var seconds: Double
+        var buildings: [EnvelopeBuildingDamage]
+    }
+
+    /// The first look at the project's envelope buildings (as `--resolution` and `--mass` change
+    /// the inputs), written to `url`; its lines.
+    static func firstLook(_ options: Options, to url: URL) throws -> [String] {
+        let document = try ProjectDocument.read(from: options.project)
+        let inputs = try inputs(for: document, options: options)
+        let scenario = inputs.scenario
+        guard !scenario.envelopeObjects.isEmpty else {
+            throw ProjectFileError.invalid("--surrogate needs envelope buildings.")
+        }
+        let cellSize = Resolution(rawValue: inputs.settings.resolution)!.cellSize
+        let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
+        let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
+            estimate, constructions: { scenario.envelopeConstruction(for: $0) })
+        let look = FirstLook(
+            method: FacadeLoadSurrogate.method, fittedTo: FacadeLoadSurrogate.Coefficients.fitted.fittedTo,
+            standing: FacadeLoadSurrogate.standing, components: estimate.loads.count,
+            seconds: estimate.seconds + damageS, buildings: buildings)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+        try encoder.encode(look).write(to: url, options: .withoutOverwriting)
+        var lines = [
+            String(
+                format: "Quick estimate, not a run: %d components of %d buildings in %.1f s",
+                estimate.loads.count, buildings.count, look.seconds)
+        ]
+        lines += buildings.map { building in
+            let name = scenario.object(id: building.id)?.name ?? "Building"
+            return "  \(name): " + EnvelopeDamageSection.summary(building)
+        }
+        lines += FacadeLoadSurrogate.standing.map { "  " + $0 }
+        return lines
+    }
+
     /// The advice for `target` on the project's inputs (as `--resolution` and `--mass` change
     /// them), in lines: what was chosen and why, what could not be met, and the candidates nearest it.
     nonisolated static func advise(_ options: Options, target: AdvisorTarget) throws -> [String] {
@@ -1152,6 +1207,16 @@ enum HeadlessRun {
         } catch {
             FileHandle.standardError.write(Data("\(error.localizedDescription)\n\n\(usage)\n".utf8))
             return 2
+        }
+        if let url = options.surrogate {
+            do {
+                for line in try firstLook(options, to: url) { print(line) }
+                return 0
+            } catch {
+                FileHandle.standardError.write(
+                    Data("First look failed: \(error.localizedDescription)\n".utf8))
+                return 1
+            }
         }
         if let target = options.advise {
             do {

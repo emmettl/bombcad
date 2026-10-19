@@ -310,7 +310,8 @@ most are about reaching an answer for less, with the full solver kept as the ref
    geometry and charge, or a small learned model of envelope response), giving an instant first
    look that real runs then refine where it matters, and inheriting the standing's error bands.
    The first step is a surrogate for envelope damage across a district, checked against Beirut's
-   runs.
+   runs: done for glass, which it gets right side by side for three in four of Beirut's building
+   sides in half a minute, not for walls and roofs ([first look](surrogate-first-look.md)).
 3. **City scale in minutes.** Gas dynamics only near the charge and in the streets that matter,
    and further out the blast carried by ray-traced shielding and channelling (the thermal model
    already uses Metal ray tracing) with scaled blast laws, handed over at a boundary. The first
