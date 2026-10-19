@@ -201,7 +201,10 @@ struct NearbyWorkerTests {
         return (server, store, shown)
     }
 
-    @Test("A Mac paired over the network runs a case to the same answer", .networkLimit)
+    // The hang limit, not the network one: this test also runs a case on the GPU here and on the
+    // "worker", which under a loaded Studio (load 100–130, 19 October 2026) took past three minutes.
+    // A stalled connection still fails within the app's own deadlines (20–30 s a step).
+    @Test("A Mac paired over the network runs a case to the same answer", .hangLimit)
     func session() async throws {
         let (server, serverStore, shown) = try server()
         defer { server.stop() }
