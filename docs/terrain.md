@@ -333,7 +333,7 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/Te
   read a NaN wave speed and was 0.62 s long; it now runs as with a second level that has room.
   A wave speed that is NaN, infinite or negative now stops the batch, unstable, where it would
   have set a step far too long.
-- **A cell above a hot sliver can floor** (traced 19 October 2026, left as it is). Refined once
+- **A cell above a hot sliver could floor** (traced and fixed 19 October 2026). Refined once
   over the 20° slope (the open ground's 100 kg on the recommended air), a fine cell 0.96 air whose
   lower face is half open, over a sliver a twentieth air full of hot products, has its internal
   energy taken below nothing once a step from step 26 to 40. It happens in the fine
@@ -346,9 +346,22 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/Te
   400 steps (0.08 s) the run floors 44 times, all in that cell and its mirror, and the floor adds
   3.6 kJ: 1e-5 of the charge's energy, in cells far below ambient pressure, where no peak or
   impulse is read. Gravity had made such a floored cell a NaN (fixed in `reconstructGravity`).
-  If a scene ever shows more, the remedy is a redistribution that gives a cell no more than its
-  internal energy can take, carrying the rest on up the column: conservative, nothing floored,
-  and unchanged to the bit where nothing floors.
+  Unrefined, the same strong expansion over small cut cells drained coarse cells 2 m from the
+  charge (the open slope at steps 34–42, the street over a hill at 28–32), in the coarse
+  redistribution; refined twice, 114 cell updates on the slope in 60 steps.
+  Now both redistributions (coarse and fine) give a cell no more of a difference than leaves it a
+  tenth of its density and pressure (`positiveCutShare`, the share found by bisection), and carry
+  the rest on up the column, through whole cells if need be, to cells that can take it; the last
+  cell of air under a block or at the top takes what is left, as before. It is conservative and
+  nothing is drained: over 60 steps no cell of the open slope (unrefined, refined once or twice,
+  with gravity or without) or the street over a hill falls below 0.9 kJ/kg, where before cells
+  reached the floor, and in a closed box with no afterburning the gas's energy holds to the
+  joule where the floors had added 1.2 kJ (unrefined), 3.6 kJ (refined once) and 5.4 kJ (twice).
+  The impulse 2–12 m from the charge moves by 0.05% at most. A cell whose difference leaves it a
+  tenth takes it as it always did: of `blastbench digest`'s 112 cases (`digests2.sh` and gravity
+  without terrain) 84 are unchanged to the bit, and the 28 that move are each a charge over
+  terrain whose redistribution asked some cell for more than nine tenths of its pressure (some to
+  the floor, as on the slope; some short of it, as on the hill, whose impulse moves by 1e-5).
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
