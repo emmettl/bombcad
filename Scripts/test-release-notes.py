@@ -35,6 +35,17 @@ class FragmentTests(unittest.TestCase):
         self.assertIn("A1\n\nA2", text)
         self.assertNotIn("## Changed", text)
 
+    def test_fragments_join_the_notes_own_sections(self):
+        existing = "# BombCAD 9\n\nIntro.\n\n## New\n\nN0\n\n## Fixed\n\nF0\n"
+        text = notes.merged(existing, [("fixed", "F1"), ("added", "A1"), ("limitation", "L1")])
+        self.assertEqual(text.count("## New"), 1)
+        self.assertEqual(text.count("## Fixed"), 1)
+        self.assertIn("N0\n\nA1\n\n## Fixed", text)
+        self.assertIn("F0\n\nF1\n", text)
+        self.assertLess(text.index("F1"), text.index("## Known limitations"))
+        self.assertTrue(text.endswith("L1\n"))
+        self.assertEqual(notes.merged(existing, []), existing)
+
     def test_readme_is_not_a_fragment(self):
         self.write("README.md", "about")
         self.write("x.md", "kind: added\n\nX\n")
