@@ -31,6 +31,25 @@ struct SceneViewCodecTests {
         let (solver, _) = try solver()
         let setup = ViewSetup(solver: solver, fieldStride: 2)
         #expect(try SceneViewCodec.decodeSetup(SceneViewCodec.encode(setup)) == setup)
+        // The materials' colours travel with it: concrete walls, a glass pane.
+        let walls = try #require(setup.bodies.first?.solids)
+        #expect(walls.materialIndex.count == walls.instances.count)
+        #expect(walls.palette.first == MaterialAppearance.concrete.colour)
+        let pane = try #require(setup.bodies.compactMap(\.shells).first)
+        #expect(pane.palette.first == MaterialAppearance.glass.colour)
+        // A setup from a sender before the colours reads, drawn in the first colour.
+        var plain = setup
+        for n in plain.bodies.indices {
+            plain.bodies[n].solids?.materialIndex = []
+            plain.bodies[n].solids?.palette = []
+            plain.bodies[n].shells?.palette = []
+        }
+        var older = SceneViewCodec.encode(plain)
+        let tail = plain.bodies.reduce(0) { sum, body in
+            sum + (body.solids != nil ? 16 : 0) + (body.shells != nil ? 8 : 0)
+        }
+        older.removeLast(tail)
+        #expect(try SceneViewCodec.decodeSetup(older) == plain)
         let frame = try ViewFrame(solver: solver)
         let bytes = SceneViewCodec.encode(frame)
         #expect(SceneViewCodec.size(frame) == bytes.count)

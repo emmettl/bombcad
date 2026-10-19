@@ -407,6 +407,27 @@ mechanics checked against theory, not validated vehicle or furniture models.
 - Next: a fractional shell boundary, the air's gravity with these objects (it is now an
   [option](air-blast-model.md#gravity) for the air alone), objects and a deformable structure in
   the air together.
+- **Objects and a deformable structure in the air together, stage 1** (19 October 2026, on the
+  coarse grid). Their masks and wall velocities now coexist:
+  - (a) With objects installed beside a structure, the structure's coupling is laid over the
+    whole grid, so one wall-velocity buffer, a cell's at three times its index, serves both.
+  - (b) The structure's remask leaves the objects' cells solid at the objects' velocities.
+  - (c) The objects' remap keeps the cells the structure holds, with their velocities.
+
+  `ObjectsBesideStructureTests` holds a 0.4 m box, given 2 m/s, beside a steel plate that 1 kg
+  bends, in a closed domain, over 300 steps:
+  - **The box's cells** never open or lose their velocity.
+  - **The box's remaps** change no cell, while the plate's outline moves through 221.
+  - **The gas** changes by 16.3 g with both, against 16.8 g with the plate alone (its remask's
+    refills) and nothing with the box alone.
+
+  Scenes with one kind take their old paths unchanged.
+
+  **Refused for now.** The objects' own fine resolution
+  (`SolverConfiguration.refinement`) and refined air are refused beside a structure, and
+  structures must be set before the objects. The whole-grid layout costs a remask over every cell
+  at each structure step, and that has not been timed on a large scene. Contact between the objects
+  and the structure (d), and the app's and headless runs (e), are the stages left.
 - Objects and a deformable structure in the air together need, as found on 18 October 2026:
   (a) one layout for the coarse wall velocities, which a structure's coupling indexes by its
   region or sparse tiles and the objects over the whole grid; (b) the structure's remask, coarse

@@ -26,6 +26,13 @@ run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
 wheel to zoom (out to three times the domain's longest side). Space runs and pauses, ⌘R resets.
 
+Structures are drawn in their materials' colours: concrete warm grey, steel blue-grey, profiled
+sheeting light metallic, glass tinted and see-through, timber warm brown, brick red-brown, blockwork
+buff; exposure-only buildings by their walls' construction, plain blocks neutral, terrain earth.
+Damage shades every material alike, from amber through orange to dark red as an element nears
+failure, and failed elements fall as dark grey rubble. The colours are chosen so that damage and
+rubble stand apart from every material to people with each common colour deficiency.
+
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
