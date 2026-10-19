@@ -15,7 +15,7 @@ import simd
 // differences, the clocks and the pools' bookkeeping. Each refinement level saves its own.
 extension BlastSolver: SolverCheckpointing {
     var checkpointName: String { "air" }
-    var checkpointVersion: Int { 1 }
+    var checkpointVersion: Int { 2 }
 
     func checkpointParts() -> [SolverCheckpoint.Part] {
         var scalars = SolverCheckpoint.Writer()
@@ -40,6 +40,15 @@ extension BlastSolver: SolverCheckpointing {
         scalars.appendArray(radiationHistory.map(\.energy))
         scalars.append(gaugeHistories.count)
         for history in gaugeHistories { scalars.appendArray(history) }
+        // How many charges were still to fire (taken back, they must be the same).
+        scalars.append(pendingFirings.count)
+        // The bodies' contact: whether it has begun, and each body's step overrides before it.
+        scalars.append(bodiesInContact)
+        scalars.append(stepsBeforeContact.count)
+        for steps in stepsBeforeContact {
+            scalars.appendOptional(steps.solids, empty: 0)
+            scalars.appendOptional(steps.shells, empty: 0)
+        }
         var parts: [SolverCheckpoint.Part] = [.bytes("scalars", scalars.data)]
         for (name, buffer) in checkpointBuffers { parts.append(.buffer(name, buffer, 0..<buffer.length)) }
         return parts
@@ -55,6 +64,20 @@ extension BlastSolver: SolverCheckpointing {
         if hasSpecies { buffers += [("speciesA", speciesBuffers[0]), ("speciesB", speciesBuffers[1])] }
         if let cappedSliverBuffer { buffers.append(("cappedSlivers", cappedSliverBuffer)) }
         if let defects = terrainCut?.defects { buffers.append(("terrainCutDefects", defects)) }
+        // The coupling with the bodies: the walls' speeds (and the pages they lie on), the bodies'
+        // occupancy and envelopes, what debris traded with the air, the sticky overlap and
+        // capacity marks, and the structures' cut cells' carried differences.
+        if hasBody {
+            buffers.append(("wallVelocity", wallVelocityBuffer))
+            let optional: [(String, MTLBuffer?)] = [
+                ("couplingTiles", couplingTiles), ("occupancy", occupancyBuffer),
+                ("combinedOccupancy", combinedOccupancyBuffer), ("interaction", interactionBuffer),
+                ("bodyEnvelopes", bodyEnvelopeBuffer), ("debrisExchange", debrisExchangeBuffer),
+                ("debrisArea", debrisAreaBuffer), ("structureCutDefects", structureCut?.defects),
+                ("structureCutPassed", structureCut?.passed),
+            ]
+            for case (let name, let buffer?) in optional { buffers.append((name, buffer)) }
+        }
         return buffers
     }
 
@@ -86,6 +109,17 @@ extension BlastSolver: SolverCheckpointing {
                 description: "\(gauges) gauges were saved where the solver has \(gaugeHistories.count)")
         }
         gaugeHistories = (0..<gauges).map { _ in scalars.readArray(GaugeSample.self) }
+        let pending = scalars.read(Int.self)
+        guard pending == pendingFirings.count else {
+            throw SolverCheckpoint.Refusal(
+                description:
+                    "\(pending) charges were still to fire where this solver has \(pendingFirings.count)")
+        }
+        bodiesInContact = scalars.readBool()
+        let contacts = scalars.read(Int.self)
+        stepsBeforeContact = (0..<max(contacts, 0)).map { _ in
+            (solids: scalars.readOptional(Float.self), shells: scalars.readOptional(Float.self))
+        }
         try scalars.finish("air")
         for (name, buffer) in checkpointBuffers {
             try SolverCheckpoint.restore(
@@ -97,13 +131,12 @@ extension BlastSolver: SolverCheckpointing {
     /// refinement and its clocks; a part not yet covered refuses rather than be left out.
     public var checkpointUnsupported: String? {
         if batchInFlight { return "a batch is in flight" }
-        if !bodies.isEmpty { return "structures are not yet checkpointed" }
-        if !experimentalBoxes.isEmpty { return "the experimental rigid boxes are not checkpointed" }
-        if deflagrationStage != nil || congestion != nil { return "deflagrations are not yet checkpointed" }
-        if exposurePlane != nil || envelopeExposure != nil || envelopeComponentRecorder != nil {
-            return "envelopes' and exposure planes' recorders are not yet checkpointed"
+        // Charges still to fire are laid out again from the scene, as they were; once one has fired,
+        // what it laid (and how) is not yet saved.
+        if !firings.isEmpty || rampStart != 0 || lastFiring != 0 {
+            return "a delayed charge has fired: delayed charges are checkpointed only before the first fires"
         }
-        if envelopeVenting != nil { return "envelope venting is not yet checkpointed" }
+        if !experimentalBoxes.isEmpty { return "the experimental rigid boxes are not checkpointed" }
         return nil
     }
 
@@ -112,6 +145,21 @@ extension BlastSolver: SolverCheckpointing {
         var parts: [any SolverCheckpointing] = [self]
         parts += refinementLevels.map { $0 as any SolverCheckpointing }
         if let radiativeCoolingStage { parts.append(radiativeCoolingStage) }
+        parts += bodies.map { $0 as any SolverCheckpointing }
+        if let envelopeComponentRecorder {
+            parts.append(envelopeComponentRecorder.checkpoint(queue: commandQueue))
+        }
+        if let envelopeExposure {
+            parts.append(ClosureCheckpoint.buffers(of: envelopeExposure, name: "envelopeExposure"))
+        }
+        if let envelopeVenting {
+            parts.append(ClosureCheckpoint.buffers(of: envelopeVenting, name: "envelopeVenting"))
+        }
+        if let exposurePlane {
+            parts.append(ClosureCheckpoint.buffers(of: exposurePlane, name: "exposurePlane"))
+        }
+        if let deflagrationStage { parts.append(deflagrationStage.checkpoint()) }
+        if let congestion { parts.append(congestion.checkpoint()) }
         return parts
     }
 
@@ -146,7 +194,12 @@ extension BlastSolver: SolverCheckpointing {
             grid: [grid.nx, grid.ny, grid.nz], cellSize: grid.cellSize, stepCount: stepCount, time: time,
             pools: refinementLevels.map(\.maxPatches),
             covers: ["air", "clocks"] + (refinementLevels.isEmpty ? [] : ["refinement"])
-                + (radiativeCoolingStage == nil ? [] : ["radiativeCooling"]),
+                + (radiativeCoolingStage == nil ? [] : ["radiativeCooling"])
+                + (bodies.isEmpty ? [] : ["structures"])
+                + (envelopeComponentRecorder == nil && envelopeExposure == nil ? [] : ["envelopes"])
+                + (envelopeVenting == nil ? [] : ["venting"])
+                + (exposurePlane == nil ? [] : ["exposurePlane"])
+                + (deflagrationStage == nil ? [] : ["deflagration"]),
             complete: true, parts: [], rawBytes: 0, storedBytes: 0, seconds: 0)
         return try SolverCheckpoint.write(checkpointSubsystems, header: header, to: folder)
     }
@@ -207,6 +260,37 @@ extension BlastSolver {
             fold(word)
         }
         for level in refinementLevels { level.digest(into: &hash) }
+        // Each body's clock, nodes, element flags, layers, beams' fibres and rubble (not its
+        // contact tables, whose slots the GPU's atomics hand out in no fixed order).
+        let structural: Set<String> = [
+            "nodeBuffer", "flagBuffer", "layerBuffer", "beamFlagBuffer", "beamFibreBuffer",
+            "rubbleSystem.particles",
+        ]
+        // The recorders' and venting's results (not the lists the GPU's atomics fill in no fixed
+        // order).
+        let recorded: Set<String> = [
+            "peaks", "bins", "maxima", "starts", "clock", "flags", "current", "values", "signed", "buffer",
+            "stateBuffer", "statusBuffer", "wallStateBuffer", "wallClockBuffer", "openedBuffer",
+            "roomResults",
+            "panelPeakBuffer", "panelOpenedBuffer", "openedAtBuffer", "stillPressure",
+        ]
+        let recorders: Set<String> = [
+            "envelopeComponents", "envelopeExposure", "envelopeVenting", "exposurePlane", "deflagration",
+        ]
+        for part in checkpointSubsystems where recorders.contains(part.checkpointName) {
+            for piece in part.checkpointParts() where recorded.contains(piece.name) {
+                for byte in piece.data { hash = (hash ^ UInt64(byte)) &* 0x100_0000_01b3 }
+            }
+        }
+        for body in bodies {
+            fold(UInt32(truncatingIfNeeded: body.time.bitPattern))
+            fold(UInt32(truncatingIfNeeded: body.time.bitPattern >> 32))
+            for part in body.checkpointParts() {
+                let name = part.name.split(separator: ".", maxSplits: 1).last.map(String.init) ?? part.name
+                guard structural.contains(name), case .buffer(_, let buffer, _) = part else { continue }
+                fold(buffer, buffer.length)
+            }
+        }
         return hash
     }
 }

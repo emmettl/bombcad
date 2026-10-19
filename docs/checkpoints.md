@@ -7,10 +7,9 @@ a crashed run continue rather than start again from zero. It is the second tier 
 timelines, where any moment can be run again in full detail from the nearest checkpoint (the
 first tier, display frames, is described with the app's timeline).
 
-**Stage 1 (this page): the air, its refinement and its clocks.** A run with structures,
-envelopes' recorders or venting, a deflagration or an exposure plane is refused. Stage 2 adds
-structures, envelopes and gauges and receivers, and stage 3 the app's "Save state here" and
-"Continue from saved state".
+**Stage 1: the air, its refinement and its clocks. Stage 2: structures, envelopes' recorders and
+venting, exposure planes, deflagrations and congestion.** Stage 3 is to add the app's "Save state
+here" and "Continue from saved state".
 
 ```bash
 blastbench snapshot --preset street --dx 0.25 --time 0.03 --checkpoint-at 0.01 --checkpoint-out street-10ms
@@ -46,6 +45,19 @@ it can never be silently left out.
   they are read, so they are not saved.
 - **The radiative cooling:** the time since it last took its loss. It takes it every 4 steps,
   so a 64-step boundary is always a step it takes it on.
+- **Each structure** (solids, shells, or both): its time, its step override, the step it failed
+  at, its settled displacements and work sums, and every buffer it shares with the CPU (nodes,
+  elements, layers and fibres, beams, damage, contact pairs, footings, bars, rubble, the terrain
+  it rests on). The air's side of the coupling is saved with the air: the walls' speeds, the
+  coupling tiles, the occupancy, the interaction and envelope buffers, the debris exchange and
+  the structure's cut cells. A structure's buffers are found by reflection: the solver's own and
+  those of its named sub-systems (`checkpointSubsystems`), so a buffer added to one is saved
+  without being listed.
+- **Envelopes:** the components' recorders (peaks, bins, histories, clocks; the still pressure,
+  held on the GPU only, through a blit), the exposure, the venting's panes, walls and rooms, and
+  an exposure plane.
+- **A deflagration:** its buffers, its vents' opening times and the unburnt fuel it started with;
+  **congestion:** its buffers and its current state.
 
 A run is taken back into a solver built from the same scene and settings, which rebuilds
 everything derived from them (pipelines, the terrain's geometry, gravity's tables, the mapped
@@ -61,7 +73,8 @@ batches: there, every decision that depends on the coupling is made from the sta
 A folder holding `checkpoint.json` and one file a part. The header gives:
 - the format;
 - the parts, with their versions and pieces;
-- what it covers (`air`, `clocks`, `refinement`, `radiativeCooling`), and whether that is the
+- what it covers (`air`, `clocks`, `refinement`, `radiativeCooling`, `structures`, `envelopes`,
+  `venting`, `exposurePlane`, `deflagration`), and whether that is the
   whole run's state;
 - the fingerprints of the scene and the settings;
 - the grid, the step and the time;
@@ -108,20 +121,27 @@ much of the domain the blast has reached, and the refinement's pools. Saved by d
 `/Volumes/StudioData/bombcad/checkpoints` for the benchmarks; `checkpointBytes` gives the raw
 size beforehand.
 
+Stage 2, on the Studio, also to the bit: the blast wall in solids and in shells, on the default
+and the recommended air, saved at step 128 of 192 and 512 of 640, and refined; the street's
+buildings with recorders, venting and an exposure plane on both airs; the gas-filled room's
+deflagration; the open ground with an exposure plane (`blastbench checkpoint-check --case wall`,
+`--street-envelopes`, `--envelopes`, `--exposure-plane`, `--preset gasroom`).
+
 Through `blastbench snapshot`, on the street at 0.25 m:
 - A run saved at 10 ms (at step 256, 14.3 ms; 554 MB raw, 18 MB stored, 1 s) and resumed
   draws the same image at 30 ms as the run straight through, byte for byte.
 - The run that saved draws it too.
 
 `SolverCheckpointTests` checks a refined-twice run on a slope saved at step 64 and carried on to
-128, the refusals (a step off the boundary, another scene, other settings, a structure), and the
-compression's round trip.
+128, a struck wall in shells and a glazed building with its recorders and venting carried on the
+same way, the refusals (a step off the boundary, another scene, other settings, a batch in
+flight), and the compression's round trip.
 
 ## Limitations
 
-- **Stage 1 refuses** structures, envelopes' recorders, venting, deflagrations, exposure planes
-  and the experimental rigid boxes. Stage 2 covers structures (nodes, elements, shells' load
-  tables, contact pairs, rubble), envelopes (panes, clocks, histories) and gauges' receivers.
+- **Refused:** a batch in flight; a run in which a delayed charge has fired (charges still to
+  fire are laid out again from the scene, so a checkpoint before the first fires is fine); the
+  experimental rigid boxes.
 - **The same build.** A checkpoint is read by the build that wrote it, or one whose parts keep
   the same versions. It is not an archive format.
 - **The time limits a resumed run is advanced with must be those of the run it carries on.** A

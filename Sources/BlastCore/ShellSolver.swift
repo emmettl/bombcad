@@ -1964,3 +1964,45 @@ struct MemberShearBuffers {
         }
     }
 }
+
+// The shells' and beams' state for a checkpoint (`SolverCheckpoint`), as a structural body's
+// part: every shared buffer the solver and its member shear, footings and part pairs hold (the
+// load table among them, whose springs, links and hinges yield and let go), and its clock, its
+// contact tables' stamp, its step override, whether it had failed at the last 64-step mark, and
+// the shape it settled to.
+extension ShellSolver {
+    static let checkpointSubsystems: Set<String> = [
+        "MemberShearBuffers", "FootingSystem", "PartPairs", "StructureTerrain",
+    ]
+
+    func checkpointParts(prefix: String) -> [SolverCheckpoint.Part] {
+        var scalars = SolverCheckpoint.Writer()
+        scalars.append(time)
+        scalars.append(stamp)
+        scalars.appendOptional(stepOverride, empty: 0)
+        scalars.appendOptional(failedAtCheckpoint, empty: false)
+        scalars.append(settledDisplacements != nil)
+        scalars.appendArray(settledDisplacements ?? [])
+        return [.bytes("\(prefix)scalars", scalars.data)]
+            + SolverCheckpoint.sharedBuffers(of: self, within: Self.checkpointSubsystems).map {
+                .buffer("\(prefix)\($0.0)", $0.1, 0..<$0.1.length)
+            }
+    }
+
+    func restoreCheckpoint(_ parts: [String: Data], prefix: String) throws {
+        var scalars = SolverCheckpoint.Reader(parts["\(prefix)scalars"] ?? Data())
+        time = scalars.read(Double.self)
+        stamp = scalars.read(UInt32.self)
+        stepOverride = scalars.readOptional(Float.self)
+        failedAtCheckpoint = scalars.readOptional(Bool.self)
+        let settled = scalars.readBool()
+        let displacements = scalars.readArray(SIMD3<Float>.self)
+        settledDisplacements = settled ? displacements : nil
+        try scalars.finish("\(prefix)scalars")
+        for (name, buffer) in SolverCheckpoint.sharedBuffers(of: self, within: Self.checkpointSubsystems) {
+            try SolverCheckpoint.restore(
+                parts["\(prefix)\(name)"], into: buffer, offset: 0, length: buffer.length,
+                name: "\(prefix)\(name)")
+        }
+    }
+}

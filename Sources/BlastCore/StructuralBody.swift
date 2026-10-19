@@ -255,3 +255,28 @@ public final class StructuralBody: Identifiable {
         }
     }
 }
+
+// A structural body's state for a checkpoint (`SolverCheckpoint`): its clock and its solvers'.
+extension StructuralBody: SolverCheckpointing {
+    var checkpointName: String { "body-\(id.uuidString)" }
+    var checkpointVersion: Int { 1 }
+
+    func checkpointParts() -> [SolverCheckpoint.Part] {
+        var scalars = SolverCheckpoint.Writer()
+        scalars.append(time)
+        var parts: [SolverCheckpoint.Part] = [.bytes("scalars", scalars.data)]
+        if let solids { parts += solids.checkpointParts(prefix: "solids.") }
+        if let shells { parts += shells.checkpointParts(prefix: "shells.") }
+        if let mixed { parts += mixed.checkpointParts(prefix: "mixed.") }
+        return parts
+    }
+
+    func restoreCheckpoint(_ parts: [String: Data]) throws {
+        var scalars = SolverCheckpoint.Reader(parts["scalars"] ?? Data())
+        time = scalars.read(Double.self)
+        try scalars.finish("\(checkpointName).scalars")
+        try solids?.restoreCheckpoint(parts, prefix: "solids.")
+        try shells?.restoreCheckpoint(parts, prefix: "shells.")
+        try mixed?.restoreCheckpoint(parts, prefix: "mixed.")
+    }
+}

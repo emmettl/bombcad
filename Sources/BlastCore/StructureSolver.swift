@@ -665,6 +665,9 @@ public final class StructureSolver {
         var masses = [Float](repeating: 0, count: nodeCount)
         mutateNodes { nodes in for n in nodes.indices { masses[n] = nodes[n].mass } }
         var found: [PartPairs.Pair] = []
+        // Each slot's nodes in their order, so that a tie between two goes the same way in every
+        // process (a dictionary's order changes with its hashing's seed, from run to run).
+        let ordered = partners.mapValues { $0.sorted { $0.key < $1.key } }
         for (owner, entry) in owners.sorted(by: { $0.key < $1.key }) {
             guard let law = model.connection(inSlot: entry.slot), let side = partners[entry.slot] else {
                 continue
@@ -672,7 +675,7 @@ public final class StructureSolver {
             let normal = law.across
             // The nearest node across the gap, straight across it within half an element.
             var best: (node: Int, gap: Float, offset: Float)?
-            for (node, position) in side where node != owner {
+            for (node, position) in ordered[entry.slot] ?? [] where node != owner {
                 let apart = entry.position - position
                 let gap = simd_dot(apart, normal)
                 let offset = simd_length(apart - gap * normal)
@@ -2329,5 +2332,49 @@ public final class StructureSolver {
             }
         }
         return parameters
+    }
+}
+
+// The solid elements' state for a checkpoint (`SolverCheckpoint`), as a structural body's part:
+// every shared buffer the solver and its footings, part pairs, bars and rubble hold, and its
+// clock, its contact tables' stamp (which they are read against), its step override, whether it
+// had failed at the last 64-step mark, and the shape it settled to.
+extension StructureSolver {
+    static let checkpointSubsystems: Set<String> = [
+        "FootingSystem", "PartPairs", "DiscreteBarSystem", "RubbleSystem", "StructureTerrain",
+        "InterfaceBuffers",
+    ]
+
+    func checkpointParts(prefix: String) -> [SolverCheckpoint.Part] {
+        var scalars = SolverCheckpoint.Writer()
+        scalars.append(time)
+        scalars.append(stamp)
+        scalars.appendOptional(stepOverride, empty: 0)
+        scalars.appendOptional(failedAtCheckpoint, empty: false)
+        scalars.append(settledDisplacements != nil)
+        scalars.appendArray(settledDisplacements ?? [])
+        scalars.appendArray(workSums)
+        return [.bytes("\(prefix)scalars", scalars.data)]
+            + SolverCheckpoint.sharedBuffers(of: self, within: Self.checkpointSubsystems).map {
+                .buffer("\(prefix)\($0.0)", $0.1, 0..<$0.1.length)
+            }
+    }
+
+    func restoreCheckpoint(_ parts: [String: Data], prefix: String) throws {
+        var scalars = SolverCheckpoint.Reader(parts["\(prefix)scalars"] ?? Data())
+        time = scalars.read(Double.self)
+        stamp = scalars.read(UInt32.self)
+        stepOverride = scalars.readOptional(Float.self)
+        failedAtCheckpoint = scalars.readOptional(Bool.self)
+        let settled = scalars.readBool()
+        let displacements = scalars.readArray(SIMD3<Float>.self)
+        settledDisplacements = settled ? displacements : nil
+        workSums = scalars.readArray(Double.self)
+        try scalars.finish("\(prefix)scalars")
+        for (name, buffer) in SolverCheckpoint.sharedBuffers(of: self, within: Self.checkpointSubsystems) {
+            try SolverCheckpoint.restore(
+                parts["\(prefix)\(name)"], into: buffer, offset: 0, length: buffer.length,
+                name: "\(prefix)\(name)")
+        }
     }
 }

@@ -116,6 +116,95 @@ public enum SolverCheckpoint {
         String(fnv(Data(String(reflecting: configuration).utf8)), radix: 16)
     }
 
+    // MARK: - Buffers found by reflection
+
+    /// Every shared buffer `subject` holds, by its property's path: its own (alone, in optionals
+    /// and in arrays) and those of the sub-systems it holds whose types are named in `within`, each
+    /// buffer once. For parts with many buffers (a structure's solver and its footings, pairs, bars
+    /// and rubble), so that a buffer added to one is saved without being listed; a buffer built
+    /// once from the model comes back the same, at the cost of its bytes. Private buffers, which
+    /// the CPU cannot read, are left out: a part holding state in one must save it itself.
+    static func sharedBuffers(of subject: Any, within names: Set<String>) -> [(String, MTLBuffer)] {
+        var found: [(String, MTLBuffer)] = []
+        var seen = Set<ObjectIdentifier>()
+        func visit(_ value: Any, _ path: String, root: Bool) {
+            if let buffer = value as? MTLBuffer {
+                if buffer.storageMode == .shared, seen.insert(ObjectIdentifier(buffer)).inserted {
+                    found.append((path, buffer))
+                }
+                return
+            }
+            let mirror = Mirror(reflecting: value)
+            switch mirror.displayStyle {
+            case .optional:
+                if let child = mirror.children.first { visit(child.value, path, root: root) }
+                return
+            case .collection:
+                // Arrays of buffers (ping-pong pairs), not arrays of anything else.
+                guard let first = mirror.children.first,
+                    first.value is MTLBuffer || Mirror(reflecting: first.value).displayStyle == .optional
+                else { return }
+                for (n, child) in mirror.children.enumerated() {
+                    visit(child.value, "\(path)[\(n)]", root: false)
+                }
+                return
+            case .class, .struct:
+                guard root || names.contains(String(describing: type(of: value))) else { return }
+                if let object = value as AnyObject?, mirror.displayStyle == .class,
+                    !seen.insert(ObjectIdentifier(object)).inserted
+                {
+                    return
+                }
+                var level: Mirror? = mirror
+                while let current = level {
+                    for child in current.children {
+                        visit(
+                            child.value,
+                            path.isEmpty ? (child.label ?? "?") : "\(path).\(child.label ?? "?")", root: false
+                        )
+                    }
+                    level = current.superclassMirror
+                }
+            default:
+                return
+            }
+        }
+        visit(subject, "", root: true)
+        return found
+    }
+
+    // MARK: - Private buffers
+
+    /// The bytes of a private buffer, which the CPU cannot read, copied out through a shared one.
+    static func readPrivate(_ buffer: MTLBuffer, queue: MTLCommandQueue) -> Data {
+        guard let staging = queue.device.makeBuffer(length: buffer.length, options: .storageModeShared),
+            let commands = queue.makeCommandBuffer(), let blit = commands.makeBlitCommandEncoder()
+        else { return Data() }
+        blit.copy(from: buffer, sourceOffset: 0, to: staging, destinationOffset: 0, size: buffer.length)
+        blit.endEncoding()
+        commands.commit()
+        commands.waitUntilCompleted()
+        return Data(bytes: staging.contents(), count: buffer.length)
+    }
+
+    /// Writes `data` into a private buffer through a shared one.
+    static func writePrivate(_ data: Data?, into buffer: MTLBuffer, queue: MTLCommandQueue, name: String)
+        throws
+    {
+        guard let data else { throw Refusal(description: "the checkpoint has no \(name)") }
+        guard data.count == buffer.length,
+            let staging = queue.device.makeBuffer(length: buffer.length, options: .storageModeShared),
+            let commands = queue.makeCommandBuffer(), let blit = commands.makeBlitCommandEncoder()
+        else {
+            throw Refusal(description: "\(name) is \(data.count) bytes where the solver has \(buffer.length)")
+        }
+        data.copyBytes(to: UnsafeMutableRawBufferPointer(start: staging.contents(), count: buffer.length))
+        blit.copy(from: staging, sourceOffset: 0, to: buffer, destinationOffset: 0, size: buffer.length)
+        blit.endEncoding()
+        commands.commit()
+        commands.waitUntilCompleted()
+    }
+
     // MARK: - Scalars
 
     /// Scalars written as their exact bit patterns, in order.
@@ -127,6 +216,12 @@ public enum SolverCheckpoint {
         }
 
         mutating func append(_ value: Bool) { append(UInt8(value ? 1 : 0)) }
+
+        /// An optional plain value: whether it is there, then it.
+        mutating func appendOptional<T>(_ value: T?, empty: T) {
+            append(value != nil)
+            append(value ?? empty)
+        }
 
         /// An array of plain values, with its count first.
         mutating func appendArray<T>(_ values: [T]) {
@@ -162,6 +257,12 @@ public enum SolverCheckpoint {
         }
 
         mutating func readBool() -> Bool { read(UInt8.self) != 0 }
+
+        mutating func readOptional<T>(_: T.Type) -> T? {
+            let present = readBool()
+            let value = read(T.self)
+            return present ? value : nil
+        }
 
         mutating func readArray<T>(_: T.Type) -> [T] {
             let count = read(Int.self)
@@ -345,5 +446,35 @@ public enum SolverCheckpoint {
             }
             try part.restoreCheckpoint(pieces)
         }
+    }
+}
+
+/// A checkpoint's part given by closures, for the parts that need something of the solver's to save
+/// or take back their state (its command queue, for private buffers).
+struct ClosureCheckpoint: SolverCheckpointing {
+    let checkpointName: String
+    let checkpointVersion: Int
+    let parts: () -> [SolverCheckpoint.Part]
+    let restore: ([String: Data]) throws -> Void
+
+    func checkpointParts() -> [SolverCheckpoint.Part] { parts() }
+    func restoreCheckpoint(_ parts: [String: Data]) throws { try restore(parts) }
+
+    /// A part whose state is every shared buffer `subject` holds (`SolverCheckpoint.sharedBuffers`).
+    static func buffers(of subject: AnyObject, name: String, version: Int = 1) -> ClosureCheckpoint {
+        ClosureCheckpoint(
+            checkpointName: name, checkpointVersion: version,
+            parts: {
+                SolverCheckpoint.sharedBuffers(of: subject, within: []).map {
+                    .buffer($0.0, $0.1, 0..<$0.1.length)
+                }
+            },
+            restore: { parts in
+                for (piece, buffer) in SolverCheckpoint.sharedBuffers(of: subject, within: []) {
+                    try SolverCheckpoint.restore(
+                        parts[piece], into: buffer, offset: 0, length: buffer.length, name: "\(name).\(piece)"
+                    )
+                }
+            })
     }
 }

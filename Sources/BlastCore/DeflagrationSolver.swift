@@ -448,3 +448,34 @@ private func cellSpan(_ low: Float, _ high: Float, count: Int) -> Range<Int> {
     let last = min(count, Int(high.rounded(.up)))
     return first < last ? first..<last : 0..<0
 }
+
+extension DeflagrationStage {
+    /// Its state for a checkpoint (`SolverCheckpoint`): its buffers (the panels' peaks, whether
+    /// they opened and when) and the times they opened, as the CPU has them.
+    func checkpoint() -> ClosureCheckpoint {
+        let shared = ClosureCheckpoint.buffers(of: self, name: "deflagration")
+        return ClosureCheckpoint(
+            checkpointName: "deflagration", checkpointVersion: 1,
+            parts: {
+                var scalars = SolverCheckpoint.Writer()
+                scalars.append(self.openTimes.count)
+                for time in self.openTimes { scalars.appendOptional(time, empty: 0) }
+                scalars.append(self.initialUnburnt)
+                return shared.parts() + [.bytes("scalars", scalars.data)]
+            },
+            restore: { parts in
+                try shared.restore(parts)
+                var scalars = SolverCheckpoint.Reader(parts["scalars"] ?? Data())
+                let count = scalars.read(Int.self)
+                let times = (0..<max(count, 0)).map { _ in scalars.readOptional(Double.self) }
+                let unburnt = scalars.read(Double.self)
+                try scalars.finish("deflagration.scalars")
+                guard times.count == self.openTimes.count else {
+                    throw SolverCheckpoint.Refusal(
+                        description: "the checkpoint has another number of vent panels")
+                }
+                self.openTimes = times
+                self.initialUnburnt = unburnt
+            })
+    }
+}

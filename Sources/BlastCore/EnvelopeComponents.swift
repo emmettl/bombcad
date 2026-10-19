@@ -574,3 +574,26 @@ extension EnvelopeComponentRecorder {
         clock.contents().storeBytes(of: Float(start - bin * binS), toByteOffset: 4, as: Float.self)
     }
 }
+
+extension EnvelopeComponentRecorder {
+    /// Its state for a checkpoint (`SolverCheckpoint`): its shared buffers (the peaks, bins, maxima,
+    /// clock, first bins, the step's means and the dispatches its first sample left) and the still
+    /// air's pressure the first sample wrote, which is private. The other private buffers are
+    /// rewritten every step.
+    func checkpoint(queue: MTLCommandQueue) -> ClosureCheckpoint {
+        let shared = ClosureCheckpoint.buffers(of: self, name: "envelopeComponents")
+        return ClosureCheckpoint(
+            checkpointName: "envelopeComponents", checkpointVersion: 1,
+            parts: {
+                shared.parts() + [
+                    .bytes("stillPressure", SolverCheckpoint.readPrivate(self.stillPressure, queue: queue))
+                ]
+            },
+            restore: { parts in
+                try shared.restore(parts)
+                try SolverCheckpoint.writePrivate(
+                    parts["stillPressure"], into: self.stillPressure, queue: queue,
+                    name: "envelopeComponents.stillPressure")
+            })
+    }
+}

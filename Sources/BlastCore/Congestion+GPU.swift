@@ -108,3 +108,24 @@ extension BlastSolver {
         fluidShare(index) * Double(congestion?.porosity[index] ?? 1)
     }
 }
+
+extension CongestionBuffers {
+    /// Its state for a checkpoint (`SolverCheckpoint`): the turbulence (both copies) and which is
+    /// current, with the fields it was built with.
+    func checkpoint() -> ClosureCheckpoint {
+        let shared = ClosureCheckpoint.buffers(of: self, name: "congestion")
+        return ClosureCheckpoint(
+            checkpointName: "congestion", checkpointVersion: 1,
+            parts: {
+                var scalars = SolverCheckpoint.Writer()
+                scalars.append(self.current)
+                return shared.parts() + [.bytes("scalars", scalars.data)]
+            },
+            restore: { parts in
+                try shared.restore(parts)
+                var scalars = SolverCheckpoint.Reader(parts["scalars"] ?? Data())
+                self.current = scalars.read(Int.self)
+                try scalars.finish("congestion.scalars")
+            })
+    }
+}

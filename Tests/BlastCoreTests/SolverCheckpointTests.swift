@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The solver's state saved part way and taken back (`SolverCheckpoint`).
 @Suite("Solver checkpoints", .gpuThreads)
@@ -86,14 +87,71 @@ struct SolverCheckpointTests {
         }
     }
 
-    @Test("A part of the solver not yet covered refuses rather than be left out")
-    func uncoveredPartsRefuse() throws {
-        let scene = ScenarioPreset.blastWall.scenario
-        let solver = try BlastSolver(device: device, scenario: scene, cellSize: 0.5)
+    @Test("A checkpoint is refused while a batch is in flight")
+    func batchInFlightRefuses() throws {
+        let scene = ScenarioPreset.openGround.scenario
+        let solver = try BlastSolver(device: device, scenario: scene, cellSize: 1)
+        let commands = try #require(solver.encodeBatch(steps: 64))
         #expect(solver.checkpointUnsupported != nil)
         #expect(throws: SolverCheckpoint.Refusal.self) {
-            try solver.saveCheckpoint(to: folder("wall"), scene: scene)
+            try solver.saveCheckpoint(to: folder("flight"), scene: scene)
         }
+        commands.commit()
+        commands.waitUntilCompleted()
+        _ = solver.completeBatch()
+        #expect(solver.checkpointUnsupported == nil)
+    }
+
+    /// Straight through to `steps`, against saved at `at` and carried on by a new solver, each
+    /// configured by `configure`: the two digests.
+    func straightAndResumed(
+        _ scene: Scenario, cellSize: Float, configuration: SolverConfiguration, steps: Int, at: Int,
+        configure: (BlastSolver) throws -> Void = { _ in }
+    ) throws -> (UInt64, UInt64) {
+        func solver() throws -> BlastSolver {
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: cellSize, configuration: configuration)
+            try configure(solver)
+            return solver
+        }
+        let straight = try solver()
+        straight.advance(steps: steps)
+        let first = try solver()
+        first.advance(steps: at)
+        let place = folder("resumed")
+        defer { try? FileManager.default.removeItem(at: place) }
+        try first.saveCheckpoint(to: place, scene: scene)
+        let resumed = try solver()
+        try resumed.restoreCheckpoint(from: place, scene: scene)
+        resumed.advance(steps: steps - at)
+        return (straight.stateDigest(), resumed.stateDigest())
+    }
+
+    @Test("A wall in shells, struck and refined, carries on from a checkpoint to the bit")
+    func structureCarriesOn() throws {
+        var scene = ScenarioPreset.blastWall.scenario
+        scene.structure?.elementKind = .shell
+        var configuration = SolverConfiguration.recommended
+        configuration.refinement = 2
+        let (straight, resumed) = try straightAndResumed(
+            scene, cellSize: 0.5, configuration: configuration, steps: 192, at: 128)
+        #expect(straight == resumed)
+    }
+
+    @Test("A glazed building's recorded loads and vented panes carry on from a checkpoint to the bit")
+    func envelopesCarryOn() throws {
+        let (scene, _) = try FragmentVentingTests().scene()
+        var configuration = SolverConfiguration.recommended
+        configuration.airSleepThreshold = 0
+        let (straight, resumed) = try straightAndResumed(
+            scene, cellSize: 0.25, configuration: configuration, steps: 256, at: 128
+        ) { solver in
+            try solver.configureEnvelopeComponents(
+                objects: scene.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.03))
+            let construction = EnvelopeConstruction.assumed(objectID: scene.envelopeObjects[0].id)
+            try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) { _ in construction }
+        }
+        #expect(straight == resumed)
     }
 
     @Test(

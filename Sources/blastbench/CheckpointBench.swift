@@ -4,7 +4,7 @@ import Metal
 
 /// `blastbench checkpoint-check [--steps 192] [--at 128] [--out DIR] [--refine 2] [--refine-levels 2]
 /// [--terrain ridge] [--recommended] [--gravity] [--case open] [--dx 0.25]`: for each of the digest's cases the
-/// first checkpoints cover (the air alone), the state after `--steps` steps run straight through
+/// first checkpoints cover (the air and structures), the state after `--steps` steps run straight through
 /// against the same steps run to `--at` (a multiple of 64), saved, taken back by a solver built
 /// afresh and run on: equal to the bit, with the checkpoint's size and the time to save and take
 /// it back.
@@ -16,10 +16,30 @@ func runCheckpointCheck(device: MTLDevice) throws {
         exit(2)
     }
     let folder = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/checkpoints/check")
-    let cases: [(String, ScenarioPreset, Float, Bool)] = [
-        ("open", .openGround, 0.5, false), ("street", .streetCanyon, 0.5, false),
-        ("street, afterburning", .streetCanyon, 0.5, true),
+    // The digest's cases, the walls among them (a structure in solids and in shells), or with
+    // `--preset` that scene alone (on `--dx`, 0.25 m by default).
+    var cases: [(String, Scenario, Float, Bool)] = [
+        ("open", ScenarioPreset.openGround.scenario, 0.5, false),
+        ("street", ScenarioPreset.streetCanyon.scenario, 0.5, false),
+        ("street, afterburning", ScenarioPreset.streetCanyon.scenario, 0.5, true),
+        ("wall", ScenarioPreset.blastWall.scenario, 0.25, false),
+        (
+            "wall as shells",
+            {
+                var s = ScenarioPreset.blastWall.scenario
+                s.structure?.elementKind = .shell
+                return s
+            }(),
+            0.25, false
+        ),
     ]
+    if let preset = option("preset") { cases = [(preset, chosenScenario(), 0.25, false)] }
+    // `--street-envelopes`: the street study's four buildings as envelopes.
+    if flag("street-envelopes") {
+        var scenario = try StreetInteractionStudy.make(.street)
+        for object in scenario.structuralObjects { try scenario.useEnvelope(id: object.id) }
+        cases = [("street envelopes", scenario, 0.25, false)]
+    }
     setvbuf(stdout, nil, _IOLBF, 0)
     let trace = flag("trace")
     func note(_ text: String) { if trace { print("  [\(text)]") } }
@@ -31,11 +51,24 @@ func runCheckpointCheck(device: MTLDevice) throws {
         configureRefinement(&configuration)
         configuration.afterburning = afterburning || flag("recommended")
         configuration.gravity = chosenGravity()
-        var scenario = preset.scenario
+        var scenario = preset
         if let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
+        // Each solver configured alike: `--envelopes` records the envelopes' components and vents
+        // their glazing, `--exposure-plane` records the plane at standing height.
         func solver() throws -> BlastSolver {
-            try BlastSolver(
+            let solver = try BlastSolver(
                 device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
+            if flag("envelopes"), !scenario.envelopeObjects.isEmpty {
+                try solver.configureEnvelopeComponents(
+                    objects: scenario.envelopeObjects, options: EnvelopeHistoryOptions(windowS: 0.1))
+                try solver.configureEnvelopeVenting(objects: scenario.envelopeObjects) {
+                    scenario.envelopeConstruction(for: $0)
+                }
+            }
+            if flag("exposure-plane") {
+                try solver.configureExposurePlane(heightM: 1.5, arrivalThresholdPa: 1_000)
+            }
+            return solver
         }
         let straight = try solver()
         if let reason = straight.checkpointUnsupported {

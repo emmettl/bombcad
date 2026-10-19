@@ -334,3 +334,23 @@ public final class MixedStructure {
         }
     }
 }
+
+// The links between a mixed structure's solids and shells for a checkpoint (`SolverCheckpoint`):
+// their buffers (the solvers on either side save their own).
+extension MixedStructure {
+    func checkpointParts(prefix: String) -> [SolverCheckpoint.Part] {
+        SolverCheckpoint.sharedBuffers(of: self, within: StructureSolver.checkpointSubsystems).map {
+            .buffer("\(prefix)\($0.0)", $0.1, 0..<$0.1.length)
+        }
+    }
+
+    func restoreCheckpoint(_ parts: [String: Data], prefix: String) throws {
+        for (name, buffer) in SolverCheckpoint.sharedBuffers(
+            of: self, within: StructureSolver.checkpointSubsystems)
+        {
+            try SolverCheckpoint.restore(
+                parts["\(prefix)\(name)"], into: buffer, offset: 0, length: buffer.length,
+                name: "\(prefix)\(name)")
+        }
+    }
+}
