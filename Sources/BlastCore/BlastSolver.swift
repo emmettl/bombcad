@@ -2008,10 +2008,15 @@ public final class BlastSolver {
             var before: [(displacement: SIMD3<Float>, mass: Float)] = []
             while elapsed < Self.settleLimit {
                 if elapsed + Double(chunk) * step >= Self.settleLimit { before = body.displacements() }
-                body.advanceAlone(steps: chunk)
+                // In a pool of its own: the steps' command buffers, and reading the motion back
+                // (`MTLBuffer.contents()`), autorelease the body's buffers, and settling takes
+                // thousands of steps on a thread whose pool may never drain.
+                let (energy, mass) = autoreleasepool { () -> (Double, Double) in
+                    body.advanceAlone(steps: chunk)
+                    return body.motion()
+                }
                 steps += chunk
                 elapsed += Double(chunk) * step
-                let (energy, mass) = body.motion()
                 speed = mass > 0 ? (2 * energy / mass).squareRoot() : 0
                 peak = max(peak, speed)
                 if elapsed >= Self.settleMinimum && speed <= Self.settleTolerance * peak {
