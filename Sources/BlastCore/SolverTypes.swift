@@ -219,6 +219,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// About each charge, out to this many m/kg^(1/3), the air is refined whatever the ceiling: a
     /// charge raised above it keeps its near field sharp.
     public static let refinementCeilingExemption: Float = 3
+    /// Refinement only inside these boxes (metres, the domain's frame): a coarse cell whose
+    /// centre lies in none of them is never refined, as above the ceiling, and nor are the bands
+    /// held in it. For refinement steered by a decision (docs/refinement-steering.md): the boxes
+    /// about the components whose outcome is in doubt. Nil, the default, refines anywhere.
+    public var refinementConfinedTo: [RefinementRegion]?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October
@@ -315,6 +320,17 @@ public struct SolverConfiguration: Sendable, Hashable {
 }
 
 /// Primitive gas state in SI units.
+/// A box of the domain in which air may be refined (`SolverConfiguration.refinementConfinedTo`).
+public struct RefinementRegion: Sendable, Hashable {
+    public var low: SIMD3<Float>
+    public var high: SIMD3<Float>
+
+    public init(low: SIMD3<Float>, high: SIMD3<Float>) {
+        self.low = low
+        self.high = high
+    }
+}
+
 public struct Primitive: Sendable, Hashable {
     public var density: Float
     public var velocity: SIMD3<Float>

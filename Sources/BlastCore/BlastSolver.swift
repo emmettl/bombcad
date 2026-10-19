@@ -111,7 +111,9 @@ public final class BlastSolver {
             bodies.isEmpty ? nil : (bodies.map(\.model), threshold)
         }
         let ceiling = refinementLevels.isEmpty ? nil : configuration.refinementCeiling
-        guard envelopes != nil || structures != nil || ceiling != nil, !refinementLevels.isEmpty else {
+        let regions = refinementLevels.isEmpty ? nil : configuration.refinementConfinedTo
+        let bounded = ceiling != nil || regions != nil
+        guard envelopes != nil || structures != nil || bounded, !refinementLevels.isEmpty else {
             facadeBand = nil
             for level in refinementLevels {
                 level.facadeBand = nil
@@ -150,6 +152,24 @@ public final class BlastSolver {
                     }
                 }
             }
+            // Bit 2 too: outside every region refinement is confined to.
+            if let regions {
+                var inside = [Bool](repeating: false, count: grid.cellCount)
+                for region in regions {
+                    // The cells whose centres lie in the box.
+                    let low = simd_max(SIMD3<Int>((region.low / grid.cellSize - 0.5).rounded(.up)), .zero)
+                    let high = simd_min(
+                        SIMD3<Int>((region.high / grid.cellSize - 0.5).rounded(.down)),
+                        SIMD3(grid.nx, grid.ny, grid.nz) &- 1)
+                    guard all(low .<= high) else { continue }
+                    for k in low.z...high.z {
+                        for j in low.y...high.y {
+                            for i in low.x...high.x { inside[grid.index(i, j, k)] = true }
+                        }
+                    }
+                }
+                for index in 0..<grid.cellCount where !inside[index] { band[index] |= 2 }
+            }
             for model in structures?.0 ?? [] {
                 for solid in model.solids {
                     // The cells whose centres lie within a cell of the solid.
@@ -184,7 +204,7 @@ public final class BlastSolver {
                 nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
                 ratio: UInt32(level.parentScale),
                 threshold: held ? threshold : 0, ambient: configuration.ambientPressure,
-                on: held && facadeBand != nil ? 1 : 0, ceiling: ceiling != nil && facadeBand != nil ? 1 : 0)
+                on: held && facadeBand != nil ? 1 : 0, ceiling: bounded && facadeBand != nil ? 1 : 0)
         }
     }
 

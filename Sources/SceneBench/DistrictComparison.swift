@@ -7,7 +7,7 @@ import simd
 /// [--window 0.5] [--budget 2048] [--ground saturated] [--observers rigby.csv] [--pane 1.2,1.5]
 /// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
 /// [--save-loads folder] [--refine 2 --levels 2 --threshold 0.005 --refine-memory GB --hold Pa]
-/// [--ceiling auto|m] [--place-dx m] [--profile]
+/// [--ceiling auto|m] [--place-dx m] [--profile] [--steer 0.8,1.5 --steer-reach 12 --steer-by ring|near --steer-on glass|structure] [--corridor x,y,60]
 /// --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
@@ -52,6 +52,9 @@ enum DistrictComparison {
     struct Building: Codable {
         var id: UUID
         var distanceM: Double
+        /// The centre of its blocks' box in the domain, m: to match buildings across runs, whose
+        /// ids are made afresh.
+        var centreM: [Float]?
         var heightM: Float
         var sides: [Side]
         var concrete: EnvelopeDamageLevel
@@ -87,6 +90,12 @@ enum DistrictComparison {
         var line: [LinePoint]
         var bands: [Band]
         var buildings: [Building]
+        /// With `--steer`: the coarse first pass's wall time, the buildings judged and those in doubt.
+        var steerWallS: Double?
+        var steerBuildings: Int?
+        var steerInDoubt: Int?
+        /// Each refined level's blocks summed over the run's steps.
+        var refinedBlockSteps: [Int]?
     }
 
     static func run(_ args: [String]) throws {
@@ -177,8 +186,13 @@ enum DistrictComparison {
         guard !scene.chargeIsBlocked else { throw BlastError.chargeBlocked(scene.charge.position) }
         // The event, in a scope of its own, so that the solver and its pools are let go before the
         // buildings are judged from what it recorded.
-        let (finalTime, steps, wall, arrivals, linePoints, recorded) = try {
-            () throws -> (Double, Int, Double, [Arrival], [LinePoint], [EnvelopeComponentHistory]) in
+        // Each refined level's blocks summed over the steps of the last event (blocks at each
+        // batch's end times its steps): what the refinement cost, apart from the Mac's load.
+        var blockSteps: [Int] = []
+        func event(_ configuration: SolverConfiguration) throws -> (
+            Double, Int, Double, [Arrival], [LinePoint], [EnvelopeComponentHistory]
+        ) {
+            blockSteps = []
             let solver = try BlastSolver(
                 device: device, scenario: scene, cellSize: dx, configuration: configuration)
             // A gauge in a building is lifted to the first air above it.
@@ -234,6 +248,13 @@ enum DistrictComparison {
                     }
                 }
                 steps += batch.steps
+                if !solver.refinementPools.isEmpty {
+                    let rows = solver.refinedBlocksByHeight()
+                    if blockSteps.count != rows.count { blockSteps = [Int](repeating: 0, count: rows.count) }
+                    for (level, row) in rows.enumerated() {
+                        blockSteps[level] += row.reduce(0, +) * batch.steps
+                    }
+                }
                 // No steps: within the solver's tolerance of the end.
                 guard batch.steps > 0 else { break }
                 guard batch.isStable else {
@@ -271,7 +292,9 @@ enum DistrictComparison {
                 }
             }
             for (level, pool) in solver.refinementPools.enumerated() {
-                print("Refined level \(level + 1): \(pool)")
+                print(
+                    "Refined level \(level + 1): \(pool), \(blockSteps.indices.contains(level) ? blockSteps[level] : 0) block-steps"
+                )
             }
             if !solver.refinementPools.isEmpty {
                 print("Refined pools grew late: \(solver.refinementPoolGrewLate)")
@@ -309,8 +332,7 @@ enum DistrictComparison {
             // Buildings.
             let recorded = (solver.envelopeComponentHistories() ?? []).filter { !$0.invalid }
             return (solver.time, steps, wall, arrivals, linePoints, recorded)
-        }()
-        let loads = recorded.map(EnvelopeComponentLoad.init)
+        }
         let pane = (value("pane").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [1.2, 1.5])
         let paneArea = pane[0] * pane[1]
         let design = value("design-probability").flatMap(Double.init) ?? 0.008
@@ -322,70 +344,193 @@ enum DistrictComparison {
             GlassStrength.sixtySecond(area: paneArea),
             GlassStrength.sixtySecond(area: paneArea, probability: design),
         ]
-        let byOwner = Dictionary(grouping: loads.indices, by: { loads[$0].owner })
-        let objects = scene.envelopeObjects
-        var buildings: [Building] = []
-        let assessed = EnvelopeDamageAssessment.assess(
-            loads: loads, constructions: { scene.envelopeConstruction(for: $0) })
-        let concrete = Dictionary(
-            uniqueKeysWithValues: assessed.map { ($0.id, $0.structuralLevels.upperBound) })
-        let stone = Dictionary(
-            uniqueKeysWithValues: EnvelopeDamageAssessment.assess(
-                loads: loads,
-                constructions: {
-                    EnvelopeConstruction(
-                        objectID: $0, walls: .unreinforcedMasonry, wallThicknessM: 0.5, source: .user,
-                        detail: "stone 0.5 m, assumed for the comparison")
-                }
-            ).map { ($0.id, $0.structuralLevels.upperBound) })
-        for object in objects {
-            guard let envelope = object.envelope, let mine = byOwner[object.id] else { continue }
-            let low = envelope.blocks.map(\.min).reduce(SIMD3<Float>(repeating: .greatestFiniteMagnitude)) {
-                simd_min($0, $1)
-            }
-            let high = envelope.blocks.map(\.max).reduce(SIMD3<Float>(repeating: -.greatestFiniteMagnitude)) {
-                simd_max($0, $1)
-            }
-            let centre = 0.5 * (low + high)
-            let toCharge = SIMD2(charge.x - centre.x, charge.y - centre.y)
-            let construction = scene.envelopeConstruction(for: object.id)
-            var sides: [Side] = []
-            let strips = mine.filter { loads[$0].kind == .facade || loads[$0].kind == .wall }
-            let bySide = Dictionary(grouping: strips) {
-                loads[$0].axis * 2 + (recorded[$0].component.outward > 0 ? 1 : 0)
-            }
-            for (key, members) in bySide.sorted(by: { $0.key < $1.key }) {
-                let axis = key / 2
-                let outward = key % 2 == 1 ? 1 : -1
-                var broken = [Bool](repeating: false, count: 2 * glass.count)
-                var peak: Float = 0
-                for index in members {
-                    let load = loads[index]
-                    let net = load.netPa
-                    let largest = net.map(abs).max() ?? 0
-                    peak = max(peak, Float(largest))
-                    guard largest > 300 else { continue }
-                    for s in broken.indices where !broken[s] {
-                        let system = EnvelopePanel.largeDeflectionGlass(
-                            thickness: glass[s / 2] ?? Double(construction.glassThicknessM),
-                            material: .annealedGlass, a: pane[0], b: pane[1],
-                            sixtySecondStrength: strengths[s % 2])
-                        broken[s] = system.response(pressures: net, step: load.binS).lostResistanceAt != nil
+        // Each building's glass and structure from its components' loads.
+        func judge(_ loads: [EnvelopeComponentLoad]) -> ([Building], [EnvelopeBuildingDamage]) {
+            var buildings: [Building] = []
+            let byOwner = Dictionary(grouping: loads.indices, by: { loads[$0].owner })
+            let objects = scene.envelopeObjects
+            let assessed = EnvelopeDamageAssessment.assess(
+                loads: loads, constructions: { scene.envelopeConstruction(for: $0) })
+            let concrete = Dictionary(
+                uniqueKeysWithValues: assessed.map { ($0.id, $0.structuralLevels.upperBound) })
+            let stone = Dictionary(
+                uniqueKeysWithValues: EnvelopeDamageAssessment.assess(
+                    loads: loads,
+                    constructions: {
+                        EnvelopeConstruction(
+                            objectID: $0, walls: .unreinforcedMasonry, wallThicknessM: 0.5, source: .user,
+                            detail: "stone 0.5 m, assumed for the comparison")
                     }
+                ).map { ($0.id, $0.structuralLevels.upperBound) })
+            for object in objects {
+                guard let envelope = object.envelope, let mine = byOwner[object.id] else { continue }
+                let low = envelope.blocks.map(\.min).reduce(SIMD3<Float>(repeating: .greatestFiniteMagnitude))
+                {
+                    simd_min($0, $1)
                 }
-                let faces = axis < 2 ? Float(outward) * toCharge[axis] > 0 : outward > 0
-                sides.append(
-                    Side(
-                        axis: axis, outward: outward, facesCharge: axis < 2 && faces, strips: members.count,
-                        peakNetPa: peak, brokenMedian: broken[0], brokenDesign: broken[1], broken: broken))
+                let high = envelope.blocks.map(\.max).reduce(
+                    SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+                ) {
+                    simd_max($0, $1)
+                }
+                let centre = 0.5 * (low + high)
+                let toCharge = SIMD2(charge.x - centre.x, charge.y - centre.y)
+                let construction = scene.envelopeConstruction(for: object.id)
+                var sides: [Side] = []
+                let strips = mine.filter { loads[$0].kind == .facade || loads[$0].kind == .wall }
+                let bySide = Dictionary(grouping: strips) {
+                    loads[$0].axis * 2 + (loads[$0].outward > 0 ? 1 : 0)
+                }
+                for (key, members) in bySide.sorted(by: { $0.key < $1.key }) {
+                    let axis = key / 2
+                    let outward = key % 2 == 1 ? 1 : -1
+                    var broken = [Bool](repeating: false, count: 2 * glass.count)
+                    var peak: Float = 0
+                    for index in members {
+                        let load = loads[index]
+                        let net = load.netPa
+                        let largest = net.map(abs).max() ?? 0
+                        peak = max(peak, Float(largest))
+                        guard largest > 300 else { continue }
+                        for s in broken.indices where !broken[s] {
+                            let system = EnvelopePanel.largeDeflectionGlass(
+                                thickness: glass[s / 2] ?? Double(construction.glassThicknessM),
+                                material: .annealedGlass, a: pane[0], b: pane[1],
+                                sixtySecondStrength: strengths[s % 2])
+                            broken[s] =
+                                system.response(pressures: net, step: load.binS).lostResistanceAt != nil
+                        }
+                    }
+                    let faces = axis < 2 ? Float(outward) * toCharge[axis] > 0 : outward > 0
+                    sides.append(
+                        Side(
+                            axis: axis, outward: outward, facesCharge: axis < 2 && faces,
+                            strips: members.count,
+                            peakNetPa: peak, brokenMedian: broken[0], brokenDesign: broken[1], broken: broken)
+                    )
+                }
+                buildings.append(
+                    Building(
+                        id: object.id, distanceM: Double(simd_length(toCharge)),
+                        centreM: [centre.x, centre.y],
+                        heightM: high.z - low.z,
+                        sides: sides.filter { $0.axis < 2 }, concrete: concrete[object.id] ?? .none,
+                        stone: stone[object.id] ?? .none))
             }
-            buildings.append(
-                Building(
-                    id: object.id, distanceM: Double(simd_length(toCharge)), heightM: high.z - low.z,
-                    sides: sides.filter { $0.axis < 2 }, concrete: concrete[object.id] ?? .none,
-                    stone: stone[object.id] ?? .none))
+            return (buildings, assessed)
         }
-        let judged = buildings
+        let objects = scene.envelopeObjects
+        // `--steer 0.8,1.5`: refinement steered by the decision (docs/refinement-steering.md). A
+        // first pass on the coarse cells alone judges every building with its loads scaled by
+        // each factor in turn; the run proper refines only within `--steer-reach` metres (12) of
+        // the buildings whose glass or structure comes out differently between the two, the
+        // decisions that the coarse cells' error leaves in doubt.
+        var steered: (wallS: Double, buildings: Int, inDoubt: Int)?
+        if let factors = value("steer").map({ $0.split(separator: ",").compactMap { Double($0) } }),
+            factors.count == 2, configuration.refinement > 1
+        {
+            var coarse = configuration
+            coarse.refinement = 1
+            print("First pass, on the coarse cells:")
+            let first = try event(coarse)
+            let base = first.5.map(EnvelopeComponentLoad.init)
+            // `--steer-on glass|structure`: the decisions asked for; both by default.
+            let on = value("steer-on")
+            func decisions(_ factor: Double) -> [UUID: [Int]] {
+                let loads = base.map { load in
+                    var scaled = load
+                    scaled.outerPa = load.outerPa.map { $0 * factor }
+                    scaled.innerPa = load.innerPa.map { $0 * factor }
+                    scaled.stripPa = load.stripPa.map {
+                        ($0.outer.map { $0 * factor }, $0.inner.map { $0 * factor })
+                    }
+                    return scaled
+                }
+                return Dictionary(
+                    uniqueKeysWithValues: judge(loads).0.map { building in
+                        (
+                            building.id,
+                            (on != "structure" ? building.sides.map { $0.brokenMedian ? 1 : 0 } : [])
+                                + (on != "glass"
+                                    ? [
+                                        EnvelopeDamageLevel.allCases.firstIndex(of: building.concrete) ?? 0,
+                                        EnvelopeDamageLevel.allCases.firstIndex(of: building.stone) ?? 0,
+                                    ] : [])
+                        )
+                    })
+            }
+            let low = decisions(factors[0])
+            let high = decisions(factors[1])
+            let inDoubt = Set(low.keys.filter { low[$0] != high[$0] })
+            let reach = Float(value("steer-reach").flatMap(Double.init) ?? 12)
+            let boxes = objects.filter { inDoubt.contains($0.id) }.compactMap { object -> RefinementRegion? in
+                guard let blocks = object.envelope?.blocks, !blocks.isEmpty else { return nil }
+                let low = blocks.map(\.min).reduce(SIMD3<Float>(repeating: .greatestFiniteMagnitude)) {
+                    simd_min($0, $1)
+                }
+                let high = blocks.map(\.max).reduce(SIMD3<Float>(repeating: -.greatestFiniteMagnitude)) {
+                    simd_max($0, $1)
+                }
+                return RefinementRegion(low: low - reach, high: high + reach)
+            }
+            // `--steer-by near`: only about those buildings. The default, `ring`: everywhere out to
+            // the farthest of them and a reach beyond, a disc of strips about the charge, since a
+            // shock refined only as it nears a building arrives smeared by the coarse cells it
+            // crossed (docs/refinement-steering.md).
+            if value("steer-by") == "near" {
+                configuration.refinementConfinedTo = boxes
+            } else {
+                let centre = SIMD2(charge.x, charge.y)
+                let ring =
+                    boxes.map { box in
+                        [box.low.x, box.high.x].flatMap { x in
+                            [box.low.y, box.high.y].map { y in SIMD2(x, y) }
+                        }
+                        .map { simd_distance($0, centre) }.max() ?? 0
+                    }.max() ?? 0
+                let strips = 32
+                configuration.refinementConfinedTo = (0..<strips).map { n in
+                    let y0 = -ring + 2 * ring * Float(n) / Float(strips)
+                    let y1 = y0 + 2 * ring / Float(strips)
+                    let nearest = y0 > 0 ? y0 : (y1 < 0 ? -y1 : 0)
+                    let half = (ring * ring - nearest * nearest).squareRoot()
+                    return RefinementRegion(
+                        low: SIMD3(centre.x - half, centre.y + y0, -1e4),
+                        high: SIMD3(centre.x + half, centre.y + y1, 1e4))
+                }
+                print(String(format: "Ring of %.0f m about the charge", ring))
+            }
+            steered = (first.2, low.count, inDoubt.count)
+            print(
+                String(
+                    format:
+                        "Steered: %d of %d buildings in doubt between ×%.2f and ×%.2f, refined within %.0f m of them",
+                    inDoubt.count, low.count, factors[0], factors[1], reach))
+        }
+        // `--corridor x,y[,half-width]` (m in the domain, 60): refinement only along the way from
+        // the charge to that point and a reach beyond it, for a question about one building
+        // (docs/refinement-steering.md): boxes along the line, each its piece's extent widened.
+        if let numbers = value("corridor").map({ $0.split(separator: ",").compactMap { Float($0) } }),
+            numbers.count >= 2, configuration.refinement > 1
+        {
+            let start = SIMD2(charge.x, charge.y)
+            let target = SIMD2(numbers[0], numbers[1])
+            let width = numbers.count > 2 ? numbers[2] : 60
+            let direction = simd_normalize(target - start)
+            let end = target + direction * width
+            let pieces = 32
+            configuration.refinementConfinedTo = (0..<pieces).map { n in
+                let a = start + (end - start) * Float(n) / Float(pieces)
+                let b = start + (end - start) * Float(n + 1) / Float(pieces)
+                let low = simd_min(a, b) - width
+                let high = simd_max(a, b) + width
+                return RefinementRegion(low: SIMD3(low.x, low.y, -1e4), high: SIMD3(high.x, high.y, 1e4))
+            }
+            print(String(format: "Corridor to (%.0f, %.0f) m, %.0f m either side", target.x, target.y, width))
+        }
+        let (finalTime, steps, wall, arrivals, linePoints, recorded) = try event(configuration)
+        let loads = recorded.map(EnvelopeComponentLoad.init)
+        let (judged, assessed) = judge(loads)
         // The façades' glass by each building's mix, as the app judges it.
         let distances = Dictionary(uniqueKeysWithValues: judged.map { ($0.id, $0.distanceM) })
         DistrictGlass.printBands(
@@ -433,7 +578,8 @@ enum DistrictComparison {
             massKg: scene.charge.mass, radiusM: radius, cellSizeM: dx, ground: value("ground"),
             untilS: finalTime,
             steps: steps, wallS: wall, binS: recorded.first?.binS, arrivals: arrivals, line: linePoints,
-            bands: bands, buildings: judged)
+            bands: bands, buildings: judged, steerWallS: steered?.wallS, steerBuildings: steered?.buildings,
+            steerInDoubt: steered?.inDoubt, refinedBlockSteps: blockSteps.isEmpty ? nil : blockSteps)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(result).write(to: folder.appending(path: "comparison.json"))

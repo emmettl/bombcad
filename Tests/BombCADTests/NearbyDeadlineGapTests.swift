@@ -176,11 +176,12 @@ struct NearbyDeadlineGapTests {
         let channel = ConnectionChannel(
             NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Studio")
         defer { channel.connection.cancel() }
-        // A plain TCP connection over loopback opens well within 300 ms, and 900 ms more is well
-        // past that limit on any queue that is not stalled (the whole test took 1.5 s).
-        let connectLimit = Duration.milliseconds(300)
+        // A plain TCP connection over loopback opens in milliseconds, but on the loaded CI mini
+        // (19 October 2026) one took past 300 ms; 5 s leaves room for that, and 6 s more is well
+        // past the limit (the test takes about 7 s).
+        let connectLimit = Duration.seconds(5)
         try await channel.start(within: connectLimit)
-        try await Task.sleep(for: .milliseconds(900))
+        try await Task.sleep(for: .seconds(6))
         if case .ready = channel.connection.state {
         } else {
             Issue.record("The connection was \(channel.connection.state) after its connect limit passed.")

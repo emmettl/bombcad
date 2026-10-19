@@ -1183,6 +1183,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
         "SolverConfiguration.refinementHoldsStructures": .numerical,
         "SolverConfiguration.refinementCeiling": .numerical,
+        "SolverConfiguration.refinementConfinedTo": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
