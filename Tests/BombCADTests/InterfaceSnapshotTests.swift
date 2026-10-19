@@ -296,6 +296,31 @@ struct InterfaceSnapshotTests {
         return document
     }
 
+    @Test("Render the Infer Charge sheet empty and with a posterior", arguments: ["light", "dark"])
+    func chargeInference(style: String) async throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        let model = SimulationModel(document: ProjectDocument(scenario: ScenarioPreset.openGround.scenario))
+        let original = ProjectDocument(model: model)
+        let inference = ChargeInferenceModel()
+        try snapshot(
+            ChargeInferenceView(model: model, inference: inference), size: CGSize(width: 600, height: 560),
+            appearance: appearance, to: folder.appending(path: "infer-charge-empty.png"))
+        inference.setObservers(ChargeInferenceSheetTests.observers(), file: "made-up.csv")
+        inference.infersOffset = true
+        inference.steps = 600
+        inference.run()
+        while inference.isRunning { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(inference.result != nil)
+        try snapshot(
+            ChargeInferenceView(model: model, inference: inference).frame(height: 1100),
+            size: CGSize(width: 600, height: 1100), appearance: appearance,
+            to: folder.appending(path: "infer-charge.png"))
+        #expect(ProjectDocument(model: model) == original)
+    }
+
     @Test("Render the panels not yet reviewed, whole and at a short height", arguments: ["light", "dark"])
     func remainingPanels(style: String) throws {
         let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
