@@ -270,6 +270,9 @@ For a person at a real screen:
 - With Full Keyboard Access on (System Settings ▸ Keyboard): Tab through every control, buttons,
   pickers, steppers and switches included, in reading order.
 - VoiceOver's speech itself, beyond the labels the tree carries.
+- The materials' colours (0.6.0) in the viewport, with the damage colouring and rubble over them,
+  in both appearances and under System Settings ▸ Accessibility ▸ Display ▸ Color Filters; checked
+  so far only offscreen and by simulated colour deficiency (`MaterialAppearanceTests`).
 - Other display scales, and the window at its minimum there.
 - The native light appearance.
 - Completed STL and IFC previews (the IFC panels need the converter, not installed in the test

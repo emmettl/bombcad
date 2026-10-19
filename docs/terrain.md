@@ -49,8 +49,10 @@ a sloping surface two cells a step, far ahead of the blast. Given up, it balance
 still air gained on the other side of the surface: a closed box over a hill gains 0.08% of its
 mass and energy in 120 steps (0.2% when it was shared, besides the false pressures). Such
 patches are pinned, as all patches whose outlines differ are, so the refined shell along the
-ground is kept once the blast has passed. On [cut cells](#cut-cells) (refined once) none of this
-arises: the fine cells hold what the coarse cell held, share for share, and patches are released.
+ground is kept once the blast has passed. On [cut cells](#cut-cells), refined once or twice, none
+of this arises where only the terrain cuts the cell: the fine cells hold what the coarser cell
+held, share for share, and patches are released. Where a block's fine outline also takes part of
+a cut cell, the cell is filled as a whole cell beside a block is (below).
 
 Rigid blocks too where the air is near still (within 5% of ambient), since 18 October 2026. A block whose edges fall between the coarse cells
 takes part of the cells beside it at a finer level, and sharing the gas squeezed it into what was
@@ -333,7 +335,27 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/Te
   read a NaN wave speed and was 0.62 s long; it now runs as with a second level that has room.
   A wave speed that is NaN, infinite or negative now stops the batch, unstable, where it would
   have set a step far too long.
-- **A cell above a hot sliver can floor** (traced 19 October 2026, left as it is). Refined once
+- **A block's cell on a patch's face.** Where a patch's face meets coarser air and the fine cell
+  inside is solid, the fine level gives refluxing the wall's flux through that face. Beside a
+  block standing in cut ground, that flux was the whole face's, while the coarser cut cell outside
+  had recorded its flux through the face times its own aperture, the terrain's open share, its
+  wall taking the rest; the difference, the pressure on the terrain's share, was added to the
+  cut cell every step and scattered by its small share of air. In still air ahead of a blast it
+  stirred hundreds of pascals to kilopascals, refined twice most (once, about a twentieth as
+  much), and arrived in Beirut's south-east as a precursor about 0.7 kPa ahead of the shock and
+  ringing at about 25 Hz. The wall's flux is now taken through the fine face's open share (since
+  19 October 2026): the air ahead stays within a pascal (`TerrainCutCellTests.stillAheadBesideBlock`,
+  3.8 kPa before).
+- **Between a block and the ground.** A cut cell with a block on one side along a sweep and the
+  terrain's solid on the other mirrors itself about its normal into the terrain and plainly into
+  the block. The ghost beyond the block was built from the near ghost before the terrain's mirror
+  replaced it, so the block's face's two states were not each other's mirror and gas passed
+  through it: a street over a hill, its buildings standing in the slope, gained 0.34 kg and
+  0.28 MJ in 60 steps in a closed box (cut cells only; on blocks standing on the ground, nothing).
+  Each ghost beyond a wall is now built from the near ghost as it stands, by its wall's own rule,
+  on every level (since 19 October 2026); the box keeps its gas to round-off
+  (`TerrainCutCellTests.blockInSlopeConserves`, 1.6e-5 of it gained before).
+- **A cell above a hot sliver could floor** (traced and fixed 19 October 2026). Refined once
   over the 20° slope (the open ground's 100 kg on the recommended air), a fine cell 0.96 air whose
   lower face is half open, over a sliver a twentieth air full of hot products, has its internal
   energy taken below nothing once a step from step 26 to 40. It happens in the fine
@@ -346,9 +368,22 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/Te
   400 steps (0.08 s) the run floors 44 times, all in that cell and its mirror, and the floor adds
   3.6 kJ: 1e-5 of the charge's energy, in cells far below ambient pressure, where no peak or
   impulse is read. Gravity had made such a floored cell a NaN (fixed in `reconstructGravity`).
-  If a scene ever shows more, the remedy is a redistribution that gives a cell no more than its
-  internal energy can take, carrying the rest on up the column: conservative, nothing floored,
-  and unchanged to the bit where nothing floors.
+  Unrefined, the same strong expansion over small cut cells drained coarse cells 2 m from the
+  charge (the open slope at steps 34–42, the street over a hill at 28–32), in the coarse
+  redistribution; refined twice, 114 cell updates on the slope in 60 steps.
+  Now both redistributions (coarse and fine) give a cell no more of a difference than leaves it a
+  tenth of its density and pressure (`positiveCutShare`, the share found by bisection), and carry
+  the rest on up the column, through whole cells if need be, to cells that can take it; the last
+  cell of air under a block or at the top takes what is left, as before. It is conservative and
+  nothing is drained: over 60 steps no cell of the open slope (unrefined, refined once or twice,
+  with gravity or without) or the street over a hill falls below 0.9 kJ/kg, where before cells
+  reached the floor, and in a closed box with no afterburning the gas's energy holds to the
+  joule where the floors had added 1.2 kJ (unrefined), 3.6 kJ (refined once) and 5.4 kJ (twice).
+  The impulse 2–12 m from the charge moves by 0.05% at most. A cell whose difference leaves it a
+  tenth takes it as it always did: of `blastbench digest`'s 112 cases (`digests2.sh` and gravity
+  without terrain) 84 are unchanged to the bit, and the 28 that move are each a charge over
+  terrain whose redistribution asked some cell for more than nine tenths of its pressure (some to
+  the floor, as on the slope; some short of it, as on the hill, whose impulse moves by 1e-5).
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut

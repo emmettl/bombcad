@@ -56,6 +56,11 @@ public final class ExperimentalRigidWorldSimulation {
     /// Contact impulse on each member over the last step: ground, blocks and other members.
     public private(set) var lastContactImpulses: [SIMD3<Double>] = []
     public private(set) var timings = Timings()
+    /// The structures' nodes the members strike, when the air holds structures.
+    private var contact = StructureNodeContact([])
+    /// Impulse the members gave the structures over the last step and since the start (N s).
+    public private(set) var lastReaction = SIMD3<Double>.zero
+    public private(set) var reaction = SIMD3<Double>.zero
 
     public init(
         device: MTLDevice, scenario: Scenario, cellSize: Float,
@@ -64,8 +69,10 @@ public final class ExperimentalRigidWorldSimulation {
     ) throws {
         let objects = scenario.rigidObjects ?? []
         let cars = scenario.rigidCars ?? []
-        guard objects.count + cars.count >= 1, scenario.structure == nil,
-            [0, 1, 2, 4].contains(configuration.refinement),
+        // Beside a structure, stage 1 of the two sharing the air holds them to the coarse grid.
+        let hasStructure = !scenario.structuralObjects.compactMap(\.structure).isEmpty
+        guard objects.count + cars.count >= 1,
+            (hasStructure ? [0, 1] : [0, 1, 2, 4]).contains(configuration.refinement),
             !configuration.afterburning,
             configuration.airModel == .idealGas, configuration.twoWayCoupling, configuration.movingWalls
         else { throw Failure.unsupportedConfiguration }
@@ -86,8 +93,11 @@ public final class ExperimentalRigidWorldSimulation {
         initial.additionalCharges = nil
         initial.rigidObjects = nil
         initial.rigidCars = nil
+        // The structures stay in the air; the members are installed after them.
         air = try BlastSolver(device: device, scenario: initial, cellSize: cellSize, configuration: config)
         try air.installExperimentalBoxes(self.coupled.map { built.members[$0].body })
+        contact = StructureNodeContact(air.bodies)
+        world.nodeFriction = RigidBoxBody.Ground(staticFriction: 0.6, slidingFriction: 0.5)
         air.deposit(scenario.charge)
         for charge in scenario.additionalCharges ?? [] { air.deposit(charge) }
         air.restart()
@@ -163,6 +173,10 @@ public final class ExperimentalRigidWorldSimulation {
             clock = now
         }
         for _ in 0..<steps {
+            // While a member is near a structure, each air step is one of the structure's steps,
+            // so that their contact keeps the structure's time.
+            air.experimentalStepCeiling =
+                contact.isNear(world.members.map(\.body), margin: 0.5) ? contact.step : nil
             try air.checkExperimentalBoxRefinement()
             try air.clearExperimentalBoxImpulse()
             lap(\.coupling)
@@ -186,7 +200,17 @@ public final class ExperimentalRigidWorldSimulation {
                 next.applyImpulse(load.linear, to: member)
                 next.applyAngularImpulse(load.angular, to: member)
             }
+            let struck = contact.gather(next.members.map(\.body), step: result.elapsed)
+            next.nodes = struck
             let contacts = next.advance(by: result.elapsed, gravity: gravity)
+            lastReaction = .zero
+            for hit in contacts {
+                guard case .node = hit.other else { continue }
+                lastReaction -= hit.normalImpulse * hit.normal + hit.tangentImpulse
+            }
+            reaction += lastReaction
+            contact.write(next.nodes, over: struck)
+            next.nodes = []
             lap(\.mechanics)
             try air.updateExperimentalBoxes(inAir(next))
             lap(\.coupling)

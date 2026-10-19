@@ -632,6 +632,19 @@ kernel void refineGhosts(const device Cell *fineSrc [[buffer(0)]],
             Prim w = primOf(outside, u);
             Prim wall = mirrored(w, float3(fineWall[own])[axis]);
             Flux f = layer == 1u ? riemannFlux(w, wall, u) : riemannFlux(wall, w, u);
+            // With the terrain's cut cells, through the face's open part only: the coarse cell
+            // recorded its flux there times its own aperture, the terrain's share of the face, and
+            // its wall takes the rest. A block's cell over cut ground would otherwise give the whole
+            // face's wall flux, and the difference, the pressure on the terrain's share, would be
+            // added to the coarse cell every step: in still air, beside a block on a slope.
+            if (cutCells && terrain.enabled != 0) {
+                CutGeometry g = cutGeometryAt(tile * int(side) + inside, u.dx / float(u.refineRatio),
+                                              cutSamples(u, terrain), terrain, terrainHeights);
+                float aperture = layer == 1u ? g.low[1 + axis] : g.high[axis];
+                f.mass *= aperture;
+                f.momentum *= aperture;
+                f.energy *= aperture;
+            }
             uint face = 2u * axis + (layer == 1u ? 0u : 1u);
             addFlux(fineFlux, registerSlot(patch, face, a, b, side), f, axis, levelStep(control, u));
         }
@@ -829,15 +842,24 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
             at[axis] += offset;
             return cutGeometryAt(at, dxFineCut, cutSamples(u, terrain), terrain, terrainHeights);
         };
-        if (kindP1 == kindWall && groundP1 && cut) {
+        bool mirrorP1 = kindP1 == kindWall && groundP1 && cut;
+        bool mirrorM1 = kindM1 == kindWall && groundM1 && cut;
+        if (mirrorP1 || mirrorM1) {
             float3 normal = toSweep(cutGeometryNormal(here), axis);
-            wP1 = mirroredAbout(w0, normal);
-            wP2 = mirroredAbout(wM1, normal);
-        }
-        if (kindM1 == kindWall && groundM1 && cut) {
-            float3 normal = toSweep(cutGeometryNormal(here), axis);
-            wM1 = mirroredAbout(w0, normal);
-            wM2 = mirroredAbout(wP1, normal);
+            if (mirrorP1) {
+                wP1 = mirroredAbout(w0, normal);
+            }
+            if (mirrorM1) {
+                wM1 = mirroredAbout(w0, normal);
+            }
+            // The ghost beyond each wall mirrors the near ghost across the cell as it now stands,
+            // by that wall's own rule, as on the coarse grid (see `sweepCell`).
+            if (kindP1 == kindWall) {
+                wP2 = mirrorP1 ? mirroredAbout(wM1, normal) : mirrored(wM1, speedP1);
+            }
+            if (kindM1 == kindWall) {
+                wM2 = mirrorM1 ? mirroredAbout(wP1, normal) : mirrored(wP1, speedM1);
+            }
         }
         if (kindP1 == kindFluid && groundP2) {
             CutGeometry next = geometryAt(1);
@@ -1225,9 +1247,23 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
     float lastShare = 1.0f;
     int lastZ = 0;
     // Adds `change` (mass, momentum) and `changeEnergy` (fuel, oxygen, energy) for its whole
-    // volume to fine cell `index`, holding `share` of air.
-    auto apply = [&](int index, float4 change, float4 changeEnergy, float share, int z) {
+    // volume to fine cell `index`, holding `share` of air. Unless `whole`, it takes no more than
+    // leaves it positive (`positiveCutShare`), and what it could not take is returned, for the
+    // cells above.
+    struct Left {
+        float4 change;
+        float4 changeEnergy;
+    };
+    auto apply = [&](int index, float4 change, float4 changeEnergy, float share, int z, bool whole) -> Left {
+        Left left = {float4(0.0f), float4(0.0f)};
         Cell c = fine[index];
+        float taken = whole ? 1.0f : positiveCutShare(c, change, changeEnergy, share, u);
+        if (taken < 1.0f) {
+            left.change = change - taken * change;
+            left.changeEnergy = changeEnergy - taken * changeEnergy;
+            change *= taken;
+            changeEnergy *= taken;
+        }
         c.rho += change.x / share;
         c.mx += change.y / share;
         c.my += change.z / share;
@@ -1247,6 +1283,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
         }
         float ambient = airGravity ? gravityAmbientOf(gravityTable, z, u) : u.ambientPressure;
         recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
+        return left;
     };
     // What a column carries up and cannot pass on, stopped by a block above the terrain, goes to
     // its last cell of air, taken as at least half air. That cell may be a sliver between the
@@ -1269,7 +1306,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
                 // Solid: the terrain's beneath the air, or a block above it, which what is still
                 // carried up cannot pass; the last cell of air takes it (`blockedShare`).
                 if (last >= 0 && (any(passed != 0.0f) || any(passedEnergy != 0.0f))) {
-                    apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
+                    apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ, true);
                     passed = float4(0.0f);
                     passedEnergy = float4(0.0f);
                 }
@@ -1299,7 +1336,9 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
                 }
             }
             if (any(change != 0.0f) || any(changeEnergy != 0.0f)) {
-                apply(index, change, changeEnergy, share, f.z);
+                Left left = apply(index, change, changeEnergy, share, f.z, false);
+                passed += left.change;
+                passedEnergy += left.changeEnergy;
             }
             last = index;
             lastShare = share;
@@ -1323,7 +1362,7 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
             passedUp[slot] += passed;
             passedUp[slot + 1] += passedEnergy;
         } else if (last >= 0) {
-            apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ);
+            apply(last, passed, passedEnergy, blockedShare(lastShare), lastZ, true);
         }
     }
 }
