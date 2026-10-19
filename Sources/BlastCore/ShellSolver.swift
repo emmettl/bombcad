@@ -572,6 +572,7 @@ public final class ShellSolver {
         var fibreStarts: [UInt32] = [0]
         var fibreGeometry: [SIMD4<Float>] = []
         try model.validateAnchorages()
+        try model.steelConnection?.validate()
         var fibreLaws: [AnchorageParameters] = []
         var slots: [Int] = []
         if let stiffness = model.connectionStiffness {

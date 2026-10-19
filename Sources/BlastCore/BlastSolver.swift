@@ -614,6 +614,8 @@ public final class BlastSolver {
     private var bodyContactPipelines: [String: MTLComputePipelineState] = [:]
     private var tiledCoupling: TiledCoupling?
     private var couplingTiles: MTLBuffer?
+    /// Whether the structures' coupling is laid out in tiles; for the tests.
+    var usesTiledCoupling: Bool { tiledCoupling != nil }
     private var denseCouplingCells = 0
     private let allocateCouplingPipeline: MTLComputePipelineState
     private let wakeCouplingPipeline: MTLComputePipelineState
@@ -1368,6 +1370,10 @@ public final class BlastSolver {
     /// objects share the air, whose wall velocities index every cell (`bodyCouplingWholeGrid`).
     private func layOutBodyCoupling() throws {
         guard let first = bodies.first else { return }
+        // Laid out afresh: a tiled plan from an earlier layout would leave the buffers sized and
+        // addressed by its slots when the whole grid is now wanted.
+        tiledCoupling = nil
+        couplingTiles = nil
         let compiled = bodies
         let model = first.model
         // Follow the structure within a few metres of where it starts.
@@ -3617,7 +3623,7 @@ public final class BlastSolver {
             + (combinedOccupancyBuffer?.length ?? 0) + (couplingTiles?.length ?? 0)
             + (interactionBuffer?.length ?? 0)
             + (bodyEnvelopeBuffer?.length ?? 0)
-            + (experimentalBoxes.isEmpty ? 0 : wallVelocityBuffer.length)
+            + (experimentalBoxes.isEmpty || hasBody ? 0 : wallVelocityBuffer.length)
     }
 
     /// Structural substeps encoded per fluid step. The fluid step never exceeds the CFL limit

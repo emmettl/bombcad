@@ -60,6 +60,21 @@ struct SteelConnectionTests {
         #expect(rigid.steelConnection == nil)
     }
 
+    @Test("A connection a hinge cannot use is refused, from a document too")
+    func invalid() throws {
+        let bad = [
+            SteelConnection(name: "No turn", momentRatio: 0.5, fractureRotation: 0),
+            SteelConnection(name: "NaN turn", momentRatio: 0.5, fractureRotation: .nan),
+            SteelConnection(name: "Negative", momentRatio: -0.5, fractureRotation: 0.08),
+            SteelConnection(name: "Pushed", momentRatio: 0.5, fractureRotation: 0.08, tensionRatio: -0.1),
+        ]
+        for connection in bad { #expect(throws: (any Error).self) { try connection.validate() } }
+        try SteelConnection.singlePlateShear.validate()
+        let model = Self.joint(SteelConnection(name: "Broken", momentRatio: 0.5, fractureRotation: -0.01))
+        let data = try JSONEncoder().encode(model)
+        #expect(throws: (any Error).self) { try JSONDecoder().decode(StructureModel.self, from: data) }
+    }
+
     @Test(
         "Under a column's removal the hinged assemblies fail near their tests' drops and loads",
         arguments: ColumnRemovalTest.Specimen.allCases)

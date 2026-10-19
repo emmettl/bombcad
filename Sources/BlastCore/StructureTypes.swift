@@ -1996,6 +1996,7 @@ extension StructureModel {
         shellSectionShear = try container.decodeIfPresent(Bool.self, forKey: .shellSectionShear) ?? false
         retiredOptions = try Self.retiredOptions(in: decoder)
         try validateAnchorages()
+        try steelConnection?.validate()
     }
 }
 
