@@ -24,9 +24,10 @@ final class ImportFileLoader {
         result = nil
         error = nil
         filename = url.lastPathComponent
-        guard url.isFileURL, ["obj", "stl", "ifc", "dxf"].contains(url.pathExtension.lowercased()) else {
+        guard url.isFileURL, ["obj", "stl", "ifc", "dxf", "svg"].contains(url.pathExtension.lowercased())
+        else {
             error =
-                "Choose one local OBJ, STL or IFC model, or a DXF floor plan. Export other formats as a watertight, triangulated OBJ or STL."
+                "Choose one local OBJ, STL or IFC model, or a DXF or SVG floor plan. Export other formats as a watertight, triangulated OBJ or STL."
             failureID = UUID()
             return
         }
@@ -43,7 +44,7 @@ final class ImportFileLoader {
                     let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
                     guard values.isRegularFile == true else {
                         throw ImportedMesh.ImportError.invalid(
-                            "Choose an OBJ, STL, IFC or DXF file rather than a folder or special file.")
+                            "Choose an OBJ, STL, IFC, DXF or SVG file rather than a folder or special file.")
                     }
                     let size = values.fileSize ?? 0
                     // An IFC building or a DXF plan may be larger than a mesh: its limit is its reader's.
@@ -68,6 +69,7 @@ final class ImportFileLoader {
                     try Task.checkCancellation()
                     if kind == "ifc" { return .success((nil, try await IFCImporter.prepare(data), nil)) }
                     if kind == "dxf" { return .success((nil, nil, try DXFDrawing(data: data))) }
+                    if kind == "svg" { return .success((nil, nil, try DXFDrawing(svg: data))) }
                     return .success(
                         (try ImportedMesh.inspect(data: data, fileExtension: url.pathExtension), nil, nil))
                 } catch { return .failure(error) }

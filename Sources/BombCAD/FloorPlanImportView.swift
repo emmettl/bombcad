@@ -88,7 +88,22 @@ struct FloorPlanView: View {
                             Text("Metres").tag(1.0)
                             Text("Inches").tag(0.0254)
                             Text("Feet").tag(0.3048)
+                            if let own = drawing.metresPerUnit,
+                                ![0.001, 0.01, 1, 0.0254, 0.3048].contains(own)
+                            {
+                                Text(String(format: "As the file gives them (%.3g mm)", own * 1000)).tag(own)
+                            }
                         }
+                        TextField(
+                            "Scale 1:", value: $options.drawingScale,
+                            format: .number.precision(.fractionLength(0...2))
+                        )
+                        .help(
+                            "The scale the plan is drawn to: 100 for a plan drawn at 1:100 on paper (as most exported to SVG or PDF are), 1 for one drawn in real lengths (CAD's model space)."
+                        )
+                        let size = plan.bounds.max - plan.bounds.min
+                        Text(String(format: "The plan is %.1f × %.1f m.", size.x, size.y))
+                            .font(.caption).foregroundStyle(.secondary)
                         Toggle("Turn square to its walls", isOn: $options.squareToWalls)
                             .help(
                                 "A plan whose walls mostly run at an angle to its axes is turned square to them, so that they lie square to the air's cells."
@@ -98,8 +113,10 @@ struct FloorPlanView: View {
                                 "Raises walls at an angle to the plan, and the chords of curved ones, as shells turned in plan; off, they are left out."
                             )
                         if drawing.metresPerUnit == nil {
-                            Text("The drawing does not say its units; check them against the plan's size.")
-                                .font(.caption).foregroundStyle(.orange)
+                            Text(
+                                "The drawing does not say its units; check them, and its scale, against the plan's size."
+                            )
+                            .font(.caption).foregroundStyle(.orange)
                         }
                     }
                     Section("Storeys") {
@@ -136,9 +153,12 @@ struct FloorPlanView: View {
                 .formStyle(.grouped)
                 .frame(width: 430)
                 VStack(alignment: .leading, spacing: 8) {
-                    PlanPreview(drawing: drawing, plan: plan, metresPerUnit: options.metresPerUnit)
-                        .frame(minWidth: 420, minHeight: 420)
-                        .border(.separator)
+                    PlanPreview(
+                        drawing: drawing, plan: plan,
+                        metresPerUnit: options.metresPerUnit * options.drawingScale
+                    )
+                    .frame(minWidth: 420, minHeight: 420)
+                    .border(.separator)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(plan.notes, id: \.self) { Text($0).font(.caption) }

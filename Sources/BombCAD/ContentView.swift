@@ -38,7 +38,7 @@ struct ContentView: View {
                         if dropTargeted {
                             RoundedRectangle(cornerRadius: 12).stroke(.blue, lineWidth: 3)
                                 .overlay {
-                                    Text("Drop an OBJ, STL or IFC model, or a DXF plan").font(.title2)
+                                    Text("Drop an OBJ, STL or IFC model, or a DXF or SVG plan").font(.title2)
                                         .padding().background(
                                             .regularMaterial, in: .rect(cornerRadius: 8))
                                 }
@@ -109,7 +109,7 @@ struct ContentView: View {
                     isImporting = true
                 }.disabled(importLoader.isLoading || model.sweep.isActive)
                     .help(
-                        "Open one OBJ, STL or IFC model or a DXF floor plan, or drop it into the viewport (⇧⌘I)."
+                        "Open one OBJ, STL or IFC model or a DXF or SVG floor plan, or drop it into the viewport (⇧⌘I)."
                     )
             }
             ToolbarItemGroup(placement: .primaryAction) {
@@ -145,7 +145,7 @@ struct ContentView: View {
             isPresented: $isImporting,
             allowedContentTypes: [
                 UTType(filenameExtension: "obj") ?? .data, UTType(filenameExtension: "stl") ?? .data,
-                UTType(filenameExtension: "ifc") ?? .data, UTType(filenameExtension: "dxf") ?? .data,
+                UTType(filenameExtension: "ifc") ?? .data, UTType(filenameExtension: "dxf") ?? .data, .svg,
             ]
         ) { result in
             guard case .success(let url) = result else { return }

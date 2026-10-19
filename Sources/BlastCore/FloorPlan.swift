@@ -79,8 +79,11 @@ public enum FloorPlan {
     }
 
     public struct Options: Sendable, Hashable, Codable {
-        /// Metres per drawing unit (the drawing's $INSUNITS, or asked).
+        /// Metres per drawing unit (the drawing's $INSUNITS or an SVG's size, or asked).
         public var metresPerUnit: Double = 0.001
+        /// The scale the plan is drawn to, 1 : `drawingScale` (a plan exported to paper at 1:100 is
+        /// 100); 1 for a drawing in real lengths, as CAD's model space is.
+        public var drawingScale: Double = 1
         public var roles: [String: Role] = [:]
         /// The storeys (0 the ground) a layer's walls or openings belong to; all where absent.
         public var layerStoreys: [String: Int] = [:]
@@ -213,7 +216,7 @@ public enum FloorPlan {
     /// Finds the walls, openings and floors in `drawing` under `options`.
     public static func analyse(_ drawing: DXFDrawing, options: Options) -> Analysis {
         var analysis = Analysis()
-        let scale = options.metresPerUnit
+        let scale = options.metresPerUnit * options.drawingScale
         var segments = drawing.segments().map { s -> DXFDrawing.Segment in
             var s = s
             s.a *= scale

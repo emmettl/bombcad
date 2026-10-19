@@ -24,7 +24,9 @@ five windows of 1.2 × 1.2 m. It has a 150 mm ground-bearing slab, a 200 mm firs
 - [house-plan-turned.dxf](house-plan-turned.dxf) and [house-plan-bay.dxf](house-plan-bay.dxf),
   written by the same script, are the plan turned by 17°, as a site plan drawn to north would
   be, and the plan with a curved bay 2 m wide and 0.4 m deep in its front wall (a polyline's
-  bulge), for the plan reader's walls at an angle.
+  bulge), for the plan reader's walls at an angle. [house-plan.svg](house-plan.svg) and
+  [house-plan-bay.svg](house-plan-bay.svg) are the two as SVG, as a drawing program exports a
+  plan: A4 in millimetres at 1:100, Inkscape layers, the bay an arc, the openings symbols.
 - [house.ifc](house.ifc) is what it writes. [house.FCStd](house.FCStd) is the FreeCAD document,
   to open and edit in FreeCAD's window.
 
@@ -35,7 +37,7 @@ after export, as an IfcMaterialLayerSetUsage, with the IfcOpenShell that FreeCAD
 
 ## The plan read in BombCAD
 
-BombCAD also reads a DXF plan itself (**Import Model…** with the DXF), without FreeCAD: the
+BombCAD also reads a DXF or SVG plan itself (**Import Model…** with the file), without FreeCAD: the
 walls from their centrelines or their two faces, the openings from what is drawn in them or from
 the gaps between walls, and the storeys by repeating the plan. `house-plan.dxf` is read this way
 in `FloorPlanTests`, alongside the IFC route.

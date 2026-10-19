@@ -15,6 +15,9 @@ any CAD program reads; `python3 make-house-plan.py` rewrites it, and two variant
   house-plan-turned.dxf  the same plan turned 17 degrees, as a site plan drawn to north would be
   house-plan-bay.dxf     a curved bay 2 m wide and 0.4 m deep in the front wall (a polyline with a
                          bulge on WALL-EXT), a window in it on each floor, the partition at 6.6 m
+  house-plan.svg and house-plan-bay.svg  the same two plans as SVG, as a drawing program exports
+                         them: A4 in millimetres at 1:100, Inkscape layers, the walls as paths (the
+                         bay an arc), the doors and windows as symbols placed with <use>
 """
 
 import math
@@ -64,6 +67,41 @@ def dxf(layers, polylines=()):
     return "\n".join(out) + "\n"
 
 
+def svg(layers, arcs=(), symbols=None):
+    """The plan on A4 landscape at 1:100, in millimetres, y down: lines as paths, `arcs` as
+    (layer, start, end, radius, sweep) paths with an arc command, and the openings on the layers in
+    `symbols` as <use> of a symbol one millimetre long, stretched to their width and turned."""
+    symbols = symbols or set()
+    def paper(p):
+        return (20 + p[0] / 100, 190 - p[1] / 100)
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+           'xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="297mm" height="210mm" '
+           'viewBox="0 0 297 210">',
+           '<defs><symbol id="opening"><line x1="0" y1="0" x2="1" y2="0" stroke="black" stroke-width="0.25"/>'
+           '</symbol></defs>']
+    for name, lines in layers.items():
+        out.append(f'<g inkscape:groupmode="layer" inkscape:label="{name}" id="layer-{name.lower()}">')
+        for a, b in lines:
+            (x0, y0), (x1, y1) = paper(a), paper(b)
+            if name in symbols:
+                length = math.hypot(x1 - x0, y1 - y0)
+                angle = math.degrees(math.atan2(y1 - y0, x1 - x0))
+                out.append(f'<use xlink:href="#opening" transform="translate({num(x0)} {num(y0)}) '
+                           f'rotate({num(angle)}) scale({num(length)} 1)"/>')
+            else:
+                out.append(f'<path d="M {num(x0)},{num(y0)} L {num(x1)},{num(y1)}" fill="none" stroke="black"/>')
+        for layer, a, b, radius, sweep in arcs:
+            if layer != name:
+                continue
+            (x0, y0), (x1, y1) = paper(a), paper(b)
+            out.append(f'<path d="M {num(x0)},{num(y0)} A {num(radius / 100)} {num(radius / 100)} 0 0 {sweep} '
+                       f'{num(x1)},{num(y1)}" fill="none" stroke="black"/>')
+        out.append('</g>')
+    out.append('</svg>')
+    return "\n".join(out) + "\n"
+
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
     text = dxf({"WALL-EXT": EXT, "WALL-INT": INT, "DOOR": DOOR, "WINDOW-GF": WINDOW_GF,
@@ -88,3 +126,12 @@ if __name__ == "__main__":
             {"WALL-EXT": bay_ext, "WALL-INT": [((6600.0, 280.0), (6600.0, 5720.0))], "DOOR": DOOR,
              "WINDOW-GF": WINDOW_GF + bay_window, "WINDOW-FF": WINDOW_FF + bay_window},
             polylines=[("WALL-EXT", [(a, C, bulge), (b, C, 0)])]))
+    openings = {"DOOR", "WINDOW-GF", "WINDOW-FF"}
+    with open(os.path.join(here, "house-plan.svg"), "w") as f:
+        f.write(svg(layers, symbols=openings))
+    bay_layers = {"WALL-EXT": bay_ext, "WALL-INT": [((6600.0, 280.0), (6600.0, 5720.0))], "DOOR": DOOR,
+                  "WINDOW-GF": WINDOW_GF + bay_window, "WINDOW-FF": WINDOW_FF + bay_window}
+    # On paper y runs down: the arc bulging to -y in the plan bulges down the page, clockwise from
+    # its left end there, so the sweep flag is 0.
+    with open(os.path.join(here, "house-plan-bay.svg"), "w") as f:
+        f.write(svg(bay_layers, arcs=[("WALL-EXT", (a, C), (b, C), radius, 0)], symbols=openings))

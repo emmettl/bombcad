@@ -420,7 +420,7 @@ expensive previews.
 
 An architect's floor plan reaches BombCAD by one of two routes:
 
-- **In BombCAD, from the DXF.** Quick, for plain buildings: walls square, at an angle or curved,
+- **In BombCAD, from the DXF or SVG.** Quick, for plain buildings: walls square, at an angle or curved,
   flat floors, the same plan on every storey or one plan per storey's openings. It is described
   below.
 - **Through a BIM program, as IFC.** For anything more: pitched roofs, storeys that differ,
@@ -431,14 +431,22 @@ An architect's floor plan reaches BombCAD by one of two routes:
 [Samples/Plans](../Samples/Plans/README.md) holds a worked example for both routes, a two-storey
 house with cavity walls, and plans cut from two real buildings.
 
-### In BombCAD, from the DXF
+### In BombCAD, from the DXF or SVG
 
-**Import Model…** (or drop the file) with a plan saved as **ASCII DXF**. A binary DXF, DWG or PDF
-has to be saved as ASCII DXF first. BombCAD reads lines, polylines (with their arcs), arcs,
-circles and blocks, on their layers. A sheet then asks what the plan means:
+**Import Model…** (or drop the file) with a plan saved as **ASCII DXF** or **SVG**. A binary DXF
+or DWG has to be saved as ASCII DXF first; a PDF can be opened in a drawing program (Inkscape,
+Illustrator, Affinity) and saved as SVG. From a DXF BombCAD reads lines, polylines (with their
+arcs), arcs, circles and blocks, on their layers. From an SVG it reads lines, polylines,
+polygons, rectangles, circles, ellipses and paths (curves and arcs in pieces of 15° at most),
+each on the layer of its group (an Inkscape layer's name, else the outermost group's id), with
+their transforms; a symbol placed with `<use>`, as drawing programs place doors and windows, is
+one item, as a DXF block is. A sheet then asks what the plan means:
 
-- **Units**: from the drawing's header where it gives them; otherwise BombCAD guesses from the
-  plan's size (millimetres if it spans more than 200 units) and asks you to check.
+- **Units and scale**: from the DXF's header, or the SVG page's size in millimetres (or other
+  real units) over its view box, where they give them; otherwise BombCAD guesses from the plan's
+  size (millimetres if it spans more than 200 units) and asks you to check. A plan drawn to scale
+  on paper, as most SVGs and PDFs are, takes its **Scale 1:** (100 for 1:100); the sheet shows the
+  plan's size in metres to check it against.
 - **Layers**: each layer is marked **Walls**, **Doors**, **Windows**, **Floor outline** or
   **Ignore**, guessed from its name ("WALL", "A-WALL", "DOOR", "GLAZ"…; a wall layer named for
   partitions or interior walls gets 100 mm block). A wall layer takes a
@@ -514,6 +522,9 @@ How it does on real plans (`FloorPlanTests`, `PlanHouseStudyTests`):
   in its bounding box, which for the bay's end chords takes in the broken front wall's nodes.)
 - **The Duplex's first floor**: its 16 short lines at 45° are the seams of its four mitred corners
   and are read as joints; the corners stand whole.
+- **The example house as SVG** (`house-plan.svg` and `house-plan-bay.svg`: A4 at 1:100, Inkscape
+  layers, the walls as paths and the bay as an arc, the openings as symbols placed by `<use>`)
+  reads as its DXF does: the same walls, chords, openings and size.
 - **The small house** (buildingSMART's Building-Architecture): its three walls of 200 mm.
   A 24 mm wall is thinner than the thinnest a plan's lines are read as (50 mm).
 

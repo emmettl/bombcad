@@ -310,4 +310,69 @@ struct FloorPlanTests {
         #expect(plan.notes.contains { $0.contains("16 short lines at an angle") }, "\(plan.notes)")
         #expect(Self.outerWalls(plan, thickness: 0.417).count == 4)
     }
+
+    static func svgSample(_ name: String) throws -> DXFDrawing {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Samples/Plans/\(name)")
+        return try DXFDrawing(svg: Data(contentsOf: url))
+    }
+
+    @Test("SVG: paths, arcs, symbols placed by use, transforms and the page's units, read as the DXF is")
+    func svgReader() throws {
+        let text = """
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                 xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="200mm" height="100mm"
+                 viewBox="0 0 400 200">
+              <defs><symbol id="w"><line x1="0" y1="0" x2="1" y2="0"/></symbol></defs>
+              <g inkscape:groupmode="layer" inkscape:label="Walls">
+                <g id="g12" transform="translate(10 20)">
+                  <path d="M0,0 h100 v-50 a25 25 0 0 1 -50 0 Z"/>
+                  <rect x="0" y="10" width="40" height="5"/>
+                </g>
+              </g>
+              <g id="Windows"><use xlink:href="#w" transform="translate(100 100) rotate(90) scale(30 1)"/></g>
+            </svg>
+            """
+        let drawing = try DXFDrawing(svg: Data(text.utf8))
+        // 200 mm over 400 units: half a millimetre each.
+        #expect(abs((drawing.metresPerUnit ?? 0) - 0.0005) < 1e-12)
+        #expect(Set(drawing.layers) == ["Walls", "Windows"], "\(drawing.layers)")
+        let segments = drawing.segments()
+        let walls = segments.filter { $0.layer == "Walls" }
+        // y turned up: the path's first point (10, 20) is (10, -20).
+        #expect(walls.contains { simd_distance($0.a, SIMD2(10, -20)) < 1e-9 })
+        // The half circle of radius 25 between (110, -30) and (60, -30) in pieces of at most 15°:
+        // its top 25 above them.
+        #expect(walls.flatMap { [$0.a, $0.b] }.contains { abs($0.y - 5) < 1e-9 && abs($0.x - 85) < 1e-9 })
+        #expect(walls.count == 3 + 12 + 4, "\(walls.count)")
+        // The window, a symbol placed, one insert of its own, turned a quarter and 30 long.
+        let window = segments.filter { $0.layer == "Windows" }
+        #expect(window.count == 1 && window[0].insert != nil)
+        #expect(
+            simd_distance(window[0].a, SIMD2(100, -100)) < 1e-9
+                && simd_distance(window[0].b, SIMD2(100, -130)) < 1e-9)
+        #expect(throws: DXFDrawing.ReadError.self) { try DXFDrawing(svg: Data("not xml".utf8)) }
+    }
+
+    @Test("The example house as SVG at 1:100 reads as its DXF does, square and with its bay")
+    func svgHouse() throws {
+        for (name, bay) in [("house-plan.svg", false), ("house-plan-bay.svg", true)] {
+            let drawing = try Self.svgSample(name)
+            var options = try Self.houseOptions(Self.sample(bay ? "house-plan-bay.dxf" : "house-plan.dxf"))
+            options.metresPerUnit = try #require(drawing.metresPerUnit)
+            #expect(abs(options.metresPerUnit - 0.001) < 1e-12)
+            options.drawingScale = 100
+            let plan = FloorPlan.analyse(drawing, options: options)
+            let dxf = FloorPlan.analyse(
+                try Self.sample(bay ? "house-plan-bay.dxf" : "house-plan.dxf"),
+                options: try Self.houseOptions(Self.sample(bay ? "house-plan-bay.dxf" : "house-plan.dxf")))
+            #expect(plan.walls.count == dxf.walls.count && plan.angled.count == dxf.angled.count, "\(name)")
+            let size = plan.bounds.max - plan.bounds.min
+            let dxfSize = dxf.bounds.max - dxf.bounds.min
+            #expect(simd_distance(size, dxfSize) < 0.01, "\(name): \(size) against \(dxfSize)")
+            #expect(
+                plan.openings.count == dxf.openings.count
+                    && plan.angledOpenings.count == dxf.angledOpenings.count)
+        }
+    }
 }
