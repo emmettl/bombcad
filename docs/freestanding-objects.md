@@ -320,7 +320,10 @@ the air, on 0.2 m air with 0.05 m cells around each for up to four objects and o
 with 0.075 m cells beyond that. The section lists each object's displacement, peak speed, peak
 tilt and outcome, and whether it left the air, with the cost, and a slider shows the poses in
 the 3D view, which draws freestanding objects as oriented boxes. A result is marked out of
-date when the layout changes. A deformable structure in the scene is refused. The layouts
+date when the layout changes. Beside a deformable structure (stage 3 below) the crop takes in
+the structure too, moved with it whole elements at a time so that it meshes as it does where it
+stands, the air is uniform (0.1 m up to four objects, 0.15 m beyond), and the section gives the
+impulse the objects struck it with; the structure is drawn as placed, not as it moved. The layouts
 "Car park with parked cars (freestanding)" and "Furnished room (freestanding)" open the
 populated scenes above.
 
@@ -443,8 +446,26 @@ mechanics checked against theory, not validated vehicle or furniture models.
   - **The budget:** the box's momentum lost equals the wall's reaction plus the air's impulse,
     to 10⁻⁶.
 
-  Scenes without a structure take their old path. The app's and headless runs (e) are the stage
-  left.
+  Scenes without a structure take their old path.
+- **Stage 3, the app's and headless runs** (19 October 2026). `FreestandingMotion`, which the
+  app's Compute Motion runs, takes a scene's deformable structures (above, [In the
+  app](#in-the-app)). `ObjectsBesideStructureTests` blows a 50 kg box 5 mm from an elastic wall
+  well away from the origin at it with 0.5 kg: the cropped wall meshes to the same nodes and
+  elements; the box reaches 2.7 m/s, gives the wall 157 N s (more than its 133 N s, as the wall
+  throws it back), and gets less than 3 cm forward. `rigidboxdemo --car-wall` blows a saloon
+  broadside into a reinforced concrete wall 0.3 m away (0.2 m thick, 6 m long, 2.5 m high, with a
+  mat in each face) with 20 kg 3 m beyond it, the wall deformable and then a rigid block of the
+  same size, over 0.2 s on 0.1 m air:
+
+  | Wall | Car moved | Peak speed | Peak tilt | Wall's reaction | Steps | Time |
+  |---|---|---|---|---|---|---|
+  | Deformable | 0.45 m | 5.94 m/s | 3.1° | 1,296 N s | 14,062 | 149 s |
+  | Rigid block | 0.43 m | 5.95 m/s | 3.2° | not recorded | 4,356 | 33 s |
+
+  The car's centre moves 0.24 m of the 0.3 m gap towards the wall; its tilt brings its upper
+  side the rest of the way, and the two walls stop and throw it alike. The lockstep with the
+  structure's step makes the deformable run three times the steps and four and a half times the
+  time. The structure's motion is not drawn in the app.
 - Objects and a deformable structure in the air together need, as found on 18 October 2026:
   (a) one layout for the coarse wall velocities, which a structure's coupling indexes by its
   region or sparse tiles and the objects over the whole grid; (b) the structure's remask, coarse

@@ -467,6 +467,9 @@ final class SimulationModel {
     /// the menus open.
     var showsParameterSweep = false
     var showsRunComparison = false
+    /// The Infer Charge sheet, and its observers and posterior, kept while the window is open.
+    var showsChargeInference = false
+    let chargeInference = ChargeInferenceModel()
     /// Asked of the views that own them from the menus, and cleared there: choosing a model to
     /// import, naming the run to keep, and saving the results as CSV.
     var requestsModelImport = false

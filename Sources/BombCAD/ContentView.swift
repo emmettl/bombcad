@@ -190,6 +190,9 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $model.showsRenderExport) { RenderExportView(model: model) }
+        .sheet(isPresented: $model.showsChargeInference) {
+            ChargeInferenceView(model: model, inference: model.chargeInference)
+        }
         .onChange(of: model.inspectedImportID) {
             if model.inspectedImportID != nil { sourceInspectorVisible = true }
         }

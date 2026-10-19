@@ -37,6 +37,7 @@ class TierTests(unittest.TestCase):
         self.assertEqual(check.tier(["Scripts/reference/compare.py", "Scripts/reference/tables/blast1d-tnt.json"]),
                          "documents")
         self.assertEqual(check.tier(["Scripts/analytic/sedov.py"]), "documents")
+        self.assertEqual(check.tier(["Scripts/protective/model.py"]), "documents")
 
 
 class SuiteTests(unittest.TestCase):

@@ -91,6 +91,55 @@ struct FragmentVentingTests {
         #expect(abs(recorded - opened) < 2e-4, "recorded \(recorded) s, seen at \(opened) s")
     }
 
+    @Test("On a mapped start a pane the blast breaks, and a history's window, are timed from detonation")
+    func mappedStartClocks() throws {
+        let (scene, _) = try scene()
+        var config = SolverConfiguration.recommended
+        config.mappedCharge = true
+        config.airSleepThreshold = 0
+        let solver = try BlastSolver(
+            device: #require(MTLCreateSystemDefaultDevice()), scenario: scene, cellSize: 0.25,
+            configuration: config)
+        #expect(solver.time > 1e-4)
+        let binS = 1e-4
+        try solver.configureEnvelopeComponents(
+            objects: scene.envelopeObjects,
+            options: EnvelopeHistoryOptions(windowS: 0.03, binS: binS, windowFromArrival: true))
+        let construction = EnvelopeConstruction.assumed(objectID: scene.envelopeObjects[0].id)
+        try solver.configureEnvelopeVenting(objects: scene.envelopeObjects) { _ in construction }
+        // Step by step, when each first shows: a pane broken by the blast, a component's window.
+        var broken: Double?
+        var windows: [Int: Double] = [:]
+        var longest = 0.0
+        while broken == nil || windows.isEmpty, solver.time < 0.02 {
+            let before = solver.time
+            _ = solver.advance(steps: 1, timeLimit: 0.02)
+            longest = max(longest, solver.time - before)
+            if broken == nil,
+                solver.envelopeVentingSnapshot()?.panes.contains(where: { $0.brokenAtS != nil }) == true
+            {
+                broken = solver.time
+            }
+            for (n, history) in (solver.envelopeComponentHistories() ?? []).enumerated()
+            where windows[n] == nil && history.windowStartS != nil {
+                windows[n] = solver.time
+            }
+        }
+        // A break within the step it showed in, not the mapped start's time earlier.
+        let seen = try #require(broken)
+        let recorded = try #require(solver.envelopeVentingSnapshot()?.panes.compactMap(\.brokenAtS).min())
+        #expect(
+            recorded <= seen + 1e-7 && recorded > seen - longest - 1e-7,
+            "broke at \(recorded) s, seen at \(seen) s")
+        // A window starting in the bin its arrival fell in.
+        let histories = try #require(solver.envelopeComponentHistories())
+        let (index, opened) = try #require(windows.min { $0.value < $1.value })
+        let start = try #require(histories[index].windowStartS)
+        #expect(
+            start <= opened + 1e-7 && start > opened - longest - binS - 1e-7,
+            "window at \(start) s, seen at \(opened) s")
+    }
+
     @Test("A pane holed before the blast opens then, the room fills earlier, however the run is batched")
     func holedPaneOpensFirst() throws {
         let (scene, spec) = try scene()
