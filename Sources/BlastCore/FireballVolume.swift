@@ -1,4 +1,5 @@
 import Foundation
+import RadialBlast
 import simd
 
 /// The fireball's luminous gas cell by cell, as the volume model takes it: a box of voxels
@@ -23,19 +24,24 @@ public struct LuminousCells: Sendable, Equatable {
     /// The density of unburnt detonation products in each voxel's luminous gas, kg/m³; nil
     /// without afterburning, which alone keeps track of them.
     public let products: [Float16]?
+    /// Each voxel's luminous gas's own absorption as hot air (`HotAir`), the mean of its cells',
+    /// 1/m; nil where it was not reckoned, as by frames from before 19 October 2026.
+    public let airAbsorption: [Float16]?
 
     public init(
         voxelSize: Float, first: SIMD3<Int32>, counts: SIMD3<Int32>, fills: [UInt8], temperatures: [UInt16],
-        products: [Float16]?
+        products: [Float16]?, airAbsorption: [Float16]? = nil
     ) {
         precondition(Int(counts.x) * Int(counts.y) * Int(counts.z) == fills.count)
         precondition(fills.count == temperatures.count && (products?.count ?? fills.count) == fills.count)
+        precondition((airAbsorption?.count ?? fills.count) == fills.count)
         self.voxelSize = voxelSize
         self.first = first
         self.counts = counts
         self.fills = fills
         self.temperatures = temperatures
         self.products = products
+        self.airAbsorption = airAbsorption
     }
 
     /// The box's corner nearest the domain's, and farthest from it, in metres.
@@ -50,13 +56,14 @@ public struct LuminousCells: Sendable, Equatable {
 
 extension LuminousCells {
     /// From each cell of the box of `counts` cells from `low`, packed as `extractLuminousCells`
-    /// writes them (the temperature in kelvin in the low 16 bits, the products' density as a half
-    /// float in the high) and read through `packed` by the cell's index in the box, x fastest.
+    /// writes them (in x the temperature in kelvin in the low 16 bits, the products' density as a
+    /// half float in the high; in y its absorption as hot air as a half) and read through `packed`
+    /// by the cell's index in the box, x fastest.
     /// Cells are merged in blocks of 2, 4, … a side, aligned on the grid, until the box holds no
     /// more than `maximumVoxels`. Nil if no cell is luminous.
     init?(
         cellSize: Float, low: SIMD3<Int>, counts: SIMD3<Int>, hasProducts: Bool,
-        packed: (Int) -> UInt32
+        packed: (Int) -> SIMD2<UInt32>
     ) {
         guard counts.x > 0, counts.y > 0, counts.z > 0 else { return nil }
         var scale = 1
@@ -74,46 +81,57 @@ extension LuminousCells {
         var fills = [UInt8](repeating: 0, count: total)
         var temperatures = [UInt16](repeating: 0, count: total)
         var products = [Float16](repeating: 0, count: hasProducts ? total : 0)
+        var absorption = [Float16](repeating: 0, count: total)
         let perVoxel = Double(scale * scale * scale)
         let any = Flag()
         fills.withUnsafeMutableBufferPointer { fills in
             temperatures.withUnsafeMutableBufferPointer { temperatures in
                 products.withUnsafeMutableBufferPointer { products in
-                    // A plane of voxels at a time, across the cores; each voxel's cells in order.
-                    concurrently(iterations: n.z) { c in
-                        var found = false
-                        for b in 0..<n.y {
-                            for a in 0..<n.x {
-                                let corner = (base &+ SIMD3(a, b, c)) &* scale
-                                let from = simd_max(corner, low) &- low
-                                let to = simd_min(corner &+ scale, low &+ counts) &- low
-                                var cells = 0
-                                var fourth = 0.0
-                                var density = 0.0
-                                for k in from.z..<to.z {
-                                    for j in from.y..<to.y {
-                                        for i in from.x..<to.x {
-                                            let value = packed(i + counts.x * (j + counts.y * k))
-                                            let kelvin = value & 0xFFFF
-                                            guard kelvin > 0 else { continue }
-                                            cells += 1
-                                            let t = Double(kelvin)
-                                            fourth += t * t * t * t
-                                            density += Double(Float16(bitPattern: UInt16(value >> 16)))
+                    absorption.withUnsafeMutableBufferPointer { absorption in
+                        // A plane of voxels at a time, across the cores; each voxel's cells in order.
+                        concurrently(iterations: n.z) { c in
+                            var found = false
+                            for b in 0..<n.y {
+                                for a in 0..<n.x {
+                                    let corner = (base &+ SIMD3(a, b, c)) &* scale
+                                    let from = simd_max(corner, low) &- low
+                                    let to = simd_min(corner &+ scale, low &+ counts) &- low
+                                    var cells = 0
+                                    var fourth = 0.0
+                                    var density = 0.0
+                                    var air = 0.0
+                                    for k in from.z..<to.z {
+                                        for j in from.y..<to.y {
+                                            for i in from.x..<to.x {
+                                                let both = packed(i + counts.x * (j + counts.y * k))
+                                                let value = both.x
+                                                let kelvin = value & 0xFFFF
+                                                guard kelvin > 0 else { continue }
+                                                cells += 1
+                                                let t = Double(kelvin)
+                                                fourth += t * t * t * t
+                                                density += Double(Float16(bitPattern: UInt16(value >> 16)))
+                                                air += Double(
+                                                    Float16(bitPattern: UInt16(truncatingIfNeeded: both.y)))
+                                            }
                                         }
                                     }
+                                    guard cells > 0 else { continue }
+                                    found = true
+                                    let v = a + n.x * (b + n.y * c)
+                                    fills[v] = UInt8(
+                                        min(255, max(1, (255 * Double(cells) / perVoxel).rounded())))
+                                    temperatures[v] = UInt16(
+                                        clamping: max(
+                                            1,
+                                            Int((fourth / Double(cells)).squareRoot().squareRoot().rounded()))
+                                    )
+                                    if hasProducts { products[v] = Float16(density / Double(cells)) }
+                                    absorption[v] = Float16(min(air / Double(cells), 65504))
                                 }
-                                guard cells > 0 else { continue }
-                                found = true
-                                let v = a + n.x * (b + n.y * c)
-                                fills[v] = UInt8(min(255, max(1, (255 * Double(cells) / perVoxel).rounded())))
-                                temperatures[v] = UInt16(
-                                    clamping: max(
-                                        1, Int((fourth / Double(cells)).squareRoot().squareRoot().rounded())))
-                                if hasProducts { products[v] = Float16(density / Double(cells)) }
                             }
+                            if found { any.set() }
                         }
-                        if found { any.set() }
                     }
                 }
             }
@@ -122,23 +140,28 @@ extension LuminousCells {
         self.init(
             voxelSize: Float(scale) * cellSize, first: SIMD3<Int32>(truncatingIfNeeded: base),
             counts: SIMD3<Int32>(truncatingIfNeeded: n), fills: fills, temperatures: temperatures,
-            products: hasProducts ? products : nil)
+            products: hasProducts ? products : nil, airAbsorption: absorption)
     }
 
+    /// Bytes a voxel takes as it travels.
+    public var bytesPerVoxel: Int { 3 + (products == nil ? 0 : 2) + (airAbsorption == nil ? 0 : 2) }
+
     /// As it travels to a worker, after the frame's JSON: the voxel's edge as a float, the first
-    /// voxel and the counts as six 32-bit integers, whether the products follow, then the shares,
-    /// the temperatures and any products' densities, all little-endian.
+    /// voxel and the counts as six 32-bit integers, which of the products (bit 0) and the hot air's
+    /// absorption (bit 1) follow, then the shares, the temperatures, any products' densities and
+    /// any absorptions, all little-endian.
     public var binary: Data {
-        var data = Data(capacity: 32 + fills.count * (products == nil ? 3 : 5))
+        var data = Data(capacity: 32 + fills.count * bytesPerVoxel)
         func append<T: FixedWidthInteger>(_ value: T) {
             withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
         }
         append(voxelSize.bitPattern)
         for value in [first.x, first.y, first.z, counts.x, counts.y, counts.z] { append(value) }
-        append(UInt32(products == nil ? 0 : 1))
+        append(UInt32(products == nil ? 0 : 1) | UInt32(airAbsorption == nil ? 0 : 2))
         data.append(contentsOf: fills)
         for t in temperatures { append(t) }
         for p in products ?? [] { append(p.bitPattern) }
+        for a in airAbsorption ?? [] { append(a.bitPattern) }
         return data
     }
 
@@ -154,11 +177,13 @@ extension LuminousCells {
             Int32(bitPattern: words[1]), Int32(bitPattern: words[2]), Int32(bitPattern: words[3]))
         let counts = SIMD3<Int32>(
             Int32(bitPattern: words[4]), Int32(bitPattern: words[5]), Int32(bitPattern: words[6]))
-        let hasProducts = words[7] != 0
-        guard counts.x > 0, counts.y > 0, counts.z > 0 else { throw bad }
+        let hasProducts = words[7] & 1 != 0
+        let hasAbsorption = words[7] & 2 != 0
+        guard counts.x > 0, counts.y > 0, counts.z > 0, words[7] < 4 else { throw bad }
         let count = Int(counts.x) * Int(counts.y) * Int(counts.z)
-        guard count <= Self.maximumVoxels, data.count == 32 + count * (hasProducts ? 5 : 3) else { throw bad }
-        let (fills, temperatures, products) = data.withUnsafeBytes { raw in
+        let perVoxel = 3 + (hasProducts ? 2 : 0) + (hasAbsorption ? 2 : 0)
+        guard count <= Self.maximumVoxels, data.count == 32 + count * perVoxel else { throw bad }
+        let (fills, temperatures, products, absorption) = data.withUnsafeBytes { raw in
             let fills = [UInt8](raw[32..<32 + count])
             let temperatures = (0..<count).map {
                 UInt16(littleEndian: raw.loadUnaligned(fromByteOffset: 32 + count + 2 * $0, as: UInt16.self))
@@ -171,11 +196,19 @@ extension LuminousCells {
                             littleEndian: raw.loadUnaligned(
                                 fromByteOffset: 32 + 3 * count + 2 * $0, as: UInt16.self)))
                 } : nil
-            return (fills, temperatures, products)
+            let from = 32 + (hasProducts ? 5 : 3) * count
+            let absorption: [Float16]? =
+                hasAbsorption
+                ? (0..<count).map {
+                    Float16(
+                        bitPattern: UInt16(
+                            littleEndian: raw.loadUnaligned(fromByteOffset: from + 2 * $0, as: UInt16.self)))
+                } : nil
+            return (fills, temperatures, products, absorption)
         }
         self.init(
             voxelSize: Float(bitPattern: words[0]), first: first, counts: counts, fills: fills,
-            temperatures: temperatures, products: products)
+            temperatures: temperatures, products: products, airAbsorption: absorption)
     }
 }
 
@@ -255,7 +288,7 @@ extension BlastSolver {
     /// `coarse` (packed as `extractLuminousCells` writes it), where none does. Nil where no patch
     /// holds any of the box, which then goes as the coarse cells have it.
     func refinedLuminousCells(
-        low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float, coarse: (SIMD3<Int>) -> UInt32
+        low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float, coarse: (SIMD3<Int>) -> SIMD2<UInt32>
     ) -> LuminousCells? {
         let levels = refinementLevels
         guard let first = levels.first, first.holdsAny(from: low, through: low &+ counts &- 1),
@@ -272,13 +305,13 @@ extension BlastSolver {
         let gamma = configuration.gamma
         let airModel = configuration.airModel
         let hasProducts = speciesHoldDetonationProducts
-        var packed = [UInt32](repeating: 0, count: fineCounts.x * fineCounts.y * fineCounts.z)
+        var packed = [SIMD2<UInt32>](repeating: .zero, count: fineCounts.x * fineCounts.y * fineCounts.z)
         packed.withUnsafeMutableBufferPointer { packed in
             concurrently(iterations: fineCounts.z) { k in
                 for j in 0..<fineCounts.y {
                     for i in 0..<fineCounts.x {
                         let at = fineLow &+ SIMD3(i, j, k)
-                        var value: UInt32?
+                        var value: SIMD2<UInt32>?
                         for (cells, read) in readers {
                             guard let cell = read(at / (scale / cells)) else { continue }
                             value = Self.packedLuminous(
@@ -296,31 +329,33 @@ extension BlastSolver {
         ) { packed[$0] }
     }
 
-    /// A cell of air packed as `extractLuminousCells` writes it: its temperature in kelvin in the
-    /// low 16 bits and its unburnt products' density as a half float in the high, or zero if it
-    /// is cooler than `luminousTemperature`.
+    /// A cell of air packed as `extractLuminousCells` writes it: in x its temperature in kelvin in
+    /// the low 16 bits and its unburnt products' density as a half float in the high, in y its
+    /// absorption as hot air as a half; or zero if it is cooler than `luminousTemperature`.
     static func packedLuminous(
         _ cell: CellState, products held: Float, gamma: Float, airModel: AirModel, luminousTemperature: Float
-    ) -> UInt32 {
+    ) -> SIMD2<UInt32> {
         let air = primitive(of: cell, gamma: gamma, airModel: airModel)
         let bound = air.pressure / (air.density * AirModel.gasConstant)
-        guard bound >= luminousTemperature, bound.isFinite else { return 0 }
+        guard bound >= luminousTemperature, bound.isFinite else { return .zero }
         let t =
             airModel == .dissociating
             ? airModel.temperature(density: air.density, pressure: air.pressure) : bound
-        guard t >= luminousTemperature, t.isFinite else { return 0 }
+        guard t >= luminousTemperature, t.isFinite else { return .zero }
         let kelvin = UInt32(min(max(t.rounded(), 1), 65535))
         let products = Float16(min(max(held, 0), 65504))
-        return kelvin | UInt32(products.bitPattern) << 16
+        let absorption = Float16(min(HotAir.planckAbsorption(temperature: t, density: cell.density), 65504))
+        return SIMD2(kelvin | UInt32(products.bitPattern) << 16, UInt32(absorption.bitPattern))
     }
 
     /// The cells of the box of `counts` from `low` packed as `extractLuminousCells` writes them,
     /// read from the state across the CPU's cores.
-    func cpuLuminousCells(low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float) -> [UInt32] {
+    func cpuLuminousCells(low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float) -> [SIMD2<UInt32>]
+    {
         let gamma = configuration.gamma
         let airModel = configuration.airModel
         let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
-        var packed = [UInt32](repeating: 0, count: counts.x * counts.y * counts.z)
+        var packed = [SIMD2<UInt32>](repeating: .zero, count: counts.x * counts.y * counts.z)
         let hasProducts = speciesHoldDetonationProducts
         withState { cells in
             readSpecies { species in
@@ -374,7 +409,8 @@ struct ThermalMedium: Sendable {
     static let sootDensity: Float = 1800
 
     /// The medium of `cells` under `spec`: each voxel's gas absorbs `spec.absorption` a metre for
-    /// itself, and as soot `spec.sootYield` of its unburnt products would.
+    /// itself, as soot `spec.sootYield` of its unburnt products would, and, with
+    /// `spec.hotAirAbsorption`, as hot air at its temperature and density.
     init(_ cells: LuminousCells, spec: ThermalSpec) {
         low = cells.low
         voxelSize = cells.voxelSize
@@ -392,7 +428,8 @@ struct ThermalMedium: Sendable {
                     guard cells.fills[v] > 0, t > 0 else { continue }
                     let share = Float(cells.fills[v]) / 255
                     let products = cells.products.map { Float($0[v]) } ?? 0
-                    let kappa = share * (spec.absorption + soot * products * t)
+                    let air = spec.hotAirAbsorption ? cells.airAbsorption.map { Float($0[v]) } ?? 0 : 0
+                    let kappa = share * (spec.absorption + soot * products * t + air)
                     let square = t * t
                     voxels[v] = SIMD4(share, kappa, kappa * sigma * square * square, 0)
                 }

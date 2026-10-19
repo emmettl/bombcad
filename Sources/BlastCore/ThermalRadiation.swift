@@ -23,6 +23,11 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
     /// afterburning keeps track of: 0.185 for TNT, whose products by the H₂O–CO rule keep half its
     /// carbon as soot. Zero leaves the soot out.
     public var sootYield: Float = 0.185
+    /// Whether the volume's gas absorbs, besides `absorption`, as hot equilibrium air does at its
+    /// temperature and density (`HotAir`): nothing to speak of below 3,000 K, but opaque within
+    /// centimetres in a strong shock's layer at 6,000 to 8,000 K. On unless turned off; frames
+    /// from before 19 October 2026 carry no absorption of the kind, and absorb only `absorption`.
+    public var hotAirAbsorption = true
     /// The volume's step through the gas, as a share of its voxels' edge.
     public var marchStep: Float = 0.5
     /// How the receivers' surfaces heat up (see `SurfaceHeating`); on unless turned off.
@@ -45,6 +50,8 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
         fireball = try values.decodeIfPresent(FireballModel.self, forKey: .fireball) ?? defaults.fireball
         absorption = try values.decodeIfPresent(Float.self, forKey: .absorption) ?? defaults.absorption
         sootYield = try values.decodeIfPresent(Float.self, forKey: .sootYield) ?? defaults.sootYield
+        hotAirAbsorption =
+            try values.decodeIfPresent(Bool.self, forKey: .hotAirAbsorption) ?? defaults.hotAirAbsorption
         marchStep = try values.decodeIfPresent(Float.self, forKey: .marchStep) ?? defaults.marchStep
         heating = try values.decodeIfPresent(SurfaceHeatingSpec.self, forKey: .heating) ?? defaults.heating
     }

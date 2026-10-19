@@ -216,7 +216,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young
   flame's speed on coarse cells, and a thinner front, without which K_G cannot converge.
 - **Paused:** the fireball's radiation, about 21% radiated against Dial Pack's 5.1%; if it
-  resumes, flame sheets round a fuel-rich core and the missing hot shock layer.
+  resumes, flame sheets round a fuel-rich core. The hot shock layer shows in the early frames
+  since 19 October (hot air's absorption, soot within the products): Dial Pack's first maximum a
+  third of the measured, from a quarter.
 - **Cratering, stage 1, done (approximation for the diameter):** [an empirical crater](cratering.md)
   by Cooper's scaling for each soil and height of burst, with Kinney and Graham's scatter; it
   forms after the blast, so it is reported, drawn and exported when the run ends and does not

@@ -42,6 +42,10 @@ public final class BlastSolver {
     /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
     /// limit; the app sets half the run's duration. Takes effect at the next `load`.
     public var mappedStartLatest: Double?
+    /// The most voxels, and the samples a side of each, the early fireball frames take
+    /// (`earlyFireballFrames`); nil for their defaults. For studying their resolution.
+    public var earlyFrameVoxelLimit: Int?
+    public var earlyFrameSampleCount: Int?
     private var exposureNeedsInitialSample = false
     private(set) var envelopeExposure: EnvelopeExposure?
     private var envelopeNeedsInitialSample = false

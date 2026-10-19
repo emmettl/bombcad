@@ -66,6 +66,11 @@ import simd
 //                       [--stationary-walls] [--cloud spec.json [--frame-cloud] [--cloud-results out.json]]
 //                       [--standing]   (the standing a new document of the preset shows, in place of a run)
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
+//                       [--mapped [--early-voxels n] [--early-samples s]] [--hot-air|--grey-air] [--frame-detail]
+//   blastbench radial-profile [--mass 453600] [--reach 2] [--times 0.5,1,1.25,2,5] [--every 4] [--dump prefix]
+//                      (the mapped start's one-dimensional burst through its products' edge and shock)
+//   blastbench shell-sphere [--profile file.csv [--mass kg]] [--voxel 0.5,0.25]
+//                      (the thermal volume's march against exact rays through a layered sphere)
 //   blastbench hazards [--mass 100] [--fragments spec.json [--height 1]]
 //                      (the safety standards' distances, the minimum safe distance and the free
 //                      field's injury radii, a charge on the ground)
@@ -4656,6 +4661,9 @@ func runDialPack() throws {
     var volume = ThermalSpec()
     // A receiver or so on the ground: only the instruments are reckoned.
     volume.groundSpacing = side
+    // `--hot-air`/`--grey-air`: the gas absorbing as hot air does, or only grey, whatever the default.
+    if flag("hot-air") { volume.hotAirAbsorption = true }
+    if flag("grey-air") { volume.hotAirAbsorption = false }
     var shape = volume
     shape.fireball = .shape
     var sphere = volume
@@ -4702,6 +4710,9 @@ func runDialPack() throws {
     var early: CloudHandOver?
     // Before a mapped start's clock, the fireball from the one-dimensional solution.
     var oneD: [Double: FireballFrame] = [:]
+    // `--early-voxels n --early-samples s`: the early frames' resolution.
+    solver.earlyFrameVoxelLimit = option("early-voxels").flatMap { Int($0) }
+    solver.earlyFrameSampleCount = option("early-samples").flatMap { Int($0) }
     for frame in solver.earlyFireballFrames(for: volume, at: frameTimes) { oneD[frame.time] = frame }
     for target in frameTimes where oneD[target] != nil || target > solver.time - 1e-9 {
         while oneD[target] == nil, solver.time < target - 1e-9 {
@@ -4725,6 +4736,19 @@ func runDialPack() throws {
         for n in values.indices { peak[n] = max(peak[n], values[n]) }
         last = (now, values)
         lastPower = (now, power)
+        // `--frame-detail`: what each frame's voxels hold, the luminous gas's absorptions among it.
+        if flag("frame-detail"), let cells = frame.cells {
+            let lit = cells.fills.indices.filter { cells.fills[$0] > 0 }
+            let air = lit.map { Double(cells.airAbsorption?[$0] ?? 0) }
+            let products = lit.map { Double(cells.products?[$0] ?? 0) }
+            let hot = lit.map { Double(cells.temperatures[$0]) }
+            print(
+                String(
+                    format:
+                        "  %.2f ms: %d voxels of %.2f m lit; hot air absorbs %.3g/m mean, %.3g at most; products %.3g kg/m³ mean; %.0f K hottest voxel",
+                    now * 1e3, lit.count, cells.voxelSize, air.reduce(0, +) / Double(max(lit.count, 1)),
+                    air.max() ?? 0, products.reduce(0, +) / Double(max(lit.count, 1)), hot.max() ?? 0))
+        }
         lines.append(
             [
                 String(format: "%.5f", now), String(format: "%.2f", 2 * frame.radius),
@@ -5690,6 +5714,8 @@ do {
     case "products": try runProducts()
     case "gauging": try runGauging(device: device, cooling: try chosenCooling())
     case "twocharges": try runTwoCharges(solver: { try makeAirSolver($0, cellSize: $1) })
+    case "radial-profile": try runRadialProfile()
+    case "shell-sphere": try runShellSphere()
     case "mapped-cost":
         // The fine one-dimensional start's own time (CPU), by charge and cell: `--masses 1,10,100
         // --dx 0.125,0.25,0.5 --cells 64`.

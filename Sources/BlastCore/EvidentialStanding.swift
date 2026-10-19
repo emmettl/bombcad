@@ -1299,6 +1299,7 @@ public enum StandingTable {
         "ThermalSpec.fireball": .option([.thermalVolume, .thermalShape, .thermalSphere]),
         "ThermalSpec.absorption": .input,
         "ThermalSpec.sootYield": .input,
+        "ThermalSpec.hotAirAbsorption": .input,
         "ThermalSpec.marchStep": .numerical,
         "ThermalSpec.heating": .option([.surfaceHeating]),
         "SurfaceHeatingSpec.enabled": .option([.surfaceHeating]),

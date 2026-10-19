@@ -24,6 +24,9 @@ func runGauging(device: MTLDevice, cooling: RadiativeCooling?) throws {
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()
     volume.groundSpacing = side
+    // `--hot-air`/`--grey-air`: the gas absorbing as hot air does, or only grey, whatever the default.
+    if flag("hot-air") { volume.hotAirAbsorption = true }
+    if flag("grey-air") { volume.hotAirAbsorption = false }
     let exposure = ThermalExposure(spec: volume, scene: FragmentScene(scenario))
     let ranges: [Float] = [4, 6, 8]
     // The flux gauges on the boxes' tops, facing up; the thermocouples beside them.
