@@ -336,8 +336,8 @@ most are about reaching an answer for less, with the full solver kept as the ref
    carries the façades' loads beyond it on item 2's surrogate, matched to the near run, so its
    shielding is the surrogate's and channelling is not yet in it. Handing over at 1 km, Beirut at
    0.5 kt takes about 7 minutes against the full run's 34, and the share of building sides with
-   some glass broken comes within 0.03 of the full run's to 1.5 km at every yield; it is not yet
-   in the app ([a city in minutes](hybrid-far-field.md)).
+   some glass broken comes within 0.04 of the full run's to 1.5 km at every yield; in the app
+   under File ▸ New District ([a city in minutes](hybrid-far-field.md)).
 4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
    from the scatter in yield, materials and rounding, cheap once item 2 exists. First step done for the
    glass: each building side's chance of broken, blown-out and thrown glass in about a minute, calibrated to

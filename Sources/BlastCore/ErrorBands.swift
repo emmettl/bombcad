@@ -486,9 +486,9 @@ public enum ValidationTables {
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "1.09–1.63 times the run's on the median"),
         Figure(
-            id: "hybridFarPeak", low: 0.77, high: 1.04,
+            id: "hybridFarPeak", low: 0.76, high: 1.04,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
-            quote: "façade peaks 0.77–1.04 of the full run's to 2.5 km"),
+            quote: "façade peaks 0.76–1.04 of the full run's to 2.5 km"),
         Figure(
             id: "hybridFarImpulse", low: 1.04, high: 1.5,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",

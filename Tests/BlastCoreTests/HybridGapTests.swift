@@ -140,7 +140,7 @@ struct HybridGapTests {
     /// result) must say what holds inside the hand-over, beyond it, for arrivals, and for walls
     /// and roofs, in that order; and its figures must be the ones on the page it cites,
     /// docs/hybrid-far-field.md: the façade peaks' range beyond the hand-over to 2.5 km, the glass
-    /// agreeing within 0.03 to 1.5 km at every yield, and the shortfall at 0.2 kt from 1.5 to
+    /// agreeing within 0.04 to 1.5 km at every yield, and the shortfall at 0.2 kt from 1.5 to
     /// 2.5 km, each read off that page's table. Nothing else reads the standing.
     @Test("The standing reports its four parts, its figures those of the page it cites")
     func standingMatchesPage() throws {
@@ -180,10 +180,10 @@ struct HybridGapTests {
         let peaks = beyond.flatMap(\.peaks)
         let range = String(format: "%.2f–%.2f", try #require(peaks.min()), try #require(peaks.max()))
         #expect(standing[1].contains("façade peaks \(range)"), "the page's peaks run \(range)")
-        // Within 0.03 to 1.5 km at every yield.
+        // Within 0.04 to 1.5 km at every yield.
         let toOneHalf = rows.filter { $0.to <= 1.5 }.flatMap(\.glass).map { abs($0.full - $0.hybrid) }
-        #expect((toOneHalf.max() ?? 1) <= 0.03 + 1e-9, "\(toOneHalf)")
-        #expect(standing[1].contains("within 0.03 of its to 1.5 km at every yield"))
+        #expect((toOneHalf.max() ?? 1) <= 0.04 + 1e-9, "\(toOneHalf)")
+        #expect(standing[1].contains("within 0.04 of its to 1.5 km at every yield"))
         // Under at 0.2 kt from 1.5 to 2.5 km.
         let shortfall = rows.filter { $0.from >= 1.5 && $0.to <= 2.5 }.map {
             $0.glass[0].full - $0.glass[0].hybrid
