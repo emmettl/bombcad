@@ -1732,6 +1732,10 @@ extension StandingScene {
             )
         case .freestandingMotion, .fragments, .surfaceHeating:
             unbanded.append("Nothing measured to band it.")
+        case .collapse:
+            unbanded.append(
+                "Collapse was compared once for slabs, blind, and missed, and for brick houses only by survey "
+                    + "category: no band, and the local damage's bands do not apply to it.")
         case .crater:
             unbanded.append(
                 "The apparent diameter's one-sigma scatter is a third either way (Kinney and Graham's 200 "
@@ -1890,7 +1894,8 @@ extension StandingScene {
                     has(.afterburning) ? nil : "Turn afterburning on where the incident impulse matters.",
                     has(.afterburning) ? ValidationTables.burningDocument : "validation.md#afterburning")
             }
-        case .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating, .cloud,
+        case .collapse, .envelopeExposure, .envelopeDamage, .freestandingMotion, .thermal, .surfaceHeating,
+            .cloud,
             .fragments, .groundShock, .crater, .blastInjury:
             break
         }

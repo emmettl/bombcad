@@ -62,6 +62,10 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case impulse
     case structuralResponse
     case structuralDamage
+    /// Parts of a structure losing their support and falling: a storey lost, a structure down,
+    /// collapse spreading. Apart from `structuralDamage`, the members' and elements' own damage,
+    /// so that it never takes that band.
+    case collapse
     case envelopeExposure
     case envelopeDamage
     case freestandingMotion
@@ -81,6 +85,7 @@ public enum ResultKind: String, Codable, CaseIterable, Sendable, Identifiable {
         case .impulse: "Impulse"
         case .structuralResponse: "Structural deflection"
         case .structuralDamage: "Structural damage and failure"
+        case .collapse: "Collapse: storeys lost, structures down"
         case .envelopeExposure: "Building surface exposure"
         case .envelopeDamage: "Envelope building damage"
         case .freestandingMotion: "Freestanding objects' motion"
@@ -508,7 +513,7 @@ public enum StandingTable {
     }
 
     public static func entry(for option: ModelOption) -> Entry {
-        let structure: [ResultKind] = [.structuralResponse, .structuralDamage]
+        let structure: [ResultKind] = [.structuralResponse, .structuralDamage, .collapse]
         let air: [ResultKind] = [.peakOverpressure, .impulse]
         switch option {
         case .afterburning:
@@ -1415,7 +1420,9 @@ extension SceneStanding {
     init(_ inputs: StandingInputs, table: String) {
         let scene = StandingScene(inputs)
         var results = [scene.peakOverpressure(), scene.impulse(), scene.blastInjury()]
-        if !scene.structures.isEmpty { results += [scene.structuralResponse(), scene.structuralDamage()] }
+        if !scene.structures.isEmpty {
+            results += [scene.structuralResponse(), scene.structuralDamage(), scene.collapse()]
+        }
         if !inputs.scenario.envelopeObjects.isEmpty {
             results += [scene.envelopeExposure(), scene.envelopeDamage()]
         }
@@ -2352,8 +2359,8 @@ package struct StandingScene {
             "Errs on the unsafe side, towards too little damage: too strong in shear, struck beams holding "
             + "where the tests crushed their strut. Failure depends on the mesh and, on fine meshes, the time "
             + "step: a beam that holds on 24 elements breaks on 36, a close-in slab holes on 16 only. Breach and "
-            + "joints are the least reliable predictions; debris has been compared off slabs and brick walls, "
-            + "and collapse once, blind, where both slabs that collapsed were left standing."
+            + "joints are the least reliable predictions; debris has been compared off slabs and brick walls. "
+            + "A storey lost or a structure down is collapse, a result of its own (illustrative)."
         if let distance = structureDistance, distance < 0.75 {
             evidence.append(
                 StandingEvidence(
@@ -2414,6 +2421,59 @@ package struct StandingScene {
                 "concrete-model.md#limitations", "structural-model.md#limitations",
                 "validation.md#what-is-missing", "validation.md#convergence-on-todays-defaults",
             ])
+    }
+
+    /// Parts of the structure losing their support and falling: a storey lost, a structure down,
+    /// collapse spreading. Illustrative: no compared case of collapse agreed. A structural system's
+    /// collapse may rise to an approximation only once a compared collapse case of that system
+    /// agrees within its band, and none does yet.
+    func collapse() -> ResultStanding {
+        result(
+            .collapse, .illustrative,
+            "Not compared where it agreed: collapse has been compared once for slabs, blind, and missed (both "
+                + "slabs that collapsed left standing), and for brick houses against wartime surveys, right at "
+                + "0.1 s but toppling their front walls after (one or two categories too severe). Steel "
+                + "connections' fracture comes from slow column-removal tests, and no frame, large-panel block "
+                + "or storey has been compared falling. The local damage's standing does not carry over to it.",
+            evidence: [
+                StandingEvidence(
+                    "Blind: Mendonça's slabs under an open-air charge",
+                    "Unsafe side: the two slabs nearest the charge collapsed in the test; the model left both "
+                        + "standing, barely cracked",
+                    "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
+                StandingEvidence(
+                    "Terraced brick houses against the Second World War's bomb surveys (Gilbert, Jarrett)",
+                    "At 0.1 s the surveyed category or the one below to 23 m (bricks kept to 50 mm); by 0.3 s the "
+                        + "cracked front walls go over, one or two categories too severe beyond 11 m: the safe side",
+                    "validation.md#terraced-houses-against-wartime-bomb-damage"),
+                StandingEvidence(
+                    "Beirut, 2020: 0.5 m stone carrying the masonry above it",
+                    "Falls in 8 of 293 buildings at 0.5–0.75 km, where 7 of GEER's 13 sandstone houses partly "
+                        + "collapsed; not converged, and once matched by an error",
+                    "validation.md#a-district-beirut-2020"),
+                StandingEvidence(
+                    "Alsubaei's blockwork wall under 125 kg",
+                    "Collapses, as in the test: one freestanding wall, not a structure",
+                    "validation.md#perimeter-walls-under-field-blasts"),
+                StandingEvidence(
+                    "Steel connections: NIST TN 1669's and Weigand and Berman's slow column-removal tests",
+                    "Their fracture turns are taken from these tests, a calibration; no frame has been compared "
+                        + "losing a column or falling",
+                    "validation.md#steel-beams-and-columns-in-the-open"),
+                StandingEvidence(
+                    "Large-panel flats against the Ronan Point inquiry's estimates",
+                    "The inquiry's estimates of what each wall needed, not measurements; the progressive "
+                        + "collapse is the model's alone",
+                    "large-panel-flats.md#against-the-inquirys-estimates"),
+            ],
+            assumptions: [
+                "Collapse is chaotic: a slightly different input, rounding or mesh gives a different pattern and "
+                    + "extent.",
+                "Failure does not converge with the mesh or the step on today's defaults, and collapse "
+                    + "follows from failure.",
+                "Not validated for engineering decisions or the safety of a real structure.",
+            ],
+            documents: ["validation.md#summary", "standing.md#collapse"])
     }
 
     /// Said of the envelopes in a scene with structures, which may move beside them.
