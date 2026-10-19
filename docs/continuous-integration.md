@@ -13,6 +13,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 | [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests and the documents' links, a build without warnings, the core tests and the release-build smoke runs, 15 to 20 minutes on the mini, most of it building the tests |
 | [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
+| [Linux BlastModel](../.github/workflows/linux-blastmodel.yml) | Every push to `main` and every pull request, on GitHub's hosted Ubuntu runner | Once the BlastModel split has landed (see [`Scripts/split/`](../Scripts/split/)): builds BlastModel, the model without Metal, and runs `BlastModelTests` on Linux, about 12 minutes; before that it does nothing. The Mac mini stays the reference |
 
 **The gate is the full check before pushing.** Every session runs `make check` (or
 `make check-anywhere`, see [below](#checks-on-the-mini-instead-of-this-mac)) before it pushes, so

@@ -1,0 +1,31 @@
+{
+ "about": "Behaviour-neutral edits the BlastModel split makes beyond moving code, adding imports and widening access. Each edit replaces text that must occur exactly once in its file; Scripts/split/split-blastmodel.sh applies them first (skipping any already applied) and fails if one no longer matches. Pass --no-seams to leave them out, and what depends on them stays in BlastCore.",
+ "seams": [
+  {
+   "id": "shell-fibres-across",
+   "why": "IFCStructure's and ShellMesh's initialisers read ShellSolver.fibresAcross, a constant on the GPU shell solver, which keeps IFCStructure in BlastCore and with it ImportedModel, Scenario, StructureModel and about 85 other plain declarations. The constant (9 points through a wall's thickness) moves to ShellMesh, which moves; ShellSolver.fibresAcross stays as an alias of it, so the solver and the tests read the same 9.",
+   "edits": [
+    {
+     "file": "Sources/BlastCore/ShellSolver.swift",
+     "old": "    /// connection is evaluated, from face to face.\n    static let fibresAcross = 9\n",
+     "new": "    /// connection is evaluated, from face to face (`ShellMesh.fibresAcross`).\n    static let fibresAcross = ShellMesh.fibresAcross\n"
+    },
+    {
+     "file": "Sources/BlastCore/ShellMesh.swift",
+     "old": "struct ShellMesh {\n",
+     "new": "struct ShellMesh {\n    /// Points through a wall's thickness, and along each side of a column, at which the base's\n    /// connection is evaluated, from face to face (`ShellSolver.fibresAcross` is this).\n    static let fibresAcross = 9\n"
+    },
+    {
+     "file": "Sources/BlastCore/ShellMesh.swift",
+     "old": "jointPoints(across: ShellSolver.fibresAcross, normals: model.connectionNormals)",
+     "new": "jointPoints(across: ShellMesh.fibresAcross, normals: model.connectionNormals)"
+    },
+    {
+     "file": "Sources/BlastCore/IFCStructure.swift",
+     "old": "                    across: ShellSolver.fibresAcross, normals: model.connectionNormals\n",
+     "new": "                    across: ShellMesh.fibresAcross, normals: model.connectionNormals\n"
+    }
+   ]
+  }
+ ]
+}
