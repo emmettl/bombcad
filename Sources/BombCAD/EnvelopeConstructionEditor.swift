@@ -5,7 +5,8 @@ import SwiftUI
 /// thickness and bars, their strengths, reinforced blockwork's grout, a cap carried on a
 /// freestanding wall's top, and the roof, concrete or profiled steel sheeting, with the sheets'
 /// profiles, the spacing of the rails and purlins they span and their screws; the glass,
-/// toughened or with security film. The air never sees any of it.
+/// toughened or with security film; a polyurea liner on masonry walls. The air never sees any of
+/// it.
 struct EnvelopeConstructionEditor: View {
     let model: SimulationModel
     let id: UUID
@@ -115,6 +116,22 @@ struct EnvelopeConstructionEditor: View {
                     "Masonry strength", "MPa", Double(construction.masonryStrengthMPa ?? (grouted ? 10 : 3))
                 ) { value in
                     edit { $0.masonryStrengthMPa = Float(max(value, 0.5)) }
+                }
+            }
+            if construction.walls == .unreinforcedMasonry {
+                Toggle(
+                    "Polyurea liner",
+                    isOn: Binding(
+                        get: { construction.wallLiner != nil },
+                        set: { on in edit { $0.wallLiner = on ? .polyurea(mm: 3) : nil } })
+                )
+                .help(
+                    "Polyurea sprayed on the walls' inside face and lapped onto their supports, holding the "
+                        + "masonry once it cracks until the liner tears.")
+                if let liner = construction.wallLiner {
+                    number("Liner thickness", "mm", liner.thickness * 1000) { value in
+                        edit { $0.wallLiner?.thickness = max(value, 0.5) / 1000 }
+                    }
                 }
             }
             if construction.laminate == nil {

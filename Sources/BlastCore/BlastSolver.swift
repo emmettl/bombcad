@@ -892,6 +892,9 @@ public final class BlastSolver {
     /// density and energy per volume, over the uniform state the air was filled with. Given to the
     /// fine cells at the next `restart()`; forgotten when the air is filled or edited by hand.
     var fineDeposit: [SIMD3<Int>: SIMD2<Float>] = [:]
+    /// The scene's charges (0 the main one, then the additional ones) that the last `load` laid
+    /// nothing of, being inside a block, the ground or a structure (`Scenario.blocks`).
+    public internal(set) var blockedCharges: [Int] = []
 
     public init(
         device: MTLDevice,

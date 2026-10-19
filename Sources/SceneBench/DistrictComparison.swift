@@ -182,6 +182,8 @@ enum DistrictComparison {
             }
             configuration.ground = type
         }
+        // A charge inside a building's block would release nothing: no run to make.
+        guard !scene.chargeIsBlocked else { throw BlastError.chargeBlocked(scene.charge.position) }
         // The event, in a scope of its own, so that the solver and its pools are let go before the
         // buildings are judged from what it recorded.
         // Each refined level's blocks summed over the steps of the last event (blocks at each
