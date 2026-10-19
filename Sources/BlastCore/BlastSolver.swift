@@ -73,6 +73,8 @@ public final class BlastSolver {
         let recorder = try EnvelopeComponentRecorder(
             device: device, library: library, grid: grid, mask: mask, objects: objects, options: options)
         envelopeComponentRecorder = recorder
+        // Its clock from the run's (on the mapped start, the time since detonation it begins at).
+        if time > 0 { recorder.startClock(at: time) }
         try keepAir(recorder.faces.map(\.fluid))
         componentsNeedInitialSample = true
         facadeBand = nil
@@ -182,6 +184,7 @@ public final class BlastSolver {
             device: device, library: library, grid: grid, mask: mask, objects: objects,
             components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions,
             equivalents: zip(recorder.plateEntry, recorder.stripEntry).map { ($0, $1) })
+        if time > 0 { envelopeVenting?.startClocks(at: time) }
         for level in refinementLevels { level.setPanes(ventedPanes) }
     }
 
@@ -1974,6 +1977,9 @@ public final class BlastSolver {
         // The GPU's clock too, in its ticks: the exposure plane's arrivals, panes' and breaches'
         // opening times and the envelope histories read it as time since detonation.
         clockTicks = UInt64((start / StepControl.tick).rounded())
+        // And the clocks venting's panes and walls, and the envelope histories, keep for themselves.
+        envelopeComponentRecorder?.startClock(at: start)
+        envelopeVenting?.startClocks(at: start)
     }
 
     /// Direct access to the peak overpressure and impulse fields.
