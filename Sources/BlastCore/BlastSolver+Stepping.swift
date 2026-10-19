@@ -710,8 +710,7 @@ extension BlastSolver {
     /// and long enough that committing and waiting cost a fraction of a percent.
     /// `BOMBCAD_COMMAND_BUFFER_SECONDS` in the environment sets another, to check that the steps
     /// are the same however they are cut.
-    public static let commandBufferTarget =
-        ProcessInfo.processInfo.environment["BOMBCAD_COMMAND_BUFFER_SECONDS"].flatMap(Double.init) ?? 0.075
+    public static let commandBufferTarget = GPUStepRate.commandBufferTarget
 
     /// The GPU time each of `advance`'s command buffers aims at, `commandBufferTarget` unless
     /// set; the steps are the same whatever it is.
@@ -912,28 +911,8 @@ extension BlastSolver {
     }
 }
 
-/// How long the GPU has lately taken for a step, from the command buffers waited for, to size
-/// the next so that it takes about `target` of the GPU's time.
-struct GPUStepRate {
-    /// The GPU time a buffer aims at, in seconds.
-    var target = BlastSolver.commandBufferTarget
-    /// Seconds a step, smoothed over the buffers; nil until the first.
-    private(set) var seconds: Double?
-
-    /// How many of `remaining` steps the next buffer takes: at least one, and four to begin
-    /// with, to measure the rate.
-    func part(_ remaining: Int) -> Int {
-        guard let seconds, seconds > 0 else { return min(remaining, 4) }
-        return min(max(Int(min(target / seconds, Double(Int.max / 2))), 1), remaining)
-    }
-
+extension GPUStepRate {
     mutating func measure(_ commandBuffer: MTLCommandBuffer, steps: Int) {
         measure(gpuSeconds: commandBuffer.gpuEndTime - commandBuffer.gpuStartTime, steps: steps)
-    }
-
-    mutating func measure(gpuSeconds: Double, steps: Int) {
-        guard gpuSeconds > 0, steps > 0 else { return }
-        let rate = gpuSeconds / Double(steps)
-        seconds = seconds.map { 0.7 * $0 + 0.3 * rate } ?? rate
     }
 }
