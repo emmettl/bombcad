@@ -4,7 +4,8 @@ These tools move BombCAD's plain model (scenarios, structures, materials and the
 that run on the CPU) out of `BlastCore` into `BlastModel`, a module that imports no Metal and so
 also builds and is tested on Linux. They do the move by script, so that it can be redone on
 whatever `main` is when the window opens, and they stop rather than guess when `main` has changed
-under them. The findings and the numbers are in [CLOUD-REPORT.md](../../CLOUD-REPORT.md).
+under them. The findings and the numbers are in the cloud report of 19 October 2026
+(`CLOUD-REPORT.md` on the branch `cloud/blastmodel-split`).
 
 | File | What it is |
 |---|---|

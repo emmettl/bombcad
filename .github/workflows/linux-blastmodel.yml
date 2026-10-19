@@ -2,7 +2,7 @@
 # runner. Package.swift keeps only RadialBlast, BlastModel and BlastModelTests on Linux, so this
 # builds nothing else; the Mac mini's Check workflow stays the reference for everything, BlastModel
 # included. Unlike Check, this runs no code on a self-hosted machine, so pull requests may run it.
-# Modelled on ContinuumKit's .github/workflows/linux.yml. See Scripts/split/ and CLOUD-REPORT.md.
+# Modelled on ContinuumKit's .github/workflows/linux.yml. See Scripts/split/.
 name: Linux BlastModel
 
 on:
