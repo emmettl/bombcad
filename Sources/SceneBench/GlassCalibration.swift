@@ -325,8 +325,8 @@ enum GlassCalibration {
                     grid[SIMD2<Int32>((point / 50).rounded(.down)), default: []].append(n)
                 }
             }
-            var matches: [(side: Int, observedClass: Int, distance: Double)] = []
-            for (centreLL, record) in zip(centres, records) {
+            var matches: [(side: Int, observedClass: Int, distance: Double, record: Int)] = []
+            for (recordIndex, (centreLL, record)) in zip(centres, records).enumerated() {
                 guard centreLL.x.isFinite,
                     let level = record["Facade_num"].flatMap({ Int($0.trimmingCharacters(in: .whitespaces)) }
                     ),
@@ -356,10 +356,82 @@ enum GlassCalibration {
                 }
                 guard let (n, _) = best else { continue }
                 let toCharge = simd_distance(at, SIMD2(charge.x, charge.y))
-                matches.append((n, level, Double(toCharge)))
+                matches.append((n, level, Double(toCharge), recordIndex))
             }
             matchedCount = matches.count
             print("GEER: \(matches.count) of \(records.count) façades matched to a side")
+            // `--trace file.csv`: each matched façade, what GEER saw, and each run's response of each
+            // pane type on each strip of its side, for tracing the glass model against the survey.
+            if let tracePath = value("trace") {
+                let objectOf = Dictionary(uniqueKeysWithValues: objects.enumerated().map { ($1.id, $0) })
+                var stripsOf: [[SideKey: [Int]]] = references.map { reference in
+                    var map: [SideKey: [Int]] = [:]
+                    for (m, strip) in reference.strips.enumerated() {
+                        map[
+                            SideKey(
+                                object: strip.object, axis: strip.component.axis,
+                                outward: strip.component.outward), default: []
+                        ].append(m)
+                    }
+                    return map
+                }
+                var rowsOut = [String](repeating: "", count: matches.count)
+                rowsOut.withUnsafeMutableBufferPointer { out in
+                    SurrogateBench.concurrentlyEach(matches.count) { k in
+                        let match = matches[k]
+                        let side = all[match.side].side
+                        guard let object = objectOf[side.owner] else { return }
+                        let key = SideKey(object: object, axis: side.axis, outward: side.outward)
+                        var lines: [String] = []
+                        for (r, reference) in references.enumerated() {
+                            for m in stripsOf[r][key] ?? [] {
+                                let strip = reference.strips[m]
+                                let saved = reference.index.strips[strip.saved]
+                                let net = reference.net(strip.saved)
+                                let peak = net.map(abs).max() ?? 0
+                                let impulse = net.reduce(0) { $0 + max($1, 0) } * saved.binS
+                                for (q, pane) in side.mix.panes.enumerated() {
+                                    var stress = 0.0
+                                    var lost = false
+                                    if peak > 50 {
+                                        (lost, stress) = GlazingMix.response(
+                                            of: pane, netPa: net, binS: saved.binS)
+                                    }
+                                    let count =
+                                        Double(side.mix.glazedFraction * pane.share) * saved.areaM2
+                                        / Double(pane.areaM2)
+                                    lines.append(
+                                        String(
+                                            format:
+                                                "%d,%d,%.1f,%d,%d,%d,%d,%.3f,%.1f,%.1f,%.1f,%.0f,%d,%.2f,%.2f,%.4f,%.4f,%@",
+                                            k, match.observedClass, match.distance, r, m, q, object,
+                                            Float(saved.low?.z ?? -1), peak, impulse, saved.areaM2, stress,
+                                            lost ? 1 : 0, count, pane.widthM, pane.heightM, pane.thicknessM,
+                                            side.mix.name.replacingOccurrences(of: ",", with: ";")))
+                                }
+                            }
+                        }
+                        out[k] = lines.joined(separator: "\n")
+                    }
+                }
+                let header =
+                    "match,class,distance,run,strip,pane,object,z,peak_pa,impulse_pas,area_m2,stress60_pa,lost,count,width,height,thickness,mix"
+                try ([header] + rowsOut.filter { !$0.isEmpty }).joined(separator: "\n").write(
+                    toFile: tracePath, atomically: true, encoding: .utf8)
+                // The matches' GEER records, in order: what each saw.
+                var matchLines = ["match,class,distance,side_axis,side_outward,object,record,damage"]
+                for (k, match) in matches.enumerated() {
+                    let side = all[match.side].side
+                    let damage =
+                        records[match.record]["Facade_dam"]?.trimmingCharacters(in: .whitespaces) ?? ""
+                    matchLines.append(
+                        "\(k),\(match.observedClass),\(match.distance),\(side.axis),\(side.outward),\(objectOf[side.owner] ?? -1),\(match.record),\(damage)"
+                    )
+                }
+                try matchLines.joined(separator: "\n").write(
+                    toFile: tracePath + ".matches.csv", atomically: true, encoding: .utf8)
+                print("Traced \(matches.count) façades to \(tracePath)")
+            }
             let used = Array(Set(matches.map(\.side))).sorted()
             let index = Dictionary(uniqueKeysWithValues: used.enumerated().map { ($1, $0) })
             let (p, kept) = FacadeLoadSurrogate.glassProbabilities(

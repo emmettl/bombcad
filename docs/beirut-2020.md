@@ -206,6 +206,10 @@ out when nine in ten of its panes are expected broken (the model has no frames t
   nothing in the model at any yield. Within a band the model's sides differ only by their mix and
   their shielding; a street's differ also by glass type (toughened, laminated, filmed), by open
   windows and shutters, and by repair in the two months before the photographs.
+- **Traced (19 October 2026)**: GEER's W3 is frames blown out, which follows the side's load as a
+  fragility (median 18.5 kPa on the 4 m runs), and its W1 or worse is damage visible two months on;
+  stronger glass would need two to four times E1300's, by distance. See [why it over-breaks against
+  GEER](glass-probability.md#why-it-over-breaks-against-geer-19-october-2026).
 - **The tail is there.** Beyond 2 km some panes break, as some did; but a side holds dozens
   of panes, so the chance that one breaks stays near one far out, above GEER's share of façades
   damaged at every yield.

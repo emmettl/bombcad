@@ -117,6 +117,64 @@ strength fits both: the model's façades go from a pane broken to blown out over
 distance than GEER's did. GEER's photographs were taken two months on, some façades repaired,
 and its W3 counts frames and doors, which the model has none of.
 
+## Why it over-breaks against GEER (19 October 2026)
+
+Traced on the three 4 m Beirut runs' saved loads (`glass-calibrate --trace`, Scripts/glass-trace):
+each of GEER's façades matched to its side (4,836 with the side's strips saved), and what GEER saw
+set against that side's own peak net load in the run, at 0.5 kt.
+
+| Side's peak load (run) | Façades | GEER W0 / W1 / W2 / W3 | Model: panes broken |
+|---|---|---|---|
+| 3–5 kPa | 431 | 0.71 / 0.16 / 0.03 / 0.10 | 0.33 |
+| 5–7 kPa | 1,203 | 0.67 / 0.10 / 0.18 / 0.06 | 0.75 |
+| 7–10 kPa | 1,304 | 0.67 / 0.19 / 0.03 / 0.11 | 0.96 |
+| 10–15 kPa | 1,018 | 0.52 / 0.16 / 0.08 / 0.24 | 0.99 |
+| 15–20 kPa | 391 | 0.24 / 0.10 / 0.14 / 0.53 | 1.00 |
+| 20–30 kPa | 278 | 0.17 / 0.08 / 0.09 / 0.66 | 1.00 |
+| 30–50 kPa | 75 | 0.00 / 0.03 / 0.03 / 0.95 | 1.00 |
+
+The four candidates, in turn:
+
+- **Stronger glass in place: no.** For the chance of some pane broken to fall to GEER's W1+, the
+  glass would need 4.4 times E1300's median strength at 0.5–0.75 km, 3.8 at 1–1.25 km and 2.1–2.2
+  beyond 1.5 km: no one factor, and more than any glass has. Glass ages weaker, not stronger, and
+  the model's 60 s stresses already allow for the blast's short load (Brown's integral, n = 16).
+  The model's glass edge, half the panes broken at 1.5–1.75 km at 0.5 kt, is where Rigby et al.'s
+  check with Viper put old annealed façades' (about 1.86 km at 465 t).
+- **The frame's bite and the panes' sizes: not at 1 km.** Panes letting go of their frames are
+  0.53 of them at 0.5–0.75 km, 0.15 at 0.75–1 km and none beyond 1.25 km; and a side's dozens of
+  panes make some pane break at loads every mix's panes reach, so no mix changes W1+.
+- **Facing and shielding: alike in both.** At 0.75–1.75 km GEER's façades facing the charge, side
+  on and facing away were damaged alike (0.63, 0.65 and 0.61 W1+ at 0.75–1 km), and the model's
+  loads on them were alike too (14.7, 14.4 and 13.8 kPa): in a city this dense few façades see the
+  charge, and most take a wave led round and down the streets. The loads are 0.7–0.8 of Kingery–
+  Bulmash's at 4 m, as the [Beirut page](beirut-2020.md#peak-overpressure) found; they are not
+  too high.
+- **The survey: yes.** GEER classed openings, not glass, from street-level photographs taken on 8
+  and 15 October, two months on, noting repairs (GEER-070, §4.4). Its W3 is "nearly complete
+  blow-out of windows, doors and their frames": frames, which need more load than glass. Against
+  the side's peak it is a fragility, median 18.5 kPa and log standard deviation 0.75 (fitted at
+  0.5 kt), which follows GEER by distance at 0.5 kt (0.59, 0.38, 0.20, 0.11, 0.05, 0.02 against
+  0.78, 0.30, 0.17, 0.07, 0.12, 0.03 from 0.5 to 2 km) where nine panes in ten broken gives 1.00,
+  1.00, 0.95, 0.54, 0.05, 0.00. Its W1, "some windows broken", carries a break rate of 10–20% of
+  windows (the median by band), and W1 or worse against load is shallow (median 10.8 kPa, log
+  standard deviation 1.1), with 17% of façades at 20–30 kPa showing nothing, where every pane
+  breaks. That is what was visible two months on, not what broke.
+
+So the glass is not what over-breaks: it is set against classes that are not glass. W3 compares
+with frames blown out, and W1 or worse with damage visible two months on.
+
+**What follows.** Two changes are proposed, not made:
+
+- **Openings blown out**, a state of its own for a map building's side, its chance by the
+  fragility above on the side's peak (median 18.5 kPa, log standard deviation 0.75 at 4 m cells,
+  where peaks are 0.7–0.8 of Kingery–Bulmash's), in place of "nine panes in ten broken" as the
+  match for GEER's W3 and for the chance blown out: fitted to one event's survey, illustrative
+  elsewhere.
+- **Glass broken stays as it is.** No default strength change; the comparisons with GEER's W1
+  or worse say "visible two months on", and the chance of some pane broken is not judged against
+  it.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage now also draws the glass chances.

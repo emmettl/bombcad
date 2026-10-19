@@ -121,6 +121,18 @@ public struct GlazingMix: Codable, Hashable, Sendable {
         }
     }
 
+    /// One pane of `pane`'s type under the net pressures (Pa, in bins `binS` long), as `breakage`
+    /// judges it: whether it lets go of its frame, and the 60 s stress it reaches (Pa).
+    public static func response(of pane: Pane, netPa pressures: [Double], binS: Double) -> (
+        lost: Bool, stress: Double
+    ) {
+        let a = Double(min(pane.widthM, pane.heightM))
+        let b = Double(max(pane.widthM, pane.heightM))
+        let r = EnvelopeDamageAssessment.unbreakablePane(thickness: Double(pane.thicknessM), a: a, b: b)
+            .response(pressures: pressures, step: binS)
+        return (r.lostResistanceAt != nil, r.equivalentStress ?? 0)
+    }
+
     /// The glass of a façade region `areaM2` large under the net pressures (Pa, in bins `binS`
     /// long): the panes expected in it and expected to break, and the log of the chance that none
     /// does. A pane type's panes break with E1300's probability for the 60 s stress its load
