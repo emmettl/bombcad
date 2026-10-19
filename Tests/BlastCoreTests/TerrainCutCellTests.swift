@@ -475,6 +475,8 @@ struct TerrainCutCellTests {
         // difference took them below nothing, and the floor added 1.2 kJ by step 45.
         var configuration = SolverConfiguration.recommended
         configuration.afterburning = false
+        // The gas radiating its heat away would take energy from the box.
+        configuration.radiativeCooling = nil
         configuration.reflectiveFaces = .all
         var scenario = ScenarioPreset.openGround.scenario
         let domain = scenario.domainSize
