@@ -9,4 +9,5 @@ grey, not the material darkened: tinted by brick or timber, rubble read as the h
 dark red to someone with protanopia. Under simulated protanopia, deuteranopia and tritanopia, every
 material stays at least ΔE 15 from each stage of damage and from its rubble, and the heaviest damage
 at least ΔE 10 from rubble (`MaterialAppearanceTests`); a wall of each, rendered, reads nearest its
-own colour (`MaterialRenderingTests`). The colours travel to a watched run's view as well.
+own colour (`MaterialRenderingTests`). The colours travel to a watched run's view as well, so a
+Mac watching or sharing with another needs both on this version (worker protocol 13).

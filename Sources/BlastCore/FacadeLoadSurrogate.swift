@@ -459,16 +459,26 @@ extension FacadeLoadSurrogate {
         + "Kingery–Bulmash's incident and reflected values corrected by terms fitted to BombCAD's district "
         + "runs, as a triangular pulse into the same SDOF damage as a run's histories. An estimate, not a run."
 
-    /// Its standing: how it compared with a full run it was not fitted to (docs/surrogate-first-look.md).
-    public static let standing = [
-        "An estimate, not a run. Against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:",
-        "Glass: each building side's state (none broken, some, blown out) agreed with the run's for 75–84% of "
-            + "sides, never two states apart; the share of sides broken by distance came within 0.1 of the run's to 2 km.",
-        "Walls and roofs: not to be relied on. Of the components either called damaged, 8–27% of the concrete and "
-            + "37–46% of the stone took the run's level. Run the scene for the structure.",
-        "Loads: peak and impulse within about ×1.3 of the run's to Z 20 m/kg^(1/3); further out, over hills and "
-            + "near the run's open faces, up to ×1.6–2 high.",
-    ]
+    /// Its standing: how it compared with a full run it was not fitted to, worded from the
+    /// standing table's figures (validation.md, "Estimates beside a run").
+    public static let standing: [String] = {
+        let glass = ValidationTables.figure("surrogateGlassSides")
+        let concrete = ValidationTables.figure("surrogateConcrete")
+        let stone = ValidationTables.figure("surrogateStone")
+        let near = ValidationTables.figure("surrogateNearPeak")
+        let far = ValidationTables.figure("surrogateFarLoads")
+        return [
+            "An estimate, not a run. Against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:",
+            "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
+                + "of sides deep in the district, never two states apart; the share of sides broken by distance came "
+                + "within 0.1 of the run's to 2 km.",
+            "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
+                + "concrete and \(stone.percent) of the stone took the run's level. Run the scene for the structure.",
+            "Loads: peaks \(near.ratio) of the run's on the median to Z 20 m/kg^(1/3), each scattered by about ×1.3; "
+                + "further out, over hills and near the run's open faces, \(far.ratio) times on the median and far "
+                + "more scattered.",
+        ]
+    }()
 
     /// `estimate`'s damage, each building judged on its components' pulses as a run's are on
     /// their histories (`EnvelopeDamageAssessment`), the SDOF responses remembered between them;

@@ -19,7 +19,8 @@ not used for one ([below](#broken-glass)).
 scenebench infer-charge --observers Rigby2020_ESM1_radius_time.csv --centre 35.519042,33.901425 --correction final2-200000/comparison.json,final2-500000/comparison.json,final2-1100000/comparison.json --out posterior.json --samples samples.csv
 ```
 
-It takes about a second (arrivals only) or half a minute (with 9,000 façades), on the CPU.
+It takes about a second (arrivals only) or half a minute (with 9,000 façades), on the CPU. It prints
+its standing, also under `standing` in `--out`'s JSON ([validation](validation.md#the-charge-from-its-arrivals)).
 
 ## The model
 
