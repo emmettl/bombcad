@@ -14,7 +14,10 @@ import simd
 //       judged the same way: stands, stands and deflects, or falls
 //   blastbench panelblock --case gas|street [--vent 25 (kPa)] [--storeys 12] [--dx 0.25] [--frames 0.1,0.5,1,2,4] [--out dir]
 //                         [--mass 250] [--azimuth 0.6] [--elevation 0.3] [--distance 60]
-//       the preset coupled to the air, a snapshot at each frame's time
+//                         [--checkpoint-out dir [--checkpoint-lead 0.1]] [--resume dir/street-1500ms]
+//       the preset coupled to the air, a snapshot at each frame's time; with --checkpoint-out a
+//       checkpoint shortly before each frame, from which --resume draws the frames after it again
+//       (the same to the bit), so a doc image is retaken in minutes (docs/checkpoints.md)
 //
 // Writes PNGs into --out (default /Volumes/StudioData/bombcad/panel-block).
 
@@ -133,12 +136,39 @@ func runPanelBlock(device: MTLDevice) throws {
     let gaugeCells = scenario.gauges.map { gauge in
         (gauge.name, SIMD3<Int>((gauge.position / solver.grid.cellSize).rounded(.down)))
     }
+    // Checkpoints: one at the first 64-step boundary `lead` s or less before each frame, so that
+    // the run from it to the frame is clipped by the same time limit as the run that saved it.
+    let checkpointOut = option("checkpoint-out").map { URL(filePath: $0) }
+    let lead = option("checkpoint-lead").flatMap { Double($0) } ?? 0.1
+    if let resume = option("resume") {
+        let header = try solver.restoreCheckpoint(from: URL(filePath: resume), scene: scenario)
+        print(String(format: "Resumed from %@: step %d, %.6f s", resume, header.stepCount, header.time))
+    }
     let started = ContinuousClock.now
     var sleptAt: Double?
     var largest: Float = 0
-    for time in frames {
+    for time in frames where time > solver.time + 1e-9 {
+        var saved = false
         while solver.time < time - 1e-9 {
-            let result = solver.advance(steps: 64, timeLimit: time)
+            if let checkpointOut, !saved, solver.time >= time - lead,
+                solver.stepCount.isMultiple(of: BlastSolver.checkpointInterval)
+            {
+                let folder = checkpointOut.appending(path: String(format: "%@-%04.0fms", event, time * 1000))
+                do {
+                    let header = try solver.saveCheckpoint(to: folder, scene: scenario)
+                    print(
+                        String(
+                            format: "Saved a checkpoint at step %d, %.6f s, to %@ (%.1f MB stored)",
+                            header.stepCount, header.time, folder.path, Double(header.storedBytes) / 1e6))
+                } catch {
+                    print("No checkpoint before \(time) s: \(error)")
+                }
+                saved = true
+            }
+            // With checkpoints, to the next boundary: a frame's clipped batch leaves the steps off it.
+            let interval = BlastSolver.checkpointInterval
+            let steps = checkpointOut == nil ? 64 : interval - solver.stepCount % interval
+            let result = solver.advance(steps: steps, timeLimit: time)
             if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
             if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
             if result.steps == 0 || !result.isStable { break }

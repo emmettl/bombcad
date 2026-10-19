@@ -1652,8 +1652,10 @@ func runSnapshot() throws {
     }
     func advance(to end: Double) {
         while solver.time < end - 1e-9 {
+            // Saving, to the next boundary: a frame's clipped batch leaves the steps off it.
+            let interval = BlastSolver.checkpointInterval
             let result = solver.advance(
-                steps: 64,
+                steps: checkpointAt == nil || checkpointSaved ? 64 : interval - solver.stepCount % interval,
                 timeLimit: fragments == nil && thermal == nil ? end : min(end, solver.time + 0.001))
             saveCheckpointIfDue()
             feedFragments()

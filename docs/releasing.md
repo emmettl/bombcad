@@ -84,6 +84,14 @@ Expand the final ZIP somewhere fresh and test that copy, ideally downloaded thro
 another Mac with Gatekeeper enabled: first launch, Metal rendering, a run of each preset, and
 opening and saving a layout.
 
+## The pictures
+
+When a release retakes the docs' pictures, a run of an hour or more (the office on fin plates at
+3 s, the large-panel street charge) also saves a checkpoint shortly before each picture's time,
+kept under `/Volumes/StudioData/bombcad/checkpoints/<image>/` with a README giving the command and
+the commit, so later changes to how things are drawn retake it in minutes ([retaking a doc image
+from a checkpoint](checkpoints.md#retaking-a-doc-image-from-a-checkpoint)).
+
 ## The notes
 
 Each change a user would notice adds a fragment under

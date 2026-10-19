@@ -22,6 +22,37 @@ from a checkpoint, and `--from` draws one as it was saved, with no physics. The 
 points and fireball fed alongside a run are not saved, so they are not allowed with these
 options.
 
+## Retaking a doc image from a checkpoint
+
+A picture on these pages whose run takes an hour or more (the office on fin plates at 3 s, the
+large-panel street charge at 1.5 and 4 s) is to keep a checkpoint shortly before its time, under
+`/Volumes/StudioData/bombcad/checkpoints/<image>/`, with a README giving the command and the
+commit that wrote it. Its run is not repeated for that alone: the checkpoint is saved the next
+time the scene is rerun for a reason of its own (a change to the physics, a release's pictures).
+From then on, after a change that only alters how things are drawn (colours, the camera, what
+is shown), the picture is drawn again from there in minutes:
+
+```bash
+blastbench snapshot --preset office --dx 0.5 --time 3 --frames 0.5,1,2 --checkpoint-at 2.9 --checkpoint-out office-fin-2900ms --out office-tower-fin-3s.png
+blastbench snapshot --preset office --dx 0.5 --time 3 --resume office-fin-2900ms --out office-tower-fin-3s.png
+blastbench panelblock --case street --frames 1.5,4 --checkpoint-out street
+blastbench panelblock --case street --frames 1.5,4 --resume street/street-4000ms
+```
+
+`panelblock --checkpoint-out` saves one shortly before each frame (from `--checkpoint-lead`
+s before it, 0.1 by default), in `<case>-<ms>ms`; `--resume` draws the frames after it again.
+The resumed run must be given the same options as the run that saved, and the same frames
+after the checkpoint (each frame's time clips the step before it). Its picture is then the
+same to the byte.
+
+- A change to the physics, the settings or the scene makes the checkpoint refuse: the run, and
+  its checkpoint, are then made afresh (and the page's numbers checked).
+- A checkpoint is read only by a build whose parts keep the same versions.
+- Choose the checkpoint's time well before the picture's. Once the air sleeps, its steps are
+  long, and 64 of them can take 50 ms or more.
+- A run in which a delayed charge has fired is refused, and `--fragments`, `--ground-shock`
+  and `--thermal` cannot be combined with checkpoints.
+
 ## What is saved
 
 Each part of the solver lists "the state I own" (`SolverCheckpointing`): its buffers' byte
