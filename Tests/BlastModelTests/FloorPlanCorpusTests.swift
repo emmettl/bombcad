@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import BlastCore
+@testable import BlastModel
 
 /// The plan importer against its corpus (Fixtures/FloorPlans, `Scripts/plans/make-corpus.py`):
 /// each plan read as its JSON asks gives the answer expected of it, or a limitation it records.
