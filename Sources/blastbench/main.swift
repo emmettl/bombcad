@@ -1017,6 +1017,8 @@ func runChamber() throws {
         contact: flag("no-contact") ? .off : nil,
         // Each charge from its own mapped one-dimensional start; `--balloon-start` for the balloon.
         mappedCharge: !flag("balloon-start"),
+        // The gas losing what it radiates; `--no-radiate` keeps it, as before 19 October 2026.
+        radiativeCooling: flag("no-radiate") ? nil : RadiativeCooling(),
         // `--progress` reports every 10 ms of a long run.
         progress: flag("progress")
             ? { line in

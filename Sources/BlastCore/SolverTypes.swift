@@ -56,15 +56,19 @@ public struct SolverConfiguration: Sendable, Hashable {
         // The fine one-dimensional start, since 18 October 2026 (docs/air-blast-model.md, "A finely
         // resolved start"); the harnesses validated on the balloon before then take `balloonStart`.
         configuration.mappedCharge = true
+        // The fireball's gas losing the heat it radiates, since 19 October 2026
+        // (docs/thermal-radiation.md, "The gas losing what it radiates").
+        configuration.radiativeCooling = RadiativeCooling()
         return configuration
     }
 
-    /// This configuration with the charge started from the balloon of hot gas, as every comparison
-    /// recorded before 18 October 2026 was; each harness so pinned is listed in validation.md, "Still
-    /// on the balloon start", until it is rerun on the mapped start.
+    /// This configuration as the comparisons recorded before 18 October 2026 were run: the charge
+    /// started from the balloon of hot gas, the fireball keeping the heat it radiates. Each harness
+    /// so pinned is listed in validation.md, "Still on the balloon start", until it is rerun.
     public var balloonStart: SolverConfiguration {
         var configuration = self
         configuration.mappedCharge = false
+        configuration.radiativeCooling = nil
         return configuration
     }
 

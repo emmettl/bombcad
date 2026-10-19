@@ -64,7 +64,7 @@ swift run -c release blastbench perimeter --study wall
 |----------------------|------------------------------------------------------|------------------------------------|
 | Air solver numerics  | Exact solutions                                      | High                               |
 | Blast loads          | Kingery–Bulmash curves from 0.75 to 6 m/kg^(1/3). On today's defaults, afterburning, hot air and far-field faces ([since 15 October](#the-defaults-since-15-october)): impulse on a wall 6–13% high on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse within 6% from 1 m/kg^(1/3) (fitted), the incident peak 72–84% and the reflected 32–86% on 0.25 m cells. On the ideal gas: impulse on a wall within 6% on 0.25 m cells beyond 1.5 m/kg^(1/3), the incident impulse 13–22% low. Refinement gives the next finer grid's peaks | Peaks read low, the unsafe side (under-resolved), refinement helping; impulse on walls 6–13% high on today's defaults (the safe side), within 6% on the ideal gas, good; incident impulse within 6% on today's defaults (fitted), 13–22% low on the ideal gas (the unsafe side for what the wave passes over) |
-| Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air; 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
+| Gas in a closed room | UFC 3-340-02's design curve (read off its chart by hand): 48% to 114% by default; 98% to 108% with afterburning and hot air, 94% to 105% with the gas losing what it radiates (the default since 19 October 2026); 90% of Cooper's closed vessel, burnt out | Either way within 8% with afterburning and hot air, good, the fitted burning time hardly mattering, against a design curve whose scatter is not given; by default low for light charges (half, the unsafe side) |
 | Structural numerics  | Beam and wave theory                                 | High                               |
 | Concrete material    | Its own curves; section analysis of a beam           | High that it does what is intended |
 | Structural response  | One slab test: solid elements 113–125 mm (104–115%) on 4 to 32 elements through, rising with refinement and not converged, the same on 32 with half the step (on the earlier 50-step average of the strain rate it, and a strip of it, ran away there; 92–98% under the earlier strain-rate laws), shells 135 mm (124%), against 109 mm; the test's repeat peaked at 113 mm, a scatter of about ±2%; a 5% change in its hand-read load moves the peak 13–14%, and a source's 68 ksi yield for the bars, against the measured curve's 72, 9%. The contest's lower shot, run openly with a scaled record, reached about 80% of its peak. Its series' three slabs with half the steel (Reynolds's RSCR4–6), run openly after blind test 3 on shots of the same rig: peaks 0.91–1.06 of measured, all standing as tested; on such a shot's shape in place of the scaled record the lower shot reaches 87–97% ([below](#reynoldss-8-in-slabs-and-the-lower-shots-shape)). One beam bent to failure: peak moment 101% on 12 elements, failing at 44 mm against 42 mm, 100% on 24, holding to 60 mm, but breaking at 11 and 7 mm on 36 and 48, before the test's yield (12 October defaults; see [convergence](#convergence-on-todays-defaults)). One beam without stirrups failing in shear: 104–111% on 24 to 48 elements, 132% on 12, not converged, failing suddenly as the test did. Seven drop-weight impacts on beams: with stirrups within 12–23% under light drops and −5% to −1% under heavy ones on 16 elements (+2% to +18% and +17% to +28% on 24), struck about twice as hard as measured, the reactions up to 40% low under the heavy drops and 48% high under the light; the beam without stirrups broken by the heavy drop as in the test, and damaged by the light one it survived. Nineteen on beams without stirrups at rising speeds: within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements (16% before the strain-rate window, the beams that broke moving by up to two thirds either way) and 53% on 24 on the earlier defaults, springing back too far, and decided by how the ends were held (clamped, stiffer than the test's static stiffness). Eighteen short beams struck to shear failure (Peterson et al., 2026): forces as measured at a shear span of one depth (the impact force set by a pad fitted to it), the deep beams too stiff; the beams with stirrups that crushed their strut in the tests hold | Unsafe side in shear: 4–11% too strong on 24 to 48 elements, 32% on 12, not converged, struck beams failing by the wrong mechanism and Peterson's struts holding where the tests crushed (low: one static test); 6 elements through 17% strong in bending. Bending of one slab either way by load: 4–15% high under the contest's load, rising towards 19% as the mesh is refined, 12–21% low (too stiff, the unsafe side) under its lower shot, not converged (moderate, on the meshes that agreed); impact either way on 16 elements but not on finer meshes, which settle 12–75% high, where the strain-rate laws, chosen among published laws on these tests, decide it (moderate on one mesh). Every structural figure here holds on the mesh it was found on ([convergence](#convergence-on-todays-defaults)) |
@@ -4638,6 +4638,10 @@ results by 3% or less ([the chamber](#an-internal-explosion-in-a-reinforced-conc
 Scenes of one charge are unchanged bit for bit (`blastbench digest --recommended --mapped` on
 every preset).
 
+With the gas losing what it radiates (the default since 19 October 2026), the 100 kg record above
+moves by 0.4% or less in every peak, impulse and arrival (`blastbench validate --mass 100
+--radiate`), so its tables stand.
+
 #### The products' own equation of state (18 October)
 
 The mapped start with its products as TNT's detonation products (JWL, the LLNL handbook's set;
@@ -4833,6 +4837,10 @@ combustion, the oxygen in air and the vibration of its molecules, with nothing f
 (the burning time hardly matters in a closed room). Hot air without afterburning gives 43% to
 91%.
 
+With the gas losing what it radiates (the default since 19 October 2026; `blastbench gas
+--radiate`), the walls take 4.5% to 7.7% of the charge's energy as radiation and the gas pressure
+falls 2% to 4%: 105%, 102%, 98%, 94% and 98% of the curve, still within 8%.
+
 **Against the curve's own scatter.** UFC 3-340-02 calls Figure 2-152 a curve fitted to tests of
 partly vented chambers with A/V^(2/3) up to 0.022, and gives no scatter. C. Oswald, "An improved
 method to calculate the gas pressure history from partially confined detonations" (NDIA, 2018),
@@ -4939,6 +4947,8 @@ balloon). Each of the four charges is mapped from its own one-dimensional soluti
 the partition's mid-plane, but only 0.36 m out (Z 0.12), as the sleeves' walls stand 0.45 m off:
 6.5 and 4.2 MPa on the side walls and 4.1 MPa on the roof (against 6.5, 4.0 and 4.2 on the
 balloon), and the roof's edge rises 48 mm and is left 27 mm up (47 and 25), 10 elements removed.
+With the gas losing what it radiates as well (the default since 19 October 2026), the pressures
+are unchanged and the edge rises 49 mm and is left 27 mm up, 13 elements removed.
 
 The comparison does not change its standing: a quarter of the measured residual, about half the
 paper's model's peak. The bench now runs this domain by default, at about twice the box's cost
