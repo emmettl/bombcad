@@ -88,14 +88,10 @@ let package = Package(
 
 // Metal, AppKit and SwiftUI do not exist on Linux, and ContinuumKit leaves its Metal and
 // AppKit products out there, so on Linux the package is BlastModel, its tests and
-// RadialBlast. The Mac builds everything as before. RadialBlast imports simd, which on
-// Linux is ContinuumKit's stand-in: depending on Numerics, which depends on it there,
-// makes sure it is built first.
+// RadialBlast. The Mac builds everything as before. (RadialBlast imports simd only where there
+// is Apple's, and has its two functions of it itself on Linux.)
 #if os(Linux)
     let linuxTargets: Set<String> = ["RadialBlast", "BlastModel", "BlastModelTests"]
     package.targets.removeAll { !linuxTargets.contains($0.name) }
     package.products.removeAll()
-    for target in package.targets where target.name == "RadialBlast" {
-        target.dependencies.append(.product(name: "Numerics", package: "continuumkit"))
-    }
 #endif

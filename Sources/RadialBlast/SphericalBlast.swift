@@ -1,6 +1,25 @@
 import Foundation
 import Synchronization
-import simd
+
+#if canImport(Darwin)
+    import simd
+#else
+    // Linux has no simd module of its own (ContinuumKit's stand-in comes only with its
+    // libraries), and this module needs just these two of it: in Apple's order of operations, as
+    // BlastModel's stand-in (LinuxSIMD.swift) has them.
+    // swift-format-ignore: AlwaysUseLowerCamelCase
+    private func simd_length(_ v: SIMD3<Double>) -> Double {
+        let p = v * v
+        return (p.x + p.y + p.z).squareRoot()
+    }
+
+    // swift-format-ignore: AlwaysUseLowerCamelCase
+    private func simd_distance(_ a: SIMD3<Float>, _ b: SIMD3<Float>) -> Float {
+        let d = a - b
+        let p = d * d
+        return (p.x + p.y + p.z).squareRoot()
+    }
+#endif
 
 /// The early life of a blast from a charge in free air, solved in one dimension (spherical
 /// symmetry) on a fine radial grid: the same scheme as the air solver (MUSCL-Hancock with an
