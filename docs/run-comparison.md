@@ -275,7 +275,14 @@ Example.bombcad/
   results/runs.json                  # dev.bombcad.runs, encodingVersion 1, ordered run UUIDs
   results/runs/<run-id>.json          # dev.bombcad.run, encodingVersion 1
   assets/<source-id>.mesh.json        # Shared with the live scene and other historical runs
+  runs/<run-id>/run.json              # dev.bombcad.run-timeline: the run's frames and checkpoints
 ```
+
+`runs/` lies beside the archive rather than in it: the archive reads every file into memory and
+caps their sizes, where a run's timeline frames and solver checkpoints can run to hundreds of
+megabytes (`RunTimelineManifest`). A save carries a kept run's folder over unchanged and drops a
+forgotten run's. BombCAD before 0.6 reads `runs/` as part of the archive and may refuse a project
+whose timelines pass its limits.
 
 A result record contains metadata, numerical settings, full measurements and the versioned
 scene payload. Historical imported geometry references manifest assets using the same codec

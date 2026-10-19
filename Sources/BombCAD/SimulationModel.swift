@@ -490,6 +490,8 @@ final class SimulationModel {
             settings.scenario.setEnvelopeConstruction(construction)
         }
     }
+    /// Kept runs' timelines staged on disk until the project is saved (`ProjectDocument.runFolders`).
+    var runFolders: [UUID: URL] = [:]
     let chargeInference = ChargeInferenceModel()
     /// Asked of the views that own them from the menus, and cleared there: choosing a model to
     /// import, naming the run to keep, and saving the results as CSV.

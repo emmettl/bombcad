@@ -246,6 +246,9 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     var viewSettings: ProjectViewSettings?
     var archive: ProjectArchive?
     var documentID: UUID
+    /// Kept runs' timelines not yet in the package, each a folder on disk (a run's frames and
+    /// checkpoints, `RunTimelineManifest`), by run: written into `runs/` beside the archive on save.
+    var runFolders: [UUID: URL] = [:]
 
     /// New documents have complete inputs without allocating a GPU simulation.
     init(scenario: Scenario = SimulationSettings().scenario, preferences: AppPreferences = AppPreferences()) {
@@ -285,6 +288,7 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         viewSettings = ProjectViewSettings(model: model)
         archive = model.projectArchive
         documentID = model.projectDocumentID
+        runFolders = model.runFolders
     }
 
     init(configuration: ReadConfiguration) throws {
@@ -295,7 +299,12 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
         if fileWrapper.isRegularFile, let data = fileWrapper.regularFileContents {
             try self.init(legacyJSON: data)
         } else {
-            try self.init(archive: ProjectArchive(fileWrapper: fileWrapper))
+            // Kept runs' frames and checkpoints are read where they lie, not into the archive,
+            // which holds every file in memory and caps their sizes.
+            var children = fileWrapper.fileWrappers ?? [:]
+            children.removeValue(forKey: RunTimelineManifest.folder)
+            try self.init(
+                archive: ProjectArchive(fileWrapper: FileWrapper(directoryWithFileWrappers: children)))
         }
     }
 
@@ -469,7 +478,31 @@ struct ProjectDocument: FileDocument, Equatable, Sendable {
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        try makeArchive().fileWrapper()
+        try packageWrapper(existing: configuration.existingFile)
+    }
+
+    /// The package: the archive, and beside it `runs/` with the timeline of each run still kept,
+    /// from `runFolders` where staged, else as `existing` has it, so that unchanged frames and
+    /// checkpoints are carried over rather than read and written again.
+    func packageWrapper(existing: FileWrapper?) throws -> FileWrapper {
+        let wrapper = try makeArchive().fileWrapper()
+        let kept = Set(savedRuns.map { $0.id.uuidString.lowercased() })
+        var runs: [String: FileWrapper] = [:]
+        for (name, child) in existing?.fileWrappers?[RunTimelineManifest.folder]?.fileWrappers ?? [:]
+        where kept.contains(name) && child.isDirectory {
+            runs[name] = child
+        }
+        for (id, folder) in runFolders where kept.contains(id.uuidString.lowercased()) {
+            runs[id.uuidString.lowercased()] = try FileWrapper(url: folder)
+        }
+        if !runs.isEmpty {
+            // A folder read from staging is named as it was there; in the package, by its run.
+            for (name, child) in runs { child.preferredFilename = name }
+            let folder = FileWrapper(directoryWithFileWrappers: runs)
+            folder.preferredFilename = RunTimelineManifest.folder
+            wrapper.addFileWrapper(folder)
+        }
+        return wrapper
     }
 
     static func validate(_ scenario: Scenario) throws {
