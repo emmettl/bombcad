@@ -1070,6 +1070,8 @@ public enum StandingTable {
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.laminate": .input,
+        "EnvelopeConstruction.film": .input,
+        "EnvelopeConstruction.glassToughened": .input,
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
@@ -2404,6 +2406,19 @@ struct StandingScene {
                         + "of his speeds but at 73 mm where his held to 140–209 mm",
                     "building-envelopes.md#laminated-glass")
             ] : []
+        let filmed = envelopes.contains { inputs.scenario.envelopeConstruction(for: $0).film != nil }
+        let filmEvidence =
+            filmed
+            ? [
+                StandingEvidence(
+                    "Security film: 67 shock-tube and arena tests of filmed 1/4\" panes in the open GSA reports "
+                        + "of 3M, Solar Gard and ARA",
+                    "Wet-glazed: held, condition 2, as 18 of 24 were graded, the rest worse; daylight: held "
+                        + "while pushed, gone on the rebound, condition 3a, one class better than 16 of 17 tests; "
+                        + "mechanical: pulled out at a vendor's capacity, condition 5, never better than its 26 "
+                        + "tests (no open capacity)",
+                    "building-envelopes.md#security-film")
+            ] : []
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2473,7 +2488,7 @@ struct StandingScene {
                         + "not converged: 0.5 m stone cracks where partial collapses were found, concrete "
                         + "hardly damaged where GEER's was D1–D3",
                     "validation.md#a-district-beirut-2020"),
-            ] + laminatedEvidence,
+            ] + laminatedEvidence + filmEvidence,
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
                     + "(mostly on two; one panel clamped all round), and glass only under a load far past what "

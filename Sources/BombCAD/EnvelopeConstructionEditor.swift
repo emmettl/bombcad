@@ -4,8 +4,8 @@ import SwiftUI
 /// An envelope's construction beyond its walls' kind, for its one-way damage: the walls'
 /// thickness and bars, their strengths, reinforced blockwork's grout, a cap carried on a
 /// freestanding wall's top, and the roof, concrete or profiled steel sheeting, with the sheets'
-/// profiles, the spacing of the rails and purlins they span and their screws. The air never sees
-/// any of it.
+/// profiles, the spacing of the rails and purlins they span and their screws; the glass,
+/// toughened or with security film. The air never sees any of it.
 struct EnvelopeConstructionEditor: View {
     let model: SimulationModel
     let id: UUID
@@ -115,6 +115,42 @@ struct EnvelopeConstructionEditor: View {
                     "Masonry strength", "MPa", Double(construction.masonryStrengthMPa ?? (grouted ? 10 : 3))
                 ) { value in
                     edit { $0.masonryStrengthMPa = Float(max(value, 0.5)) }
+                }
+            }
+            if construction.laminate == nil {
+                Toggle(
+                    "Toughened glass",
+                    isOn: Binding(
+                        get: { construction.glassToughened == true },
+                        set: { on in edit { $0.glassToughened = on ? true : nil } })
+                )
+                .help("Thermally toughened panes, breaking at four times annealed glass's strength (E1300).")
+                Picker(
+                    "Security film",
+                    selection: Binding(
+                        get: { construction.film?.anchorage },
+                        set: { anchorage in
+                            edit { construction in
+                                construction.film = anchorage.map { anchorage in
+                                    var film = construction.film ?? .mils(8, anchorage: anchorage)
+                                    film.anchorage = anchorage
+                                    return film
+                                }
+                            }
+                        })
+                ) {
+                    Text("None").tag(SecurityFilm.Anchorage?.none)
+                    ForEach(SecurityFilm.Anchorage.allCases, id: \.self) {
+                        Text($0.label.prefix(1).capitalized + $0.label.dropFirst()).tag(Optional($0))
+                    }
+                }
+                .help(
+                    "Polyester film on the panes' inner face, holding their fragments once the glass cracks; "
+                        + "how it is held at the frame decides whether the pane stays.")
+                if let film = construction.film {
+                    number("Film thickness", "mil", film.thickness / 25.4e-6) { value in
+                        edit { $0.film?.thickness = max(value, 1) * 25.4e-6 }
+                    }
                 }
             }
             if reinforced {

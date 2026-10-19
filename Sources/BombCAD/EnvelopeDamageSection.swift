@@ -241,9 +241,9 @@ struct EnvelopeDamageSection: View {
 
     static func describe(_ component: EnvelopeComponentDamage) -> String {
         switch component.material {
-        case .annealedGlass:
+        case .annealedGlass, .toughenedGlass:
             return component.failedAtS.map { String(format: "broken at %.1f ms", $0 * 1000) } ?? "whole"
-        case .laminatedGlass:
+        case .laminatedGlass, .filmedGlass:
             if let gone = component.failedAtS {
                 return String(format: "cracked, out of its frame at %.1f ms", gone * 1000)
             }

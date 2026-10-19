@@ -1641,6 +1641,14 @@ extension StandingScene {
                         + "(building-envelopes.md#laminated-glass), no band; its cracking is the annealed glass's."
                 )
             }
+            if inputs.scenario.envelopeObjects.contains(where: {
+                inputs.scenario.envelopeConstruction(for: $0.id).film != nil
+            }) {
+                unbanded.append(
+                    "Security film once the glass cracks, held or gone by its anchorage: graded against the open "
+                        + "GSA reports' filmed panes (building-envelopes.md#security-film), no band."
+                )
+            }
             let freestanding = inputs.scenario.envelopeObjects.contains { object in
                 object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
             }
