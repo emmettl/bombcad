@@ -450,21 +450,21 @@ public enum ValidationTables {
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "agrees with the run's for 75–84%"),
         Figure(
-            id: "surrogateConcrete", low: 0.08, high: 0.27,
+            id: "surrogateConcrete", low: 0, high: 0.10,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "8–27% of the concrete"),
+            quote: "0–10% of the concrete"),
         Figure(
-            id: "surrogateStone", low: 0.37, high: 0.46,
+            id: "surrogateStone", low: 0.35, high: 0.42,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "37–46% of the stone"),
+            quote: "35–42% of the stone"),
         Figure(
-            id: "surrogateNearPeak", low: 0.84, high: 0.99,
+            id: "surrogateNearPeak", low: 0.85, high: 1.00,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "peaks 0.84–0.99"),
+            quote: "peaks 0.85–1.00"),
         Figure(
-            id: "surrogateFarLoads", low: 1.08, high: 1.63,
+            id: "surrogateFarLoads", low: 1.09, high: 1.63,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "1.08–1.63 times the run's on the median"),
+            quote: "1.09–1.63 times the run's on the median"),
         Figure(
             id: "hybridFarPeak", low: 0.77, high: 1.04,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",

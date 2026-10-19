@@ -1,0 +1,8 @@
+{
+ "about": "Declarations the source analysis would move but a Linux build of BlastModel showed must stay in BlastCore, each with its reason. Keys are `File.swift:unit` or `File.swift:unit/member`, as in classification.json.",
+ "stay": {
+  "ElevationGrid.swift:extension ElevationGrid #3/init": "it calls TIFFReader.raster, which inflates Deflate-compressed GeoTIFFs with Apple's Compression library (found by the Linux build: the analysis cannot follow a member called on a value)",
+  "EnvelopeDebris.swift:struct EnvelopeDebris/func make": "it calls the other make(loads:components:...), which stays (found by the Linux build: the analysis does not tell overloads apart)",
+  "ImportInteractionTests.swift:struct ImportInteractionTests": "one of its tests writes to /private/tmp, which exists on macOS only (found by running BlastModelTests on Linux)"
+ }
+}

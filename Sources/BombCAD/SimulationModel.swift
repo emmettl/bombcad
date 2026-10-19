@@ -728,11 +728,11 @@ final class SimulationModel {
         estimatingEnvelopeDamage = true
         envelopeDamageStatus = "Estimating…"
         Task { [weak self] in
-            let (loads, buildings, seconds) = await Task.detached(priority: .userInitiated) {
+            let (loads, buildings, outside, seconds) = await Task.detached(priority: .userInitiated) {
                 let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
                 let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
                     estimate, constructions: { scenario.envelopeConstruction(for: $0) })
-                return (estimate.loads, buildings, estimate.seconds + damageS)
+                return (estimate.loads, buildings, estimate.outsideFit, estimate.seconds + damageS)
             }.value
             guard let self else { return }
             self.estimatingEnvelopeDamage = false
@@ -746,6 +746,12 @@ final class SimulationModel {
             self.envelopeDamageIsEstimate = true
             self.envelopeDamageStatus = String(
                 format: "Quick estimate in %.1f s: not a run. Run the scene for its damage.", seconds)
+            if outside > 0 {
+                self.envelopeDamageStatus += String(
+                    format:
+                        " %d of %d components lie nearer or further than the distances it was fitted over: their loads are extrapolated.",
+                    outside, loads.count)
+            }
             self.applyEnvelopeDamageColours()
         }
     }

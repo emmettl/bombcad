@@ -29,6 +29,19 @@ public struct SteelConnection: Codable, Hashable, Sendable {
         self.tensionRatio = tensionRatio
     }
 
+    /// Reject values a hinge cannot use, including ones loaded from a document: a turn at fracture
+    /// that is not positive breaks every hinge at once, a NaN never breaks one, and a ratio that is
+    /// not positive gives a yield that is not.
+    public func validate() throws {
+        guard fractureRotation.isFinite, fractureRotation > 0 else {
+            throw ImportedMesh.ImportError.invalid("A steel connection's fracture rotation must be positive.")
+        }
+        guard momentRatio.isFinite, momentRatio > 0, tensionRatio.map({ $0.isFinite && $0 > 0 }) ?? true
+        else {
+            throw ImportedMesh.ImportError.invalid("A steel connection's strength ratios must be positive.")
+        }
+    }
+
     /// A welded unreinforced flange with a bolted web (WUF-B), full-strength: it fractured at a beam
     /// chord rotation of 0.081 rad under a column's removal (Sadek et al., NIST TN 1669, 2010; 0.047
     /// from seismic tests). Its plastic turn begins at 0.95 of the beam's plastic moment, so that the
