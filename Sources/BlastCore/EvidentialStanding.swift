@@ -286,6 +286,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case adaptiveSubsteps
     case mappedCharge
     case structureFixedInAir
+    /// Structures' outlines as cut cells (`SolverConfiguration.structureCutCells`).
+    case structureCutCells
     case stationaryWalls
     case closedBoundaries
     case copiedOpenFaces
@@ -297,6 +299,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case importedEnvelopes
     case mapBuildings
     case ventedGlazing
+    /// Gauges beside a wall read the pressure at it (`SolverConfiguration.gaugesReadWallPressure`).
+    case wallReadGauges
     // The structure.
     case shellElements
     case shellSectionShear
@@ -391,6 +395,10 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
             return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
+        case .wallReadGauges: return config.gaugesReadWallPressure
+        // Refined air keeps the staircase (`BlastSolver.setUpStructureCut`).
+        case .structureCutCells:
+            return config.structureCutCells && config.refinement <= 1 && !structures.isEmpty
         case .shellElements:
             return any { model in model.solids.indices.contains { model.elementKind(of: $0) == .shell } }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -582,6 +590,17 @@ public enum StandingTable {
                 note: "The air sees the structure as it was at the start, so breaches do not vent; the "
                     + "comparisons coupled both ways.",
                 document: "structural-model.md#coupling-to-the-air")
+        case .structureCutCells:
+            return Entry(
+                title: "Structures' outlines as cut cells", affects: air + structure, limit: .approximation,
+                note:
+                    "A structure's solid outline, as built, cuts the cells it crosses on unrefined air: a wall's "
+                    + "impulse follows its place within a cell to 2.6% where the whole cells step by up to 6%, but "
+                    + "its peak force runs up to 12% above that line a tenth of a cell off the lattice, and on "
+                    + "coarse air its faces read higher than whole cells do (1,253 against 1,032 N s on 0.25 m "
+                    + "cells, 1,165 against 1,125 on 0.03 m). No measurement was compared; the comparisons ran on "
+                    + "whole cells.",
+                document: "structural-model.md#coupling-to-the-air")
         case .stationaryWalls:
             return Entry(
                 title: "Stationary walls", affects: structure, limit: .approximation,
@@ -661,6 +680,17 @@ public enum StandingTable {
                     + "pitches come within 0.4 to 1.2 of the measured peaks but the coarser three to five times "
                     + "too high, half the pitch giving no more where MERGE's gave seven times.",
                 document: "congestion-model.md")
+        case .wallReadGauges:
+            return Entry(
+                title: "Gauges read at the wall", affects: [.peakOverpressure, .impulse],
+                limit: .approximation,
+                note:
+                    "A gauge within a cell of a wall reads the pressure at it (two shocks, the cell's gas against "
+                    + "its mirror) instead of the cell's mean: reflected peaks 69–93% of Kingery–Bulmash on 0.25 m "
+                    + "cells for 100 kg (32–88% read from the cell), but impulses 113–131% close in on 0.05 m "
+                    + "cells and 119–143% on 0.02 m, as the read counts the cell's speed towards the wall as gas "
+                    + "brought to rest. The reflected bands were derived from the cell's mean, so they do not apply.",
+                document: "air-blast-model.md#reflected-peaks-at-a-wall")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -1125,8 +1155,8 @@ public enum StandingTable {
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
         "SolverConfiguration.openFaces": .option([.copiedOpenFaces]),
-        "SolverConfiguration.structureCutCells": .numerical,
-        "SolverConfiguration.gaugesReadWallPressure": .numerical,
+        "SolverConfiguration.structureCutCells": .option([.structureCutCells]),
+        "SolverConfiguration.gaugesReadWallPressure": .option([.wallReadGauges]),
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
         "SolverConfiguration.refinementThreshold": .numerical,

@@ -9,6 +9,7 @@ final class ImportFileLoader {
         var filename: String
         var inspection: ImportedMesh.Inspection?
         var building: IFCImporter.Prepared?
+        var plan: DXFDrawing?
     }
     private(set) var result: Loaded?
     private(set) var error: String?
@@ -23,9 +24,9 @@ final class ImportFileLoader {
         result = nil
         error = nil
         filename = url.lastPathComponent
-        guard url.isFileURL, ["obj", "stl", "ifc"].contains(url.pathExtension.lowercased()) else {
+        guard url.isFileURL, ["obj", "stl", "ifc", "dxf"].contains(url.pathExtension.lowercased()) else {
             error =
-                "Choose one local OBJ, STL or IFC file. Export other formats as a watertight, triangulated OBJ or STL."
+                "Choose one local OBJ, STL or IFC model, or a DXF floor plan. Export other formats as a watertight, triangulated OBJ or STL."
             failureID = UUID()
             return
         }
@@ -34,7 +35,7 @@ final class ImportFileLoader {
         task = Task {
             guard !Task.isCancelled else { return }
             let reading = Task.detached(priority: .userInitiated) {
-                () -> Result<(ImportedMesh.Inspection?, IFCImporter.Prepared?), Error> in
+                () -> Result<(ImportedMesh.Inspection?, IFCImporter.Prepared?, DXFDrawing?), Error> in
                 do {
                     try Task.checkCancellation()
                     let accessing = url.startAccessingSecurityScopedResource()
@@ -42,12 +43,14 @@ final class ImportFileLoader {
                     let values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
                     guard values.isRegularFile == true else {
                         throw ImportedMesh.ImportError.invalid(
-                            "Choose an OBJ, STL or IFC file rather than a folder or special file.")
+                            "Choose an OBJ, STL, IFC or DXF file rather than a folder or special file.")
                     }
                     let size = values.fileSize ?? 0
-                    // An IFC building may be larger than a mesh: its limit is the importer's.
+                    // An IFC building or a DXF plan may be larger than a mesh: its limit is its reader's.
+                    let kind = url.pathExtension.lowercased()
                     let limit =
-                        url.pathExtension.lowercased() == "ifc" ? ImportedMesh.ifcSourceLimit : 20_000_000
+                        kind == "ifc"
+                        ? ImportedMesh.ifcSourceLimit : kind == "dxf" ? DXFDrawing.sizeLimit : 20_000_000
                     guard size <= limit else {
                         throw ImportedMesh.ImportError.invalid(
                             "Model exceeds the \(limit / 1_000_000) MB limit. Simplify the export before importing."
@@ -63,11 +66,10 @@ final class ImportFileLoader {
                         data.append(chunk)
                     }
                     try Task.checkCancellation()
-                    if url.pathExtension.lowercased() == "ifc" {
-                        return .success((nil, try await IFCImporter.prepare(data)))
-                    }
+                    if kind == "ifc" { return .success((nil, try await IFCImporter.prepare(data), nil)) }
+                    if kind == "dxf" { return .success((nil, nil, try DXFDrawing(data: data))) }
                     return .success(
-                        (try ImportedMesh.inspect(data: data, fileExtension: url.pathExtension), nil))
+                        (try ImportedMesh.inspect(data: data, fileExtension: url.pathExtension), nil, nil))
                 } catch { return .failure(error) }
             }
             let outcome = await withTaskCancellationHandler(
@@ -77,7 +79,7 @@ final class ImportFileLoader {
             task = nil
             switch outcome {
             case .success(let value):
-                result = Loaded(filename: filename, inspection: value.0, building: value.1)
+                result = Loaded(filename: filename, inspection: value.0, building: value.1, plan: value.2)
             case .failure(let failure):
                 error = failure.localizedDescription
                 failureID = UUID()

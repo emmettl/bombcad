@@ -457,6 +457,43 @@ the front gable. Meshed at 0.5 m it has 8,688 shells, 9,920 beams and 2,142 scre
 16 µs step. At 90 ms, 430 of the links have let go and the front gable's middle has moved 177 mm
 (234 with its sheets held for good) (`PortalWarehouseTests`).
 
+## What is left, scoped
+
+Two of the comparisons' misses, scoped on 19 October 2026 and not built.
+
+**What is left after the blast: buckled shapes snapping through.** ADBLAST's 1.5 mm sheets ended
+level or lifted, the buckles of the first loading having changed their shape; the model leaves
+them 1.5–122 mm down or 23 mm up ([above](#against-adblasts-cladding-tests)). The ribs' local
+buckling is a softening of their fibres, so the shell's geometry never takes the buckle's shape
+and cannot snap back through it on the rebound or the negative phase. Two ways in. One is to let
+the mesh carry the buckle: elements about a quarter of a flange (25 mm on TR84's 100 mm crest)
+and a seeded imperfection of b/200 (EN 1993-1-5, Annex C). That is several times the elements, a
+smaller step, and the rib fibres' softening switched off where the mesh resolves the buckle.
+The other keeps the fibres but gives the buckled fibre a memory: a reversed stiffness and
+strength once it has buckled, and a permanent shortening that pulls the section the other way.
+That is cheaper but needs fitting. The data in hand judge either: ADBLAST's first and final
+deflections on ten shots, signs included. Its deliverables D4–D6 would add histories
+([data survey 3i](data-survey.md#3i-profiled-cladding-on-its-fixings)). For flat plates, Aune et
+al. (IJIE 90, 2016, open on NTNU Open) measured reversed snap buckling by 3-D image correlation,
+which would check the shells' snap-through on its own; no open test of profiled sheeting
+snapping through was found.
+
+**Buckling earlier than plate theory says.** Three of Langdon's tests miss
+([above](#against-langdons-corrugated-panels)). In c1212 and c1803 the compressed flange is the
+narrow one, 45 mm, whose plate buckling stress is 1.4 GPa (λ_p 0.50), and yet the panels dished
+at their centres. In c1801-4 the moment stays just under the wide flange's σ_cr. An effective-width
+knock-down (EN 1993-1-5's ρ) does nothing below λ_p 0.673, so the narrow flange's miss is not the
+flange alone. It is the corrugation flattening under curvature (Brazier's ovalisation), with the
+web–flange junctions turning, which a beam fibre cannot represent. Again two ways in: the
+resolved mesh with its imperfection, as above, which would show the dishing directly; or a
+section-flattening term on the ribs that lowers their moment with curvature, fitted to Langdon's
+three tests and checked on the other thirty. Open data: Langdon's thesis (in hand, 33 tests, with
+her quasi-static tests on partially restrained panels that failed by local buckling at the
+corrugations' centres; Langdon and Schleyer, Exp. Mech. 2006), and a 2025 static study of twelve
+full-scale trapezoidal sheets in which eleven yielded before their design capacity and half were
+16–105% softer than Eurocode's elastic stiffness. That study is static, but it would show whether
+the knock-down belongs to the section or to the test.
+
 ## Shared with ContinuumKit?
 
 Before building them, ContinuumKit was checked for a softening hinge or a connection spring: it
@@ -493,3 +530,11 @@ reuses BombCAD's own shells, beams and steel, and adds no new material law.
 - steelconstruction.info, [Portal frames](https://steelconstruction.info/Portal_frames).
 - Hadley Group, UltraZED2 sectional properties and dimensions, 2025.
 - SCI P363, *Steel building design: design data* (the "Blue Book"): 533 × 210 × 92 UB.
+- V. Aune, E. Fagerholt, K. O. Hauge, M. Langseth, T. Børvik, "Experimental study on the response
+  of thin aluminium and steel plates subjected to airblast loading", *Int. J. Impact Eng.* 90
+  (2016) 106–121, [NTNU Open](https://ntnuopen.ntnu.no/ntnu-xmlui/handle/11250/2457721).
+- G. S. Langdon, G. K. Schleyer, the quasi-static tests of partially restrained corrugated panels,
+  *Experimental Mechanics* (2006), [doi:10.1007/s11340-006-9026-4](https://link.springer.com/article/10.1007/s11340-006-9026-4).
+- "Experimental-theoretical investigation of the strength and deformability of full-scale
+  second-generation profiled sheeting samples" (2025),
+  [PMC12471979](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12471979/).

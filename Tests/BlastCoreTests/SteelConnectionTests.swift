@@ -101,4 +101,31 @@ struct SteelConnectionTests {
             device: device, specimen: .weldedFlange, connection: nil, drop: 0.8)
         #expect(rigid.failedAt == nil)
     }
+
+    @Test("A reset puts the hinges back as built: none fractured before the next run")
+    func resetRestoresHinges() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "This test needs a Metal device")
+        let solver = try ShellSolver(device: device, model: Self.joint(.weldedFlange))
+        solver.gravity = 0
+        // The beam's free end pulled down at 2 m/s turns its hinge past 0.081 rad in a few tenths
+        // of a second.
+        let tip = solver.nodes { $0.x > 3 - 1e-4 }
+        func pull() {
+            solver.mutateNodes { nodes in
+                for n in tip {
+                    nodes[n].isPrescribed = true
+                    nodes[n].velocity = SIMD3(0, 0, -2)
+                }
+            }
+        }
+        pull()
+        while solver.hingesReleased == 0, solver.time < 1 { solver.advance(steps: 200) }
+        #expect(solver.hingesReleased == 1)
+        solver.reset()
+        #expect(solver.hingesReleased == 0)
+        // And it fractures again, as it did the first time.
+        pull()
+        while solver.hingesReleased == 0, solver.time < 1 { solver.advance(steps: 200) }
+        #expect(solver.hingesReleased == 1)
+    }
 }
