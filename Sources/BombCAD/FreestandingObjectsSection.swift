@@ -273,6 +273,14 @@ struct FreestandingObjectsSection: View {
                 }
                 Button("Show Placed Poses") { state.time = nil }.disabled(state.time == nil)
             }
+            if let reaction = result.structureReaction {
+                Text(
+                    String(
+                        format: "The objects struck the structure with %.0f N s; it is drawn as placed.",
+                        simd_length(reaction))
+                )
+                .font(.caption)
+            }
             if let failure = result.failure {
                 Label(
                     "Stopped at \(String(format: "%.2f", result.duration)) s: \(failure)",
