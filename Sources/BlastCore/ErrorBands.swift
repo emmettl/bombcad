@@ -771,6 +771,17 @@ extension StandingScene {
                 bands.note = "Shielded from the charge, which no comparison was."
                 return bands
             }
+            if has(.structureCutCells),
+                structures.flatMap(\.solids).contains(where: {
+                    simd_distance(gauge.position, simd_clamp(gauge.position, $0.min, $0.max))
+                        <= inputs.cellSize
+                })
+            {
+                bands.note =
+                    "Beside a structure's cut cells, while the reflected bands were derived on whole cells: its "
+                    + "faces read higher on coarse air (structural-model.md, \"Coupling to the air\")."
+                return bands
+            }
             if onBox && has(.wallReadGauges) {
                 bands.note =
                     "Read at the wall, while the reflected bands were derived from the cell beside it: its peaks "

@@ -286,6 +286,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case adaptiveSubsteps
     case mappedCharge
     case structureFixedInAir
+    /// Structures' outlines as cut cells (`SolverConfiguration.structureCutCells`).
+    case structureCutCells
     case stationaryWalls
     case closedBoundaries
     case copiedOpenFaces
@@ -394,6 +396,9 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .ventedGlazing:
             return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
         case .wallReadGauges: return config.gaugesReadWallPressure
+        // Refined air keeps the staircase (`BlastSolver.setUpStructureCut`).
+        case .structureCutCells:
+            return config.structureCutCells && config.refinement <= 1 && !structures.isEmpty
         case .shellElements:
             return any { model in model.solids.indices.contains { model.elementKind(of: $0) == .shell } }
         case .shellSectionShear: return any { $0.shellSectionShear }
@@ -584,6 +589,17 @@ public enum StandingTable {
                 title: "Structure fixed in the air", affects: air + structure, limit: .approximation,
                 note: "The air sees the structure as it was at the start, so breaches do not vent; the "
                     + "comparisons coupled both ways.",
+                document: "structural-model.md#coupling-to-the-air")
+        case .structureCutCells:
+            return Entry(
+                title: "Structures' outlines as cut cells", affects: air + structure, limit: .approximation,
+                note:
+                    "A structure's solid outline, as built, cuts the cells it crosses on unrefined air: a wall's "
+                    + "impulse follows its place within a cell to 2.6% where the whole cells step by up to 6%, but "
+                    + "its peak force runs up to 12% above that line a tenth of a cell off the lattice, and on "
+                    + "coarse air its faces read higher than whole cells do (1,253 against 1,032 N s on 0.25 m "
+                    + "cells, 1,165 against 1,125 on 0.03 m). No measurement was compared; the comparisons ran on "
+                    + "whole cells.",
                 document: "structural-model.md#coupling-to-the-air")
         case .stationaryWalls:
             return Entry(
@@ -1139,7 +1155,7 @@ public enum StandingTable {
         "SolverConfiguration.airSleepCrossings": .numerical,
         "SolverConfiguration.debrisReach": .numerical,
         "SolverConfiguration.openFaces": .option([.copiedOpenFaces]),
-        "SolverConfiguration.structureCutCells": .numerical,
+        "SolverConfiguration.structureCutCells": .option([.structureCutCells]),
         "SolverConfiguration.gaugesReadWallPressure": .option([.wallReadGauges]),
         "SolverConfiguration.minimumBalloonCells": .numerical,
         "SolverConfiguration.refinement": .option([.shockRefinement, .twoLevelRefinement]),
