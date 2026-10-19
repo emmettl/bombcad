@@ -1087,6 +1087,7 @@ public enum StandingTable {
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.laminate": .input,
         "EnvelopeConstruction.film": .input,
+        "EnvelopeConstruction.wallLiner": .input,
         "EnvelopeConstruction.glassToughened": .input,
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
@@ -2449,6 +2450,17 @@ struct StandingScene {
                         + "tests (no open capacity)",
                     "building-envelopes.md#security-film")
             ] : []
+        let linerEvidence =
+            envelopes.contains { inputs.scenario.envelopeConstruction(for: $0).wallLiner != nil }
+            ? [
+                StandingEvidence(
+                    "Polyurea-lined masonry: Ciornei's lined and bare blockwork walls in the University of Ottawa's "
+                        + "shock tube (2012)",
+                    "Past the masonry's thickness, 1.3–1.9 times the measured deflection; held through the shot "
+                        + "that tore the test's wall (246 mm against its 254 mm, after nine shots); the masonry "
+                        + "does not arch, so small shots go several times as far as measured",
+                    "building-envelopes.md#polyurea-liners-on-masonry")
+            ] : []
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2518,7 +2530,7 @@ struct StandingScene {
                         + "not converged: 0.5 m stone cracks where partial collapses were found, concrete "
                         + "hardly damaged where GEER's was D1–D3",
                     "validation.md#a-district-beirut-2020"),
-            ] + laminatedEvidence + filmEvidence,
+            ] + laminatedEvidence + filmEvidence + linerEvidence,
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
                     + "(mostly on two; one panel clamped all round), and glass only under a load far past what "

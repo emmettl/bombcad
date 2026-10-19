@@ -1669,6 +1669,14 @@ extension StandingScene {
                         + "GSA reports' filmed panes (building-envelopes.md#security-film), no band."
                 )
             }
+            if inputs.scenario.envelopeObjects.contains(where: {
+                inputs.scenario.envelopeConstruction(for: $0.id).wallLiner != nil
+            }) {
+                unbanded.append(
+                    "Polyurea liners on masonry: compared with one lined wall's shots (Ciornei), no band; the "
+                        + "masonry under them does not arch (building-envelopes.md#polyurea-liners-on-masonry)."
+                )
+            }
             let freestanding = inputs.scenario.envelopeObjects.contains { object in
                 object.envelope?.components(owner: object.id).contains(where: \.isFreestanding) ?? false
             }

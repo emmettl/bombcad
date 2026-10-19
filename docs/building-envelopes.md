@@ -1212,6 +1212,62 @@ What this says:
 
 The standing is an approximation, with these comparisons in its line.
 
+## Polyurea liners on masonry
+
+A construction can line its unreinforced masonry walls with spray-on polyurea
+(`EnvelopeConstruction.wallLiner`, `WallLiner`), set in the construction editor. The polyurea is
+sprayed on the inside face and lapped onto the supports. It was developed by the US Air Force
+Research Laboratory (Knox et al., 2000; Davidson et al., 2004).
+
+**The model** (`SDOFSystem.lined`): the wall's own one-way system, with the liner's membrane
+added to its backbone. This follows Ciornei's (MASc, University of Ottawa, 2012, §4.2.3.2):
+
+- The liner takes the arc of a parabola over the span.
+- Its stretch is taken up over a tenth of the span, where it has come away from the cracked
+  masonry.
+- At its stress, it pulls on the supports at atan(4Δ/h).
+- It tears at its strain at break, and the wall is lost.
+
+Line-X, as Ciornei's: E 386 MPa, 14 MPa, 82% at break. A lined wall is heavy once its masonry
+cracks, and failed once its liner tears; until then its debris is held. Freestanding walls
+and roofs are judged without it.
+
+**Against the open tests** (`WallLinerTests`). Ciornei's 2 × 2 m walls of 90 mm hollow block
+(140 kg/m²) spanned up between steel supports in the University of Ottawa's shock tube:
+- URM-1 bare;
+- URM-2 with 3 mm of polyurea;
+- each shot in turn, with its reflected peak and impulse and the largest deflection.
+
+Each shot is run from the wall as built.
+
+| Wall | Shots | Measured | Model |
+|---|---|---|---|
+| Bare | 6–31 kPa, 53–265 kPa·ms | 9, 24, 56 mm, then collapse | 16 mm, then lost from the second shot |
+| Lined, small shots | 9–46 kPa, 68–434 kPa·ms | 2–69 mm | 26–147 mm |
+| Lined, past the thickness | 54 and 84 kPa, 483 and 597 kPa·ms | 88 and 159 mm (the liner debonding, then tearing) | 1.84 and 1.26 times as far |
+| Lined, last shot | 78 kPa, 723 kPa·ms | tore through at 254 mm | holds at 246 mm; it tears at about 350 mm |
+
+What this says:
+
+- **The test walls arched; this model's masonry does not.** Their top gap was filled, so arching
+  carried the small shots. Here the bare wall is lost on the second shot, where the test's held
+  to its fourth, and the lined wall goes several times as far under small shots. Masonry built
+  tight to its frame is stronger than the envelope takes it, lined or not.
+- **Past the masonry's thickness, the liner carries the wall** to within twice the measured
+  deflection.
+- **Its tear is late.** The test's liner debonded at about 5° and tore from 9°, and the wall
+  failed at 14.5° after nine shots. The model's liner tears only at its full strain at break over
+  Ciornei's strained length, about 19°.
+- **One wall.** Ezekiel's six walls (PhD, Ottawa, 2025) carry a stainless mesh under 6 mm of
+  polyurea, a different system, not modelled.
+- **Not founded, so not offered:**
+  - FRP sheets: Carney and Myers's open tests give damage levels only.
+  - Steel-stud liners and geotextile catch systems: abstracts only.
+
+  Their tests are in paywalled journals and DTIC reports that could not be read.
+
+The standing is illustrative: one lined wall.
+
 ## Damage for envelope buildings: built
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
