@@ -2060,7 +2060,6 @@ public final class BlastSolver {
             UnsafeMutableBufferPointer(start: impulse, count: grid.cellCount))
     }
 
-    /// Puts `samples` in front of gauge `index`'s history.
     /// Marks the tiles of still air within `radius` of `centre` to be swept, for a charge laid down
     /// there during the run.
     func wakeTiles(around centre: SIMD3<Float>, radius: Float) {
@@ -2101,6 +2100,7 @@ public final class BlastSolver {
         commandBuffer.waitUntilCompleted()
     }
 
+    /// Puts `samples` in front of gauge `index`'s history.
     func prependGaugeHistory(_ index: Int, _ samples: [GaugeSample]) {
         guard gaugeHistories.indices.contains(index) else { return }
         gaugeHistories[index] = samples + gaugeHistories[index]
