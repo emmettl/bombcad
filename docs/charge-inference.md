@@ -21,6 +21,8 @@ scenebench infer-charge --observers Rigby2020_ESM1_radius_time.csv --centre 35.5
 
 It takes about a second (arrivals only) or half a minute (with 9,000 façades), on the CPU. It prints
 its standing, also under `standing` in `--out`'s JSON ([validation](validation.md#the-charge-from-its-arrivals)).
+In the app, Simulation ▸ Infer Charge from Arrivals… does the same from arrivals and glass, without
+BombCAD's ratios ([using the app](using-the-app.md#inferring-the-charge-from-arrivals)).
 
 ## The model
 
