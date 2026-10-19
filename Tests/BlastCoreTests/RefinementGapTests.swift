@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Paths through the refined levels that the other refinement suites do not reach: a charge
 /// mapped from one dimension onto refined air, a pool of patches used up with no room to grow,

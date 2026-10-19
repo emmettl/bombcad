@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Cutting the air out on the GPU at a frame", .gpuThreads)
 struct FrameExtractionTests {

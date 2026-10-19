@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Checks the shell elements against plate and beam theory.
 @Suite("Shell elements", .gpuThreads)

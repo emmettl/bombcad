@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A ground slice of `nx` by `ny` cells from the grid's corner, every cell the same.
 private func uniformSlice(

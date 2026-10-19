@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The luminous gas losing the heat it radiates.
 @Suite("Radiative cooling", .gpuThreads)

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Open faces that stand still ambient air beyond them (`OpenFaces.farField`).
 @Suite("Far-field faces", .gpuThreads)

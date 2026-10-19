@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Verification of the explicit finite-element solver against beam and wave theory.
 @Suite("Structure verification", .gpuThreads)

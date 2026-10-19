@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Checks that the air loads the structure correctly and that the coupled run behaves sensibly.
 @Suite("Structure coupling", .gpuThreads)

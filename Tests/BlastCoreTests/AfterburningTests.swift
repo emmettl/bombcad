@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Burning of the detonation products in the air around them.
 @Suite("Afterburning", .gpuThreads)

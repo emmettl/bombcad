@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Experimental rigid-box coupling", .serialized, .gpuThreads)
 struct ExperimentalRigidBoxTests {

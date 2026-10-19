@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The base's connection to the ground (`Anchorage`) against statics: bearing, pull-off,
 /// sliding at the friction limit and overturning about the toe.

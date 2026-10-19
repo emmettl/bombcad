@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Bars as their own trusses embedded in the elements (`DiscreteBar`), against the smeared bars'
 /// checks: elastic sharing, and a tie's cracks and tension stiffening by the Model Code.

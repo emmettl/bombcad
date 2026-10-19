@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Real CAD export fixtures", .timeLimit(.minutes(120)))
 struct RealCADFixtureTests {

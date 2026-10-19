@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Support connections", .gpuThreads)
 struct SupportConnectionTests {

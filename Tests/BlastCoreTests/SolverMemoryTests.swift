@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Solvers made one after another in a loop, as sweeps, ensembles and studies make them. Every
 /// `MTLBuffer.contents()` autoreleases its buffer (it returns an inner pointer), and building a

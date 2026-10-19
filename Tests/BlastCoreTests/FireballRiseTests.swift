@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("The fireball's rise and cloud", .gpuThreads)
 struct FireballRiseTests {

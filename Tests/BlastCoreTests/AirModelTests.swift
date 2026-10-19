@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Thermally perfect air: N2 and O2 storing energy in vibration once hot.
 @Suite("Air model", .gpuThreads)

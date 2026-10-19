@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Steel connections (`SteelConnection`): which beam ends get a hinge, and the column-removal
 /// assemblies they were judged on (`ColumnRemovalTest`), so a change that moves those is seen.

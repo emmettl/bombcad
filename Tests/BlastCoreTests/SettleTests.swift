@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Structures brought to rest under their own weight before the blast
 /// (`BlastSolver.settleStructures()`).

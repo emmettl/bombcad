@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The portal-frame warehouse sample (`ScenarioPreset.portalWarehouse`): its frames, purlins, rails
 /// and profiled sheeting meshed as shells and run in the air.

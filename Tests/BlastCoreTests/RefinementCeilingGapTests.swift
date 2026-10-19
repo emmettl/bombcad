@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Paths through the refinement ceiling (`SolverConfiguration.refinementCeiling`, the band's bit 2)
 /// that `EnvelopeComponentHistoryTests.refinementCeiling` does not reach: the ceiling measured from

@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Freestanding objects striking a deformable structure. Mechanical checks only.
 @Suite("Rigid objects against deformable structures", .serialized, .gpuThreads)

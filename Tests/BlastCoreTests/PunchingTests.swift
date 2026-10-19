@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Punching of flat slabs at their columns, and the bars that hold a slab once it has punched.
 @Suite("Punching", .gpuThreads)

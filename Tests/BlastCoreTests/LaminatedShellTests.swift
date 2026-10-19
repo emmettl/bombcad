@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Laminated glass meshed as shells", .gpuThreads)
 struct LaminatedShellTests {

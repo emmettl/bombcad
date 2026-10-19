@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Gauges beside solid cells", .serialized, .gpuThreads)
 struct GaugeSolidCellTests {

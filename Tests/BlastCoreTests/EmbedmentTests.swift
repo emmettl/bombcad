@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Footings set into the soil (`Embedment`, `FootingSides`) against the standard embedment
 /// factors: Gazetas's for static stiffness, Brinch Hansen's for bearing, Rankine's passive and

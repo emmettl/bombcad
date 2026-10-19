@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Blocks thinner than a cell", .serialized, .gpuThreads)
 struct ThinBlockTests {

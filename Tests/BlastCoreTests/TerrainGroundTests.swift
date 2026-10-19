@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The ground points and their soil columns over a terrain.
 @Suite("Ground points on the terrain", .gpuThreads)

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Each shell element integrates through its thickness by its own material's rule
 /// (`ShellSolver.thicknessRules`): timber's in its lamellae, Gauss-Legendre's otherwise.

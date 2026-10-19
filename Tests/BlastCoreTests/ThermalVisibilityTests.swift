@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite(
     "The receivers' view of the fireball on the GPU's ray-tracing hardware",

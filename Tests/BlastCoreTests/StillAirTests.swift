@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Skipping still air must not change the answer at all.
 @Suite("Still air", .gpuThreads)

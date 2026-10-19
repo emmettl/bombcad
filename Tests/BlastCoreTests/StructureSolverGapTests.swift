@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Paths of the solid structure solver that no other test reaches: settling's restart and its
 /// guards, soft ground on the terrain, and the load the air puts on a structure's cut cells.

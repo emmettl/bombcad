@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Envelope buildings whose glazing breaks in the air (`EnvelopeVenting`).
 @Suite("Envelope venting", .serialized, .gpuThreads)

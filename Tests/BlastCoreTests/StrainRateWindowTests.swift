@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The strain rate the rate laws see averaged over a fixed time (`strainRateWindow`) rather than
 /// over the last 50 steps.

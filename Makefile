@@ -42,7 +42,7 @@ test: ifc-converter
 # The core target alone: the solvers' tests, a few minutes on the CI mini. The application's
 # tests, which take most of `make test`, are left to the full check.
 test-core: ifc-converter
-	swift test --filter 'BlastCoreTests\.'
+	swift test --filter '(BlastModelTests|BlastCoreTests)\.'
 
 # The solvers built as a release is, run for a few seconds each: solid and shell elements, bars
 # that slip and base connections. `swift test` builds for debugging, and the optimiser has

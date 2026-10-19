@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Rigid footings on soil (`Footing`, `FootingBed`, `FootingImpedance`) against theory: the
 /// half-space's static stiffness, a footing's heel lifting and its toe bearing, the cones'

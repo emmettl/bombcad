@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Verification of the Euler solver against problems with known solutions.
 @Suite("Solver verification", .gpuThreads)

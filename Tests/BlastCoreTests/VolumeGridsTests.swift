@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("The air as volume grids", .gpuThreads)
 struct VolumeGridsTests {

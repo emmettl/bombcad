@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Keys's brick walls (`MasonryDebrisTests`) against the digitised histograms in
 /// Fixtures/Keys2016.

@@ -1,0 +1,100 @@
+import BlastModel
+import Foundation
+import Metal
+import simd
+
+extension TieBenchmark {
+    public struct Result: Sendable {
+        /// The elements along the tie's middle cracked open past 0.1% strain.
+        public var cracks: [Int]
+        /// The pull, averaged over the last millisecond, in newtons.
+        public var load: Float
+        /// The mean strain the tie was pulled to.
+        public var strain: Float
+        /// The elements' size, in metres.
+        public var elementSize: Float
+        /// With discrete bars, the first bar's segments' forces and nodes' slips at the end.
+        public var bar: (forces: [Float], slips: [Float]) = ([], [])
+
+        /// The distances between neighbouring cracks, in metres, counting a run of neighbouring
+        /// cracked elements as one crack.
+        public var spacings: [Float] {
+            var centres: [Float] = []
+            var run: [Int] = []
+            for i in cracks {
+                if let last = run.last, i != last + 1 {
+                    centres.append(Float(run.reduce(0, +)) / Float(run.count))
+                    run = []
+                }
+                run.append(i)
+            }
+            if !run.isEmpty { centres.append(Float(run.reduce(0, +)) / Float(run.count)) }
+            return zip(centres, centres.dropFirst()).map { ($1 - $0) * elementSize }
+        }
+    }
+
+    /// The tie on elements of `elementSize`, its bars bonded by `bond` (perfectly, when nil),
+    /// pulled at `speed` (m/s) to a mean strain of `strain`. `adjust` changes the concrete.
+    public static func run(
+        device: MTLDevice, elementSize h: Float, bond: BondSlip?, strain: Float = 1.5e-3, speed: Float = 0.05,
+        discrete: Bool = false, adjust: (inout StructureMaterial) -> Void = { _ in }
+    ) throws -> Result {
+        let tie = Box(min: SIMD3(0, 0, 1), max: SIMD3(length, side, 1 + side))
+        var concrete = material
+        adjust(&concrete)
+        var model = StructureModel(solids: [tie], material: concrete, elementSize: h, fixedBase: false)
+        model.reinforcement = [ReinforcementLayer(region: tie, ratio: SIMD3(ratio, 0, 0))]
+        if discrete {
+            // Two bars of the same steel, as discrete trusses through the tie's length, anchored
+            // in its end elements; the smeared bars stand only for dowel action and bridging.
+            let diameter = (2 * ratio * side * side / .pi).squareRoot()
+            model.discreteBars = [0.3, 0.7].map { y in
+                DiscreteBar(
+                    start: SIMD3(0.0005, y * side, 1 + side / 2),
+                    end: SIMD3(length - 0.0005, y * side, 1 + side / 2),
+                    diameter: diameter)
+            }
+        }
+        model.bondSlip = bond
+        let solver = try StructureSolver(device: device, model: model.loadedSlowly())
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.damping = 200
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    nodes[solver.nodeIndex(0, j, k)].isFixed = true
+                    nodes[solver.nodeIndex(solver.ex, j, k)].isPrescribed = true
+                    nodes[solver.nodeIndex(solver.ex, j, k)].velocity = SIMD3(speed, 0, 0)
+                }
+            }
+        }
+        let end = Double(strain * length / speed)
+        let window = min(0.001, end / 10)
+        solver.advance(steps: Int(((end - window) / Double(solver.criticalTimeStep)).rounded()))
+        var load: Float = 0
+        let samples = 20
+        for _ in 0..<samples {
+            solver.advance(
+                steps: max(1, Int((window / Double(samples) / Double(solver.criticalTimeStep)).rounded())))
+            var force: Float = 0
+            for k in 0...solver.ez {
+                for j in 0...solver.ey { force -= solver.nodalForce(solver.ex, j, k).x }
+            }
+            load += force / Float(samples)
+        }
+        let cracks = (0..<solver.ex).filter { solver.crackStrain($0, solver.ey / 2, solver.ez / 2) > 1e-3 }
+        var result = Result(cracks: cracks, load: load, strain: strain, elementSize: h)
+        result.bar = solver.discreteBar(0)
+        return result
+    }
+
+    /// The Model Code's pull at a mean strain `strain` with tension stiffening factor `beta` (0.6
+    /// short-term, 0.4 long-term or repeated; §7.6.5): the bars at the cracks carry
+    /// E_s ε + β f_ctm (1 + α_e ρ) / ρ, with `strength` the concrete's tensile strength.
+    public static func expectedLoad(strain: Float, beta: Float, strength: Float) -> Float {
+        let modularRatio = 200e9 / material.youngsModulus
+        let barStress = 200e9 * strain + beta * strength * (1 + modularRatio * ratio) / ratio
+        return barStress * ratio * side * side
+    }
+}

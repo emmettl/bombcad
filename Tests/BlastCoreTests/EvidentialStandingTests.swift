@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A default value of every input type the standing reads. A type that gains a stored property
 /// fails `everyInputHasAStandingEntry` until `StandingTable.fields` says what it is.

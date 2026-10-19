@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Fragments penetrating what they strike")
 struct FragmentPenetrationTests {

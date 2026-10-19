@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// File ▸ New District's layout (`DistrictLayout`) on a made-up district (Fixtures/SyntheticDistrict).
 @Suite("District layout")

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Support joints on shells and beams facing any way (`ShellMesh.jointPoints`): a wall hung by
 /// the free edge at its end, a wall on an inclined joint, and a slab and a beam seated on

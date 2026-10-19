@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The full-scale internal explosion of Shang et al. (2026).
 @Suite("Chamber test", .gpuThreads)

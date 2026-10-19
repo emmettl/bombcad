@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Congestion below the grid", .serialized, .gpuThreads)
 struct CongestionTests {

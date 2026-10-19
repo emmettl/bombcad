@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Cracks that soften by their strain averaged across their band (`crackAveraging`).
 @Suite("Nonlocal cracking", .gpuThreads)
