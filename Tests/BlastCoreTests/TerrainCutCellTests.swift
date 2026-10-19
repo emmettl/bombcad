@@ -441,4 +441,28 @@ struct TerrainCutCellTests {
         #expect(refinedAtBlock)
         #expect(worst < 5, "\(worst) Pa ahead of the blast")
     }
+
+    @Test("A block buried in a slope, the blast between it and the ground: a closed box keeps its gas")
+    func blockInSlopeConserves() throws {
+        // Cells between the block's face and the rising ground along the same sweep took the
+        // ground's mirror on one side and the block's on the other; the ghost beyond the block was
+        // built from the near ghost before the ground's mirror replaced it, so the block's face had
+        // a flux of mass through it, and the box gained gas as the blast went by.
+        func ground(_ p: SIMD2<Float>) -> Float { 1 + 1.5 * max(p.y - 4.5, 0) }
+        var scenario = Scenario(
+            name: "Block in a slope", domainSize: SIMD3(16, 10, 12),
+            boxes: [Box(min: SIMD3(6, 2, 0), max: SIMD3(10, 5, 6))],
+            charge: Charge(mass: 2, position: SIMD3(8, 8, ground(SIMD2(8, 8)) + 1)))
+        scenario.reflectiveFaces = .all
+        scenario.terrain = Terrain.sampled(
+            domain: scenario.domainSize, spacing: 0.25, source: "block in a slope"
+        ) {
+            ground($0)
+        }
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5, configuration: cut())
+        let before = solver.totals()
+        _ = solver.advance(steps: 80)
+        let after = solver.totals()
+        #expect(abs(after.mass / before.mass - 1) < 1e-6, "mass \(after.mass / before.mass - 1)")
+    }
 }

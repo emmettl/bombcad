@@ -340,6 +340,15 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   ringing at about 25 Hz. The wall's flux is now taken through the fine face's open share (since
   19 October 2026): the air ahead stays within a pascal (`TerrainCutCellTests.stillAheadBesideBlock`,
   3.8 kPa before).
+- **Between a block and the ground.** A cut cell with a block on one side along a sweep and the
+  terrain's solid on the other mirrors itself about its normal into the terrain and plainly into
+  the block. The ghost beyond the block was built from the near ghost before the terrain's mirror
+  replaced it, so the block's face's two states were not each other's mirror and gas passed
+  through it: a street over a hill, its buildings standing in the slope, gained 0.34 kg and
+  0.28 MJ in 60 steps in a closed box (cut cells only; on blocks standing on the ground, nothing).
+  Each ghost beyond a wall is now built from the near ghost as it stands, by its wall's own rule,
+  on every level (since 19 October 2026); the box keeps its gas to round-off
+  (`TerrainCutCellTests.blockInSlopeConserves`, 1.6e-5 of it gained before).
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut

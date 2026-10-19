@@ -1496,15 +1496,27 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
         above2[axis] += 2;
         below2[axis] -= 2;
         bool cutHere = cutCellHere(cell, cutColumns, u);
-        if (kindP1 == kindWall && cutHere && terrainSolid(above, cutColumns, u)) {
+        bool groundP1 = kindP1 == kindWall && cutHere && terrainSolid(above, cutColumns, u);
+        bool groundM1 = kindM1 == kindWall && cutHere && terrainSolid(below, cutColumns, u);
+        if (groundP1 || groundM1) {
             float3 normal = cutNormalOf(cell, cutColumns, cutWalls, axis, u);
-            wP1 = mirroredAbout(w0, normal);
-            wP2 = mirroredAbout(wM1, normal);
-        }
-        if (kindM1 == kindWall && cutHere && terrainSolid(below, cutColumns, u)) {
-            float3 normal = cutNormalOf(cell, cutColumns, cutWalls, axis, u);
-            wM1 = mirroredAbout(w0, normal);
-            wM2 = mirroredAbout(wP1, normal);
+            if (groundP1) {
+                wP1 = mirroredAbout(w0, normal);
+            }
+            if (groundM1) {
+                wM1 = mirroredAbout(w0, normal);
+            }
+            // The ghost beyond each wall mirrors the near ghost across the cell from it, as it
+            // now stands, by that wall's own rule: a block's plainly, the terrain's about the
+            // normal. (Built from the near ghost as it stood before, beside a block on one side
+            // and the ground on the other, the face's two states were no longer each other's
+            // mirror, and gas passed through the block's face.)
+            if (kindP1 == kindWall) {
+                wP2 = groundP1 ? mirroredAbout(wM1, normal) : mirrored(wM1, speedP1);
+            }
+            if (kindM1 == kindWall) {
+                wM2 = groundM1 ? mirroredAbout(wP1, normal) : mirrored(wP1, speedM1);
+            }
         }
         if (kindP1 == kindFluid && classify(mask, index, 2, stride, i, n, lowWall, highWall) == kindWall
             && terrainSolid(above2, cutColumns, u) && cutCellHere(above, cutColumns, u)) {
