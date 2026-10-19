@@ -322,6 +322,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     /// Steel beams hinged at their joints by connections that fracture (`StructureModel.steelConnection`).
     case steelConnections
     case inclinedBars
+    /// Shells laid at a pitch, as a roof's slopes (`Inclination`).
+    case pitchedShells
     case baseConnections
     case jointsBetweenParts
     case footings
@@ -417,6 +419,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
         case .steelConnections: return any { $0.steelConnection != nil }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
+        case .pitchedShells: return any(\.hasInclinedSolids)
         case .baseConnections:
             return any { s in
                 (s.fixedBase && s.baseAnchorage.map { $0.footing == nil } == true)
@@ -838,6 +841,15 @@ public enum StandingTable {
                     + "13–41% too strong and 1.5–1.7 times too ductile at a blast's rate, and the welded and "
                     + "fin-plate types, from slow tests, may be too ductile too.",
                 document: "shell-model.md#steel-connections")
+        case .pitchedShells:
+            return Entry(
+                title: "Shells at a pitch", affects: structure, limit: .approximation,
+                note:
+                    "Roof slopes meshed in their own planes: a plate cantilevered at 30° bends within 2% as the "
+                    + "flat one does under its weight's share across it. Rafters are smeared into a plate, "
+                    + "their seats and the tiles' nibs are laws assumed from their make, not measured; no "
+                    + "pitched roof under blast was found to compare with.",
+                document: "shell-model.md#shells-at-a-pitch")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -1158,6 +1170,7 @@ public enum StandingTable {
         "StructureModel.baseAnchorage": .option([.baseConnections, .footings]),
         "StructureModel.reinforcement": .input,
         "StructureModel.inclinedBars": .option([.inclinedBars]),
+        "StructureModel.solidInclinations": .option([.pitchedShells]),
         "StructureModel.solidReinforcement": .input,
         "StructureModel.solidMaterial": .input,
         "StructureModel.solidSourceParts": .input,
@@ -1252,6 +1265,8 @@ public enum StandingTable {
         "Anchorage.closingGap": .input,
         "Anchorage.frictionExponent": .input,
         "Anchorage.frictionReferencePressure": .input,
+        "Anchorage.solids": .input,
+        "Anchorage.partners": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand, .footingsOnSlope]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,

@@ -930,6 +930,12 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
     return true;
 }
 
+// Elements at a pitch (axis 3, `Inclination`): compiled in only for bodies that have them, so that
+// every other body's kernels are as they were. Such an element takes its axes from its reference
+// corners, along its first and second edges, and reads its strains along them.
+constant bool inclinedShellsConstant [[function_constant(25)]];
+constant bool inclinedShells = is_function_constant_defined(inclinedShellsConstant) && inclinedShellsConstant;
+
 kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                           device ShellForces *forces [[buffer(1)]],
                           device uchar *flags [[buffer(2)]],
@@ -979,9 +985,17 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
     float3 e1 = float3(0.0f);
     float3 e2 = float3(0.0f);
     float3 normal = float3(0.0f);
-    e1[i1] = 1.0f;
-    e2[i2] = 1.0f;
-    normal[k] = 1.0f;
+    bool pitched = inclinedShells && k == 3u;
+    if (pitched) {
+        float3 origin = reference[el.node[0]].xyz;
+        e1 = normalize(reference[el.node[1]].xyz - origin);
+        e2 = normalize(reference[el.node[3]].xyz - origin);
+        normal = cross(e1, e2);
+    } else {
+        e1[i1] = 1.0f;
+        e2[i2] = 1.0f;
+        normal[k] = 1.0f;
+    }
     float t = el.thickness;
     float a = el.a;
     float b = el.b;
@@ -1017,7 +1031,8 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             delta += shapeValue(shellCorners[c], tying[p]) * offset[c];
         }
         uint along = p < 2 ? i1 : i2;
-        gammaTie[p] = delta[along] + h[k] + dot(h, delta);
+        gammaTie[p] = pitched ? dot(delta, p < 2 ? e1 : e2) + dot(h, normal) + dot(h, delta)
+                              : delta[along] + h[k] + dot(h, delta);
         tangentTie[p] = (p < 2 ? e1 : e2) + h;
         directorTie[p] = normal + delta;
     }
@@ -1118,8 +1133,11 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
             float3 h2 = h2m + zeta * h2b;
             float3 f1 = e1 + h1;
             float3 f2 = e2 + h2;
-            float3 strain = float3(h1[i1] + 0.5f * dot(h1, h1), h2[i2] + 0.5f * dot(h2, h2),
-                                   0.5f * (h1[i2] + h2[i1] + dot(h1, h2)));
+            float3 strain = pitched
+                ? float3(dot(h1, e1) + 0.5f * dot(h1, h1), dot(h2, e2) + 0.5f * dot(h2, h2),
+                         0.5f * (dot(h1, e2) + dot(h2, e1) + dot(h1, h2)))
+                : float3(h1[i1] + 0.5f * dot(h1, h1), h2[i2] + 0.5f * dot(h2, h2),
+                         0.5f * (h1[i2] + h2[i1] + dot(h1, h2)));
             float3 d1 = r1m + zeta * r1b;
             float3 d2 = r2m + zeta * r2b;
             float3 rate = float3(dot(f1, d1), dot(f2, d2), 0.5f * (dot(f1, d2) + dot(f2, d1)));
@@ -1186,8 +1204,11 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                 if (fabs(film.plastic) > 1e8f) {
                     continue;
                 }
-                float3 green = float3(h1m[i1] + 0.5f * dot(h1m, h1m), h2m[i2] + 0.5f * dot(h2m, h2m),
-                                      0.5f * (h1m[i2] + h2m[i1] + dot(h1m, h2m)));
+                float3 green = pitched
+                    ? float3(dot(h1m, e1) + 0.5f * dot(h1m, h1m), dot(h2m, e2) + 0.5f * dot(h2m, h2m),
+                             0.5f * (dot(h1m, e2) + dot(h2m, e1) + dot(h1m, h2m)))
+                    : float3(h1m[i1] + 0.5f * dot(h1m, h1m), h2m[i2] + 0.5f * dot(h2m, h2m),
+                             0.5f * (h1m[i2] + h2m[i1] + dot(h1m, h2m)));
                 float3 plasticStrain = float3(film.history.reversalStrain, film.history.reversalStress,
                                               film.history.targetStrain);
                 float3 elastic = green - plasticStrain;
@@ -1258,7 +1279,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                     spread = float2(1.0f / weights, sum / weights);
                 }
                 float3 h = j == 0 ? h1m + zeta * h1b : h2m + zeta * h2b;
-                float green = (j == 0 ? h[i1] : h[i2]) + 0.5f * dot(h, h);
+                float green = (pitched ? dot(h, j == 0 ? e1 : e2) : (j == 0 ? h[i1] : h[i2])) + 0.5f * dot(h, h);
                 float3 f = (j == 0 ? e1 : e2) + h;
                 float stress;
                 float root;
@@ -2578,7 +2599,12 @@ kernel void shellSplat(const device ShellElement *elements [[buffer(0)]],
     }
     ShellElement el = elements[e];
     float3 normal = float3(0.0f);
-    normal[el.axis] = 1.0f;
+    if (inclinedShells && el.axis == 3u) {
+        float3 origin = reference[el.node[0]].xyz;
+        normal = normalize(cross(reference[el.node[1]].xyz - origin, reference[el.node[3]].xyz - origin));
+    } else {
+        normal[el.axis] = 1.0f;
+    }
     float3 x[4];
     float3 v[4];
     float3 d[4];

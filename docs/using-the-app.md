@@ -45,7 +45,10 @@ block by block with its mortar joints, and the internal-explosion test
 is less than a cell or two across. The sidebar shows a structure's deflection now and the
 largest it has reached.
 **Edit layout** adds, moves, resizes and removes rigid blocks, deformable walls, openings and
-pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). **Add
+pressure gauges, sets each wall's material and reinforcement, and has undo (⌘Z). **Add Pitched
+Roof** (for a structure of shells) sets a pitch, the ridge's direction and the covering. It puts
+two raftered slopes over the structure from its walls' tops and raises the end walls to gables
+([shells at a pitch](shell-model.md#shells-at-a-pitch)). **Add
 Independent Structure** adds another structure, up to sixteen, each with its own materials,
 supports, mesh and results (**Editing structure** picks which one the edits go to; imports make
 one each); they share the air, and meet through contact if they come close. You can move

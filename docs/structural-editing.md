@@ -88,7 +88,11 @@ report stays under **Edit layout → Structure from IFC**.
 
 - **Elements.** Walls, slabs and roofs square to the axes become shells: as thick as their
   structural layer where the IFC gives a material layer set (the block of a brick-on-block
-  wall), else as their geometry. Columns, beams and members become beams of their section's
+  wall), else as their geometry. With **Roof slabs at a pitch as shells at their pitch**, a slab
+  or roof at one pitch of 5–60°, rising along x or y, becomes a shell in its own plane ([shells at
+  a pitch](shell-model.md#shells-at-a-pitch)). Its plane is fitted to its faces, the walls under
+  it are cut to its line, and it is tied to them by the base connection. Without the option it
+  stays a rigid obstacle. Columns, beams and members become beams of their section's
   depth and width; a flanged section (under half its bounds filled) is a rectangle 0.6 of its
   depth wide whose material is scaled to the bending stiffness, strength and mass of a
   wide-flange shape of its area and depth. Footings become footings under the members on

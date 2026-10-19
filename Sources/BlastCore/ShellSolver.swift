@@ -384,7 +384,15 @@ public final class ShellSolver {
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library)
         }
-        elementPipeline = try pipeline("shellElements")
+        // Elements at a pitch compiled in only for a body that has them.
+        if model.hasInclinedSolids {
+            let constants = MTLFunctionConstantValues()
+            var pitched = true
+            constants.setConstantValue(&pitched, type: .bool, index: 25)
+            elementPipeline = try ShaderLibrary.pipeline("shellElements", in: library, constants: constants)
+        } else {
+            elementPipeline = try pipeline("shellElements")
+        }
         beamPipeline = try pipeline("beamElements")
         debrisAreaPipeline = try pipeline("shellDebrisAreas")
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -847,6 +855,8 @@ public final class ShellSolver {
         for (owner, list) in points.enumerated() where !list.isEmpty {
             for slot in Set(list.map(\.slot)).sorted() {
                 guard let law = model.connection(inSlot: slot), let grid = cells[slot] else { continue }
+                // Only the faces of the solids the joint names, if it names any.
+                if let solids = law.solids, members[owner].isDisjoint(with: solids) { continue }
                 let region = model.supports[slot - 1]
                 let area = list.filter { $0.slot == slot }.reduce(0) { $0 + $1.area }
                 let at = positions[owner]
@@ -863,6 +873,7 @@ public final class ShellSolver {
                             for k in -ring...ring where max(abs(i), abs(j), abs(k)) == ring {
                                 for n in grid[centre &+ SIMD3(i, j, k)] ?? []
                                 where n != owner && members[n].isDisjoint(with: members[owner])
+                                    && law.partners.map({ !members[n].isDisjoint(with: $0) }) ?? true
                                     && simd_dot(at - positions[n], law.across) > -1e-3 * h
                                 {
                                     let distance = simd_distance(at, positions[n])

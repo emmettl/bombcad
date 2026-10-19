@@ -20,8 +20,9 @@ import simd
 ///   front, back and gables) removed, or moved since the row came to rest by more than a leaf's
 ///   thickness, past which a cracked leaf can no longer stand. A from 75%, B from 25% (the
 ///   surveyors' "unsafe" for more than Cb's quarter).
-/// - **Collapse of a floor or the roof:** a quarter of its joists' seats lost or more, or the
-///   plate fallen more than 0.3 m: Cb, as is any destroyed brickwork from 2%.
+/// - **Collapse of a floor or the roof:** a quarter of its joists' (or rafters') seats lost or
+///   more, or the plate (or the slopes) fallen more than 0.3 m: Cb, as is any destroyed
+///   brickwork from 2%.
 /// - **Structural damage:** 5% or more of the external walls cracked through (damage 1), or a
 ///   joist off its seat: Ca.
 /// - **Roof covering and cracks:** 1% or more of the covering over the house lifted or moved
@@ -47,7 +48,8 @@ public struct TerracedRowDamage: Sendable {
         /// Share of the front wall's elements destroyed (both leaves; those facing the charge).
         public var frontDestroyed = 0.0
         /// Per floor and the roof, ground up: the share of its joists off their seats, and how
-        /// far its plate has fallen on average, m.
+        /// far its plate has fallen on average, m. Under a pitched roof the last plate is the
+        /// ceiling and the slopes come after it, their rafters' seats at the eaves and purlins.
         public var seatsLost: [Double] = []
         public var fallen: [Float] = []
         /// Share of the covering over the house lifted or moved.
@@ -67,11 +69,30 @@ public struct TerracedRowDamage: Sendable {
     public var houses: [House]
 
     /// Solids, in the order `terracedRow` builds them: the eight leaves of the external walls,
-    /// the two party walls, two plates (floor and roof) per house, then the covering.
+    /// the two party walls, two plates (floor and roof, or ceiling under a pitched roof) per
+    /// house; then a pitched roof's two slopes and two purlins; then the covering, one piece or
+    /// one a slope.
     static let externalLeaves = 0..<8
     static let frontLeaves = 0..<2
     static let partyWalls = 8..<10
     static let platesPerHouse = 2
+    static let plates = partyWalls.upperBound..<(partyWalls.upperBound + 3 * platesPerHouse)
+
+    /// The supports, by index, that seat the row's roof covering on its roof.
+    public static func coveringSeats(of model: StructureModel) -> Set<Int> {
+        let coverings = Set(model.solids.indices.filter(isCovering(in: model)))
+        return Set(
+            model.supports.indices.filter { index in
+                guard let law = model.anchorage(ofSupport: index) else { return false }
+                if let solids = law.solids { return !solids.isEmpty && coverings.isSuperset(of: solids) }
+                return law == ScenarioPreset.roofCoveringSeat
+            })
+    }
+
+    static func isCovering(in model: StructureModel) -> (Int) -> Bool {
+        let materials = ScenarioPreset.RoofCovering.allCases.map(\.material)
+        return { materials.contains(model.material(of: $0)) }
+    }
 
     /// Judges `shells`, the row's body, against `rest`, each node's displacement once the row had
     /// settled.
@@ -87,9 +108,9 @@ public struct TerracedRowDamage: Sendable {
         }
         let damage = shells.displayBuffer.contents().bindMemory(
             to: Float.self, capacity: max(mesh.elements.count, 1))
-        let coveringSolid =
-            model.solids.count > Self.partyWalls.upperBound + 3 * Self.platesPerHouse
-            ? Self.partyWalls.upperBound + 3 * Self.platesPerHouse : nil
+        let isCovering = Self.isCovering(in: model)
+        let slopes = Set(model.solids.indices.filter { model.inclination(of: $0)?.trimsWalls == true })
+        var slopeDrop = [(sum: Float, count: Int)](repeating: (0, 0), count: 3)
         var walls = [(total: Int, destroyed: Int, cracked: Int)](repeating: (0, 0, 0), count: 3)
         var fronts = [(total: Int, destroyed: Int)](repeating: (0, 0), count: 3)
         var covering = [(total: Int, moved: Int)](repeating: (0, 0), count: 3)
@@ -111,10 +132,13 @@ public struct TerracedRowDamage: Sendable {
                 } else if damage[e] >= 1 {
                     walls[h].cracked += 1
                 }
-            } else if element.solid == coveringSolid {
+            } else if isCovering(element.solid) {
                 covering[h].total += 1
                 if removed || simd_length(shift) > 0.1 { covering[h].moved += 1 }
-            } else if element.solid >= Self.partyWalls.upperBound {
+            } else if slopes.contains(element.solid) {
+                slopeDrop[h].sum += removed ? 1 : -shift.z
+                slopeDrop[h].count += 1
+            } else if Self.plates.contains(element.solid) {
                 let plate = element.solid - Self.partyWalls.upperBound
                 let level = plate % Self.platesPerHouse
                 // A removed element counts as fallen a metre.
@@ -141,6 +165,21 @@ public struct TerracedRowDamage: Sendable {
                 }
                 result.seatsLost.append(pairs > 0 ? Double(lost) / Double(pairs) : 0)
                 let drop = plateDrop[h][level]
+                result.fallen.append(drop.count > 0 ? drop.sum / Float(drop.count) : 0)
+            }
+            // A pitched roof's rafters: after the plates' seats, four a house (eaves front and
+            // back, then the purlins).
+            if !slopes.isEmpty {
+                let first = 4 + 2 * 3 * Self.platesPerHouse + 4 * h
+                var pairs = 0
+                var lost = 0
+                for index in first..<(first + 4) {
+                    guard let part = shells.pairSummary(support: index) else { continue }
+                    pairs += part.pairs
+                    lost += part.unseated
+                }
+                result.seatsLost.append(pairs > 0 ? Double(lost) / Double(pairs) : 0)
+                let drop = slopeDrop[h]
                 result.fallen.append(drop.count > 0 ? drop.sum / Float(drop.count) : 0)
             }
             let roofing = covering[h]

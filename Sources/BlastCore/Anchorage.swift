@@ -75,6 +75,14 @@ public struct Anchorage: Sendable, Hashable, Codable {
     /// past the other part's last node in the region, and a node that slides past it is off its
     /// seat for good.
     public var betweenParts: Bool?
+    /// Between parts: the solids (by index into `solids`) whose faces the joint ties to the part
+    /// across from them, where its region holds others too (a pitched roof's covering on its
+    /// rafters, where a box round the slope holds the rafters' underside as well); nil, any.
+    public var solids: [Int]?
+    /// Between parts: the solids whose nodes it may tie them to, where the region holds others
+    /// that lie under them too (a roof slope's lower courses of tiles, under its rafters further
+    /// up); nil, any.
+    public var partners: [Int]?
 
     public init(
         normalStiffness: Float? = nil, shearStiffness: Float? = nil, tensileStrength: Float,

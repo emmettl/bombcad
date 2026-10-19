@@ -685,6 +685,13 @@ public final class BlastSolver {
     var cappedSliverBuffer: MTLBuffer?
     private let debrisExchangePipeline: MTLComputePipelineState
     private let shellSplatPipeline: MTLComputePipelineState
+    /// The shells' splat with elements at a pitch compiled in, for bodies that have them.
+    private lazy var inclinedShellSplatPipeline: MTLComputePipelineState? = {
+        let constants = MTLFunctionConstantValues()
+        var pitched = true
+        constants.setConstantValue(&pitched, type: .bool, index: 25)
+        return try? ShaderLibrary.pipeline("shellSplat", in: library, constants: constants)
+    }()
     private let beamSplatPipeline: MTLComputePipelineState
 
     private let stateBuffers: [MTLBuffer]
@@ -1784,7 +1791,10 @@ public final class BlastSolver {
                             width: beamSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
                 }
                 var count = UInt32(shells.elementCount)
-                encoder.setComputePipelineState(shellSplatPipeline)
+                let splat =
+                    body.model.hasInclinedSolids
+                    ? inclinedShellSplatPipeline ?? shellSplatPipeline : shellSplatPipeline
+                encoder.setComputePipelineState(splat)
                 encoder.setBuffer(shells.elementBuffer, offset: 0, index: 0)
                 encoder.setBuffer(shells.flagBuffer, offset: 0, index: 1)
                 encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
@@ -1799,7 +1809,7 @@ public final class BlastSolver {
                     encoder.dispatchThreads(
                         MTLSize(width: shells.elementCount, height: 1, depth: 1),
                         threadsPerThreadgroup: MTLSize(
-                            width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+                            width: splat.threadExecutionWidth, height: 1, depth: 1))
                 }
             }
 

@@ -96,6 +96,34 @@ struct IFCStructureTests {
         #expect(abs(reaction - mass * 9.81) < 0.02 * mass * 9.81)
     }
 
+    @Test(
+        "A roof slab at 15° stays rigid unless asked, then is a shell at its pitch tied to the walls under it"
+    )
+    func inclinedRoof() throws {
+        var elements = try room(concrete: true)
+        elements.remove(at: 5)
+        // The roof turned 15° about y through its middle, clear above the walls.
+        elements[4] = try element(
+            5, "Roof", "IfcSlab", [box(SIMD3(-0.1, 0, 3.54), SIMD3(4.1, 4, 3.74))], turn: -15 * .pi / 180,
+            materials: [IFCStructure.Layer(name: "Concrete C30/37")])
+        let rigid = try IFCStructure(elements: elements, options: .init(elementSize: 0.25))
+        #expect(rigid.members.first { $0.name == "Roof" }?.role == .rigid)
+        #expect(!rigid.model.hasInclinedSolids)
+        let pitched = try IFCStructure(
+            elements: elements, options: .init(elementSize: 0.25, inclinedPlates: true))
+        let roof = try #require(pitched.members.first { $0.name == "Roof" })
+        let index = try #require(roof.solid)
+        #expect(roof.role == .shell)
+        let inclination = try #require(pitched.model.inclination(of: index))
+        #expect(abs(inclination.pitch(in: pitched.model.solids[index]) - 15) < 0.1)
+        #expect(abs(inclination.thickness - 0.2) < 1e-3 && inclination.rise == 0)
+        // Seated on all four walls, which reach it.
+        let seats = pitched.model.supportAnchorages.filter { $0?.solids == [index] }
+        #expect(seats.count == 4 && seats.allSatisfy { $0?.betweenParts == true })
+        let mesh = try ShellMesh(model: pitched.model)
+        #expect(mesh.elements.filter { $0.axis == 3 }.count > 200)
+    }
+
     @Test("Materials come from the IFC's names; finishes stay rigid; others take the flagged default")
     func materials() throws {
         let wall = box(SIMD3(0, 0, 0), SIMD3(4, 0.42, 3))
