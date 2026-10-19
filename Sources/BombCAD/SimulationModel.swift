@@ -2989,7 +2989,8 @@ final class SimulationModel {
         guard samples, lastSampleTime != solver.time,
             solver.time >= nextStructureSampleTime - 1e-9 || solver.time >= duration - 1e-9
         else { return }
-        let summary = solver.bodySummary()
+        let summaries = summarise(solver)
+        let summary = summaries.structure
         stopIfSolverFailed(solver, summary: summary)
         guard summary?.hasBlownUp != true else { return }
         if let summary, structureRecord.last?.time != solver.time * 1000 {
@@ -2998,20 +2999,31 @@ final class SimulationModel {
                     id: structureRecord.count, time: solver.time * 1000,
                     deflection: Double(summary.maxDisplacement) * 1000))
         }
-        for body in solver.bodies {
-            if let summary = body.summary(), bodyRecords[body.id]?.last?.time != solver.time * 1000 {
-                var history = bodyRecords[body.id] ?? []
-                history.append(
-                    StructureSample(
-                        id: history.count, time: solver.time * 1000,
-                        deflection: Double(summary.maxDisplacement) * 1000))
-                bodyRecords[body.id] = history
-            }
+        for (id, summary) in summaries.bodies where bodyRecords[id]?.last?.time != solver.time * 1000 {
+            var history = bodyRecords[id] ?? []
+            history.append(
+                StructureSample(
+                    id: history.count, time: solver.time * 1000,
+                    deflection: Double(summary.maxDisplacement) * 1000))
+            bodyRecords[id] = history
         }
         nextStructureSampleTime =
             (floor(solver.time / sampleInterval + 1e-6) + 1) * sampleInterval
         lastSampleTime = solver.time
         onSample?(solver)
+    }
+
+    /// Each body's summary, and the structure's as `BlastSolver.bodySummary()` combines them,
+    /// from one pass over each body's mesh: taken once for the whole and again for each body, the
+    /// passes were most of a debug build's structural run (19 October 2026).
+    private func summarise(_ solver: BlastSolver) -> (
+        structure: StructureSummary?, bodies: [(id: UUID, summary: StructureSummary)]
+    ) {
+        let bodies = solver.bodies.compactMap { body in body.summary().map { (id: body.id, summary: $0) } }
+        let structure = bodies.reduce(StructureSummary?.none) { total, body in
+            total.map { $0.combined(with: body.summary) } ?? body.summary
+        }
+        return (structure, bodies)
     }
 
     /// Stops the run where the solver can no longer go on.
@@ -3046,9 +3058,9 @@ final class SimulationModel {
             refreshEnvelopeDamage()
         }
         recordSampleIfDue(solver)
-        structureSummary = solver.bodySummary()
-        bodySummaries = Dictionary(
-            uniqueKeysWithValues: solver.bodies.compactMap { body in body.summary().map { (body.id, $0) } })
+        let summaries = summarise(solver)
+        structureSummary = summaries.structure
+        bodySummaries = Dictionary(uniqueKeysWithValues: summaries.bodies.map { ($0.id, $0.summary) })
         stopIfSolverFailed(solver, summary: structureSummary)
         if structuresInContactFrom == nil, solver.bodiesInContact { structuresInContactFrom = solver.time }
         structureHistory = structureRecord

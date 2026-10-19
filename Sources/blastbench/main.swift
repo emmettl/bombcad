@@ -5498,6 +5498,24 @@ func runAirCost() throws {
         cut.structureCutCells = true
         airs.append(("recommended, cut structure", cut))
     }
+    // `--refined`: the recommended air refined once by 2 everywhere, and refined but confined to a
+    // box the blast never reaches: the refinement's cost a step with no blocks at all.
+    if flag("refined") {
+        var refined = recommended
+        refined.refinement = 2
+        refined.refinementThreshold = 0.005
+        airs.append(("recommended, refined", refined))
+        var empty = refined
+        empty.refinementConfinedTo = [RefinementRegion(low: SIMD3(0, 0, 0), high: SIMD3(0.01, 0.01, 0.01))]
+        airs.append(("refined, no blocks", empty))
+        var half = refined
+        half.refinementConfinedTo = [
+            RefinementRegion(
+                low: .zero,
+                high: SIMD3(scenario.domainSize.x / 2, scenario.domainSize.y, scenario.domainSize.z))
+        ]
+        airs.append(("refined, half the domain", half))
+    }
     let solvers = try airs.map { _, configuration in
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
@@ -5511,18 +5529,20 @@ func runAirCost() throws {
             + (flag("skip") ? "still air skipped" : "every cell swept")
             + "; \(rounds) rounds of \(batch) steps")
     var times = [[Double]](repeating: [], count: airs.count)
+    var blocks = [Int](repeating: 0, count: airs.count)
     for _ in 0..<rounds {
         for (n, solver) in solvers.enumerated() {
             let result = solver.advance(steps: batch)
             if let air = solver.lastBatchGPUProfile?.airS, result.steps > 0 {
                 times[n].append(air / Double(result.steps))
             }
+            blocks[n] += result.refinedTiles
         }
     }
     print(
         "\n" + pad("air", 26) + pad("ns/update min", 15) + pad("q25", 8) + pad("median", 8)
             + pad("against core", 14)
-            + pad("bytes/cell", 12))
+            + pad("bytes/cell", 12) + pad("µs/step min", 12) + pad("blocks", 8))
     let base = times[0].min() ?? 1
     for (n, (name, _)) in airs.enumerated() {
         let sorted = times[n].sorted()
@@ -5532,7 +5552,9 @@ func runAirCost() throws {
         print(
             pad(name, 26) + pad(perUpdate(low), 15) + pad(perUpdate(sorted[sorted.count / 4]), 8)
                 + pad(perUpdate(sorted[sorted.count / 2]), 8) + pad(format(low / base, 2), 14)
-                + pad(format(Double(solvers[n].memoryFootprint) / cells, 1), 12))
+                + pad(format(Double(solvers[n].memoryFootprint) / cells, 1), 12)
+                + pad(format(low * 1e6, 1), 12)
+                + pad("\(blocks[n] / rounds)", 8))
     }
 }
 

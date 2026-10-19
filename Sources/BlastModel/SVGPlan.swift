@@ -1,6 +1,10 @@
 import Foundation
 import simd
 
+#if canImport(FoundationXML)
+    import FoundationXML
+#endif
+
 /// A floor plan read from SVG, as drawing programs and CAD exports give one: lines, polylines,
 /// polygons, rectangles, circles, ellipses and paths (curves and arcs flattened in pieces of at
 /// most 15°, as the DXF reader flattens arcs), each on the layer of the group it lies in (an

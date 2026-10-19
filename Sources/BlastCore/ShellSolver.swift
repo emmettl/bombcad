@@ -681,9 +681,18 @@ public final class ShellSolver {
                 let reach: Int32 = 8
                 var ring: Int32 = 0
                 while ring <= reach, best.map({ $0.distance > Float(ring - 1) * h }) ?? true {
-                    for i in -ring...ring {
-                        for j in -ring...ring {
-                            for k in -ring...ring where max(abs(i), abs(j), abs(k)) == ring {
+                    // The cells on the ring's shell, in the order of `for i, j, k in -ring...ring`
+                    // keeping those with max(|i|, |j|, |k|) == ring, but by plain integer steps
+                    // and only those cells: three ClosedRange<Int32> loops deep took most of a
+                    // debug build's 108 s setting up the terraced row (19 October 2026).
+                    var i = -ring
+                    while i <= ring {
+                        var j = -ring
+                        while j <= ring {
+                            // Off the shell's sides in i and j, only its two faces in k.
+                            let side = abs(i) == ring || abs(j) == ring
+                            var k = -ring
+                            while k <= ring {
                                 for n in grid[centre &+ SIMD3(i, j, k)] ?? []
                                 where n != owner && members[n].isDisjoint(with: members[owner])
                                     && law.partners.map({ !members[n].isDisjoint(with: $0) }) ?? true
@@ -697,8 +706,11 @@ public final class ShellSolver {
                                         best = (n, distance)
                                     }
                                 }
+                                k += side ? 1 : 2 * ring
                             }
+                            j += 1
                         }
+                        i += 1
                     }
                     ring += 1
                 }
@@ -1290,8 +1302,11 @@ public final class ShellSolver {
     /// Set by a body this one is tied to, so both take the same steps.
     public var stepOverride: Float?
 
-    /// Largest stable time step of this body alone, in seconds.
-    public var stableTimeStep: Float {
+    /// The shortest time a wave takes to cross an element or beam, s (infinite with none), from
+    /// the mesh and materials, which never change: worked out once. `criticalTimeStep` is read
+    /// every substep, and this loop over every element and beam was most of a debug build's time
+    /// in shell runs (most of the warehouse's 93 s settle, 19 October 2026); the step is the same.
+    private lazy var elementCrossingTime: Float = {
         var step = Float.infinity
         for element in mesh.elements {
             let speed = materials[element.material].plateWaveSpeed
@@ -1301,6 +1316,12 @@ public final class ShellSolver {
             let material = materials[beam.material]
             step = min(step, beam.length / (material.youngsModulus / material.density).squareRoot())
         }
+        return step
+    }()
+
+    /// Largest stable time step of this body alone, in seconds.
+    public var stableTimeStep: Float {
+        let step = elementCrossingTime
         let shells = timeStepSafety * (step.isFinite ? step : 1e-4)
         // A node on a stiff connection to the ground, as for solid elements: its frequency on the
         // connection adds to the highest the elements alone can give it, about 2 / step.
