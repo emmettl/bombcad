@@ -1454,6 +1454,11 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             from.w = 1;
             mirror.w = -1.0f;
         } else {
+            // An open face beyond the next cell: its ghost as that cell builds it (`farFieldGhost`
+            // of its state), so that both cells reconstruct the face between them alike and the
+            // flux through it is one. A copy here left the two fluxes apart wherever the ghost
+            // differed: a tube's far-field ends took in mass without the oxygen it carried.
+            if (farFieldFaces(u)) { wP2 = farFieldGhost(wP1, 1.0f, u); }
             from.w = 1;
         }
     } else {
@@ -1477,6 +1482,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             from.x = -1;
             mirror.x = -1.0f;
         } else {
+            // As above, the open face beyond the previous cell.
+            if (farFieldFaces(u)) { wM2 = farFieldGhost(wM1, -1.0f, u); }
             from.x = -1;
         }
     } else {
@@ -1931,6 +1938,63 @@ kernel void sweepTiles(device Cell *src [[buffer(0)]],
     }
 }
 
+// The share of its density and pressure a cell keeps, at least, when the cut cells' redistribution
+// gives it a difference: a difference that would take more (a strong expansion over a small cut
+// cell beside a charge can ask a cell for more than it holds; docs/terrain.md, "A cell above a hot
+// sliver") is given only in part, and the rest goes on up the column.
+constant float cutKeepShare = 0.1f;
+
+// Cell `c`'s density and pressure (the pressure from its own state, as the redistribution works it
+// out), for `cutChangeKeeps`.
+static inline float2 cutCellDensityPressure(Cell c, constant SolverUniforms &u) {
+    float rho = max(c.rho, u.densityFloor);
+    float3 momentum = float3(c.mx, c.my, c.mz);
+    float kinetic = 0.5f * dot(momentum, momentum) / rho;
+    return float2(rho, gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma));
+}
+
+// Whether cell `c`, of density and pressure `before`, given `change` (mass, momentum) and
+// `changeEnergy` for its whole volume over its air share `alpha`, keeps `cutKeepShare` of its
+// density and pressure and stays above the floors, worked out as the redistribution applies a
+// change.
+static inline bool cutChangeKeeps(Cell c, float2 before, float4 change, float changeEnergy, float alpha,
+                                  constant SolverUniforms &u) {
+    float rho = c.rho + change.x / alpha;
+    if (!(rho > max(u.densityFloor, cutKeepShare * before.x))) {
+        return false;
+    }
+    float3 momentum = float3(c.mx + change.y / alpha, c.my + change.z / alpha, c.mz + change.w / alpha);
+    float energy = c.energy + changeEnergy / alpha;
+    float kinetic = 0.5f * dot(momentum, momentum) / rho;
+    return gasPressure(rho, energy - kinetic, u.airModel, u.gamma) >= max(u.pressureFloor, cutKeepShare * before.y);
+}
+
+// The share of `change` the cut cells' redistribution gives cell `c`: all of it (1) where the cell
+// keeps `cutKeepShare` of its density and pressure, as always; otherwise the most that leaves it
+// that, found by bisection, so that the rest goes on up its column to cells that can take it,
+// rather than draining this one and the pressure floor adding energy.
+static inline float positiveCutShare(Cell c, float4 change, float4 changeEnergy, float alpha,
+                                     constant SolverUniforms &u) {
+    float2 before = cutCellDensityPressure(c, u);
+    if (cutChangeKeeps(c, before, change, changeEnergy.z, alpha, u)) {
+        return 1.0f;
+    }
+    if (!(before.x > u.densityFloor && before.y >= u.pressureFloor)) {
+        return 1.0f;
+    }
+    float low = 0.0f;
+    float high = 1.0f;
+    for (int n = 0; n < 20; ++n) {
+        float middle = 0.5f * (low + high);
+        if (cutChangeKeeps(c, before, middle * change, middle * changeEnergy.z, alpha, u)) {
+            low = middle;
+        } else {
+            high = middle;
+        }
+    }
+    return low;
+}
+
 // After a step's sweeps, with cut cells: each cut cell's difference between its conservative
 // update and the whole cell's it was given (its fuel and oxygen's too) is shared out up its
 // column: the cell keeps its share alpha of it, and the rest goes to the first cell above it at
@@ -1979,8 +2043,14 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
     int side = patchSize * r;
     // Adds `change` (mass, momentum) and `changeEnergy` (fuel, oxygen, energy), for its whole volume,
     // to the air of cell k, holding `alpha` of it: to its own state, or under a patch to each of its
-    // fine cells of air.
-    auto apply = [&](int k, float4 change, float4 changeEnergy, float alpha) {
+    // fine cells of air. Unless `whole`, a cell of its own takes no more than leaves it positive
+    // (`positiveCutShare`), and what it could not take is returned, for the cells above.
+    struct Left {
+        float4 change;
+        float4 changeEnergy;
+    };
+    auto apply = [&](int k, float4 change, float4 changeEnergy, float alpha, bool whole) -> Left {
+        Left left = {float4(0.0f), float4(0.0f)};
         int3 cell = int3(xy, k);
         int index = base + stride * k;
         int holder = refined ? patchAt(cell, patchOfTile, u) : -1;
@@ -2013,9 +2083,16 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
                 float ambient = airGravity ? gravityAmbientOf(fineGravityTable, f.z, u) : u.ambientPressure;
                 recordCell(maxSpeed, momentum, c.rho, pressure, u, ambient);
             }
-            return;
+            return left;
         }
         Cell c = state[index];
+        float share = whole ? 1.0f : positiveCutShare(c, change, changeEnergy, alpha, u);
+        if (share < 1.0f) {
+            left.change = change - share * change;
+            left.changeEnergy = changeEnergy - share * changeEnergy;
+            change *= share;
+            changeEnergy *= share;
+        }
         c.rho += change.x / alpha;
         c.mx += change.y / alpha;
         c.my += change.z / alpha;
@@ -2043,6 +2120,7 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
         if (u.tileNx != 0) {
             wakeTilesAround(cell, tileFlags, tileWoken, u);
         }
+        return left;
     };
     // What each cell above the first gets from those below it, carried up the column.
     float4 passed = float4(0.0f);
@@ -2083,7 +2161,7 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
             passed = float4(0.0f);
             passedEnergy = float4(0.0f);
             if (lastK >= 0 && (any(change != 0.0f) || any(changeEnergy != 0.0f))) {
-                apply(lastK, change, changeEnergy, lastAlpha);
+                apply(lastK, change, changeEnergy, lastAlpha, true);
             }
             continue;
         }
@@ -2092,7 +2170,24 @@ kernel void redistributeCutDefects(device Cell *state [[buffer(0)]],
         if (all(change == 0.0f) && all(changeEnergy == 0.0f)) {
             continue;
         }
-        apply(k, change, changeEnergy, alpha);
+        Left left = apply(k, change, changeEnergy, alpha, false);
+        passed += left.change;
+        passedEnergy += left.changeEnergy;
+    }
+    // What a cell could not take goes on up, through whole cells, to the first that can; the last
+    // cell of air, under a block or at the top, takes whatever is left.
+    for (int k = last + 1; k <= top && (any(passed != 0.0f) || any(passedEnergy != 0.0f)); ++k) {
+        if (mask[base + stride * k] != 0) {
+            break;
+        }
+        lastK = k;
+        lastAlpha = 1.0f;
+        Left left = apply(k, passed, passedEnergy, 1.0f, k == top);
+        passed = left.change;
+        passedEnergy = left.changeEnergy;
+    }
+    if (lastK >= 0 && (any(passed != 0.0f) || any(passedEnergy != 0.0f))) {
+        apply(lastK, passed, passedEnergy, lastAlpha, true);
     }
 }
 

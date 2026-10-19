@@ -28,8 +28,8 @@ theory. Against measurements, eleven structural tests give a mixed picture: bend
 within 2%), impacts on beams with stirrups within a quarter on one mesh but not on a
 finer one, shear 11–15% too strong on fine meshes, and full-scale slabs close in and an internal
 explosion's roof far too stiff, a quarter to a half of the measured deflection. The defaults were
-chosen with these tests in view; two tests since run blind both erred on the unsafe side, a slab
-never punching and two slabs under a blast collapsing that the model left standing (see the
+chosen with these tests in view; of three tests since run blind, two erred on the unsafe side, a
+slab never punching and two slabs under a blast collapsing that the model left standing (see the
 [independent review](validation-review.md)). It is not validated for engineering decisions, and
 nothing in it should be used to judge the safety of a real structure.
 
@@ -73,9 +73,8 @@ More evidence is worth more than more features.
   nothing converges with the measurement inside the change; failures flip with mesh and step.
   A strain-rate window of 100 µs, the default since 12 October 2026, removes the step dependence,
   not the mesh dependence of failure ([what moved](validation.md#convergence-on-todays-defaults)).
-- **Now:** blind test 1, Hrynyk's slabs struck by a falling weight, predicted on frozen defaults
-  ([blind tests](blind-tests.md#test-1-hrynyks-slabs-struck-by-a-falling-weight)).
-- **Done:** blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`,
+- **Done:** blind test 1, Hrynyk's slabs struck by a falling weight, scored *between*
+  ([validation](validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight)); blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`,
   scored *worse* ([validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge));
   test 3, Reynolds's high-strength slabs in the contest's blast load simulator, frozen at the
   released v0.3.0 (`b524a9d`), scored *worse* on one broken slab, the rest within the band
@@ -164,14 +163,13 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 - **Done:** every envelope component judged on its equivalent uniform load, its faces weighted by
   its plastic mechanism's shape ([equivalent uniform
   loads](building-envelopes.md#envelope-components-and-their-pressure-histories)).
-- **Next, for sheeting:**
+- **Next, for sheeting** (the first two scoped in [what is left](profiled-sheeting.md#what-is-left-scoped)):
   - what is left after the blast (buckled shapes snapping through);
   - buckling earlier than plate theory says;
   - cladding torn off a purlin that deforms, which ADBLAST's deliverables would judge
     ([data survey 3i](data-survey.md#3i-profiled-cladding-on-its-fixings)).
-- **Planned, new materials** ([new materials](new-materials.md)): timber, solid and engineered
-  (glulam, CLT, plywood), orthotropic with failure along and across the grain, rate effects and
-  connections, its elastic part adopted from ContinuumKit's `OrthotropicPlaneStress`.
+- **Done, new materials** ([new materials](new-materials.md)): timber, solid and engineered
+  (glulam, CLT), orthotropic with failure along and across the grain, from ContinuumKit.
 - **Blocked:** a footing or connection under fast loading ([data survey 3b](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
@@ -237,13 +235,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
   ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
   at kilometre scale.
-- **Next:** a cheaper damage model for envelope buildings. Its single-degree-of-freedom form is
-  built and judged against the detailed buildings, with the cost of not venting
-  ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), and since
-  16 October in the app (glass and concrete as approximations, brick and the inside illustrative).
-- **Now:** two sample buildings being built, a precast large-panel block and a process-plant
-  control room.
-- **Planned, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
+- **Done:** a cheaper damage model for envelope buildings
+  ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), in the app;
+  the [large-panel flats](large-panel-flats.md) and the [process plant](process-plant-explosion.md).
+- **Built, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
   - UK terraced brick houses: built ([the terraced houses](shell-model.md#the-terraced-houses)):
     cavity walls tied across, timber joists seated in pockets, roof tiles thrown as debris.
     Judged against wartime bomb damage
@@ -292,8 +287,7 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   timber, brick, blockwork, earth), the damage colouring and rubble apart from each to every common
   colour deficiency (`MaterialAppearance`).
 - **Next:** the fixes seen on a real screen, Full Keyboard Access and VoiceOver's speech
-  ([remaining checks](native-interface-review.md#remaining-checks)); exposure-only buildings drawn by
-  their construction.
+  ([remaining checks](native-interface-review.md#remaining-checks)).
 
 ## Horizons
 
@@ -312,10 +306,16 @@ most are about reaching an answer for less, with the full solver kept as the ref
    The first step is a surrogate for envelope damage across a district, checked against Beirut's
    runs: done for glass, which it gets right side by side for three in four of Beirut's building
    sides in half a minute, not for walls and roofs ([first look](surrogate-first-look.md)).
-3. **City scale in minutes.** Gas dynamics only near the charge and in the streets that matter,
-   and further out the blast carried by ray-traced shielding and channelling (the thermal model
-   already uses Metal ray tracing) with scaled blast laws, handed over at a boundary. The first
-   step is a ray-traced far field set against Beirut's full run beyond 1 km.
+3. **City scale in minutes** (first step done, headless). Gas dynamics only near the charge and
+   in the streets that matter, and further out the blast carried by ray-traced shielding and
+   channelling (the thermal model already uses Metal ray tracing) with scaled blast laws, handed
+   over at a boundary. The first step, a far field set against Beirut's full run beyond 1 km, is
+   done without ray tracing: `scenebench district-hybrid` runs the air to a hand-over radius and
+   carries the façades' loads beyond it on item 2's surrogate, matched to the near run, so its
+   shielding is the surrogate's and channelling is not yet in it. Handing over at 1 km, Beirut at
+   0.5 kt takes about 7 minutes against the full run's 34, and the share of building sides with
+   some glass broken comes within 0.03 of the full run's to 1.5 km at every yield; it is not yet
+   in the app ([a city in minutes](hybrid-far-field.md)).
 4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
    from the scatter in yield, materials and rounding, cheap once item 2 exists.
 5. **From damage back to the explosion** (first step done). Infer yield, place and height from

@@ -99,6 +99,8 @@ struct ShellUniforms {
     uint hingeRecords;
     uint hingeStarts;
     uint hingeEntries;
+    uint legendrePoints;    // with timber shells beside others: the others' points, then the timber's
+    uint timberPoints;      // (`thicknessRule`); 0: one rule for every shell
 };
 
 
@@ -1024,7 +1026,16 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
     float3 directorForce[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
     float tieForce[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     float applied = tablePressure(loadTable, u.loadCount, u.loadTime);
-    uint n = u.layers;
+    uint n = u.layers;  // the layers stored at each in-plane point
+    // The element's own points through its thickness: timber's in its lamellae, Gauss-Legendre's in
+    // any other material (`thicknessRule`).
+    uint points = n;
+    constant float2 *rule = thickness;
+    if (u.timberPoints != 0u) {
+        bool timberShell = m.materialModel == 2;
+        points = timberShell ? u.timberPoints : u.legendrePoints;
+        rule = timberShell ? thickness + u.legendrePoints : thickness;
+    }
     float areaWeight = 0.25f * a * b;
     bool remove = false;
     bool punching = false;
@@ -1086,7 +1097,10 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                 continue;
             }
             for (uint j = 0; j < 2; ++j) {
-                if (layout[1 + j] > 0.0f && fabs(bars[((e * 4 + g) * u.barSlots + s) * 2 + j].plastic) < 1e8f) {
+                // A laminated pane's interlayer keeps its one state in the first bar's record, for
+                // both axes: once it has torn, it crosses neither.
+                uint record = m.fragments != 0u ? 0u : j;
+                if (layout[1 + j] > 0.0f && fabs(bars[((e * 4 + g) * u.barSlots + s) * 2 + record].plastic) < 1e8f) {
                     crossing[j] += layout[1 + j] / t;
                 }
             }
@@ -1097,12 +1111,12 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
         bool openEverywhere = true;
         float rateSum = 0.0f;
         float2 timberShear = m.materialModel == 2
-            ? timberSectionShear(m, layers, (e * 4 + g) * n, n, thickness, t)
+            ? timberSectionShear(m, layers, (e * 4 + g) * n, points, rule, t)
             : float2(0.0f);
-        for (uint l = 0; l < n; ++l) {
+        for (uint l = 0; l < points; ++l) {
             // Gauss-Legendre points through the thickness, exact for elastic bending.
-            float zeta = thickness[l].x;
-            float layerWeight = areaWeight * 0.5f * t * thickness[l].y;
+            float zeta = rule[l].x;
+            float layerWeight = areaWeight * 0.5f * t * rule[l].y;
             float3 h1 = h1m + zeta * h1b;
             float3 h2 = h2m + zeta * h2b;
             float3 f1 = e1 + h1;
@@ -1253,7 +1267,7 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                 float root;
                 float yield;
                 device ShellBar &bar = bars[((e * 4 + g) * u.barSlots + s) * 2 + j];
-                if (!shellBar(bar, green, rateSum / float(n), m, stress, root, yield, spread)) {
+                if (!shellBar(bar, green, rateSum / float(points), m, stress, root, yield, spread)) {
                     continue;
                 }
                 barMean[s * 2 + j] += 0.25f * spread.x;
@@ -1289,13 +1303,13 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                 sum += ringShearBefore[ringMember[r]];
             }
             float average = sum / float(max(last - first, 1u));
-            punching = average > punchStrength[e] * tensionIncrease(rateSum / float(n), m);
+            punching = average > punchStrength[e] * tensionIncrease(rateSum / float(points), m);
         }
         // One-way shear: the mean shear through the thickness across each axis against the
         // section's strength there, with the strain at mid-depth along that axis.
         float4 member = section[2 * e];
         if (member.x > 0.0f && m.materialModel == 1) {
-            float rate = tensionIncrease(rateSum / float(n), m);
+            float rate = tensionIncrease(rateSum / float(points), m);
             for (uint j = 0; j < 2; ++j) {
                 // Per unit width: the moment, shear and normal force, and the bars on the side the
                 // moment puts in tension (the side whose position has the moment's sign).

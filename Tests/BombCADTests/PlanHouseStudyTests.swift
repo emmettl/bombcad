@@ -30,13 +30,37 @@ struct PlanHouseStudyTests {
         "The plan's house imports with its walls' materials and stands, then takes the blast",
         .enabled(if: output != nil))
     func study() async throws {
-        let output = try #require(Self.output)
         let prepared = try await IFCImporter.prepare(Data(contentsOf: fixture()))
         let source = try await IFCImporter.convert(prepared, includedIDs: prepared.defaultIDs)
+        try await run(source, name: "house.ifc", report: "plan-house-20kg")
+    }
+
+    /// The same house read from its DXF plan in BombCAD (`FloorPlan`), without FreeCAD, under the
+    /// same charge: the two routes compared.
+    @Test("The house read from its DXF plan takes the same blast", .enabled(if: output != nil))
+    func studyFromPlan() async throws {
+        let url = fixture().deletingLastPathComponent().appendingPathComponent("house-plan.dxf")
+        let drawing = try DXFDrawing(data: Data(contentsOf: url))
+        var options = FloorPlan.Options()
+        options.metresPerUnit = try #require(drawing.metresPerUnit)
+        options.roles = [
+            "WALL-EXT": .wall(.cavityBrickBlock), "WALL-INT": .wall(.block100), "DOOR": .door,
+            "WINDOW-GF": .window, "WINDOW-FF": .window,
+        ]
+        options.layerStoreys = ["DOOR": 0, "WINDOW-GF": 0, "WINDOW-FF": 1]
+        let plan = FloorPlan.analyse(drawing, options: options)
+        let source = try ImportedMesh(
+            buildingElements: FloorPlan.buildingElements(plan, options: options), notes: plan.notes,
+            origin: SIMD3(plan.bounds.min.x, plan.bounds.min.y, 0))
+        try await run(source, name: "house-plan.dxf", report: "plan-house-dxf-20kg")
+    }
+
+    func run(_ source: ImportedMesh, name: String, report reportName: String) async throws {
+        let output = try #require(Self.output)
         let preview = try source.transformed(scale: 1, yUp: false, corner: Self.corner)
             .preview(cellSize: Self.cellSize, domain: Self.domain)
         var model = ImportedModel(
-            name: "house.ifc", source: source, scale: 1, yUp: false, corner: Self.corner,
+            name: name, source: source, scale: 1, yUp: false, corner: Self.corner,
             behavior: .deformable,
             preview: preview)
         model.structuralOptions = IFCStructure.Options(elementSize: 0.25)
@@ -94,7 +118,7 @@ struct PlanHouseStudyTests {
         let summary = shells.summary()
 
         var text =
-            "The two-storey house from Samples/Plans (house.ifc) at \(Self.corner), \(Self.charge.mass) kg of TNT at "
+            "The two-storey house from Samples/Plans (\(name)) at \(Self.corner), \(Self.charge.mass) kg of TNT at "
             + "\(Self.charge.position), cells of \(Self.cellSize) m, \(Self.duration) s, \(String(format: "%.0f", Double(elapsed.components.seconds))) s to run\n\n"
         text += "Imported: \(report.members.count) elements, \(report.connections.count) connections\n"
         for member in report.members {
@@ -109,7 +133,7 @@ struct PlanHouseStudyTests {
             text += String(format: "  %@: peak %.1f mm\n", wall.0, value * 1000)
         }
         try FileManager.default.createDirectory(atPath: output, withIntermediateDirectories: true)
-        try text.write(toFile: output + "/plan-house-20kg.txt", atomically: true, encoding: .utf8)
+        try text.write(toFile: output + "/\(reportName).txt", atomically: true, encoding: .utf8)
         print(text)
         #expect(peaks.allSatisfy { $0.isFinite })
     }

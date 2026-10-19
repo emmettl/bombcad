@@ -33,7 +33,8 @@ import), `Shaders/Refine.metal` (`refineFill`, the fine cells' outline) and, for
   one-dimensional start treats the terrain as an obstacle it must not reach.
 - **Persistence.** Heights are saved as little-endian 32-bit floats in base64. A scene without
   terrain encodes exactly as before (saved-run fingerprints are unchanged). A project with
-  terrain is scene encoding 8, which older readers refuse rather than open as flat ground.
+  terrain is scene encoding 8 or later (9 with a structural IFC import, 10 with an envelope's
+  glass), which older readers refuse rather than open as flat ground.
 - **Bit-identical when flat.** A flat heightfield gives the same `blastbench digest` hashes as
   no terrain: uniform, refined once and refined twice (`blastbench digest --terrain flat`).
 
@@ -251,7 +252,9 @@ history) over flat ground's on the same cells:
 blastbench scene, or Run ▸ Terrain ▸ Cut cells along its slopes off in the app, for whole cells)
 cuts the ground's surface through the cells instead of rounding it to whole ones, so a slope is
 a slope. Only the terrain is cut; blocks, structures and moving bodies keep their whole cells.
-The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell` and
+File ▸ New District's refined air lays the ground as a staircase for now: cut through the cells,
+a second refined level rang ahead of the shock over Beirut (see [A district from a
+map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell` and
 `redistributeCutDefects` in `Shaders/Solver.metal`, and for refined air `cutGeometryAt`,
 `fineSweepCell`, `refineRedistributeCut` and `refineCutPassUp` in `Shaders/Refine.metal`.
 
@@ -318,9 +321,10 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   footing does not open and refill it, even if the structure later slides away or falls (it held
   less than half a cell of air). The pass runs only where a structure stands on the terrain, so
   other runs are as they were to the bit. Refined air does not apply it to its own cells yet, so
-  for now refined runs with a structure standing on the terrain (a solid's base within half a
-  metre of the ground above the floor under it, `structureStandsOnTerrain`) keep the terrain as a
-  staircase (`cutsTerrain(of:)`); the same rule in `refineRemaskPrepare` is next.
+  for now refined runs with a structure standing on the terrain (a solid's base below, or within
+  half a metre, an element or an air cell, whichever is most, of the highest ground under its
+  footprint, where that ground is above the floor, `structureStandsOnTerrain`) keep the terrain as
+  a staircase (`cutsTerrain(of:)`); the same rule in `refineRemaskPrepare` is next.
   The two levels can still disagree. A fine sliver whose cell above is air at its own level but
   lies under a block in its parent's cells passes up into a solid cell. That happens where the
   second level's pool is full and the patch above is not placed. What such a column carries up
@@ -351,7 +355,7 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   Each ghost beyond a wall is now built from the near ghost as it stands, by its wall's own rule,
   on every level (since 19 October 2026); the box keeps its gas to round-off
   (`TerrainCutCellTests.blockInSlopeConserves`, 1.6e-5 of it gained before).
-- **A cell above a hot sliver can floor** (traced 19 October 2026, left as it is). Refined once
+- **A cell above a hot sliver could floor** (traced and fixed 19 October 2026). Refined once
   over the 20° slope (the open ground's 100 kg on the recommended air), a fine cell 0.96 air whose
   lower face is half open, over a sliver a twentieth air full of hot products, has its internal
   energy taken below nothing once a step from step 26 to 40. It happens in the fine
@@ -364,9 +368,22 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   400 steps (0.08 s) the run floors 44 times, all in that cell and its mirror, and the floor adds
   3.6 kJ: 1e-5 of the charge's energy, in cells far below ambient pressure, where no peak or
   impulse is read. Gravity had made such a floored cell a NaN (fixed in `reconstructGravity`).
-  If a scene ever shows more, the remedy is a redistribution that gives a cell no more than its
-  internal energy can take, carrying the rest on up the column: conservative, nothing floored,
-  and unchanged to the bit where nothing floors.
+  Unrefined, the same strong expansion over small cut cells drained coarse cells 2 m from the
+  charge (the open slope at steps 34–42, the street over a hill at 28–32), in the coarse
+  redistribution; refined twice, 114 cell updates on the slope in 60 steps.
+  Now both redistributions (coarse and fine) give a cell no more of a difference than leaves it a
+  tenth of its density and pressure (`positiveCutShare`, the share found by bisection), and carry
+  the rest on up the column, through whole cells if need be, to cells that can take it; the last
+  cell of air under a block or at the top takes what is left, as before. It is conservative and
+  nothing is drained: over 60 steps no cell of the open slope (unrefined, refined once or twice,
+  with gravity or without) or the street over a hill falls below 0.9 kJ/kg, where before cells
+  reached the floor, and in a closed box with no afterburning the gas's energy holds to the
+  joule where the floors had added 1.2 kJ (unrefined), 3.6 kJ (refined once) and 5.4 kJ (twice).
+  The impulse 2–12 m from the charge moves by 0.05% at most. A cell whose difference leaves it a
+  tenth takes it as it always did: of `blastbench digest`'s 112 cases (`digests2.sh` and gravity
+  without terrain) 84 are unchanged to the bit, and the 28 that move are each a charge over
+  terrain whose redistribution asked some cell for more than nine tenths of its pressure (some to
+  the floor, as on the slope; some short of it, as on the hill, whose impulse moves by 1e-5).
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut
@@ -614,7 +631,7 @@ surface cross a cell a metre. The GPU and the CPU agree on every receiver.
    and drawn after it, see [cratering](cratering.md)), no soil that gives or absorbs (soft ground
    takes a share of a charge's energy before the run, the same place), no vegetation or
    roughness besides the staircase's, no snow or water. The floor under the terrain still reflects.
-3. **Refinement near the surface.** Placing a patch gains still air on one side of the surface and
+3. **Refinement near the surface, on the staircase.** Placing a patch gains still air on one side of the surface and
    gives up gas on the other (0.08% of a closed box's gas in 120 steps over a hill). Patches along
    the surface are kept once placed. A refined coarse cell records the largest impulse of its fine
    cells, and next to a terrain some of those sit in the staircase's corners: the painted impulse

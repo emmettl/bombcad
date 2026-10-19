@@ -51,13 +51,13 @@ struct NearbyPairingTests {
         let codes = Locked<[String]>([])
         async let serverSide = Result {
             try await NearbyPairing.answer(over: server, me: studio) { _, code in
-                codes.value.append(code)
+                codes.update { $0.append(code) }
                 return allow
             }
         }
         let clientSide = await Result {
             try await NearbyPairing.pair(over: client, me: laptop) { _, code in
-                codes.value.append(code)
+                codes.update { $0.append(code) }
                 return confirm
             }
         }
@@ -107,13 +107,13 @@ struct NearbyPairingTests {
         let codes = Locked<[String: String]>([:])
         async let laptopSide = Result {
             try await NearbyPairing.pair(over: laptopEnd, me: laptop) { _, code in
-                codes.value["laptop"] = code
+                codes.update { $0["laptop"] = code }
                 return codes.value["laptop"] == codes.value["studio"]
             }
         }
         async let studioSide = Result {
             try await NearbyPairing.answer(over: studioEnd, me: studio) { _, code in
-                codes.value["studio"] = code
+                codes.update { $0["studio"] = code }
                 return true
             }
         }
@@ -165,7 +165,9 @@ struct NearbyWorkerTests {
         return document
     }
 
-    /// The tests wait for events, not for a clock, within the suite's hang limit.
+    /// Finding the server waits on no clock: the resolver below answers at once. The connections
+    /// themselves fail in their own time if they stall (`NearbyWorkers.connectLimit`), and each
+    /// test has a network limit well short of the suite's hang limit.
     private let discovery = Duration.seconds(600)
 
     /// The server found where it listens on this Mac, without Bonjour, whose answers a test's
@@ -199,7 +201,7 @@ struct NearbyWorkerTests {
         return (server, store, shown)
     }
 
-    @Test("A Mac paired over the network runs a case to the same answer")
+    @Test("A Mac paired over the network runs a case to the same answer", .networkLimit)
     func session() async throws {
         let (server, serverStore, shown) = try server()
         defer { server.stop() }
@@ -214,7 +216,7 @@ struct NearbyWorkerTests {
         }
         #expect(pairing.peer == serverStore.me && serverStore.pairing(clientStore.me.id)?.key == pairing.key)
 
-        // Once the server has restarted its sessions with the new key.
+        // The server restarted its sessions with the new key before it confirmed.
         let host = NearbyWorkers.host(serverStore.me.name)
         let worker = try await NearbyWorkers.connect(
             host: host, store: clientStore, discovery: discovery, resolve: resolver(server, serverStore))
@@ -231,7 +233,7 @@ struct NearbyWorkerTests {
         await localServer.value
     }
 
-    @Test("An unpaired Mac, or one with the wrong key, is refused; a busy one says why")
+    @Test("An unpaired Mac, or one with the wrong key, is refused; a busy one says why", .networkLimit)
     func refusals() async throws {
         let (server, serverStore, _) = try server()
         defer { server.stop() }
@@ -272,5 +274,62 @@ struct NearbyWorkerTests {
             host: host, store: friend, discovery: discovery, resolve: resolver(server, serverStore))
         #expect(worker.hello?.protocolVersion == SweepWorkerHello.protocolVersion)
         worker.close()
+    }
+
+    @Test("A handshake or a message that stalls fails in time instead of waiting for ever", .networkLimit)
+    func stalls() async throws {
+        // Takes connections and never says a word.
+        let listener = try NWListener(using: NearbyWorkers.pairingParameters())
+        let held = Locked<[NWConnection]>([])
+        listener.newConnectionHandler = { connection in
+            held.update { $0.append(connection) }
+            connection.start(queue: .main)
+        }
+        let port = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<NWEndpoint.Port, Error>) in
+            let once = OnceFlag()
+            listener.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    if let port = listener.port, once.claim() { continuation.resume(returning: port) }
+                case .failed(let error): if once.claim() { continuation.resume(throwing: error) }
+                default: break
+                }
+            }
+            listener.start(queue: .main)
+        }
+        defer {
+            listener.cancel()
+            for connection in held.value { connection.cancel() }
+        }
+        let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: port)
+        let limit = Duration.seconds(1)
+
+        /// Whether `body` failed for lack of an answer, and soon after `limit`.
+        func timesOut(_ body: () async throws -> Void) async -> Bool {
+            let start = ContinuousClock.now
+            do {
+                try await body()
+                return false
+            } catch NearbyError.timedOut {
+                return ContinuousClock.now - start < limit * 20
+            } catch {
+                Issue.record("Failed otherwise: \(error)")
+                return false
+            }
+        }
+
+        // TCP connects, but the TLS handshake never hears back.
+        let tls = ConnectionChannel(
+            NWConnection(
+                to: endpoint,
+                using: NearbyWorkers.sessionParameters(keys: [("nobody", Data(repeating: 7, count: 32))])),
+            peer: "Silent")
+        #expect(await timesOut { try await tls.start(within: limit) })
+        // Connected, then nothing.
+        let plain = ConnectionChannel(NWConnection(to: endpoint, using: NearbyWorkers.pairingParameters()))
+        defer { plain.connection.cancel() }
+        try await plain.start()
+        #expect(await timesOut { _ = try await plain.receiveFrame(within: limit) })
     }
 }

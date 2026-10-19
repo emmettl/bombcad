@@ -15,6 +15,11 @@ import Testing
         for option in ModelOption.allCases { #expect(text.contains("option \(option.rawValue) ")) }
         for figure in ValidationTables.figures { #expect(text.contains("\"\(figure.id)\"")) }
         for preset in ScenarioPreset.allCases { #expect(text.contains("scene \(preset.rawValue) ")) }
+        // And the estimates' standing, worded from the figures.
+        for line in FacadeLoadSurrogate.standing + HybridFarField.standing + ChargeInference.standing {
+            #expect(text.contains(StandingFingerprint.canonical(line)))
+        }
+        #expect(ChargeInference.standing[0].contains(ValidationTables.figure("inferredBeirut").ratio))
         // A standing derived now is judged by it.
         let scene = SceneStanding(
             StandingInputs(scenario: ScenarioPreset.streetCanyon.scenario, cellSize: 0.25))
