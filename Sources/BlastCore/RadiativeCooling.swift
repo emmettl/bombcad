@@ -261,6 +261,12 @@ final class RadiativeCoolingStage {
         Self.single(encoder)
     }
 
+    /// Starts the time since the loss was last taken afresh, for a run started again.
+    func restartClock() {
+        elapsed.contents().storeBytes(of: 0, as: Float.self)
+        due.contents().storeBytes(of: 0, as: Float.self)
+    }
+
     /// What the completed batch's `rows` steps radiated, J, added up in order.
     func collect(rows: Int) -> Double {
         let values = radiated.contents().bindMemory(to: Float.self, capacity: BlastSolver.maxStepsPerBatch)
@@ -286,6 +292,9 @@ extension BlastSolver {
         if let stage = radiativeCoolingStage, stage.settings == settings,
             stage.airModel == configuration.airModel, stage.gamma == configuration.gamma
         {
+            // Kept, its clock is not: a run started again would otherwise take its first loss for
+            // the time the last run left since its last taking.
+            stage.restartClock()
             return
         }
         radiativeCoolingStage = try? RadiativeCoolingStage(

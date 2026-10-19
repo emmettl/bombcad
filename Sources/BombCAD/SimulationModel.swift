@@ -2502,8 +2502,9 @@ final class SimulationModel {
             ground: settings.ground == .rigid ? nil : settings.ground,
             outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
             mappedStart: settings.mappedStart, refinementCeiling: settings.refinementCeiling,
-            radiativeCooling: settings.radiativeCooling
-                ? RadiativeCooling(spec: thermalSpec ?? ThermalSpec()) : nil)
+            // The gas's own radiation, whatever the thermal overlay reckons: the overlay changes
+            // nothing in the air.
+            radiativeCooling: settings.radiativeCooling ? RadiativeCooling() : nil)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
         // A mapped start begins no later than halfway through the run, so that the grid has the rest.
         solver.mappedStartLatest = duration / 2

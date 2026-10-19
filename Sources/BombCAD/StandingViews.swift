@@ -49,7 +49,7 @@ extension ProjectRunSettings {
             groundStiffness: groundStiffness, ground: ground,
             outlineByOverlap: countsByOverlap(over: scenario), mappedStart: mappedStart == true,
             refinementCeiling: refinementCeiling,
-            radiativeCooling: cools ? RadiativeCooling(spec: thermal ?? ThermalSpec()) : nil)
+            radiativeCooling: cools ? RadiativeCooling() : nil)
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,
