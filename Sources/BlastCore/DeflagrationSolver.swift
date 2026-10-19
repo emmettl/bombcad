@@ -359,7 +359,7 @@ extension BlastSolver {
         let volume = Double(grid.cellSize) * Double(grid.cellSize) * Double(grid.cellSize)
         var unburnt = 0.0
         var burnt = 0.0
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         if stage.deflagration != nil {
             let densities = withState { cells in cells.map(\.density) }
             readSpecies { species in
@@ -479,7 +479,7 @@ extension BlastSolver {
         let region = deflagration.region
         let samples = 4
         var total = 0.0
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         let low = simd_max(region.min / dx - 1, .zero)
         let high = region.max / dx + 1
         withState { cells in

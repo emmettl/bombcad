@@ -2555,8 +2555,10 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
     // A cell whose density has fallen to nothing reads a wave speed that is NaN, or negative from
     // a negative density, and either outranks every real speed in the bitwise maximum; the step
     // would then be far longer than the air allows (a refined district once took steps of 0.6 s
-    // where 3 ms were right). The batch stops there instead, unstable.
-    if (!(fastest >= 0.0f) || isinf(fastest)) {
+    // where 3 ms were right). The batch stops there instead, unstable. Tested on the bits, as fast
+    // math may fold a test for NaN or infinity away: NaN, infinity and every negative lie at or
+    // above infinity's.
+    if (as_type<uint>(fastest) >= 0x7F800000u) {
         control.stopped = 3;
         control.maxOverpressure = NAN;
     }

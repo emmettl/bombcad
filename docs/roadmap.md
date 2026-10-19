@@ -286,8 +286,14 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   comparison ([run comparison](run-comparison.md)); an offscreen review of the panels in both
   appearances ([review log](native-interface-review.md#review-log)), and of every sidebar section and
   editor at the sidebar's width, with six layout fixes; release 0.2.0.
-- **Next:** keyboard focus, VoiceOver and the window at its minimum on a real screen, which offscreen
-  tests cannot reach ([remaining checks](native-interface-review.md#remaining-checks)).
+- **Done, 18 October:** the real-screen review's labels and keyboard paths
+  ([on the real screen](native-interface-review.md#on-the-real-screen-labels-and-keyboard)); materials
+  that look like what they are in the viewport and snapshots (concrete, steel, sheeting, glass,
+  timber, brick, blockwork, earth), the damage colouring and rubble apart from each to every common
+  colour deficiency (`MaterialAppearance`).
+- **Next:** the fixes seen on a real screen, Full Keyboard Access and VoiceOver's speech
+  ([remaining checks](native-interface-review.md#remaining-checks)); exposure-only buildings drawn by
+  their construction.
 
 ## Horizons
 
@@ -304,7 +310,8 @@ most are about reaching an answer for less, with the full solver kept as the ref
    geometry and charge, or a small learned model of envelope response), giving an instant first
    look that real runs then refine where it matters, and inheriting the standing's error bands.
    The first step is a surrogate for envelope damage across a district, checked against Beirut's
-   runs.
+   runs: done for glass, which it gets right side by side for three in four of Beirut's building
+   sides in half a minute, not for walls and roofs ([first look](surrogate-first-look.md)).
 3. **City scale in minutes.** Gas dynamics only near the charge and in the streets that matter,
    and further out the blast carried by ray-traced shielding and channelling (the thermal model
    already uses Metal ray tracing) with scaled blast laws, handed over at a boundary. The first

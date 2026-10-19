@@ -95,6 +95,10 @@ struct ShellUniforms {
     var hingeRecords: UInt32 = 0
     var hingeStarts: UInt32 = 0
     var hingeEntries: UInt32 = 0
+    /// With timber shells beside others, the through-thickness rule holds the others' points first,
+    /// `legendrePoints` of them, then the timber's, `timberPoints` (`thicknessRule`); 0: one rule.
+    var legendrePoints: UInt32 = 0
+    var timberPoints: UInt32 = 0
 }
 
 /// Layout matches `BeamElement` in `Shell.metal`.
@@ -346,6 +350,9 @@ public final class ShellSolver {
     private static let maxLoadPoints = 256
     /// Gauss-Legendre points and weights through the thickness, from -1 to 1.
     private let thicknessRule: [SIMD2<Float>]
+    /// With timber shells beside others: how many of `thicknessRule`'s points are the others' and how
+    /// many the timber's, after them; (0, 0) for one rule for every shell.
+    private let rulePoints: (legendre: Int, timber: Int)
     private static let layerStride = 40
     private static let barStride = 36
 
@@ -370,8 +377,12 @@ public final class ShellSolver {
         beamCount = mesh.beams.count
         nodeCount = mesh.positions.count
         barSlots = max(1, mesh.elements.map(\.bars.count).max() ?? 0)
-        thicknessRule = Self.thicknessRule(layers: max(1, model.shellLayers), materials: materials)
-        layers = thicknessRule.count
+        let rules = Self.thicknessRules(
+            layers: max(1, model.shellLayers), materials: materials,
+            shellMaterials: Set(mesh.elements.map(\.material)))
+        thicknessRule = rules.rule
+        rulePoints = (rules.legendre, rules.timber)
+        layers = rules.timber == 0 ? rules.rule.count : max(rules.legendre, rules.timber)
 
         let library = try library ?? ShaderLibrary.make(device: device)
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
@@ -1777,6 +1788,24 @@ public final class ShellSolver {
         set { gpuSubsteps.target = newValue }
     }
 
+    /// The rules through the thickness of the shells, each element taking its own material's: the
+    /// `layers`-point Gauss-Legendre rule, and for timber shells the rule in its lamellae
+    /// (`thicknessRule(layers:materials:)`, over the timber the shells use). With no timber shell,
+    /// Gauss-Legendre's alone, and with only timber shells, the timber's alone, `legendre` and
+    /// `timber` both 0; with both, Gauss-Legendre's points, then the timber's, and their counts. A
+    /// beam's timber, or another body's, no longer changes a concrete or masonry shell's rule.
+    static func thicknessRules(layers: Int, materials: [StructureMaterial], shellMaterials: Set<Int>) -> (
+        rule: [SIMD2<Float>], legendre: Int, timber: Int
+    ) {
+        let used = shellMaterials.filter { materials.indices.contains($0) }.map { materials[$0] }
+        let timber = used.filter { $0.model == .timber }
+        guard !timber.isEmpty else { return (gaussLegendre(layers), 0, 0) }
+        let lamellae = thicknessRule(layers: layers, materials: timber)
+        guard timber.count < used.count else { return (lamellae, 0, 0) }
+        let legendre = gaussLegendre(layers)
+        return (legendre + lamellae, legendre.count, lamellae.count)
+    }
+
     /// Points and weights through the thickness: the `layers`-point Gauss-Legendre rule, or, with
     /// timber, Gauss-Lobatto points in each of its lamellae (in each piece between any material's
     /// lamellae): three in each of several, which is exact for their elastic bending where one rule
@@ -1875,6 +1904,8 @@ public final class ShellSolver {
         uniforms.elementSize = model.elementSize
         uniforms.nodeCount = UInt32(nodeCount)
         uniforms.layers = UInt32(layers)
+        uniforms.legendrePoints = UInt32(rulePoints.legendre)
+        uniforms.timberPoints = UInt32(rulePoints.timber)
         uniforms.barSlots = UInt32(barSlots)
         uniforms.criticalStep = criticalTimeStep
         uniforms.gravity = gravity

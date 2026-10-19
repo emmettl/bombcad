@@ -673,6 +673,14 @@ wrong way round: the Studio here takes no SSH logins. Built in October 2026 (`Ne
   bridge, Wi-Fi and two link-local interfaces. Left to itself, the connection took a link-local
   one, at Wi-Fi's speed; so the link is chosen, fastest first: the bridge, wired Ethernet with an
   IPv4 address, Wi-Fi, then the rest (`BOMBCAD_NEARBY_LINK` forces one, for measuring).
+- **Deadlines.** Network.framework waits for ever on a TLS handshake or a receive that the other
+  side never answers, so each step before a session starts has its own (19 October 2026):
+  connecting, handshake and all, 20 s; each message of pairing or of a session's first exchange,
+  30 s; a pairing code checked on the other Mac, 5 minutes. A step that runs out cancels the
+  connection and fails with `NearbyError.timedOut`, naming the Mac. Once the worker has greeted
+  (itself within 60 s, as over SSH), a run has no deadline. The sharing Mac keeps a new pairing,
+  and restarts its session listener with the key, before it sends its last pairing message, so a
+  Mac that connects the moment pairing ends never reaches the listener being replaced.
 
 **Measured, 17 October 2026,** the mini serving (`BombCAD serve` started over SSH, its pairings in
 a file), the Studio sending; the mini shared with CI (load averages 82 to 130), so whole runs say
@@ -708,6 +716,14 @@ side; a key revealed other than the one committed to; a Mac in the middle), and 
 listener on this Mac with a sweep case to the same answer, refusing an unpaired Mac, a wrong key
 and a busy gate. They find the listener at its port, not by Bonjour: a test process's Bonjour
 answers never came (Local Network privacy, it seems), and waiting for them hung the suite.
+Finding the port hung it too, now and then under load (19 October 2026): `NearbyServer.port(of:)`
+put its own state handler on the listener and then looked whether it was already ready, and a
+listener coming up just then fell between the two. Timed in a probe, that missed `.ready` on 5 of
+3,000 fresh listeners, each then waiting for ever at no CPU; a test run calls it about seven times.
+It now looks at the listener's state every 10 ms, for up to 20 s. A
+listener that takes connections and never speaks checks the deadlines (a stalled TLS handshake, a
+silent peer), and each network test has a one-minute limit (`.networkLimit`), so a stall fails
+in a minute instead of holding a check, and its GPU slot, for the ten-minute hang limit.
 
 ## Better first
 
