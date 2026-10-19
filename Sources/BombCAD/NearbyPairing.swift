@@ -263,7 +263,9 @@ final class FilePairingStore: PairingStore, @unchecked Sendable {
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(contents)
-        try data.write(to: url, options: [.atomic, .completeFileProtection])
+        // Not `.completeFileProtection`: a locked Mac refuses to create files in that class, and a
+        // worker is usually locked while it serves.
+        try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 }
