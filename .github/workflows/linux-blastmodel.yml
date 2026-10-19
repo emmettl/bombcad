@@ -14,9 +14,11 @@ on:
 permissions:
   contents: read
 
+# On main a run finishes and the newest push waits behind it (GitHub drops older waiting ones):
+# pushes come faster than the tests take, so cancelling there left main without a result.
 concurrency:
   group: linux-blastmodel-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
