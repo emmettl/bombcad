@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 // The large-scene comparison's numbers in ValidationTables, against docs/large-scenes.md. The

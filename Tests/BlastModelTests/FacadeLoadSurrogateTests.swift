@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 /// The façade load surrogate's first look (`FacadeLoadSurrogate`, docs/surrogate-first-look.md).

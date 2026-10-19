@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 @Suite("Imported model picking and placement", .timeLimit(.minutes(120)))
@@ -186,6 +185,7 @@ struct ImportInteractionTests {
             boxes: preview.boxes, scenario: restored, editingID: imported.id, cellSize: 0.25)
         #expect(
             Set(report.issues.map { $0.kind }) == Set([.overlap, .blockedCharge, .floating, .disconnected]))
-        try data.write(to: URL(fileURLWithPath: "/private/tmp/bombcad-placement-demo.json"))
+        try data.write(
+            to: FileManager.default.temporaryDirectory.appending(path: "bombcad-placement-demo.json"))
     }
 }

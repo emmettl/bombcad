@@ -19,7 +19,8 @@ struct EnvelopeVentingTests {
 
     /// The damage references' building: four walls 0.2 m thick and a roof over a 6 m square, with a
     /// window 1.5 by 1.25 m in the south wall glazed by `glass` (a pane in a cut opening), or with
-    /// the glass set in the wall without an opening.
+    /// the glass set in the wall without an opening. (BlastModelTests' FragmentPenetrationTests
+    /// keeps a copy, `glazedBuilding`.)
     func building(origin: SIMD3<Float>, cutOpening: Bool) throws -> BuildingEnvelope {
         let (x, y) = (origin.x, origin.y)
         let solids = [
