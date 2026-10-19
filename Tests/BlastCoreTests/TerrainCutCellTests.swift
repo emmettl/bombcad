@@ -380,7 +380,9 @@ struct TerrainCutCellTests {
         #expect(checked > 0)
     }
 
-    @Test("Beside a charge on a slope no cut cell is drained to the pressure floor, and a closed box keeps its energy")
+    @Test(
+        "Beside a charge on a slope no cut cell is drained to the pressure floor, and a closed box keeps its energy"
+    )
     func noCellDrained() throws {
         // The open ground's 100 kg on the recommended air over a 20° slope, closed and without
         // afterburning: from step 34 the sweep's strong expansion left cells whose redistributed
@@ -391,7 +393,8 @@ struct TerrainCutCellTests {
         var scenario = ScenarioPreset.openGround.scenario
         let domain = scenario.domainSize
         scenario.replaceTerrain(with: .slope(domain: domain, spacing: 1, foot: 0.3 * domain.x, angle: 20))
-        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
         let start = solver.totals()
         let mask = solver.maskBuffer.contents().bindMemory(to: UInt8.self, capacity: solver.grid.cellCount)
         var lowest = Float.infinity
@@ -401,7 +404,8 @@ struct TerrainCutCellTests {
                 for n in cells.indices where mask[n] == 0 {
                     let c = cells[n]
                     let kinetic =
-                        0.5 * (c.momentumX * c.momentumX + c.momentumY * c.momentumY + c.momentumZ * c.momentumZ)
+                        0.5
+                        * (c.momentumX * c.momentumX + c.momentumY * c.momentumY + c.momentumZ * c.momentumZ)
                         / c.density
                     lowest = min(lowest, (c.energy - kinetic) / c.density)
                 }
