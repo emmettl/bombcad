@@ -79,6 +79,34 @@ struct SettleTests {
             swinging > 0.5 * abs(rest), "from rest: \(swinging * 1000) mm off rest, sag \(rest * 1000) mm")
     }
 
+    @Test(
+        "A settled body is kept and taken back by the next run, the same to the bit; other settings settle afresh"
+    )
+    func cachedSettle() throws {
+        let scenario = scenario()
+        let place = FileManager.default.temporaryDirectory.appending(
+            path: "settle-cache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: place) }
+        func run(cache: URL?, damping: Float? = nil) throws -> (BlastSolver.Settlement, UInt64) {
+            try SettleCache.$override.withValue(.some(cache)) {
+                let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.25)
+                if let damping { try #require(solver.structure).damping = damping }
+                solver.settleStructures()
+                let settlement = try #require(solver.settlements.first)
+                solver.advance(steps: 64)
+                return (settlement, solver.stateDigest())
+            }
+        }
+        let (plain, reference) = try run(cache: nil)
+        let (first, stored) = try run(cache: place)
+        let (second, taken) = try run(cache: place)
+        #expect(!plain.cached && !first.cached && second.cached)
+        #expect(stored == reference && taken == reference)
+        #expect(second.steps == first.steps && second.displacement == first.displacement)
+        let (other, _) = try run(cache: place, damping: 3)
+        #expect(!other.cached)
+    }
+
     @Test("A body without gravity is not settled, and a falling one starts undeformed")
     func leftAlone() throws {
         var scenario = scenario()

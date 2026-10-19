@@ -100,7 +100,7 @@ package enum MemberImperfection {
             guard steel.yieldStress < 0.05 * steel.youngsModulus else { continue }
             // The line's nodes in order along it, and its joints.
             let nodes = Set(beams.flatMap { [Int(mesh.beams[$0].nodes.x), Int(mesh.beams[$0].nodes.y)] })
-                .sorted { mesh.positions[$0][k] < mesh.positions[$1][k] }
+                .sorted { (mesh.positions[$0][k], $0) < (mesh.positions[$1][k], $1) }
             guard let low = nodes.first, let high = nodes.last else { continue }
             let joints = nodes.filter {
                 $0 == low || $0 == high || sharedElsewhere[$0] || solidsOfNode[$0].count > 1

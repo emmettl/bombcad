@@ -515,7 +515,7 @@ extension BlastSolver {
     }
 
     /// How one body was brought to rest under its own weight before the blast.
-    public struct Settlement: Sendable {
+    public struct Settlement: Sendable, Codable {
         public var name: String
         /// Whether its motion died away; if not, it starts undeformed, as without settling.
         public var settled: Bool
@@ -528,6 +528,9 @@ extension BlastSolver {
         /// on the way, and its largest displacement then, m.
         public var residualSpeed: Double
         public var displacement: Float
+        /// Whether its settled state was taken from an earlier run's (`SettleCache`); `seconds` is
+        /// then that run's.
+        public var cached = false
     }
 
     /// Settling's mass-proportional damping (1/s), the least time it gives a body, the time it
@@ -555,6 +558,12 @@ extension BlastSolver {
         structuresSettled = true
         var moved = false
         for body in bodies where body.gravity > 0 && !body.hasSetMotion && body.isAsLoaded {
+            let key = SettleCache.key(for: body, device: device)
+            if let key, let settlement = SettleCache.load(key, into: body) {
+                settlements.append(settlement)
+                moved = true
+                continue
+            }
             let start = Date()
             let step = Double(body.criticalTimeStep)
             let chunk = max(1, Int((0.005 / step).rounded(.up)))
@@ -610,11 +619,12 @@ extension BlastSolver {
                 body.reset()
             }
             moved = true
-            settlements.append(
-                Settlement(
-                    name: body.name, settled: settled, time: elapsed, steps: steps,
-                    seconds: Date().timeIntervalSince(start), residualSpeed: peak > 0 ? speed / peak : 0,
-                    displacement: body.summary()?.selfWeightSag ?? 0))
+            let settlement = Settlement(
+                name: body.name, settled: settled, time: elapsed, steps: steps,
+                seconds: Date().timeIntervalSince(start), residualSpeed: peak > 0 ? speed / peak : 0,
+                displacement: body.summary()?.selfWeightSag ?? 0)
+            settlements.append(settlement)
+            if let key { SettleCache.store(key, body: body, settlement: settlement) }
         }
         guard moved, let commandBuffer = commandQueue.makeCommandBuffer(),
             let encoder = commandBuffer.makeComputeCommandEncoder()

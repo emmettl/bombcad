@@ -523,7 +523,9 @@ package struct ShellMesh {
             let half = 0.5 * SIMD2(column.box.size[first], column.box.size[second]) + tolerance
             let ends = Set(
                 beams.filter { $0.solid == column.solid }.flatMap { [$0.nodes.x, $0.nodes.y] })
-            for master in ends {
+            // In order: a node near two heads is tied to the first, and a set's order changes from
+            // one process to the next.
+            for master in ends.sorted() {
                 let position = positions[Int(master)]
                 let level = position[k]
                 // A head where the column meets a plate square to it, within the plate.
@@ -664,7 +666,7 @@ package struct ShellMesh {
         var endsOf: [Int: (low: UInt32, high: UInt32, axis: Int)] = [:]
         for (solid, members) in beamsOfSolid {
             let k = beams[members[0]].axis
-            let nodes = Set(members.flatMap { [beams[$0].nodes.x, beams[$0].nodes.y] })
+            let nodes = Set(members.flatMap { [beams[$0].nodes.x, beams[$0].nodes.y] }).sorted()
             guard let low = nodes.min(by: { positions[Int($0)][k] < positions[Int($1)][k] }),
                 let high = nodes.max(by: { positions[Int($0)][k] < positions[Int($1)][k] })
             else { continue }

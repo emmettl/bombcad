@@ -135,7 +135,8 @@ func runSettle(device: MTLDevice) throws {
                         format: "  settled %@: %@ in %.0f ms of its time (%d steps), %.1f s here; "
                             + "residual speed %.3f of its largest; largest displacement %.2f mm",
                         s.name, s.settled ? "came to rest" : "did NOT come to rest", s.time * 1000, s.steps,
-                        s.seconds, s.residualSpeed, s.displacement * 1000))
+                        s.seconds, s.residualSpeed, s.displacement * 1000)
+                        + (s.cached ? " (from the cache)" : ""))
             }
             print(String(format: "  settling took %.1f s in all", settling))
         }

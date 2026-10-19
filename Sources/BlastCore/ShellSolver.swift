@@ -1643,7 +1643,8 @@ public final class ShellSolver {
     static func thicknessRules(layers: Int, materials: [StructureMaterial], shellMaterials: Set<Int>) -> (
         rule: [SIMD2<Float>], legendre: Int, timber: Int
     ) {
-        let used = shellMaterials.filter { materials.indices.contains($0) }.map { materials[$0] }
+        // In order: near-equal lamella tops keep the first, and a set's order changes between processes.
+        let used = shellMaterials.sorted().filter { materials.indices.contains($0) }.map { materials[$0] }
         let timber = used.filter { $0.model == .timber }
         guard !timber.isEmpty else { return (gaussLegendre(layers), 0, 0) }
         let lamellae = thicknessRule(layers: layers, materials: timber)

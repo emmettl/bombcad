@@ -183,6 +183,17 @@ new measure. Mendonça's harness keeps its blind
 prediction's start unless `--settle` is given. `blastbench --no-settle` turns settling off in any
 bench (`BOMBCAD_SETTLE=off`).
 
+**Kept between runs** (since 20 October 2026). Settling runs a body alone, so a body loaded the
+same way with the same settings, by the same build on the same Mac, settles to the same state
+to the bit. The settled state is kept (`SettleCache`, in `~/Library/Caches/BombCAD/SettledStructures`,
+4 GB at most, the least recently used thinned out) and the next run takes it back instead of
+settling again: the office tower's settle went from 176 s to 7 s, the twelve-storey tower's from
+37 s to 3 s, with every byte of the run after it the same. The key covers the build (its
+executable and its shaders), the OS and the GPU, settling's constants, every byte of the body as
+loaded and its parts' settings; a change to any of them settles afresh. `Settlement.cached`
+says when a state was taken back, and `BOMBCAD_SETTLE_CACHE=off` turns it off (a path puts it
+there).
+
 `blastbench settle --scene office|tower|slab` measures how still each structure is when the shock
 reaches its nearest point (Kingery–Bulmash), and over a window after it. It runs each body alone,
 since until then nothing but its weight loads it:
