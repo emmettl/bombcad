@@ -209,12 +209,12 @@ struct FloorPlanTests {
         // Partitions 124 mm, as in the IFC.
         #expect(ground.walls.filter { abs($0.thickness - 0.124) < 0.002 }.count >= 5)
         // First floor: the outer walls whole; a gap in an inside wall (the landing) is a doorway,
-        // not a window; the dormers' angled lines are left out and said so.
+        // not a window; the corners' mitre seams are joints, not walls.
         let first = try Self.cutPlan("duplex-level-2.dxf")
         #expect(Self.outerWalls(first, thickness: 0.417).count == 4, "\(first.walls)")
         #expect(first.openings.filter { $0.layer == nil }.allSatisfy { $0.kind == .door })
         #expect(first.openings.filter { $0.kind == .window }.count >= 10)
-        #expect(first.angledLines > 0 && first.notes.contains { $0.contains("not square") })
+        #expect(first.angledLines == 0 && first.angled.isEmpty)
         // The small house: three walls of 200 mm; its fourth, 24 mm, is thinner than any wall.
         let small = try Self.cutPlan("small-house.dxf")
         #expect(small.walls.count == 3 && small.walls.allSatisfy { abs($0.thickness - 0.2) < 0.002 })
@@ -225,5 +225,89 @@ struct FloorPlanTests {
             #expect(structure.members.contains { $0.role == .shell })
             #expect(structure.members.contains { $0.role == .pane })
         }
+    }
+
+    static func houseOptions(_ drawing: DXFDrawing) throws -> FloorPlan.Options {
+        var options = FloorPlan.Options()
+        options.metresPerUnit = try #require(drawing.metresPerUnit)
+        options.roles = [
+            "WALL-EXT": .wall(.cavityBrickBlock), "WALL-INT": .wall(.block100), "DOOR": .door,
+            "WINDOW-GF": .window, "WINDOW-FF": .window,
+        ]
+        options.layerStoreys = ["DOOR": 0, "WINDOW-GF": 0, "WINDOW-FF": 1]
+        return options
+    }
+
+    @Test("The house drawn turned by 17° is turned square to its walls and read as drawn square")
+    func turnedPlan() throws {
+        let drawing = try Self.sample("house-plan-turned.dxf")
+        let plan = FloorPlan.analyse(drawing, options: try Self.houseOptions(drawing))
+        #expect(abs(plan.turn - 17) < 0.2, "turned \(plan.turn)°")
+        #expect(plan.angled.isEmpty && plan.angledLines == 0)
+        #expect(plan.walls.count == 5, "\(plan.walls)")
+        #expect(plan.walls.filter { abs($0.thickness - 0.28) < 1e-6 }.count == 4)
+        // The same walls as drawn square, to the millimetre: 8 by 6 m over their faces.
+        let size = plan.bounds.max - plan.bounds.min
+        #expect(abs(size.x - 8) < 0.01 && abs(size.y - 6) < 0.01, "\(size)")
+        #expect(plan.openings.filter { $0.kind == .door }.count == 1)
+        #expect(plan.openings.filter { $0.kind == .window && $0.storey == 0 }.count == 2)
+        #expect(plan.openings.filter { $0.kind == .window && $0.storey == 1 }.count == 3)
+    }
+
+    @Test("A curved bay drawn by a bulge is raised as walls turned in plan, chord by chord, tied in")
+    func bay() throws {
+        let drawing = try Self.sample("house-plan-bay.dxf")
+        let options = try Self.houseOptions(drawing)
+        let plan = FloorPlan.analyse(drawing, options: options)
+        // A bulge of 0.4 sweeps 87°: six chords of under 15°, each a wall 280 mm thick.
+        #expect(plan.angled.count == 6, "\(plan.angled)")
+        #expect(plan.angled.allSatisfy { abs($0.thickness - 0.28) < 1e-6 })
+        // Chord by chord they share their corners, and the bay's ends meet the front wall's midline.
+        let ends = plan.angled.flatMap { [$0.a, $0.b] }
+        let shared = ends.filter { p in ends.filter { simd_distance($0, p) < 1e-6 }.count >= 2 }
+        #expect(shared.count == 10, "\(ends)")
+        let front = try #require(plan.walls.first { $0.axis == 0 && abs($0.offset - 0.14) < 1e-6 })
+        #expect(ends.filter { abs($0.y - front.offset) < 1e-6 }.count == 2)
+        // Its window, on each floor, in a chord; left open.
+        #expect(plan.angledOpenings.count == 2 && plan.angledOpenings.allSatisfy { $0.kind == .window })
+        #expect(plan.notes.contains { $0.contains("left open") })
+        // As a structure: each chord's stretch a shell in its own plane, upright, tied to the walls
+        // and slabs it meets.
+        var structural = IFCStructure.Options()
+        structural.inclinedPlates = true
+        let structure = try IFCStructure(
+            elements: FloorPlan.buildingElements(plan, options: options), options: structural)
+        let turned = structure.members.filter { $0.notes.contains { $0.contains("Turned in plan") } }
+        #expect(turned.count >= 12, "\(turned.count) of \(structure.members.count)")
+        let model = structure.model
+        let frames = model.solids.indices.filter { model.inclination(of: $0)?.frame != nil }
+        #expect(frames.count == turned.count)
+        for index in frames {
+            let frame = try #require(model.inclination(of: index)?.frame)
+            #expect(abs(frame.up.z - 1) < 1e-6 && abs(frame.along.z) < 1e-6)
+        }
+        let mesh = try ShellMesh(model: model)
+        // Every chord's elements upright (axis 3), and each chord tied to what it meets.
+        let chordElements = mesh.elements.filter { frames.contains($0.solid) }
+        #expect(!chordElements.isEmpty && chordElements.allSatisfy { $0.axis == 3 })
+        // A wall turned in plan with an opening through it (two stretches, one element) is not
+        // taken as whole.
+        let left = try FloorPlan.uprightMesh(
+            from: SIMD2(0, 0), to: SIMD2(0.8, 0.6), thickness: 0.2, z0: 0, z1: 2.5)
+        let right = try FloorPlan.uprightMesh(
+            from: SIMD2(1.6, 1.2), to: SIMD2(2.4, 1.8), thickness: 0.2, z0: 0, z1: 2.5)
+        #expect(IFCStructure.uprightPlane(left.triangles) != nil)
+        #expect(IFCStructure.uprightPlane(left.triangles + right.triangles) == nil)
+        let tied = Set(mesh.contactTies.flatMap { [$0.first, $0.second] })
+        #expect(frames.filter { tied.contains($0) }.count >= frames.count / 2, "\(mesh.contactTies)")
+    }
+
+    @Test("The Duplex's first floor: its lines at an angle are its corners' mitre seams, taken as joints")
+    func duplexMitres() throws {
+        let plan = try Self.cutPlan("duplex-level-2.dxf")
+        // Sixteen short lines at 45° in the four corners, from each one's outer point to its inner.
+        #expect(plan.angled.isEmpty && plan.angledLines == 0, "\(plan.notes)")
+        #expect(plan.notes.contains { $0.contains("16 short lines at an angle") }, "\(plan.notes)")
+        #expect(Self.outerWalls(plan, thickness: 0.417).count == 4)
     }
 }

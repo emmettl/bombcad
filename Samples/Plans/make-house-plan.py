@@ -10,9 +10,14 @@ faces, as a draughtsman would hand it over. Lines in millimetres, one layer for 
 
 Both storeys share the walls. The plan is drawn here rather than taken from elsewhere so that its
 licence is plain: CC0, like the rest of Samples/Plans. Plain ASCII DXF R12, LINE entities only, which
-any CAD program reads; `python3 make-house-plan.py` rewrites it.
+any CAD program reads; `python3 make-house-plan.py` rewrites it, and two variants:
+
+  house-plan-turned.dxf  the same plan turned 17 degrees, as a site plan drawn to north would be
+  house-plan-bay.dxf     a curved bay 2 m wide and 0.4 m deep in the front wall (a polyline with a
+                         bulge on WALL-EXT), a window in it on each floor, the partition at 6.6 m
 """
 
+import math
 import os
 
 # Wall centrelines: the outer faces at 0 and 8000 by 0 and 6000, the walls 280 thick.
@@ -28,7 +33,19 @@ WINDOW_FF = [((1200.0, C), (2400.0, C)), ((5000.0, C), (6200.0, C)),
              ((1200.0, 6000 - C), (2400.0, 6000 - C))]
 
 
-def dxf(layers):
+def turned(lines, degrees, centre=(4000.0, 3000.0)):
+    t = math.radians(degrees)
+    def turn(p):
+        x, y = p[0] - centre[0], p[1] - centre[1]
+        return (centre[0] + x * math.cos(t) - y * math.sin(t), centre[1] + x * math.sin(t) + y * math.cos(t))
+    return [(turn(a), turn(b)) for a, b in lines]
+
+
+def num(v):
+    return f"{v:.3f}".rstrip("0").rstrip(".")
+
+
+def dxf(layers, polylines=()):
     out = ["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC",
            "0", "SECTION", "2", "TABLES", "0", "TABLE", "2", "LAYER", "70", str(len(layers))]
     for name in layers:
@@ -36,8 +53,13 @@ def dxf(layers):
     out += ["0", "ENDTAB", "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"]
     for name, lines in layers.items():
         for (x0, y0), (x1, y1) in lines:
-            out += ["0", "LINE", "8", name, "10", f"{x0:g}", "20", f"{y0:g}", "30", "0",
-                    "11", f"{x1:g}", "21", f"{y1:g}", "31", "0"]
+            out += ["0", "LINE", "8", name, "10", num(x0), "20", num(y0), "30", "0",
+                    "11", num(x1), "21", num(y1), "31", "0"]
+    # Polylines with bulges: (layer, [(x, y, bulge to the next vertex)]).
+    for name, vertices in polylines:
+        out += ["0", "LWPOLYLINE", "8", name, "90", str(len(vertices)), "70", "0"]
+        for x, y, bulge in vertices:
+            out += ["10", num(x), "20", num(y)] + (["42", f"{bulge:g}"] if bulge else [])
     out += ["0", "ENDSEC", "0", "EOF"]
     return "\n".join(out) + "\n"
 
@@ -48,3 +70,21 @@ if __name__ == "__main__":
                 "WINDOW-FF": WINDOW_FF})
     with open(os.path.join(here, "house-plan.dxf"), "w") as f:
         f.write(text)
+    layers = {"WALL-EXT": EXT, "WALL-INT": INT, "DOOR": DOOR, "WINDOW-GF": WINDOW_GF, "WINDOW-FF": WINDOW_FF}
+    with open(os.path.join(here, "house-plan-turned.dxf"), "w") as f:
+        f.write(dxf({name: turned(lines, 17) for name, lines in layers.items()}))
+    # The bay: the front wall broken from 2700 to 4700, an arc there bulging out 400 mm.
+    a, b, bulge = 2700.0, 4700.0, 0.4
+    half = (b - a) / 2
+    sagitta = bulge * half
+    radius = (half * half + sagitta * sagitta) / (2 * sagitta)
+    centre = ((a + b) / 2, C - sagitta + radius)
+    def on_arc(x):
+        return centre[1] - math.sqrt(radius * radius - (x - centre[0]) ** 2)
+    bay_ext = [((C, C), (a, C)), ((b, C), (8000 - C, C))] + EXT[1:]
+    bay_window = [((3300.0, on_arc(3300.0)), (4100.0, on_arc(4100.0)))]
+    with open(os.path.join(here, "house-plan-bay.dxf"), "w") as f:
+        f.write(dxf(
+            {"WALL-EXT": bay_ext, "WALL-INT": [((6600.0, 280.0), (6600.0, 5720.0))], "DOOR": DOOR,
+             "WINDOW-GF": WINDOW_GF + bay_window, "WINDOW-FF": WINDOW_FF + bay_window},
+            polylines=[("WALL-EXT", [(a, C, bulge), (b, C, 0)])]))

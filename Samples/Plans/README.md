@@ -21,6 +21,10 @@ five windows of 1.2 × 1.2 m. It has a 150 mm ground-bearing slab, a 200 mm firs
   by storey and exports IFC 4. Run it with
   `/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd make-house-ifc.py` from this
   folder.
+- [house-plan-turned.dxf](house-plan-turned.dxf) and [house-plan-bay.dxf](house-plan-bay.dxf),
+  written by the same script, are the plan turned by 17°, as a site plan drawn to north would
+  be, and the plan with a curved bay 2 m wide and 0.4 m deep in its front wall (a polyline's
+  bulge), for the plan reader's walls at an angle.
 - [house.ifc](house.ifc) is what it writes. [house.FCStd](house.FCStd) is the FreeCAD document,
   to open and edit in FreeCAD's window.
 

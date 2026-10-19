@@ -15,6 +15,47 @@ public struct Inclination: Sendable, Hashable, Codable {
     public var thickness: Float
     /// Whether the walls under it lose their elements above it (gables under a pitched roof).
     public var trimsWalls: Bool
+    /// The plane given outright, in place of `rise` and `upwards`: a wall turned in plan, a chord
+    /// of a curved wall. Nil for a plane at a pitch through its box.
+    public var frame: Frame?
+
+    /// A rectangle in space: a corner, the unit vectors along its two edges from it (square to
+    /// each other) and their lengths, m.
+    public struct Frame: Sendable, Hashable, Codable {
+        public var origin: SIMD3<Float>
+        public var along: SIMD3<Float>
+        public var up: SIMD3<Float>
+        public var lengths: SIMD2<Float>
+
+        public init(origin: SIMD3<Float>, along: SIMD3<Float>, up: SIMD3<Float>, lengths: SIMD2<Float>) {
+            self.origin = origin
+            self.along = along
+            self.up = up
+            self.lengths = lengths
+        }
+
+        /// A wall standing upright: its midsurface from `start` to `end` (at their height) up
+        /// `height` m.
+        public static func upright(from start: SIMD3<Float>, to end: SIMD3<Float>, height: Float) -> Frame {
+            var run = end - start
+            run.z = 0
+            let length = simd_length(run)
+            return Frame(
+                origin: start, along: run / max(length, 1e-9), up: SIMD3(0, 0, 1),
+                lengths: SIMD2(length, height))
+        }
+
+        /// The box it lies in.
+        public var box: Box {
+            let corners = [
+                origin, origin + lengths.x * along, origin + lengths.y * up,
+                origin + lengths.x * along + lengths.y * up,
+            ]
+            return Box(
+                min: corners.reduce(SIMD3(repeating: .infinity), simd_min),
+                max: corners.reduce(SIMD3(repeating: -.infinity), simd_max))
+        }
+    }
 
     public init(rise: Int, upwards: Bool, thickness: Float, trimsWalls: Bool = false) {
         self.rise = rise
@@ -23,10 +64,29 @@ public struct Inclination: Sendable, Hashable, Codable {
         self.trimsWalls = trimsWalls
     }
 
+    /// A plane given outright (`frame`), its own thickness, trimming nothing.
+    public init(frame: Frame, thickness: Float) {
+        self.rise = 0
+        self.upwards = true
+        self.thickness = thickness
+        self.trimsWalls = false
+        self.frame = frame
+    }
+
     func validate() throws {
         guard rise == 0 || rise == 1, thickness.isFinite, thickness > 0 else {
             throw ImportedMesh.ImportError.invalid(
                 "An inclined plane rises along x or y and has a positive thickness.")
+        }
+        if let frame {
+            guard abs(simd_length(frame.along) - 1) < 1e-3, abs(simd_length(frame.up) - 1) < 1e-3,
+                abs(simd_dot(frame.along, frame.up)) < 1e-3, frame.lengths.x > 0, frame.lengths.y > 0,
+                !trimsWalls
+            else {
+                throw ImportedMesh.ImportError.invalid(
+                    "A plane given outright has unit edges square to each other, lengths above 0, and trims nothing."
+                )
+            }
         }
     }
 
@@ -37,6 +97,12 @@ public struct Inclination: Sendable, Hashable, Codable {
         origin: SIMD3<Float>, along: SIMD3<Float>, up: SIMD3<Float>, lengths: SIMD2<Float>,
         normal: SIMD3<Float>
     ) {
+        if let frame {
+            return (
+                frame.origin, frame.along, frame.up, frame.lengths,
+                simd_normalize(simd_cross(frame.along, frame.up))
+            )
+        }
         let r = rise
         let a = 1 - rise
         let run = box.max[r] - box.min[r]
@@ -59,13 +125,17 @@ public struct Inclination: Sendable, Hashable, Codable {
         return (origin, along, up, SIMD2(length, slope), simd_normalize(simd_cross(along, up)))
     }
 
-    /// The pitch, in degrees from the horizontal.
+    /// The pitch, in degrees from the horizontal (90 for a wall standing upright).
     public func pitch(in box: Box) -> Float {
-        atan2(box.max.z - box.min.z, box.max[rise] - box.min[rise]) * 180 / .pi
+        if let frame {
+            return acos(min(abs(simd_normalize(simd_cross(frame.along, frame.up)).z), 1)) * 180 / .pi
+        }
+        return atan2(box.max.z - box.min.z, box.max[rise] - box.min[rise]) * 180 / .pi
     }
 
     /// The midsurface's height above (x, y), if the point lies in the box's plan.
     func height(at point: SIMD2<Float>, in box: Box, tolerance: Float = 1e-4) -> Float? {
+        guard frame == nil else { return nil }
         guard point.x >= box.min.x - tolerance, point.x <= box.max.x + tolerance,
             point.y >= box.min.y - tolerance, point.y <= box.max.y + tolerance
         else { return nil }

@@ -793,6 +793,46 @@ struct ShellMesh {
                 }
             }
         }
+        // A wall turned in plan (a plane given outright, `Inclination.frame`) meets the walls at its
+        // ends, the slabs over and under it and the chords beside it, none on its grid: each of its
+        // nodes within another member's reach follows that member's nearest node, whatever joins
+        // them already elsewhere.
+        for i in solids.indices where model.inclination(of: i)?.frame != nil && !sets[i].isEmpty {
+            for j in solids.indices where j != i && !sets[j].isEmpty && touch(solids[i], solids[j]) {
+                // Chords of one curved wall share their edges' nodes already.
+                if model.inclination(of: j)?.frame != nil { continue }
+                let reach = max(0.5 * model.elementSize, 0.5 * solids[j].size.min()) + tolerance
+                var region = solids[j]
+                region.min -= SIMD3(repeating: reach)
+                region.max += SIMD3(repeating: reach)
+                let candidates = nodes[j].filter { node in
+                    let p = positions[Int(node)]
+                    return (0..<3).allSatisfy { p[$0] >= region.min[$0] && p[$0] <= region.max[$0] }
+                }
+                guard !candidates.isEmpty else { continue }
+                var count = 0
+                for slave in nodes[i] where !sets[j].contains(slave) {
+                    let p = positions[Int(slave)]
+                    guard (0..<3).allSatisfy({ p[$0] >= region.min[$0] && p[$0] <= region.max[$0] }),
+                        masterOf[slave] == nil, !masters.contains(slave), !anchored.contains(Int(slave)),
+                        !held(p)
+                    else { continue }
+                    guard
+                        var master = candidates.min(by: {
+                            simd_distance_squared(positions[Int($0)], p)
+                                < simd_distance_squared(positions[Int($1)], p)
+                        }), simd_distance(positions[Int(master)], p) <= 2 * reach + model.elementSize
+                    else { continue }
+                    if let up = masterOf[master] { master = up }
+                    guard master != slave else { continue }
+                    ties.append((slave, master))
+                    masterOf[slave] = master
+                    masters.insert(master)
+                    count += 1
+                }
+                if count > 0 { contactTies.append((i, j, count)) }
+            }
+        }
     }
 
     /// The punching strength of the slab elements around each column head, as the mean shear

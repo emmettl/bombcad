@@ -882,7 +882,9 @@ public enum StandingTable {
                     + "flat one does under its weight's share across it. Rafters are smeared into a plate, not "
                     + "beams; the tiles hang on their nibs by an assumed 5 kPa, not on friction alone; the "
                     + "terraced row's 40° is assumed (plain tiles want 35° or more). No pitched roof under "
-                    + "blast was found to compare with.",
+                    + "blast was found to compare with. Walls turned in plan, and curved walls' chords, are "
+                    + "meshed the same way, upright, each node within reach of what they meet following its "
+                    + "nearest node; not compared with a test either.",
                 document: "shell-model.md#shells-at-a-pitch")
         case .inclinedBars:
             return Entry(

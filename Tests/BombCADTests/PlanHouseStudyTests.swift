@@ -55,7 +55,33 @@ struct PlanHouseStudyTests {
         try await run(source, name: "house-plan.dxf", report: "plan-house-dxf-20kg")
     }
 
-    func run(_ source: ImportedMesh, name: String, report reportName: String) async throws {
+    /// The house with a curved bay in its front wall, read from its plan (`house-plan-bay.dxf`): the
+    /// bay's chords as walls turned in plan, under the same charge.
+    @Test("The house with a bay, read from its plan, takes the same blast", .enabled(if: output != nil))
+    func studyBay() async throws {
+        let url = fixture().deletingLastPathComponent().appendingPathComponent("house-plan-bay.dxf")
+        let drawing = try DXFDrawing(data: Data(contentsOf: url))
+        var options = FloorPlan.Options()
+        options.metresPerUnit = try #require(drawing.metresPerUnit)
+        options.roles = [
+            "WALL-EXT": .wall(.cavityBrickBlock), "WALL-INT": .wall(.block100), "DOOR": .door,
+            "WINDOW-GF": .window, "WINDOW-FF": .window,
+        ]
+        options.layerStoreys = ["DOOR": 0, "WINDOW-GF": 0, "WINDOW-FF": 1]
+        let plan = FloorPlan.analyse(drawing, options: options)
+        let source = try ImportedMesh(
+            buildingElements: FloorPlan.buildingElements(plan, options: options), notes: plan.notes,
+            origin: SIMD3(plan.bounds.min.x, plan.bounds.min.y, 0))
+        var structural = IFCStructure.Options(elementSize: 0.25)
+        structural.inclinedPlates = true
+        try await run(
+            source, name: "house-plan-bay.dxf", report: "plan-house-bay-20kg", structural: structural)
+    }
+
+    func run(
+        _ source: ImportedMesh, name: String, report reportName: String,
+        structural: IFCStructure.Options = IFCStructure.Options(elementSize: 0.25)
+    ) async throws {
         let output = try #require(Self.output)
         let preview = try source.transformed(scale: 1, yUp: false, corner: Self.corner)
             .preview(cellSize: Self.cellSize, domain: Self.domain)
@@ -63,7 +89,7 @@ struct PlanHouseStudyTests {
             name: name, source: source, scale: 1, yUp: false, corner: Self.corner,
             behavior: .deformable,
             preview: preview)
-        model.structuralOptions = IFCStructure.Options(elementSize: 0.25)
+        model.structuralOptions = structural
         var scenario = Scenario(
             name: "House from a plan", domainSize: Self.domain, boxes: [], charge: Self.charge,
             gauges: [Gauge("Before the front wall", at: Self.corner + SIMD3(4, -0.2, 1.5))])

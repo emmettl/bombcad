@@ -394,10 +394,15 @@ public struct IFCStructure: Sendable {
                 || element.name.localizedCaseInsensitiveContains("finish")
             switch Self.family(element.ifcClass) {
             case .plate:
-                if !shape.aligned, options.inclinedPlates, let fit = Self.pitchedPlane(shape.triangles) {
+                if !shape.aligned, options.inclinedPlates,
+                    let fit = Self.pitchedPlane(shape.triangles) ?? Self.uprightPlane(shape.triangles)
+                {
+                    let upright = fit.inclination.frame != nil
                     if finishes && picked == nil {
                         member.notes.append(
-                            "A finish at a pitch: kept as a rigid obstacle, not load-bearing.")
+                            upright
+                                ? "A finish turned in plan: kept as a rigid obstacle, not load-bearing."
+                                : "A finish at a pitch: kept as a rigid obstacle, not load-bearing.")
                         break
                     }
                     let reading = read()
@@ -411,10 +416,17 @@ public struct IFCStructure: Sendable {
                         member.notes.append(
                             "Shell \(Self.millimetres(inclination.thickness)) thick, from its geometry.")
                     }
-                    member.notes.append(
-                        "Laid at its pitch, \(Int(inclination.pitch(in: fit.box).rounded()))°, as a shell in its own "
-                            + "plane, the walls under it cut to its line and tied to it by the base's connection."
-                    )
+                    if let frame = inclination.frame {
+                        let turn = atan2(frame.along.y, frame.along.x) * 180 / .pi
+                        member.notes.append(
+                            "Turned in plan, at \(Int(turn.rounded()))° to x, as a shell in its own plane, tied to "
+                                + "the walls and slabs it meets.")
+                    } else {
+                        member.notes.append(
+                            "Laid at its pitch, \(Int(inclination.pitch(in: fit.box).rounded()))°, as a shell in its own "
+                                + "plane, the walls under it cut to its line and tied to it by the base's connection."
+                        )
+                    }
                     member.notes += reading.notes
                     member.role = .shell
                     member.material = reading.material.name
@@ -826,6 +838,8 @@ public struct IFCStructure: Sendable {
         // Plates at a pitch, each tied to the walls under it that reach it.
         for (index, inclination) in inclinations.sorted(by: { $0.key < $1.key }) {
             model.setInclination(inclination, of: index)
+            // A wall turned in plan is tied to what it meets by the mesh (`ShellMesh.tieTouching`).
+            if inclination.frame != nil { continue }
             let roof = solids[index]
             var law = options.base
             law.betweenParts = true
@@ -1397,6 +1411,80 @@ public struct IFCStructure: Sendable {
     /// The midsurface of a plate laid at one pitch, rising along x or y: the box it runs
     /// diagonally through and how it lies in it, its thickness that of the plate square to it.
     /// Nil unless eight tenths of its surface is its two faces (within 3°), flat and at 5° to 60°.
+    /// The midsurface of a plate standing upright but turned in plan, as a wall at an angle or a
+    /// chord of a curved one: the plane given outright (`Inclination.frame`), its thickness that of
+    /// the plate square to it. Nil unless most of its surface is upright (within 3°), and most of
+    /// that its two broad faces, it is longer than thick, at least 1° off both axes, and whole (no
+    /// opening through it, which the shell would not have).
+    static func uprightPlane(_ triangles: [ImportedMesh.Triangle]) -> (box: Box, inclination: Inclination)? {
+        var faces: [(normal: SIMD3<Float>, area: Float)] = []
+        var total: Float = 0
+        for t in triangles {
+            let normal = simd_cross(t.b - t.a, t.c - t.a)
+            let area = simd_length(normal)
+            guard area > 0 else { continue }
+            total += area
+            faces.append((normal / area, area))
+        }
+        // The broad faces' mean normal, turned to the largest face's side; then again over those
+        // near it.
+        let largest = faces.filter { abs($0.normal.z) < 0.2 }.max { $0.area < $1.area }.map {
+            simd_normalize(SIMD3($0.normal.x, $0.normal.y, 0))
+        }
+        func mean(within cosine: Float, of around: SIMD3<Float>?) -> SIMD3<Float>? {
+            var sum = SIMD3<Float>.zero
+            let reference = around ?? largest
+            for face in faces where abs(face.normal.z) < 0.2 {
+                var n = face.normal
+                n.z = 0
+                // Faces square to it (a piece's ends) are not its sides.
+                if let r = reference {
+                    let d = simd_dot(simd_normalize(n), r)
+                    if abs(d) < 0.5 { continue }
+                    if d < 0 { n = -n }
+                }
+                if let around, simd_dot(simd_normalize(n), around) < cosine { continue }
+                sum += face.area * n
+            }
+            return simd_length(sum) > 0 ? simd_normalize(sum) : nil
+        }
+        guard total > 0, let first = mean(within: -1, of: nil),
+            var normal = mean(within: cos(Float(10) * .pi / 180), of: first)
+        else { return nil }
+        let points = triangles.flatMap { [$0.a, $0.b, $0.c] }
+        // Longer than thick: else the faces taken were its ends.
+        func spread(_ direction: SIMD3<Float>) -> Float {
+            let values = points.map { simd_dot($0, direction) }
+            return (values.max() ?? 0) - (values.min() ?? 0)
+        }
+        if spread(SIMD3(-normal.y, normal.x, 0)) < spread(normal) { normal = SIMD3(-normal.y, normal.x, 0) }
+        // Its sides, upright: the two broad faces most of them (a short stout piece, as a chord of a
+        // curved wall, has broad ends).
+        let sides = faces.filter { abs($0.normal.z) < sin(Float(3) * .pi / 180) }.reduce(0) { $0 + $1.area }
+        let flat = faces.filter { abs(simd_dot($0.normal, normal)) > cos(Float(3) * .pi / 180) }.reduce(0) {
+            $0 + $1.area
+        }
+        let offAxis = min(abs(normal.x), abs(normal.y))
+        guard sides >= 0.6 * total, flat > 0.5 * sides, offAxis > sin(Float(1) * .pi / 180) else {
+            return nil
+        }
+        let along = SIMD3<Float>(-normal.y, normal.x, 0)
+        let levels = points.map { simd_dot($0, normal) }
+        let runs = points.map { simd_dot($0, along) }
+        let heights = points.map(\.z)
+        guard let low = levels.min(), let high = levels.max(), let start = runs.min(), let end = runs.max(),
+            let bottom = heights.min(), let top = heights.max(), high - low > 1e-3, end - start > 1e-3,
+            top - bottom > 1e-3
+        else { return nil }
+        // Whole: an opening cut through it (its broad faces short of the rectangle) would be lost.
+        // (Its faces' areas counted twice, as cross products: both broad faces whole are 4 L H.)
+        guard flat >= 3.8 * (end - start) * (top - bottom) else { return nil }
+        let origin = start * along + 0.5 * (low + high) * normal + SIMD3(0, 0, bottom)
+        let frame = Inclination.Frame(
+            origin: origin, along: along, up: SIMD3(0, 0, 1), lengths: SIMD2(end - start, top - bottom))
+        return (frame.box, Inclination(frame: frame, thickness: high - low))
+    }
+
     static func pitchedPlane(_ triangles: [ImportedMesh.Triangle]) -> (box: Box, inclination: Inclination)? {
         var faces: [(normal: SIMD3<Float>, area: Float)] = []
         var total: Float = 0

@@ -420,10 +420,11 @@ expensive previews.
 
 An architect's floor plan reaches BombCAD by one of two routes:
 
-- **In BombCAD, from the DXF.** Quick, for plain buildings: square walls, flat floors, the same
-  plan on every storey or one plan per storey's openings. It is described below.
-- **Through a BIM program, as IFC.** For anything more: angled or curved walls, pitched roofs,
-  storeys that differ, columns and beams. FreeCAD's BIM workbench (or Bonsai, Blender's IFC
+- **In BombCAD, from the DXF.** Quick, for plain buildings: walls square, at an angle or curved,
+  flat floors, the same plan on every storey or one plan per storey's openings. It is described
+  below.
+- **Through a BIM program, as IFC.** For anything more: pitched roofs, storeys that differ,
+  columns and beams, glazed angled walls. FreeCAD's BIM workbench (or Bonsai, Blender's IFC
   add-on) raises the plan into a model, and BombCAD imports the IFC. See
   [through FreeCAD](#through-freecad-as-ifc).
 
@@ -471,8 +472,18 @@ How the plan is read:
   inside one, and the notes say so.
 - **Floors**: closed polylines on a floor-outline layer (square-cornered), else the walls' outer
   rectangle.
-- Only walls square to the plan's axes are read. Angled and curved walls are left out, and the
-  notes give their number and length; for them, take the IFC route.
+- **A plan drawn turned** (a site plan drawn to north) is first turned square to its walls, so
+  that they lie square to the air's cells: the angle most of their length runs at, to a tenth of
+  a degree (**Turn square to its walls**).
+- **Walls at an angle**, and the chords of curved ones (arcs and polylines' bulges, in pieces of
+  15° at most), are raised as walls turned in plan: each a shell in its own plane, upright, tied
+  to the walls and slabs it meets (**Walls at an angle and curved**; the review's **Pitched roofs
+  and angled walls as shells in their own planes**, on for a plan). Drawn by centrelines they take
+  their construction's thickness; drawn by both faces, each face pairs with the nearest parallel
+  line. Their ends are carried to the wall they meet, so a curve's chords share their corners.
+  Short lines at an angle within the walls' corners, the seams of mitred joints, are joints, not
+  walls. Doors and windows in them cut them; their windows are left open (no glass), and the
+  floors and roof over them are the outline's rectangle, reaching past them at the corners.
 
 How it does on real plans (`FloorPlanTests`, `PlanHouseStudyTests`):
 
@@ -492,8 +503,17 @@ How it does on real plans (`FloorPlanTests`, `PlanHouseStudyTests`):
   architect's plan is drawn, by both faces. The reader finds the four 417 mm outer walls whole
   and the 124 mm partitions. On the ground floor it places all 10 openings the cut crosses (the
   IFC's 4 windows and the 6 of its 8 doors that appear in the cut). The stair core reads
-  as thick blocks of wall (520–740 mm), where the IFC has several walls overlapping. On the first
-  floor, the dormers' angled lines are left out and the notes say so.
+  as thick blocks of wall (520–740 mm), where the IFC has several walls overlapping.
+- **The example house turned 17°** (`house-plan-turned.dxf`) is turned back to within a tenth of a
+  degree and reads as drawn square: the same walls, 8 by 6 m, and openings.
+- **The example house with a curved bay** (`house-plan-bay.dxf`, a bulge 2 m wide and 0.4 m deep
+  in the front wall) gives six chords, each a shell in its own plane, sharing their corners and
+  tied to the front wall and the slabs. Under the same 20 kg charge it runs stably: the flat front
+  wall's brick leaf breaks at both storeys as before, while the bay's middle chords move 13 to 119
+  mm and hold, the curved leaf arching against the blast. (The house study reads each member's peak
+  in its bounding box, which for the bay's end chords takes in the broken front wall's nodes.)
+- **The Duplex's first floor**: its 16 short lines at 45° are the seams of its four mitred corners
+  and are read as joints; the corners stand whole.
 - **The small house** (buildingSMART's Building-Architecture): its three walls of 200 mm.
   A 24 mm wall is thinner than the thinnest a plan's lines are read as (50 mm).
 

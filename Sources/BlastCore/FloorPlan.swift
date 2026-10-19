@@ -108,8 +108,41 @@ public enum FloorPlan {
         public var thickestWall = 0.6
         /// Gaps in a wall up to this long (m) are openings; longer, two walls.
         public var widestOpening = 6.0
+        /// A plan whose walls mostly run at an angle to its axes is turned square to them first.
+        public var squareToWalls = true
+        /// Walls at an angle to the (squared) plan, and the chords of curved ones, are raised as
+        /// walls turned in plan; else left out.
+        public var angledWalls = true
 
         public init() {}
+    }
+
+    /// A straight wall at an angle to the plan's axes, or a chord of a curved one: its midline from
+    /// `a` to `b` (m).
+    public struct AngledWall: Sendable, Hashable {
+        public var a: SIMD2<Double>
+        public var b: SIMD2<Double>
+        public var thickness: Double
+        public var construction: Construction
+        public var layer: String
+        public var centreline: Bool
+        public var length: Double { simd_distance(a, b) }
+        public var direction: SIMD2<Double> { (b - a) / max(length, 1e-12) }
+        /// Its footprint's four corners, in order.
+        public var corners: [SIMD2<Double>] {
+            let n = SIMD2(-direction.y, direction.x) * (thickness / 2)
+            return [a - n, b - n, b + n, a + n]
+        }
+    }
+
+    /// An opening in an angled wall, `from`…`to` m along it from its `a` end.
+    public struct AngledOpening: Sendable, Hashable {
+        public var wall: Int
+        public var from: Double
+        public var to: Double
+        public var kind: OpeningKind
+        public var layer: String?
+        public var storey: Int?
     }
 
     /// A straight wall square to the plan's axes: along x (`axis` 0) or y (1), its midline at
@@ -155,9 +188,17 @@ public enum FloorPlan {
         /// The plan's extent (m).
         public var bounds: (min: SIMD2<Double>, max: SIMD2<Double>) = (.zero, .zero)
         public var notes: [String] = []
-        /// Lines on wall layers that are not square to the axes, and their length (m).
+        /// Lines on wall layers that are not square to the axes and were left out, and their length
+        /// (m).
         public var angledLines = 0
         public var angledLength = 0.0
+        /// Walls at an angle, and openings in them.
+        public var angled: [AngledWall] = []
+        public var angledOpenings: [AngledOpening] = []
+        /// How far the plan was turned to square it to its walls, degrees (anticlockwise), and
+        /// about which point (m, in the drawing).
+        public var turn = 0.0
+        public var turnCentre = SIMD2<Double>.zero
     }
 
     /// Straight pieces of a layer square to an axis: `offset` across, `from`…`to` along (m).
@@ -173,7 +214,7 @@ public enum FloorPlan {
     public static func analyse(_ drawing: DXFDrawing, options: Options) -> Analysis {
         var analysis = Analysis()
         let scale = options.metresPerUnit
-        let segments = drawing.segments().map { s -> DXFDrawing.Segment in
+        var segments = drawing.segments().map { s -> DXFDrawing.Segment in
             var s = s
             s.a *= scale
             s.b *= scale
@@ -182,6 +223,31 @@ public enum FloorPlan {
         guard !segments.isEmpty else {
             analysis.notes.append("The drawing has nothing in it to read.")
             return analysis
+        }
+        // A plan drawn turned is turned square to its walls first, about their middle.
+        let isWall = { (layer: String) -> Bool in
+            if case .wall = options.roles[layer] { return true }
+            return false
+        }
+        if options.squareToWalls, let turn = dominantTurn(segments.filter { isWall($0.layer) }),
+            abs(turn) > 0.5
+        {
+            let walls = segments.filter { isWall($0.layer) }.flatMap { [$0.a, $0.b] }
+            let lo = walls.reduce(SIMD2(repeating: Double.infinity), simd_min)
+            let hi = walls.reduce(SIMD2(repeating: -Double.infinity), simd_max)
+            analysis.turn = turn
+            analysis.turnCentre = (lo + hi) / 2
+            segments = segments.map {
+                var s = $0
+                s.a = rotate(s.a, by: -turn, about: analysis.turnCentre)
+                s.b = rotate(s.b, by: -turn, about: analysis.turnCentre)
+                return s
+            }
+            analysis.notes.append(
+                String(
+                    format:
+                        "The plan's walls run at %.1f° to its axes: it is turned square to them, so that the walls lie square to the air's cells.",
+                    turn))
         }
         var low = SIMD2(Double.infinity, .infinity)
         var high = -low
@@ -195,12 +261,12 @@ public enum FloorPlan {
         for (layer, role) in options.roles.sorted(by: { $0.key < $1.key }) {
             guard case .wall(let construction) = role else { continue }
             var lines: [Line] = []
+            var slanted: [(a: SIMD2<Double>, b: SIMD2<Double>)] = []
             for s in segments where s.layer == layer {
                 if let line = squareLine(s.a, s.b) {
                     lines.append(line)
-                } else {
-                    analysis.angledLines += 1
-                    analysis.angledLength += simd_distance(s.a, s.b)
+                } else if simd_distance(s.a, s.b) > 1e-4 {
+                    slanted.append((s.a, s.b))
                 }
             }
             lines = merged(lines)
@@ -209,7 +275,9 @@ public enum FloorPlan {
             // Drawn by both faces where the solid's outline is most of what is drawn; by centrelines
             // where the lines enclose little but rooms.
             var walls: [Wall]
-            if let found, found.outline >= 0.5 * lineLength {
+            let byFaces: Bool
+            if let found, found.outline >= 0.5 * lineLength, lineLength > 0 {
+                byFaces = true
                 walls = found.pieces.map {
                     Wall(
                         axis: $0.axis, offset: $0.offset, from: $0.from, to: $0.to, thickness: $0.thickness,
@@ -219,7 +287,13 @@ public enum FloorPlan {
                     "\(layer): read as walls drawn by their outlines, \(walls.count) pieces, thicknesses "
                         + thicknessSummary(walls.map(\.thickness)) + "; their build-up "
                         + construction.name + ".")
+            } else if lineLength == 0 {
+                // Only angled lines: by faces if most of them pair as faces.
+                let paired = pairSlanted(slanted, options: options)
+                byFaces = paired.pairedLength >= paired.leftLength
+                walls = []
             } else {
+                byFaces = false
                 walls = lines.filter { $0.length > construction.thickness }.map {
                     Wall(
                         axis: $0.axis, offset: $0.offset, from: $0.from, to: $0.to,
@@ -232,17 +306,80 @@ public enum FloorPlan {
                         : "\(layer): read as centrelines of \(construction.name).")
             }
             analysis.walls += walls
+            // Drawn by faces, short lines at an angle lying within the walls found (a mitred
+            // corner's seam between two walls' solids) are the walls' joints.
+            if byFaces {
+                func inside(_ p: SIMD2<Double>) -> Bool {
+                    walls.contains { wall in
+                        let r = wall.rectangle
+                        return p.x >= r.min.x - 0.01 && p.x <= r.max.x + 0.01 && p.y >= r.min.y - 0.01
+                            && p.y <= r.max.y + 0.01
+                    }
+                }
+                let seams = slanted.filter { inside($0.a) && inside($0.b) && inside(($0.a + $0.b) / 2) }
+                if !seams.isEmpty {
+                    slanted.removeAll { line in seams.contains { $0.a == line.a && $0.b == line.b } }
+                    analysis.notes.append(
+                        "\(layer): \(seams.count) short lines at an angle within the walls' corners are taken as their joints (mitred), not walls."
+                    )
+                }
+            }
+            // Lines at an angle: walls turned in plan, by the layer's way of drawing them.
+            if !slanted.isEmpty {
+                if options.angledWalls {
+                    if byFaces {
+                        let paired = pairSlanted(slanted, options: options)
+                        analysis.angled += paired.walls.map {
+                            AngledWall(
+                                a: $0.a, b: $0.b, thickness: $0.thickness, construction: construction,
+                                layer: layer,
+                                centreline: false)
+                        }
+                        if paired.leftLength > 0.05 {
+                            analysis.angledLines += paired.leftCount
+                            analysis.angledLength += paired.leftLength
+                        }
+                    } else {
+                        analysis.angled += mergedSlanted(slanted).filter {
+                            simd_distance($0.a, $0.b) > construction.thickness
+                        }.map {
+                            AngledWall(
+                                a: $0.a, b: $0.b, thickness: construction.thickness,
+                                construction: construction,
+                                layer: layer, centreline: true)
+                        }
+                    }
+                } else {
+                    analysis.angledLines += slanted.count
+                    analysis.angledLength += slanted.reduce(0) { $0 + simd_distance($1.a, $1.b) }
+                }
+            }
         }
         if analysis.angledLines > 0 {
             analysis.notes.append(
-                "\(analysis.angledLines) lines on wall layers (\(String(format: "%.1f", analysis.angledLength)) m) are not square to the plan's axes and are left out: angled and curved walls are not read yet."
+                options.angledWalls
+                    ? "\(analysis.angledLines) lines on wall layers (\(String(format: "%.1f", analysis.angledLength)) m) at an angle to the plan's axes pair with no other as a wall's faces and are left out."
+                    : "\(analysis.angledLines) lines on wall layers (\(String(format: "%.1f", analysis.angledLength)) m) are not square to the plan's axes and are left out (walls at an angle are turned off)."
             )
         }
         analysis.walls = cleaned(analysis.walls)
+        if !analysis.angled.isEmpty {
+            joinAngled(&analysis.walls, &analysis.angled)
+            analysis.notes.append(
+                "\(analysis.angled.count) walls at an angle to the plan's axes (or chords of curved ones), "
+                    + String(format: "%.1f m", analysis.angled.reduce(0) { $0 + $1.length })
+                    + ": raised as walls turned in plan, each a shell in its own plane.")
+        }
         // The plan's extent takes in the walls' faces, beyond centrelines.
         for wall in analysis.walls {
             low = simd_min(low, wall.rectangle.min)
             high = simd_max(high, wall.rectangle.max)
+        }
+        for wall in analysis.angled {
+            for corner in wall.corners {
+                low = simd_min(low, corner)
+                high = simd_max(high, corner)
+            }
         }
         if low.x.isFinite { analysis.bounds = (low, high) }
 
@@ -278,7 +415,13 @@ public enum FloorPlan {
         analysis.openings = gapOpenings(&analysis.walls, options: options)
         place(
             drawn, walls: analysis.walls, storeys: options.layerStoreys, openings: &analysis.openings,
-            notes: &analysis.notes)
+            notes: &analysis.notes, angled: analysis.angled, angledOpenings: &analysis.angledOpenings)
+        let slantedWindows = analysis.angledOpenings.filter { $0.kind == .window }.count
+        if slantedWindows > 0 {
+            analysis.notes.append(
+                "\(slantedWindows) windows in walls at an angle are left open: their glass is not modelled there."
+            )
+        }
         let gaps = analysis.openings.filter { $0.layer == nil }.count
         if gaps > 0 {
             analysis.notes.append(
@@ -292,8 +435,13 @@ public enum FloorPlan {
             guard case .polyline(let points, _, let closed) = entity.shape, closed, points.count >= 4 else {
                 continue
             }
-            let pts = points.map { $0 * scale }
-            if let rects = rectangles(ofOrthogonal: pts) { outlines.append(rects) }
+            let pts = points.map {
+                analysis.turn == 0
+                    ? $0 * scale : rotate($0 * scale, by: -analysis.turn, about: analysis.turnCentre)
+            }
+            // Squared, a drawn outline's corners may sit a hair off square.
+            let squared = pts.map { ($0 * 1e4).rounded(.toNearestOrEven) / 1e4 }
+            if let rects = rectangles(ofOrthogonal: squared) { outlines.append(rects) }
         }
         if outlines.isEmpty, let first = analysis.walls.first {
             var lo = first.rectangle.min
@@ -301,6 +449,17 @@ public enum FloorPlan {
             for wall in analysis.walls {
                 lo = simd_min(lo, wall.rectangle.min)
                 hi = simd_max(hi, wall.rectangle.max)
+            }
+            for wall in analysis.angled {
+                for corner in wall.corners {
+                    lo = simd_min(lo, corner)
+                    hi = simd_max(hi, corner)
+                }
+            }
+            if !analysis.angled.isEmpty {
+                analysis.notes.append(
+                    "The floors and roof are rectangles over all the walls: past walls at an angle they reach out to the rectangle's corners."
+                )
             }
             outlines = [[(lo, hi)]]
             analysis.notes.append(
@@ -312,6 +471,205 @@ public enum FloorPlan {
             "\(analysis.walls.count) walls and \(analysis.openings.count) openings over \(options.storeys) storeys of \(String(format: "%.2f", options.storeyHeight)) m."
         )
         return analysis
+    }
+
+    // MARK: - Lines at an angle
+
+    /// `point` turned `degrees` anticlockwise about `centre`.
+    public static func rotate(_ point: SIMD2<Double>, by degrees: Double, about centre: SIMD2<Double>)
+        -> SIMD2<Double>
+    {
+        let t = degrees * .pi / 180
+        let d = point - centre
+        return centre + SIMD2(d.x * cos(t) - d.y * sin(t), d.x * sin(t) + d.y * cos(t))
+    }
+
+    /// The angle, in degrees from −45 to 45, that most of the walls' length runs at to the axes
+    /// (to a tenth of a degree, from a histogram smoothed over a degree); nil without walls.
+    static func dominantTurn(_ segments: [DXFDrawing.Segment]) -> Double? {
+        var bins = [Double](repeating: 0, count: 900)
+        for s in segments {
+            let d = s.b - s.a
+            let length = simd_length(d)
+            guard length > 1e-6 else { continue }
+            var angle = atan2(d.y, d.x) * 180 / .pi
+            angle = angle - 90 * (angle / 90).rounded(.down)  // 0..<90
+            if angle >= 45 { angle -= 90 }  // −45..<45
+            bins[min(899, max(0, Int(((angle + 45) * 10).rounded(.down))))] += length
+        }
+        guard bins.contains(where: { $0 > 0 }) else { return nil }
+        let smoothed = bins.indices.map { i in (-5...5).reduce(0.0) { $0 + bins[(i + $1 + 900) % 900] } }
+        guard let peak = smoothed.indices.max(by: { smoothed[$0] < smoothed[$1] }) else { return nil }
+        // The weighted mean angle within half a degree of the peak.
+        var sum = 0.0
+        var weight = 0.0
+        for k in -5...5 {
+            let i = (peak + k + 900) % 900
+            sum += bins[i] * (Double(peak + k) / 10 - 45 + 0.05)
+            weight += bins[i]
+        }
+        return weight > 0 ? sum / weight : nil
+    }
+
+    /// A line at an angle: its direction (x ≥ 0, turned so), its offset across (along the normal
+    /// (−u.y, u.x)) and its extent along, m.
+    struct Slant {
+        var direction: SIMD2<Double>
+        var offset: Double
+        var from: Double
+        var to: Double
+        var normal: SIMD2<Double> { SIMD2(-direction.y, direction.x) }
+        var a: SIMD2<Double> { direction * from + normal * offset }
+        var b: SIMD2<Double> { direction * to + normal * offset }
+
+        init(_ a: SIMD2<Double>, _ b: SIMD2<Double>) {
+            var u = simd_normalize(b - a)
+            if u.x < 0 || (u.x == 0 && u.y < 0) { u = -u }
+            direction = u
+            let n = SIMD2(-u.y, u.x)
+            offset = simd_dot(a, n)
+            let s = (simd_dot(a, u), simd_dot(b, u))
+            from = min(s.0, s.1)
+            to = max(s.0, s.1)
+        }
+
+        func parallel(to other: Slant, within degrees: Double = 0.5) -> Bool {
+            abs(simd_dot(direction, other.normal)) < sin(degrees * .pi / 180)
+        }
+    }
+
+    /// Lines at an angle on one line and touching or overlapping, joined.
+    static func mergedSlanted(_ lines: [(a: SIMD2<Double>, b: SIMD2<Double>)]) -> [(
+        a: SIMD2<Double>, b: SIMD2<Double>
+    )] {
+        var slants = lines.map { Slant($0.a, $0.b) }
+        var merged = true
+        while merged {
+            merged = false
+            outer: for i in slants.indices {
+                for j in slants.indices where j > i {
+                    let p = slants[i]
+                    let q = slants[j]
+                    guard p.parallel(to: q, within: 0.3), abs(simd_dot(q.a, p.normal) - p.offset) < 0.002,
+                        simd_dot(q.a, p.direction) <= p.to + 0.002
+                            || simd_dot(q.b, p.direction) <= p.to + 0.002
+                    else { continue }
+                    let qFrom = min(simd_dot(q.a, p.direction), simd_dot(q.b, p.direction))
+                    let qTo = max(simd_dot(q.a, p.direction), simd_dot(q.b, p.direction))
+                    guard qFrom <= p.to + 0.002, qTo >= p.from - 0.002 else { continue }
+                    slants[i].from = min(p.from, qFrom)
+                    slants[i].to = max(p.to, qTo)
+                    slants.remove(at: j)
+                    merged = true
+                    break outer
+                }
+            }
+        }
+        return slants.map { ($0.a, $0.b) }
+    }
+
+    /// Lines at an angle paired as a wall's two faces: each with the nearest parallel line beyond
+    /// it within a wall's thickness, over the stretch they share; the walls' midlines and
+    /// thicknesses, and how much paired and how much (in how many lines) did not.
+    static func pairSlanted(_ lines: [(a: SIMD2<Double>, b: SIMD2<Double>)], options: Options) -> (
+        walls: [(a: SIMD2<Double>, b: SIMD2<Double>, thickness: Double)], pairedLength: Double,
+        leftLength: Double,
+        leftCount: Int
+    ) {
+        let slants = mergedSlanted(lines).map { Slant($0.a, $0.b) }
+        var walls: [(a: SIMD2<Double>, b: SIMD2<Double>, thickness: Double)] = []
+        var used = [Double](repeating: 0, count: slants.count)
+        for (i, p) in slants.enumerated() {
+            var best: (j: Int, gap: Double)?
+            for (j, q) in slants.enumerated() where j != i && p.parallel(to: q) {
+                let gap = simd_dot(q.a, p.normal) - p.offset
+                let qFrom = min(simd_dot(q.a, p.direction), simd_dot(q.b, p.direction))
+                let qTo = max(simd_dot(q.a, p.direction), simd_dot(q.b, p.direction))
+                guard gap >= options.thinnestWall, gap <= options.thickestWall,
+                    min(p.to, qTo) - max(p.from, qFrom) > 0.1
+                else { continue }
+                if gap < (best?.gap ?? .infinity) { best = (j, gap) }
+            }
+            guard let best else { continue }
+            let q = slants[best.j]
+            let from = max(p.from, min(simd_dot(q.a, p.direction), simd_dot(q.b, p.direction)))
+            let to = min(p.to, max(simd_dot(q.a, p.direction), simd_dot(q.b, p.direction)))
+            let mid = p.offset + best.gap / 2
+            walls.append((p.direction * from + p.normal * mid, p.direction * to + p.normal * mid, best.gap))
+            used[i] += to - from
+            used[best.j] += to - from
+        }
+        var left = 0.0
+        var count = 0
+        for (i, p) in slants.enumerated() where p.to - p.from - used[i] > 0.05 {
+            left += p.to - p.from - used[i]
+            count += 1
+        }
+        return (walls, walls.reduce(0) { $0 + simd_distance($1.a, $1.b) } * 2, left, count)
+    }
+
+    /// Angled walls' ends carried to the midline of the wall they meet (within their thicknesses
+    /// and a little more), so that walls of a curve share their corners and an angled wall meets
+    /// the square walls on their midsurfaces; and square walls' ends that stop at an angled wall
+    /// carried to its midline.
+    static func joinAngled(_ walls: inout [Wall], _ angled: inout [AngledWall]) {
+        // The point where the line through `p` along `u` crosses the line through `q` along `v`, as
+        // a distance along `u` from `p`; nil if they are near parallel.
+        func crossing(_ p: SIMD2<Double>, _ u: SIMD2<Double>, _ q: SIMD2<Double>, _ v: SIMD2<Double>)
+            -> Double?
+        {
+            let denominator = u.x * v.y - u.y * v.x
+            guard abs(denominator) > sin(5 * Double.pi / 180) else { return nil }
+            let d = q - p
+            return (d.x * v.y - d.y * v.x) / denominator
+        }
+        let before = angled
+        for (n, wall) in before.enumerated() {
+            for end in 0..<2 {
+                let p = end == 0 ? wall.a : wall.b
+                let outward = end == 0 ? -wall.direction : wall.direction
+                var best: (distance: Double, point: SIMD2<Double>)?
+                func consider(_ q: SIMD2<Double>, _ v: SIMD2<Double>, length: Double, thickness: Double) {
+                    guard let t = crossing(p, outward, q, v) else { return }
+                    let reach = 0.5 * thickness + wall.thickness + 0.3
+                    guard t >= -wall.thickness - 0.3, t <= reach else { return }
+                    let point = p + t * outward
+                    let along = simd_dot(point - q, v)
+                    guard along >= -reach, along <= length + reach else { return }
+                    if abs(t) < (best?.distance ?? .infinity) { best = (abs(t), point) }
+                }
+                for (m, other) in before.enumerated() where m != n {
+                    consider(other.a, other.direction, length: other.length, thickness: other.thickness)
+                }
+                for other in walls {
+                    let q =
+                        other.axis == 0 ? SIMD2(other.from, other.offset) : SIMD2(other.offset, other.from)
+                    let v = other.axis == 0 ? SIMD2<Double>(1, 0) : SIMD2<Double>(0, 1)
+                    consider(q, v, length: other.length, thickness: other.thickness)
+                }
+                if let best {
+                    if end == 0 { angled[n].a = best.point } else { angled[n].b = best.point }
+                }
+            }
+        }
+        // Square walls ending at an angled wall: carried to its midline.
+        for n in walls.indices {
+            let wall = walls[n]
+            let u = wall.axis == 0 ? SIMD2<Double>(1, 0) : SIMD2<Double>(0, 1)
+            let start = wall.axis == 0 ? SIMD2(wall.from, wall.offset) : SIMD2(wall.offset, wall.from)
+            for other in angled {
+                guard let t = crossing(start, u, other.a, other.direction) else { continue }
+                let point = start + t * u
+                let along = simd_dot(point - other.a, other.direction)
+                guard along >= -0.05, along <= other.length + 0.05 else { continue }
+                let reach =
+                    other.thickness / 2
+                    / max(abs(simd_dot(SIMD2(-other.direction.y, other.direction.x), u)), 0.2)
+                    + 0.05
+                if abs(t - (wall.to - wall.from)) <= reach { walls[n].to = wall.from + t }
+                if abs(t) <= reach { walls[n].from = wall.from + t }
+            }
+        }
     }
 
     // MARK: - Lines
@@ -678,9 +1036,44 @@ public enum FloorPlan {
     /// `storeys` puts its openings on that storey only.
     static func place(
         _ drawn: [(box: (min: SIMD2<Double>, max: SIMD2<Double>), kind: OpeningKind, layer: String)],
-        walls: [Wall], storeys: [String: Int], openings: inout [Opening], notes: inout [String]
+        walls: [Wall], storeys: [String: Int], openings: inout [Opening], notes: inout [String],
+        angled: [AngledWall] = [], angledOpenings: inout [AngledOpening]
     ) {
         var unplaced = 0
+        // Off every square wall: in the angled wall it lies in, its extent along it.
+        func placeAngled(
+            _ item: (box: (min: SIMD2<Double>, max: SIMD2<Double>), kind: OpeningKind, layer: String)
+        )
+            -> Bool
+        {
+            let centre = (item.box.min + item.box.max) / 2
+            let corners = [
+                item.box.min, item.box.max, SIMD2(item.box.min.x, item.box.max.y),
+                SIMD2(item.box.max.x, item.box.min.y),
+            ]
+            let hosts = angled.indices.filter { index in
+                let wall = angled[index]
+                let along = simd_dot(centre - wall.a, wall.direction)
+                let across = abs(simd_dot(centre - wall.a, SIMD2(-wall.direction.y, wall.direction.x)))
+                return across <= wall.thickness / 2 + 0.15 && along >= -0.05 && along <= wall.length + 0.05
+            }
+            guard let host = hosts.first else { return false }
+            let wall = angled[host]
+            let alongs = corners.map { simd_dot($0 - wall.a, wall.direction) }
+            let from = max(alongs.min() ?? 0, 0)
+            let to = min(alongs.max() ?? 0, wall.length)
+            guard to - from > 0.1 else { return false }
+            let storey = storeys[item.layer]
+            if !angledOpenings.contains(where: {
+                $0.wall == host && $0.from < to && $0.to > from
+                    && ($0.storey == nil || storey == nil || $0.storey == storey)
+            }) {
+                angledOpenings.append(
+                    AngledOpening(
+                        wall: host, from: from, to: to, kind: item.kind, layer: item.layer, storey: storey))
+            }
+            return true
+        }
         for item in drawn {
             let centre = (item.box.min + item.box.max) / 2
             let size = item.box.max - item.box.min
@@ -700,14 +1093,14 @@ public enum FloorPlan {
                 return (sa, abs(centre[1 - wa.axis] - wa.offset)) < (sb, abs(centre[1 - wb.axis] - wb.offset))
             }
             guard let host = hosts.first else {
-                unplaced += 1
+                if !placeAngled(item) { unplaced += 1 }
                 continue
             }
             let wall = walls[host]
             let from = max(item.box.min[wall.axis], wall.from)
             let to = min(item.box.max[wall.axis], wall.to)
             guard to - from > 0.1 else {
-                unplaced += 1
+                if !placeAngled(item) { unplaced += 1 }
                 continue
             }
             let storey = storeys[item.layer]
@@ -983,6 +1376,44 @@ public enum FloorPlan {
                     }
                 }
             }
+            // Walls at an angle: each stretch between openings, and under and over each, a wall of
+            // its own turned in plan (`IFCStructure.uprightPlane`), as the stretches of a square wall
+            // are its boxes. Their openings are left open.
+            for (index, wall) in analysis.angled.enumerated() {
+                if let only = options.layerStoreys[wall.layer], only != storey { continue }
+                let z1 = options.slabsInsideWalls ? z0 + height : underSlab
+                let mine = analysis.angledOpenings.filter {
+                    $0.wall == index && ($0.storey == nil || $0.storey == storey)
+                }
+                .sorted { $0.from < $1.from }
+                var pieces: [(Double, Double, Double, Double)] = []
+                var at = 0.0
+                for opening in mine {
+                    let sill = opening.kind == .window ? options.windowSill : 0
+                    let head = min(opening.kind == .window ? options.windowHead : options.doorHead, z1 - z0)
+                    if opening.from > at { pieces.append((at, opening.from, z0, z1)) }
+                    if sill > 0 { pieces.append((opening.from, opening.to, z0, z0 + sill)) }
+                    if z0 + head < z1 { pieces.append((opening.from, opening.to, z0 + head, z1)) }
+                    at = max(at, opening.to)
+                }
+                if wall.length > at { pieces.append((at, wall.length, z0, z1)) }
+                let partition = [Construction.block100, .studPartition].contains(wall.construction)
+                let name = "\(storeyName(storey)) angled \(partition ? "partition" : "wall") \(index + 1)"
+                for (n, piece) in pieces.enumerated()
+                where piece.1 - piece.0 > 0.05 && piece.3 - piece.2 > 0.05 {
+                    let a = wall.a + piece.0 * wall.direction - corner
+                    let b = wall.a + piece.1 * wall.direction - corner
+                    serial += 1
+                    elements.append(
+                        .init(
+                            globalID: String(format: "DXF%019d", serial),
+                            name: pieces.count > 1 ? "\(name) part \(n + 1)" : name, ifcClass: "IfcWall",
+                            storey: storeyName(storey),
+                            mesh: try uprightMesh(
+                                from: a, to: b, thickness: wall.thickness, z0: piece.2, z1: piece.3),
+                            materials: wall.construction.layers))
+                }
+            }
             // The floor over this storey, or the roof over the top one.
             let top = storey == options.storeys - 1
             if top && !options.roof { continue }
@@ -1062,6 +1493,29 @@ public enum FloorPlan {
     }
 
     /// Closed boxes as one mesh.
+    /// A wall's box turned in plan: its midline from `a` to `b` (m, in the plan), `thickness` across,
+    /// from `z0` to `z1`, as a closed mesh.
+    static func uprightMesh(
+        from a: SIMD2<Double>, to b: SIMD2<Double>, thickness: Double, z0: Double, z1: Double
+    ) throws -> ImportedMesh {
+        let u = simd_normalize(b - a)
+        let n = SIMD2(-u.y, u.x) * (thickness / 2)
+        var text = ""
+        // In the order `mesh` lays a box's corners: along, across, up.
+        for k in 0..<8 {
+            let p = (k & 1 == 0 ? a : b) + (k & 2 == 0 ? -n : n)
+            let z = k & 4 == 0 ? z0 : z1
+            text += "v \(Float(p.x)) \(Float(p.y)) \(Float(z))\n"
+        }
+        for face in [
+            [0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5],
+        ] {
+            let v = face.map { $0 + 1 }
+            text += "f \(v[0]) \(v[1]) \(v[2])\nf \(v[0]) \(v[2]) \(v[3])\n"
+        }
+        return try ImportedMesh(data: Data(text.utf8), fileExtension: "obj")
+    }
+
     static func mesh(_ boxes: [Box]) throws -> ImportedMesh {
         var text = ""
         var base = 0

@@ -77,6 +77,15 @@ side, rising along x or y.
   grain are read in those axes (a timber slope's `grainAxis` 2 runs up the slope). The kernel
   takes this path only behind a function constant, so models without a pitched plane run as
   before to the bit.
+- **Walls turned in plan** (19 October 2026). A plane can also be given outright
+  (`Inclination.frame`: a corner, two edges square to each other and their lengths), as a wall
+  standing upright at an angle to the axes, or one chord of a curved wall, is
+  (`IFCStructure.uprightPlane` fits it to an IFC wall that is whole; a DXF plan's angled and
+  curved walls come this way). It is meshed as a slope is, the chords of one curve sharing their
+  corner nodes. It is tied to the walls at its ends and the slabs over and under it by the mesh:
+  each of its nodes within reach of a member it touches follows that member's nearest node
+  (`ShellMesh.tieTouching`), up to half an element off where the member's grid does not reach
+  its line. An opening cuts it into pieces, each a plane of its own; the openings are left open.
 - **Gables.** With `trimsWalls`, the walls under the plane lose their elements whose centres lie
   above it, so a wall run up to the ridge becomes a gable, stepped by up to half an element.
 - **Air.** Parallel planes at a pitch shield each other's facing faces, as a cavity wall's leaves
