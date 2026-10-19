@@ -26,6 +26,58 @@ struct ProfiledSheetTests {
         return (model, sheet)
     }
 
+    /// TR84 at 1.5 mm: its 100 mm crest buckles (163 MPa, below its 420), its fold ratio π t / 4b
+    /// carried to the rib's fibre by (h / d)^(3/2). Pushed past buckling, then pushed back, a sheet
+    /// whose buckled crests keep their folds is pulled back more easily: it ends nearer level.
+    @Test("A buckled flange's fold: its ratio, and a sheet pushed back ends nearer level with it")
+    func fold() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let profile = SheetProfile.tr84(thickness: 0.0015, yield: 420e6)
+        func set(fold: Bool) throws -> (ratio: Float?, final: Float) {
+            var model = StructureModel(
+                solids: [], material: .structuralSteel, elementSize: 0.0575, fixedBase: false)
+            model.elementKind = .shell
+            model.shellLayers = 4
+            var sheet = ProfiledSheet(
+                profile: profile, region: Box(min: SIMD3(0, 0.49, 0), max: SIMD3(0.88, 0.51, 0.915)), span: 2,
+                steel: .structuralSteel)
+            sheet.foldMemory = fold
+            sheet.add(to: &model)
+            let ratio = sheet.localBuckling(rib: model.material)?.foldRatio
+            let solver = try ShellSolver(device: device, model: model)
+            solver.groundContact = false
+            solver.gravity = 0
+            solver.damping = 600
+            // 400 kPa towards −y for 50 ms, compressing the crests (on +y), then 150 kPa the other way
+            // for 50 ms, then nothing.
+            solver.appliedLoad = PressureLoad(
+                axis: 1, positiveSide: false,
+                history: [
+                    SIMD2(0, -400e3), SIMD2(0.05, -400e3), SIMD2(0.0501, 150e3), SIMD2(0.1, 150e3),
+                    SIMD2(0.1001, 0),
+                    SIMD2(100, 0),
+                ])
+            let ends = solver.nodes { $0.z < 1e-4 || $0.z > 0.915 - 1e-4 }
+            let corner = solver.nearestNode(to: SIMD3(0, 0.5, 0))
+            solver.mutateNodes { nodes in
+                for n in ends { nodes[n].restrain(y: true, z: true) }
+                nodes[corner].restrain(x: true)
+            }
+            solver.advance(steps: Int(0.2 / solver.criticalTimeStep))
+            return (ratio, solver.node(solver.nearestNode(to: SIMD3(0.44, 0.5, 0.4575))).displacement.y)
+        }
+        let plain = try set(fold: false)
+        let folded = try set(fold: true)
+        print(
+            "TR84 1.5 mm pushed and pushed back: \(plain.final * 1000) mm, with folds \(folded.final * 1000) mm; "
+                + "fold ratio \(folded.ratio ?? 0)"
+        )
+        #expect(plain.ratio == nil)
+        let ratio = try #require(folded.ratio)
+        #expect(ratio > 0.0118 && ratio < 0.05, "\(ratio)")
+        #expect(abs(folded.final) < abs(plain.final))
+    }
+
     @Test("Simply supported and pressed slowly, the sheet bends as a beam of the profile")
     func elasticSpan() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())

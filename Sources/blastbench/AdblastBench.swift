@@ -4,7 +4,7 @@ import Metal
 
 // ADBLAST's single-span cladding tests (Fixtures/ADBLAST2015; see AdblastCladdingTest.swift):
 //
-//   blastbench adblast [--tests 3,7] [--h 0.123] [--no-buckling] [--held] [--collapse] [--air [--dx 0.05]]
+//   blastbench adblast [--tests 3,7] [--h 0.123] [--no-buckling] [--fold] [--held] [--collapse] [--air [--dx 0.05]]
 //                      [--envelope]   (the one-way model, in the air's load on an envelope and under the measured pulse)
 //                      [--fixture Fixtures/ADBLAST2015/tests.json] [--out dir]
 //
@@ -20,6 +20,7 @@ func runAdblast(device: MTLDevice) throws {
     if flag("no-buckling") { settings.buckles = false }
     if flag("collapse") { settings.postBuckling = .collapse }
     if flag("effective-width") { settings.postBuckling = .effectiveWidth }
+    if flag("fold") { settings.foldMemory = true }
     if flag("held") { settings.releases = false }
     let out = URL(filePath: option("out") ?? "/Volumes/StudioData/bombcad/profiled-sheeting/adblast-runs")
     try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)

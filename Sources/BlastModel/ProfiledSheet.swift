@@ -264,6 +264,12 @@ public struct ProfiledSheet: Sendable, Hashable {
     /// Whether the ribs' flanges that buckle locally lose strength (`localBuckling`), and how.
     public var buckles: Bool
     public var postBuckling: PostBuckling
+    /// A buckled flange keeps its fold (`LocalBuckling.foldRatio`): what it shortened past its
+    /// buckling, as a half-sine over the flange's width b, w = (2b/π)√ε, which tension pulls
+    /// straight at the strength of its plastic hinges, σ_y t / 2w (a fold with hinges at its middle
+    /// and ends, T w = 2 M_p, M_p = σ_y t² / 4), instead of at the yield. Off, a buckled fibre is
+    /// pulled back at its yield.
+    public var foldMemory = false
 
     public init(
         profile: SheetProfile, region: Box, span: Int, steel: StructureMaterial = .structuralSteel,
@@ -321,6 +327,11 @@ public struct ProfiledSheet: Sendable, Hashable {
             return slenderness <= 0.673 ? 1 : min(1, (slenderness - 0.22) / (slenderness * slenderness))
         }
         let weakest = buckling.min { reduction($0.stress) < reduction($1.stress) }!
+        // The fold on the flange, carried to the rib's fibre as the onset is: its strain by d / h,
+        // its stress by h / d.
+        let width = Double(weakest.side == crestSide ? profile.crestWidth : profile.troughWidth)
+        let fold =
+            foldMemory ? Float(Double.pi * t / (4 * width) * pow(half / weakest.distance, 1.5)) : nil
         let side = buckling.count == 2 ? 0 : weakest.side
         let elastic = weakest.stress < 0.5 * fy
         switch postBuckling == .automatic ? (elastic ? .effectiveWidth : .collapse) : postBuckling {
@@ -329,11 +340,12 @@ public struct ProfiledSheet: Sendable, Hashable {
             let onset = Float(rho * fy / e * half / weakest.distance)
             return LocalBuckling(
                 axis: normal, side: side, onsetStrain: onset, softeningStrain: onset * 1e-3,
-                residual: Float(rho))
+                residual: Float(rho), foldRatio: fold)
         case .collapse, .automatic:
             let onset = Float(min(weakest.stress, fy) / e * half / weakest.distance)
             return LocalBuckling(
-                axis: normal, side: side, onsetStrain: onset, softeningStrain: onset, residual: 0)
+                axis: normal, side: side, onsetStrain: onset, softeningStrain: onset, residual: 0,
+                foldRatio: fold)
         }
     }
 

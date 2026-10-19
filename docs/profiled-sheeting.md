@@ -478,6 +478,44 @@ al. (IJIE 90, 2016, open on NTNU Open) measured reversed snap buckling by 3-D im
 which would check the shells' snap-through on its own; no open test of profiled sheeting
 snapping through was found.
 
+**Built: the buckled flange's fold** (19 October 2026, an option, `ProfiledSheet.foldMemory`,
+`--fold` in `blastbench langdon` and `adblast`). Of the two ways in above, the resolved mesh
+cannot be built here: the shell mesher lays plates only along the axes, and the profiles' webs
+slope (Langdon's at 45°). The memory needs no fitting once it is taken from plastic mechanism
+theory rather than fitted:
+
+- **The fold.** What a buckled flange shortens past its buckling is kept as a fold, a half-sine
+  over the flange's width b, its amplitude w = (2b/π)√ε for a shortening ε.
+- **Straightening it.** Tension pulls the fold straight at the strength of its plastic hinges.
+  With hinges at its middle and ends, T w = 2 M_p with M_p = σ_y t² / 4, a stress of σ_y t / 2w,
+  until the shortening is taken back. Without the option a buckled fibre is pulled back at its
+  yield.
+- **On the rib.** Carried to the rib's fibre as the onset is (strain by d / h, stress by h / d),
+  the one parameter is πt/4b (h/d)^(3/2): 0.015 for TR84 at 1.5 mm.
+
+The fold changes only fibres on a flange that buckles, and nothing until one has; off, the runs
+are bit-identical.
+
+| Test | Measured final (mm) | Without (mm) | With the fold (mm) |
+|---|---|---|---|
+| 1, 2 (1.5 kg, 1.5 mm) | +30, +19 | −121 | −2 |
+| 3 (0.5 kg, 1.5 mm) | 0 | −1.5 | −0.2 |
+| 4, 6 (1.0 kg, 1.5 mm) | 0, not given | −1.7 | +5.2 |
+| 7 (0.5 kg, 0.75 mm) | +4 | −14 | −14 |
+| 8, 10 (1.0 kg, 0.75 mm) | +14, +23 | −64 | −27 |
+| 11, 12 (1.5 kg, 0.75 mm) | −13, +6 | −62 | −40 |
+
+The table is ADBLAST in the air (`profiled-sheeting/fold/` on StudioData).
+
+- **ADBLAST's final sets move the right way.** The mean miss falls from 66 to 27 mm. Every test
+  is nearer, but for test 4, which ends 5 mm up where it ended level. The 1.5 mm sheets end
+  level or lifted, as ADBLAST saw. The first peaks are unchanged (within 1 mm).
+- **Langdon's tests hardly move.** Only the negative direction changes, where the wide flange
+  buckles: its permanent sets fall 1–5%, a little further under, nine of twelve still within half
+  to twice. The design direction is unchanged: its compressed flange does not buckle.
+
+Proposed as the default (not yet made one).
+
 **Buckling earlier than plate theory says.** Three of Langdon's tests miss
 ([above](#against-langdons-corrugated-panels)). In c1212 and c1803 the compressed flange is the
 narrow one, 45 mm, whose plate buckling stress is 1.4 GPa (λ_p 0.50), and yet the panels dished
