@@ -169,6 +169,11 @@ struct SidebarView: View {
                         "Failed",
                         value: String(
                             format: "%d (%.1f%%)", summary.erodedElements, summary.erodedFraction * 100))
+                    LabeledContent("Collapse") { LiveStandingBadge(model: model, kinds: [.collapse]) }
+                        .help(
+                            "A storey lost or a structure down has a standing of its own: illustrative until a "
+                                + "collapse is compared and agrees, whatever the failing members' own standing."
+                        )
                     LabeledContent(
                         "Deflection now", value: String(format: "%.0f mm", summary.maxDisplacement * 1000))
                     LabeledContent("Largest so far", value: String(format: "%.0f mm", model.peakDeflection))

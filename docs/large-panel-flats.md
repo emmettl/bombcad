@@ -148,10 +148,12 @@ below rather than from the eighteenth floor.
 
 ## Its standing
 
-The app derives it from the scene, as for every layout: every result is *illustrative* (a gas
-deflagration makes the structure's illustrative; joints between parts are noted), and under
-what is not compared it lists collapse, compared once, blind, and missed (two slabs under a
-blast left standing), and failure that holds under mesh refinement, which none does yet.
+The app derives it from the scene, as for every layout (a gas deflagration makes the structure's
+illustrative; joints between parts are noted). The block coming down is its own result,
+*collapse*, illustrative since 19 October 2026 whatever its concrete's local damage reads
+([standing](standing.md#collapse)). Under what is not compared it lists collapse, compared once,
+blind, and missed (two slabs under a blast left standing), and failure that holds under mesh
+refinement, which none does yet.
 `blastbench panelblock --case gas --standing` prints it.
 
 What is and is not compared, in short:

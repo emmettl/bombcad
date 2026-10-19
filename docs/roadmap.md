@@ -79,10 +79,10 @@ More evidence is worth more than more features.
   test 3, Reynolds's high-strength slabs in the contest's blast load simulator, frozen at the
   released v0.3.0 (`b524a9d`), scored *worse* on one broken slab, the rest within the band
   ([validation](validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator)).
-- **Next:** whether the standing should withhold or lower collapse-type results (a storey lost,
-  a structure down) where collapse has not been compared, rather than letting them take the band
-  of the material's local damage: the large-panel street collapse reads as an approximation
-  though the one blind test of collapse missed it (raised in 0.5.0's review).
+- **Done 19 October 2026:** collapse (a storey lost, a structure down) is a result of its own,
+  illustrative until a compared collapse case of that structural system agrees, and no longer
+  takes the band of the material's local damage ([standing](standing.md#collapse); raised in
+  0.5.0's review).
 - **Blocked on the user:** the sources marked *needs the user to obtain* in
   [data wanted](data-wanted.md), chiefly ACI SP-306 for the high-strength slabs, Saatci's
   records, Kasun-III's mapped debris for fragment sizes, shear across cracks at high rates, a

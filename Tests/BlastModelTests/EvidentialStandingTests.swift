@@ -211,6 +211,21 @@ private let docs = URL(filePath: #filePath).deletingLastPathComponent().deleting
         #expect(standing(ScenarioPreset.openGround.scenario)[.structuralResponse] == nil)
     }
 
+    /// Collapse is a result of its own, illustrative wherever a structure is, whatever the failing
+    /// members' own standing: large-panel flats coming down read illustrative while their concrete's
+    /// local damage keeps its approximation, and collapse takes no band.
+    @Test func collapseStandsApartFromLocalDamage() throws {
+        let street = standing(ScenarioPreset.largePanelStreet.scenario)
+        let collapse = try #require(street[.collapse])
+        let damage = try #require(street[.structuralDamage])
+        #expect(collapse.level == .illustrative)
+        #expect(damage.level == .approximation)
+        #expect((collapse.bands ?? []).isEmpty && collapse.unbanded?.isEmpty == false)
+        #expect(collapse.evidence.contains { $0.check.contains("Mendonça") })
+        #expect(try #require(standing(ScenarioPreset.officeTower.scenario)[.collapse]).level == .illustrative)
+        #expect(standing(ScenarioPreset.openGround.scenario)[.collapse] == nil)
+    }
+
     @Test func afterburningChangesTheImpulsesStanding() throws {
         let plain = try #require(standing()[.impulse])
         let burning = try #require(

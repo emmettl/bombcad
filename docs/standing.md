@@ -62,6 +62,37 @@ The standing is worked out from the scene's actual settings each time they chang
 - **What is left out.** Each scene lists what it could involve that nothing here models: a
   rigid ground with no crater (or, on earth or rock, a crater estimated but not modelled), collapse compared once (blind, and missed) and debris only once, ignition and fire, and so on.
 
+## Collapse
+
+Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind.collapse`,
+"Collapse: storeys lost, structures down"), listed wherever a scene has a structure.
+- **What it covers:** parts of a structure losing their support and falling. That is, members
+  and elements failing, joints and connections letting go, and what they carried coming down: a
+  storey lost, a structure down, collapse spreading through a block of panels or a frame.
+  `structuralDamage` keeps the members' and elements' own damage: cracking, yielding, breach,
+  a member failing.
+- **Its standing: illustrative,** whatever the failing members' material reads, and with no
+  error band, so that it never borrows the local damage's. Before this, the large-panel flats
+  coming down read as an approximation, the concrete band.
+- **What would raise it.** A structural system's collapse may rise to an approximation only when
+  a compared collapse case of that system agrees within its band. None does yet:
+  - **Slabs:** Mendonça's, blind, the two that collapsed left standing (the unsafe side).
+  - **Brick houses** against the Second World War's bomb surveys: the right category at 0.1 s,
+    but the cracked front walls topple after, one or two categories too severe beyond 11 m (the
+    safe side). Masonry structures are illustrative anyway.
+  - **Beirut's 0.5 m stone:** falls in 8 of 293 buildings where 7 of GEER's 13 partly collapsed.
+    It is not converged, and was once matched by an error.
+  - **Alsubaei's blockwork wall** under 125 kg collapses as the test's did: one wall, not a
+    structure.
+  - **Steel connections** take their fracture from slow column-removal tests (NIST TN 1669,
+    Weigand and Berman): a calibration. No frame has been compared losing a column.
+  - **Large-panel flats:** against the Ronan Point inquiry's estimates only, not measurement.
+
+  The office tower on fin plates and the large-panel flats coming down are the model's alone.
+
+The app gives it its own badge in the structure section ("Collapse"); the structure's other
+badges keep the deflection's and the damage's standing.
+
 ## In the app
 
 A small badge sits beside each result: the gauges' peak overpressure, the structure's chart and
