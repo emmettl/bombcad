@@ -155,6 +155,9 @@ public struct Scenario: Sendable, Hashable, Codable {
     /// Obstacles smaller than the air's cells, as arrays of pipes or bars (`CongestionArray`): the
     /// air flows through them as through a porous, resisting medium. (Optional for older layouts.)
     public var congestion: [CongestionArray]?
+    /// Lines that keep charges back (`StandOffLine`): saved with the layout, never seen by the air,
+    /// and not part of the numerical input. (Optional for older layouts.)
+    public var standOffLines: [StandOffLine]?
 
     public init(
         name: String, domainSize: SIMD3<Float>, boxes: [Box], charge: Charge, gauges: [Gauge] = [],
@@ -226,7 +229,7 @@ extension Scenario {
             additionalCharges, gauges, structure, atmosphere, reflectiveFaces, objectOwnership,
             additionalStructures, buildingEnvelopes, terrain, deflagration, ventPanels, congestion,
             attributions,
-            envelopeSources, envelopeConstructions
+            envelopeSources, envelopeConstructions, standOffLines
     }
 
     private struct Ownership: Codable {
@@ -270,6 +273,8 @@ extension Scenario {
         deflagration = try c.decodeIfPresent(Deflagration.self, forKey: .deflagration)
         ventPanels = try c.decodeIfPresent([VentPanel].self, forKey: .ventPanels)
         congestion = try c.decodeIfPresent([CongestionArray].self, forKey: .congestion)
+        standOffLines = try c.decodeIfPresent([StandOffLine].self, forKey: .standOffLines)
+        for line in standOffLines ?? [] { try line.validate() }
         let additional =
             try c.decodeIfPresent([AdditionalStructure].self, forKey: .additionalStructures) ?? []
         guard additional.count < Self.maximumStructures, additional.isEmpty || structure != nil else {
@@ -331,6 +336,9 @@ extension Scenario {
         if !physicsOnly {
             try c.encodeIfPresent(attributions, forKey: .attributions)
             try c.encodeIfPresent(envelopeSources, forKey: .envelopeSources)
+            if let standOffLines, !standOffLines.isEmpty {
+                try c.encode(standOffLines, forKey: .standOffLines)
+            }
         }
         try c.encodeIfPresent(envelopeConstructions, forKey: .envelopeConstructions)
         if !envelopeObjects.isEmpty {
@@ -378,5 +386,65 @@ extension Box {
             result.max[axis] = (middle + 1) * cellSize
         }
         return result
+    }
+}
+
+extension Scenario {
+    /// The charges a stand-off line guards against: 0 for `charge`, then `additionalCharges` in
+    /// order.
+    public var chargesInsideStandOff: [Int] {
+        let lines = standOffLines ?? []
+        let charges = [charge] + (additionalCharges ?? [])
+        return charges.indices.filter { n in
+            let p = SIMD2(charges[n].position.x, charges[n].position.y)
+            return lines.contains { $0.guards(p) }
+        }
+    }
+
+    /// Adds a barrier wall: a fixed block along the line from `from` to `to` on the plan, which must
+    /// run along x or y, `thickness` m thick about it and `height` m tall over the lowest ground under
+    /// it (on a terrain, as map buildings stand). The air, freestanding objects and fragments see it
+    /// as they see any block, and the façade load surrogate's raster sees it
+    /// (`FacadeLoadSurrogate.Raster`). Returns its object's identity.
+    @discardableResult
+    public mutating func addBarrier(
+        from: SIMD2<Float>, to: SIMD2<Float>, height: Float, thickness: Float = 0.3
+    ) throws -> UUID {
+        guard height > 0, thickness > 0, height.isFinite, thickness.isFinite, from != to,
+            from.x == to.x || from.y == to.y
+        else {
+            throw ImportedMesh.ImportError.invalid(
+                "A barrier runs along x or y between two points, with a positive height and thickness.")
+        }
+        let alongX = from.y == to.y
+        let low = simd_min(from, to)
+        let high = simd_max(from, to)
+        let half = thickness / 2
+        let footprintLow = alongX ? SIMD2(low.x, low.y - half) : SIMD2(low.x - half, low.y)
+        let footprintHigh = alongX ? SIMD2(high.x, high.y + half) : SIMD2(high.x + half, high.y)
+        // The lowest ground under it, sampled every half metre over its footprint.
+        var base: Float = 0
+        if let terrain {
+            base = .infinity
+            let size = footprintHigh - footprintLow
+            let nx = max(Int((size.x / 0.5).rounded(.up)), 1)
+            let ny = max(Int((size.y / 0.5).rounded(.up)), 1)
+            for j in 0...ny {
+                for i in 0...nx {
+                    let p = footprintLow + size * SIMD2(Float(i) / Float(nx), Float(j) / Float(ny))
+                    base = min(base, terrain.height(at: p))
+                }
+            }
+        }
+        let box = Box(
+            min: SIMD3(footprintLow.x, footprintLow.y, base),
+            max: SIMD3(footprintHigh.x, footprintHigh.y, base + height))
+        boxes.append(box)
+        let count = objects.filter { $0.fixedBox != nil && $0.name.hasPrefix("Barrier") }.count
+        guard let index = objects.lastIndex(where: { $0.fixedBox == box }) else {
+            throw SceneObjectError.missingObject
+        }
+        objects[index].name = "Barrier \(count + 1)"
+        return objects[index].id
     }
 }

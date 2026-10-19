@@ -1075,6 +1075,7 @@ public enum StandingTable {
         "Scenario.reflectiveFaces": .option([.closedBoundaries]),
         "Scenario.terrain": .option([.terrain, .footingsOnSlope]),
         "Scenario.attributions": .input,
+        "Scenario.standOffLines": .input,
         "Scenario.envelopeSources": .option([.importedEnvelopes, .mapBuildings]),
         "EnvelopeSource.objectID": .input,
         "EnvelopeSource.kind": .option([.importedEnvelopes, .mapBuildings]),

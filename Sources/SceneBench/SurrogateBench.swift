@@ -57,7 +57,8 @@ enum SurrogateBench {
             cellSize = inputs.cellSize
             objects = scene.envelopeObjects
             let dx = cellSize
-            let raster = FacadeLoadSurrogate.Raster(objects: objects, terrain: scene.terrain, cell: dx)
+            let raster = FacadeLoadSurrogate.Raster(
+                objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: dx)
             self.raster = raster
             let folder = URL(filePath: path)
             let index = try JSONDecoder().decode(
