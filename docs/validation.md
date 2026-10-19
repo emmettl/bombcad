@@ -6006,13 +6006,31 @@ The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), aga
   deviation 0.14–0.26); beyond it, 1.09–1.63 times the run's on the median, over the hills and
   near the run's open faces, and far more scattered.
 - **Outside its fitted range** (Z = 4.6–38.7 m/kg^(1/3)) its terms are held at the range's end and
-  the components marked as extrapolated; within Z = 3 of Beirut's charge, among the port's silos and
-  warehouses, it gives eight times the run's peak.
+  the components marked as extrapolated. Within Z = 3 of Beirut's charge it gives eight times the
+  run's peak, but there the saved loads were capped at 65.5 kPa (16-bit floats, fixed in 983409a8),
+  as within about Z = 7 in the runs it was fitted to: the near field awaits a refit.
 - **Time:** 22–28 s over Beirut's 724,512 components on the Studio, against 25–41 minutes for a
   full run on the CI mini (25–28 as the Beirut page timed its runs, 27–41 timed again for the
   hybrid comparison).
 
 Standing: an approximation for the glass across a district, illustrative for walls and roofs.
+
+### The glass chances against Beirut's runs and survey
+
+The [glass chances](glass-probability.md#judged), each building side's chance of some glass
+broken and of being blown out, drawn a hundred times over the yield, each building's glass
+strength and the surrogate's scatter (its spread taken from the made-up districts, not Beirut):
+
+- **Against the runs**, drawn over their three yields: blown out, Brier score 0.020, against 0.108
+  giving every side the mean chance; each tenth of chance within 0.05 of the share of runs. Glass
+  thrown worse than GSA's condition 3b: skill 0.72, each tenth within 0.06. Some glass broken:
+  skill 0.62, the middle chances a little high. All three pass the protective-design report's
+  test, each tenth of chance holding 200 sides or more within 0.1 of the share seen.
+- **Against GEER's survey** of 8,227 façades, drawn over the inferred yield: not calibrated (skill
+  −1.2 and −1.0). They share the glass model's over-breaking: blown out 0.91 at 0.75–1 km where
+  GEER saw 0.27, and no one glass strength brings both classes into line.
+
+Standing: an approximation of a run's spread for the glass; not of the event's.
 
 ### The hybrid far field against Beirut's runs
 

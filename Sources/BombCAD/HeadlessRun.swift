@@ -12,7 +12,8 @@ enum HeadlessRun {
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
                            [--charge <kg>@<x>,<y>,<z>[+<delay ms>]]…
-                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m] [--surrogate <file.json>]
+                           [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
+                           [--surrogate <file.json> [--surrogate-yields <samples.csv> | --surrogate-yield-within <factor>]]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -69,7 +70,10 @@ enum HeadlessRun {
         running the air: each component's load from its distance, facing and the buildings in the
         way (Kingery–Bulmash corrected by terms fitted to BombCAD's district runs), judged as a
         run's are. It writes the damage as JSON, marked as an estimate with its error band, and
-        does not run.
+        does not run. With it each map building side's chance that its glass breaks and that it is
+        blown out, drawn over the yield (from `scenebench infer-charge --samples`' masses with
+        --surrogate-yields, or within --surrogate-yield-within either way nine times in ten, 1.5 by
+        default), each building's glass strength and the estimate's own scatter: the glass only.
         --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
         main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
@@ -138,6 +142,10 @@ enum HeadlessRun {
         var advise: AdvisorTarget?
         /// With `--surrogate`, where the first look's damage goes; the project is then not run.
         var surrogate: URL?
+        /// The first look's yields to draw its glass chances over: a posterior's samples (their
+        /// first column the log10 of the mass in kg), or within a factor either way.
+        var surrogateYields: URL?
+        var surrogateYieldWithin = 1.5
 
         /// The consumers `--consumer` can place.
         static let consumerNames = ["fragments", "thermal", "ground"]
@@ -180,7 +188,7 @@ enum HeadlessRun {
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
-                            "surrogate", "charge",
+                            "surrogate", "surrogate-yields", "surrogate-yield-within", "charge",
                         ]
                         .contains(key)
                     else {
@@ -218,6 +226,19 @@ enum HeadlessRun {
             options.debrisResults = values["debris-results"].map { URL(filePath: $0) }
             options.standing = values["standing"].map { URL(filePath: $0) }
             options.surrogate = values["surrogate"].map { URL(filePath: $0) }
+            options.surrogateYields = values["surrogate-yields"].map { URL(filePath: $0) }
+            if let text = values["surrogate-yield-within"] {
+                guard let factor = Double(text), factor >= 1, factor.isFinite else {
+                    throw ProjectFileError.invalid("--surrogate-yield-within takes a factor of 1 or more.")
+                }
+                options.surrogateYieldWithin = factor
+            }
+            if options.surrogateYields != nil || values["surrogate-yield-within"] != nil,
+                options.surrogate == nil
+            {
+                throw ProjectFileError.invalid(
+                    "--surrogate-yields and --surrogate-yield-within need --surrogate.")
+            }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
                     throw ProjectFileError.invalid(
@@ -1139,6 +1160,9 @@ enum HeadlessRun {
         var outsideFit: Int
         var seconds: Double
         var buildings: [EnvelopeBuildingDamage]
+        /// Each map building side's glass chances, and what they were drawn over.
+        var glass: [FacadeLoadSurrogate.SideGlass]
+        var glassDrawnOver: String
     }
 
     /// The first look at the project's envelope buildings (as `--resolution` and `--mass` change
@@ -1154,11 +1178,29 @@ enum HeadlessRun {
         let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
         let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
             estimate, constructions: { scenario.envelopeConstruction(for: $0) })
+        var uncertainty = FacadeLoadSurrogate.Uncertainty(
+            yieldLogSD: log(options.surrogateYieldWithin) / 1.645)
+        var drawnOver = String(
+            format: "yield within ×%.2f nine times in ten, glass strength, the estimate's scatter",
+            options.surrogateYieldWithin)
+        if let url = options.surrogateYields {
+            let lines = try String(contentsOf: url, encoding: .utf8).split(whereSeparator: \.isNewline)
+            uncertainty.masses = lines.dropFirst().compactMap { line in
+                line.split(separator: ",").first.flatMap { Double($0) }.map { pow(10, $0) }
+            }
+            guard !uncertainty.masses.isEmpty else {
+                throw ProjectFileError.invalid("No masses (log10 kg, first column) in \(url.path).")
+            }
+            drawnOver = "yields from \(url.lastPathComponent), glass strength, the estimate's scatter"
+        }
+        let (glass, glassS) = FacadeLoadSurrogate.glassProbabilities(
+            scene: scenario, cellSize: cellSize, uncertainty: uncertainty)
         let look = FirstLook(
             method: FacadeLoadSurrogate.method, fittedTo: FacadeLoadSurrogate.Coefficients.fitted.fittedTo,
-            standing: FacadeLoadSurrogate.standing, components: estimate.loads.count,
-            outsideFit: estimate.outsideFit,
-            seconds: estimate.seconds + damageS, buildings: buildings)
+            standing: FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding,
+            components: estimate.loads.count, outsideFit: estimate.outsideFit,
+            seconds: estimate.seconds + damageS + glassS, buildings: buildings,
+            glass: glass, glassDrawnOver: drawnOver)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
         try encoder.encode(look).write(to: url, options: .withoutOverwriting)
@@ -1176,7 +1218,16 @@ enum HeadlessRun {
             let name = scenario.object(id: building.id)?.name ?? "Building"
             return "  \(name): " + EnvelopeDamageSection.summary(building)
         }
-        lines += FacadeLoadSurrogate.standing.map { "  " + $0 }
+        if !glass.isEmpty {
+            let some = glass.map(\.someBroken).reduce(0, +) / Double(glass.count)
+            let blown = glass.map(\.blownOut).reduce(0, +) / Double(glass.count)
+            lines.append(
+                String(
+                    format:
+                        "  Glass chances of %d building sides (%@): some broken %.2f, blown out %.2f on average",
+                    glass.count, drawnOver, some, blown))
+        }
+        lines += (FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding).map { "  " + $0 }
         return lines
     }
 

@@ -1,0 +1,161 @@
+# Glass by chance: each building side's probability of broken glass
+
+The [first look](surrogate-first-look.md) gives one answer for each building side's glass. This
+gives a chance instead: the chance that some pane of the side breaks (GEER's W1 or worse), the
+chance that it is blown out (nine in ten of its panes broken, against GEER's W3), and the chance
+that some pane is thrown worse than GSA's condition 3b (its glass beyond 3 m into the room), which
+protective design ranks plans by. It draws
+the first look a hundred times over what is not known, in 20–65 s for a city's 29,000 sides on
+the Studio (the more so the more other jobs share it).
+It is the first step of [Horizons](roadmap.md#horizons) item 4, "Uncertainty by default".
+
+**For the glass only.** The first look's walls and roofs are not to be relied on (fewer than
+three in ten of the damaged components take the run's level), so no chance is given for them,
+and the app and `--surrogate`'s output say so.
+
+## What holds and what does not
+
+- **Holds: the spread of the runs.** Drawn over the yields of Beirut's three full runs (0.2, 0.5
+  and 1.1 kt), the chances match how often those runs broke each side's glass, and passed the
+  protective-design report's test (each tenth of chance within 0.1 of the share seen) for all
+  three: some broken, blown out, and thrown past condition 3b (skill 0.72, each tenth within 0.06). Blown out: Brier
+  score 0.020, against 0.108 for giving every side the mean chance (a skill of 0.81), and each
+  tenth of chance within 0.05 of the share of runs. Some broken: skill 0.62, the middle chances
+  0.04–0.07 high. Without the surrogate's own scatter the blown-out skill is 0.76, so the scatter
+  earns its place.
+- **Does not: the event.** Against GEER's survey of 8,227 of Beirut's façades, drawn over the
+  inferred yield (0.36–0.85 kt), each building's glass strength and the scatter, the chances are
+  poorly calibrated (skill −1.2 for some broken, −1.0 for blown out): the observed share sits
+  outside the draws' 90% range in every band but one. They share the glass model's over-breaking,
+  which the [Beirut page](beirut-2020.md#glass-as-a-mix-of-panes) found in the full runs: at
+  0.75–1 km the chance of being blown out is 0.91 where GEER saw 0.27. Read the chances as the
+  spread of what a run would give, not of what happened.
+
+## What is drawn
+
+For each draw (`FacadeLoadSurrogate.Uncertainty`):
+
+- **The yield**: from a posterior's samples (`scenebench infer-charge --samples`, its first column
+  the log10 of the mass), or log-normal about the scene's charge. In the app, "Yield known to
+  within" sets the factor it lies within nine times in ten (×1.5 by default); headless,
+  `--surrogate-yields samples.csv` or `--surrogate-yield-within 1.5`.
+- **Each building's glass strength**: log-normal about the flaw model's median, with a standard
+  deviation of 0.25 in its logarithm, for its panes' age, make and fixing. One pane's scatter about
+  another's is already in each pane's own chance (E1300's flaw model, `GlassStrength`).
+- **The surrogate's scatter**: for each building side, shared by its strips, its peak and impulse
+  off the fit by a correlated log-normal error whose spread depends on the scaled distance. The
+  spread is how far each of the four fitted runs falls from a fit to the other three: 0.23–0.41
+  for the peak and 0.16–0.26 for the impulse (bias and spread together), correlated 0.26–0.67.
+  It is not taken from Beirut, so the check against Beirut's runs is not circular.
+
+A side's chance that some pane breaks is the draws' mean of that chance; its chance of being
+blown out is the share of draws in which nine in ten of its panes are expected broken. Its chance
+of glass thrown past condition 3b is the draws' mean chance that some pane both breaks and is
+thrown that far (`GlazingHazard`: the glass flying as one piece from the pane's middle, 0.9 m
+sill), judged on a pane breaking at the draw's strength, or just under the stress the load
+reaches where that is less, since the panes that break are the weaker.
+
+A pane type's response to the surrogate's pulses depends only on the pulse, so it is tabulated
+by the rounded peak, impulse and rise (the 60 s stress it reaches, or that it lets go), and each
+draw's strength turns that into a chance without integrating again.
+
+## Judged
+
+`scenebench glass-calibrate` (Sources/SceneBench/GlassCalibration.swift), on the strips of
+Beirut's runs within 0.85 of their half-side, matched as for the
+[first look](surrogate-first-look.md#judged-against-beirut).
+
+**(a) Against the runs.** Each side's share of the three runs in which it was blown out (or the
+mean of its chance of some pane breaking, or of a pane thrown worse than condition 3b), against
+its chance drawn over those three yields, with the scatter and without strength scatter (the runs
+judge every pane at the median). The test is the protective-design report's (cloud report of
+19 October, §4, stage 1): it passes if every tenth of chance holding 200 sides or more lies within
+0.1 of the share seen. All three pass; without the surrogate's scatter the throw fails (sides
+given 0.04 had a pane thrown in 21% of runs).
+
+| Chance | Blown out: sides | mean chance | share of runs | Thrown past 3b: sides | mean chance | share of runs |
+|---|---|---|---|---|---|---|
+| 0–0.1 | 13,190 | 0.03 | 0.02 | 140 | 0.08 | 0.04 |
+| 0.1–0.2 | 3,794 | 0.14 | 0.09 | 1,341 | 0.16 | 0.15 |
+| 0.2–0.3 | 2,441 | 0.24 | 0.19 | 2,520 | 0.25 | 0.24 |
+| 0.3–0.4 | 1,761 | 0.34 | 0.34 | 3,629 | 0.35 | 0.30 |
+| 0.4–0.5 | 1,516 | 0.44 | 0.42 | 4,050 | 0.45 | 0.39 |
+| 0.5–0.6 | 1,464 | 0.54 | 0.52 | 3,290 | 0.55 | 0.51 |
+| 0.6–0.7 | 1,314 | 0.64 | 0.65 | 3,200 | 0.65 | 0.65 |
+| 0.7–0.8 | 1,019 | 0.74 | 0.73 | 2,613 | 0.75 | 0.78 |
+| 0.8–0.9 | 904 | 0.85 | 0.83 | 1,846 | 0.85 | 0.91 |
+| 0.9–1 | 1,588 | 0.96 | 0.96 | 6,362 | 0.98 | 0.99 |
+
+Brier scores: blown out 0.020 (0.108 giving every side the mean; skill 0.81), thrown past 3b 0.033
+(0.116; skill 0.72), some broken 0.032 (0.084; skill 0.62).
+
+There is no ensemble of runs over a district's other unknowns (the validation ensemble samples
+structural tests' inputs, not a city's), so the runs check only the yield and the surrogate's
+scatter, not the strength.
+
+**(b) Against GEER.** Each of GEER's 9,183 street façades (DesignSafe PRJ-3030, its shapefile's
+segment centres and `Azimuth_N` normals, in degrees) is matched to the side of a map building
+within 25 m that faces within 60° of it: 8,227 are. By distance band, the share seen against the
+draws' mean and 90% range:
+
+| Distance | Façades | W1+ seen | Chance some broken | W3 seen | Chance blown out |
+|---|---|---|---|---|---|
+| 0.5–0.75 km | 722 | 0.84 | 1.00 (1.00–1.00) | 0.76 | 0.97 (0.93–1.00) |
+| 0.75–1 km | 1,279 | 0.62 | 1.00 (1.00–1.00) | 0.27 | 0.91 (0.84–0.98) |
+| 1–1.25 km | 1,716 | 0.38 | 1.00 (1.00–1.00) | 0.17 | 0.76 (0.61–0.92) |
+| 1.25–1.5 km | 2,302 | 0.35 | 1.00 (0.99–1.00) | 0.17 | 0.56 (0.38–0.77) |
+| 1.5–1.75 km | 1,312 | 0.37 | 0.98 (0.94–1.00) | 0.09 | 0.35 (0.18–0.59) |
+| 1.75–2 km | 386 | 0.28 | 0.96 (0.91–1.00) | 0.02 | 0.22 (0.07–0.51) |
+| 2–2.5 km | 510 | 0.27 | 0.93 (0.82–1.00) | 0.15 | 0.13 (0.00–0.35) |
+
+**What a stronger glass would do.** As a diagnostic only, with every building's glass a multiple
+of the flaw model's median strength and a wider spread: at four times (a log standard deviation
+of 0.75) the share with some glass broken falls inside the 90% range in six bands of seven, but
+the share blown out falls below it in six of seven (0.31 against 0.76 at 0.5–0.75 km); at twice
+(0.5) the blown-out share is inside in four bands but some broken is too high in all. No one
+strength fits both: the model's façades go from a pane broken to blown out over a shorter
+distance than GEER's did. GEER's photographs were taken two months on, some façades repaired,
+and its W3 counts frames and doors, which the model has none of.
+
+## Using it
+
+- **In the app**: Simulation ▸ Quick Estimate of Envelope Damage now also draws the glass chances.
+  In the damage section "Colour by" shows each building side by its chance that glass breaks,
+  that it is blown out, or that glass is thrown past 3 m (GSA 3b), in eighths from light yellow to dark purple (viridis), the roof by its
+  worst side; each building's row lists its sides' chances. "Yield known to within" sets the
+  yield's spread for the next estimate.
+- **Headless**: `BombCAD run project --surrogate first-look.json [--surrogate-yields samples.csv |
+  --surrogate-yield-within 1.5]` adds `glass`, each side's chances, and what they were drawn over.
+- **Bench**: `scenebench glass-calibrate`; the runs' judgements and the posterior are on StudioData
+  under `bombcad/uncertainty`.
+
+## Limitations
+
+- **The chances are a run's, not the event's**, as above: they carry the glass model's and the
+  4 m runs' biases.
+- **Map buildings' façades only**: sides whose construction has a glazing mix. Panes drawn as
+  components (detailed envelopes) are not given chances.
+- **The runs' loads were capped at 65.5 kPa** within about Z = 7 (16-bit floats when saved, fixed in
+  983409a8, after them). Glass there breaks either way; the throw close in may be understated in
+  the runs, and so in the check against them.
+- **The strength spread (0.25) is assumed**, not fitted: no survey of a city's glass by building
+  was found.
+- **The surrogate's scatter is drawn per side**, wholly shared by its strips and independent
+  between sides; neighbouring sides' errors are surely correlated, which would widen the band
+  shares' ranges.
+
+## Sources
+
+- GEER, *Beirut port explosion* reconnaissance (GEER-070, 2021) and its façade dataset (DesignSafe
+  PRJ-3030).
+- ASTM E1300's glass flaw model as `GlassStrength` uses it ([building envelopes](building-envelopes.md)).
+- The yield posterior: [charge inference](charge-inference.md).
+- G. W. Brier, "Verification of forecasts expressed in terms of probability", *Monthly Weather
+  Review* 78, 1950 (the score).
+
+## Future work
+
+- Fit the strength spread, or a strength by building age, to a survey with panes counted.
+- Correlated scatter between neighbouring sides.
+- Chances for walls once a surrogate can be relied on for them, or from a few full runs drawn
+  where the first look is least sure (Horizons items 1 and 2 together).

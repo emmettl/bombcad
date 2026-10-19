@@ -15,7 +15,36 @@ struct EnvelopeDamageSection: View {
                 StandingRow(model: model, kinds: [.envelopeDamage])
                 Toggle("Show damage in the view", isOn: $model.showsEnvelopeDamage)
                     .help("Colour each envelope by its damage instead of the air's pressure.")
-                Legend()
+                if model.envelopeGlassChances.isEmpty || model.envelopeColouring == .damage {
+                    Legend()
+                }
+                if !model.envelopeGlassChances.isEmpty {
+                    Picker("Colour by", selection: $model.envelopeColouring) {
+                        ForEach(SimulationModel.EnvelopeColouring.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .help("Each building side's chance, from the quick estimate's draws: the glass only.")
+                    if model.envelopeColouring != .damage { ChanceLegend() }
+                    Text(
+                        "Chances for the glass only, drawn over the yield, each building's glass strength and the "
+                            + "estimate's own scatter. Walls and roofs are not given chances: the estimate's are not "
+                            + "to be relied on."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+                if model.settings.scenario.envelopeObjects.contains(where: {
+                    model.settings.scenario.envelopeConstruction(for: $0.id).glazing != nil
+                }) {
+                    Picker("Yield known to within", selection: $model.quickEstimateYieldWithin) {
+                        Text("Exactly").tag(1.0)
+                        Text("×1.25").tag(1.25)
+                        Text("×1.5").tag(1.5)
+                        Text("×2").tag(2.0)
+                        Text("×3").tag(3.0)
+                    }
+                    .help(
+                        "For Quick Estimate's glass chances: the charge's yield within this factor either way, nine times in ten."
+                    )
+                }
                 if !model.envelopeVentingStatus.isEmpty {
                     Text(model.envelopeVentingStatus).font(.caption).foregroundStyle(.orange)
                 }
@@ -49,6 +78,11 @@ struct EnvelopeDamageSection: View {
                             .font(.caption)
                         }
                         Text(building.construction.detail).font(.caption).foregroundStyle(.secondary)
+                        let sides = model.envelopeGlassChances.filter { $0.owner == building.id }
+                        if !sides.isEmpty {
+                            Text("Glass chances (breaks, blown out, thrown past 3 m): " + Self.chances(sides))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
@@ -204,6 +238,24 @@ struct EnvelopeDamageSection: View {
     }
 
     /// The six colours with their meanings, three to a row.
+    /// The glass chance's eighths, light to dark.
+    struct ChanceLegend: View {
+        var body: some View {
+            HStack(spacing: 2) {
+                Text("0").font(.caption)
+                ForEach(EnvelopeChanceColour.ramp.indices, id: \.self) { n in
+                    let c = EnvelopeChanceColour.ramp[n]
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color(.sRGB, red: Double(c.x), green: Double(c.y), blue: Double(c.z)))
+                        .frame(width: 14, height: 12)
+                }
+                Text("1").font(.caption)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Chance from none, light yellow, to certain, dark purple, in eighths")
+        }
+    }
+
     struct Legend: View {
         var body: some View {
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
@@ -227,6 +279,16 @@ struct EnvelopeDamageSection: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Colours: none, glass broken, moderate, heavy, hazardous, failed")
         }
+    }
+
+    /// Each side's chances, by the way it faces (a map's x east, y north).
+    static func chances(_ sides: [FacadeLoadSurrogate.SideGlass]) -> String {
+        sides.sorted { ($0.axis, $0.outward) < ($1.axis, $1.outward) }.map { side in
+            let face =
+                side.axis == 0 ? (side.outward > 0 ? "east" : "west") : (side.outward > 0 ? "north" : "south")
+            return String(
+                format: "%@ %.2f, %.2f, %.2f", face, side.someBroken, side.blownOut, side.thrownPast3b)
+        }.joined(separator: "; ")
     }
 
     static func levels(_ range: ClosedRange<EnvelopeDamageLevel>) -> String {

@@ -70,6 +70,10 @@ enum SceneBench {
             try EnvelopeVentingBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "glass-calibrate" {
+            try GlassCalibration.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "surrogate-judge" {
             try SurrogateBench.judge(Array(args.dropFirst()))
             return
