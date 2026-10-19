@@ -301,12 +301,15 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 Longer aims, set on 18 October 2026. The binding limit is how long a run takes on one Mac, so
 most are about reaching an answer for less, with the full solver kept as the referee. In order:
 
-1. **Refinement steered by the decision** (started). Refine where the answer the user asked
-   for is uncertain: a component near its damage threshold, an injury contour near a boundary,
-   a pane near breaking. Today refinement follows pressure gradients everywhere. The first step
-   is an error estimate on the advisor's target quantity driving the existing refinement flags,
-   judged on whether refined districts then beat uniform cells by a clear factor at equal
-   answers.
+1. **Refinement steered by the decision** (first step traced, 19 October 2026). Refine where the
+   answer the user asked for is uncertain: a component near its damage threshold, an injury
+   contour near a boundary, a pane near breaking. For a district it does not pay: the buildings
+   whose outcome the coarse cells leave in doubt fill a domain drawn to the damage's reach. For
+   one building it does: a corridor from the charge gives full refinement's answer there at 2–9%
+   of its refined work, and about a third of its GPU time on Beirut. Refining only beside the
+   building is worse than coarse cells
+   ([refinement steering](refinement-steering.md)). Next: refining toward buildings the user
+   selects, and refinement's fixed costs scaling with the blocks held.
 2. **Answers in seconds.** Surrogates trained on BombCAD's own runs (reduced-order loads by
    geometry and charge, or a small learned model of envelope response), giving an instant first
    look that real runs then refine where it matters, and inheriting the standing's error bands.
