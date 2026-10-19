@@ -1104,6 +1104,8 @@ enum HeadlessRun {
         var fittedTo: String
         var standing: [String]
         var components: Int
+        /// Components outside the distances the estimate was fitted over, their loads extrapolated.
+        var outsideFit: Int
         var seconds: Double
         var buildings: [EnvelopeBuildingDamage]
     }
@@ -1124,6 +1126,7 @@ enum HeadlessRun {
         let look = FirstLook(
             method: FacadeLoadSurrogate.method, fittedTo: FacadeLoadSurrogate.Coefficients.fitted.fittedTo,
             standing: FacadeLoadSurrogate.standing, components: estimate.loads.count,
+            outsideFit: estimate.outsideFit,
             seconds: estimate.seconds + damageS, buildings: buildings)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
@@ -1133,6 +1136,11 @@ enum HeadlessRun {
                 format: "Quick estimate, not a run: %d components of %d buildings in %.1f s",
                 estimate.loads.count, buildings.count, look.seconds)
         ]
+        if estimate.outsideFit > 0 {
+            lines.append(
+                "  \(estimate.outsideFit) components lie outside the distances it was fitted over: their loads are extrapolated."
+            )
+        }
         lines += buildings.map { building in
             let name = scenario.object(id: building.id)?.name ?? "Building"
             return "  \(name): " + EnvelopeDamageSection.summary(building)
