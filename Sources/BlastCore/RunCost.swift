@@ -48,6 +48,12 @@ public enum RunCost {
     /// over the ridges on 2.2 million cells, 15–25% with gravity (docs/terrain.md, "The cut cells'
     /// cost").
     public static let terrainCutUpdateCost = 1.1
+    /// The gas losing what it radiates, per cell-update: 5% more a step and 4% fewer steps on the
+    /// street (docs/thermal-radiation.md, "With the gas cooling").
+    public static let radiativeCoolingUpdateCost = 1.01
+    /// Its medium and loss a cell, and the directions' slices (docs/thermal-radiation.md).
+    public static let radiativeCoolingBytesPerCell = 12
+    public static let radiativeCoolingSliceBytes = 52 << 20
     /// Element-updates a second with contact (docs/performance.md, "Structural solver").
     public static let elementUpdatesPerSecond = 3.0e8
     /// The time step against still air's: about a third, from the fireball's hot gas (0.34 on the
@@ -117,6 +123,8 @@ public enum RunCost {
     /// The coarse grid's memory, in bytes, without the refined levels'.
     public static func coarseMemory(_ grid: Grid, configuration: SolverConfiguration) -> Int {
         grid.cellCount * (configuration.afterburning ? burningBytesPerCell : bytesPerCell)
+            + (configuration.radiativeCooling == nil
+                ? 0 : grid.cellCount * radiativeCoolingBytesPerCell + radiativeCoolingSliceBytes)
     }
     /// Air bytes a cell: 57, with the fuel and oxygen 73 (docs/large-scenes.md).
     public static let bytesPerCell = 57
@@ -290,6 +298,7 @@ public enum RunCost {
         let updateCost =
             (burning ? afterburningUpdateCost : 1)
             * (configuration.cutsTerrain(of: scenario, cellSize: grid.cellSize) ? terrainCutUpdateCost : 1)
+            * (configuration.radiativeCooling == nil ? 1 : radiativeCoolingUpdateCost)
         let twoLevels = configuration.refinement > 1 && configuration.refinementLevels > 1
         let overhead = Double(steps) * (stepOverhead + (twoLevels ? twoLevelStepOverhead : 0))
         if configuration.refinement > 1 && configuration.refinementOwnSteps {

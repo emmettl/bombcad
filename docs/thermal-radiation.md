@@ -232,7 +232,9 @@ see [With the gas cooling](#with-the-gas-cooling) for why.
   σT⁴ over its surface: for a sphere exactly, as any set of directions sharing out the sphere
   gives; for a flat face, from 2% more to 7% less by how it lies to the lattice, a face along its
   axes least.
-- **It is taken on the GPU** every `interval` steps, four by default, and at each batch's end,
+- **It is taken on the GPU** every `interval` steps of the run's count, four by default (since 19
+  October 2026 not also at each batch's end, so that a run comes out the same however it is
+  batched),
   for the time since: the box round the luminous cells is found as the medium is made, the 13
   lines are marched together (one at a time in a box of over a million cells), and each luminous
   cell's loss over that time comes off its energy, its density and momentum unchanged. A cell
@@ -480,11 +482,41 @@ steps, the cooler gas allowing longer ones. Taken every step and with the 13 dir
 one after another it was 30% more a step; most of the rest is making the medium over the awake
 cells. The directions' slices take 52 MB, and the medium and loss 12 bytes a cell.
 
-**Why it is off by default.** It changes the blast's loads by under half a per cent, so it is not
-needed for them, and without afterburning there is little fireball for it to cool; with
-afterburning it halves the fluences and makes the fireball's heat more plausible, but its total
-has been compared with one measurement, which it still exceeds. Use it for thermal studies with
-afterburning and hot air.
+**On by default since 19 October 2026** (`SolverConfiguration.recommended`, and in the app with
+afterburning and hot air: **Fireball cools as it radiates**; projects run before then keep their
+gas's heat, and the harnesses pinned to the balloon start keep it too). It changes the blast's
+loads by under half a per cent, but against Clough and Clubley's 41 kg fireball (below) it is what
+lets the fireball fade: without it the gas holds 2,500 K for the whole second. It costs about
+nothing in time (5% more a step, 4% fewer steps) and 12 bytes a cell and 52 MB of memory, which
+the run advisor prices: some 1.2 GB on a grid of a hundred million cells. Its total radiated is
+still above the 4–7% measured for TNT. From 19 October 2026 the loss is taken every fourth step of
+the run's count and no longer also at each batch's end, so that a run comes out the same however
+it is batched.
+
+### Against Clough and Clubley's 41 kg fireball
+
+L. G. Clough and S. K. Clubley, "Gauging the fireball: simulation and testing" (University of
+Southampton, 2013): 41 kg of TNT equivalent on the ground, with boxes 1 m up at 4, 6 and 8 m
+carrying flux gauges facing up (calorimeters, so radiant and convective together) and
+thermocouples. The cameras saw the fireball reach the 4 m box at 3.2 ms and the 6 m box at 16 ms,
+grow to 12.5 m across at 24 ms, never reach 8 m, and last about a second. `blastbench gauging`
+runs it on 0.25 m cells, on the mapped start (the grid's clock from 25 ms), with and without the
+gas cooling; the flux is the volume's radiant flux on a gauge facing up on each box's top:
+
+| | Measured | Without | With the gas cooling |
+|---|---|---|---|
+| The fireball's widest, as a hemisphere | 12.5 m at 24 ms | 13.1 m, held to 1 s | 12.5 m at 100 ms, 6.3 m by 1 s |
+| Its mean temperature at 0.3, 0.5 and 1 s | | 2,500, 2,500, 2,500 K | 1,870, 1,730, 1,520 K |
+| Flux at 4 m: peak; at 300 and 500 ms | 145 W/cm² at 32 ms; back to nothing by about 500 ms | 198 at 280 ms; 198, 197 | 175 at 100 ms; 50, 19 |
+| Peak flux at 6 and 8 m | 85 and 30 W/cm² | 75 and 17 | 35 and 7 |
+| Radiated, measured round it, of the charge's energy | | 282% | 45% |
+
+With the cooling the fireball reaches the measured size, never the 8 m box, and fades over the
+second as measured; without it, it holds near the flame temperature, its flux flat. Both reach
+their size four times too late, the luminous gas reaching the 4 m box at 22.5 ms against 3.2:
+the products have cooled below the luminous temperature as they expanded
+([before the grid's clock](#before-the-grids-clock)). The flux at 6 and 8 m reads a half and a
+quarter of the gauges', which took the hot gas's convection too.
 
 ### Before the grid's clock
 

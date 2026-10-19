@@ -39,7 +39,8 @@ extension ProjectRunSettings {
             &configuration, detailedCharge: detailedCharge, sharpShocks: sharpShocks,
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
-            outlineByOverlap: countsByOverlap(over: scenario), mappedStart: startsMapped)
+            outlineByOverlap: countsByOverlap(over: scenario), mappedStart: startsMapped,
+            radiativeCooling: cools ? RadiativeCooling() : nil)
         let cellSize = (Resolution(rawValue: resolution) ?? .medium).cellSize
         configuration.fitRefinementMemory(
             scenario.grid(cellSize: cellSize), memory: AdvisorMachine.thisMac.memory)
@@ -99,7 +100,8 @@ extension SimulationInputs {
             shockThreshold: settings.shockThreshold ?? 0.1,
             adaptiveSubsteps: settings.adaptiveSubsteps ?? false,
             terrainCutCells: settings.cutsTerrain(over: scenario),
-            outlineByOverlap: settings.countsByOverlap(over: scenario), mappedStart: settings.startsMapped)
+            outlineByOverlap: settings.countsByOverlap(over: scenario), mappedStart: settings.startsMapped,
+            radiativeCooling: settings.cools ? RadiativeCooling() : nil)
         return configuration
     }
 

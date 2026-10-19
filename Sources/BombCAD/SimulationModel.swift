@@ -177,6 +177,10 @@ struct SimulationSettings: Equatable {
     /// onto the grid (`SolverConfiguration.mappedCharge`), by default since 18 October 2026; off, as
     /// before, from a sphere of hot gas a few cells across.
     var mappedStart = true
+    /// With afterburning and hot air, the fireball's gas loses the heat it radiates
+    /// (`SolverConfiguration.radiativeCooling`, the thermal description's medium), by default since
+    /// 19 October 2026; off, as before, it keeps it and stays hot.
+    var radiativeCooling = true
     /// Debris lands on soil, a Winkler bed of `groundStiffness` (Pa/m), instead of the hard ground.
     var softGround = false
     var groundStiffness = SolverConfiguration.soilSubgradeModulus
@@ -853,6 +857,7 @@ final class SimulationModel {
                 settings.ventsGlazing = run.ventsGlazing(over: scenario)
                 settings.settlesStructures = run.settlesStructures(over: scenario)
                 settings.mappedStart = run.startsMapped
+                settings.radiativeCooling = run.cools
                 settings.softGround = run.groundStiffness != nil
                 settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
                 settings.ground = run.ground ?? .rigid
@@ -1006,6 +1011,7 @@ final class SimulationModel {
             settings.ventsGlazing = run.ventsGlazing(over: document.scenario)
             settings.settlesStructures = run.settlesStructures(over: document.scenario)
             settings.mappedStart = run.startsMapped
+            settings.radiativeCooling = run.cools
             settings.softGround = run.groundStiffness != nil
             settings.groundStiffness = run.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
             settings.ground = run.ground ?? .rigid
@@ -1217,6 +1223,7 @@ final class SimulationModel {
         settings.ventsGlazing = inputs.settings.ventsGlazing(over: inputs.scenario)
         settings.settlesStructures = inputs.settings.settlesStructures(over: inputs.scenario)
         settings.mappedStart = inputs.settings.startsMapped
+        settings.radiativeCooling = inputs.settings.cools
         settings.softGround = inputs.settings.groundStiffness != nil
         settings.groundStiffness = inputs.settings.groundStiffness ?? SolverConfiguration.soilSubgradeModulus
         settings.ground = inputs.settings.ground ?? .rigid
@@ -2450,7 +2457,9 @@ final class SimulationModel {
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
             ground: settings.ground == .rigid ? nil : settings.ground,
             outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
-            mappedStart: settings.mappedStart)
+            mappedStart: settings.mappedStart,
+            radiativeCooling: settings.radiativeCooling
+                ? RadiativeCooling(spec: thermalSpec ?? ThermalSpec()) : nil)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
         // A mapped start begins no later than halfway through the run, so that the grid has the rest.
         solver.mappedStartLatest = duration / 2

@@ -521,8 +521,11 @@ public enum StandingTable {
         case .radiativeCooling:
             return Entry(
                 title: "Gas losing what it radiates", affects: [.thermal, .cloud], limit: nil,
-                note: "The luminous gas cools as the fireball's volume radiates; the cloud's comparison with "
-                    + "Church's was made without it, and its tops come down a few per cent.",
+                note: "The luminous gas cools as the fireball's volume radiates, by default since 19 October "
+                    + "2026: against a 41 kg test the fireball reaches its measured size and fades within the "
+                    + "second, where without it the gas holds near 2,500 K; it still radiates more than TNT's "
+                    + "measured 4–7%. The cloud's comparison with Church's was made without it, and its tops "
+                    + "come down a few per cent.",
                 document: "thermal-radiation.md#the-gas-losing-what-it-radiates")
         case .gravity:
             return Entry(

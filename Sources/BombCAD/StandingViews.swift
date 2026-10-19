@@ -12,7 +12,7 @@ extension ProjectRunSettings {
         gravity: Bool = false, shockThreshold: Float = 0.1, adaptiveSubsteps: Bool = false,
         terrainCutCells: Bool = true,
         groundStiffness: Float? = nil, ground: GroundType? = nil, outlineByOverlap: Bool = true,
-        settlesStructures: Bool = true, mappedStart: Bool = false
+        settlesStructures: Bool = true, mappedStart: Bool = false, radiativeCooling: RadiativeCooling? = nil
     ) {
         configuration.afterburning = detailedCharge
         configuration.airModel = detailedCharge ? .thermallyPerfect : .idealGas
@@ -30,6 +30,8 @@ extension ProjectRunSettings {
         configuration.settlesStructures = settlesStructures
         // The fine one-dimensional start, with the afterburning and hot air it was checked with.
         configuration.mappedCharge = detailedCharge && mappedStart
+        // The fireball losing what it radiates, with the afterburning that makes one.
+        configuration.radiativeCooling = detailedCharge ? radiativeCooling : nil
     }
 
     /// What the standing of a run of `scenario` under these settings is derived from.
@@ -43,7 +45,8 @@ extension ProjectRunSettings {
             shockLevels: shockLevels ?? 1, gravity: gravity ?? false, shockThreshold: shockThreshold ?? 0.1,
             adaptiveSubsteps: adaptiveSubsteps ?? false, terrainCutCells: cutsTerrain(over: scenario),
             groundStiffness: groundStiffness, ground: ground,
-            outlineByOverlap: countsByOverlap(over: scenario), mappedStart: mappedStart == true)
+            outlineByOverlap: countsByOverlap(over: scenario), mappedStart: mappedStart == true,
+            radiativeCooling: cools ? RadiativeCooling(spec: thermal ?? ThermalSpec()) : nil)
         return StandingInputs(
             scenario: scenario, cellSize: (Resolution(rawValue: resolution) ?? .medium).cellSize,
             configuration: configuration, thermal: thermal, cloud: cloud, fragments: fragments,

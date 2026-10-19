@@ -47,13 +47,22 @@ struct RadiativeCoolingTests {
         1 - (1 - (1 + 2 * tau) * exp(-2 * tau)) / (2 * tau * tau)
     }
 
+    /// `cooling` taken every step, for tests that read it a step at a time: it is taken on the
+    /// run's count of steps, not at a batch's end.
+    func everyStep(_ cooling: RadiativeCooling) -> RadiativeCooling {
+        var cooling = cooling
+        cooling.interval = 1
+        return cooling
+    }
+
     @Test(
         "A hot sphere radiates as an isothermal sphere of its optical radius, and its centre loses 4κσT⁴ e^(−κR)",
         arguments: [(Float(0.01), 0.002, 0.002), (1, 0.005, 0.02), (20, 0.02, 0.02)])
     func isothermalSphere(absorption: Float, totalTolerance: Double, centreTolerance: Double) throws {
         let temperature: Float = 2500
         let solver = try hotSphere(
-            temperature: temperature, cooling: RadiativeCooling(absorption: absorption, sootYield: 0))
+            temperature: temperature,
+            cooling: everyStep(RadiativeCooling(absorption: absorption, sootYield: 0)))
         let grid = solver.grid
         let centre = grid.index(12, 12, 12)
         let luminous = solver.withState { cells in
@@ -89,7 +98,7 @@ struct RadiativeCoolingTests {
         spec.absorption = absorption
         spec.sootYield = 0
         spec.samples = 256
-        let solver = try hotSphere(cooling: RadiativeCooling(spec: spec))
+        let solver = try hotSphere(cooling: everyStep(RadiativeCooling(spec: spec)))
         var scenario = Scenario(
             name: "Sphere", domainSize: SIMD3(repeating: 6), boxes: [],
             charge: Charge(mass: 1, position: SIMD3(repeating: 3)))
@@ -139,7 +148,8 @@ struct RadiativeCoolingTests {
         func centre(_ absorption: Float) throws -> (
             start: Double, end: Double, elapsed: Double, density: Double
         ) {
-            let solver = try hotSphere(cooling: RadiativeCooling(absorption: absorption, sootYield: 0))
+            let solver = try hotSphere(
+                cooling: everyStep(RadiativeCooling(absorption: absorption, sootYield: 0)))
             let index = solver.grid.index(12, 12, 12)
             let start = solver.primitive(of: solver.withState { $0[index] })
             var elapsed = 0.0

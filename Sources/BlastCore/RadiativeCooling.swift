@@ -13,8 +13,8 @@ public struct RadiativeCooling: Sendable, Hashable, Codable {
     public var absorption: Float = 0.1
     /// Soot as a share of the mass of unburnt detonation products (only with afterburning).
     public var sootYield: Float = 0.185
-    /// Steps between takings of the loss, each taking it for the time since the last (and a batch's
-    /// last step always takes it). An opaque fireball's outer cells at 3,000 K lose under a
+    /// Steps of the run's count between takings of the loss, each taking it for the time since the
+    /// last, however the run is batched. An opaque fireball's outer cells at 3,000 K lose under a
     /// hundredth of their heat a step, so four steps make little difference and cost a quarter.
     public var interval = 4
     /// The most of a cell's internal energy one taking may remove: a guard, never reached in
@@ -63,8 +63,12 @@ final class RadiativeCoolingStage {
     private let apply: MTLComputePipelineState
     private let tally: MTLComputePipelineState
     private let clock: MTLComputePipelineState
+    private let gate: MTLComputePipelineState
     /// The time since the loss was last taken, s.
     private let elapsed: MTLBuffer
+    /// The time a taking takes the loss for: `elapsed` on a step that happened, none on a step
+    /// after its batch stopped.
+    private let due: MTLBuffer
     /// Per cell: the medium (κ, B) and the loss, W/m³.
     private let mediumBuffer: MTLBuffer
     private let lossBuffer: MTLBuffer
@@ -114,6 +118,7 @@ final class RadiativeCoolingStage {
         apply = try ShaderLibrary.pipeline("radiationApply", in: library, constants: constants)
         tally = try pipeline("radiationTally")
         clock = try pipeline("radiationClock")
+        gate = try pipeline("radiationGate")
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: max(length, 16), options: .storageModeShared) else {
                 throw BlastError.allocationFailed("\(label) (\(length) bytes)")
@@ -134,6 +139,7 @@ final class RadiativeCoolingStage {
         partials = try buffer(groups * MemoryLayout<Float>.stride, "radiated partials")
         radiated = try buffer(BlastSolver.maxStepsPerBatch * MemoryLayout<Float>.stride, "radiated a step")
         elapsed = try buffer(MemoryLayout<Float>.stride, "time since the cooling")
+        due = try buffer(MemoryLayout<Float>.stride, "time the cooling takes")
     }
 
     private var uniforms: RadiationUniforms {
@@ -168,6 +174,13 @@ final class RadiativeCoolingStage {
         encoder.setBuffer(elapsed, offset: 0, index: 1)
         Self.single(encoder)
         guard take else { return }
+        // Only on a step that happened: a batch stopped early runs its last steps' kernels as
+        // nothing, and a taking there would fall where the batching put it.
+        encoder.setComputePipelineState(gate)
+        encoder.setBuffer(control, offset: 0, index: 0)
+        encoder.setBuffer(elapsed, offset: 0, index: 1)
+        encoder.setBuffer(due, offset: 0, index: 2)
+        Self.single(encoder)
         var solver = solver
         var radiation = uniforms
         radiation.hasSpecies = species == nil ? 0 : 1
@@ -184,7 +197,7 @@ final class RadiativeCoolingStage {
         encoder.setBuffer(species ?? placeholder, offset: 0, index: 2)
         encoder.setBuffer(mediumBuffer, offset: 0, index: 3)
         encoder.setBuffer(boxBuffer, offset: 0, index: 4)
-        encoder.setBuffer(elapsed, offset: 0, index: 5)
+        encoder.setBuffer(due, offset: 0, index: 5)
         encoder.setBytes(&solver, length: solverLength, index: 6)
         encoder.setBytes(&radiation, length: radiationLength, index: 7)
         if let tiles {
@@ -202,7 +215,7 @@ final class RadiativeCoolingStage {
         encoder.setComputePipelineState(prepare)
         encoder.setBuffer(boxBuffer, offset: 0, index: 0)
         encoder.setBuffer(arguments, offset: 0, index: 1)
-        encoder.setBuffer(elapsed, offset: 0, index: 2)
+        encoder.setBuffer(due, offset: 0, index: 2)
         encoder.setBytes(&radiation, length: radiationLength, index: 3)
         Self.single(encoder)
 
@@ -231,7 +244,7 @@ final class RadiativeCoolingStage {
         encoder.setBuffer(mediumBuffer, offset: 0, index: 1)
         encoder.setBuffer(lossBuffer, offset: 0, index: 2)
         encoder.setBuffer(boxBuffer, offset: 0, index: 3)
-        encoder.setBuffer(elapsed, offset: 0, index: 4)
+        encoder.setBuffer(due, offset: 0, index: 4)
         encoder.setBytes(&solver, length: solverLength, index: 5)
         encoder.setBytes(&radiation, length: radiationLength, index: 6)
         encoder.setBuffer(partials, offset: 0, index: 7)

@@ -2799,12 +2799,11 @@ public final class BlastSolver {
             }
             airStage("other")
             if let radiativeCoolingStage, !asleep {
-                // Every few steps, and at the batch's end, the luminous gas loses what it has
-                // radiated since, in the coarse cells; the fine cells under them each lose as much a
-                // volume, as they gain what debris trades with the air.
-                let take =
-                    step == steps - 1
-                    || (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
+                // Every few steps of the run's count, the luminous gas loses what it has radiated
+                // since, in the coarse cells; the fine cells under them each lose as much a volume, as
+                // they gain what debris trades with the air. Not at a batch's end: the time since
+                // carries over, so a run comes out the same however it is batched.
+                let take = (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
                 radiativeCoolingStage.encode(
                     encoder, take: take, state: stateBuffers[current], mask: maskBuffer,
                     species: hasSpecies && configuration.afterburning ? speciesBuffers[current] : nil,
