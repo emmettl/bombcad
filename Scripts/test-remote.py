@@ -84,5 +84,97 @@ class LockTests(unittest.TestCase):
         self.assertTrue(os.path.isdir(self.lock))
 
 
+def plenty():
+    return {"allRunners": [], "pressure": 1, "freePercent": 77, "load": 3.0, "cores": 10}
+
+
+class LaneTests(unittest.TestCase):
+    settings = dict(remote.DEFAULTS)
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = self.directory.name
+        self.lock = os.path.join(self.root, "lock")
+
+    def held_by_parent(self, lane, mem, what="parent's check"):
+        """Lane `lane` held by this test's parent process (alive, and not this one)."""
+        path = os.path.join(self.root, "lanes", str(lane))
+        os.makedirs(path)
+        remote.write_owner(path, {"pid": os.getppid(), "since": 9e12, "what": what, "mem": mem})
+
+    def test_the_first_lane_takes_the_lock_and_lets_it_go(self):
+        self.assertEqual(remote.take_lane(self.root, self.settings, "mine", 7, facts=plenty), (1, None))
+        self.assertEqual(remote.lock_owner(self.lock)["what"], "mine")
+        self.assertEqual(remote.lane_folder(self.root, 1), os.path.join(self.root, "check"))
+        remote.leave_lane(self.root, self.settings, 1)
+        self.assertIsNone(remote.lock_owner(self.lock))
+        self.assertEqual(remote.lane_owners(self.root, 2), {})
+
+    def test_a_second_lane_beside_a_declared_job_and_the_lock_handed_on(self):
+        self.assertEqual(remote.take_lane(self.root, self.settings, "mine", 7, facts=plenty), (1, None))
+        # The parent's job joins in lane 2 (written as take_lane would), then this one ends first.
+        self.held_by_parent(2, 7)
+        remote.leave_lane(self.root, self.settings, 1)
+        owner = remote.lock_owner(self.lock)
+        self.assertEqual((owner["pid"], owner["what"]), (os.getppid(), "parent's check"))
+        # A new job takes the free lane, beside the parent's, while the lock stays the parent's.
+        self.assertEqual(remote.take_lane(self.root, self.settings, "next", 7, facts=plenty), (1, None))
+        self.assertEqual(remote.lock_owner(self.lock)["pid"], os.getppid())
+        self.assertEqual(remote.lane_folder(self.root, 2), os.path.join(self.root, "check-2"))
+        remote.leave_lane(self.root, self.settings, 1)
+        self.assertEqual(remote.lock_owner(self.lock)["pid"], os.getppid())
+
+    def test_no_second_lane_when_it_is_not_safe(self):
+        self.held_by_parent(1, 7)
+        os.makedirs(self.lock)
+        remote.write_owner(self.lock, {"pid": os.getppid(), "since": 9e12, "what": "parent's check", "mem": 7})
+        for mem, facts, words in [
+            (None, plenty, "declares no memory"),
+            (8, plenty, "more than a lane's 7"),
+            (7, lambda: dict(plenty(), allRunners=["Developer/actions-runner"]), "a CI runner there has a job"),
+            (7, lambda: dict(plenty(), freePercent=30), "30% of its memory is free"),
+            (7, lambda: dict(plenty(), pressure=2), "pressure is not normal"),
+            (7, lambda: dict(plenty(), load=25.0), "its load is 25.0"),
+        ]:
+            with self.subTest(words=words):
+                lane, why = remote.take_lane(self.root, self.settings, "mine", mem, facts=facts)
+                self.assertIsNone(lane)
+                self.assertIn(words, why)
+        self.assertEqual(sorted(remote.lane_owners(self.root, 2)), [1])
+
+    def test_never_beside_a_job_outside_the_lanes(self):
+        # A worker (RemoteGate) or an older remote.py holds the lock with no lane: the Mac is taken.
+        os.makedirs(self.lock)
+        remote.write_owner(self.lock, {"pid": os.getppid(), "since": 9e12, "what": "BombCAD worker"})
+        lane, why = remote.take_lane(self.root, self.settings, "mine", 7, facts=plenty)
+        self.assertIsNone(lane)
+        self.assertIn("BombCAD worker", why)
+        # Nor beside a lane whose lock a worker took after the lane's holder was killed outright.
+        self.held_by_parent(1, 7)
+        remote.write_owner(self.lock, {"pid": os.getpid(), "since": 9e12, "what": "BombCAD worker"})
+        lane, why = remote.take_lane(self.root, self.settings, "mine", 7, facts=plenty)
+        self.assertIsNone(lane)
+        self.assertIn("BombCAD worker", why)
+        state = {"lock": {"pid": os.getpid(), "what": "BombCAD worker"},
+                 "lanes": [{"lane": 1, "pid": os.getppid(), "what": "a", "mem": 7}], "runners": [], "quiet": False}
+        self.assertIn("BombCAD worker", remote.unavailable(dict(state, **plenty()), self.settings, 7))
+
+    def test_a_jobs_memory_is_its_whole_tree(self):
+        table = "  10     1  1024\n  11    10  2048\n  12    11  4096\n  13     1  8192\n bad line\n"
+        self.assertEqual(remote.tree_memory(10, table), (1024 + 2048 + 4096) * 1024)
+        self.assertEqual(remote.tree_memory(99, table), 0)
+
+    def test_the_lanes_sum_and_count_are_capped(self):
+        owners = {1: {"what": "a", "mem": 7}}
+        self.assertIsNone(remote.second_lane_refusal(owners, plenty(), self.settings, 7))
+        self.assertIn("would declare 15 GB", remote.second_lane_refusal({1: {"what": "a", "mem": 8}}, plenty(),
+                                                                        self.settings, 7))
+        self.assertIn("all 2 lanes", remote.second_lane_refusal({1: owners[1], 2: owners[1]}, plenty(),
+                                                                self.settings, 1))
+        one = dict(self.settings, lanes=1)
+        self.assertIn("all 1 lanes", remote.second_lane_refusal(owners, plenty(), one, 7))
+
+
 if __name__ == "__main__":
     unittest.main()

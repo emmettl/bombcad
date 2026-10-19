@@ -9,13 +9,17 @@ import Testing
 /// it, so a difference there means Linux's results differ from the Mac's in that function.
 struct LinuxSIMDParityTests {
     /// Recorded on Linux (x86_64, Swift 6.4, Glibc) with `BLASTMODEL_RECORD_SIMD=1 swift test
-    /// --filter LinuxSIMDParityTests`.
+    /// --filter LinuxSIMDParityTests`, except four rows changed on the Mac on 19 October 2026
+    /// (`cross.float3`, `cross.double3`, `determinant.double3x3`, `quatd.from_to`) when the shim
+    /// learnt that Apple fuses the cross product and the determinant, and the macOS 27 SDK's
+    /// from-to rotation. They are the shim's results run on the Mac, which for functions that
+    /// call no C maths library are its results on Linux; the Linux workflow confirms them.
     static let recorded: [String: UInt64] = [
         "abs.float3": 0x4685_72cb_a753_d04f,
         "clamp.float3": 0x434a_aad4_99c0_c5d7,
-        "cross.double3": 0xc1e7_8939_98df_6c5f,
-        "cross.float3": 0x2417_9fc0_7a96_dae8,
-        "determinant.double3x3": 0x7ae1_16be_08d0_9d3a,
+        "cross.double3": 0xe2d5_55fd_d87d_d4d2,
+        "cross.float3": 0x4645_4d9f_16ca_8615,
+        "determinant.double3x3": 0x6e3c_a638_7c63_9e5b,
         "distance.double3": 0x13b1_eaef_5644_eab7,
         "distance.float3": 0x2f24_3510_af12_04ce,
         "distance_squared.float3": 0x2b76_831f_87e3_6c6f,
@@ -42,7 +46,7 @@ struct LinuxSIMDParityTests {
         "quatd.angle": 0xffee_9c7a_2e21_163b,
         "quatd.angle_axis": 0x4117_d6a4_cf6f_0ef9,
         "quatd.axis": 0x6369_bce9_1ce5_ff3d,
-        "quatd.from_to": 0x6a66_2c88_af71_3ec0,
+        "quatd.from_to": 0x61b_50cf_dd64_49b0,
         "quatd.inverse": 0x3017_0e8a_ac40_9f3f,
         "quatd.normalized": 0xcd7e_ddaa_1eb7_8a12,
         "quatd.product": 0x2e79_1a95_b477_6825,

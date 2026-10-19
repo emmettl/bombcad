@@ -460,8 +460,13 @@ struct ModelImportView: View {
         ) {
             ForEach([BaseConnection.dowelled, .joint, .resting], id: \.self) { Text($0.title).tag($0) }
         }
+        Toggle("Roof slabs at a pitch as shells at their pitch", isOn: $structural.inclinedPlates)
+            .help(
+                "A slab or roof laid at one pitch of 5° to 60°, rising along x or y once the building is turned square, "
+                    + "becomes a shell in its own plane, tied to the walls under it by the base connection; off, it "
+                    + "stays a rigid obstacle.")
         Text(
-            "Walls, slabs and members square to the axes become shells and beams; anything else stays a rigid obstacle. Materials come from the IFC where it names one the solver has; the default is used, and flagged, elsewhere. Reinforcement comes from the IFC's bars, or its concrete elements' cover and steel ratio, where it gives them, member by member; few files do, and the default above fills concrete shells it leaves out, flagged. Connections where members meet, and supports at footings or the base, are inferred and listed below."
+            "Walls, slabs and members square to the axes become shells and beams; anything else stays a rigid obstacle unless it is a roof at one pitch and that is asked for. Materials come from the IFC where it names one the solver has; the default is used, and flagged, elsewhere. Reinforcement comes from the IFC's bars, or its concrete elements' cover and steel ratio, where it gives them, member by member; few files do, and the default above fills concrete shells it leaves out, flagged. Connections where members meet, and supports at footings or the base, are inferred and listed below."
         ).font(.caption)
     }
     @ViewBuilder private var behaviorControls: some View {

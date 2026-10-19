@@ -573,7 +573,13 @@ vertex MeshOut shellVertex(uint vertexID [[vertex_id]],
         return out;
     }
     float3 normal = float3(0.0f);
-    normal[el.axis] = 1.0f;
+    if (el.axis == 3u) {
+        // At a pitch: square to its first and second edges, from its reference corners.
+        float3 origin = reference[el.node[0]].xyz;
+        normal = normalize(cross(reference[el.node[1]].xyz - origin, reference[el.node[3]].xyz - origin));
+    } else {
+        normal[el.axis] = 1.0f;
+    }
     // Box corners: the four nodes on the lower face, then on the upper.
     const uint faces[6][4] = {{0, 1, 2, 3}, {4, 5, 6, 7}, {0, 1, 5, 4}, {1, 2, 6, 5}, {2, 3, 7, 6}, {3, 0, 4, 7}};
     const uint triangle[6] = {0, 1, 2, 0, 2, 3};

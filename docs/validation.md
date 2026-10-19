@@ -3020,6 +3020,33 @@ leaf's thickness, a tenth of a second and three tenths after the burst. With the
 The model's percentages are the external brickwork destroyed. By 0.3 s the tiles had moved on
 half of each roof at 23 m and on more of it nearer.
 
+**On the pitched roof** (19 October; the row's default since then: 40° slopes on purlins, gables
+to the ridge, tiles hung on their nibs; [the terraced houses](shell-model.md#the-terraced-houses)),
+the same runs:
+
+| Distance (m) | Surveyed median | 3 mm, 0.1 s | 3 mm, 0.3 s | 50 mm, 0.1 s | 50 mm, 0.3 s |
+|---|---|---|---|---|---|
+| 4.7 | A | A (87%) | A (98%) | A (83%) | A (96%) |
+| 7.8 | B | B (47%) | A (89%) | B (36%) | B (72%) |
+| 10.8 | B, near C | B (38%) | B (49%) | Cb (25%) | B (40%) |
+| 13.9 | C | B (27%) | B (48%) | Cb (13%) | B (28%) |
+| 16.9 | below C | Cb (5%) | B (46%) | Ca (2%) | B (28%) |
+| 20.0 | below C | Ca (1%) | B (35%) | Ca (0%) | Cb (24%) |
+| 23.0 | below C | Ca (0.4%) | Cb (16%) | D | Cb (13%) |
+
+What the roof moves:
+- **At 0.1 s:** the same category or one worse, from 13.9 m out. With bricks kept to 50 mm the
+  houses at 16.9 and 20 m go from D to Ca: 4–10% of their rafters come off their seats, and any
+  joist or rafter off its seat is Ca by the grading's rule. 13.9 m with the default brick goes
+  from Cb (14%) to B (27%).
+- **By 0.3 s:** more brickwork down from 20 m out: 35% against 27% at 20 m and 16% against 5% at
+  23 m with the default brick, 24% against 8% and 13% against 2% with 50 mm. The gables now run up
+  to the ridge, more brickwork that falls from the top. The roof bears on the front wall's top,
+  which the flat roof did not. A fifth to two fifths of the rafters are off their seats at
+  13.9–23 m, more nearer.
+- **So the judgement stands, a little worse:** right at 0.1 s with bricks kept to 50 mm to 13.9 m
+  and a category severe beyond. The toppling front walls after it remain the gap.
+
 **What it shows:**
 - **The blast's damage, at 0.1 s:** with bricks kept to a 50 mm crack, every house falls in the
   surveyed median's category or the one below, out to 23 m, and within Jarrett's radii out to

@@ -1568,6 +1568,20 @@ final class SimulationModel {
         selection = componentSelection(.solid, at: (editedStructure?.solids.count ?? 1) - 1)
     }
 
+    /// Puts a pitched roof over the edited structure's plan, from eaves at the tops of its walls
+    /// (`StructureModel.addPitchedRoof`). Only a structure meshed as shells takes one: the slopes
+    /// cut the walls under them to their line as shells.
+    func addPitchedRoof(_ roof: PitchedRoof) {
+        guard let body = editedStructure, body.isAllShells else { return }
+        let pieces = body.solids.indices.filter { body.inclination(of: $0) == nil }.map { body.solids[$0] }
+        guard let first = pieces.first else { return }
+        let plan = pieces.dropFirst().reduce(first) {
+            Box(min: simd_min($0.min, $1.min), max: simd_max($0.max, $1.max))
+        }
+        editStructure { $0.addPitchedRoof(roof, over: plan, eaves: plan.max.z) }
+        selection = componentSelection(.solid, at: (editedStructure?.solids.count ?? 1) - 1)
+    }
+
     func removeSolid(at index: Int) {
         let references = editedObject?.references(.solid) ?? []
         guard references.indices.contains(index) else { return }

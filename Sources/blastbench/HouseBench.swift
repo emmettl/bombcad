@@ -5,9 +5,9 @@ import simd
 
 /// `blastbench house [--mass 25] [--standoff 10] [--height 0.8] [--dx 0.5] [--duration 0.1]
 /// [--every 0.01] [--covering plainClayTiles|concreteInterlockingTiles|welshSlate|none]
-/// [--erosion 0.003] [--clearance m] [--settle-only]`: the row of 1930s terraced houses under a charge in front of the middle one.
+/// [--erosion 0.003] [--clearance m] [--pitch 40|flat] [--settle-only] [--fastest]`: the row of 1930s terraced houses under a charge in front of the middle one.
 /// Settles the row, reports its ties and joist seats at rest, then runs the blast and reports
-/// them again with the structure's damage.
+/// them again with the structure's damage (`--fastest`: and where the five fastest nodes are).
 func runHouse(device: MTLDevice) throws {
     let mass = option("mass").flatMap(Float.init) ?? 25
     let standoff = option("standoff").flatMap(Float.init) ?? 10
@@ -18,7 +18,8 @@ func runHouse(device: MTLDevice) throws {
     let covering = ScenarioPreset.RoofCovering(rawValue: coveringName)
     let preset = ScenarioPreset.terracedRow(
         title: "Terraced row", charge: mass, standoff: standoff, height: height, covering: covering,
-        faceClearance: option("clearance").flatMap(Float.init))
+        faceClearance: option("clearance").flatMap(Float.init),
+        pitch: option("pitch") == "flat" ? nil : option("pitch").flatMap(Float.init) ?? 40)
     var scenario = preset
     if let opening = option("erosion").flatMap(Float.init) {
         // The brick's removal width, for checking what removal does to the walls.
@@ -41,15 +42,27 @@ func runHouse(device: MTLDevice) throws {
         var ties = PartPairs.Summary()
         var seats = PartPairs.Summary()
         var roofing = PartPairs.Summary()
+        let coveringSeats = TerracedRowDamage.coveringSeats(of: model)
         for index in model.supports.indices {
             guard let law = model.anchorage(ofSupport: index), let part = shells.pairSummary(support: index)
             else { continue }
             if law.closingGap != nil {
                 ties = ties.combined(with: part)
-            } else if law.cohesion > 0 {
-                seats = seats.combined(with: part)
-            } else {
+            } else if coveringSeats.contains(index) {
                 roofing = roofing.combined(with: part)
+            } else {
+                seats = seats.combined(with: part)
+            }
+        }
+        // `--fastest`: where the fastest nodes are, and what they belong to.
+        if flag("fastest") {
+            for node in shells.fastestNodes(5) {
+                let pieces = node.solids.map { "\($0) \(model.material(of: $0).name)" }
+                let at = node.position
+                print(
+                    "  fastest: \(String(format: "%.1f", node.speed)) m/s at "
+                        + "(\(String(format: "%.2f, %.2f, %.2f", at.x, at.y, at.z))): \(pieces.joined(separator: ", "))"
+                )
             }
         }
         let row = TerracedRowDamage(shells: shells, rest: rest)
@@ -60,7 +73,7 @@ func runHouse(device: MTLDevice) throws {
                 "  house \(h + 1): \(house.category.rawValue); walls destroyed "
                     + "\(String(format: "%.1f%%", house.destroyed * 100)) (front "
                     + "\(String(format: "%.0f%%", house.frontDestroyed * 100))), cracked "
-                    + "\(String(format: "%.1f%%", house.cracked * 100)); joists off seats (floor/roof) \(seats), "
+                    + "\(String(format: "%.1f%%", house.cracked * 100)); joists off seats (floor/roof\(house.seatsLost.count > 2 ? "/rafters" : "")) \(seats), "
                     + "fallen \(fallen) m; covering moved \(String(format: "%.0f%%", house.coveringMoved * 100))"
             )
         }

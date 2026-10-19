@@ -32,7 +32,9 @@ stops where bodies come close. See [contact between bodies](multiple-object-scen
 ## Mesh
 
 The structure is the union of axis-aligned boxes (walls, slabs, columns) minus other boxes
-(openings), filled with cubic elements on a regular lattice. An opening cuts the boxes it
+(openings), filled with cubic elements on a regular lattice. (A shell structure may also have
+planes at a pitch, a roof's slopes, meshed in their own planes:
+[shells at a pitch](shell-model.md#shells-at-a-pitch).) An opening cuts the boxes it
 crosses but not one it holds whole, so a pane set in a wall's opening stays. An element exists wherever a
 lattice cell's centre lies inside the body. Most built-in solid layouts use elements of 62.5 mm or 125 mm
 (50 mm for the close-in column, 75 mm for the blockwork wall); the shell layouts use 0.25 m or

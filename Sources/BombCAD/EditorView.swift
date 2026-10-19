@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 struct EditorView: View {
     @Bindable var model: SimulationModel
     @State private var showAllImportedRegions = false
+    @State private var showsRoof = false
+    @State private var roof = PitchedRoof()
 
     var body: some View {
         Form {
@@ -246,6 +248,16 @@ struct EditorView: View {
                     }
                 }
                 Button("Add Wall", systemImage: "plus") { model.addWall() }
+                if !solids.isEmpty {
+                    Button("Add Pitched Roof", systemImage: "house") { showsRoof = true }
+                        .disabled(model.editedStructure?.isAllShells != true)
+                        .help(
+                            model.editedStructure?.isAllShells == true
+                                ? "Two raftered slopes over the structure from the tops of its walls, the end walls raised to gables."
+                                : "A pitched roof needs the structure meshed as shells (Elements: Shell)."
+                        )
+                        .popover(isPresented: $showsRoof) { pitchedRoofForm }
+                }
                 if !solids.isEmpty {
                     ForEach(model.componentRows(.opening)) { row in
                         let index = row.index
@@ -487,8 +499,45 @@ struct EditorView: View {
         model.selection = model.selection == selection ? nil : selection
     }
 
-    /// Calls a piece a wall, slab or column according to its proportions.
+    /// The pitched roof's pitch, ridge and covering, before it is added.
+    private var pitchedRoofForm: some View {
+        Form {
+            Stepper(
+                "Pitch \(Int(roof.pitch))°", value: $roof.pitch, in: PitchedRoof.pitches, step: 5)
+            Picker("Ridge along", selection: $roof.ridgeAlong) {
+                Text("x").tag(0)
+                Text("y").tag(1)
+            }
+            .pickerStyle(.segmented)
+            Picker("Covering", selection: $roof.covering) {
+                Text("Plain clay tiles").tag(ScenarioPreset.RoofCovering?.some(.plainClayTiles))
+                Text("Concrete interlocking tiles").tag(
+                    ScenarioPreset.RoofCovering?.some(.concreteInterlockingTiles))
+                Text("Welsh slate").tag(ScenarioPreset.RoofCovering?.some(.welshSlate))
+                Text("None").tag(ScenarioPreset.RoofCovering?.none)
+            }
+            Text(
+                "Rafters 100 × 50 mm at 400 mm, seated on the walls under them; spans of more than about "
+                    + "2.5 m up the slope want a purlin or wall under them (docs/shell-model.md#shells-at-a-pitch)."
+            )
+            .font(.caption).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            Button("Add Roof") {
+                model.addPitchedRoof(roof)
+                showsRoof = false
+            }
+            .keyboardShortcut(.defaultAction)
+        }
+        .padding()
+        .frame(width: 320)
+    }
+
+    /// Calls a piece a wall, slab or column according to its proportions, or a roof slope.
     private func name(of box: Box, index: Int) -> String {
+        if let inclination = model.editedStructure?.inclination(of: index) {
+            let pitch = Int(inclination.pitch(in: box).rounded())
+            return "\(inclination.trimsWalls ? "Roof slope" : "Covering") \(index + 1), \(pitch)°"
+        }
         let size = box.size
         let thin = (0..<3).min { size[$0] < size[$1] } ?? 0
         let isSlab =
