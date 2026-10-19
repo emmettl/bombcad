@@ -138,7 +138,8 @@ enum SurrogateBench {
         /// A saved strip's net pressures, Pa per bin.
         func net(_ saved: Int) -> [Double] {
             let strip = index.strips[saved]
-            return values[strip.first..<(strip.first + strip.count)].map { Double($0) }
+            let scale = Double(index.scalePa ?? 1)
+            return values[strip.first..<(strip.first + strip.count)].map { Double($0) * scale }
         }
 
         /// Whether a point lies within `share` of the half-side of the charge, in plan: outside
