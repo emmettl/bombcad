@@ -150,6 +150,8 @@ enum GlassCalibration {
         if !args.contains("--skip-runs") {
             // Each run's glass by side.
             var runGlass: [[SideKey: FacadeLoadSurrogate.GlassOutcome]] = []
+            // Each run's sides' peak net loads, for the openings' fragility.
+            var runPeak: [[SideKey: Double]] = []
             for reference in references {
                 let mine = reference.strips.filter { common.contains(id($0)) }
                 var glass = [FacadeLoadSurrogate.GlassOutcome](repeating: .init(), count: mine.count)
@@ -165,12 +167,15 @@ enum GlassCalibration {
                     }
                 }
                 var bySide: [SideKey: FacadeLoadSurrogate.GlassOutcome] = [:]
+                var peaks: [SideKey: Double] = [:]
                 for (m, strip) in mine.enumerated() {
                     let key = SideKey(
                         object: strip.object, axis: strip.component.axis, outward: strip.component.outward)
                     bySide[key, default: .init()] = bySide[key, default: .init()] + glass[m]
+                    peaks[key] = max(peaks[key] ?? 0, reference.net(strip.saved).map(abs).max() ?? 0)
                 }
                 runGlass.append(bySide)
+                runPeak.append(peaks)
             }
             timings["runs' glass"] = seconds(clock)
             print(
@@ -205,7 +210,13 @@ enum GlassCalibration {
             var observedSome: [Double] = []
             var observedBlown: [Double] = []
             var observedThrown: [Double] = []
+            var observedOpenings: [Double] = []
             for key in sideKeys {
+                observedOpenings.append(
+                    runPeak.reduce(0) {
+                        $0 + FacadeLoadSurrogate.OpeningsFragility.chance(peakPa: $1[key] ?? 0)
+                    }
+                        / Double(runPeak.count))
                 let outcomes = runGlass.map { $0[key] ?? .init() }
                 observedThrown.append(outcomes.reduce(0) { $0 + $1.worse } / Double(outcomes.count))
                 let glasses = outcomes.map(\.glass)
@@ -244,6 +255,10 @@ enum GlassCalibration {
                     reliability(
                         "runs, thrown worse than condition 3b, \(name)", predicted: p.map(\.thrownPast3b),
                         observed: observedThrown))
+                reliabilities.append(
+                    reliability(
+                        "runs, openings blown out (fitted), \(name)", predicted: p.map(\.openingsBlownOut),
+                        observed: observedOpenings))
             }
             reliabilities.forEach(show)
         }
@@ -364,7 +379,7 @@ enum GlassCalibration {
             // pane type on each strip of its side, for tracing the glass model against the survey.
             if let tracePath = value("trace") {
                 let objectOf = Dictionary(uniqueKeysWithValues: objects.enumerated().map { ($1.id, $0) })
-                var stripsOf: [[SideKey: [Int]]] = references.map { reference in
+                let stripsOf: [[SideKey: [Int]]] = references.map { reference in
                     var map: [SideKey: [Int]] = [:]
                     for (m, strip) in reference.strips.enumerated() {
                         map[
@@ -444,19 +459,18 @@ enum GlassCalibration {
             print(
                 String(format: "Chances of %d sides for GEER's façades in %.1f s", used.count, seconds(clock))
             )
-            let predictedSome = matches.map { p[index[$0.side]!].someBroken }
-            let predictedBlown = matches.map { p[index[$0.side]!].blownOut }
+            // Only the openings' state is judged against GEER: its classes are openings (frames and
+            // doors with the windows), seen two months on, not glass broken (docs/glass-probability.md).
+            let predictedOpenings = matches.map { p[index[$0.side]!].openingsBlownOut }
             geer.append(
                 reliability(
-                    "GEER, W1 or worse", predicted: predictedSome,
-                    observed: matches.map { $0.observedClass >= 1 ? 1 : 0 }))
-            geer.append(
-                reliability(
-                    "GEER, W3", predicted: predictedBlown,
-                    observed: matches.map { $0.observedClass >= 3 ? 1 : 0 }))
+                    "GEER, openings W3 (seen two months on), openings blown out (fitted)",
+                    predicted: predictedOpenings, observed: matches.map { $0.observedClass >= 3 ? 1 : 0 }))
             geer.forEach(show)
             // By GEER's bands: the share surveyed against the draws' shares.
-            print("GEER's bands: façades, observed W1+ (predicted mean, 5–95% over draws); then W3")
+            print(
+                "GEER's bands: façades, observed openings W3 (seen two months on) against openings blown out (predicted mean, 5–95% over draws)"
+            )
             for band in DistrictGlass.geer {
                 let members = matches.indices.filter {
                     matches[$0].distance >= band.from && matches[$0].distance < band.to
@@ -464,17 +478,9 @@ enum GlassCalibration {
                 guard !members.isEmpty, let kept else { continue }
                 for (label, observed, outcome) in [
                     (
-                        "W1+", { (c: Int) in c >= 1 },
-                        { (o: (someBroken: Float, blownOut: Bool, thrownPast3b: Float)) in
-                            Double(o.someBroken)
-                        }
-                    ),
-                    (
                         "W3", { (c: Int) in c >= 3 },
-                        { (o: (someBroken: Float, blownOut: Bool, thrownPast3b: Float)) in
-                            o.blownOut ? 1.0 : 0
-                        }
-                    ),
+                        { (o: FacadeLoadSurrogate.GlassDraw) in Double(o.openingsOut) }
+                    )
                 ] {
                     let seen =
                         Double(members.filter { observed(matches[$0].observedClass) }.count)

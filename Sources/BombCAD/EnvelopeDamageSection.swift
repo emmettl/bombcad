@@ -80,8 +80,11 @@ struct EnvelopeDamageSection: View {
                         Text(building.construction.detail).font(.caption).foregroundStyle(.secondary)
                         let sides = model.envelopeGlassChances.filter { $0.owner == building.id }
                         if !sides.isEmpty {
-                            Text("Glass chances (breaks, blown out, thrown past 3 m): " + Self.chances(sides))
-                                .font(.caption).foregroundStyle(.secondary)
+                            Text(
+                                "Chances (glass breaks, blown out, thrown past 3 m; openings blown out, fitted to Beirut): "
+                                    + Self.chances(sides)
+                            )
+                            .font(.caption).foregroundStyle(.secondary)
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
@@ -287,7 +290,8 @@ struct EnvelopeDamageSection: View {
             let face =
                 side.axis == 0 ? (side.outward > 0 ? "east" : "west") : (side.outward > 0 ? "north" : "south")
             return String(
-                format: "%@ %.2f, %.2f, %.2f", face, side.someBroken, side.blownOut, side.thrownPast3b)
+                format: "%@ %.2f, %.2f, %.2f, %.2f", face, side.someBroken, side.blownOut, side.thrownPast3b,
+                side.openingsBlownOut)
         }.joined(separator: "; ")
     }
 

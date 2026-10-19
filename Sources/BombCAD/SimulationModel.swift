@@ -748,13 +748,15 @@ final class SimulationModel {
             renderer?.setEnvelopeDamage(
                 bySide.mapValues { sides in
                     EnvelopeChanceColour.code(
-                        sides.map {
-                            (
-                                $0.axis, $0.outward,
-                                envelopeColouring == .someBroken
-                                    ? $0.someBroken
-                                    : envelopeColouring == .blownOut ? $0.blownOut : $0.thrownPast3b
-                            )
+                        sides.map { side -> (Int, Int, Double) in
+                            let chance: Double =
+                                switch envelopeColouring {
+                                case .someBroken: side.someBroken
+                                case .blownOut: side.blownOut
+                                case .openingsBlownOut: side.openingsBlownOut
+                                default: side.thrownPast3b
+                                }
+                            return (side.axis, side.outward, chance)
                         })
                 })
             return
@@ -832,12 +834,15 @@ final class SimulationModel {
     }
 
     /// What the view colours envelopes by: their damage, or (from a quick estimate) each side's
-    /// chance that some glass breaks, or that it is blown out.
+    /// chance that some glass breaks, that it is blown out, that glass is thrown past 3 m, or that
+    /// its openings, frames and doors with them, are blown out (fitted to Beirut's survey).
     enum EnvelopeColouring: String, CaseIterable, Identifiable {
         case damage = "Damage"
         case someBroken = "Chance glass breaks"
         case blownOut = "Chance blown out"
         case thrownPast3b = "Chance glass thrown past 3 m (GSA 3b)"
+        /// Fitted to Beirut's survey, not physics (`OpeningsFragility`).
+        case openingsBlownOut = "Chance openings blown out (fitted to Beirut)"
         var id: Self { self }
     }
 

@@ -23,13 +23,14 @@ and the app and `--surrogate`'s output say so.
   tenth of chance within 0.05 of the share of runs. Some broken: skill 0.62, the middle chances
   0.04–0.07 high. Without the surrogate's own scatter the blown-out skill is 0.76, so the scatter
   earns its place.
-- **Does not: the event.** Against GEER's survey of 8,227 of Beirut's façades, drawn over the
-  inferred yield (0.36–0.85 kt), each building's glass strength and the scatter, the chances are
-  poorly calibrated (skill −1.2 for some broken, −1.0 for blown out): the observed share sits
-  outside the draws' 90% range in every band but one. They share the glass model's over-breaking,
-  which the [Beirut page](beirut-2020.md#glass-as-a-mix-of-panes) found in the full runs: at
-  0.75–1 km the chance of being blown out is 0.91 where GEER saw 0.27. Read the chances as the
-  spread of what a run would give, not of what happened.
+- **Not judged against the event's survey.** GEER's classes of Beirut's façades are openings
+  (frames and doors with the windows), photographed two months on, not glass broken
+  ([traced below](#why-it-over-breaks-against-geer-19-october-2026)): the glass chances' blown out
+  0.91 at 0.75–1 km where GEER saw 0.27 compares unlike things. Read them as the spread of what a
+  run would give.
+- **Openings blown out**, a fourth chance fitted to that survey (one event, at 4 m cells; not
+  physics), is judged against it: 0.31 at 0.75–1 km where GEER saw 0.27, inside the draws' 90%
+  range in four bands of seven, skill 0.15.
 
 ## What is drawn
 
@@ -93,7 +94,8 @@ There is no ensemble of runs over a district's other unknowns (the validation en
 structural tests' inputs, not a city's), so the runs check only the yield and the surrogate's
 scatter, not the strength.
 
-**(b) Against GEER.** Each of GEER's 9,183 street façades (DesignSafe PRJ-3030, its shapefile's
+**(b) Against GEER** (as it was, before the trace below; the glass states are no longer judged
+against the survey). Each of GEER's 9,183 street façades (DesignSafe PRJ-3030, its shapefile's
 segment centres and `Azimuth_N` normals, in degrees) is matched to the side of a map building
 within 25 m that faces within 60° of it: 8,227 are. By distance band, the share seen against the
 draws' mean and 90% range:
@@ -164,22 +166,41 @@ The four candidates, in turn:
 So the glass is not what over-breaks: it is set against classes that are not glass. W3 compares
 with frames blown out, and W1 or worse with damage visible two months on.
 
-**What follows.** Two changes are proposed, not made:
+**What was done.** The glass states (some broken, blown out as nine panes in ten, thrown past
+condition 3b) stay as they are, judged against the runs, not the survey. A fourth chance is added
+beside them:
 
-- **Openings blown out**, a state of its own for a map building's side, its chance by the
-  fragility above on the side's peak (median 18.5 kPa, log standard deviation 0.75 at 4 m cells,
-  where peaks are 0.7–0.8 of Kingery–Bulmash's), in place of "nine panes in ten broken" as the
-  match for GEER's W3 and for the chance blown out: fitted to one event's survey, illustrative
-  elsewhere.
-- **Glass broken stays as it is.** No default strength change; the comparisons with GEER's W1
-  or worse say "visible two months on", and the chance of some pane broken is not judged against
-  it.
+- **Openings blown out** (`FacadeLoadSurrogate.OpeningsFragility`): a map building side's chance
+  by the fragility above on its peak, drawn with the others (`SideGlass.openingsBlownOut`), median
+  18.5 kPa and log standard deviation 0.75, fitted on the 0.5 kt run's loads at 4 m cells (whose
+  peaks are 0.7–0.8 of Kingery–Bulmash's, so the curve is tied to that resolution). It is the only
+  chance judged against GEER's W3. Fitted to one event's survey: illustrative elsewhere.
+- **Judged** (`glass-calibrate`, drawn over the inferred yield as above): skill 0.15 against GEER's
+  W3 (Brier 0.144, against 0.169 giving every side the mean), where the glass's blown out had
+  −1.0. By band, against GEER's W3:
+
+| Distance | Façades | GEER W3 | Openings blown out (90% range) |
+|---|---|---|---|
+| 0.5–0.75 km | 722 | 0.76 | 0.48 (0.40–0.58) |
+| 0.75–1 km | 1,279 | 0.27 | 0.31 (0.25–0.42) |
+| 1–1.25 km | 1,716 | 0.17 | 0.19 (0.14–0.28) |
+| 1.25–1.5 km | 2,302 | 0.17 | 0.12 (0.08–0.19) |
+| 1.5–1.75 km | 1,312 | 0.09 | 0.08 (0.05–0.13) |
+| 1.75–2 km | 386 | 0.02 | 0.04 (0.02–0.08) |
+| 2–2.5 km | 510 | 0.15 | 0.02 (0.01–0.05) |
+
+  Inside the 90% range from 0.75 to 1.75 km; under it close in, where the first look's peaks fall
+  short of the run's (its fit ends near Z 4.6), and at 2–2.5 km, where nothing in any run reached
+  GEER's 0.15. The middle tenths of chance sit 0.1–0.16 under GEER's shares, so the decile test
+  fails. The same curve on the 0.2 and 1.1 kt runs' own loads gives 0.17 and 0.60 at 0.75–1 km,
+  bracketing GEER's 0.27 with the yield; it is fitted and judged on one event.
 
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage now also draws the glass chances.
   In the damage section "Colour by" shows each building side by its chance that glass breaks,
-  that it is blown out, or that glass is thrown past 3 m (GSA 3b), in eighths from light yellow to dark purple (viridis), the roof by its
+  that it is blown out, that glass is thrown past 3 m (GSA 3b), or that its openings are blown out
+  (fitted to Beirut), in eighths from light yellow to dark purple (viridis), the roof by its
   worst side; each building's row lists its sides' chances. "Yield known to within" sets the
   yield's spread for the next estimate.
 - **Headless**: `BombCAD run project --surrogate first-look.json [--surrogate-yields samples.csv |

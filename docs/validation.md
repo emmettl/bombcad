@@ -6074,11 +6074,22 @@ strength and the surrogate's scatter (its spread taken from the made-up district
   thrown worse than GSA's condition 3b: skill 0.72, each tenth within 0.06. Some glass broken:
   skill 0.62, the middle chances a little high. All three pass the protective-design report's
   test, each tenth of chance holding 200 sides or more within 0.1 of the share seen.
-- **Against GEER's survey** of 8,227 façades, drawn over the inferred yield: not calibrated (skill
-  −1.2 and −1.0). They share the glass model's over-breaking: blown out 0.91 at 0.75–1 km where
-  GEER saw 0.27, and no one glass strength brings both classes into line.
+- **Against GEER's survey** of 8,227 façades, drawn over the inferred yield. GEER's classes are
+  openings (frames and doors with the windows), photographed two months on
+  ([traced](glass-probability.md#why-it-over-breaks-against-geer-19-october-2026)), so the glass
+  states are not judged against them: their blown out 0.91 at 0.75–1 km where GEER saw 0.27
+  compares unlike things (skill −1.2 and −1.0 against W1 or worse and W3).
+- **Openings blown out** (19 October 2026), a fragility on each side's peak fitted to GEER's W3 on
+  the 0.5 kt run's loads (median 18.5 kPa, log standard deviation 0.75, at 4 m cells): against
+  GEER, drawn as above, skill 0.15 (Brier 0.144, against 0.169 giving every side the mean);
+  openings blown out 0.31 at 0.75–1 km where GEER saw 0.27, and inside the draws' 90% range in
+  four bands of seven (0.75–1.75 km), under it close in (0.48 against 0.76) and at 2–2.5 km (0.02
+  against 0.15). The middle tenths of chance are 0.1–0.16 under GEER's shares, so the test fails.
+  Its curve on the 0.2 and 1.1 kt runs' own loads gives 0.17 and 0.60 at 0.75–1 km, bracketing
+  GEER's 0.27 with the yield. It is fitted to the one event it is judged on.
 
-Standing: an approximation of a run's spread for the glass; not of the event's.
+Standing: an approximation of a run's spread for the glass; not of the event's. Openings blown
+out: fitted to one event's survey, illustrative elsewhere.
 
 ### The hybrid far field against Beirut's runs
 

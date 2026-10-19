@@ -466,6 +466,14 @@ public enum ValidationTables {
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
             quote: "blown out 0.91 at 0.75–1 km where GEER saw 0.27"),
         Figure(
+            id: "openingsSurvey", low: 0.27, high: 0.31,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "openings blown out 0.31 at 0.75–1 km where GEER saw 0.27"),
+        Figure(
+            id: "openingsSkill", low: 0.15, high: 0.15,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "skill 0.15 (Brier 0.144"),
+        Figure(
             id: "surrogateGlassSides", low: 0.75, high: 0.84,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "agrees with the run's for 75–84%"),

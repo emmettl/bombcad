@@ -154,4 +154,30 @@ struct FacadeGlassProbabilityTests {
             #expect(a.facadeGlass == b.facadeGlass && a.structuralLevels == b.structuralLevels)
         }
     }
+
+    @Test(
+        "Openings blown out: the fragility fitted to Beirut's survey, half at 18.5 kPa; older results read as none"
+    )
+    func openingsFragility() throws {
+        typealias F = FacadeLoadSurrogate.OpeningsFragility
+        #expect(abs(F.chance(peakPa: 18_500) - 0.5) < 1e-12)
+        #expect(F.chance(peakPa: 0) == 0 && F.chance(peakPa: 1e6) > 0.99)
+        // One log standard deviation either side: 0.16 and 0.84.
+        #expect(abs(F.chance(peakPa: 18_500 * exp(-0.75)) - 0.1587) < 1e-3)
+        #expect(abs(F.chance(peakPa: 18_500 * exp(0.75)) - 0.8413) < 1e-3)
+        // A side's chances saved before the openings had one read with none.
+        let old = """
+            {"owner":"\(UUID().uuidString)","axis":0,"outward":1,"distanceM":900,"someBroken":1,
+             "blownOut":0.9,"fractionBroken":0.95,"thrownPast3b":0.4}
+            """
+        let side = try JSONDecoder().decode(FacadeLoadSurrogate.SideGlass.self, from: Data(old.utf8))
+        #expect(side.openingsBlownOut == 0 && side.blownOut == 0.9)
+        // The quick estimate's row: nearer sides' openings likelier blown out than farther ones'.
+        let scene = try Self.row()
+        let (sides, _) = FacadeLoadSurrogate.glassProbabilities(
+            scene: scene, cellSize: 1, uncertainty: .none)
+        let byDistance = sides.sorted { $0.distanceM < $1.distanceM }
+        #expect(byDistance.first!.openingsBlownOut > byDistance.last!.openingsBlownOut)
+        #expect(sides.allSatisfy { (0...1).contains($0.openingsBlownOut) })
+    }
 }

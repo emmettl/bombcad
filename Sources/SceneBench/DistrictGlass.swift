@@ -83,6 +83,13 @@ enum DistrictGlass {
     static func judge(_ folder: URL, mix override: GlazingMix?) throws -> [(
         distanceM: Double, mix: String, sides: [GlazingBreakage]
     )] {
+        try judgeWithPeaks(folder, mix: override).map { ($0.distanceM, $0.mix, $0.sides) }
+    }
+
+    /// As `judge`, with each side's peak net load (Pa), for the openings' fragility.
+    static func judgeWithPeaks(_ folder: URL, mix override: GlazingMix?) throws -> [(
+        distanceM: Double, mix: String, sides: [GlazingBreakage], peaks: [Double]
+    )] {
         let index = try JSONDecoder().decode(
             Index.self, from: Data(contentsOf: folder.appending(path: "strips.json")))
         let data = try Data(contentsOf: folder.appending(path: "net.f16"))
@@ -93,6 +100,7 @@ enum DistrictGlass {
                 ($0.name, $0)
             })
         var sides = [[Int: GlazingBreakage]](repeating: [:], count: index.buildings.count)
+        var peaks = [[Int: Double]](repeating: [:], count: index.buildings.count)
         for strip in index.strips {
             let building = index.buildings[strip.building]
             guard let mix = override ?? mixes[building.mix] else { continue }
@@ -101,11 +109,14 @@ enum DistrictGlass {
             sides[strip.building][key, default: GlazingBreakage()] =
                 sides[strip.building][key, default: GlazingBreakage()]
                 + mix.breakage(netPa: net, binS: strip.binS, areaM2: strip.areaM2)
+            peaks[strip.building][key] = max(peaks[strip.building][key] ?? 0, net.map(abs).max() ?? 0)
         }
         return index.buildings.indices.map { n in
-            (
+            let keys = sides[n].keys.sorted()
+            return (
                 index.buildings[n].distanceM, override?.name ?? index.buildings[n].mix,
-                sides[n].keys.sorted().map { sides[n][$0]! }
+                keys.map { sides[n][$0]! },
+                keys.map { peaks[n][$0] ?? 0 }
             )
         }
     }
@@ -127,7 +138,8 @@ enum DistrictGlass {
     }
 
     static func printBands(
-        _ title: String, _ judged: [(distanceM: Double, mix: String, sides: [GlazingBreakage])]
+        _ title: String, _ judged: [(distanceM: Double, mix: String, sides: [GlazingBreakage])],
+        peaks: [[Double]]? = nil
     ) {
         let total = judged.flatMap(\.sides).reduce(GlazingBreakage(), +)
         print(
@@ -151,13 +163,25 @@ enum DistrictGlass {
                 inside.glazedM2, inside.brokenM2, inside.glazedM2 > 0 ? inside.brokenM2 / inside.glazedM2 : 0)
         )
         print(
-            "\(title): panes broken, sides with some broken | GEER W1+, sides blown out (\(blownOutFraction)) | GEER W3"
+            "\(title): panes broken, sides with some broken, sides blown out (\(blownOutFraction) of panes) | "
+                + "openings blown out (fitted) | GEER openings W1+ and W3, seen two months on"
         )
         for band in bands(judged) {
+            // The openings' chance by the fragility fitted to GEER, on each side's peak.
+            var openings = "  –  "
+            if let peaks {
+                let chances = judged.indices.filter {
+                    judged[$0].distanceM >= band.from && judged[$0].distanceM < band.to
+                }.flatMap { peaks[$0] }.map { FacadeLoadSurrogate.OpeningsFragility.chance(peakPa: $0) }
+                if !chances.isEmpty {
+                    openings = String(format: "%.2f", chances.reduce(0, +) / Double(chances.count))
+                }
+            }
             print(
                 String(
-                    format: "  %4.0f–%4.0f m  %.2f  %.2f | %.2f  %.2f | %.2f", band.from, band.to, band.panes,
-                    band.sidesAny, band.geer, band.sidesBlown, band.geerBlown))
+                    format: "  %4.0f–%4.0f m  %.2f  %.2f  %.2f | %@ | %.2f  %.2f", band.from, band.to,
+                    band.panes,
+                    band.sidesAny, band.sidesBlown, openings as NSString, band.geer, band.geerBlown))
         }
     }
 
@@ -179,9 +203,10 @@ enum DistrictGlass {
         for name in asked.isEmpty ? ["map"] : asked {
             guard let mix = named[name] else { throw BlastError.allocationFailed("--mix \(name)") }
             let start = ContinuousClock.now
-            let judged = try judge(URL(filePath: path), mix: mix)
+            let judged = try judgeWithPeaks(URL(filePath: path), mix: mix)
             printBands(
-                "\(name) (\(String(format: "%.1f", DistrictBenchmark.seconds(start))) s)", judged)
+                "\(name) (\(String(format: "%.1f", DistrictBenchmark.seconds(start))) s)",
+                judged.map { ($0.distanceM, $0.mix, $0.sides) }, peaks: judged.map(\.peaks))
         }
     }
 }

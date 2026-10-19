@@ -15,6 +15,8 @@ extension FacadeLoadSurrogate {
         let survey = ValidationTables.figure("glassChancesSurvey")
         let thrown = ValidationTables.figure("glassChancesThrown")
         let test = ValidationTables.figure("glassChancesTest")
+        let openings = ValidationTables.figure("openingsSurvey")
+        let openingsSkill = ValidationTables.figure("openingsSkill")
         return [
             String(
                 format:
@@ -26,10 +28,15 @@ extension FacadeLoadSurrogate {
                 brier.high, bins.high, thrown.low, test.high),
             String(
                 format:
-                    "Against GEER's survey of Beirut's façades they are not: they share the glass model's over-breaking "
-                    + "(blown out %.2f at 0.75–1 km where GEER saw %.2f), and no one glass strength brings both "
-                    + "classes into line. Read them as a run's spread, not the event's.", survey.high,
-                survey.low),
+                    "Not judged against GEER's survey of Beirut's façades, whose classes are openings (frames and doors "
+                    + "with the windows) photographed two months on: the glass's blown out %.2f at 0.75–1 km where GEER "
+                    + "saw %.2f compares unlike things. Read the glass chances as a run's spread, not the event's.",
+                survey.high, survey.low),
+            String(
+                format:
+                    "Openings blown out: a fragility fitted to that survey (one event, Beirut, at 4 m cells, whose peaks "
+                    + "are 0.7–0.8 of Kingery–Bulmash's), not physics: %.2f at 0.75–1 km where GEER saw %.2f, skill %.2f "
+                    + "against it. Illustrative elsewhere.", openings.high, openings.low, openingsSkill.low),
         ]
     }()
 
@@ -98,6 +105,25 @@ extension FacadeLoadSurrogate {
         package func scatter(atZ z: Double) -> LoadScatter? { loadScatter.first { z <= $0.upToZ } }
     }
 
+    /// A side's openings (windows, doors and their frames) nearly all blown out, as GEER's
+    /// surveyors classed façades (W3) from photographs two months after the Beirut explosion: a
+    /// log-normal fragility on the side's peak net load, fitted to GEER's W3 against the side's peak
+    /// in Beirut's 0.5 kt run on 4 m cells (docs/glass-probability.md). Fitted to one event's survey,
+    /// and tied to that resolution, whose peaks are 0.7–0.8 of Kingery–Bulmash's: illustrative
+    /// elsewhere. Not physics: no frame or fixing is modelled.
+    public enum OpeningsFragility {
+        /// The peak net load at which half of the sides are blown out, Pa.
+        public static let medianPa = 18_500.0
+        /// The log standard deviation.
+        public static let logSD = 0.75
+
+        /// The chance a side whose peak net load is `peakPa` has its openings blown out.
+        public static func chance(peakPa: Double) -> Double {
+            guard peakPa > 0 else { return 0 }
+            return 0.5 * (1 + erf(log(peakPa / medianPa) / (logSD * 2.0.squareRoot())))
+        }
+    }
+
     /// One side of a building (its façade strips facing `outward` along `axis`), its glass's chances.
     public struct SideGlass: Sendable, Codable, Equatable {
         public var owner: UUID
@@ -114,7 +140,48 @@ extension FacadeLoadSurrogate {
         /// The chance that some pane of it breaks and is thrown worse than GSA's condition 3b: its
         /// glass beyond 3 m of the window, or high on a witness panel there (`GlazingHazard`).
         public var thrownPast3b: Double
+        /// The chance its openings, frames and doors with them, are nearly all blown out, by the
+        /// fragility fitted to Beirut's survey (`OpeningsFragility`): fitted, not physics. Zero in
+        /// results saved before it.
+        public var openingsBlownOut: Double = 0
+
+        public init(
+            owner: UUID, axis: Int, outward: Int, distanceM: Double, someBroken: Double, blownOut: Double,
+            fractionBroken: Double, thrownPast3b: Double, openingsBlownOut: Double = 0
+        ) {
+            self.owner = owner
+            self.axis = axis
+            self.outward = outward
+            self.distanceM = distanceM
+            self.someBroken = someBroken
+            self.blownOut = blownOut
+            self.fractionBroken = fractionBroken
+            self.thrownPast3b = thrownPast3b
+            self.openingsBlownOut = openingsBlownOut
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case owner, axis, outward, distanceM, someBroken, blownOut, fractionBroken, thrownPast3b,
+                openingsBlownOut
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            owner = try c.decode(UUID.self, forKey: .owner)
+            axis = try c.decode(Int.self, forKey: .axis)
+            outward = try c.decode(Int.self, forKey: .outward)
+            distanceM = try c.decode(Double.self, forKey: .distanceM)
+            someBroken = try c.decode(Double.self, forKey: .someBroken)
+            blownOut = try c.decode(Double.self, forKey: .blownOut)
+            fractionBroken = try c.decode(Double.self, forKey: .fractionBroken)
+            thrownPast3b = try c.decode(Double.self, forKey: .thrownPast3b)
+            openingsBlownOut = try c.decodeIfPresent(Double.self, forKey: .openingsBlownOut) ?? 0
+        }
     }
+
+    /// A side's outcome in one draw: the chance some pane breaks, whether it is blown out, the
+    /// chance a pane is thrown worse than condition 3b, and the chance its openings are blown out.
+    public typealias GlassDraw = (someBroken: Float, blownOut: Bool, thrownPast3b: Float, openingsOut: Float)
 
     /// A building side's façade strips, for `glassProbabilities(sides:)`.
     public struct GlassSideStrips: Sendable {
@@ -191,7 +258,7 @@ extension FacadeLoadSurrogate {
         sides: [GlassSideStrips], mass base: Double, cellSize: Float,
         uncertainty: Uncertainty = Uncertainty(),
         binS: Double = 0.7e-3, coefficients: Coefficients = .fitted, keepDraws: Bool = false
-    ) -> (sides: [SideGlass], draws: [[(someBroken: Float, blownOut: Bool, thrownPast3b: Float)]]?) {
+    ) -> (sides: [SideGlass], draws: [[GlassDraw]]?) {
         let draws = max(1, uncertainty.samples)
         let masses = (0..<draws).map { k -> Double in
             if !uncertainty.masses.isEmpty {
@@ -209,7 +276,7 @@ extension FacadeLoadSurrogate {
             uniquingKeysWith: { a, _ in a })
         let table = GlassTable(binS: binS)
         var results = [SideGlass?](repeating: nil, count: sides.count)
-        var outcomes = [[(someBroken: Float, blownOut: Bool, thrownPast3b: Float)]](
+        var outcomes = [[GlassDraw]](
             repeating: [], count: keepDraws ? sides.count : 0)
         results.withUnsafeMutableBufferPointer { out in
             outcomes.withUnsafeMutableBufferPointer { kept in
@@ -221,7 +288,8 @@ extension FacadeLoadSurrogate {
                     var blown = 0.0
                     var fraction = 0.0
                     var thrown = 0.0
-                    var mine: [(someBroken: Float, blownOut: Bool, thrownPast3b: Float)] = []
+                    var mine: [GlassDraw] = []
+                    var openings = 0.0
                     let middle = side.strips.map(\.features.distanceM).sorted()[side.strips.count / 2]
                     for k in 0..<draws {
                         let mass = masses[k]
@@ -239,12 +307,14 @@ extension FacadeLoadSurrogate {
                                 scatter.peak * a, scatter.impulse * (r * a + (1 - r * r).squareRoot() * b))
                         }
                         var outcome = GlassOutcome()
+                        var sidePeak = 0.0
                         for strip in side.strips {
                             var p = predict(
                                 strip.features, mass: mass, cellSize: Double(cellSize),
                                 coefficients: coefficients)
                             p.peakPa *= exp(errors.x)
                             p.impulsePaS *= exp(errors.y)
+                            sidePeak = max(sidePeak, p.peakPa)
                             outcome =
                                 outcome
                                 + table.outcome(
@@ -256,15 +326,17 @@ extension FacadeLoadSurrogate {
                         blown += isBlown ? 1 : 0
                         fraction += glass.fraction
                         thrown += outcome.worse
+                        let out = OpeningsFragility.chance(peakPa: sidePeak)
+                        openings += out
                         if keepDraws {
-                            mine.append((Float(glass.anyBroken), isBlown, Float(outcome.worse)))
+                            mine.append((Float(glass.anyBroken), isBlown, Float(outcome.worse), Float(out)))
                         }
                     }
                     let n = Double(draws)
                     out[s] = SideGlass(
                         owner: side.owner, axis: side.axis, outward: side.outward, distanceM: middle,
                         someBroken: some / n, blownOut: blown / n, fractionBroken: fraction / n,
-                        thrownPast3b: thrown / n)
+                        thrownPast3b: thrown / n, openingsBlownOut: openings / n)
                     if keepDraws { kept[s] = mine }
                 }
             }
