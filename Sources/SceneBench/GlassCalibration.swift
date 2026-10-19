@@ -207,7 +207,7 @@ enum GlassCalibration {
             var observedThrown: [Double] = []
             for key in sideKeys {
                 let outcomes = runGlass.map { $0[key] ?? .init() }
-                observedThrown.append(outcomes.reduce(0) { $0 + $1.thrownPast3b } / Double(outcomes.count))
+                observedThrown.append(outcomes.reduce(0) { $0 + $1.worse } / Double(outcomes.count))
                 let glasses = outcomes.map(\.glass)
                 observedSome.append(glasses.reduce(0) { $0 + $1.anyBroken } / Double(glasses.count))
                 observedBlown.append(

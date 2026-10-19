@@ -56,20 +56,20 @@ struct FacadeGlassProbabilityTests {
             let p = FacadeLoadSurrogate.Prediction(
                 peakPa: peak, impulsePaS: impulse, riseShare: 0.2, arrivalS: 0)
             let tabled = table.outcome(.apartments, prediction: p, areaM2: 30, strength: 1)
-            #expect(tabled.thrownPast3b <= tabled.glass.anyBroken + 1e-12)
+            #expect(tabled.worse <= tabled.glass.anyBroken + 1e-12)
             let pressures = FacadeLoadSurrogate.pulse(
                 peak: FacadeLoadSurrogate.quantized(peak), impulse: FacadeLoadSurrogate.quantized(impulse),
                 riseShare: 0.2, binS: 0.7e-3)
             let direct = FacadeLoadSurrogate.glassOutcome(
                 .apartments, netPa: pressures, binS: 0.7e-3, areaM2: 30)
             #expect(abs(direct.glass.broken - tabled.glass.broken) < 1e-9)
-            #expect(abs(direct.thrownPast3b - tabled.thrownPast3b) < 0.05)
+            #expect(abs(direct.worse - tabled.worse) < 0.05)
         }
         let strong = FacadeLoadSurrogate.Prediction(
             peakPa: 40_000, impulsePaS: 400, riseShare: 0.2, arrivalS: 0)
-        #expect(table.outcome(.apartments, prediction: strong, areaM2: 30, strength: 1).thrownPast3b > 0.5)
+        #expect(table.outcome(.apartments, prediction: strong, areaM2: 30, strength: 1).worse > 0.5)
         let weak = FacadeLoadSurrogate.Prediction(peakPa: 800, impulsePaS: 20, riseShare: 0.2, arrivalS: 0)
-        #expect(table.outcome(.apartments, prediction: weak, areaM2: 30, strength: 1).thrownPast3b < 0.05)
+        #expect(table.outcome(.apartments, prediction: weak, areaM2: 30, strength: 1).worse < 0.05)
     }
 
     @Test(
