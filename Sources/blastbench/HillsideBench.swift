@@ -21,6 +21,12 @@ func runHillside(device: MTLDevice) throws {
             if flag("elastic") { footing.soil.cyclic = nil }
             if flag("massless") { footing.soil.radiationDamping = false }
             law.footing = flag("no-footing") ? nil : footing
+            // `--joint-scale 0.1`: the joints' stiffness, E/h and G/h by default, scaled.
+            if let scale = option("joint-scale").flatMap(Float.init) {
+                let e = structure.material.youngsModulus / structure.elementSize
+                law.normalStiffness = e * scale
+                law.shearStiffness = e / (2 * (1 + structure.material.poissonRatio)) * scale
+            }
             structure.setAnchorage(flag("clamped") ? nil : law, ofSupport: index)
         }
         // The frame alone under its weight, damped, without the air: how it stands on its footings.
@@ -29,6 +35,10 @@ func runHillside(device: MTLDevice) throws {
         // As the scene's settling does (`BlastSolver.settleStructures`): damped at 50/s, still once
         // its mean speed is 1% of the largest on the way.
         solver.damping = 50
+        // `--step-scale 0.5`: the body's step that much smaller than its stable one.
+        if let scale = option("step-scale").flatMap(Float.init) {
+            solver.stepOverride = solver.criticalTimeStep * scale
+        }
         let steps = Int((0.5 / Double(solver.criticalTimeStep)).rounded())
         var peak = 0.0
         for n in 1...5 {

@@ -366,9 +366,9 @@ public enum ValidationTables {
             id: "closeInPermanent", low: 0.33, high: 0.5, document: "validation.md#summary",
             quote: "the slab left a third to a half as far down as measured"),
         Figure(
-            id: "wuLargeToday", low: 0.91, high: 1.19,
+            id: "wuLargeToday", low: 0.90, high: 1.19,
             document: "validation.md#slabs-with-steel-in-both-faces",
-            quote: "0.91 and 1.18–1.19 times the measured peak"),
+            quote: "0.90 and 1.19 times the measured peak"),
         Figure(
             id: "debrisSpeedOverlap", low: 0.9, high: 2.3,
             document: "validation.md#slabs-under-contact-charges",
@@ -495,20 +495,20 @@ public enum ValidationTables {
     public static let spreads: [Spread] = [
         Spread(
             id: "slab", coefficient: 0.12,
-            quote: "| Contest slab, peak (mm) | 108 | 113 | 107, 12% | 89–126 |"),
+            quote: "| Contest slab, peak (mm) | 109 | 113 | 106, 12% | 89–126 |"),
         Spread(
             id: "wuPeak", coefficient: 0.04,
-            quote: "| Wu S8, peak (mm) | 18.0 | 14.4 | 14.3, 4% | 13.6–15.2 |"),
+            quote: "| Wu S8, peak (mm) | 18.0 | 16.2 | 16.1, 4% | 15.3–17.1 |"),
         Spread(
-            id: "closeInGauge", coefficient: 0.08,
-            quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.48 | 1.48, 8% | 1.32–1.66 |"),
+            id: "closeInGauge", coefficient: 0.07,
+            quote: "| Chiquito S1–S3, gauge at 1 m (MPa) | 2.5 | 1.45 | 1.45, 7% | 1.29–1.61 |"),
         Spread(
             id: "wallPeak", coefficient: 0.02,
-            quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 691 | 697, 2% | 672–715 |"),
+            quote: "| Kingery–Bulmash wall, reflected peak (kPa) | 1,060 (K–B) | 677 | 678, 2% | 655–696 |"),
         Spread(
-            id: "wallImpulse", coefficient: 0.01,
+            id: "wallImpulse", coefficient: 0.02,
             quote:
-                "| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,710 | 1,710, 1% | 1,670–1,740 |"
+                "| Kingery–Bulmash wall, reflected impulse (Pa s) | 1,690 (K–B) | 1,880 | 1,880, 2% | 1,830–1,920 |"
         ),
     ]
 
@@ -1245,8 +1245,10 @@ extension StandingScene {
                                 high: "too flexible",
                                 validity:
                                     "1.6 kg at 0.43 m/kg^(1/3), two shots on one mesh (8 through), held at one edge; "
-                                    + "on today's build, either air (16.3–16.5 mm on today's, 16.1–16.3 on the ideal "
-                                    + "gas, against 18.0 and 13.9), the record's earlier −20% to +7% from an older one",
+                                    + "on the mapped start with the open faces at the clearance rule, 16.2 and 16.6 mm in "
+                                    + "all three roundings against 18.0 and 13.9 (16.3–16.5 in the harness's box on the "
+                                    + "balloon, 16.1–16.3 on the ideal gas), the record's earlier −20% to +7% from an older "
+                                    + "build",
                                 check: "Wu et al.'s slabs with steel in both faces"),
                             derived: "8 elements through only", meshes: 8...8, unbanded: &unbanded
                         ).map { [$0] } ?? []

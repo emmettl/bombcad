@@ -349,6 +349,22 @@ The code is `Sources/BlastCore/TerrainCutCells.swift` (the geometry), `sweepCell
   Each ghost beyond a wall is now built from the near ghost as it stands, by its wall's own rule,
   on every level (since 19 October 2026); the box keeps its gas to round-off
   (`TerrainCutCellTests.blockInSlopeConserves`, 1.6e-5 of it gained before).
+- **A cell above a hot sliver can floor** (traced 19 October 2026, left as it is). Refined once
+  over the 20° slope (the open ground's 100 kg on the recommended air), a fine cell 0.96 air whose
+  lower face is half open, over a sliver a twentieth air full of hot products, has its internal
+  energy taken below nothing once a step from step 26 to 40. It happens in the fine
+  redistribution, never in a sweep, and only in a substep whose sweeps run z first. The z sweep
+  gives the cell the sliver's inflow through its whole face. The y and x sweeps then carry its
+  gas, flowing at 2 km/s along the ground, out at the enthalpy that inflow raised. At the
+  substep's end the redistribution takes back about 0.9 of the inflow: the cell's own difference
+  for its half-open face, and the sliver's share passed up. Part of that energy has already left.
+  With x first the inflow comes last, is taken back before it can leave, and nothing floors. In
+  400 steps (0.08 s) the run floors 44 times, all in that cell and its mirror, and the floor adds
+  3.6 kJ: 1e-5 of the charge's energy, in cells far below ambient pressure, where no peak or
+  impulse is read. Gravity had made such a floored cell a NaN (fixed in `reconstructGravity`).
+  If a scene ever shows more, the remedy is a redistribution that gives a cell no more than its
+  internal energy can take, carrying the rest on up the column: conservative, nothing floored,
+  and unchanged to the bit where nothing floors.
 - **A deflagration's air** is cut too, since 17 October 2026 (it kept the staircase before). Its
   mixture is carried across cut cells at the same limited linear mass fractions on both sides of
   each face, with the sub-grid mixing's carrying through each face's open part, and near the cut

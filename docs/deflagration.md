@@ -163,8 +163,9 @@ Gülder's form peaks at φ 1.075 and hydrogen's peaks near φ 1.7:
 numbers 0.38–0.49 at 12–20%) sets in at radii of 18–30 mm over φ 0.33–0.57 (Bauwens, Bergthorson
 and Dorofeev, ICHS 2015, paper 202, Table 1, in FM Global's chamber), which `criticalRadius` takes,
 held below φ 0.33. Richer than φ 0.6 there is no measurement and no instability onset; for town gas
-none either. They measured the acceleration beyond onset as (R/R₀)^0.243; the model's wrinkling
-grows as (R/R₀)^(1/3) to four onset radii, a factor of 1.59, where theirs reaches 2.4–2.6 at a metre.
+none either. They measured the acceleration beyond onset as (R/R₀)^0.243; the model takes
+their law, growing as (R/R₀)^0.243 out to a metre or four onset radii, whichever is further
+(`FlammableGas.instabilityGrowth`); methane's wrinkling grows as (R/R₀)^(1/3) to four onset radii.
 
 **The closed-vessel figures** compared against: hydrogen's K_G is the 550 bar m/s of
 Bartknecht's time (Blanchard and Schildberg, CET 31, 2013, among others; NFPA 68 and EN 15967 were
@@ -682,8 +683,8 @@ ICHS 2011), tabulated; HySEA's containers with obstacles, vent panels and strati
    oscillation), and the external explosion. The model wrinkles the flame by its sub-grid
    turbulence, after Bauwens et al.'s LES, whose one constant they fitted in this chamber, and by
    its cellular instability from an onset measured there too.
-   - The instability is held beyond four onset radii, where the measurements end; larger flames
-     may accelerate further.
+   - The instability is held beyond four onset radii for methane, and beyond about a metre for
+     hydrogen, where the measurements end; larger flames may accelerate further.
    - The Taylor instability and the external vortex's extra wrinkling are not modelled; the
      latter is an option (Molkov and Makarov's factor of 2).
    - Lit in the middle of FM Global's chamber the peaks are 0.4–0.6 of the tests', and the

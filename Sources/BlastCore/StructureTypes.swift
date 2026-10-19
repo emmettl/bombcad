@@ -1555,6 +1555,9 @@ struct CouplingUniforms {
     /// 1 when the cells marked in the solver's kept air (beside stationary envelopes' recorded
     /// faces) must stay air (see `remaskPrepare`).
     var keepsAir: UInt32 = 0
+    /// 1 when freestanding objects share the air (`installExperimentalBoxes`): their cells stay
+    /// solid and keep the wall velocities the objects gave them (see `remaskPrepare`).
+    var holdsBoxes: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.

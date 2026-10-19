@@ -1907,14 +1907,22 @@ struct FacadeBand {
     float threshold;
     float ambient;
     uint on;
-    uint pad;
+    uint ceiling;  // 1: the band's bit 2 marks the coarse cells above the refinement's ceiling
 };
+
+// Above the refinement's ceiling (`SolverConfiguration.refinementCeiling`): never flagged.
+static inline bool aboveCeiling(int3 cell, const device uchar *band, constant FacadeBand &b) {
+    if (b.ceiling == 0) return false;
+    int3 c = cell / int(b.ratio);
+    if (any(c < 0) || c.x >= int(b.nx) || c.y >= int(b.ny) || c.z >= int(b.nz)) return false;
+    return (band[uint(c.x) + b.nx * (uint(c.y) + b.ny * uint(c.z))] & 2) != 0;
+}
 
 static inline bool heldByBand(int3 cell, float p, const device uchar *band, constant FacadeBand &b) {
     if (b.on == 0) return false;
     int3 c = cell / int(b.ratio);
     if (any(c < 0) || c.x >= int(b.nx) || c.y >= int(b.ny) || c.z >= int(b.nz)) return false;
-    return band[uint(c.x) + b.nx * (uint(c.y) + b.ny * uint(c.z))] != 0 && fabs(p - b.ambient) > b.threshold;
+    return (band[uint(c.x) + b.nx * (uint(c.y) + b.ny * uint(c.z))] & 1) != 0 && fabs(p - b.ambient) > b.threshold;
 }
 
 static inline void flagCell(int3 cell, const device Cell *coarse, const device uchar *mask, device uchar *wanted,
@@ -1929,7 +1937,7 @@ static inline void flagCell(int3 cell, const device Cell *coarse, const device u
         float3 high = boxDefinition[boxVectors*b+7].xyz+2.0f*u.dx;
         if (all(point >= low) && all(point <= high)) { flagAround(cell,wanted,u); return; }
     }
-    if (mask[index] != 0) {
+    if (mask[index] != 0 || aboveCeiling(cell, band, held)) {
         return;
     }
     float p = cellPressureOf(coarse[index], u);
@@ -2029,7 +2037,7 @@ kernel void refineFlagFine(const device Cell *parent [[buffer(0)]],
     int3 cell = origin + int3(position % uint(side), (position / uint(side)) % uint(side), position / uint(side * side));
     int3 dims = int3(u.nx, u.ny, u.nz);
     uint index = patch * cells + position;
-    if (any(cell >= dims) || (parentMask[index] & 1) != 0) {
+    if (any(cell >= dims) || (parentMask[index] & 1) != 0 || aboveCeiling(cell, band, held)) {
         return;
     }
     float p = cellPressureOf(parent[index], u);

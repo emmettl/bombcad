@@ -121,6 +121,7 @@ struct SolverUniforms {
     uint ownSteps;
     uint refineLevel;
     uint sweepAxes;
+    uint gaugeWalls;  // 1: a gauge beside a wall reads the pressure at the wall (`gaugesReadWallPressure`)
 };
 
 // Whether the air carries species, for afterburning or a deflagration.
@@ -2374,6 +2375,27 @@ kernel void collectTiles(device uchar *tileFlags [[buffer(0)]],
 }
 
 // Writes row `row` of the gauge log: the step's length, then each gauge's pressure.
+// The pressure at a rigid wall that gas of density `rho` and pressure `p` meets moving towards it at
+// `towards` (negative: away): two shocks between it and its mirror, or two rarefactions, for a gas
+// of ratio `gamma`. For a shocked state arriving at a wall, the normal reflection's pressure.
+static inline float twoShockWallPressure(float rho, float p, float towards, float gamma) {
+    float c = sqrt(gamma * p / rho);
+    if (towards <= 0.0f) {
+        float base = max(1.0f + 0.5f * (gamma - 1.0f) * towards / c, 0.0f);
+        return p * pow(base, 2.0f * gamma / (gamma - 1.0f));
+    }
+    float a = 2.0f / ((gamma + 1.0f) * rho);
+    float b = (gamma - 1.0f) / (gamma + 1.0f) * p;
+    float q = p + rho * c * towards;
+    for (int n = 0; n < 6; ++n) {
+        float root = sqrt(a / (q + b));
+        float f = (q - p) * root - towards;
+        float slope = root * (1.0f - 0.5f * (q - p) / (q + b));
+        q = max(q - f / slope, p);
+    }
+    return q;
+}
+
 static inline void logGauges(device float *gaugeLog, uint row, float dt, const device Cell *state,
                              const device uint *gaugeCells, constant SolverUniforms &u,
                              const device int *patchOfTile, const device Cell *fine,
@@ -2468,6 +2490,36 @@ static inline void logGauges(device float *gaugeLog, uint row, float dt, const d
         }
         float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / max(c.rho, u.densityFloor);
         float pressure = gasPressure(max(c.rho, u.densityFloor), c.energy - kinetic, u.airModel, u.gamma);
+        if (u.gaugeWalls != 0 && placed) {
+            // The wall nearest the gauge's point among its coarse cell's faces, within a cell: a solid
+            // neighbour, or a reflective face of the domain.
+            uint index = gaugeCells[g];
+            int3 cell = int3(index % u.nx, (index / u.nx) % u.ny, index / (u.nx * u.ny));
+            int3 dims = int3(u.nx, u.ny, u.nz);
+            float nearest = u.dx;
+            int face = -1;
+            for (int n = 0; n < 6; ++n) {
+                int axis = n / 2;
+                int side = n % 2;
+                int3 q = cell;
+                q[axis] += side * 2 - 1;
+                bool solid = any(q < 0) || any(q >= dims)
+                                 ? ((u.boundaryFlags >> uint(2 * axis + side)) & 1u) != 0
+                                 : mask[uint(q.x) + u.nx * (uint(q.y) + u.ny * uint(q.z))] != 0;
+                if (!solid) { continue; }
+                float plane = float(cell[axis] + side) * u.dx;
+                float distance = fabs(point[axis] - plane);
+                if (distance < nearest) {
+                    nearest = distance;
+                    face = n;
+                }
+            }
+            if (face >= 0) {
+                float rho = max(c.rho, u.densityFloor);
+                float towards = float3(c.mx, c.my, c.mz)[face / 2] / rho * float((face % 2) * 2 - 1);
+                pressure = twoShockWallPressure(rho, max(pressure, u.pressureFloor), towards, u.gamma);
+            }
+        }
         if (airGravity) {
             // Under gravity, as if at the ground: its overpressure against the ambient pressure
             // at the gauge's height, as the coarse cell holds it.
@@ -2515,8 +2567,10 @@ kernel void prepareStep(device StepControl &control [[buffer(0)]],
     // A cell whose density has fallen to nothing reads a wave speed that is NaN, or negative from
     // a negative density, and either outranks every real speed in the bitwise maximum; the step
     // would then be far longer than the air allows (a refined district once took steps of 0.6 s
-    // where 3 ms were right). The batch stops there instead, unstable.
-    if (!(fastest >= 0.0f) || isinf(fastest)) {
+    // where 3 ms were right). The batch stops there instead, unstable. Tested on the bits, as fast
+    // math may fold a test for NaN or infinity away: NaN, infinity and every negative lie at or
+    // above infinity's.
+    if (as_type<uint>(fastest) >= 0x7F800000u) {
         control.stopped = 3;
         control.maxOverpressure = NAN;
     }

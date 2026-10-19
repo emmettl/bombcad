@@ -215,7 +215,9 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         // gas's kinematic viscosity, falling as it is compressed.
         float turbulent = eddyViscosity[index] * d.velocityPerViscosity;
         float thickness = d.kinematicViscosity / (compression * laminar);
-        float wrinkling = d.turbulenceScale * sqrt(turbulent / laminar) * pow(dx / thickness, 1.0f / 6.0f);
+        // Clamped as below: a hair below zero would give NaN, which fast math need not drop in max.
+        float wrinkling =
+            d.turbulenceScale * sqrt(max(turbulent, 0.0f) / laminar) * pow(dx / thickness, 1.0f / 6.0f);
         if (porousAir) {
             // The sigma-model's viscosity can round a hair below zero, whose square root would be
             // NaN and, under fast math, could pass through the comparisons below to burn a cell whole.

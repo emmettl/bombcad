@@ -152,8 +152,8 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   ([validation](validation.md#footings-on-a-slope)). No measured footing near a slope under fast
   loading was found.
 - **Next:** a shaken footing's lurch, and the rest of its
-  energy (sand crushed across the whole contact, the shaken sand's own); a footing joint's
-  chatter at rest; the cap on cut slivers under structures on refined levels.
+  energy (sand crushed across the whole contact, the shaken sand's own); the cap on cut slivers
+  under structures on refined levels.
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
   as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
   connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are
@@ -286,8 +286,51 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   comparison ([run comparison](run-comparison.md)); an offscreen review of the panels in both
   appearances ([review log](native-interface-review.md#review-log)), and of every sidebar section and
   editor at the sidebar's width, with six layout fixes; release 0.2.0.
-- **Next:** keyboard focus, VoiceOver and the window at its minimum on a real screen, which offscreen
-  tests cannot reach ([remaining checks](native-interface-review.md#remaining-checks)).
+- **Done, 18 October:** the real-screen review's labels and keyboard paths
+  ([on the real screen](native-interface-review.md#on-the-real-screen-labels-and-keyboard)); materials
+  that look like what they are in the viewport and snapshots (concrete, steel, sheeting, glass,
+  timber, brick, blockwork, earth), the damage colouring and rubble apart from each to every common
+  colour deficiency (`MaterialAppearance`).
+- **Next:** the fixes seen on a real screen, Full Keyboard Access and VoiceOver's speech
+  ([remaining checks](native-interface-review.md#remaining-checks)); exposure-only buildings drawn by
+  their construction.
+
+## Horizons
+
+Longer aims, set on 18 October 2026. The binding limit is how long a run takes on one Mac, so
+most are about reaching an answer for less, with the full solver kept as the referee. In order:
+
+1. **Refinement steered by the decision** (started). Refine where the answer the user asked
+   for is uncertain: a component near its damage threshold, an injury contour near a boundary,
+   a pane near breaking. Today refinement follows pressure gradients everywhere. The first step
+   is an error estimate on the advisor's target quantity driving the existing refinement flags,
+   judged on whether refined districts then beat uniform cells by a clear factor at equal
+   answers.
+2. **Answers in seconds.** Surrogates trained on BombCAD's own runs (reduced-order loads by
+   geometry and charge, or a small learned model of envelope response), giving an instant first
+   look that real runs then refine where it matters, and inheriting the standing's error bands.
+   The first step is a surrogate for envelope damage across a district, checked against Beirut's
+   runs: done for glass, which it gets right side by side for three in four of Beirut's building
+   sides in half a minute, not for walls and roofs ([first look](surrogate-first-look.md)).
+3. **City scale in minutes.** Gas dynamics only near the charge and in the streets that matter,
+   and further out the blast carried by ray-traced shielding and channelling (the thermal model
+   already uses Metal ray tracing) with scaled blast laws, handed over at a boundary. The first
+   step is a ray-traced far field set against Beirut's full run beyond 1 km.
+4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
+   from the scatter in yield, materials and rounding, cheap once item 2 exists.
+5. **From damage back to the explosion** (first step done). Infer yield, place and height from
+   observed arrival times, broken glass and damage, as the Beirut page did by hand for its yield.
+   `scenebench infer-charge` ([charge inference](charge-inference.md)) now samples the yield and
+   place from arrivals, finding Beirut's 0.5 kt and Warehouse 12 from Rigby's observers; height
+   and clock offset are not resolved by them, and GEER's glass biases the yield (the glass model
+   breaks more than the survey saw). Next: damage that calibrates (the structural survey, or glass
+   once the envelope model matches GEER), and BombCAD's own runs as the forward model in the loop.
+6. **Protective design.** The least set of glazing, wall and stand-off changes that meets a
+   hazard target, which needs item 2's speed.
+
+Under all of them is raw speed: everything kept on the GPU (no CPU remaps), compact storage for
+coarse levels, smarter steps, and work spread across Macs
+([distributed computing](distributed-computing.md)).
 
 ## Things tried and set aside
 

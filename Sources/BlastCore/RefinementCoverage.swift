@@ -92,6 +92,26 @@ extension BlastSolver {
         return coverage
     }
 
+    /// Each refined level's blocks counted by their height, a row a block of the level's own grid
+    /// (4 of its cells high: 4 coarse cells for the first level, 4 of the first's for the second),
+    /// from the ground: where the refined air lies, for profiling. Read on the CPU.
+    public func refinedBlocksByHeight() -> [[Int]] {
+        var rows: [[Int]] = []
+        for level in [refinement, finerRefinement].compactMap({ $0 }) {
+            let t = level.tileDims
+            let map = (level.patchOfTile.contents() + level.patchOffset * 4).bindMemory(
+                to: Int32.self, capacity: t.x * t.y * t.z)
+            var row = [Int](repeating: 0, count: t.z)
+            for z in 0..<t.z {
+                for y in 0..<t.y {
+                    for x in 0..<t.x where map[x + t.x * (y + t.y * z)] >= 0 { row[z] += 1 }
+                }
+            }
+            rows.append(row)
+        }
+        return rows
+    }
+
     /// One level's coverage, over a grid of `dims` cells whose pressures (nil where solid or not
     /// held) `pressure` gives, refined in blocks of 4 x 4 x 4 cells where `refined` says.
     private static func coverage(

@@ -1,0 +1,398 @@
+import BlastCore
+import Foundation
+import Metal
+
+/// `scenebench infer-charge-study`: how well `ChargeInference` finds known charges.
+///
+/// ```
+/// scenebench infer-charge-study --synthetic 200 [--spread 0.05] [--frame 0.0333] [--observers 25]
+///     [--grid-checks 6] [--misses]
+/// scenebench infer-charge-study --forward [--fixture Fixtures/SyntheticDistrict] [--dx 2] [--frame 0.00833] [--passes 3]
+/// ```
+///
+/// `--synthetic N`: N charges of random mass (100 kg to 1 kt) and place (within 300 m of the
+/// reference), seen by observers at random scaled distances (5 to 40 m/kg^(1/3)) whose arrivals are
+/// Kingery–Bulmash's off by a normal fraction `--spread` and rounded up to a video frame: the share
+/// of charges whose mass and place fall inside the posterior's 68% and 90% intervals, which a
+/// calibrated inference gives as 68% and 90%. Its model is the data's own, so it checks the
+/// inference, not the model.
+///
+/// `--forward`: charges on the made-up New District (Fixtures/SyntheticDistrict), run by BombCAD
+/// with the recommended air on `--dx` cells, observers 2 m above the ground in its streets and
+/// yards, each arrival (500 Pa above the first sample) rounded up to a frame; then inferred by
+/// Kingery–Bulmash alone, as for an event where nothing is known of the charge. Its model is not the
+/// data's: the buildings, the ground and the grid each move the arrivals.
+enum InferChargeStudy {
+    static func run(_ args: [String]) throws {
+        func value(_ name: String) -> String? {
+            args.firstIndex(of: "--" + name).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+        }
+        setvbuf(stdout, nil, _IOLBF, 0)
+        if let count = value("synthetic").flatMap(Int.init) {
+            synthetic(
+                count: count, spread: value("spread").flatMap(Double.init) ?? 0.05,
+                frame: value("frame").flatMap(Double.init) ?? 1.0 / 30,
+                observers: value("observers").flatMap(Int.init) ?? 25,
+                gridChecks: value("grid-checks").flatMap(Int.init) ?? 0, showMisses: args.contains("--misses")
+            )
+        }
+        if args.contains("--forward") {
+            try forward(
+                fixture: URL(filePath: value("fixture") ?? "Fixtures/SyntheticDistrict"),
+                cellSize: Float(value("dx").flatMap(Double.init) ?? 2),
+                frame: value("frame").flatMap(Double.init) ?? 1.0 / 120,
+                passes: value("passes").flatMap(Int.init) ?? 3)
+        }
+    }
+
+    /// Whether `truth` lies in the posterior's intervals of parameter `name`: (68%, 90%).
+    static func covered(_ posterior: ChargeInference.Posterior, _ name: String, _ truth: Double) -> (
+        Bool, Bool
+    ) {
+        guard let s = posterior.summary(name) else { return (false, false) }
+        return ((s.p16...s.p84).contains(truth), (s.p05...s.p95).contains(truth))
+    }
+
+    static func synthetic(
+        count: Int, spread: Double, frame: Double, observers: Int, gridChecks: Int = 0,
+        showMisses: Bool = false
+    ) {
+        var random = SplitMixGenerator(seed: 2026)
+        var settings = ChargeInference.Settings()
+        settings.massRange = 10...1e7
+        settings.placeRadius = 600
+        settings.steps = 1500
+        settings.walkers = 32
+        var massIn = (0, 0)
+        var placeIn = (0, 0)
+        var ratios: [Double] = []
+        var misses: [Double] = []
+        print("Synthetic: \(count) charges, \(observers) observers each, spread \(spread), frame \(frame) s")
+        for trial in 0..<count {
+            let mass = pow(10, Double.random(in: 2...6, using: &random))
+            let r = 300 * Double.random(in: 0...1, using: &random).squareRoot()
+            let angle = Double.random(in: 0..<(2 * Double.pi), using: &random)
+            let east = r * cos(angle)
+            let north = r * sin(angle)
+            let places = (0..<observers).map { _ -> SIMD2<Double> in
+                let range = Double.random(in: 5...40, using: &random) * cbrt(mass)
+                let a = Double.random(in: 0..<(2 * Double.pi), using: &random)
+                return SIMD2(east + range * cos(a), north + range * sin(a))
+            }
+            let arrivals = ChargeInference.syntheticArrivals(
+                massKg: mass, east: east, north: north, places: places, spread: spread, frame: frame,
+                seed: UInt64(trial + 1))
+            settings.seed = UInt64(trial + 1)
+            let posterior = ChargeInference.infer(arrivals: arrivals, settings: settings)
+            let m = covered(posterior, "log10MassKg", log10(mass))
+            massIn.0 += m.0 ? 1 : 0
+            massIn.1 += m.1 ? 1 : 0
+            placeIn.0 +=
+                posterior.placeShare(within: posterior.placeRadius(holding: 0.68), ofEast: east, north: north)
+                    > 0 && distanceFromMedian(posterior, east, north) <= posterior.placeRadius(holding: 0.68)
+                ? 1 : 0
+            placeIn.1 +=
+                distanceFromMedian(posterior, east, north) <= posterior.placeRadius(holding: 0.9) ? 1 : 0
+            if !m.1, showMisses {
+                let s = posterior.summary("log10MassKg")!
+                print(
+                    String(
+                        format:
+                            "    miss: %.0f kg at %.0f m; found %.0f (90%%: %.0f–%.0f), spread %.3f, R-hat %.3f, acceptance %.2f, place off %.0f m",
+                        mass, r, pow(10, s.median), pow(10, s.p05), pow(10, s.p95),
+                        exp(posterior.summary("logSpread")!.median), posterior.rHat, posterior.acceptance,
+                        distanceFromMedian(posterior, east, north)))
+                let me = posterior.summary("east")!.median
+                let mn = posterior.summary("north")!.median
+                print(
+                    String(
+                        format: "      log likelihood at the truth %.1f, at the found %.1f",
+                        ChargeInference.arrivalLogLikelihood(
+                            massKg: mass, east: east, north: north, spread: spread, arrivals: arrivals,
+                            settings: settings),
+                        ChargeInference.arrivalLogLikelihood(
+                            massKg: pow(10, s.median), east: me, north: mn,
+                            spread: exp(posterior.summary("logSpread")!.median), arrivals: arrivals,
+                            settings: settings)))
+                if mass > 1e5 {
+                    for a in arrivals.prefix(5) {
+                        let r1 = hypot(a.east - east, a.north - north)
+                        let r2 = hypot(a.east - me, a.north - mn)
+                        print(
+                            String(
+                                format: "      %.0f m: window %.3f–%.3f, truth %.3f, found %.3f", r1,
+                                a.earliest,
+                                a.latest, ChargeInference.arrival(massKg: mass, range: r1),
+                                ChargeInference.arrival(massKg: pow(10, s.median), range: r2)))
+                    }
+                }
+            }
+            if trial < gridChecks {
+                // The marginal of log mass on a grid about the samples (±5 of their 68% half-widths),
+                // against the sampler's quantiles.
+                let s = posterior.summary("log10MassKg")!
+                let e = posterior.summary("east")!
+                let nn = posterior.summary("north")!
+                let sp = posterior.summary("logSpread")!
+                func axis(_ q: ChargeInference.Summary, _ count: Int) -> [Double] {
+                    let half = max(q.p84 - q.p16, 1e-3) / 2
+                    return (0..<count).map {
+                        q.median - 5 * half + 10 * half * Double($0) / Double(count - 1)
+                    }
+                }
+                let ms = axis(s, 81)
+                let es = axis(e, 41)
+                let ns = axis(nn, 41)
+                let ss = axis(sp, 21)
+                var marginal = [Double](repeating: 0, count: ms.count)
+                var peak = -Double.infinity
+                var logs: [Double] = []
+                logs.reserveCapacity(ms.count * es.count * ns.count * ss.count)
+                for m in ms {
+                    for x in es {
+                        for y in ns {
+                            for z in ss {
+                                logs.append(
+                                    hypot(x, y) <= settings.placeRadius
+                                        && settings.spreadRange.contains(exp(z))
+                                        ? ChargeInference.arrivalLogLikelihood(
+                                            massKg: pow(10, m), east: x, north: y, spread: exp(z),
+                                            arrivals: arrivals,
+                                            settings: settings) : -.infinity)
+                            }
+                        }
+                    }
+                }
+                peak = logs.max() ?? 0
+                for i in 0..<ms.count {
+                    let block = logs[
+                        (i * es.count * ns.count * ss.count)..<((i + 1) * es.count * ns.count * ss.count)]
+                    marginal[i] = block.reduce(0) { $0 + exp($1 - peak) }
+                }
+                let total = marginal.reduce(0, +)
+                var running = 0.0
+                var quantiles: [Double] = []
+                var targets = [0.05, 0.16, 0.5, 0.84, 0.95]
+                for i in 0..<ms.count {
+                    running += marginal[i] / total
+                    while let t = targets.first, running >= t {
+                        quantiles.append(ms[i])
+                        targets.removeFirst()
+                    }
+                }
+                print(
+                    String(
+                        format:
+                            "    grid check %d: log10 mass, sampler 5/16/50/84/95%% %.3f %.3f %.3f %.3f %.3f; grid %@; truth %.3f",
+                        trial, s.p05, s.p16, s.median, s.p84, s.p95,
+                        quantiles.map { String(format: "%.3f", $0) }.joined(separator: " "), log10(mass)))
+            }
+            ratios.append(pow(10, posterior.summary("log10MassKg")!.median) / mass)
+            misses.append(distanceFromMedian(posterior, east, north) / cbrt(mass))
+        }
+        ratios.sort()
+        misses.sort()
+        print(
+            String(
+                format:
+                    "  mass inside 68%%: %.2f, inside 90%%: %.2f; place inside 68%%: %.2f, inside 90%%: %.2f",
+                Double(massIn.0) / Double(count), Double(massIn.1) / Double(count),
+                Double(placeIn.0) / Double(count),
+                Double(placeIn.1) / Double(count)))
+        print(
+            String(
+                format:
+                    "  median mass found / true: %.3f (10%%–90%%: %.3f–%.3f); place off by %.2f m/kg^(1/3) (90%%: %.2f)",
+                ratios[count / 2], ratios[count / 10], ratios[9 * count / 10], misses[count / 2],
+                misses[9 * count / 10]))
+    }
+
+    static func distanceFromMedian(_ posterior: ChargeInference.Posterior, _ east: Double, _ north: Double)
+        -> Double
+    {
+        hypot(
+            (posterior.summary("east")?.median ?? 0) - east, (posterior.summary("north")?.median ?? 0) - north
+        )
+    }
+
+    /// The charges run: TNT mass (kg) and place in the fixture's metres (east, north of 0° 0°), each
+    /// in a street or yard (the blocks are 24 × 16 m on a 100 m grid).
+    static let charges: [(mass: Float, east: Double, north: Double)] = [
+        (500, 650, 650), (2_000, 455, 705), (5_000, 700, 450), (1_000, 560, 380),
+    ]
+
+    /// The made-up district, ready to lay a charge on.
+    struct District {
+        var buildings: [MapBuilding]
+        var heights: ElevationGrid
+        var ground: ElevationGrid
+        var device: MTLDevice
+        var cellSize: Float
+        var reach: Float = 350
+
+        /// BombCAD's arrival (500 Pa above the first sample, s) at each of `observers` (the fixture's
+        /// metres) from `mass` kg of TNT at (`east`, `north`), with the recommended air; nil where the
+        /// shock did not come.
+        func arrivals(mass: Float, east: Double, north: Double, observers: [SIMD2<Double>]) throws
+            -> [Double?]
+        {
+            let metres = ElevationGrid.metresPerDegree
+            var layout = DistrictLayout(
+                buildings: buildings, charge: SIMD2(east / metres, north / metres), mass: mass)
+            layout.heights = heights
+            layout.ground = DistrictLayout.ground(ground, openingM: 0, seaM: 1)
+            let half = layout.halfSide(radius: reach, cellSize: cellSize)
+            var (scene, _) = try layout.scene(halfSide: half, cellSize: cellSize)
+            let positions = observers.map { SIMD2(Float($0.x - east) + half, Float($0.y - north) + half) }
+            let inside = positions.indices.filter { k in
+                positions[k].x > cellSize && positions[k].y > cellSize && positions[k].x < 2 * half - cellSize
+                    && positions[k].y < 2 * half - cellSize
+            }
+            scene.gauges = inside.prefix(BlastSolver.maxGauges).map { k in
+                let p = positions[k]
+                return Gauge("o\(k)", at: SIMD3(p.x, p.y, (scene.terrain?.height(at: p) ?? 0) + 2))
+            }
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: cellSize, configuration: .recommended)
+            let points = scene.gauges.map(\.position)
+            let cells = points.map { p -> (i: Int, j: Int, k: Int) in
+                let i = Int(p.x / cellSize)
+                let j = Int(p.y / cellSize)
+                var k = Int(p.z / cellSize)
+                while k < solver.grid.nz - 1, solver.isSolid(i, j, k) { k += 1 }
+                return (i, j, k)
+            }
+            solver.setGauges(cells: cells, points: points)
+            let farthest = observers.map { hypot($0.x - east, $0.y - north) }.max() ?? Double(reach)
+            let until = farthest / 300 + 0.05
+            while solver.time < until {
+                let batch = solver.advance(until: until)
+                guard batch.steps > 0, batch.isStable else { break }
+            }
+            var result = [Double?](repeating: nil, count: observers.count)
+            for (slot, k) in inside.prefix(BlastSolver.maxGauges).enumerated() {
+                let samples = solver.gaugeHistories[slot]
+                guard let first = samples.first?.pressure else { continue }
+                result[k] = samples.first(where: { $0.pressure - first > 500 })?.time
+            }
+            return result
+        }
+    }
+
+    /// One line of the forward study: the found mass and place against the truth.
+    static func line(
+        _ label: String, _ posterior: ChargeInference.Posterior,
+        truth: (mass: Float, east: Double, north: Double)
+    ) -> String {
+        let mass = posterior.summary("log10MassKg")!
+        let hit = covered(posterior, "log10MassKg", log10(Double(truth.mass)))
+        return String(
+            format:
+                "    %@: %.0f kg (90%%: %.0f–%.0f; truth inside 68%%/90%%: %@/%@), place off %.1f m (90%% radius %.1f m), spread %.1f%%",
+            label, pow(10, mass.median), pow(10, mass.p05), pow(10, mass.p95), hit.0 ? "yes" : "no",
+            hit.1 ? "yes" : "no",
+            distanceFromMedian(posterior, truth.east, truth.north), posterior.placeRadius(holding: 0.9),
+            100 * exp(posterior.summary("logSpread")!.median))
+    }
+
+    static func forward(fixture: URL, cellSize: Float, frame: Double, passes: Int) throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw BlastError.allocationFailed("Metal") }
+        let district = District(
+            buildings: try MapBuilding.read(contentsOf: fixture.appending(path: "district.osm")),
+            heights: try ElevationGrid(contentsOf: fixture.appending(path: "heights.asc")),
+            ground: try ElevationGrid(contentsOf: fixture.appending(path: "ground.asc")), device: device,
+            cellSize: cellSize)
+        // Observers: a fixed scatter over the district (east, north in the fixture's metres).
+        var generator = SplitMixGenerator(seed: 7)
+        let scatter = (0..<400).map { _ in
+            SIMD2(
+                Double.random(in: 150...1050, using: &generator),
+                Double.random(in: 150...1050, using: &generator))
+        }
+        var settings = ChargeInference.Settings()
+        settings.massRange = 10...1e6
+        settings.placeRadius = 500
+        // The district's centre (600, 600) is the reference.
+        let reference = SIMD2(600.0, 600.0)
+        print("Forward: \(charges.count) charges on the New District, \(cellSize) m cells, frame \(frame) s")
+        for (n, charge) in charges.enumerated() {
+            let start = ContinuousClock.now
+            let observers = Array(
+                scatter.filter { p in
+                    let d = hypot(p.x - charge.east, p.y - charge.north)
+                    return d >= 40 && d <= Double(district.reach)
+                }.prefix(40))
+            let times = try district.arrivals(
+                mass: charge.mass, east: charge.east, north: charge.north, observers: observers)
+            var arrivals: [ChargeInference.Arrival] = []
+            var seen: [SIMD2<Double>] = []
+            var modelRatios: [Double] = []
+            for (k, p) in observers.enumerated() {
+                guard let at = times[k] else { continue }
+                let latest = (at / frame).rounded(.up) * frame
+                arrivals.append(
+                    ChargeInference.Arrival(
+                        name: "o\(k)", east: p.x - reference.x, north: p.y - reference.y,
+                        earliest: latest - frame,
+                        latest: latest))
+                seen.append(p)
+                modelRatios.append(
+                    at
+                        / ChargeInference.arrival(
+                            massKg: Double(charge.mass), range: hypot(p.x - charge.east, p.y - charge.north)))
+            }
+            modelRatios.sort()
+            let truth = (charge.mass, charge.east - reference.x, charge.north - reference.y)
+            print(
+                String(
+                    format:
+                        "  %.0f kg at (%.0f, %.0f) m from the centre: %d arrivals, BombCAD over Kingery–Bulmash %.3f (%.3f–%.3f)",
+                    charge.mass, truth.1, truth.2, arrivals.count,
+                    modelRatios.isEmpty ? 0 : modelRatios[modelRatios.count / 2],
+                    modelRatios.first ?? 0, modelRatios.last ?? 0))
+            guard arrivals.count >= 5 else { continue }
+            settings.seed = UInt64(n + 1)
+            let first = ChargeInference.infer(arrivals: arrivals, settings: settings)
+            print(line("Kingery–Bulmash alone", first, truth: truth))
+            // Further passes, as an investigator would: BombCAD run at the last estimate, its arrivals
+            // over Kingery–Bulmash's there taken as each observer's ratio, until the yield moves
+            // under 5% (at most `passes` runs).
+            var last = first
+            for pass in 1...passes {
+                let found = (
+                    mass: Float(pow(10, last.summary("log10MassKg")!.median)),
+                    east: last.summary("east")!.median + reference.x,
+                    north: last.summary("north")!.median + reference.y
+                )
+                let again = try district.arrivals(
+                    mass: found.mass, east: found.east, north: found.north, observers: seen)
+                var corrected = arrivals
+                for (k, p) in seen.enumerated() {
+                    guard let at = again[k] else { continue }
+                    let kb = ChargeInference.arrival(
+                        massKg: Double(found.mass), range: hypot(p.x - found.east, p.y - found.north))
+                    corrected[k].ratios = [(Double(found.mass), at / kb)]
+                }
+                let next = ChargeInference.infer(arrivals: corrected, settings: settings)
+                print(line("BombCAD's ratios at estimate \(pass)", next, truth: truth))
+                let moved = abs(next.summary("log10MassKg")!.median - last.summary("log10MassKg")!.median)
+                last = next
+                if moved < log10(1.05) { break }
+            }
+            print(String(format: "    (%.0f s)", DistrictBenchmark.seconds(start)))
+        }
+    }
+}
+
+/// A seeded generator for the study's fixed scatter of observers.
+struct SplitMixGenerator: RandomNumberGenerator {
+    var state: UInt64
+    init(seed: UInt64) { state = seed }
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
+}

@@ -153,6 +153,8 @@ struct SimulationSettings: Equatable {
     /// With `sharpShocks`, the jump across a cell that refines it, as a share of its pressure:
     /// lower follows a weakening shock further, at a cost (see docs/large-scenes.md).
     var shockThreshold: Float = 0.1
+    /// With `sharpShocks`, no air refined more than this many metres above the ground; nil for none.
+    var refinementCeiling: Float?
     /// With `sharpShocks`, each refined level takes only the substeps its own waves need
     /// (`SolverConfiguration.refinementOwnSteps`): the advisor turns it on where it pays.
     var adaptiveSubsteps = false
@@ -688,6 +690,11 @@ final class SimulationModel {
     /// The loads the damage was last judged on, for the debris.
     @ObservationIgnored private var envelopeLoads: [EnvelopeComponentLoad] = []
     private(set) var envelopeDamageStatus = ""
+    /// True while `envelopeDamage` is the surrogate's quick estimate rather than a run's
+    /// (`quickEstimate`).
+    private(set) var envelopeDamageIsEstimate = false
+    /// True while the quick estimate is being made.
+    private(set) var estimatingEnvelopeDamage = false
     /// Why the glazing is not vented though asked to be, or empty.
     private(set) var envelopeVentingStatus = ""
     /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
@@ -707,6 +714,38 @@ final class SimulationModel {
     /// How long the last judgement took: a district's runs into seconds, so while running it is
     /// made again only after twenty times that.
     @ObservationIgnored private var envelopeDamageCost = Duration.zero
+
+    /// A first look at the envelope buildings' damage without running the air
+    /// (`FacadeLoadSurrogate`): seconds for a district, shown as an estimate until a run's
+    /// damage replaces it.
+    func quickEstimate() {
+        let scenario = settings.scenario
+        guard !scenario.envelopeObjects.isEmpty, !estimatingEnvelopeDamage else { return }
+        let cellSize = settings.resolution.cellSize
+        estimatingEnvelopeDamage = true
+        envelopeDamageStatus = "Estimating…"
+        Task { [weak self] in
+            let (loads, buildings, seconds) = await Task.detached(priority: .userInitiated) {
+                let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
+                let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
+                    estimate, constructions: { scenario.envelopeConstruction(for: $0) })
+                return (estimate.loads, buildings, estimate.seconds + damageS)
+            }.value
+            guard let self else { return }
+            self.estimatingEnvelopeDamage = false
+            // A run judged meanwhile, or the scene changed: the estimate is stale.
+            guard self.settings.scenario == scenario, self.stepCount == 0 else {
+                self.envelopeDamageStatus = ""
+                return
+            }
+            self.envelopeDamage = buildings
+            self.envelopeLoads = loads
+            self.envelopeDamageIsEstimate = true
+            self.envelopeDamageStatus = String(
+                format: "Quick estimate in %.1f s: not a run. Run the scene for its damage.", seconds)
+            self.applyEnvelopeDamageColours()
+        }
+    }
 
     /// Judges each envelope building from the recorder's histories so far, if it records them.
     func refreshEnvelopeDamage() {
@@ -736,6 +775,7 @@ final class SimulationModel {
         envelopeDamage = EnvelopeDamageAssessment.assess(
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
             strikes: strikes, vented: vented)
+        envelopeDamageIsEstimate = false
         envelopeLoads = loads
         applyEnvelopeDamageColours()
     }
@@ -846,6 +886,7 @@ final class SimulationModel {
                 settings.sharpShocks = run.sharpShocks
                 settings.shockLevels = run.shockLevels ?? 1
                 settings.shockThreshold = run.shockThreshold ?? 0.1
+                settings.refinementCeiling = run.refinementCeiling
                 settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
                 settings.gravity = run.gravity ?? false
                 settings.terrainCutCells = run.cutsTerrain(over: scenario)
@@ -999,6 +1040,7 @@ final class SimulationModel {
             settings.sharpShocks = run.sharpShocks
             settings.shockLevels = run.shockLevels ?? 1
             settings.shockThreshold = run.shockThreshold ?? 0.1
+            settings.refinementCeiling = run.refinementCeiling
             settings.adaptiveSubsteps = run.adaptiveSubsteps ?? false
             settings.gravity = run.gravity ?? false
             settings.terrainCutCells = run.cutsTerrain(over: document.scenario)
@@ -1210,6 +1252,7 @@ final class SimulationModel {
         settings.sharpShocks = inputs.settings.sharpShocks
         settings.shockLevels = inputs.settings.shockLevels ?? 1
         settings.shockThreshold = inputs.settings.shockThreshold ?? 0.1
+        settings.refinementCeiling = inputs.settings.refinementCeiling
         settings.adaptiveSubsteps = inputs.settings.adaptiveSubsteps ?? false
         settings.gravity = inputs.settings.gravity ?? false
         settings.terrainCutCells = inputs.settings.cutsTerrain(over: inputs.scenario)
@@ -2300,6 +2343,15 @@ final class SimulationModel {
             ? SurfaceHeating.Layout(spec: spec.heating, grids: thermalGrids, scene: scene) : nil
         reckonedSpec = spec
         nextFireballTime = 0
+        // A mapped start's clock starts at its solution's time: the fireball before it, a frame a
+        // millisecond, from the one-dimensional solution, so that the record starts at detonation.
+        if solver.stepCount == 0, solver.time > 0.001 {
+            let times = (1...Int((solver.time / 0.001).rounded(.down))).map { Double($0) * 0.001 }
+            for frame in solver.earlyFireballFrames(for: spec, at: times) {
+                fireballFrames.append(frame.withoutShape)
+                thermal?.send(.fireball(frame))
+            }
+        }
         sendFireball(solver)
         updateThermalStatus()
     }
@@ -2418,6 +2470,7 @@ final class SimulationModel {
     private func requestRebuild() {
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDamageIsEstimate = false
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -2441,7 +2494,7 @@ final class SimulationModel {
             groundStiffness: settings.softGround ? settings.groundStiffness : nil,
             ground: settings.ground == .rigid ? nil : settings.ground,
             outlineByOverlap: settings.outlineByOverlap, settlesStructures: settings.settlesStructures,
-            mappedStart: settings.mappedStart)
+            mappedStart: settings.mappedStart, refinementCeiling: settings.refinementCeiling)
         solver.configuration.fitRefinementMemory(solver.grid, memory: advisorMemory)
         // A mapped start begins no later than halfway through the run, so that the grid has the rest.
         solver.mappedStartLatest = duration / 2
@@ -2454,6 +2507,7 @@ final class SimulationModel {
         stopGroundShock()
         envelopeExposure = []
         envelopeDamage = []
+        envelopeDamageIsEstimate = false
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""

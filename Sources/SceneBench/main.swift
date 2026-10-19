@@ -54,12 +54,28 @@ enum SceneBench {
             try EnvelopeBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "infer-charge-study" {
+            try InferChargeStudy.run(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "infer-charge" {
+            try InferCharge.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "venting-checks" {
             try VentingChecks.run(Array(args.dropFirst()))
             return
         }
         if args.first == "envelope-venting" {
             try EnvelopeVentingBenchmark.run(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "surrogate-judge" {
+            try SurrogateBench.judge(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "surrogate-extract" {
+            try SurrogateBench.extract(Array(args.dropFirst()))
             return
         }
         if args.first == "district-glass" {

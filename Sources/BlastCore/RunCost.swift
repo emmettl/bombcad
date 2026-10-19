@@ -199,7 +199,12 @@ public enum RunCost {
                     }
                     guard arrival < duration else { continue }
                     swept += 1 - arrival / duration
-                    if Float(overpressure) >= reach && configuration.refinement > 1 {
+                    // Above the refinement's ceiling over the ground, nothing is refined.
+                    let capped =
+                        configuration.refinementCeiling.map {
+                            point.z > (scenario.terrain?.height(at: SIMD2(point.x, point.y)) ?? 0) + $0
+                        } ?? false
+                    if Float(overpressure) >= reach && configuration.refinement > 1 && !capped {
                         hold(
                             0, from: arrival,
                             for: max(Double(shellCells * cellSize / soundSpeed), core.x - arrival))
@@ -314,7 +319,7 @@ public enum RunCost {
     {
         guard configuration.mappedCharge, configuration.airModel != .dissociating,
             configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
-            configuration.radiativeCooling == nil, scenario.deflagration == nil
+            scenario.deflagration == nil
         else { return 0 }
         let charges = [scenario.charge] + (scenario.additionalCharges ?? [])
         var solved: Set<SIMD2<Float>> = []

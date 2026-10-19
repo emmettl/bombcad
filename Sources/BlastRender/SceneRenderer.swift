@@ -234,6 +234,17 @@ private struct TerrainMesh {
 public final class SceneRenderer {
     /// Blocks drawn: as many as a scene holds. Beyond `gridBoxes` the shader finds them through a
     /// grid of columns over their footprints (`BoxGrid`) rather than testing every one.
+    /// Binds a material palette (`MaterialAppearance.palette`) for the structure's vertex
+    /// shaders, always `MaterialAppearance.paletteSize` colours.
+    static func setPalette(_ palette: [SIMD4<Float>], on encoder: MTLRenderCommandEncoder, index: Int = 7) {
+        var colours = Array(palette.prefix(MaterialAppearance.paletteSize))
+        while colours.count < MaterialAppearance.paletteSize {
+            colours.append(MaterialAppearance.concrete.colour)
+        }
+        encoder.setVertexBytes(
+            colours, length: MemoryLayout<SIMD4<Float>>.stride * colours.count, index: index)
+    }
+
     public static let maxBoxes = Scenario.maximumRigidBoxes
     public static let pixelFormat = MTLPixelFormat.bgra8Unorm
     private static let depthFormat = MTLPixelFormat.depth32Float
@@ -381,6 +392,16 @@ public final class SceneRenderer {
         for (n, box) in scenario.rigidBoxes.prefix(rigidBoxCount).enumerated() {
             boxes[2 * n] = SIMD4(box.min, 0)
             boxes[2 * n + 1] = SIMD4(box.max, 0)
+        }
+        // Exposure-only buildings' blocks, after the scenario's own, drawn by their walls'
+        // construction (`MaterialAppearance.blockCode`, in the high corner's w).
+        var index = scenario.boxes.count
+        for object in scenario.envelopeObjects {
+            let code = MaterialAppearance(scenario.envelopeConstruction(for: object.id).walls).blockCode
+            for _ in object.envelope!.blocks where index < rigidBoxCount {
+                boxes[2 * index + 1].w = code
+                index += 1
+            }
         }
         setTerrain(scenario.terrain)
         setVentPanels((scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }.map(\.box))
@@ -742,6 +763,15 @@ public final class SceneRenderer {
                 sceneEncoder.setVertexBuffer(structure.states, offset: 0, index: 3)
                 sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
                 sceneEncoder.setVertexBuffer(structure.nodeMap, offset: 0, index: 5)
+                // Each element's material, and its colour (`MaterialAppearance`).
+                var indexed: UInt32 = structure.materialIndex == nil ? 0 : 1
+                if let materialIndex = structure.materialIndex {
+                    sceneEncoder.setVertexBuffer(materialIndex, offset: 0, index: 6)
+                } else {
+                    sceneEncoder.setVertexBytes([UInt32](repeating: 0, count: 4), length: 16, index: 6)
+                }
+                Self.setPalette(structure.palette, on: sceneEncoder)
+                sceneEncoder.setVertexBytes(&indexed, length: 4, index: 8)
                 sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
                 sceneEncoder.drawPrimitives(
                     type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: structure.elementCount)
@@ -762,6 +792,7 @@ public final class SceneRenderer {
                 sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
                 sceneEncoder.setVertexBuffer(shells.reference, offset: 0, index: 5)
                 sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
+                Self.setPalette(shells.palette, on: sceneEncoder, index: 8)
                 // Glass is drawn last, over everything opaque (below).
                 var transparent = shells.transparentMaterials
                 var draw: UInt32 = transparent == 0 ? 0 : 1
@@ -863,6 +894,7 @@ public final class SceneRenderer {
             sceneEncoder.setVertexBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 4)
             sceneEncoder.setFragmentBytes(&mesh, length: MemoryLayout<MeshUniforms>.stride, index: 0)
             sceneEncoder.setVertexBytes(&transparent, length: 4, index: 6)
+            Self.setPalette(glass.palette, on: sceneEncoder, index: 8)
             sceneEncoder.setVertexBuffer(glass.elements, offset: 0, index: 0)
             sceneEncoder.setVertexBuffer(glass.flags, offset: 0, index: 2)
             sceneEncoder.setVertexBuffer(glass.damage, offset: 0, index: 3)

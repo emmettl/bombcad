@@ -486,6 +486,40 @@ afterburning it halves the fluences and makes the fireball's heat more plausible
 has been compared with one measurement, which it still exceeds. Use it for thermal studies with
 afterburning and hot air.
 
+### Before the grid's clock
+
+Since 18 October 2026 a run starts from a [mapped one-dimensional
+solution](air-blast-model.md#a-finely-resolved-start), and the grid's clock starts only when its
+shock has spread to the mapped radius: some 9 ms for 1 kg on 0.5 m cells, 25 ms for 41 kg on
+0.25 m cells, 200 ms for Dial Pack on 4 m cells. The fireball before then is taken from the
+one-dimensional solution (`BlastSolver.earlyFireballFrames`), solved again from the start and
+kept at the frames' times: its temperatures, as the grid's air model reads them, and its unburnt
+products, laid onto a box of up to 262,144 voxels round the luminous gas, finer than the grid's
+cells while the fireball is small, each sampled eight times. The app sends them, a frame a
+millisecond, before the grid's own, and headless runs and the benches likewise, so a run's
+thermal record starts at detonation again. (Between the mapped start's default on 18 October and
+these frames, a run's record began at the hand-over: 0.5.0's known limitation.)
+
+Against Dial Pack (`blastbench dialpack --mapped`, the charge on the ground so that it can be
+mapped, 4 m cells, to 0.5 s), the intensity toward 1,700 m in cal/sr/s × 10⁷:
+
+| | Measured | Balloon | Mapped, early frames |
+|---|---|---|---|
+| The first maximum, 1.25 ms | 157 | 25 | 38 |
+| 2 ms | 80 | 19 | 47 |
+| The second maximum, 25 ms | 112 | 20 | 16 |
+| 50 to 200 ms | 55 to 101 | 0 to 4 | 0 to 3 |
+| Fluence at 600 m by 0.5 s | 3.83 kJ/m² | 0.77 | 1.54 |
+
+The first maximum comes half as bright again, a quarter of the measured where the balloon gave a
+sixth; the second and the dark middle are as before. The frames resolve the hot shock layer the
+grid smears, but the medium makes little of it: hot air absorbs 0.1/m, grey, however hot, so the
+layer, centimetres to metres thick at 6,000 to 8,000 K, is thin and faint, where air that hot is
+nearly opaque. Against Clough and Clubley's 41 kg (`blastbench gauging`), the products reach 3 m
+by 3.2 ms (the camera's fireball 4 m), but they have cooled below the luminous temperature as they
+expanded, and the gas at least 1,500 K is 1.3 to 4 m across from 2 to 10 ms: the luminous
+hemisphere reaches the 4 m box at 22.5 ms (20 ms on the balloon) against 3.2 ms.
+
 ### Against Dial Pack
 
 Dial Pack, 500 tons of TNT as a sphere resting on the ground at Suffield in 1970, was measured
@@ -543,7 +577,7 @@ all 15 s, and its intensity, 144 (103 cooling) against 28, is still rising.
   them burning and the gap closes.
 - *Late it is too bright, and brightening.* The products go on burning, and the fireball, 200 m
   across by 1 s, heats to 2,200 K by 2 s and 2,400 K by 3 s (2,100 and 2,160 K cooling), where
-  the report's falls to 1,800 K by 1.5 s and 1,600 K by 3 s. The air model has no gravity, so the
+  the report's falls to 1,800 K by 1.5 s and 1,600 K by 3 s. Without gravity in the air (an option, below), the
   fireball neither rises nor draws in the cold air that cools a real one. The gas cooling helps
   only a little at this size: an opaque fireball radiates its share of its heat in a time that
   grows with its size, as the blast's times do, and 2 s at 500 t is 120 ms at 100 kg.
@@ -647,7 +681,8 @@ Pattmann gave as 3.8% and 6.6%.
 - Illustrative, as above: two TNT shots compared. The model exceeds the 100-ton shot's total three
   to five times (two to three with the gas cooling), and Dial Pack's pulse is far too faint for its
   first 350 ms and too bright after a second, the fireball neither rising nor cooling by mixing
-  with cold air, since the air model has no gravity.
+  with cold air, since these runs leave the air without gravity; with gravity (`--gravity`) it
+  rises but stays as bright.
 - The radiated energy is taken from the gas only as an option; without it the gas stays hot and
   luminous too long. With it, the luminous gas cools as the volume radiates, on the lattice's 26
   directions (a flat opaque face 2% too bright to 7% too dim by its orientation), into black,
