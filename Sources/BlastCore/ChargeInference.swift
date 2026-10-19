@@ -552,9 +552,12 @@ public enum ChargeInference {
 
     // MARK: - Sampling
 
-    /// The posterior of the charge given `arrivals` and, optionally, `facades`.
+    /// The posterior of the charge given `arrivals` and, optionally, `facades`. `progress` is told
+    /// the share done now and then, and stops the sampling, with no samples kept, if it returns
+    /// false; it changes nothing of the result otherwise.
     public static func infer(
-        arrivals: [Arrival], facades: [Facade] = [], settings: Settings = Settings()
+        arrivals: [Arrival], facades: [Facade] = [], settings: Settings = Settings(),
+        progress: (Double) -> Bool = { _ in true }
     ) -> Posterior {
         let names = names(settings)
         let dimensions = names.count
@@ -597,6 +600,10 @@ public enum ChargeInference {
             let theta = priorDraw()
             return (theta, logPosterior(theta).posterior)
         }.sorted { $0.score > $1.score }
+        func stopped() -> Posterior {
+            Posterior(names: names, samples: [], logLikelihoods: [], acceptance: 0, rHat: .nan, summaries: [])
+        }
+        guard progress(0.1) else { return stopped() }
         // The walkers start in a small ball about the best local optimum of the posterior, found by
         // Nelder–Mead from the best few dozen draws: a narrow mode (a big charge whose place the
         // arrivals pin to metres) is rarely among the draws themselves, and a broad one is.
@@ -605,6 +612,7 @@ public enum ChargeInference {
                 -logPosterior($0).posterior
             }
         }.sorted { ($0.value.isNaN ? .infinity : $0.value) < ($1.value.isNaN ? .infinity : $1.value) }
+        guard progress(0.25) else { return stopped() }
         let best = optima[0].point
         var positions: [[Double]] = []
         let scale = settings.searchScales(dimensions).map { 0.01 * $0 }
@@ -623,6 +631,9 @@ public enum ChargeInference {
         let burn = steps / 2
         let stretch = 2.0
         for step in 0..<steps {
+            if step % max(steps / 100, 1) == 0, !progress(0.25 + 0.75 * Double(step) / Double(steps)) {
+                return stopped()
+            }
             // Halfway through the burn-in, a walker left far below the rest (stranded in a poor
             // mode, which the stretch move cannot leave) starts again from a good one's place.
             if step == burn / 2 {

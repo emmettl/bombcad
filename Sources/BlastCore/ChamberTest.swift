@@ -287,7 +287,8 @@ public enum ChamberTest {
         afterburnEnergy: Float? = nil, airModel: AirModel = SolverConfiguration.recommended.airModel,
         openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
         duration: Double = 0.3, refinement: Int = 1, roomy: Bool = true,
-        mappedCharge: Bool = SolverConfiguration.recommended.mappedCharge
+        mappedCharge: Bool = SolverConfiguration.recommended.mappedCharge,
+        radiativeCooling: RadiativeCooling? = SolverConfiguration.recommended.radiativeCooling
     ) throws -> Result {
         // `roomy`: the open faces (across and the top) moved out to `Scenario.structureFaceClearance`,
         // as compared since 18 October 2026; in the box of 1 m either side and 2 m above, the
@@ -303,7 +304,7 @@ public enum ChamberTest {
             cellSize: cellSize, duration: duration, afterburning: afterburning,
             afterburnEnergy: afterburnEnergy, airModel: airModel, openFaces: openFaces,
             refinement: refinement,
-            mappedCharge: mappedCharge)
+            mappedCharge: mappedCharge, radiativeCooling: radiativeCooling)
     }
 
     /// The chamber with its vent closed and no charge, filled with air at `overpressure` (Pa)
@@ -330,6 +331,7 @@ public enum ChamberTest {
         airModel: AirModel = SolverConfiguration.recommended.airModel,
         openFaces: OpenFaces = SolverConfiguration.recommended.openFaces, refinement: Int = 1,
         contact: ContactMode? = nil, mappedCharge: Bool = SolverConfiguration.recommended.mappedCharge,
+        radiativeCooling: RadiativeCooling? = SolverConfiguration.recommended.radiativeCooling,
         progress: ((String) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
     ) throws -> Result {
         // The scene as `scenario(pad:)` moved it across.
@@ -340,11 +342,14 @@ public enum ChamberTest {
         let defaults = SolverConfiguration()
         if afterburning != defaults.afterburning || airModel != defaults.airModel
             || openFaces != defaults.openFaces || refinement > 1 || afterburnEnergy != nil || mappedCharge
+            || radiativeCooling != nil
         {
             solver.configuration.afterburning = afterburning
             // Each charge from its own mapped one-dimensional start, as runs start since 18 October
             // 2026 (0.36 m out here, the sleeves' walls 0.45 m off).
             solver.configuration.mappedCharge = mappedCharge
+            // The gas losing what it radiates, as runs do since 19 October 2026.
+            solver.configuration.radiativeCooling = afterburning ? radiativeCooling : nil
             solver.configuration.openFaces = openFaces
             solver.configuration.airModel = airModel
             solver.configuration.refinement = refinement

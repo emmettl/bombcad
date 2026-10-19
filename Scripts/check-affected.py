@@ -1,13 +1,14 @@
 """The pre-push check sized to the change: the tests that execute what changed.
 
-    ~/.local/bin/gpu-slot make check-affected
+    make check-affected
 
 It looks at what this branch changes against origin/main (committed, staged, unstaged and
 untracked files) and runs one of four tiers:
 
 - documents and Python scripts only (docs/, Markdown, images, Scripts/*.py, the reference
-  calculations in Scripts/reference/ and their tables, the analytic oracles in
-  Scripts/analytic/): lint and the scripts' tests and links (`ci-test`); no Swift build, no GPU.
+  calculations in Scripts/reference/ and their tables, the protective-design prototype in
+  Scripts/protective/, the analytic oracles in Scripts/analytic/): lint and the scripts' tests
+  and links (`ci-test`); no Swift build, no GPU.
 - covered, when a test-impact map (Scripts/test-impact.py) exists for the merge base or a commit
   behind it: lint, the strict build, `ci-test`, and the Swift suites that executed a changed
   function when the map was built. A shader change counts as a change to the Swift lines that
@@ -16,18 +17,28 @@ untracked files) and runs one of four tiers:
   trip (the standing and the shader layouts).
 - affected, with no usable map: the same, but choosing the suites that name a changed file's type.
 - full: the package's dependencies (Package.swift, Package.resolved), and, without a usable map
-  for them, the core (shaders, the solvers' shared types): `make check-anywhere`.
+  for them, the core (shaders, the solvers' shared types): `make check`.
 
 A changed file falls back to the name rules (and a core file to the full check) when the map
 doesn't know it or more than --max-map-age commits have touched it since the map was built.
 
 The full check still runs nightly on the mini and before every release; this only decides what a
-push waits for. `--dry-run` prints the tier and the suites, with why each was chosen, without
-running anything; `--full` forces the full check (through make: `make check-affected ARGS=--dry-run`).
+push waits for. `--dry-run` prints the tier and the suites, with why each was chosen, and where
+the build and tests would run, without running anything; `--full` forces the full check (through
+make: `make check-affected ARGS=--dry-run`).
+
+Lint and ci-test run here. The build and tests (the strict build, the IFC converter, the swift
+test run; or the full check) run under gpu-slot here, unless this Mac's line is long (--min-waiting
+jobs waiting, 3 by default, or more memory declared than its budget) and the other Mac in
+~/.config/bombcad/remote.json is free (Scripts/remote.py, in a second lane there if one is safe):
+then there, the same steps from a copy of this worktree, their output streamed back and their exit
+status returned. `--local` and `--remote` choose. Run under gpu-slot itself, it holds a slot, so
+it stays here (the full check goes to `make check-anywhere`, as before).
 """
 
 import argparse
 import importlib.util
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -38,6 +49,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("test_impact", Path(__file__).with_name("test-impact.py"))
 impact = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(impact)
+REMOTE_SPEC = importlib.util.spec_from_file_location("remote", Path(__file__).with_name("remote.py"))
+remote = importlib.util.module_from_spec(REMOTE_SPEC)
+REMOTE_SPEC.loader.exec_module(remote)
 
 # Files whose change can move any result: the full check, without a map that covers them.
 CORE = [
@@ -52,7 +66,7 @@ CORE = [
 ALWAYS_FULL = re.compile(r"^Package\.(swift|resolved)$")
 SHADER = re.compile(r"^Sources/[^/]+/Shaders/[^/]+\.metal$")
 # Documents and the Python scripts, which ci-test covers on its own.
-DOCUMENT = re.compile(r"(^docs/|\.md$|\.png$|\.jpg$|\.svg$|^LICENSE$|^Scripts/(analytic/|reference/)?[^/]+\.py$|"
+DOCUMENT = re.compile(r"(^docs/|\.md$|\.png$|\.jpg$|\.svg$|^LICENSE$|^Scripts/(analytic/|protective/|reference/)?[^/]+\.py$|"
                       r"^Scripts/reference/tables/[^/]+\.json$)")
 # Suites that changes elsewhere often trip: the standing parses the docs and options, the
 # layout test guards the renderer's copies of the solver's structs.
@@ -406,12 +420,115 @@ def fetch_maps(out):
                     "--timeout", "20"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+# MARK: - Where
+
+
+GPU_SLOT = Path.home() / ".local/bin/gpu-slot"
+# The Studio counts as busy with this many jobs or more waiting in gpu-slot's line.
+MIN_WAITING = 3
+SLOT_LINE = re.compile(r"^slot (\d+): pid (\d+) .*?\((\d+) GB\)")
+WAITING_LINE = re.compile(r"^waiting: pid (\d+) since [0-9:]+: (\d+) GB ")
+BUDGET_LINE = re.compile(r"^memory budget (\d+) GB")
+
+
+def parse_queue(text):
+    """gpu-slot --status as {"held": [GB by slot held], "waiting": [GB by job waiting], "budget": GB}."""
+    queue = {"held": [], "waiting": [], "budget": None}
+    for line in text.splitlines():
+        if match := SLOT_LINE.match(line):
+            queue["held"].append(int(match.group(3)))
+        elif match := WAITING_LINE.match(line):
+            queue["waiting"].append(int(match.group(2)))
+        elif match := BUDGET_LINE.match(line):
+            queue["budget"] = int(match.group(1))
+    return queue
+
+
+def read_queue(gpu_slot=GPU_SLOT):
+    """This Mac's gpu-slot line, or None without gpu-slot."""
+    if not Path(gpu_slot).exists():
+        return None
+    try:
+        return parse_queue(subprocess.run([str(gpu_slot), "--status"], capture_output=True, text=True,
+                                          timeout=60).stdout)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def describe_queue(queue):
+    declared = sum(queue["held"]) + sum(queue["waiting"])
+    return (f"{len(queue['waiting'])} waiting for gpu-slot, {declared} GB declared by the "
+            f"{len(queue['held'])} held and the waiting against a budget of {queue['budget']} GB")
+
+
+def studio_busy(queue, min_waiting=MIN_WAITING):
+    """Whether this Mac's line is long: `min_waiting` jobs or more waiting, or the held and waiting
+    jobs' declared memory past its budget (so a new job would wait for memory too)."""
+    declared = sum(queue["held"]) + sum(queue["waiting"])
+    return len(queue["waiting"]) >= min_waiting or (queue["budget"] is not None and declared > queue["budget"])
+
+
+def decide(queue, ask_remote, settings, forced=None, in_slot=False, min_waiting=MIN_WAITING, mem=None,
+           host=None):
+    """Where the build and tests run: ("here" or "there", why). `queue` is parse_queue's (None
+    without gpu-slot); `ask_remote()` the other Mac's state (remote.py's status, None if it didn't
+    answer), asked only when this Mac is busy; `mem` the job's declared GB (None: the whole Mac)."""
+    if forced == "local":
+        return "here", "--local"
+    if forced == "remote":
+        return ("there", "--remote") if host else ("here", "--remote, but no other Mac is set in remote.json")
+    if in_slot:
+        return "here", ("this check already holds a gpu-slot slot here (run `make check-affected` without "
+                        "gpu-slot to let it choose)")
+    if queue is None:
+        return "here", "there is no gpu-slot line here"
+    if not studio_busy(queue, min_waiting):
+        return "here", f"this Mac's line is short: {describe_queue(queue)}"
+    if not host:
+        return "here", f"this Mac is busy ({describe_queue(queue)}), but no other Mac is set in remote.json"
+    reason = remote.refusal(ask_remote(), settings, mem)
+    if reason:
+        return "here", f"this Mac is busy ({describe_queue(queue)}), but {host} is not free: {reason}"
+    return "there", f"this Mac is busy ({describe_queue(queue)}) and {host} is free"
+
+
 # MARK: - Running
 
 
-def run(command):
+def run(command, env=None):
     print("+", " ".join(command), flush=True)
-    return subprocess.run(command, cwd=ROOT).returncode
+    return subprocess.run(command, cwd=ROOT, env=env).returncode
+
+
+def steps(suites):
+    """The build and test steps, which may run on the other Mac."""
+    return [["make", "build-strict"], ["make", "ifc-converter"],
+            ["swift", "test", "--filter", r"\.(" + "|".join(suites) + r")(/|$)"]]
+
+
+def run_steps(suites):
+    for step in steps(suites):
+        status = run(step)
+        if status:
+            print(f"check-affected: FAILED at {' '.join(step)}", flush=True)
+            return status
+    return 0
+
+
+def run_where(where, host, settings, local, remote_command, mem, wait):
+    """Runs `local` here, or `remote_command` on `host`, back here if that was taken meanwhile:
+    (exit status, where it ran)."""
+    started = time.time()
+    if where == "there":
+        status = remote.check_remote(host, settings, "check-affected-steps", wait, command=remote_command, mem=mem)
+        if status != 75:
+            print(f"check-affected: on {host} in {time.time() - started:.0f} s, copying and waiting included",
+                  flush=True)
+            return status, "there"
+        print(f"check-affected: {host} was taken meanwhile; running here", flush=True)
+    status = local()
+    print(f"check-affected: here in {time.time() - started:.0f} s, waiting for gpu-slot included", flush=True)
+    return status, "here"
 
 
 def plan(arguments):
@@ -450,35 +567,81 @@ def plan(arguments):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # `check-steps`: the build and test steps alone, for the suites in --suites or
+    # $CHECK_AFFECTED_SUITES; what runs under gpu-slot here, or on the other Mac.
+    parser.add_argument("command", nargs="?", choices=["check-steps"], help=argparse.SUPPRESS)
+    parser.add_argument("--suites", help=argparse.SUPPRESS)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--full", action="store_true")
     parser.add_argument("--no-map", action="store_true", help="choose suites by name, as without a map")
     parser.add_argument("--maps", type=Path, default=impact.default_out(), help="where the maps are")
     parser.add_argument("--max-map-age", type=int, default=MAX_MAP_AGE,
                         help="commits touching a changed file since the map, beyond which that file goes by name")
+    where_group = parser.add_mutually_exclusive_group()
+    where_group.add_argument("--local", action="store_true", help="run the build and tests here, under gpu-slot")
+    where_group.add_argument("--remote", action="store_true",
+                             help="run the build and tests on the other Mac (remote.json), waiting for it if taken")
+    parser.add_argument("--min-waiting", type=int, default=MIN_WAITING,
+                        help="jobs waiting for gpu-slot from which this Mac counts as busy")
     arguments = parser.parse_args()
+    if arguments.command == "check-steps":
+        listed = arguments.suites if arguments.suites is not None else os.environ.get("CHECK_AFFECTED_SUITES", "")
+        return run_steps([suite for suite in listed.split(",") if suite])
     level, suites, lines = plan(arguments)
     lines[0] += f", tier: {level}"
     print("\n".join(lines))
     if level == "affected" and suites:
         print("  suites: " + ", ".join(suites))
+    settings = remote.config()
+    host = os.environ.get("BOMBCAD_REMOTE_HOST") or settings["host"]
+    in_slot = bool(os.environ.get("GPU_SLOT_TICKET"))
+    forced = "local" if arguments.local else "remote" if arguments.remote else None
+    if level == "documents":
+        where, why = "here", None
+    elif level == "full" and in_slot and not forced:
+        where, why = "anywhere", "it already holds a gpu-slot slot here, so `make check-anywhere` chooses, as before"
+    else:
+        # A full check takes the other Mac whole; the build and tests declare a lane's memory.
+        mem = None if level == "full" else settings["laneGB"]
+        where, why = decide(read_queue(), lambda: remote.remote_status(host, settings), settings, forced, in_slot,
+                            arguments.min_waiting, mem, host)
+    if level == "documents":
+        print("  runs here: lint and ci-test only", flush=True)
+    else:
+        print(f"  {'the full check' if level == 'full' else 'build and tests'} "
+              f"{'on ' + host if where == 'there' else 'here or there' if where == 'anywhere' else 'here'}, "
+              f"since {why}", flush=True)
     if arguments.dry_run:
         return 0
+    wait = 7200 if forced == "remote" else 0
+
+    def slotted(command):  # under gpu-slot here, unless already in a slot or without one
+        return command if in_slot or not GPU_SLOT.exists() else [str(GPU_SLOT), *command]
+
     if level == "full":
-        return run(["make", "check-anywhere"])
-    steps = [["make", "lint"], ["make", "ci-test"]]
-    if level in ("affected", "covered"):
-        steps.insert(1, ["make", "build-strict"])
-        steps.append(["make", "ifc-converter"])
-        steps.append(["swift", "test", "--filter", r"\.(" + "|".join(suites) + r")(/|$)"])
-    for step in steps:
+        if where == "anywhere":
+            return run(["make", "check-anywhere"])
+        return run_where(where, host, settings, lambda: run(slotted(["make", "check"])), ["make", "check"], None,
+                         wait)[0]
+    # Lint and the scripts' tests are quick, and stay here.
+    for step in (["make", "lint"], ["make", "ci-test"]):
         status = run(step)
         if status:
             print(f"check-affected: FAILED at {' '.join(step)}")
             return status
-    print(f"check-affected: passed ({level})")
+    ran = "here"
+    if level in ("affected", "covered"):
+        # The suites go in the environment here, so that gpu-slot learns one command's memory.
+        environment = dict(os.environ, CHECK_AFFECTED_SUITES=",".join(suites))
+        status, ran = run_where(
+            where, host, settings,
+            lambda: run(slotted([sys.executable, "Scripts/check-affected.py", "check-steps"]), env=environment),
+            ["python3", "Scripts/check-affected.py", "check-steps", "--suites", ",".join(suites)],
+            settings["laneGB"], wait)
+        if status:
+            return status
+    print(f"check-affected: passed ({level}{', build and tests on ' + host if ran == 'there' else ''})")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

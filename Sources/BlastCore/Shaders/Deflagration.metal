@@ -213,15 +213,18 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         // Lawes 1992): max(1, 1.48 a (u'/S_L)^(1/2) (dx/delta)^(1/6)), u' the sub-grid velocity the
         // air's mixing gives this cell, delta = nu/S_L the laminar flame's thickness, nu the unburnt
         // gas's kinematic viscosity, falling as it is compressed.
+        // The sigma-model's viscosity can round a hair below zero, whose square root would be NaN
+        // and, under fast math, could pass through the comparisons below to burn a cell whole; and
+        // max(NaN, 0) need not give 0 under fast math either. Tested on the bits, as fast math may
+        // fold a test for NaN away: every negative, infinity and NaN lie at or above infinity's,
+        // and are taken as no turbulence.
         float turbulent = eddyViscosity[index] * d.velocityPerViscosity;
+        turbulent = as_type<uint>(turbulent) < 0x7F800000u ? turbulent : 0.0f;
         float thickness = d.kinematicViscosity / (compression * laminar);
-        // Clamped as below: a hair below zero would give NaN, which fast math need not drop in max.
         float wrinkling =
-            d.turbulenceScale * sqrt(max(turbulent, 0.0f) / laminar) * pow(dx / thickness, 1.0f / 6.0f);
+            d.turbulenceScale * sqrt(turbulent / laminar) * pow(dx / thickness, 1.0f / 6.0f);
         if (porousAir) {
-            // The sigma-model's viscosity can round a hair below zero, whose square root would be
-            // NaN and, under fast math, could pass through the comparisons below to burn a cell whole.
-            subgridVelocity = max(turbulent, 0.0f);
+            subgridVelocity = turbulent;
             resolvedWrinkling = d.turbulenceScale * sqrt(subgridVelocity / laminar) * pow(dx / thickness, 1.0f / 6.0f);
         } else {
             speed *= max(wrinkling, 1.0f);

@@ -49,8 +49,10 @@ a sloping surface two cells a step, far ahead of the blast. Given up, it balance
 still air gained on the other side of the surface: a closed box over a hill gains 0.08% of its
 mass and energy in 120 steps (0.2% when it was shared, besides the false pressures). Such
 patches are pinned, as all patches whose outlines differ are, so the refined shell along the
-ground is kept once the blast has passed. On [cut cells](#cut-cells) (refined once) none of this
-arises: the fine cells hold what the coarse cell held, share for share, and patches are released.
+ground is kept once the blast has passed. On [cut cells](#cut-cells), refined once or twice, none
+of this arises where only the terrain cuts the cell: the fine cells hold what the coarser cell
+held, share for share, and patches are released. Where a block's fine outline also takes part of
+a cut cell, the cell is filled as a whole cell beside a block is (below).
 
 Rigid blocks too where the air is near still (within 5% of ambient), since 18 October 2026. A block whose edges fall between the coarse cells
 takes part of the cells beside it at a finer level, and sharing the gas squeezed it into what was
@@ -333,6 +335,26 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastCore/Te
   read a NaN wave speed and was 0.62 s long; it now runs as with a second level that has room.
   A wave speed that is NaN, infinite or negative now stops the batch, unstable, where it would
   have set a step far too long.
+- **A block's cell on a patch's face.** Where a patch's face meets coarser air and the fine cell
+  inside is solid, the fine level gives refluxing the wall's flux through that face. Beside a
+  block standing in cut ground, that flux was the whole face's, while the coarser cut cell outside
+  had recorded its flux through the face times its own aperture, the terrain's open share, its
+  wall taking the rest; the difference, the pressure on the terrain's share, was added to the
+  cut cell every step and scattered by its small share of air. In still air ahead of a blast it
+  stirred hundreds of pascals to kilopascals, refined twice most (once, about a twentieth as
+  much), and arrived in Beirut's south-east as a precursor about 0.7 kPa ahead of the shock and
+  ringing at about 25 Hz. The wall's flux is now taken through the fine face's open share (since
+  19 October 2026): the air ahead stays within a pascal (`TerrainCutCellTests.stillAheadBesideBlock`,
+  3.8 kPa before).
+- **Between a block and the ground.** A cut cell with a block on one side along a sweep and the
+  terrain's solid on the other mirrors itself about its normal into the terrain and plainly into
+  the block. The ghost beyond the block was built from the near ghost before the terrain's mirror
+  replaced it, so the block's face's two states were not each other's mirror and gas passed
+  through it: a street over a hill, its buildings standing in the slope, gained 0.34 kg and
+  0.28 MJ in 60 steps in a closed box (cut cells only; on blocks standing on the ground, nothing).
+  Each ghost beyond a wall is now built from the near ghost as it stands, by its wall's own rule,
+  on every level (since 19 October 2026); the box keeps its gas to round-off
+  (`TerrainCutCellTests.blockInSlopeConserves`, 1.6e-5 of it gained before).
 - **A cell above a hot sliver could floor** (traced and fixed 19 October 2026). Refined once
   over the 20° slope (the open ground's 100 kg on the recommended air), a fine cell 0.96 air whose
   lower face is half open, over a sliver a twentieth air full of hot products, has its internal

@@ -47,13 +47,22 @@ struct RadiativeCoolingTests {
         1 - (1 - (1 + 2 * tau) * exp(-2 * tau)) / (2 * tau * tau)
     }
 
+    /// `cooling` taken every step, for tests that read it a step at a time: it is taken on the
+    /// run's count of steps, not at a batch's end.
+    func everyStep(_ cooling: RadiativeCooling) -> RadiativeCooling {
+        var cooling = cooling
+        cooling.interval = 1
+        return cooling
+    }
+
     @Test(
         "A hot sphere radiates as an isothermal sphere of its optical radius, and its centre loses 4κσT⁴ e^(−κR)",
         arguments: [(Float(0.01), 0.002, 0.002), (1, 0.005, 0.02), (20, 0.02, 0.02)])
     func isothermalSphere(absorption: Float, totalTolerance: Double, centreTolerance: Double) throws {
         let temperature: Float = 2500
         let solver = try hotSphere(
-            temperature: temperature, cooling: RadiativeCooling(absorption: absorption, sootYield: 0))
+            temperature: temperature,
+            cooling: everyStep(RadiativeCooling(absorption: absorption, sootYield: 0)))
         let grid = solver.grid
         let centre = grid.index(12, 12, 12)
         let luminous = solver.withState { cells in
@@ -89,7 +98,7 @@ struct RadiativeCoolingTests {
         spec.absorption = absorption
         spec.sootYield = 0
         spec.samples = 256
-        let solver = try hotSphere(cooling: RadiativeCooling(spec: spec))
+        let solver = try hotSphere(cooling: everyStep(RadiativeCooling(spec: spec)))
         var scenario = Scenario(
             name: "Sphere", domainSize: SIMD3(repeating: 6), boxes: [],
             charge: Charge(mass: 1, position: SIMD3(repeating: 3)))
@@ -139,7 +148,8 @@ struct RadiativeCoolingTests {
         func centre(_ absorption: Float) throws -> (
             start: Double, end: Double, elapsed: Double, density: Double
         ) {
-            let solver = try hotSphere(cooling: RadiativeCooling(absorption: absorption, sootYield: 0))
+            let solver = try hotSphere(
+                cooling: everyStep(RadiativeCooling(absorption: absorption, sootYield: 0)))
             let index = solver.grid.index(12, 12, 12)
             let start = solver.primitive(of: solver.withState { $0[index] })
             var elapsed = 0.0
@@ -296,5 +306,37 @@ struct RadiativeCoolingTests {
         let off = try run(nil)
         let on = try run(RadiativeCooling(luminousTemperature: 1e9))
         #expect(off == on)
+    }
+
+    @Test("A cooling fireball comes out the same however the run is batched, to the last bit")
+    func batchingIndependent() throws {
+        var scene = Scenario(
+            name: "Batched", domainSize: SIMD3(repeating: 8),
+            boxes: [Box(min: SIMD3(6, 3, 0), max: SIMD3(7, 5, 3))],
+            charge: Charge(mass: 2, position: SIMD3(3, 4, 1)))
+        scene.gauges = [Gauge("Near", at: SIMD3(4, 4, 1)), Gauge("Far", at: SIMD3(7.5, 7.5, 1))]
+        func run(_ batches: (BlastSolver) -> Void) throws -> [[Float]] {
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: 0.25, configuration: .recommended)
+            batches(solver)
+            return solver.gaugeHistories.map { $0.map(\.pressure) + $0.map { Float($0.time) } }
+        }
+        let whole = try run { $0.advance(until: 0.01) }
+        // Batches of uneven lengths, as the app's are, all to the same end.
+        let cut = try run { solver in
+            var n = 0
+            while solver.time < 0.01 - 1e-9 {
+                n += 1
+                if solver.advance(steps: [1, 2, 3, 5, 7][n % 5], timeLimit: 0.01).steps == 0 { break }
+            }
+        }
+        #expect(whole == cut)
+        // Run again on the same solver, it comes out the same: the cooling's clock starts afresh.
+        let solver = try BlastSolver(
+            device: device, scenario: scene, cellSize: 0.25, configuration: .recommended)
+        solver.advance(until: 0.004)
+        try solver.load(scene)
+        solver.advance(until: 0.01)
+        #expect(solver.gaugeHistories.map { $0.map(\.pressure) + $0.map { Float($0.time) } } == whole)
     }
 }

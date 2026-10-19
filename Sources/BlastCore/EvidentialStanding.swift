@@ -326,6 +326,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     /// Steel beams hinged at their joints by connections that fracture (`StructureModel.steelConnection`).
     case steelConnections
     case inclinedBars
+    /// Shells laid at a pitch, as a roof's slopes (`Inclination`).
+    case pitchedShells
     case baseConnections
     case jointsBetweenParts
     case footings
@@ -425,6 +427,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
         case .steelConnections: return any { $0.steelConnection != nil }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
+        case .pitchedShells: return any(\.hasInclinedSolids)
         case .baseConnections:
             return any { s in
                 (s.fixedBase && s.baseAnchorage.map { $0.footing == nil } == true)
@@ -529,8 +532,11 @@ public enum StandingTable {
         case .radiativeCooling:
             return Entry(
                 title: "Gas losing what it radiates", affects: [.thermal, .cloud], limit: nil,
-                note: "The luminous gas cools as the fireball's volume radiates; the cloud's comparison with "
-                    + "Church's was made without it, and its tops come down a few per cent.",
+                note: "The luminous gas cools as the fireball's volume radiates, by default since 19 October "
+                    + "2026: against a 41 kg test the fireball reaches its measured size and fades within the "
+                    + "second, where without it the gas holds near 2,500 K; it still radiates more than TNT's "
+                    + "measured 4–7%. The cloud's comparison with Church's was made without it, and its tops "
+                    + "come down a few per cent.",
                 document: "thermal-radiation.md#the-gas-losing-what-it-radiates")
         case .gravity:
             return Entry(
@@ -868,6 +874,16 @@ public enum StandingTable {
                     + "13–41% too strong and 1.5–1.7 times too ductile at a blast's rate, and the welded and "
                     + "fin-plate types, from slow tests, may be too ductile too.",
                 document: "shell-model.md#steel-connections")
+        case .pitchedShells:
+            return Entry(
+                title: "Shells at a pitch", affects: structure, limit: .approximation,
+                note:
+                    "Roof slopes meshed in their own planes: a plate cantilevered at 30° bends within 2% as the "
+                    + "flat one does under its weight's share across it. Rafters are smeared into a plate, not "
+                    + "beams; the tiles hang on their nibs by an assumed 5 kPa, not on friction alone; the "
+                    + "terraced row's 40° is assumed (plain tiles want 35° or more). No pitched roof under "
+                    + "blast was found to compare with.",
+                document: "shell-model.md#shells-at-a-pitch")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -1191,6 +1207,7 @@ public enum StandingTable {
         "StructureModel.baseAnchorage": .option([.baseConnections, .footings]),
         "StructureModel.reinforcement": .input,
         "StructureModel.inclinedBars": .option([.inclinedBars]),
+        "StructureModel.solidInclinations": .option([.pitchedShells]),
         "StructureModel.solidReinforcement": .input,
         "StructureModel.solidMaterial": .input,
         "StructureModel.solidSourceParts": .input,
@@ -1285,6 +1302,8 @@ public enum StandingTable {
         "Anchorage.closingGap": .input,
         "Anchorage.frictionExponent": .input,
         "Anchorage.frictionReferencePressure": .input,
+        "Anchorage.solids": .input,
+        "Anchorage.partners": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand, .footingsOnSlope]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,

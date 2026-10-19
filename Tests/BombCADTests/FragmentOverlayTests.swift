@@ -52,7 +52,12 @@ struct FragmentOverlayTests {
         }
         // The last frames may still be in flight; a run is kept with its fragments landed.
         while let fragments = model.fragments, fragments.report.frame < fragments.sent - 1 {
-            #expect(throws: ProjectFileError.self) { try model.keepRun(named: "Run") }
+            do {
+                try model.keepRun(named: "Run")
+                // The last frame landed between the check and the keep: kept, and with them all.
+                #expect(fragments.report.frame >= fragments.sent - 1)
+                return (model, model.savedRuns.last!)
+            } catch is ProjectFileError {}
             try await Task.sleep(for: .milliseconds(5))
         }
         try model.keepRun(named: "Run")

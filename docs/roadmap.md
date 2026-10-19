@@ -39,11 +39,11 @@ nothing in it should be used to judge the safety of a real structure.
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
 | 1 | The structural model has been compared with eleven member tests, and springs back too far | Mostly on the unsafe side, predicting too little damage: shear 11–15% too strong (37% on coarse meshes), the chamber's roof and close-in slabs too stiff (a quarter and a third to a half as far), small charges' slabs 40–70%, struck beams' struts holding where the tests crushed, six elements through 17% strong in bending, bars that slip too stiff nearly everywhere. In detail: on a slab test the peak rises to 124 mm on 32 elements against 109 measured (113 in its repeat), not converged (a strip of it runs away on 32), and under the contest's lower shot reaches about 80% of the peak; a beam bent to failure carries 98–101% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24), and A36 breaks at the speed its test did where B36 holds, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges at a stable step to a half and a third of the measured size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof's edge peaks at 49 mm against 87 mm in the test paper's own model and is left 25 mm up against 95 mm measured, with cracks that press as they slide, now the confined regime's default (38 and 15 mm without); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere; hourglass control does 7–18% of the work at the slabs' peaks, where an element's own bending would be under 2% | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | The unsafe side where they err, shear too strong: breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
-| 3 | Afterburning's burning time is fitted, and its fireball never cools       | Afterburning and hot air are the default since 15 October 2026 (1.3–2 times slower; off still selectable): incident and suction impulses within a few per cent, rooms within 8%, but the burning time was fitted to the open blast's impulse, and the gas keeps the heat it radiates (21% of the charge's energy against a TNT fireball's 4–7%) unless radiative cooling is on; turned off, incident impulse is 13–22% low and rooms' gas 48–114% of the design value | [Air-blast model](air-blast-model.md#afterburning) |
+| 3 | Afterburning's burning time is fitted, and its fireball never cools       | Afterburning and hot air are the default since 15 October 2026 (1.3–2 times slower; off still selectable): incident and suction impulses within a few per cent, rooms within 8%, but the burning time was fitted to the open blast's impulse, and the gas, which since 19 October 2026 loses the heat it radiates, still radiates more than a TNT fireball's 4–7%; turned off, incident impulse is 13–22% low and rooms' gas 48–114% of the design value | [Air-blast model](air-blast-model.md#afterburning) |
 | 4 | Peak pressure is under-resolved near the charge                         | Incident peaks close in come within a sixth of Kingery–Bulmash from 1 m/kg^(1/3) for 10–100 kg since the mapped start (18 October 2026; 63–99% for 1 kg), where the balloon left 32–84% (11–47%); reflected peaks near walls still read low, the unsafe side, and need fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab; the comparisons of structures were run on the balloon start ([still on it](validation.md#still-on-the-balloon-start)) | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse compared once, blind, and missed (two of Mendonça's slabs under an open-air charge); debris twice, off slabs under contact charges and brick walls under blasts | Debris held back rather than thrown, the unsafe side for a hazard (as rubble particles, an option, thrown at nearer the measured speed); brick walls crack at the measured heights but fall as one column, shattering on a rigid ground in the open (soft ground, an option, halves that) and thrown half as far as measured in a shock tube; collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges), [brick walls](validation.md#brick-walls-debris) |
 | 6 | Moving solids are a staircase of whole cells                            | Either way, to a cell: wall positions are good to a cell; small fragments are crude. Cut-cell outlines for structures before failure (an option, unrefined air) take the offset out of a wall's impulse but not its peak | [Structural model](structural-model.md#coupling-to-the-air) |
-| 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
+| 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry but for planes at one pitch (roof slopes); debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, roof slabs at one pitch if asked, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Too stiff close in, the unsafe side: no hole under a close-in charge, and rebound too large (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways; rubble kept as particles, an option, holes none | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
 | 9 | Supports and freestanding objects are checked against statics and theory, and footings against nine centrifuge events on one sand (FoRCy, FoRDy) | Either way for a footing's rocking moment, settlement within a factor of 1.7, energy a sixth to two thirds of a shaken test's; footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
@@ -79,6 +79,10 @@ More evidence is worth more than more features.
   test 3, Reynolds's high-strength slabs in the contest's blast load simulator, frozen at the
   released v0.3.0 (`b524a9d`), scored *worse* on one broken slab, the rest within the band
   ([validation](validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator)).
+- **Next:** whether the standing should withhold or lower collapse-type results (a storey lost,
+  a structure down) where collapse has not been compared, rather than letting them take the band
+  of the material's local damage: the large-panel street collapse reads as an approximation
+  though the one blind test of collapse missed it (raised in 0.5.0's review).
 - **Blocked on the user:** the sources marked *needs the user to obtain* in
   [data wanted](data-wanted.md), chiefly ACI SP-306 for the high-strength slabs, Saatci's
   records, Kasun-III's mapped debris for fragment sizes, shear across cracks at high rates, a
@@ -115,8 +119,9 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 
 ### Air
 
-- **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity,
-  sub-grid mixing and radiative cooling as options ([air-blast model](air-blast-model.md));
+- **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity and
+  sub-grid mixing as options ([air-blast model](air-blast-model.md)); radiative cooling, the default
+  since 19 October 2026 ([thermal radiation](thermal-radiation.md#against-clough-and-clubleys-41-kg-fireball));
   terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md));
   the mapped one-dimensional start, the default since 18 October 2026, for each charge
   ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
@@ -240,7 +245,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   the [large-panel flats](large-panel-flats.md) and the [process plant](process-plant-explosion.md).
 - **Built, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
   - UK terraced brick houses: built ([the terraced houses](shell-model.md#the-terraced-houses)):
-    cavity walls tied across, timber joists seated in pockets, roof tiles thrown as debris.
+    cavity walls tied across, timber joists seated in pockets, a 40° pitched roof on purlins with
+    gables (19 October; [shells at a pitch](shell-model.md#shells-at-a-pitch)), roof tiles hung
+    on their nibs and thrown as debris.
     Judged against wartime bomb damage
     ([validation](validation.md#terraced-houses-against-wartime-bomb-damage)): right a tenth of
     a second in, but cracked front walls then go over that surveyed houses kept standing. SBEDS's
@@ -321,12 +328,17 @@ most are about reaching an answer for less, with the full solver kept as the ref
 5. **From damage back to the explosion** (first step done). Infer yield, place and height from
    observed arrival times, broken glass and damage, as the Beirut page did by hand for its yield.
    `scenebench infer-charge` ([charge inference](charge-inference.md)) now samples the yield and
-   place from arrivals, finding Beirut's 0.5 kt and Warehouse 12 from Rigby's observers; height
+   place from arrivals, finding Beirut's 0.5 kt and Warehouse 12 from Rigby's observers, and the app
+   does too ([Infer Charge](using-the-app.md#inferring-the-charge-from-arrivals)); height
    and clock offset are not resolved by them, and GEER's glass biases the yield (the glass model
    breaks more than the survey saw). Next: damage that calibrates (the structural survey, or glass
    once the envelope model matches GEER), and BombCAD's own runs as the forward model in the loop.
-6. **Protective design.** The least set of glazing, wall and stand-off changes that meets a
-   hazard target, which needs item 2's speed.
+6. **Protective design** (scoped, prototyped outside the app). The least set of glazing, wall
+   and stand-off changes that meets a hazard target, which needs item 2's speed. A design and a
+   toy prototype in `Scripts/protective/` find the cheapest plans of film, stand-off and barriers
+   for made-up sites in seconds, and show the answer turning on how much buildings and barriers
+   shield, which the surrogate does not yet give at design stand-offs
+   ([protective design](protective-design.md)).
 
 Under all of them is raw speed: everything kept on the GPU (no CPU remaps), compact storage for
 coarse levels, smarter steps, and work spread across Macs

@@ -169,4 +169,78 @@ struct ObjectsBesideStructureTests {
         #expect(abs(inAir.reaction.x / reference.reaction.x - 1) < 0.15)
         #expect(abs(box.velocity.x - reference.members[0].velocity.x) < 0.5)
     }
+
+    @Test("A structure moved across the ground takes all it places with it")
+    func movedStructure() {
+        let wall = Box(min: SIMD3(2, 1, 0), max: SIMD3(2.2, 4, 3))
+        var model = StructureModel(solids: [wall], elementSize: 0.1, fixedBase: true)
+        model.openings = [Box(min: SIMD3(2, 2, 1), max: SIMD3(2.2, 3, 2))]
+        model.supports = [Box(min: SIMD3(1.9, 0.9, 2.9), max: SIMD3(2.3, 4.1, 3.1))]
+        model.reinforcement = [ReinforcementLayer(region: wall, ratio: SIMD3(0.01, 0, 0.01))]
+        model.inclinedBars = [
+            InclinedBars(
+                start: SIMD3(2.1, 1, 1), direction: SIMD3(0, 1, 1), length: 1, span: 2...2.2,
+                areaPerMetre: 1e-4)
+        ]
+        model.discreteBars = [
+            DiscreteBar(start: SIMD3(2.1, 1, 0.5), end: SIMD3(2.1, 4, 0.5), diameter: 0.012)
+        ]
+        let offset = SIMD2<Float>(-1.8, -0.6)
+        let shift = SIMD3(offset.x, offset.y, 0)
+        let moved = model.moved(across: offset)
+        #expect(moved.bounds.min == wall.min + shift && moved.bounds.max == wall.max + shift)
+        #expect(moved.openings[0].min == model.openings[0].min + shift)
+        #expect(moved.supports[0].max == model.supports[0].max + shift)
+        #expect(moved.reinforcement[0].region.min == wall.min + shift)
+        #expect(moved.inclinedBars[0].start == model.inclinedBars[0].start + shift)
+        // These bars run in y and z, so they repeat along x.
+        #expect(moved.inclinedBars[0].span == (2 + shift.x)...(2.2 + shift.x))
+        #expect(moved.discreteBars[0].end == model.discreteBars[0].end + shift)
+    }
+
+    @Test(
+        "The motion run takes a structure: cropped, it meshes as where it stands, and a box blown at it is stopped by it"
+    )
+    func motionBesideStructure() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "This test needs a Metal device")
+        // A fixed elastic wall well away from the origin, a 50 kg box 5 mm in front of it and
+        // 0.5 kg half a metre behind the box.
+        let material = StructureMaterial.elastic(density: 2400, youngsModulus: 3e9, poissonRatio: 0.2)
+        let model = StructureModel(
+            solids: [Box(min: SIMD3(7.1, 4, 0), max: SIMD3(7.3, 6, 1.5))], material: material,
+            elementSize: 0.1,
+            fixedBase: true)
+        let scene = Scenario(
+            name: "Box blown at a wall", domainSize: SIMD3(12, 10, 6), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(6.2, 5, 0.2)), structure: model,
+            rigidObjects: [
+                try RigidObjectDefinition(
+                    name: "Box", shape: .box(size: SIMD3(repeating: 0.4)),
+                    position: SIMD3(7.1 - 0.005 - 0.2, 5, 0.2),
+                    mass: 50)
+            ])
+        let (cropped, offset) = try FreestandingMotion.cropped(scene, cellSize: 0.2)
+        let moved = try #require(cropped.structure)
+        #expect(offset.x > 0 && offset.y > 0)
+        #expect(moved.bounds.min == model.bounds.min - SIMD3<Float>(Float(offset.x), Float(offset.y), 0))
+        let here = try StructureSolver(device: device, model: model)
+        let there = try StructureSolver(device: device, model: moved)
+        #expect(there.nodeCount == here.nodeCount && there.elementCount == here.elementCount)
+
+        let motion = try FreestandingMotion.compute(
+            device: device, scenario: scene, duration: 0.02, frameInterval: 0.005, cellSize: 0.2)
+        let box = motion.objects[0]
+        let reaction = try #require(motion.structureReaction)
+        print("Box moved \(box.displacement.x) m at up to \(box.peakSpeed) m/s; reaction \(reaction.x) N s")
+        #expect(motion.failure == nil)
+        // The wall stops the box, taking all its momentum (and throws it back), and the box gets
+        // no further than the gap and a little into the wall's face.
+        let ahead = motion.frames.map { $0.poses[0].centre.x - motion.frames[0].poses[0].centre.x }
+        #expect(reaction.x > 50 * box.peakSpeed)
+        #expect(ahead.max()! > 0 && ahead.max()! < 0.03)
+        // Finer air beside a structure is refused.
+        #expect(throws: FreestandingMotion.Failure.self) {
+            try FreestandingMotion.compute(device: device, scenario: scene, duration: 0.001, refinement: 2)
+        }
+    }
 }

@@ -61,6 +61,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// fingerprint, for the balloon of hot gas (so every run saved before then keeps its start), or
     /// without afterburning and hot air.
     var mappedStart: Bool?
+    /// True when, with afterburning and hot air, the fireball's gas lost the heat it radiated
+    /// (`SolverConfiguration.radiativeCooling`), as since 19 October 2026; nil, and left out of the
+    /// file and the fingerprint, where it kept it (every run saved before then).
+    var radiativeCooling: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -83,6 +87,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
         settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         mappedStart = settings.detailedCharge && settings.mappedStart ? true : nil
+        radiativeCooling = settings.detailedCharge && settings.radiativeCooling ? true : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -122,6 +127,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// recorded with afterburning, where nil (a run saved before 18 October 2026, or with it off)
     /// is not; without afterburning it does not apply, and it is on, for when afterburning is.
     var startsMapped: Bool { mappedStart ?? !detailedCharge }
+
+    /// Whether a run under these settings has its fireball lose the heat it radiates: as recorded,
+    /// nil (a run saved before 19 October 2026, or without afterburning) for not.
+    var cools: Bool { radiativeCooling ?? false }
 
     /// The craters the charges of `scenario` dig in the ground these settings name; none on the
     /// rigid ground. They form after the blast, so they are worked out from the scene, not the run.

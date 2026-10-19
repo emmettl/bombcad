@@ -73,6 +73,8 @@ public final class BlastSolver {
         let recorder = try EnvelopeComponentRecorder(
             device: device, library: library, grid: grid, mask: mask, objects: objects, options: options)
         envelopeComponentRecorder = recorder
+        // Its clock from the run's (on the mapped start, the time since detonation it begins at).
+        if time > 0 { recorder.startClock(at: time) }
         try keepAir(recorder.faces.map(\.fluid))
         componentsNeedInitialSample = true
         facadeBand = nil
@@ -182,6 +184,7 @@ public final class BlastSolver {
             device: device, library: library, grid: grid, mask: mask, objects: objects,
             components: recorder.components, rigidBoxes: rigidBoxes ?? [], constructions: constructions,
             equivalents: zip(recorder.plateEntry, recorder.stripEntry).map { ($0, $1) })
+        if time > 0 { envelopeVenting?.startClocks(at: time) }
         for level in refinementLevels { level.setPanes(ventedPanes) }
     }
 
@@ -709,6 +712,13 @@ public final class BlastSolver {
     var cappedSliverBuffer: MTLBuffer?
     private let debrisExchangePipeline: MTLComputePipelineState
     private let shellSplatPipeline: MTLComputePipelineState
+    /// The shells' splat with elements at a pitch compiled in, for bodies that have them.
+    private lazy var inclinedShellSplatPipeline: MTLComputePipelineState? = {
+        let constants = MTLFunctionConstantValues()
+        var pitched = true
+        constants.setConstantValue(&pitched, type: .bool, index: 25)
+        return try? ShaderLibrary.pipeline("shellSplat", in: library, constants: constants)
+    }()
     private let beamSplatPipeline: MTLComputePipelineState
 
     private let stateBuffers: [MTLBuffer]
@@ -1842,7 +1852,10 @@ public final class BlastSolver {
                             width: beamSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
                 }
                 var count = UInt32(shells.elementCount)
-                encoder.setComputePipelineState(shellSplatPipeline)
+                let splat =
+                    body.model.hasInclinedSolids
+                    ? inclinedShellSplatPipeline ?? shellSplatPipeline : shellSplatPipeline
+                encoder.setComputePipelineState(splat)
                 encoder.setBuffer(shells.elementBuffer, offset: 0, index: 0)
                 encoder.setBuffer(shells.flagBuffer, offset: 0, index: 1)
                 encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
@@ -1857,7 +1870,7 @@ public final class BlastSolver {
                     encoder.dispatchThreads(
                         MTLSize(width: shells.elementCount, height: 1, depth: 1),
                         threadsPerThreadgroup: MTLSize(
-                            width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+                            width: splat.threadExecutionWidth, height: 1, depth: 1))
                 }
             }
 
@@ -1974,6 +1987,9 @@ public final class BlastSolver {
         // The GPU's clock too, in its ticks: the exposure plane's arrivals, panes' and breaches'
         // opening times and the envelope histories read it as time since detonation.
         clockTicks = UInt64((start / StepControl.tick).rounded())
+        // And the clocks venting's panes and walls, and the envelope histories, keep for themselves.
+        envelopeComponentRecorder?.startClock(at: start)
+        envelopeVenting?.startClocks(at: start)
     }
 
     /// Direct access to the peak overpressure and impulse fields.
@@ -2840,12 +2856,11 @@ public final class BlastSolver {
             }
             airStage("other")
             if let radiativeCoolingStage, !asleep {
-                // Every few steps, and at the batch's end, the luminous gas loses what it has
-                // radiated since, in the coarse cells; the fine cells under them each lose as much a
-                // volume, as they gain what debris trades with the air.
-                let take =
-                    step == steps - 1
-                    || (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
+                // Every few steps of the run's count, the luminous gas loses what it has radiated
+                // since, in the coarse cells; the fine cells under them each lose as much a volume, as
+                // they gain what debris trades with the air. Not at a batch's end: the time since
+                // carries over, so a run comes out the same however it is batched.
+                let take = (globalStep + 1).isMultiple(of: max(radiativeCoolingStage.settings.interval, 1))
                 radiativeCoolingStage.encode(
                     encoder, take: take, state: stateBuffers[current], mask: maskBuffer,
                     species: hasSpecies && configuration.afterburning ? speciesBuffers[current] : nil,

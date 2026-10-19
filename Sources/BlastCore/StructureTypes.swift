@@ -733,6 +733,9 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// its ribs along the axis given, meshed as shells (`ProfiledSheet`) of its own material's
     /// steel at the profile's yield. Encoded only when some solid has one.
     public var solidSheets: [SheetAssignment?] = []
+    /// Solids laid as planes at a pitch, by index into `solids` (`Inclination`): a pitched roof's
+    /// slopes, meshed as shells in their own planes. Encoded only when some solid has one.
+    public var solidInclinations: [Inclination?] = []
     /// Connections along shell edges as springs to fixed ground (shells only).
     public var springSupports: [SpringSupport] = []
     /// Profiled sheets screwed to the beams they lie on, as `expandingSheets` leaves them.
@@ -899,6 +902,36 @@ public struct StructureModel: Sendable, Hashable, Codable {
         }
     }
 
+    /// The structure moved `offset` across the ground, all it places with it: solids, openings,
+    /// supports, reinforcement regions, inclined and discrete bars, and spring supports.
+    public func moved(across offset: SIMD2<Float>) -> StructureModel {
+        let shift = SIMD3(offset.x, offset.y, 0)
+        var model = self
+        model.solids = solids.map { $0.moved(by: shift) }
+        model.openings = openings.map { $0.moved(by: shift) }
+        model.supports = supports.map { $0.moved(by: shift) }
+        for n in model.reinforcement.indices {
+            model.reinforcement[n].region = reinforcement[n].region.moved(by: shift)
+        }
+        for n in model.springSupports.indices {
+            model.springSupports[n].region = springSupports[n].region.moved(by: shift)
+        }
+        for n in model.discreteBars.indices {
+            model.discreteBars[n].start += shift
+            model.discreteBars[n].end += shift
+        }
+        for n in model.inclinedBars.indices {
+            let bars = inclinedBars[n]
+            model.inclinedBars[n].start = bars.start + shift
+            // The bars repeat over `span` along the axis they do not run along.
+            if let axis = (0..<3).first(where: { bars.direction[$0] == 0 }) {
+                model.inclinedBars[n].span =
+                    (bars.span.lowerBound + shift[axis])...(bars.span.upperBound + shift[axis])
+            }
+        }
+        return model
+    }
+
     public var bounds: Box {
         var low = SIMD3<Float>(repeating: .infinity)
         var high = SIMD3<Float>(repeating: -.infinity)
@@ -961,13 +994,26 @@ public struct StructureModel: Sendable, Hashable, Codable {
         if solidElementKind.indices.contains(index) { solidElementKind.remove(at: index) }
         if solidSourceParts.indices.contains(index) { solidSourceParts.remove(at: index) }
         if solidSheets.indices.contains(index) { solidSheets.remove(at: index) }
+        if solidInclinations.indices.contains(index) { solidInclinations.remove(at: index) }
         if solidBucklingCurves.indices.contains(index) { solidBucklingCurves.remove(at: index) }
+        // Joints that name solids keep naming the same ones.
+        func renumbered(_ solids: [Int]?) -> [Int]? {
+            solids.map { $0.filter { $0 != index }.map { $0 > index ? $0 - 1 : $0 } }
+        }
+        for n in supportAnchorages.indices {
+            guard var law = supportAnchorages[n] else { continue }
+            law.solids = renumbered(law.solids)
+            law.partners = renumbered(law.partners)
+            supportAnchorages[n] = law
+        }
     }
 
     /// How solid `index` is meshed: a profiled sheet always as shells.
     public func elementKind(of index: Int) -> ElementKind {
         // Profiled sheets and timber are meshed as shells and beams whatever the rest is.
-        if sheet(of: index) != nil || material(of: index).model == .timber { return .shell }
+        if sheet(of: index) != nil || inclination(of: index) != nil || material(of: index).model == .timber {
+            return .shell
+        }
         return (solidElementKind.indices.contains(index) ? solidElementKind[index] : nil) ?? elementKind
     }
 
@@ -1078,6 +1124,7 @@ public struct StructureModel: Sendable, Hashable, Codable {
         part.solidMaterial = chosen.map { solidMaterial.indices.contains($0) ? solidMaterial[$0] : nil }
         part.solidReinforcement = chosen.map { reinforcement(of: $0) }
         part.solidSheets = chosen.map { sheet(of: $0) }
+        part.solidInclinations = chosen.map { inclination(of: $0) }
         part.solidBucklingCurves = chosen.map {
             solidBucklingCurves.indices.contains($0) ? solidBucklingCurves[$0] : nil
         }
@@ -1860,7 +1907,8 @@ extension StructureModel {
         case reinforcement, inclinedBars, solidReinforcement, solidMaterial, solidSourceParts
         case elementKind, shellLayers, supports, supportAnchorages, secondCracks
         case bareBars, removesFragments, crackSlip, bondSlip,
-            solidElementKind, solidSheets, springSupports, sheetFastenings, memberImperfections,
+            solidElementKind, solidSheets, solidInclinations, springSupports, sheetFastenings,
+            memberImperfections,
             bucklingCurve,
             solidBucklingCurves, steelConnection
         case shellElementSize, interfaceBond, unitJoints, shellSectionShear
@@ -1917,6 +1965,9 @@ extension StructureModel {
         try container.encode(solidElementKind, forKey: .solidElementKind)
         if solidSheets.contains(where: { $0 != nil }) {
             try container.encode(solidSheets, forKey: .solidSheets)
+        }
+        if solidInclinations.contains(where: { $0 != nil }) {
+            try container.encode(solidInclinations, forKey: .solidInclinations)
         }
         if !springSupports.isEmpty { try container.encode(springSupports, forKey: .springSupports) }
         if !sheetFastenings.isEmpty { try container.encode(sheetFastenings, forKey: .sheetFastenings) }
@@ -1983,6 +2034,8 @@ extension StructureModel {
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         solidSheets = try container.decodeIfPresent([SheetAssignment?].self, forKey: .solidSheets) ?? []
+        solidInclinations =
+            try container.decodeIfPresent([Inclination?].self, forKey: .solidInclinations) ?? []
         springSupports = try container.decodeIfPresent([SpringSupport].self, forKey: .springSupports) ?? []
         sheetFastenings = try container.decodeIfPresent([SheetFastening].self, forKey: .sheetFastenings) ?? []
         memberImperfections = try container.decodeIfPresent(Bool.self, forKey: .memberImperfections) ?? true

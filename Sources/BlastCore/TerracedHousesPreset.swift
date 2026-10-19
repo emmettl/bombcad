@@ -16,6 +16,22 @@ extension ScenarioPreset {
         return .timber(name: "Joisted floor (C24)", density: 196, properties: properties)
     }
 
+    /// A roof slope of 100 x 50 mm rafters at 400 mm with their battens, smeared into a plate of
+    /// timber 50 mm thick with its grain up the slope (`grainAxis` 2 on a plane at a pitch, along
+    /// its second edge): the rafters' bending stiffness per metre (2.5 rafters of I = 4.17e6
+    /// mm^4, the plate's 50 mm), their and the battens' mass (9 kg/m^2: rafters at 370 kg/m^3 and
+    /// 25 x 38 mm battens at 100 mm gauge), and their bending capacity (the plate's strength along
+    /// the grain 0.5 of C16's, the rafters' section modulus per metre over the plate's). 100 x 50
+    /// rafters span about 2.5 m at 30-45 degrees under tiles (building control's span tables, e.g.
+    /// Eden District Council's), so a pitched roof of the 1930s has a purlin at mid-slope.
+    static var rafteredRoof: StructureMaterial {
+        var properties = TimberProperties.strengthClass(.c16)
+        properties.grainAxis = 2
+        properties.tensionAlong *= 0.5
+        properties.compressionAlong *= 0.5
+        return .timber(name: "Raftered roof (C16)", density: 180, properties: properties)
+    }
+
     /// What a roof is covered with, as laid on its battens.
     public enum RoofCovering: String, CaseIterable, Sendable {
         /// Nibbed clay plain tiles at 100 mm gauge, 73.2 kg/m^2 (Keymer's, as laid; clay plain
@@ -59,6 +75,25 @@ extension ScenarioPreset {
     public static let roofCoveringSeat = Anchorage(
         normalStiffness: 1e9, shearStiffness: 1e9, tensileStrength: 0, tensionOpening: 0, cohesion: 0,
         cohesionSlip: 0, friction: 0.5, betweenParts: true)
+
+    /// A covering on a pitched roof: nibbed plain tiles hang on their battens by their nibs, and
+    /// BS 5534 nails every tile of every fifth course twice (Marley's and Wienerberger's summaries of
+    /// it), so the covering does not slide down a roof steeper than its friction, as the flat
+    /// roof's (`roofCoveringSeat`) would: its seat holds along the slope (a cohesion of 5 kPa,
+    /// ten times the downhill share of 73 kg/m^2 of tiles at 40 degrees; the nibs' and nails'
+    /// own strength was not found) until the covering lifts off its battens by their depth
+    /// (25 mm, 38 x 25 mm battens), or slid 10 mm, off its nibs, when it rests on friction alone,
+    /// as the flat roof's does. Its normal is the slope's (`normal`), and it ties only the
+    /// covering's faces (`solids`) to the slope's nodes (`slope`).
+    public static func pitchedCoveringSeat(normal: SIMD3<Float>, solids: [Int], slope: Int) -> Anchorage {
+        var law = Anchorage(
+            normalStiffness: 1e9, shearStiffness: 1e9, tensileStrength: 1, tensionOpening: 0.025,
+            cohesion: 5e3, cohesionSlip: 0.01, friction: 0.5, betweenParts: true)
+        law.jointNormal = normal
+        law.solids = solids
+        law.partners = [slope]
+        return law
+    }
 
     /// Wall ties across a cavity, smeared over the wall at 2.47 a square metre (one per 900 mm
     /// across and 450 mm up, the standard layout, PD 6697 and Approved Document A; LABC Warranty,
@@ -130,7 +165,7 @@ extension ScenarioPreset {
     /// the sides and 7.5 m behind.
     public static func terracedRow(
         title: String, charge: Float = 25, standoff: Float = 10, height: Float = 0.8,
-        covering: RoofCovering? = .plainClayTiles, faceClearance: Float? = nil
+        covering: RoofCovering? = .plainClayTiles, faceClearance: Float? = nil, pitch: Float? = 40
     ) -> Scenario {
         let clearance = faceClearance ?? Scenario.structureFaceClearance * cbrt(charge)
         let leaf: Float = 0.1025
@@ -144,6 +179,11 @@ extension ScenarioPreset {
         let floors: [Float] = [2.6, 5.2]
         let joists: Float = 0.098
         let top = floors.last! + joists
+        // A pitched roof: two slopes over the row's depth, front and back, from the eaves at the
+        // walls' tops to a ridge along the row; the gables and party walls rise to it.
+        let run = (x1 - x0) / 2
+        let rise = pitch.map { run * tan($0 * .pi / 180) } ?? 0
+        let ridge = top + rise
         // Clear of a wall's face where the joists' plates end, enough for the plate's last nodes
         // to stay apart from the wall's (the mesh keeps nodes half an element apart).
         let clear: Float = 0.025
@@ -151,24 +191,26 @@ extension ScenarioPreset {
         let h: Float = 0.125
         // Cavity walls: two leaves each, from `start` to `end` along the wall; the outer leaves
         // run to the corners, where they meet, the inner ones to the inner corners.
-        func cavityWall(along axis: Int, outer: Float, inward: Float, from start: Float, to end: Float)
+        func cavityWall(
+            along axis: Int, outer: Float, inward: Float, from start: Float, to end: Float, up: Float = top
+        )
             -> [Box]
         {
             [(outer, Float(0)), (outer + inward * (leaf + cavity), leaf + cavity)].map { face, inset in
                 let low = min(face, face + inward * leaf)
                 return axis == 0
-                    ? Box(min: SIMD3(low, start + inset, 0), max: SIMD3(low + leaf, end - inset, top))
-                    : Box(min: SIMD3(start + inset, low, 0), max: SIMD3(end - inset, low + leaf, top))
+                    ? Box(min: SIMD3(low, start + inset, 0), max: SIMD3(low + leaf, end - inset, up))
+                    : Box(min: SIMD3(start + inset, low, 0), max: SIMD3(end - inset, low + leaf, up))
             }
         }
         var walls: [Box] = []
         walls += cavityWall(along: 0, outer: x0, inward: 1, from: ys[0], to: ys[3])  // front
         walls += cavityWall(along: 0, outer: x1, inward: -1, from: ys[0], to: ys[3])  // back
-        walls += cavityWall(along: 1, outer: ys[0], inward: 1, from: x0, to: x1)  // gables
-        walls += cavityWall(along: 1, outer: ys[3], inward: -1, from: x0, to: x1)
+        walls += cavityWall(along: 1, outer: ys[0], inward: 1, from: x0, to: x1, up: ridge)  // gables
+        walls += cavityWall(along: 1, outer: ys[3], inward: -1, from: x0, to: x1, up: ridge)
         for y in ys[1...2] {
             walls.append(
-                Box(min: SIMD3(x0 + wall, y - party / 2, 0), max: SIMD3(x1 - wall, y + party / 2, top)))
+                Box(min: SIMD3(x0 + wall, y - party / 2, 0), max: SIMD3(x1 - wall, y + party / 2, ridge)))
         }
         // Floors and roof, house by house between the party walls, joists spanning across them,
         // each end seated in its wall.
@@ -200,23 +242,91 @@ extension ScenarioPreset {
         let roofing = Box(
             min: SIMD3(x0, ys[0], top + battens),
             max: SIMD3(x1, ys[3], top + battens + RoofCovering.thickness))
-        var structure = StructureModel(
-            solids: walls + plates + (covering == nil ? [] : [roofing]), material: .masonry, elementSize: h)
+        // On a pitched roof: the two slopes from the eaves over the walls' outer faces to the
+        // ridge, each with a purlin under it at mid-slope built into the gables and party walls
+        // (100 x 175 mm C24, assumed: a cut roof's purlins were carried on the party walls), and
+        // the covering on its battens, parallel to the slope, its midsurface 62.5 mm above the
+        // slope's (half the slope, 25 mm battens, half the covering).
+        let middle = (x0 + x1) / 2
+        let slopes =
+            pitch == nil
+            ? []
+            : [
+                Box(min: SIMD3(x0, ys[0], top), max: SIMD3(middle, ys[3], ridge)),
+                Box(min: SIMD3(middle, ys[0], top), max: SIMD3(x1, ys[3], ridge)),
+            ]
+        let slopeInclinations = [
+            Inclination(rise: 0, upwards: true, thickness: 0.05, trimsWalls: true),
+            Inclination(rise: 0, upwards: false, thickness: 0.05, trimsWalls: true),
+        ]
+        let angle = (pitch ?? 0) * .pi / 180
+        let slopeNormals = [
+            SIMD3<Float>(-sin(angle), 0, cos(angle)), SIMD3<Float>(sin(angle), 0, cos(angle)),
+        ]
+        let purlinSection = SIMD2<Float>(0.1, 0.175)
+        let purlinX = [x0 + run / 2, x1 - run / 2]
+        // The purlin's top 10 mm under the slope's underside.
+        let purlinTop = top + rise / 2 - 0.025 / cos(angle) - 0.01
+        let purlins =
+            pitch == nil
+            ? []
+            : purlinX.map { x in
+                Box(
+                    min: SIMD3(x - purlinSection.x / 2, ys[0], purlinTop - purlinSection.y),
+                    max: SIMD3(x + purlinSection.x / 2, ys[3], purlinTop))
+            }
+        let offset: Float = 0.0625
+        let coverings =
+            covering == nil
+            ? []
+            : pitch == nil
+                ? [roofing]
+                : zip(slopes, slopeNormals).map {
+                    Box(min: $0.min + offset * $1, max: $0.max + offset * $1)
+                }
+        let pieces = walls + plates + slopes + purlins
+        var structure = StructureModel(solids: pieces + coverings, material: .masonry, elementSize: h)
         for index in walls.count..<(walls.count + plates.count) {
             structure.setMaterial(Self.joistedFloor(grainAxis: 1), of: index)
         }
-        if let covering { structure.setMaterial(covering.material, of: walls.count + plates.count) }
+        let firstSlope = walls.count + plates.count
+        for (n, inclination) in slopeInclinations.enumerated() where pitch != nil {
+            structure.setMaterial(Self.rafteredRoof, of: firstSlope + n)
+            structure.setInclination(inclination, of: firstSlope + n)
+        }
+        for n in purlins.indices {
+            structure.setMaterial(.timber(.c24, grainAxis: 1), of: firstSlope + slopes.count + n)
+        }
+        let coveringSolids = Array(pieces.count..<(pieces.count + coverings.count))
+        if let covering {
+            for (n, index) in coveringSolids.enumerated() {
+                structure.setMaterial(covering.material, of: index)
+                if pitch != nil {
+                    var inclination = slopeInclinations[n]
+                    inclination.thickness = RoofCovering.thickness
+                    inclination.trimsWalls = false
+                    structure.setInclination(inclination, of: index)
+                }
+            }
+        }
         structure.elementKind = .shell
-        // Ties across each cavity, the whole wall, the inner leaf's nodes tied to the outer's.
+        // Ties across each cavity, the whole wall, the inner leaf's nodes tied to the outer's; the
+        // gables' up to the ridge.
         let ties = Self.cavityWallTies(cavity: cavity)
         for (region, inward) in [
             (Box(min: SIMD3(x0, ys[0], 0), max: SIMD3(x0 + wall, ys[3], top)), SIMD3<Float>(1, 0, 0)),
             (Box(min: SIMD3(x1 - wall, ys[0], 0), max: SIMD3(x1, ys[3], top)), SIMD3<Float>(-1, 0, 0)),
-            (Box(min: SIMD3(x0, ys[0], 0), max: SIMD3(x1, ys[0] + wall, top)), SIMD3<Float>(0, 1, 0)),
-            (Box(min: SIMD3(x0, ys[3] - wall, 0), max: SIMD3(x1, ys[3], top)), SIMD3<Float>(0, -1, 0)),
+            (Box(min: SIMD3(x0, ys[0], 0), max: SIMD3(x1, ys[0] + wall, ridge)), SIMD3<Float>(0, 1, 0)),
+            (Box(min: SIMD3(x0, ys[3] - wall, 0), max: SIMD3(x1, ys[3], ridge)), SIMD3<Float>(0, -1, 0)),
         ] {
             var law = ties
             law.jointNormal = inward
+            // The leaves alone: a gable's region, up to the ridge, holds the slope's and the tiles'
+            // edges too.
+            if pitch != nil {
+                law.solids = Array(walls.indices)
+                law.partners = Array(walls.indices)
+            }
             structure.supports.append(region)
             structure.setAnchorage(law, ofSupport: structure.supports.count - 1)
         }
@@ -226,12 +336,70 @@ extension ScenarioPreset {
             structure.supports.append(seat.region)
             structure.setAnchorage(pocket, ofSupport: structure.supports.count - 1)
         }
-        // The covering on the roof's and walls' nodes, from just below the roof's midsurface (so
-        // that the roof's underside, which faces down too, is outside it and not tied).
-        if covering != nil {
-            structure.supports.append(
-                Box(min: SIMD3(x0, ys[0], floors.last! - joists / 2 - 0.02), max: roofing.max))
-            structure.setAnchorage(Self.roofCoveringSeat, ofSupport: structure.supports.count - 1)
+        if pitch == nil {
+            // The covering on the roof's and walls' nodes, from just below the roof's midsurface
+            // (so that the roof's underside, which faces down too, is outside it and not tied).
+            if covering != nil {
+                structure.supports.append(
+                    Box(min: SIMD3(x0, ys[0], floors.last! - joists / 2 - 0.02), max: roofing.max))
+                structure.setAnchorage(Self.roofCoveringSeat, ofSupport: structure.supports.count - 1)
+            }
+        } else {
+            // The rafters' feet on the front and back walls' tops, notched over their wall plates
+            // to bear level (a birdsmouth), and the rafters over the purlins, as the joists' ends
+            // are held (`joistPocket`, unstrapped and unnailed): house by house, front then back,
+            // eaves then purlin. Then where the slopes bear on the gables and party walls, each
+            // slope on its own, short of the ridge (whose nodes both share).
+            // What the slopes bear on: the walls, plates and purlins, never the tiles of a lower
+            // course, which lie under the rafters further up.
+            let bearers = Array(0..<firstSlope) + purlins.indices.map { firstSlope + slopes.count + $0 }
+            func seat(_ region: Box, slope: Int) {
+                var law = pocket
+                law.solids = [firstSlope + slope]
+                law.partners = bearers
+                structure.supports.append(region)
+                structure.setAnchorage(law, ofSupport: structure.supports.count - 1)
+            }
+            let reach: Float = 0.2
+            for house in 0..<3 {
+                let low = house == 0 ? ys[0] : ys[house] + 0.01
+                let high = house == 2 ? ys[3] : ys[house + 1] - 0.01
+                for slope in 0..<2 {
+                    let face = slope == 0 ? x0 : x1 - wall
+                    seat(
+                        Box(min: SIMD3(face, low, top - h), max: SIMD3(face + wall, high, top + 0.4)),
+                        slope: slope)
+                }
+                for slope in 0..<2 {
+                    let x = purlinX[slope]
+                    seat(
+                        Box(
+                            min: SIMD3(x - reach, low, purlinTop - purlinSection.y - 0.01),
+                            max: SIMD3(x + reach, high, purlinTop + 0.3)), slope: slope)
+                }
+            }
+            for (low, high) in [(ys[0], ys[0] + wall)] + ys[1...2].map({ ($0 - party / 2, $0 + party / 2) })
+                + [(ys[3] - wall, ys[3])]
+            {
+                // Past the front and back walls' seats, so that no point of a slope is seated twice.
+                seat(
+                    Box(min: SIMD3(x0 + wall, low, top - h), max: SIMD3(middle - 0.01, high, ridge + 0.1)),
+                    slope: 0)
+                seat(
+                    Box(min: SIMD3(middle + 0.01, low, top - h), max: SIMD3(x1 - wall, high, ridge + 0.1)),
+                    slope: 1)
+            }
+            // Each slope's covering on it.
+            for (n, solid) in coveringSolids.enumerated() {
+                let region =
+                    n == 0
+                    ? Box(min: SIMD3(x0 - 0.2, ys[0], top - 0.2), max: SIMD3(middle, ys[3], ridge + 0.3))
+                    : Box(min: SIMD3(middle, ys[0], top - 0.2), max: SIMD3(x1 + 0.2, ys[3], ridge + 0.3))
+                structure.supports.append(region)
+                structure.setAnchorage(
+                    Self.pitchedCoveringSeat(normal: slopeNormals[n], solids: [solid], slope: firstSlope + n),
+                    ofSupport: structure.supports.count - 1)
+            }
         }
         // Openings through both leaves: front and back windows on each floor, a front door.
         var openings: [Box] = []
@@ -248,19 +416,19 @@ extension ScenarioPreset {
                 Box(min: SIMD3(x0 - 0.1, low + 0.7, 0), max: SIMD3(x0 + wall + 0.1, low + 1.6, 2.1)))
         }
         structure.openings = openings
-        let middle = (ys[1] + ys[2]) / 2
+        let centre = (ys[1] + ys[2]) / 2
         return Scenario(
             name: title,
             domainSize: SIMD3(
                 max(x1 + 7.5, x0 - standoff + clearance).rounded(.up), ys[3] + y0,
-                max(12, top + 0.5 + clearance).rounded(.up)),
+                max(12, ridge + 0.5 + clearance).rounded(.up)),
             boxes: [],
-            charge: Charge(mass: charge, position: SIMD3(x0 - standoff, middle, height)),
+            charge: Charge(mass: charge, position: SIMD3(x0 - standoff, centre, height)),
             gauges: [
-                Gauge("Front wall", at: SIMD3(x0 - 0.1, middle - 1, 1.5)),
-                Gauge("Front room", at: SIMD3(x0 + 2, middle - 1, 1.5)),
-                Gauge("Back room", at: SIMD3(x1 - 2, middle - 1, 1.5)),
-                Gauge("Behind the houses", at: SIMD3(x1 + 2, middle, 1.5)),
+                Gauge("Front wall", at: SIMD3(x0 - 0.1, centre - 1, 1.5)),
+                Gauge("Front room", at: SIMD3(x0 + 2, centre - 1, 1.5)),
+                Gauge("Back room", at: SIMD3(x1 - 2, centre - 1, 1.5)),
+                Gauge("Behind the houses", at: SIMD3(x1 + 2, centre, 1.5)),
             ],
             structure: structure)
     }
