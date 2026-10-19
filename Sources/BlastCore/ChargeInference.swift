@@ -757,3 +757,21 @@ public enum ChargeInference {
         }
     }
 }
+
+extension ChargeInference {
+    /// Its standing, worded from the standing table's figures (validation.md, "Estimates beside a
+    /// run").
+    public static let standing: [String] = {
+        let beirut = ValidationTables.figure("inferredBeirut")
+        let alone = ValidationTables.figure("inferredByCurvesAlone")
+        let corrected = ValidationTables.figure("inferredWithRatios")
+        return [
+            "Yield and place from arrival times: an approximation. On Beirut, \(beirut.ratio) kt and Warehouse 12 "
+                + "within 25–32 m from Rigby et al.'s observers, their own 0.50 kt.",
+            "On charges BombCAD ran, Kingery–Bulmash alone found the place but \(alone.ratio) times the yield; with "
+                + "BombCAD's ratios from a run at the estimate (--correction), \(corrected.ratio) of it on 2 m cells.",
+            "Height and a clock offset, left free, are not resolved by arrivals alone.",
+            "Broken glass: illustrative. It fits no yield and biases the result rather than tightening it.",
+        ]
+    }()
+}

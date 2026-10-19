@@ -2,7 +2,7 @@ import Foundation
 
 /// The standing table's identity, derived from its content rather than numbered by hand: a hash
 /// of every model option's entry, the input fields' roles, the validation tables and figures the
-/// bands are read from, and the standing of every sample scene on the shipped air. Any change to
+/// bands are read from, the estimates' standing lines, and the standing of every sample scene on the shipped air. Any change to
 /// what the table says gives a new identity, and two changes made apart merge with nothing to
 /// renumber. Kept runs record it (`SceneStanding.table`); those recorded before it carry their
 /// "standing-table-N" and read as different from every identity since.
@@ -26,6 +26,11 @@ public enum StandingFingerprint {
         parts.append("scatters " + canonical(ValidationTables.scatters))
         parts.append("spreads " + canonical(ValidationTables.spreads))
         parts.append("roundings " + canonical(ValidationTables.roundings))
+        // The estimates beside a run, worded from the figures.
+        parts.append(
+            "estimates "
+                + canonical([FacadeLoadSurrogate.standing, HybridFarField.standing, ChargeInference.standing])
+        )
         for preset in ScenarioPreset.allCases.sorted(by: { $0.rawValue < $1.rawValue }) {
             let inputs = StandingInputs(
                 scenario: preset.scenario, cellSize: 0.25, configuration: .recommended,
