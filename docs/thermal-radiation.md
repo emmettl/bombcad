@@ -577,7 +577,7 @@ all 15 s, and its intensity, 144 (103 cooling) against 28, is still rising.
   them burning and the gap closes.
 - *Late it is too bright, and brightening.* The products go on burning, and the fireball, 200 m
   across by 1 s, heats to 2,200 K by 2 s and 2,400 K by 3 s (2,100 and 2,160 K cooling), where
-  the report's falls to 1,800 K by 1.5 s and 1,600 K by 3 s. The air model has no gravity, so the
+  the report's falls to 1,800 K by 1.5 s and 1,600 K by 3 s. Without gravity in the air (an option, below), the
   fireball neither rises nor draws in the cold air that cools a real one. The gas cooling helps
   only a little at this size: an opaque fireball radiates its share of its heat in a time that
   grows with its size, as the blast's times do, and 2 s at 500 t is 120 ms at 100 kg.
@@ -681,7 +681,8 @@ Pattmann gave as 3.8% and 6.6%.
 - Illustrative, as above: two TNT shots compared. The model exceeds the 100-ton shot's total three
   to five times (two to three with the gas cooling), and Dial Pack's pulse is far too faint for its
   first 350 ms and too bright after a second, the fireball neither rising nor cooling by mixing
-  with cold air, since the air model has no gravity.
+  with cold air, since these runs leave the air without gravity; with gravity (`--gravity`) it
+  rises but stays as bright.
 - The radiated energy is taken from the gas only as an option; without it the gas stays hot and
   luminous too long. With it, the luminous gas cools as the volume radiates, on the lattice's 26
   directions (a flat opaque face 2% too bright to 7% too dim by its orientation), into black,

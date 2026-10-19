@@ -2405,7 +2405,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             } else {
                 // On a footing: the point is tied to the footing's top, which moves and turns.
                 float3 rest = reference[n].xyz + arm;
-                pointForce = footingJoint(state, settlement, rest, rest + float3(node.displacement) + turn,
+                pointForce = footingJoint(state, settlement, rest, float3(node.displacement) + turn,
                                           pointVelocity, point.w, damper, law, footingConstants[footing - 1],
                                           footingStates[footing - 1], footingLinks + 2 * f);
             }

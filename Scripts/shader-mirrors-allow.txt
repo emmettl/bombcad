@@ -1,0 +1,36 @@
+# Pairs, copies, strides and deliberate differences for Scripts/check-shader-mirrors.py.
+# Every line gives its reason after the colon. A line that no longer matches anything is an error,
+# so the list stays current: delete an `allow` line in the commit that fixes what it allows.
+#
+#   pair Swift.Name = MetalName : reason      Swift struct read through a shader struct (or a
+#                                             Metal vector type) whose name the script cannot guess
+#   unpair Swift.Name = MetalName : reason    a guessed pair that is not one
+#   copy MetalA = MetalB : reason             a shader struct copied under another name
+#   size MetalName = path:constant : reason   a buffer stride kept as a Swift integer constant
+#   allow <finding key> : reason              a reported difference that is deliberate
+
+# Swift structs the shaders read under other names.
+pair EnvelopeVenting.Glass = EnvelopeGlass : stepEnvelopePanes reads the panes' glass (Solver.metal)
+pair EnvelopeVenting.Room = EnvelopeRoom : sampleEnvelopeRooms reads the rooms (Solver.metal)
+pair EnvelopeComponentRecorder.Parameters = ComponentRecording : the recording kernels' constant parameters (Solver.metal)
+pair EnvelopeComponentRecorder.Sides = uint4 : the component kernels read each component's face ranges as `uint4 *sides`
+pair EnvelopeComponentRecorder.Face = uint2 : the component kernels read each face as `uint2 *faces`
+pair EnvelopeExposure.Face = uint4 : the exposure kernel reads each face as `uint4 *faces`
+
+# Same name, not a mirror.
+unpair SceneRenderer.OrientedBox = OrientedBox : setFreestanding converts each box to three float4s before upload; the Swift struct never reaches the GPU
+
+# The renderer's copies of the solvers' structs, read from the solvers' own buffers.
+copy ShellMeshNode = ShellNode : the renderer draws the shell solver's node buffer
+copy ShellMeshElement = ShellElement : the renderer draws the shell solver's element buffer
+copy BeamMeshElement = BeamElement : the renderer draws the shell solver's beam buffer
+copy MeshNode = StructureNode : the renderer draws the solid solver's node buffer
+
+# Buffers written as raw bytes, their strides kept as Swift constants.
+size ElementState = Sources/BlastCore/StructureSolver.swift:stateStride : the solid elements' state, also guarded by the shader's static_assert
+size ElementForces = Sources/BlastCore/StructureSolver.swift:forceStride : the solid elements' nodal forces
+size ShellLayerStore = Sources/BlastCore/ShellSolver.swift:layerStride : the shell layers' stored state
+size ShellBar = Sources/BlastCore/ShellSolver.swift:barStride : the shell bars' history
+
+# Deliberate differences.
+allow copy-members BeamMeshElement=BeamElement : the renderer does not draw the bow, so it keeps `padding0` where the solver has `bowed`; same layout

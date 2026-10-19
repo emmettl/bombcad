@@ -91,7 +91,7 @@ October 2026, on rigid joints. On fin plates, see [below](#on-fin-plates).
 | 50 ms | The front's glazing on the lowest floors breaks up as the wave crosses it; the wave runs along the façades and across the street to the neighbours |
 | 250 ms | The front has lost its glass over the lower half, leaving the mullions and transoms. Blast entering through it pressurises the floors and blows out side glazing near the front. Glass and frame are thrown into the street and out of the sides |
 | 1 s | Fragments are still in flight, tens of metres out to the sides and into the street, some whole strips of frame with their glass; the frame and the core stand |
-| 3 s | Still standing: the steel frame and core carry it, with 32,249 of 236,868 elements failed, nearly all of them glass and curtain-wall frame |
+| 3 s | Still standing: the steel frame and core carry it, with 32,697 of 236,868 elements failed (0.5.0's build), nearly all of them glass and curtain-wall frame |
 
 ![The office 3 s after the blast: standing, its lower front open, fragments round it](office-tower-3s.png)
 
@@ -156,8 +156,8 @@ count above is only as good as that turn.
 
 ### Cost
 
-220,788 shells and 16,080 beams on 1.5 million cells of 0.5 m air: **3 s simulated in 3,296 s**
-(55 minutes, 1,100 times slower than real time) on the Studio. The air was frozen after 1.2 s,
+220,788 shells and 16,080 beams on 1.5 million cells of 0.5 m air: **3 s simulated in 3,299 s**
+(55 minutes, 1,100 times slower than real time) on the Studio. The air was frozen after 1.5 s,
 and from then on the structure alone runs. That is about 14 times the older tower's cost per
 second simulated. Two causes:
 - **Elements:** there are 2.4 times as many, the glass and curtain wall among them.

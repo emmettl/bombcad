@@ -242,8 +242,8 @@ in shells and uniaxial plasticity in beams, on the Green-Lagrange strain, with e
 
   | Yield | D, q | Source | Factor at 10⁻³, 0.3 and 1 /s |
   |---|---|---|---|
-  | To 300 MPa (mild steel, S235, S275) | 40.4 /s, 5 | N. Jones, *Structural Impact*, 1989, Table 8.1 | 1.04, 1.26, 1.35 |
-  | To 400 MPa (S355, A992) | 68.8 /s, 5.8 | Fitted to Murray, Rowell and Thornton's A992, 372 MPa (ERDC, IESS 2018, Table 4), within 2% at 0.002–2 /s | 1.03, 1.24, 1.33 |
+  | To 300 MPa (mild steel, S235, S275) | 40.4 /s, 5 | N. Jones, *Structural Impact*, 1989, Table 8.1 | 1.03, 1.26, 1.35 |
+  | To 400 MPa (S355, A992) | 68.8 /s, 5.8 | Fitted to Murray, Rowell and Thornton's A992, 372 MPa (ERDC, IESS 2018, Table 4), within 2% at 0.002–2 /s | 1.03, 1.25, 1.33 |
   | Above (S420, S460, A572 grade 50) | 94.4 /s, 4.0 | Fitted to their A572 grade 50, 424 MPa (Table 3), within 2% | 1.02, 1.19, 1.27 |
 
   Murray et al.'s steels, tested for UFC 3-340-02's coming steel chapter, rose 1.17–1.25 at
@@ -996,7 +996,7 @@ too ductile at a blast's rate as the bolted ones would be.
     beam's plastic moment. Connections are not sized to their beams, and there is no component
     method.
     - **Rates.** The end plates' values come from tests loaded in 40 ms. The WUF-B's, RBS's and
-      fin plate's come from column-removal tests at about 0.1 m/s. Bolted end plates were 13–41%
+      fin plate's come from column-removal tests at about 0.1 m/s. Bolted end plates were 11–29%
       weaker and broke at 0.58–0.67 of the turn when loaded fast, so the slow types may be too
       ductile under a blast.
     - **Fracture.** A hinge fractures on its bending turn alone, not on the pull that grew with

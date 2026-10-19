@@ -3468,7 +3468,7 @@ well give less.
 | Base | Top, peak / left | Crack at the foot of the front face | Back face |
 |---|---|---|---|
 | Footing 1.0 × 0.5 m in sand (the photograph's) | 196 mm / −44 mm at 0.6 s, still rocking; the footing turned 121 mrad and slid 15 mm | 0.2 mm along the length | horizontal cracks 0.2–0.3 mm across it at 0.45–0.7 m |
-| Footing 1.1 × 0.3 m in sand | 200 mm at 0.15 s and going on; turned 79 mrad, slid 94 mm | 0.2 mm | 0.2–0.4 mm at 0.4–0.7 m |
+| Footing 1.1 × 0.3 m in sand | 228 mm / 228 mm, still going at the run's end; turned 99 mrad, slid 96 mm | 0.2 mm | 0.2–0.4 mm at 0.4–0.7 m |
 | Starter bars on rigid ground | 67 mm / 46 mm; the joint opened 12 mm | 0.7 mm | 0.3–0.4 mm at 0.4–0.7 m |
 | Clamped | 37 mm / 25 mm | 2.2 mm, horizontal cracks up to 0.5 m | 0.2–0.5 mm at 0.5–0.65 m |
 
@@ -3481,11 +3481,17 @@ unremarked over twelve shots. In the test a concrete slab was cast against the w
 "street" under the charge), and the backfill was compacted; neither is in the model, and either
 would hold the footing.
 
+The footings' rows were rerun on 18 October 2026, the walls now settling on their footings
+before the blast and their footings' joints worked out from displacements ([settling under its
+own weight](structural-model.md#settling-under-its-own-weight)): against main just before, the
+half-scale wall's top 226 → 228 mm and the canopied wall's 356 → 362 mm (the rows had stood at
+200 and 320 mm from earlier runs); the other bases are unchanged.
+
 **The canopied wall,** 125 kg at 4 m:
 
 | Base | Mid-height, peak / left | Top, peak / left | Cracks |
 |---|---|---|---|
-| Footing 2.2 × 0.6 m in sand (the thesis's) | 249 mm / 249 mm at 0.3 s, nearly at rest | 320 mm / 320 mm; turned 69 mrad, slid 133 mm | front 0.1 mm at the foot, 0.4 mm under the canopy; back 0.1–0.4 mm across most of the length at all heights |
+| Footing 2.2 × 0.6 m in sand (the thesis's) | 278 mm / 278 mm at 0.3 s, nearly at rest | 362 mm / 362 mm; turned 83 mrad, slid 142 mm | front 0.1 mm at the foot, 0.4 mm under the canopy; back 0.1–0.4 mm across most of the length at all heights |
 | Clamped | 25 mm / 10 mm | 54 mm / 17 mm | front 1.5 mm at the foot, horizontal cracks up its whole height; back 0.2–0.5 mm across most of it |
 
 Seen on the unfaced wall: a crack along the foot of the front face, three flexural cracks across
@@ -4128,6 +4134,12 @@ also fed Kingery–Bulmash's Friedlander pulse.
 
 `blastbench validate` puts a 100 kg charge on rigid ground and compares the air solver with two
 references.
+
+Independent Python implementations of Kingery–Bulmash, oblique reflection, Biggs's single degree
+of freedom and a one-dimensional spherical blast, written from the published sources rather than
+from BombCAD's code, check these references and the gauges themselves: see [reference
+calculations](reference-calculations.md), whose `compare.py` reads `validate`'s histories and the
+scene benchmarks' reports.
 
 ### Kingery–Bulmash, the design-practice standard
 
@@ -5134,14 +5146,20 @@ was set on the slow test's settlement. 2026-10-11:
 
 | Event | Peak base | Rotation (mrad), measured / model | Settlement / L, measured / model / elastic bed | ∫ M dθ / (P L / 2), measured / model / elastic bed |
 |---|---|---|---|---|
-| SSG04 DSW 3 | 0.13 g | +3.6 −4.8 / +5.2 −5.0 | 0.0091 / 0.0066 / 0.0007 | 0.010 / 0.007 / 0.002 |
-| SSG04 DSW 4 | 0.53 g | +9.0 −9.9 / +7.8 −10.9 | 0.0162 / 0.0173 / 0.0003 | 0.062 / 0.025 / 0.002 |
-| SSG04 DSW 5 | 0.73 g | +9.0 −20.8 / +11.0 −15.0 | 0.0240 / 0.0248 / 0.0001 | 0.104 / 0.041 / 0.003 |
-| SSG04 SHW 3 | 0.12 g | +3.2 −2.5 / +3.4 −3.1 | 0.0083 / 0.0082 / 0.0010 | 0.008 / 0.005 / 0.001 |
-| SSG04 SHW 4 | 0.60 g | +15.0 −5.4 / +9.3 −7.3 | 0.0284 / 0.0182 / 0.0007 | 0.049 / 0.015 / 0.003 |
-| SSG03 DSW 3 (embedded) | 0.13 g | +5.1 −3.7 / +1.4 −1.1 | 0.0047 / 0.0019 / 0.0010 | 0.011 / 0.002 / 0.006 |
-| SSG03 DSW 4 | 0.49 g | +21.6 −7.1 / +11.3 −11.6 | 0.0186 / 0.0199 / 0.0000 | 0.119 / 0.058 / 0.015 |
-| SSG03 DSW 5 | 0.97 g | +49.5 +2.8 / +15.3 −14.7 | 0.0190 / 0.0239 / 0.0001 | 0.175 / 0.077 / 0.019 |
+| SSG04 DSW 3 | 0.13 g | +3.6 −4.8 / +5.3 −4.6 | 0.0091 / 0.0064 / 0.0007 | 0.010 / 0.007 / 0.002 |
+| SSG04 DSW 4 | 0.53 g | +9.0 −9.9 / +9.2 −9.7 | 0.0162 / 0.0173 / 0.0003 | 0.062 / 0.024 / 0.002 |
+| SSG04 DSW 5 | 0.73 g | +9.0 −20.8 / +13.4 −12.6 | 0.0240 / 0.0248 / 0.0001 | 0.104 / 0.041 / 0.003 |
+| SSG04 SHW 3 | 0.12 g | +3.2 −2.5 / +3.4 −3.4 | 0.0083 / 0.0082 / 0.0010 | 0.008 / 0.005 / 0.001 |
+| SSG04 SHW 4 | 0.60 g | +15.0 −5.4 / +8.0 −8.1 | 0.0284 / 0.0180 / 0.0007 | 0.049 / 0.015 / 0.003 |
+| SSG03 DSW 3 (embedded) | 0.13 g | +5.1 −3.7 / +1.1 −1.4 | 0.0047 / 0.0022 / 0.0010 | 0.011 / 0.002 / 0.006 |
+| SSG03 DSW 4 | 0.49 g | +21.6 −7.1 / +10.8 −12.0 | 0.0186 / 0.0199 / 0.0000 | 0.119 / 0.058 / 0.015 |
+| SSG03 DSW 5 | 0.97 g | +49.5 +2.8 / +14.4 −15.6 | 0.0190 / 0.0239 / 0.0001 | 0.175 / 0.077 / 0.019 |
+
+The model's columns were rerun on 18 October 2026, once the footing's joint was worked out from
+displacements rather than positions ([footings](structural-model.md#footings)): the peak
+rotations moved by up to 2.4 mrad (which side of the swing peaks is the most sensitive), the
+moments by under 1%, the settlements and energy by under 0.0003 L and 0.001; the elastic bed's
+columns are as before. The slow test's (above) moved by under 0.004 in its moment ratios.
 
 ![Moment against rotation in SSG04's DSW event 4, settlement through its three events, and settlement against rotation in the slow SSG02_03: measured, on cyclic sand and on the elastic bed](footing-shaken.png)
 
@@ -5166,14 +5184,14 @@ W / (4π × ½ M₀ θ₀); printed by `blastbench shaking`):
 
 | Event | Measured | Elastic bed | Cyclic sand, no heave | Cyclic sand (default) |
 |---|---|---|---|---|
-| SSG04 DSW 3 | 2.8 mrad, 1.38, 25% | 3.9 mrad, 0.12, 0% | 3.6 mrad, 1.19, 12% | 3.4 mrad, 1.60, 16% |
+| SSG04 DSW 3 | 2.8 mrad, 1.38, 25% | 3.9 mrad, 0.12, 0% | 3.6 mrad, 1.19, 12% | 3.3 mrad, 1.60, 16% |
 | SSG04 DSW 4 | 6.3 mrad, 5.57, 24% | 5.9 mrad, 0.11, 0% | 5.5 mrad, 1.70, 11% | 5.4 mrad, 2.04, 13% |
 | SSG04 DSW 5 | 8.7 mrad, 9.41, 28% | 7.6 mrad, 0.14, 0% | 7.0 mrad, 2.58, 11% | 7.2 mrad, 3.16, 13% |
-| SSG04 SHW 3 | 2.0 mrad, 1.01, 30% | 2.5 mrad, 0.05, 1% | 2.5 mrad, 0.60, 14% | 2.5 mrad, 0.80, 18% |
+| SSG04 SHW 3 | 2.0 mrad, 1.01, 30% | 2.5 mrad, 0.05, 1% | 2.5 mrad, 0.60, 14% | 2.5 mrad, 0.80, 16% |
 | SSG04 SHW 4 | 4.9 mrad, 4.39, 32% | 5.2 mrad, 0.13, 1% | 4.3 mrad, 1.00, 12% | 4.5 mrad, 1.27, 13% |
-| SSG03 DSW 3 | 2.6 mrad, 1.90, 23% | 4.2 mrad, 0.72, 5% | 1.6 mrad, 0.78, 19% | 1.1 mrad, 0.80, 27% |
-| SSG03 DSW 4 | 8.0 mrad, 10.81, 29% | 7.6 mrad, 0.99, 3% | 6.4 mrad, 3.39, 14% | 7.3 mrad, 5.21, 15% |
-| SSG03 DSW 5 | 11.0 mrad, 15.87, 31% | 9.2 mrad, 1.28, 3% | 8.2 mrad, 3.72, 14% | 9.2 mrad, 6.39, 15% |
+| SSG03 DSW 3 | 2.6 mrad, 1.90, 23% | 4.2 mrad, 0.72, 5% | 1.6 mrad, 0.78, 19% | 1.1 mrad, 0.70, 25% |
+| SSG03 DSW 4 | 8.0 mrad, 10.81, 29% | 7.6 mrad, 0.99, 3% | 6.4 mrad, 3.39, 14% | 7.4 mrad, 5.21, 15% |
+| SSG03 DSW 5 | 11.0 mrad, 15.87, 31% | 9.2 mrad, 1.28, 3% | 8.2 mrad, 3.72, 14% | 9.3 mrad, 6.39, 15% |
 | SSG02_03 a–e (slow) | 3–60 mrad: 1.3, 4.1, 10.9, 24.5, 61.1; 17–21% | 0.2, 0.3, 0.9, 1.9, 7.4; 0–2% | 1.1, 2.6, 6.3, 13.6, 26.2; 9–12% | 1.6, 3.5, 7.8, 15.1, 30.6; 10–17% |
 
 **Where the model's energy goes.** Run without the soil's mass and its cones, SSG04's lighter
@@ -5249,15 +5267,14 @@ downhill.
 
 **A frame on a hillside** (`blastbench hillside`, "Two-storey frame on a hillside"; air 0.25 m,
 recommended air, cut cells, 18 October 2026), a sample, not a comparison:
-- **At rest:** the frame settles on its six pads in 1 s (past its footing joints' chatter, see
-  [settling](structural-model.md#settling-under-its-own-weight)), the middle pads bearing 278 kN
-  and the others 173-183 kN, 13-21% of their capacity on the slope (1,342 kN, 0.56 of level
-  ground's), settling 1.4-3.4 mm.
+- **At rest:** the frame settles on its six pads in 0.18 s, the middle pads bearing 280 kN and the
+  others 174-183 kN, 13-21% of their capacity on the slope (1,342 kN, 0.56 of level ground's),
+  settling 1.4-3.4 mm.
 - **Under 500 kg 7 m in front:** the frame is pushed back and its front columns pull their pads
-  up: by 100 ms the front pads have lifted 87-113 mm off the sand and slid 31-51 mm back, the
-  back ones lifted 12-24 mm, the frame moved up to 128 mm, cracked (damage 0.10) and kept all its
-  elements. No pad bears more than it did at rest: at this charge uplift, not the slope's cut in
-  bearing, governs.
+  up: by 100 ms the front pads have lifted 86-118 mm off the sand and slid 27-51 mm back, the
+  back ones lifted 24-67 mm and slid 4-15 mm; the frame moved up to 128 mm, cracked (damage
+  0.10) and kept all its elements. No pad bears more than it did at rest: at this charge uplift,
+  not the slope's cut in bearing, governs.
 - **The run:** stable on cut cells only since a structure shuts in the slivers under it
   ([terrain](terrain.md#cut-cells)); before, it went non-finite as the blast arrived.
 
@@ -5687,6 +5704,10 @@ checks; see the [shell model](shell-model.md#verification).
 
 These establish that the equations are solved as intended. They say nothing about whether the
 equations are the right ones.
+
+Independent Python versions of the exact solutions to Sod's shock tube and the Sedov–Taylor
+blast, a textbook scheme to read errors against, and a script that scores a solver profile
+against both are described in [analytic oracles](analytic-oracles.md).
 
 ## Convergence on today's defaults
 
