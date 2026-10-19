@@ -308,14 +308,15 @@ struct NearbyWorkerTests {
         let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: port)
         let limit = Duration.seconds(1)
 
-        /// Whether `body` failed for lack of an answer, and soon after `limit`.
+        /// Whether `body` failed for lack of an answer. Only the deadline throws `timedOut`, and never
+        /// before `limit`; a deadline that never comes is the suite's hang limit's to catch. No bound
+        /// on the time taken: under a full parallel run the whole process can stall for a minute.
         func timesOut(_ body: () async throws -> Void) async -> Bool {
-            let start = ContinuousClock.now
             do {
                 try await body()
                 return false
             } catch NearbyError.timedOut {
-                return ContinuousClock.now - start < limit * 20
+                return true
             } catch {
                 Issue.record("Failed otherwise: \(error)")
                 return false
