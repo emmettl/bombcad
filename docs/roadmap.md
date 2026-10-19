@@ -328,7 +328,9 @@ most are about reaching an answer for less, with the full solver kept as the ref
    some glass broken comes within 0.03 of the full run's to 1.5 km at every yield; it is not yet
    in the app ([a city in minutes](hybrid-far-field.md)).
 4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
-   from the scatter in yield, materials and rounding, cheap once item 2 exists.
+   from the scatter in yield, materials and rounding, cheap once item 2 exists. First step done for the
+   glass: each building side's chance of broken, blown-out and thrown glass in about a minute, calibrated to
+   Beirut's runs but not to its survey ([glass by chance](glass-probability.md)).
 5. **From damage back to the explosion** (first step done). Infer yield, place and height from
    observed arrival times, broken glass and damage, as the Beirut page did by hand for its yield.
    `scenebench infer-charge` ([charge inference](charge-inference.md)) now samples the yield and

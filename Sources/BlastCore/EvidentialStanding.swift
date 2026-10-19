@@ -1086,6 +1086,8 @@ public enum StandingTable {
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.laminate": .input,
+        "EnvelopeConstruction.film": .input,
+        "EnvelopeConstruction.glassToughened": .input,
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.source": .input,
@@ -1135,6 +1137,7 @@ public enum StandingTable {
         "Terrain.heights": .input,
         "Terrain.source": .input,
         "Charge.mass": .input,
+        "Charge.delay": .input,
         "Charge.position": .input,
         // The air solver.
         "SolverConfiguration.bodyCouplingLayout": .numerical,
@@ -1640,7 +1643,17 @@ struct StandingScene {
             has(.hotAir) || has(.dissociatingAir)
                 ? "The detonation products are treated as hot air."
                 : "The detonation products are treated as air, an ideal gas of γ = 1.4.")
-        if !(inputs.scenario.additionalCharges ?? []).isEmpty {
+        let further = inputs.scenario.additionalCharges ?? []
+        if further.contains(where: { $0.firingTime > 0 }) {
+            lines.append(
+                "Several charges fire, some after the main one; the comparisons are of one charge, and of "
+                    + "two delayed ones against a finer run. A delayed charge is laid down when the run's clock "
+                    + "reaches it: with the fine start, from its one-dimensional solution where the air about "
+                    + "it stays still until that is due, else (and without the fine start) as a ball of hot "
+                    + "gas; laid during the run where the air is not yet refined, it is resolved by the coarse cells "
+                    + "until the refinement takes it up, and its fireball's first moments are not in the thermal record."
+            )
+        } else if !further.isEmpty {
             lines.append("Several charges fire together; the comparisons are of one charge.")
         }
         if inputs.scenario.charge.position.z > 0.1 * cubeRoot {
@@ -2423,6 +2436,19 @@ struct StandingScene {
                         + "of his speeds but at 73 mm where his held to 140–209 mm",
                     "building-envelopes.md#laminated-glass")
             ] : []
+        let filmed = envelopes.contains { inputs.scenario.envelopeConstruction(for: $0).film != nil }
+        let filmEvidence =
+            filmed
+            ? [
+                StandingEvidence(
+                    "Security film: 67 shock-tube and arena tests of filmed 1/4\" panes in the open GSA reports "
+                        + "of 3M, Solar Gard and ARA",
+                    "Wet-glazed: held, condition 2, as 18 of 24 were graded, the rest worse; daylight: held "
+                        + "while pushed, gone on the rebound, condition 3a, one class better than 16 of 17 tests; "
+                        + "mechanical: pulled out at a vendor's capacity, condition 5, never better than its 26 "
+                        + "tests (no open capacity)",
+                    "building-envelopes.md#security-film")
+            ] : []
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2492,7 +2518,7 @@ struct StandingScene {
                         + "not converged: 0.5 m stone cracks where partial collapses were found, concrete "
                         + "hardly damaged where GEER's was D1–D3",
                     "validation.md#a-district-beirut-2020"),
-            ] + laminatedEvidence,
+            ] + laminatedEvidence + filmEvidence,
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
                     + "(mostly on two; one panel clamped all round), and glass only under a load far past what "

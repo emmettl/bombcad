@@ -102,12 +102,17 @@ struct PlanHouseStudyTests {
         // From the house at rest under its own weight (settled as `load` leaves it).
         let rest = nodes.map { list in list.map { shells.node($0).displacement } }
         var peaks = [Float](repeating: 0, count: walls.count)
+        var peakAt = [SIMD3<Float>](repeating: .zero, count: walls.count)
         while solver.time < Self.duration {
             let batch = solver.advance(steps: 16, timeLimit: Self.duration)
             if batch.steps == 0 && !solver.airIsAsleep { break }
             for (w, list) in nodes.enumerated() {
                 for (k, n) in list.enumerated() {
-                    peaks[w] = max(peaks[w], simd_length(shells.node(n).displacement - rest[w][k]))
+                    let moved = simd_length(shells.node(n).displacement - rest[w][k])
+                    if moved > peaks[w] {
+                        peaks[w] = moved
+                        peakAt[w] = shells.referencePositions[n] - Self.corner
+                    }
                 }
             }
         }
@@ -129,8 +134,11 @@ struct PlanHouseStudyTests {
         for line in report.supports + report.assumptions { text += "  \(line)\n" }
         text += String(format: "\nBefore the front wall: %.0f kPa\n", peak / 1000)
         text += "Elements failed: \(summary.erodedElements) of \(shells.elementCount)\n"
-        for (wall, value) in zip(walls, peaks) {
-            text += String(format: "  %@: peak %.1f mm\n", wall.0, value * 1000)
+        for (w, (wall, value)) in zip(walls, peaks).enumerated() {
+            text += String(
+                format: "  %@: peak %.1f mm at (%.2f, %.2f, %.2f) m\n", wall.0, value * 1000, peakAt[w].x,
+                peakAt[w].y,
+                peakAt[w].z)
         }
         try FileManager.default.createDirectory(atPath: output, withIntermediateDirectories: true)
         try text.write(toFile: output + "/\(reportName).txt", atomically: true, encoding: .utf8)

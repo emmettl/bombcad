@@ -446,6 +446,26 @@ public enum ValidationTables {
         // Estimates beside a run, against BombCAD's own runs: the standing lines of
         // `FacadeLoadSurrogate`, `HybridFarField` and `ChargeInference` are worded from these.
         Figure(
+            id: "glassChancesBrier", low: 0.020, high: 0.108,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "Brier score 0.020, against 0.108"),
+        Figure(
+            id: "glassChancesBins", low: 0.05, high: 0.05,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "within 0.05 of the share of runs"),
+        Figure(
+            id: "glassChancesThrown", low: 0.72, high: 0.72,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "condition 3b: skill 0.72"),
+        Figure(
+            id: "glassChancesTest", low: 0.1, high: 0.1,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "within 0.1 of the share seen"),
+        Figure(
+            id: "glassChancesSurvey", low: 0.27, high: 0.91,
+            document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
+            quote: "blown out 0.91 at 0.75–1 km where GEER saw 0.27"),
+        Figure(
             id: "surrogateGlassSides", low: 0.75, high: 0.84,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "agrees with the run's for 75–84%"),
@@ -1639,6 +1659,14 @@ extension StandingScene {
                 unbanded.append(
                     "Laminated glass once cracked, held or gone: compared with Osnes's, Zhang's and Hooper's panes "
                         + "(building-envelopes.md#laminated-glass), no band; its cracking is the annealed glass's."
+                )
+            }
+            if inputs.scenario.envelopeObjects.contains(where: {
+                inputs.scenario.envelopeConstruction(for: $0.id).film != nil
+            }) {
+                unbanded.append(
+                    "Security film once the glass cracks, held or gone by its anchorage: graded against the open "
+                        + "GSA reports' filmed panes (building-envelopes.md#security-film), no band."
                 )
             }
             let freestanding = inputs.scenario.envelopeObjects.contains { object in

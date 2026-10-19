@@ -94,6 +94,10 @@ public enum FloorPlan {
         public var groundSlab = 0.15
         /// A flat roof slab over the top storey.
         public var roof = true
+        /// Floors and roof seated inside the outer walls, which run the storey's full height, as a
+        /// BIM model lays them (FreeCAD's, the example's IFC); else laid over the whole outline, on
+        /// top of every wall, which stop under it.
+        public var slabsInsideWalls = true
         public var doorHead = 2.1
         public var windowSill = 0.9
         public var windowHead = 2.1
@@ -908,11 +912,22 @@ public enum FloorPlan {
         }
         let height = options.storeyHeight
         let slab = options.slabThickness
+        // The walls on the floors' outline, which the floors sit inside when asked.
+        let outer = Set(
+            analysis.walls.indices.filter { index in
+                options.slabsInsideWalls
+                    && analysis.slabs.contains { outline in
+                        onEdge(analysis.walls[index].rectangle, of: outline)
+                    }
+            })
         for storey in 0..<options.storeys {
             let z0 = Double(storey) * height
-            let z1 = z0 + height - slab
+            let underSlab = z0 + height - slab
             for (index, wall) in analysis.walls.enumerated() {
                 if let only = options.layerStoreys[wall.layer], only != storey { continue }
+                // Inside the outer walls the slabs bear on the partitions too, which run up into
+                // them, as a BIM model's walls of a storey's height do.
+                let z1 = options.slabsInsideWalls ? z0 + height : underSlab
                 let mine = analysis.openings.filter {
                     $0.wall == index && ($0.storey == nil || $0.storey == storey)
                 }
@@ -972,7 +987,10 @@ public enum FloorPlan {
             let top = storey == options.storeys - 1
             if top && !options.roof { continue }
             for (n, outline) in analysis.slabs.enumerated() {
-                let boxes = outline.map { box($0.min, $0.max, z1, z0 + height) }
+                let inside =
+                    options.slabsInsideWalls
+                    ? inset(outline, by: outer.map { analysis.walls[$0].rectangle }) : outline
+                let boxes = inside.map { box($0.min, $0.max, underSlab, z0 + height) }
                 try add(
                     top
                         ? "Roof\(analysis.slabs.count > 1 ? " \(n + 1)" : "")"
@@ -990,6 +1008,45 @@ public enum FloorPlan {
             }
         }
         return elements
+    }
+
+    /// A wall's footprint lies along the outline's edge: inside a rectangle of it, with one face
+    /// within 5 cm of that rectangle's side.
+    static func onEdge(
+        _ wall: (min: SIMD2<Double>, max: SIMD2<Double>),
+        of outline: [(min: SIMD2<Double>, max: SIMD2<Double>)]
+    ) -> Bool {
+        outline.contains { r in
+            let inside = (0..<2).allSatisfy {
+                wall.min[$0] >= r.min[$0] - 0.05 && wall.max[$0] <= r.max[$0] + 0.05
+            }
+            let side = (0..<2).contains {
+                abs(wall.min[$0] - r.min[$0]) < 0.05 || abs(wall.max[$0] - r.max[$0]) < 0.05
+            }
+            return inside && side
+        }
+    }
+
+    /// An outline's rectangles less the walls' footprints; slivers under 5 cm dropped.
+    static func inset(
+        _ outline: [(min: SIMD2<Double>, max: SIMD2<Double>)],
+        by walls: [(min: SIMD2<Double>, max: SIMD2<Double>)]
+    ) -> [(min: SIMD2<Double>, max: SIMD2<Double>)] {
+        var pieces = outline
+        for wall in walls {
+            pieces = pieces.flatMap { r -> [(min: SIMD2<Double>, max: SIMD2<Double>)] in
+                let lo = simd_max(r.min, wall.min)
+                let hi = simd_min(r.max, wall.max)
+                guard hi.x > lo.x, hi.y > lo.y else { return [r] }
+                // Below, above, then left and right of the overlap.
+                return [
+                    (r.min, SIMD2(r.max.x, lo.y)), (SIMD2(r.min.x, hi.y), r.max),
+                    (SIMD2(r.min.x, lo.y), SIMD2(lo.x, hi.y)), (SIMD2(hi.x, lo.y), SIMD2(r.max.x, hi.y)),
+                ]
+            }
+            .filter { $0.max.x - $0.min.x >= 0.05 && $0.max.y - $0.min.y >= 0.05 }
+        }
+        return pieces
     }
 
     /// Boxes of one element drawn apart by a millimetre, as one element's mesh cannot hold
