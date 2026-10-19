@@ -636,3 +636,14 @@ extension EnvelopeVenting {
         }
     }
 }
+
+extension EnvelopeVenting {
+    /// Starts every pane's and wall's clock at `start`, s since detonation: on the mapped start the
+    /// run begins some time after it, and their breaks are times since detonation.
+    func startClocks(at start: Double) {
+        let state = stateBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: max(2 * paneCount, 1))
+        for n in 0..<paneCount { state[2 * n + 1].x = Float(start) }
+        let clocks = wallClockBuffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: max(wallCount, 1))
+        for w in 0..<wallCount { clocks[w].x = Float(start) }
+    }
+}

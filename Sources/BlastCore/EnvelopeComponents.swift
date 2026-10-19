@@ -969,3 +969,14 @@ final class EnvelopeComponentRecorder {
         }
     }
 }
+
+extension EnvelopeComponentRecorder {
+    /// Starts the recorder's clock (`ComponentClock`: its bin and the seconds into it) at `start`,
+    /// s since detonation, so that bins and windows are counted from detonation on the mapped start
+    /// too, as the histories read them (`histories(elapsed:)` takes the run's time).
+    func startClock(at start: Double) {
+        let bin = (start / binS).rounded(.down)
+        clock.contents().storeBytes(of: UInt32(bin), as: UInt32.self)
+        clock.contents().storeBytes(of: Float(start - bin * binS), toByteOffset: 4, as: Float.self)
+    }
+}
