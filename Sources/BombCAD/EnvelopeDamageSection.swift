@@ -19,6 +19,13 @@ struct EnvelopeDamageSection: View {
                 if !model.envelopeVentingStatus.isEmpty {
                     Text(model.envelopeVentingStatus).font(.caption).foregroundStyle(.orange)
                 }
+                if model.envelopeDamageIsEstimate {
+                    // An estimate must never pass for a run.
+                    Text(model.envelopeDamageStatus).font(.caption).foregroundStyle(.orange)
+                    ForEach(FacadeLoadSurrogate.standing, id: \.self) {
+                        Text($0).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 if model.envelopeDamage.isEmpty {
                     Text(
                         model.envelopeDamageStatus.isEmpty

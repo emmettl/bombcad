@@ -275,6 +275,33 @@ enum IFCStep {
         }
     }
 
+    /// Each material layer set's layers, by the set's name: each layer's material's name and its
+    /// thickness (in the file's length unit), in order. The converter's metadata names a layer by
+    /// the layer's own name ("Outer leaf") where one is given, never by its material ("Facing
+    /// brick"), which is what says what the layer is made of.
+    static func layerMaterials(_ data: Data) -> [String: [[(material: String, thickness: Double)]]] {
+        let kinds: Set<String> = [
+            "IFCMATERIAL", "IFCMATERIALLAYER", "IFCMATERIALLAYERWITHOFFSETS", "IFCMATERIALLAYERSET",
+        ]
+        let all = entities(data) { kinds.contains($0) }
+        var result: [String: [[(material: String, thickness: Double)]]] = [:]
+        for set in all.values.sorted(by: { $0.id < $1.id }) where set.name == "IFCMATERIALLAYERSET" {
+            guard let list = set.arguments.first else { continue }
+            let layers = references(list).compactMap { id -> (material: String, thickness: Double)? in
+                guard let layer = all[id], layer.name.hasPrefix("IFCMATERIALLAYER"),
+                    layer.arguments.count >= 2,
+                    let thickness = Double(layer.arguments[1])
+                else { return nil }
+                let material = layer.arguments.first.flatMap(reference).flatMap { all[$0] }
+                    .flatMap { $0.name == "IFCMATERIAL" ? $0.arguments.first.flatMap(string) : nil }
+                return (String((material ?? "").prefix(200)), thickness)
+            }
+            let name = set.arguments.count > 1 ? string(set.arguments[1]) ?? "" : ""
+            result[name, default: []].append(layers)
+        }
+        return result
+    }
+
     /// Each storey's elevation as the IFC gives it (in its length unit), by GlobalId.
     static func storeyElevations(_ data: Data) -> [String: Double] {
         var result: [String: Double] = [:]

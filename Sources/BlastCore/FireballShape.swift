@@ -603,7 +603,7 @@ extension BlastSolver {
         let dims = LuminousBlock.dimensions(grid)
         let gamma = configuration.gamma
         let airModel = configuration.airModel
-        let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
+        let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
         var planes = [[LuminousBlock]](repeating: [], count: dims.z)
         withState { cells in
             planes.withUnsafeMutableBufferPointer { planes in
