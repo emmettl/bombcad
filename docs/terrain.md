@@ -48,8 +48,10 @@ a sloping surface two cells a step, far ahead of the blast. Given up, it balance
 still air gained on the other side of the surface: a closed box over a hill gains 0.08% of its
 mass and energy in 120 steps (0.2% when it was shared, besides the false pressures). Such
 patches are pinned, as all patches whose outlines differ are, so the refined shell along the
-ground is kept once the blast has passed. On [cut cells](#cut-cells) (refined once) none of this
-arises: the fine cells hold what the coarse cell held, share for share, and patches are released.
+ground is kept once the blast has passed. On [cut cells](#cut-cells), refined once or twice, none
+of this arises where only the terrain cuts the cell: the fine cells hold what the coarser cell
+held, share for share, and patches are released. Where a block's fine outline also takes part of
+a cut cell, the cell is filled as a whole cell beside a block is (below).
 
 Rigid blocks too where the air is near still (within 5% of ambient), since 18 October 2026. A block whose edges fall between the coarse cells
 takes part of the cells beside it at a finer level, and sharing the gas squeezed it into what was
