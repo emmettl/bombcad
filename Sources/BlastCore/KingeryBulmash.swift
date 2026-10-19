@@ -132,6 +132,11 @@ public enum KingeryBulmash {
             scaledArrival: arrival * 1e-3)
     }
 
+    /// The shock's arrival per kg^(1/3), in seconds, at scaled distance `z` (0.06 to 40).
+    public static func scaledArrival(at z: Double) -> Double? {
+        evaluate(arrivalFits, at: z).map { $0 * 1e-3 }
+    }
+
     /// Positive phase duration of the incident wave per kg^(1/3), in seconds.
     public static func scaledDuration(at z: Double) -> Double? {
         evaluate(durationFits, at: z).map { $0 * 1e-3 }

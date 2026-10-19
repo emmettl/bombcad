@@ -34,8 +34,9 @@ stops where bodies come close. See [contact between bodies](multiple-object-scen
 The structure is the union of axis-aligned boxes (walls, slabs, columns) minus other boxes
 (openings), filled with cubic elements on a regular lattice. An opening cuts the boxes it
 crosses but not one it holds whole, so a pane set in a wall's opening stays. An element exists wherever a
-lattice cell's centre lies inside the body. The built-in layouts use elements of 62.5 mm, or
-125 mm for the two-storey frame.
+lattice cell's centre lies inside the body. Most built-in solid layouts use elements of 62.5 mm or 125 mm
+(50 mm for the close-in column, 75 mm for the blockwork wall); the shell layouts use 0.25 m or
+0.5 m.
 
 Because the mesh is a lattice, there is no connectivity table: an element finds its eight nodes
 from its lattice position. Nodes on the ground plane are clamped when the structure has a fixed
@@ -1322,7 +1323,7 @@ shock, and the drag and pressure-gradient push on loose debris.
    run twice sometimes eroded a different number of elements); it now has a mark of its
    own, read as bare bars for the rest of the pass. The nodes in a contact grid cell
    were stored, and their forces summed, in the order threads arrived; each cell is now
-   emptied in one pass and filled in the next with an atomic-minimum chain that keeps its four
+   emptied in one pass and filled in the next with an atomic-minimum chain that keeps its eight
    lowest-numbered nodes in ascending order, whatever the timing. That also decides which
    nodes a crowded cell drops.
 6. **Uniform element size.** A large building at fine resolution needs many elements, and the

@@ -108,6 +108,9 @@ The three nearest observers (250–300 m) saw the shock later than the model and
 both (0.71–0.83 of the observed time at 0.5 kt), as Dewey's lower TNT equivalence close in
 would have it; from 400 m out the model is within 0.83–1.10 of the observed times, 25 of the 27 within
 10%.
+Inferred rather than chosen, with the place left free, the same observers give 0.54 kt (90%:
+0.39–0.85) by Kingery–Bulmash and 0.50 kt with these runs' ratios, and put the charge within 32 m
+of Warehouse 12's centre ([charge inference](charge-inference.md#beirut)).
 
 Stennett et al. (2020) timed the shock in six other videos, 0.5–2 km out (a frame, 33 ms, either
 way), and found 637 t (407–960 t) by Kingery–Bulmash. At their observers the 0.5 kt run arrives at
