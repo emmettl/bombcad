@@ -155,8 +155,11 @@ enum DistrictComparison {
 
         // The recommended air (far-field faces: copying faces at a district's low top channel the
         // wave), or the bare core with `--bare`; whole cells for the terrain with `--staircase`.
-        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-        var configuration = args.contains("--bare") ? SolverConfiguration() : .recommended.balloonStart
+        // The mapped start since its rerun on 20 October 2026; `--balloon-start` for the balloon it was first run on.
+        var configuration =
+            args.contains("--bare")
+            ? SolverConfiguration()
+            : args.contains("--balloon-start") ? .recommended.balloonStart : .recommended
         configuration.terrainCutCells = !args.contains("--staircase")
         // Refined air: `--refine 2 --levels 2 --threshold 0.005 --refine-memory 18` (GB), and
         // `--hold 500` (Pa) holding it beside the façades while they are loaded.

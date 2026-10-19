@@ -74,9 +74,11 @@ enum DistrictBenchmark {
                 historyBytes: 0, stepS: 0, stepWithHistoriesS: 0)
             for histories in [false, true] {
                 clock = .now
-                // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                // The mapped start since its rerun on 20 October 2026; `--balloon-start` for the balloon it was first run on.
                 var configuration =
-                    args.contains("--bare") ? SolverConfiguration() : .recommended.balloonStart
+                    args.contains("--bare")
+                    ? SolverConfiguration()
+                    : args.contains("--balloon-start") ? .recommended.balloonStart : .recommended
                 configuration.terrainCutCells = !args.contains("--staircase")
                 let solver = try BlastSolver(
                     device: device, scenario: scene, cellSize: dx, configuration: configuration)

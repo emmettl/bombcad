@@ -4710,11 +4710,11 @@ func runDialPack() throws {
     let radius = cbrt(3 * mass / (4 * .pi * 1600))
     var scenario = Scenario(
         name: "Dial Pack", domainSize: SIMD3(side, side, side / 2), boxes: [],
-        // With `--mapped`, on the ground as a surface burst, so that it can be mapped: one radius up
-        // it is neither on the ground nor three cells clear of it.
-        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, flag("mapped") ? 0 : radius)))
+        // On the mapped start (the default since 20 October 2026; `--mapped` is kept), on the ground as
+        // a surface burst, so that it can be mapped: one radius up it is neither on the ground nor
+        // three cells clear of it. `--balloon-start`: the balloon one radius up, as first run.
+        charge: Charge(mass: mass, position: SIMD3(side / 2, side / 2, flag("balloon-start") ? radius : 0)))
     scenario.gauges = []
-    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
     var configuration = SolverConfiguration.recommended.balloonStart
     configureRefinement(&configuration)
     configuration.afterburning = true
@@ -4728,8 +4728,8 @@ func runDialPack() throws {
     if configuration.afterburnMixing != nil, configuration.mixing == nil {
         configuration.mixing = SubgridMixing()
     }
-    // `--mapped`: the mapped start, its fireball before the grid's clock from the one-dimensional solution.
-    if flag("mapped") { configuration.mappedCharge = true }
+    // The mapped start, its fireball before the grid's clock from the one-dimensional solution.
+    if !flag("balloon-start") { configuration.mappedCharge = true }
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()

@@ -192,9 +192,12 @@ Supports are under [structures and supports](#structures-and-supports) above.
 
 - **Done:** one box, one box in the air, one simplified car, and several objects in populated
   scenes ([staged plan](freestanding-objects.md#the-staged-plan); the studies behind it in
-  [rigid-box coupling studies](rigid-box-coupling-studies.md)).
-- **Next:** a fractional shell boundary to converge the late flow; objects and a deformable
-  structure in the air together ([limitations and future work](freestanding-objects.md#limitations-and-future-work)).
+  [rigid-box coupling studies](rigid-box-coupling-studies.md)); objects and a deformable structure
+  in the air together, striking it at its own step, in the app's and headless runs (19 October
+  2026, [stages 1–3](freestanding-objects.md#limitations-and-future-work)).
+- **Next:** a fractional shell boundary to converge the late flow; drawing the structure's motion
+  in the app's motion run, and the objects' finer patches beside a structure
+  ([limitations and future work](freestanding-objects.md#limitations-and-future-work)).
 - **Blocked:** no blast test of a vehicle or furniture is known; the cars stay illustrative.
 
 ### Effects beside the blast

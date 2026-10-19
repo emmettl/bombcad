@@ -122,8 +122,10 @@ func profileRun(
         return Gauge(
             "x \(x)", at: SIMD3(x, 0.5 * dx, max(terrain?.height(at: SIMD2(x, 0)) ?? 0, top) + 0.5 * dx))
     }
-    // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-    var configuration = SolverConfiguration.recommended.balloonStart
+    // The mapped start since its rerun on 20 October 2026; `--balloon-start` for the balloon it was first run on.
+    var configuration =
+        (flag("balloon-start")
+            ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended)
     applyChosenAir(&configuration)
     configureRefinement(&configuration)
     configureTerrainAir(&configuration)
