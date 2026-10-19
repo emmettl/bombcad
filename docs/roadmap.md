@@ -299,6 +299,14 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   colour deficiency (`MaterialAppearance`).
 - **Next:** the fixes seen on a real screen, Full Keyboard Access and VoiceOver's speech
   ([remaining checks](native-interface-review.md#remaining-checks)).
+- **Now (asked for 19 October): scrubbable timelines.** An expensive live run can be watched only
+  once. In two tiers:
+  - **Recorded frames:** what the viewport draws, recorded at a frame interval during the run and
+    kept with the saved run, so a slider scrubs and replays it with no physics.
+  - **Solver checkpoints:** saved along the same timeline, so any moment can be re-run at full
+    detail from the nearest one, or continued with changes.
+  The first tier reuses the frames the USD and VDB export already takes. The second rests on the
+  checkpoints that also make mid-run images and ensembles from a shared start cheap.
 
 ## Horizons
 
