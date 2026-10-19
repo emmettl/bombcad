@@ -39,7 +39,7 @@ public enum AdblastCladdingTest {
         public var note: String
     }
 
-    package struct Fixture: Decodable {
+    struct Fixture: Decodable {
         var singleSpanTests: [Test]
     }
 

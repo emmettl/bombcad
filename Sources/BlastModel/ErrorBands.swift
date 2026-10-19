@@ -676,7 +676,7 @@ extension ValidationTables {
     /// The band `table` gives at scaled cell `cell` and scaled distance `distance`: interpolated
     /// in the logarithm of the cell between compared grids, and spanning the compared distances
     /// either side. Nil, with the reason, outside what was compared.
-    package static func read(
+    static func read(
         _ table: Table, grids: [Double], distances: [Double], cell: Double, distance: Double
     ) -> (low: Double, high: Double, scaled: Bool)? {
         guard distance >= distances.first! * 0.98, distance <= distances.last! * 1.02 else { return nil }

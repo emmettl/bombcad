@@ -5,12 +5,12 @@ import simd
 /// is linear, so retained frame averages also retain lab-frame mass, momentum and energy.
 /// One common factor bounds sampled components and enforces sampled EOS admissibility.
 /// This never floors or repairs accepted inventories and is not a global positivity proof.
-package enum ConservedGasReconstruction {
-    package enum Failure: Error { case invalidGeometry, invalidState }
-    package struct Sample {
-        package let centre: SIMD3<Double>
+enum ConservedGasReconstruction {
+    enum Failure: Error { case invalidGeometry, invalidState }
+    struct Sample {
+        let centre: SIMD3<Double>
         let covariance: simd_double3x3
-        package let density: SIMD8<Double>
+        let density: SIMD8<Double>
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
         package init(
@@ -23,11 +23,11 @@ package enum ConservedGasReconstruction {
             self.density = density
         }
     }
-    package struct Fit {
-        package let cell: Sample
+    struct Fit {
+        let cell: Sample
         let velocityFrame: SIMD3<Double>
         let polynomials: [FiniteVolumePressureFit.Fit]
-        package let factor: Double
+        let factor: Double
         let positivityReduced: Bool
         let rankFallback: Bool
 
@@ -39,12 +39,12 @@ package enum ConservedGasReconstruction {
             }
             return value
         }
-        package func state(at point: SIMD3<Double>) -> FractionalGasTransport.Cell {
+        func state(at point: SIMD3<Double>) -> FractionalGasTransport.Cell {
             .init(volume: 1, amount: transform(frameDensity(at: point), velocity: -velocityFrame))
         }
     }
 
-    package static func transform(_ u: SIMD8<Double>, velocity v: SIMD3<Double>) -> SIMD8<Double> {
+    static func transform(_ u: SIMD8<Double>, velocity v: SIMD3<Double>) -> SIMD8<Double> {
         var result = u
         let momentum = SIMD3(u[1], u[2], u[3])
         let shifted = momentum - u[0] * v
@@ -55,7 +55,7 @@ package enum ConservedGasReconstruction {
         return result
     }
 
-    package static func fit(
+    static func fit(
         cell: Sample, neighbours: [Sample], controls: [SIMD3<Double>], scale: Double,
         boundComponents: Bool = true
     ) throws -> Fit {

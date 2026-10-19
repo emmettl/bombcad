@@ -226,11 +226,11 @@ public enum FloorPlan {
     }
 
     /// Straight pieces of a layer square to an axis: `offset` across, `from`…`to` along (m).
-    package struct Line: Hashable {
-        package var axis: Int
-        package var offset: Double
-        package var from: Double
-        package var to: Double
+    struct Line: Hashable {
+        var axis: Int
+        var offset: Double
+        var from: Double
+        var to: Double
         package var length: Double { to - from }
     }
 
@@ -575,14 +575,14 @@ public enum FloorPlan {
 
     /// A line at an angle: its direction (x ≥ 0, turned so), its offset across (along the normal
     /// (−u.y, u.x)) and its extent along, m.
-    package struct Slant {
-        package var direction: SIMD2<Double>
-        package var offset: Double
-        package var from: Double
-        package var to: Double
+    struct Slant {
+        var direction: SIMD2<Double>
+        var offset: Double
+        var from: Double
+        var to: Double
         package var normal: SIMD2<Double> { SIMD2(-direction.y, direction.x) }
-        package var a: SIMD2<Double> { direction * from + normal * offset }
-        package var b: SIMD2<Double> { direction * to + normal * offset }
+        var a: SIMD2<Double> { direction * from + normal * offset }
+        var b: SIMD2<Double> { direction * to + normal * offset }
 
         init(_ a: SIMD2<Double>, _ b: SIMD2<Double>) {
             var u = simd_normalize(b - a)
@@ -595,7 +595,7 @@ public enum FloorPlan {
             to = max(s.0, s.1)
         }
 
-        package func parallel(to other: Slant, within degrees: Double = 0.5) -> Bool {
+        func parallel(to other: Slant, within degrees: Double = 0.5) -> Bool {
             abs(simd_dot(direction, other.normal)) < sin(degrees * .pi / 180)
         }
     }
@@ -782,7 +782,7 @@ public enum FloorPlan {
     }
 
     /// Collinear lines that overlap or touch, joined.
-    package static func merged(_ lines: [Line], tolerance: Double = 0.001) -> [Line] {
+    static func merged(_ lines: [Line], tolerance: Double = 0.001) -> [Line] {
         var result: [Line] = []
         for axis in 0...1 {
             let sorted = lines.filter { $0.axis == axis }.sorted {
@@ -804,12 +804,12 @@ public enum FloorPlan {
     }
 
     /// A wall drawn by both faces, found as solid: axis, midline, extent along and thickness (m).
-    package struct SolidPiece: Hashable {
-        package var axis: Int
-        package var offset: Double
-        package var from: Double
-        package var to: Double
-        package var thickness: Double
+    struct SolidPiece: Hashable {
+        var axis: Int
+        var offset: Double
+        var from: Double
+        var to: Double
+        var thickness: Double
     }
 
     /// Walls drawn by their outlines, read as the regions the lines enclose: the plan cut into
@@ -1200,7 +1200,7 @@ public enum FloorPlan {
     /// kind and layer); one in a wall drawn by its centreline is cut into it, its extent along the
     /// wall, unless an opening on the same storey is there already. A layer given a storey in
     /// `storeys` puts its openings on that storey only.
-    package static func place(
+    static func place(
         _ drawn: [(box: (min: SIMD2<Double>, max: SIMD2<Double>), kind: OpeningKind, layer: String)],
         walls: [Wall], storeys: [String: Int], openings: inout [Opening], notes: inout [String],
         angled: [AngledWall] = [], angledOpenings: inout [AngledOpening]
@@ -1625,7 +1625,7 @@ public enum FloorPlan {
     }
 
     /// An outline's rectangles less the walls' footprints; slivers under 5 cm dropped.
-    package static func inset(
+    static func inset(
         _ outline: [(min: SIMD2<Double>, max: SIMD2<Double>)],
         by walls: [(min: SIMD2<Double>, max: SIMD2<Double>)]
     ) -> [(min: SIMD2<Double>, max: SIMD2<Double>)] {
@@ -1682,7 +1682,7 @@ public enum FloorPlan {
         return try ImportedMesh(data: Data(text.utf8), fileExtension: "obj")
     }
 
-    package static func mesh(_ boxes: [Box]) throws -> ImportedMesh {
+    static func mesh(_ boxes: [Box]) throws -> ImportedMesh {
         var text = ""
         var base = 0
         for box in boxes {

@@ -84,7 +84,7 @@ public enum ExperimentalTranslatingBoxGeometryStudy {
             self.minimumPredictedVolume = minimumPredictedVolume
         }
     }
-    package enum Failure: Error { case invalidConfiguration }
+    enum Failure: Error { case invalidConfiguration }
 
     public static func run(
         cellSizes: [Double] = [0.2, 0.1], rotations: [Double] = [0, 0.23],

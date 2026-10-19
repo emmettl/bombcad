@@ -3,10 +3,10 @@ import simd
 /// Galilean translation and x reflection of the independent stationary shock solution.
 /// The right piston is at L+v*t; unshocked gas moves at v. This avoids an initial piston wave.
 /// The fixed left wall must remain on the separating-gas branch for the inherited cutoff.
-package struct MovingShockReflection {
-    package enum Failure: Error { case invalidInput }
+struct MovingShockReflection {
+    enum Failure: Error { case invalidInput }
     let stationary: NormalShockReflection
-    package let velocity: Double
+    let velocity: Double
 
     init(mach: Double, velocity: Double) throws {
         let reference = try NormalShockReflection(mach: mach)
@@ -24,7 +24,7 @@ package struct MovingShockReflection {
         try velocity * wallImpulse(time: time, area: area)
     }
     /// Exact conservative cell average, restricted to the unaffected part of the channel.
-    package func cell(lower: Double, upper: Double, time: Double, area: Double) throws
+    func cell(lower: Double, upper: Double, time: Double, area: Double) throws
         -> FractionalGasTransport.Cell
     {
         let wall = stationary.length + velocity * time

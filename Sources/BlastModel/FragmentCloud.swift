@@ -298,7 +298,7 @@ public struct FragmentCloud: Sendable {
     /// Hazardous fragments crossing spheres round `centre` near the horizontal, as they fly.
     public private(set) var crossings = FragmentCrossings()
     /// Where the spheres are centred: the charge.
-    package let centre: SIMD3<Float>
+    let centre: SIMD3<Float>
     /// Each particle's next sphere to cross, by index in `crossings.radii`.
     private var nextSphere: [Int] = []
     public private(set) var time: Double = 0
@@ -307,13 +307,13 @@ public struct FragmentCloud: Sendable {
     /// Particles whose flight became non-finite, taken out of it.
     public private(set) var lost = 0
     public let launchSpeed: Float
-    package let blocks: [Box]
-    package let structure: [Box]
+    let blocks: [Box]
+    let structure: [Box]
     let structureOwners: [UUID]?
     let blockTargets: [FragmentTarget?]
     let structureTargets: [FragmentTarget?]
-    package let terrain: Terrain?
-    package let gravity = SIMD3<Float>(0, 0, -9.81)
+    let terrain: Terrain?
+    let gravity = SIMD3<Float>(0, 0, -9.81)
 
     public var fragmentCount: Int { particles.lazy.filter { $0.mass > 0 }.count }
     public var airborne: Int { particles.lazy.filter { !$0.landed }.count }
@@ -679,7 +679,7 @@ public struct FragmentCloud: Sendable {
     }
 
     /// The fraction of the way from `start` to `end` where the segment enters `box`, if it does.
-    package static func entry(_ start: SIMD3<Float>, _ end: SIMD3<Float>, _ box: Box) -> Float? {
+    static func entry(_ start: SIMD3<Float>, _ end: SIMD3<Float>, _ box: Box) -> Float? {
         let direction = end - start
         // A stationary particle inside closed bounds is already touching the outline.
         // A zero direction does not define a ray in the shared geometry contract.
@@ -693,12 +693,12 @@ public struct FragmentCloud: Sendable {
 }
 
 /// A small, fast, reproducible random generator (SplitMix64).
-package struct SplitMix {
-    package var state: UInt64
+struct SplitMix {
+    var state: UInt64
 
     init(seed: UInt64) { state = seed }
 
-    package mutating func next() -> UInt64 {
+    mutating func next() -> UInt64 {
         state &+= 0x9E37_79B9_7F4A_7C15
         var z = state
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
@@ -707,5 +707,5 @@ package struct SplitMix {
     }
 
     /// Uniform in (0, 1].
-    package mutating func unit() -> Float { Float((next() >> 40) + 1) / Float(1 << 24) }
+    mutating func unit() -> Float { Float((next() >> 40) + 1) / Float(1 << 24) }
 }

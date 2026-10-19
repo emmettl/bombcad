@@ -2,13 +2,13 @@ import simd
 
 /// Endpoint volume moments and positive control nodes for an experimental grouped fit.
 /// Old and final shapes are distinct; neither substitutes interval-mean volume moments.
-package struct ConservedGroupedGasGeometry {
-    package let centres: [SIMD3<Double>]
+struct ConservedGroupedGasGeometry {
+    let centres: [SIMD3<Double>]
     let covariance: [simd_double3x3]
     let volumePoints: [[SIMD3<Double>]]
-    package let scale: Double
+    let scale: Double
 
-    package static func build(
+    static func build(
         plan: MovingConnectedGasGroups.Plan, shape: FractionalBoxGeometry, cellSize h: Double,
         final: Bool
     ) throws -> Self {

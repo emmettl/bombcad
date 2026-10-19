@@ -89,10 +89,10 @@ public enum ExperimentalMovingPressureStudy {
             self.computeSeconds = computeSeconds
         }
     }
-    package enum Failure: Error { case invalidConfiguration }
-    package static let duration = 0.0008
-    package static let velocity = SIMD3<Double>(300, 100, -40)
-    package static let size = SIMD3<Double>(0.8, 0.6, 0.4)
+    enum Failure: Error { case invalidConfiguration }
+    static let duration = 0.0008
+    static let velocity = SIMD3<Double>(300, 100, -40)
+    static let size = SIMD3<Double>(0.8, 0.6, 0.4)
     static let geometricCentre = SIMD3<Double>(1.013, 1.027, 1.041)
     static let pressureCoefficients = SIMD3<Double>(101325, 15000, 10000)
     static let gradients = [
@@ -101,14 +101,14 @@ public enum ExperimentalMovingPressureStudy {
         SIMD3<Double>(13000, -9000, 17000),
     ]
 
-    package static func body(angle: Double) throws -> RigidBoxBody {
+    static func body(angle: Double) throws -> RigidBoxBody {
         let orientation = simd_quatd(angle: angle, axis: simd_normalize(SIMD3(1, 2, 3)))
         let offset = SIMD3<Double>(0.08, -0.06, 0.04)
         return try .init(
             mass: 2, size: size, position: geometricCentre + orientation.act(offset),
             orientation: orientation, centreOfMass: offset, inertia: SIMD3(0.1, 0.15, 0.2))
     }
-    package static func pressure(point: SIMD3<Double>, time: Double) -> Double {
+    static func pressure(point: SIMD3<Double>, time: Double) -> Double {
         let s = time / duration
         let gradient = gradients[0] + s * gradients[1] + s * s * gradients[2]
         return pressureCoefficients.x + s * pressureCoefficients.y + s * s * pressureCoefficients.z

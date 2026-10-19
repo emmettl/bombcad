@@ -134,13 +134,13 @@ public enum ExperimentalInitialWallTraceStudy {
             self.halfDurationVolumeFits = halfDurationVolumeFits
         }
     }
-    package enum Failure: Error { case invalidConfiguration, invalidReference }
+    enum Failure: Error { case invalidConfiguration, invalidReference }
     private struct Probe {
         let supplied: Loads
-        package let constant: Loads
+        let constant: Loads
         let limited: Loads
-        package let samples: Int
-        package let groups: Int
+        let samples: Int
+        let groups: Int
         let maximumMembers: Int
         var decomposition: ReconstructionDiagnostics? = nil
         var volumeFits: VolumeFitDiagnostics? = nil

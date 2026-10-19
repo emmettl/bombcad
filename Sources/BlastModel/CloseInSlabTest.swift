@@ -77,7 +77,7 @@ public enum CloseInSlabTest {
     public static var centre: SIMD3<Float> {
         SIMD3((slab.min.x + slab.max.x) / 2, (slab.min.y + slab.max.y) / 2, slab.max.z)
     }
-    package static let domainSize = SIMD3<Float>(6.8, 6.45, 3.0)
+    static let domainSize = SIMD3<Float>(6.8, 6.45, 3.0)
 
     /// C25/30 at the 25 MPa the papers give, 2,300 kg/m³ and 20 mm aggregate, strengthening with
     /// strain rate; B500 bars, 500 MPa at yield and 575 at ultimate.

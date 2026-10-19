@@ -34,7 +34,7 @@ public struct SoilMaterial: Sendable, Hashable, Codable {
         return 2 * shearWaveSpeed
     }
 
-    package func validate() throws {
+    func validate() throws {
         guard shearModulus.isFinite, shearModulus > 0, density.isFinite, density > 0,
             poissonRatio.isFinite, poissonRatio >= 0, poissonRatio < 0.5
         else {
@@ -92,7 +92,7 @@ public struct Soil: Sendable, Hashable, Codable {
         return (top - bottom) / (top + bottom)
     }
 
-    package func validate() throws {
+    func validate() throws {
         try material.validate()
         try beneath?.validate()
         try cyclic?.validate()
@@ -140,7 +140,7 @@ public struct CyclicSand: Sendable, Hashable, Codable {
         self.heave = heave
     }
 
-    package func validate() throws {
+    func validate() throws {
         guard elasticShare.isFinite, elasticShare > 0, elasticShare <= 1, (0...1).contains(memory),
             (0...1).contains(heave)
         else {
@@ -181,7 +181,7 @@ public struct Footing: Sendable, Hashable, Codable {
         self.soil = soil
     }
 
-    package func validate() throws {
+    func validate() throws {
         try soil.validate()
         try embedment?.validate()
         guard overhang.x.isFinite, overhang.y.isFinite, overhang.x >= 0, overhang.y >= 0,
@@ -226,7 +226,7 @@ public struct Embedment: Sendable, Hashable, Codable {
         self.sideFriction = sideFriction
     }
 
-    package func validate() throws {
+    func validate() throws {
         guard depth.isFinite, depth > 0, frictionAngle.isFinite, frictionAngle > 0, frictionAngle < .pi / 2,
             (sideFriction ?? 0).isFinite, (sideFriction ?? 0) >= 0
         else {

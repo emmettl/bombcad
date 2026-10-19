@@ -4,14 +4,14 @@ import simd
 /// Continuity reduces to scalar advection; momentum and energy follow because u/p are
 /// constant and kinetic energy is linear in rho. A box translating at u has no normal
 /// relative flow, so its exact wall pressure is p despite the density variation.
-package struct AdvectedQuadraticGas {
-    package enum Failure: Error { case invalidDefinition, invalidGeometry }
-    package let density = 1.225
-    package let pressure = 101325.0
-    package let centre = 1.0
+struct AdvectedQuadraticGas {
+    enum Failure: Error { case invalidDefinition, invalidGeometry }
+    let density = 1.225
+    let pressure = 101325.0
+    let centre = 1.0
     package let length = 1.0
-    package let amplitude: Double
-    package let velocity: SIMD3<Double>
+    let amplitude: Double
+    let velocity: SIMD3<Double>
 
     init(velocity: SIMD3<Double>, amplitude: Double = 0.2) throws {
         guard amplitude.isFinite, amplitude > 0, amplitude <= 0.5,
@@ -20,14 +20,14 @@ package struct AdvectedQuadraticGas {
         self.velocity = velocity
         self.amplitude = amplitude
     }
-    package func density(at point: SIMD3<Double>, time: Double) -> Double {
+    func density(at point: SIMD3<Double>, time: Double) -> Double {
         let coordinate = (point.x - velocity.x * time - centre) / length
         return density * (1 + amplitude * coordinate * coordinate)
     }
     /// Positive degree-two quadrature integrates the exact quadratic density average.
     /// Normalize weights to the authoritative geometry volume, correcting only clipping
     /// roundoff between independent volume formulas, not any physical gas inventory.
-    package func cell(
+    func cell(
         geometry: FractionalBoxGeometry, lower: SIMD3<Double>, cellSize h: Double,
         time: Double, volume: Double
     ) throws -> FractionalGasTransport.Cell {

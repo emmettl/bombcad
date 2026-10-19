@@ -2,7 +2,7 @@ import simd
 
 /// Read-only connected-stencil comparisons. Only the error audit receives the known field;
 /// the fits use actual group averages and geometric moments without analytic gradients.
-package enum ExperimentalVolumePressureFitStudy {
+enum ExperimentalVolumePressureFitStudy {
     /// Connected graph distance, with deterministic ordering and no repeated/self samples.
     static func stencil(group: Int, adjacency: [Set<Int>], rings: Int) -> [Int] {
         precondition((1...3).contains(rings))
@@ -19,7 +19,7 @@ package enum ExperimentalVolumePressureFitStudy {
         return visited.sorted()
     }
 
-    package static func evaluate(
+    static func evaluate(
         plan: MovingConnectedGasGroups.Plan, body: RigidBoxBody, h: Double,
         traces: [MovingGroupedGasFlux.InitialWallTrace], reference: BoxSurfacePressureReference.Load,
         pressure: (SIMD3<Double>) -> Double, stencilRings: Int = 2

@@ -2,9 +2,9 @@ import simd
 
 /// Minmod primitive reconstruction on ordered nonuniform tube cells with SSP two-stage time stepping.
 /// Boundary cells retain zero slopes; this is an opt-in reference, not the app solver.
-package enum LimitedTubeFlux {
-    package enum Failure: Error { case stageLimit(Double) }
-    package static func faces(_ cells: [FractionalGasTransport.Cell], area: Double) -> [FractionalEulerFlux
+enum LimitedTubeFlux {
+    enum Failure: Error { case stageLimit(Double) }
+    static func faces(_ cells: [FractionalGasTransport.Cell], area: Double) -> [FractionalEulerFlux
         .Face]
     {
         let lengths = cells.map { $0.volume / area }
@@ -40,7 +40,7 @@ package enum LimitedTubeFlux {
         }
     }
 
-    package static func advance(
+    static func advance(
         _ old: [FractionalGasTransport.Cell], area: Double,
         walls: [FractionalEulerFlux.Wall], duration: Double, cfl: Double
     ) throws -> FractionalEulerFlux.Result {

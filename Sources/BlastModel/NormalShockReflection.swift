@@ -4,10 +4,10 @@ import simd
 /// Calorically perfect gas, gamma=1.4, initially resting left of a leftward normal shock.
 /// Independent jump relations: https://www.grc.nasa.gov/WWW/k-12/airplane/normal.html
 /// Reflection leaves gas at rest at x=0. No numerical wall-Riemann solver is called here.
-package struct NormalShockReflection {
-    package enum Failure: Error { case invalidInput, boundaryInteraction }
-    package let density: Double
-    package let pressure: Double
+struct NormalShockReflection {
+    enum Failure: Error { case invalidInput, boundaryInteraction }
+    let density: Double
+    let pressure: Double
     let shockPosition: Double
     package let length: Double
     let mach: Double
@@ -15,7 +15,7 @@ package struct NormalShockReflection {
     let incidentPressure: Double
     let incidentVelocity: Double
     let reflectedDensity: Double
-    package let reflectedPressure: Double
+    let reflectedPressure: Double
     let incidentSpeed: Double
     let reflectedSpeed: Double
     let arrivalTime: Double
@@ -86,7 +86,7 @@ package struct NormalShockReflection {
         return area * (pressure * time + (reflectedPressure - pressure) * max(0, time - arrivalTime))
     }
     /// Conservative cell average in the region unaffected by the opposite wall.
-    package func cell(lower: Double, upper: Double, time: Double, area: Double) throws
+    func cell(lower: Double, upper: Double, time: Double, area: Double) throws
         -> FractionalGasTransport.Cell
     {
         try check(time)

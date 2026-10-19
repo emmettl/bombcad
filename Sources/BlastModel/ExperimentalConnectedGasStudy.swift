@@ -52,7 +52,7 @@ public enum ExperimentalConnectedGasStudy {
             self.momentumChange = momentumChange
         }
     }
-    package enum Failure: Error { case inconsistentFace }
+    enum Failure: Error { case inconsistentFace }
     public static func run(progress: (Result) throws -> Void = { _ in }) throws -> [Result] {
         var results: [Result] = []
         for h in [0.2, 0.1] {
@@ -102,15 +102,15 @@ public enum ExperimentalConnectedGasStudy {
         }
         return results
     }
-    package struct Domain {
-        package let geometry: FractionalBoxGeometry
-        package let cells: [FractionalGasTransport.Cell]
-        package let centres: [SIMD3<Double>]
-        package let faces: [ConnectedGasGroups.Face]
+    struct Domain {
+        let geometry: FractionalBoxGeometry
+        let cells: [FractionalGasTransport.Cell]
+        let centres: [SIMD3<Double>]
+        let faces: [ConnectedGasGroups.Face]
         let boundaries: [ConnectedGasGroups.Boundary]
         let bodyCentre: SIMD3<Double>
     }
-    package static func domain(
+    static func domain(
         cellSize h: Double, rotation angle: Double,
         pressureAt: (SIMD3<Double>) -> Double = { _ in 101325 },
         surfaceQuadrature: Bool = false

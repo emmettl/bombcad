@@ -28,5 +28,5 @@ package func concurrently(iterations: Int, _ body: (Int) -> Void) {
 
 /// A value handed to `concurrently(iterations:_:)`'s workers, safe by the rule it states.
 private struct UncheckedSendable<Value>: @unchecked Sendable {
-    package let value: Value
+    let value: Value
 }

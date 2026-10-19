@@ -67,19 +67,19 @@ public struct AxisymmetricElasticGrid: Sendable {
     public let dominantFrequency: Double
 
     // Per integer depth row (normal stresses, v_r) and per half row (v_z, σ_rz).
-    package let density: [Double]
+    let density: [Double]
     let halfDensity: [Double]
-    package let lambda: [Double]
-    package let mu: [Double]
+    let lambda: [Double]
+    let mu: [Double]
     let halfMu: [Double]
     // Yielding, per integer row: whether it yields, its Lamé λ unloading (λ + ρ(c_u² − c_P²)) and
     // the share of a compacting strain that stays (1 − c_P²/c_u²), its cone (α, k) and its
     // resting compressive stresses, Pa, vertical and horizontal.
-    package let plastic: [Bool]
+    let plastic: [Bool]
     let unloadingLambda: [Double]
-    package let compaction: [Double]
-    package let alpha: [Double]
-    package let strength: [Double]
+    let compaction: [Double]
+    let alpha: [Double]
+    let strength: [Double]
     let restingVertical: [Double]
     let restingHorizontal: [Double]
     // The surface's soil, if it yields in shear: Rankine's active and passive ratios and the
@@ -92,10 +92,10 @@ public struct AxisymmetricElasticGrid: Sendable {
     let radialPML: (whole: PML, half: PML)
     let depthPML: (whole: PML, half: PML)
 
-    package struct PML: Sendable {
-        package var b: [Double]
-        package var a: [Double]
-        package var active: [Bool]
+    struct PML: Sendable {
+        var b: [Double]
+        var a: [Double]
+        var active: [Bool]
     }
 
     public enum GridError: Error, Equatable {

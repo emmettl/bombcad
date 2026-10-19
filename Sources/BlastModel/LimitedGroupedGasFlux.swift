@@ -6,27 +6,27 @@ import simd
 /// Weighted least squares reconstructs primitive
 /// variables; one-ring extrema limit every supplied face and wall trace. Rank-deficient
 /// stencils retain constant states. This does not claim angular-momentum conservation.
-package enum LimitedGroupedGasFlux {
-    package enum Failure: Error {
+enum LimitedGroupedGasFlux {
+    enum Failure: Error {
         case invalidGeometry
         case stageLimit(Double)
     }
-    package struct PressureReconstruction {
-        package let value: Double
-        package let gradient: SIMD3<Double>  // Unbounded least-squares fit; diagnostic only.
-        package let factor: Double
-        package let lower: Double
-        package let upper: Double
+    struct PressureReconstruction {
+        let value: Double
+        let gradient: SIMD3<Double>  // Unbounded least-squares fit; diagnostic only.
+        let factor: Double
+        let lower: Double
+        let upper: Double
         let rankDeficient: Bool
     }
-    package struct Traces {
-        package let faces: [FractionalEulerFlux.Face]
-        package let walls: [FractionalEulerFlux.Wall]
+    struct Traces {
+        let faces: [FractionalEulerFlux.Face]
+        let walls: [FractionalEulerFlux.Wall]
         var pressureDiagnostics: [PressureReconstruction]? = nil
     }
-    package struct Geometry {
-        package let centres: [SIMD3<Double>]
-        package let faces: [ConnectedGasGroups.Face]
+    struct Geometry {
+        let centres: [SIMD3<Double>]
+        let faces: [ConnectedGasGroups.Face]
         let boundaries: [ConnectedGasGroups.Boundary]
         private let neighbours: [[(Int, Double)]]
         private let offsets: [[SIMD3<Double>]]
@@ -158,7 +158,7 @@ package enum LimitedGroupedGasFlux {
 
         /// SSPRK2 averages extensive gas updates and the matching wall impulse/work.
         /// The caller must retry a shorter step if the second stage's CFL shrinks.
-        package func advance(
+        func advance(
             _ old: [FractionalGasTransport.Cell], traces firstTraces: Traces,
             duration: Double, cfl: Double,
             reconstruct: (([FractionalGasTransport.Cell]) throws -> Traces)? = nil

@@ -3,13 +3,13 @@ import simd
 
 /// Whole uncut rectangular faces, independent of grid clipping, gas averaging, grouping
 /// and numerical traces. Positive tensor Gauss rules integrate a supplied pressure field.
-package enum BoxSurfacePressureReference {
-    package enum Failure: Error { case invalidOrder, invalidPressure, nonconverged }
-    package struct Load {
-        package let force: SIMD3<Double>
+enum BoxSurfacePressureReference {
+    enum Failure: Error { case invalidOrder, invalidPressure, nonconverged }
+    struct Load {
+        let force: SIMD3<Double>
         let torque: SIMD3<Double>
     }
-    package static func rule(order: Int) throws -> [(point: Double, weight: Double)] {
+    static func rule(order: Int) throws -> [(point: Double, weight: Double)] {
         guard order >= 2 && order <= 64 else { throw Failure.invalidOrder }
         var nodes = [(point: Double, weight: Double)](repeating: (0, 0), count: order)
         func polynomial(_ z: Double) -> (value: Double, derivative: Double) {

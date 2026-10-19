@@ -40,7 +40,7 @@ public struct GlazingMix: Codable, Hashable, Sendable {
         }
 
         /// The panes' strength over annealed glass's.
-        package var strengthFactor: Double { laminate == nil && toughened == true ? 4 : 1 }
+        var strengthFactor: Double { laminate == nil && toughened == true ? 4 : 1 }
 
         /// In a few words.
         public var label: String {
@@ -168,7 +168,7 @@ public struct GlazingMix: Codable, Hashable, Sendable {
     }
 
     /// The shorter and longer of a pane's sides, m.
-    package static func sides(_ pane: Pane) -> (Double, Double) {
+    static func sides(_ pane: Pane) -> (Double, Double) {
         (Double(min(pane.widthM, pane.heightM)), Double(max(pane.widthM, pane.heightM)))
     }
 

@@ -52,7 +52,7 @@ package struct DeflagrationUniforms {
         Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float,
         Float, Float
     )
-    package static let emptyTable: SpeedTable = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    static let emptyTable: SpeedTable = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     static let speedTableCapacity = 16
 
     /// Puts `points` (equivalence ratio, m/s) in the table.

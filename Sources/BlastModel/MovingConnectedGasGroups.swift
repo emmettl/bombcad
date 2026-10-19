@@ -6,23 +6,23 @@ import simd
 /// The static builder validates mean area/first-moment closure, using disposable unit
 /// states solely to describe geometric support. Actual group inventories come only from
 /// old gas, never from those geometric placeholders or from newly exposed-cell guesses.
-package enum MovingConnectedGasGroups {
-    package enum Failure: Error { case invalidGeometry, unsupportedGroup, invalidState }
-    package struct Boundary {
-        package let geometry: ConnectedGasGroups.Boundary  // Time-averaged area and area-weighted centroid.
+enum MovingConnectedGasGroups {
+    enum Failure: Error { case invalidGeometry, unsupportedGroup, invalidState }
+    struct Boundary {
+        let geometry: ConnectedGasGroups.Boundary  // Time-averaged area and area-weighted centroid.
         let meanTime: Double  // Area-weighted time; used for torque about a translating COM.
-        package var samples: [TranslatingBoxSpaceTimeGeometry.WallSample]? = nil
+        var samples: [TranslatingBoxSpaceTimeGeometry.WallSample]? = nil
     }
-    package struct Plan {
-        package let members: [[Int]]
+    struct Plan {
+        let members: [[Int]]
         let cellToGroup: [Int]
-        package let cells: [FractionalGasTransport.Cell]  // Extensive OLD inventories.
+        let cells: [FractionalGasTransport.Cell]  // Extensive OLD inventories.
         let finalVolumes: [Double]
         let memberFinalVolumes: [Double]
-        package let faces: [ConnectedGasGroups.Face]
+        let faces: [ConnectedGasGroups.Face]
         let boundaries: [Boundary]
-        package let duration: Double
-        package let velocity: SIMD3<Double>
+        let duration: Double
+        let velocity: SIMD3<Double>
         let oldCentres: [SIMD3<Double>]?
         let finalCentres: [SIMD3<Double>]?
         let memberFinalCentres: [SIMD3<Double>]?
@@ -35,8 +35,7 @@ package enum MovingConnectedGasGroups {
 
         /// Split only the accepted group inventory, in proportion to FINAL gas volume.
         /// Dry members receive zero; a largest member takes the floating-point remainder.
-        package func scatter(_ updated: [FractionalGasTransport.Cell]) throws -> [FractionalGasTransport.Cell]
-        {
+        func scatter(_ updated: [FractionalGasTransport.Cell]) throws -> [FractionalGasTransport.Cell] {
             guard updated.count == cells.count else { throw Failure.invalidState }
             _ = try FractionalGasTransport.advance(updated, newVolumes: updated.map(\.volume), transfers: [])
             var amounts = [SIMD8<Double>](repeating: .zero, count: memberFinalVolumes.count)
@@ -65,7 +64,7 @@ package enum MovingConnectedGasGroups {
         }
     }
 
-    package static func build(
+    static func build(
         old: [FractionalGasTransport.Cell], finalVolumes: [Double], meanVolumes: [Double],
         centres: [SIMD3<Double>], nominalVolume: Double, faces: [ConnectedGasGroups.Face],
         boundaries: [Boundary], duration: Double, velocity: SIMD3<Double>,
@@ -239,10 +238,10 @@ package enum MovingConnectedGasGroups {
 /// acoustic/contraction CFL are checked by the existing Euler reference, then final member
 /// volumes receive conservative group packets. Sampled Heun walls interpolate endpoint
 /// pressure packets at their actual times; gas and body receive the same corrected loads.
-package enum MovingGroupedGasFlux {
-    package enum TimeIntegration: String { case euler, heun }
-    package struct Result {
-        package let cells: [FractionalGasTransport.Cell]
+enum MovingGroupedGasFlux {
+    enum TimeIntegration: String { case euler, heun }
+    struct Result {
+        let cells: [FractionalGasTransport.Cell]
         let wallImpulses: [SIMD3<Double>]
         let wallWork: [Double]
         /// Moments about an origin translating at plan.velocity. Subtract COM0 × impulse
@@ -281,7 +280,7 @@ package enum MovingGroupedGasFlux {
             self.scatterRankDeficientGroups = scatterRankDeficientGroups
         }
     }
-    package static func advance(
+    static func advance(
         _ plan: MovingConnectedGasGroups.Plan, exterior: FractionalGasTransport.Cell,
         cfl: Double = 0.2, limited: Bool = false, timeIntegration: TimeIntegration = .euler,
         conservedQuadratic: Bool = false
@@ -296,7 +295,7 @@ package enum MovingGroupedGasFlux {
     }
     /// Boundary-specific supplied states permit spatial/time-dependent reservoirs. The
     /// caller owns trace quadrature; numerical transfers remain paired and audited.
-    package static func advance(
+    static func advance(
         _ plan: MovingConnectedGasGroups.Plan,
         exteriorAt: (MovingConnectedGasGroups.Boundary) throws -> FractionalGasTransport.Cell,
         cfl: Double = 0.2, limited: Bool = false,
@@ -393,8 +392,8 @@ package enum MovingGroupedGasFlux {
             scatterRankDeficientGroups: scattered?.rankDeficientGroups ?? 0)
     }
     private struct WallLocation {
-        package let patch: Int
-        package let boundary: MovingConnectedGasGroups.Boundary
+        let patch: Int
+        let boundary: MovingConnectedGasGroups.Boundary
         let sampled: Bool
     }
     private static func wallLocations(_ plan: MovingConnectedGasGroups.Plan) -> [WallLocation] {
@@ -415,20 +414,20 @@ package enum MovingGroupedGasFlux {
         }
     }
     private struct Stage {
-        package let cells: [FractionalGasTransport.Cell]
+        let cells: [FractionalGasTransport.Cell]
         let wallImpulses: [SIMD3<Double>]
         let wallWork: [Double]
         let reservoirExchange: SIMD8<Double>
         let maximumStep: Double
     }
-    package struct InitialWallTrace {
-        package let cell: Int
-        package let point: SIMD3<Double>
-        package let time: Double
+    struct InitialWallTrace {
+        let cell: Int
+        let point: SIMD3<Double>
+        let time: Double
         package let normal: SIMD3<Double>
         package let area: Double
-        package let velocity: SIMD3<Double>
-        package let state: FractionalGasTransport.Cell
+        let velocity: SIMD3<Double>
+        let state: FractionalGasTransport.Cell
         var pressureReconstruction: LimitedGroupedGasFlux.PressureReconstruction? = nil
     }
     /// Diagnostic access to the exact initial reconstruction used by the numerical
@@ -474,9 +473,9 @@ package enum MovingGroupedGasFlux {
         }
     }
     private struct Prepared {
-        package let cells: [FractionalGasTransport.Cell]
-        package let faces: [FractionalEulerFlux.Face]
-        package let walls: [FractionalEulerFlux.Wall]
+        let cells: [FractionalGasTransport.Cell]
+        let faces: [FractionalEulerFlux.Face]
+        let walls: [FractionalEulerFlux.Wall]
         let pressureDiagnostics: [LimitedGroupedGasFlux.PressureReconstruction]?
     }
     private static func prepare(

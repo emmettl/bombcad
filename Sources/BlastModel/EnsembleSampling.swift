@@ -96,12 +96,12 @@ public func latinHypercube(count: Int, dimensions: Int, seed: UInt64) -> [[Doubl
 }
 
 /// A small, fast generator whose sequence is fixed by its seed (Steele, Lea and Flood's SplitMix64).
-package struct SplitMix64 {
+struct SplitMix64 {
     private var state: UInt64
 
     init(seed: UInt64) { state = seed }
 
-    package mutating func next() -> UInt64 {
+    mutating func next() -> UInt64 {
         state &+= 0x9E37_79B9_7F4A_7C15
         var z = state
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
@@ -110,7 +110,7 @@ package struct SplitMix64 {
     }
 
     /// Uniform in [0, 1).
-    package mutating func unit() -> Double { Double(next() >> 11) / Double(1 << 53) }
+    mutating func unit() -> Double { Double(next() >> 11) / Double(1 << 53) }
 }
 
 /// What an ensemble's samples of one output came to.

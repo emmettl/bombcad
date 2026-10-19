@@ -161,23 +161,23 @@ public enum ExperimentalMovingLoadStudy {
             self.frames = frames
         }
     }
-    package enum Failure: Error { case invalidConfiguration, invalidQuadrature }
+    enum Failure: Error { case invalidConfiguration, invalidQuadrature }
     static let pulseCentre = SIMD3<Double>(0.45, 1.18, 1.10)
     static let pulseWidth = SIMD3<Double>(0.14, 0.18, 0.18)
-    package struct InitialState {
-        package let cells: [FractionalGasTransport.Cell]
-        package let amplitude: Double
+    struct InitialState {
+        let cells: [FractionalGasTransport.Cell]
+        let amplitude: Double
         let pulseEnergy: Double
-        package let mass: Double
-        package let energy: Double
-        package let maximumPressure: Double
+        let mass: Double
+        let energy: Double
+        let maximumPressure: Double
         let quadratureResidual: Double
     }
     /// Compensated reductions separate state/geometry errors from long inventory sums.
     private struct Sum {
-        package var value = 0.0
+        var value = 0.0
         private var correction = 0.0
-        package mutating func add(_ term: Double) {
+        mutating func add(_ term: Double) {
             let increment = term - correction
             let next = value + increment
             correction = (next - value) - increment

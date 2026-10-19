@@ -29,7 +29,7 @@ public struct FootingBed: Sendable {
 
     public static let pointsAcross = 17
     /// The greatest exponent of the bed's weighting towards the edges.
-    package static let steepest = 0.95
+    static let steepest = 0.95
 
     public var points: [Point]
     /// What the bed gives, by `FootingImpedance.Mode`.

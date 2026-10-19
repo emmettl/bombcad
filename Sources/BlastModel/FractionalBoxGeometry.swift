@@ -2,26 +2,26 @@ import simd
 
 /// Double-precision convex clipping reference. This does not change air masks or fluxes.
 /// Cell volumes and face areas are geometric measures, not yet a cut-cell solver.
-package struct FractionalBoxGeometry {
+struct FractionalBoxGeometry {
     private struct Plane {
         package let normal: SIMD3<Double>
-        package let offset: Double
-        package func distance(_ point: SIMD3<Double>) -> Double { simd_dot(normal, point) - offset }
+        let offset: Double
+        func distance(_ point: SIMD3<Double>) -> Double { simd_dot(normal, point) - offset }
     }
     private let planes: [Plane]
     private let centre: SIMD3<Double>
     private let wallPolygons: [[SIMD3<Double>]]
 
-    package struct SurfacePatch {
+    struct SurfacePatch {
         package let area: Double
         let centroid: SIMD3<Double>
         package let normal: SIMD3<Double>
     }
-    package struct SurfaceNode {
-        package let point: SIMD3<Double>
-        package let weight: Double  // Area in square metres.
+    struct SurfaceNode {
+        let point: SIMD3<Double>
+        let weight: Double  // Area in square metres.
     }
-    package struct WallPatch {
+    struct WallPatch {
         package let area: Double
         let centroid: SIMD3<Double>
         package let normal: SIMD3<Double>
@@ -101,7 +101,7 @@ package struct FractionalBoxGeometry {
         self.wallPolygons = polygons
     }
 
-    package func contains(_ point: SIMD3<Double>) -> Bool {
+    func contains(_ point: SIMD3<Double>) -> Bool {
         planes.allSatisfy { $0.distance(point - centre) <= 0 }
     }
 
@@ -166,9 +166,9 @@ package struct FractionalBoxGeometry {
         return faces
     }
 
-    package struct VolumeNode {
-        package let point: SIMD3<Double>
-        package let weight: Double
+    struct VolumeNode {
+        let point: SIMD3<Double>
+        let weight: Double
     }
 
     /// Positive degree-two quadrature on disjoint convex gas pieces. This avoids subtracting

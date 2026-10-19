@@ -167,15 +167,15 @@ public enum ProtectionModel {
     }
 
     /// A building side: its owner, its strips and their glazed area.
-    package struct Side {
-        package var object: Int
-        package var name: String
-        package var axis: Int
-        package var outward: Int
+    struct Side {
+        var object: Int
+        var name: String
+        var axis: Int
+        var outward: Int
         var mix: GlazingMix
         var strips: [EnvelopeComponent]
         var glazedM2: Double
-        package var condition: GlazingHazard.Condition
+        var condition: GlazingHazard.Condition
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
         package init(
@@ -289,7 +289,7 @@ public enum ProtectionModel {
         }
     }
 
-    package static func condition(_ text: String) throws -> GlazingHazard.Condition {
+    static func condition(_ text: String) throws -> GlazingHazard.Condition {
         guard let condition = GlazingHazard.Condition(rawValue: text) else {
             throw InputError.condition(text)
         }
@@ -380,16 +380,16 @@ public enum ProtectionModel {
 
     /// The chances behind the problem: the surrogate's loads for each threat place, remembered,
     /// and each side's draws.
-    package final class Evaluator: @unchecked Sendable {
-        package let sides: [Side]
-        package let objects: [SceneObject]
-        package let raster: FacadeLoadSurrogate.Raster
-        package let inputs: Inputs
-        package let cellSize: Float
+    final class Evaluator: @unchecked Sendable {
+        let sides: [Side]
+        let objects: [SceneObject]
+        let raster: FacadeLoadSurrogate.Raster
+        let inputs: Inputs
+        let cellSize: Float
         let coefficients: FacadeLoadSurrogate.Coefficients
         let draws: Int
-        package let seed: UInt64
-        package let table = FacadeLoadSurrogate.GlassTable(binS: 0.7e-3)
+        let seed: UInt64
+        let table = FacadeLoadSurrogate.GlassTable(binS: 0.7e-3)
         /// Each stand-off's moves, and each barrier's wall: the site-wide changes, stand-offs first.
         let moves: [[StandOff.Move]]
         let walls: [Box]

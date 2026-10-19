@@ -46,10 +46,10 @@ public enum FacadeLoadSurrogate {
         public let columns: Int
         public let rows: Int
         /// Each cell's blocks: a range of `entries`, cells x fastest.
-        package let starts: [Int32]
+        let starts: [Int32]
         /// A block over a cell: its bottom and top and its owner (index in the objects).
-        package let entries: [(low: Float, high: Float, owner: Int32)]
-        package let terrain: Terrain?
+        let entries: [(low: Float, high: Float, owner: Int32)]
+        let terrain: Terrain?
 
         /// The blocks of `objects`' envelopes on cells `cell` m across, each over the cells whose
         /// centres it covers, as the air's grid would hold it; and the scene's fixed `blocks`
@@ -432,7 +432,7 @@ public enum FacadeLoadSurrogate {
 
     /// A triangular pulse's bins' mean pressures, Pa: `peak` Pa reached over `riseShare` of its
     /// length, then falling straight to nothing, carrying `impulse` Pa s.
-    package static func pulse(peak: Double, impulse: Double, riseShare: Double, binS: Double) -> [Double] {
+    static func pulse(peak: Double, impulse: Double, riseShare: Double, binS: Double) -> [Double] {
         let duration = peak > 0 ? 2 * impulse / peak : 0
         let rise = riseShare * duration
         let count = max(1, Int((duration / binS).rounded(.up)))

@@ -541,15 +541,15 @@ public enum CloudRise {
     /// impulse (its own momentum and its added mass's), horizontal impulse (its own momentum and
     /// its added mass's relative to the wind), frozen moist enthalpy and water, each a kilogram,
     /// and the water fallen out of it, in all and as snow.
-    package struct State {
-        package var height: Double
-        package var position: SIMD2<Double>
-        package var mass: Double
-        package var impulse: Double
+    struct State {
+        var height: Double
+        var position: SIMD2<Double>
+        var mass: Double
+        var impulse: Double
         var drift: SIMD2<Double>
         var enthalpy: Double
         var water: Double
-        package var fallen = 0.0
+        var fallen = 0.0
         var fallenIce = 0.0
 
         static func + (a: State, b: State) -> State {
@@ -664,26 +664,26 @@ public enum CloudRise {
         return (samples, stabilised)
     }
 
-    package struct Model {
-        package let spec: CloudSpec
-        package let atmosphere: (Double) -> (temperature: Double, pressure: Double)
+    struct Model {
+        let spec: CloudSpec
+        let atmosphere: (Double) -> (temperature: Double, pressure: Double)
         let wind: (Double) -> SIMD2<Double>
         let humidity: (Double) -> Double
-        package let turbulence: (Double, Double, Double) -> Double
-        package static let stefanBoltzmann = 5.670_374e-8
+        let turbulence: (Double, Double, Double) -> Double
+        static let stefanBoltzmann = 5.670_374e-8
 
-        package struct Derived {
-            package var temperature: Double
+        struct Derived {
+            var temperature: Double
             var vapour: Double
             var ice: Double
-            package var ambientTemperature: Double
-            package var ambientPressure: Double
-            package var ambientDensity: Double
+            var ambientTemperature: Double
+            var ambientPressure: Double
+            var ambientDensity: Double
             var ambientHumidity: Double
-            package var volume: Double
-            package var radius: Double
-            package var riseSpeed: Double
-            package var velocity: SIMD2<Double>
+            var volume: Double
+            var radius: Double
+            var riseSpeed: Double
+            var velocity: SIMD2<Double>
             var wind: SIMD2<Double>
             /// Through the air around it.
             var relativeSpeed: Double
@@ -724,7 +724,7 @@ public enum CloudRise {
         /// heat between c_p T, L_v q_v and L_f q_i within the enthalpy, so they need no term of
         /// their own. Condensed water beyond the threshold falls out at the rain rate, taking its
         /// mass, its share of the enthalpy and its momentum with it.
-        package func rate(_ state: State, time: Double) -> State {
+        func rate(_ state: State, time: Double) -> State {
             let d = derived(state)
             let area = 4 * Double.pi * d.radius * d.radius
             let entrained = area * d.ambientDensity * entrainmentSpeed(d, height: state.height, time: time)
@@ -759,7 +759,7 @@ public enum CloudRise {
 
         /// A step short against the time the cloud takes to move its own radius through the air,
         /// from rest or at its speed, to draw in its own mass, and to cool by radiation.
-        package func step(_ state: State, time: Double) -> Double {
+        func step(_ state: State, time: Double) -> Double {
             let d = derived(state)
             let inertia = state.mass + spec.addedMass * d.ambientDensity * d.volume
             let acceleration = abs(d.ambientDensity * d.volume - state.mass) * gravity / inertia
@@ -778,7 +778,7 @@ public enum CloudRise {
             return max(step, 1e-7)
         }
 
-        package func sample(_ state: State, time: Double) -> CloudSample {
+        func sample(_ state: State, time: Double) -> CloudSample {
             let d = derived(state)
             return CloudSample(
                 time: time, height: state.height, radius: d.radius, temperature: d.temperature,

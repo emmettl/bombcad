@@ -85,9 +85,9 @@ public enum ContactSlabTest {
     ]
 
     /// Air below the slab (for the debris) and above it (for the charge), and around its edges.
-    package static let below: Float = 0.6
-    package static let above: Float = 0.5
-    package static let margin: Float = 0.2
+    static let below: Float = 0.6
+    static let above: Float = 0.5
+    static let margin: Float = 0.2
     package static let plan: Float = 2.0
     package static let supportStrip: Float = 0.2
 

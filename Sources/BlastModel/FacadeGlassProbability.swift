@@ -102,7 +102,7 @@ extension FacadeLoadSurrogate {
         /// No scatter at all: the first look's own answer, drawn once.
         public static let none = Uncertainty(strengthLogSD: 0, loadScatter: [], samples: 1)
 
-        package func scatter(atZ z: Double) -> LoadScatter? { loadScatter.first { z <= $0.upToZ } }
+        func scatter(atZ z: Double) -> LoadScatter? { loadScatter.first { z <= $0.upToZ } }
     }
 
     /// A side's openings (windows, doors and their frames) nearly all blown out, as GEER's
@@ -394,40 +394,40 @@ extension FacadeLoadSurrogate {
     /// whether it lets go of its frame and the 60 s stress it reaches, so that each draw's
     /// strength gives its chance without integrating it again; and, by the strength it broke at
     /// (in twentieths of e), whether it is thrown worse than condition 3b.
-    package final class GlassTable: @unchecked Sendable {
-        package struct Key: Hashable {
-            package var thickness: Float
-            package var width: Float
-            package var height: Float
-            package var peak: Int32
-            package var impulse: Int32
-            package var rise: Int8
+    final class GlassTable: @unchecked Sendable {
+        struct Key: Hashable {
+            var thickness: Float
+            var width: Float
+            var height: Float
+            var peak: Int32
+            var impulse: Int32
+            var rise: Int8
             /// For a throw: the strength it broke at; 0 for the stress.
-            package var strength: Int16 = 0
-            package var glass: GlazingMix.Glass?
+            var strength: Int16 = 0
+            var glass: GlazingMix.Glass?
         }
         /// One part of the table, by its keys' hash, with its own lock: classes in a `let` array,
         /// so that writing one never touches the array the others are read through (as
         /// `SDOFResponseMemo`'s).
         private final class Shard: @unchecked Sendable {
-            package let lock = NSLock()
+            let lock = NSLock()
             var responses: [Key: (lost: Bool, stress: Double)] = [:]
         }
 
         private static let shardCount = 64
         private let shards = (0..<GlassTable.shardCount).map { _ in Shard() }
-        package let binS: Double
+        let binS: Double
 
         init(binS: Double) { self.binS = binS }
 
-        package static let step = log(1 + FacadeLoadSurrogate.quantum)
+        static let step = log(1 + FacadeLoadSurrogate.quantum)
 
         /// The rounded pulse of `prediction`: its keys' parts and its pressures, made once.
-        package struct Pulse {
-            package var peak: Int32
-            package var impulse: Int32
-            package var rise: Int8
-            package let binS: Double
+        struct Pulse {
+            var peak: Int32
+            var impulse: Int32
+            var rise: Int8
+            let binS: Double
             private var made: [Double]?
 
             init(_ prediction: Prediction, binS: Double) {
@@ -441,7 +441,7 @@ extension FacadeLoadSurrogate {
                 self.binS = binS
             }
 
-            package mutating func pressures() -> [Double] {
+            mutating func pressures() -> [Double] {
                 if let made { return made }
                 let p = peak == .min ? 0 : exp(Double(peak) * GlassTable.step)
                 let i = impulse == .min ? 0 : exp(Double(impulse) * GlassTable.step)
@@ -451,7 +451,7 @@ extension FacadeLoadSurrogate {
                 return load
             }
 
-            package func key(_ pane: GlazingMix.Pane, glass: GlazingMix.Glass?, strength: Int16 = 0) -> Key {
+            func key(_ pane: GlazingMix.Pane, glass: GlazingMix.Glass?, strength: Int16 = 0) -> Key {
                 Key(
                     thickness: pane.thicknessM, width: pane.widthM, height: pane.heightM, peak: peak,
                     impulse: impulse, rise: rise, strength: strength, glass: glass)
@@ -460,7 +460,7 @@ extension FacadeLoadSurrogate {
 
         /// `mix`'s glass over a façade region of `areaM2` under `prediction`'s pulse, its panes'
         /// strength `strength` times their glass's (`GlazingMix.judged`), against `worseThan`.
-        package func outcome(
+        func outcome(
             _ mix: GlazingMix, prediction: Prediction, areaM2: Double, strength: Double,
             worseThan: GlazingHazard.Condition = .threeB
         ) -> GlassOutcome {
@@ -520,8 +520,8 @@ extension FacadeLoadSurrogate {
 
     /// Counter-based random numbers: the same draw for the same (seed, stream, draw, item)
     /// whichever thread asks, so the chances do not depend on how the work is shared.
-    package enum Random {
-        package static func bits(_ seed: UInt64, _ stream: UInt64, _ draw: UInt64, _ item: UInt64) -> UInt64 {
+    enum Random {
+        static func bits(_ seed: UInt64, _ stream: UInt64, _ draw: UInt64, _ item: UInt64) -> UInt64 {
             var x =
                 seed &* 0x9E37_79B9_7F4A_7C15 ^ stream &* 0xBF58_476D_1CE4_E5B9 ^ draw
                 &* 0x94D0_49BB_1331_11EB
@@ -533,7 +533,7 @@ extension FacadeLoadSurrogate {
         }
 
         /// Uniform in [0, 1).
-        package static func uniform(_ seed: UInt64, _ stream: UInt64, _ draw: UInt64, _ item: UInt64)
+        static func uniform(_ seed: UInt64, _ stream: UInt64, _ draw: UInt64, _ item: UInt64)
             -> Double
         {
             Double(bits(seed, stream, draw, item) >> 11) * 0x1p-53

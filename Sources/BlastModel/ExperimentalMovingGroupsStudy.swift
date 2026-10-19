@@ -87,7 +87,7 @@ public enum ExperimentalMovingGroupsStudy {
             self.impulseWorkResidual = impulseWorkResidual
         }
     }
-    package enum Failure: Error {
+    enum Failure: Error {
         case invalidConfiguration, missingTransition, inconsistentFace, inconsistentInventory
     }
     public static func run(
@@ -123,8 +123,8 @@ public enum ExperimentalMovingGroupsStudy {
         }
         return results
     }
-    package static let velocity = SIMD3<Double>(3, 1, -0.4)
-    package static func body(angle: Double, time: Double) throws -> RigidBoxBody {
+    static let velocity = SIMD3<Double>(3, 1, -0.4)
+    static func body(angle: Double, time: Double) throws -> RigidBoxBody {
         try RigidBoxBody(
             mass: 2, size: SIMD3(repeating: 0.8),
             position: SIMD3(1.013, 1.027, 1.041) + time * velocity,
@@ -160,12 +160,12 @@ public enum ExperimentalMovingGroupsStudy {
         }
         throw Failure.missingTransition
     }
-    package struct Domain {
-        package let plan: MovingConnectedGasGroups.Plan
-        package let old: [FractionalGasTransport.Cell]
-        package let body: RigidBoxBody
+    struct Domain {
+        let plan: MovingConnectedGasGroups.Plan
+        let old: [FractionalGasTransport.Cell]
+        let body: RigidBoxBody
     }
-    package static func domain(
+    static func domain(
         h: Double, angle: Double, start: Double, duration: Double,
         previous: [FractionalGasTransport.Cell]? = nil, prescribedBody: RigidBoxBody? = nil,
         prescribedVelocity: SIMD3<Double> = velocity, reconstruct: Bool = false,

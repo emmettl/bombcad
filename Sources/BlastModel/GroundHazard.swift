@@ -230,7 +230,7 @@ public struct GroundHazard: Codable, Sendable, Equatable {
     }
 
     /// Ring edges from the charge: 0, 1 m, then each 10% further than the last, past `furthest`.
-    package static func edges(reaching furthest: Float) -> [Float] {
+    static func edges(reaching furthest: Float) -> [Float] {
         var edges: [Float] = [0, 1]
         while edges.last! <= furthest { edges.append(edges.last! * 1.1) }
         return edges

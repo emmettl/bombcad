@@ -32,7 +32,7 @@ public struct DebrisLaunch: Codable, Sendable, Equatable {
     ///   glass, the pane whole;
     /// - profiled sheeting, the sheet between its rails, a metre wide;
     /// - cross-laminated timber, strips 0.3 m wide over its span.
-    package static func piece(
+    static func piece(
         _ material: EnvelopeComponentDamage.Material, thickness: Double, span: Double, pane: SIMD2<Double>?
     ) -> SIMD3<Float> {
         let t = Float(thickness)

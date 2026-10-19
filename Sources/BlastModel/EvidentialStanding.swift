@@ -1466,16 +1466,16 @@ extension SceneStanding {
 }
 
 /// The scene's numbers the table needs, worked out once.
-package struct StandingScene {
+struct StandingScene {
     /// The Kingery–Bulmash comparison's grids for 100 kg, by name, as the tables' columns.
-    package static let columns = ["0.5": 0, "0.25": 1, "0.125": 2]
+    static let columns = ["0.5": 0, "0.25": 1, "0.125": 2]
     /// The close-in comparison's column for cells of `cells` per kg^(1/3).
     static func closeColumn(_ cells: Float) -> Int? {
         ValidationTables.closeGrids.firstIndex { abs($0 - Double(cells)) < 1e-6 }
     }
-    package let inputs: StandingInputs
-    package let options: [ModelOption]
-    package let structures: [StructureModel]
+    let inputs: StandingInputs
+    let options: [ModelOption]
+    let structures: [StructureModel]
     /// The cube root of the primary charge's TNT mass, which scales distances and cells.
     let cubeRoot: Float
     /// The finest air cell near the shock, in metres.
@@ -1483,7 +1483,7 @@ package struct StandingScene {
     /// `fineCell` scaled by `cubeRoot`, in m/kg^(1/3).
     let scaledCell: Float
     /// Scaled distances of the gauges from the nearest charge, nearest first.
-    package let gaugeDistances: [Float]
+    let gaugeDistances: [Float]
     /// Scaled distance from the nearest charge to the nearest structure, envelope or block face.
     let structureDistance: Float?
 
@@ -1521,7 +1521,7 @@ package struct StandingScene {
     // MARK: Resolution
 
     /// The open-air comparison's grids, 0.5, 0.25 and 0.125 m on 100 kg, scaled.
-    package enum AirGrid: Int {
+    enum AirGrid: Int {
         case fine, medium, coarse, coarser
 
         /// Reached by a scaled cell, with 5% to spare.
@@ -1532,7 +1532,7 @@ package struct StandingScene {
                 ? .fine : s <= 0.25 / cube * 1.05 ? .medium : s <= 0.5 / cube * 1.05 ? .coarse : .coarser
         }
 
-        package var cells: String {
+        var cells: String {
             switch self {
             case .fine: "0.125 m cells"
             case .medium: "0.25 m cells"
@@ -1542,12 +1542,12 @@ package struct StandingScene {
         }
     }
 
-    package var grid: AirGrid { AirGrid(scaledCell: scaledCell) }
+    var grid: AirGrid { AirGrid(scaledCell: scaledCell) }
 
     /// The close-in comparison's cells, on 1 kg: 40, 20, 10 and 5 mm.
     var closeInCells: Float? { ([0.005, 0.01, 0.02, 0.04] as [Float]).first { scaledCell <= $0 * 1.1 } }
 
-    package var closeIn: Bool {
+    var closeIn: Bool {
         (gaugeDistances.first.map { $0 < 0.75 } ?? false) || (structureDistance.map { $0 < 0.75 } ?? false)
     }
 
@@ -1828,7 +1828,7 @@ package struct StandingScene {
             ])
     }
 
-    package func peakOverpressure() -> ResultStanding {
+    func peakOverpressure() -> ResultStanding {
         if has(.deflagration) { return deflagrationResult(.peakOverpressure) }
         // Today's defaults burn the products in hot air, compared on their own tables.
         let burning = has(.afterburning) && has(.hotAir)
@@ -1904,7 +1904,7 @@ package struct StandingScene {
             resolution: resolution, documents: ["validation.md#blast-loads-against-empirical-references"])
     }
 
-    package func impulse() -> ResultStanding {
+    func impulse() -> ResultStanding {
         if has(.deflagration) { return deflagrationResult(.impulse) }
         var evidence: [StandingEvidence] = []
         var level = EvidenceLevel.compared
@@ -2660,7 +2660,7 @@ package struct StandingScene {
             documents: ["building-envelopes.md#one-way-damage-single-degree-of-freedom"])
     }
 
-    package func envelopeExposure() -> ResultStanding {
+    func envelopeExposure() -> ResultStanding {
         result(
             .envelopeExposure, .approximation,
             "Stationary surfaces whose loads come from the air beside them; a wall facing a charge has Kingery–"
@@ -2777,7 +2777,7 @@ package struct StandingScene {
             ], documents: ["surface-heating.md#limitations", "surface-heating.md#ignition-illustrative"])
     }
 
-    package func cloud() -> ResultStanding {
+    func cloud() -> ResultStanding {
         var assumptions = [
             "A textbook integral model of a turbulent thermal, with coefficients from laboratory thermals, "
                 + "started from whatever the gas model leaves."
@@ -2804,7 +2804,7 @@ package struct StandingScene {
             ], assumptions: assumptions, documents: ["fireball-rise.md#limitations"])
     }
 
-    package func fragments() -> ResultStanding {
+    func fragments() -> ResultStanding {
         let evidence = [
             StandingEvidence(
                 "Cooper's worked examples 27.7 and 27.8 (Mott's counts, Gurney's speed)",
@@ -3005,7 +3005,7 @@ package struct StandingScene {
 
     // MARK: What the scene leaves out
 
-    package func unsupported() -> [String] {
+    func unsupported() -> [String] {
         var effects = [
             "Nothing here is validated for engineering decisions or for judging the safety of a real structure.",
             options.contains(.groundCoupling)

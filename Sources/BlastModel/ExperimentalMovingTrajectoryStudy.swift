@@ -164,12 +164,12 @@ public enum ExperimentalMovingTrajectoryStudy {
             self.frames = frames
         }
     }
-    package enum Failure: Error { case invalidConfiguration, stepLimit, retryLimit }
+    enum Failure: Error { case invalidConfiguration, stepLimit, retryLimit }
     /// Compensated sums keep diagnostic accumulation independent of cell/step count.
     private struct Sum {
-        package var value = SIMD8<Double>.zero
+        var value = SIMD8<Double>.zero
         private var correction = SIMD8<Double>.zero
-        package mutating func add(_ packet: SIMD8<Double>) {
+        mutating func add(_ packet: SIMD8<Double>) {
             let increment = packet - correction
             let next = value + increment
             correction = (next - value) - increment

@@ -5,9 +5,9 @@ import simd
 /// bounds all member values by one-ring extrema. Weighted offsets sum to zero, and a
 /// largest-volume member receives the packet remainder. Nonlinear Euler admissibility is
 /// checked after packet construction; reduce slopes, never floor mass or pressure.
-package enum LimitedMovingGroupScatter {
-    package struct Result {
-        package let cells: [FractionalGasTransport.Cell]
+enum LimitedMovingGroupScatter {
+    struct Result {
+        let cells: [FractionalGasTransport.Cell]
         let limitedGroups: Int
         let positivityReducedGroups: Int
         let rankDeficientGroups: Int
@@ -25,7 +25,7 @@ package enum LimitedMovingGroupScatter {
             self.rankDeficientGroups = rankDeficientGroups
         }
     }
-    package static func scatter(
+    static func scatter(
         _ plan: MovingConnectedGasGroups.Plan, updated: [FractionalGasTransport.Cell]
     ) throws -> Result {
         guard let centres = plan.finalCentres, let memberCentres = plan.memberFinalCentres,

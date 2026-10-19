@@ -2,17 +2,17 @@ import simd
 
 /// Reuses validated per-product solid intervals along grid-centre rays. Union intervals before
 /// measuring clearances, so an intervening product, overlap, or touching face cannot create a gap.
-package struct BuildingGapScan {
-    package struct Span {
-        package var lower: Float
-        package var upper: Float
-        package var owner: Int
+struct BuildingGapScan {
+    struct Span {
+        var lower: Float
+        var upper: Float
+        var owner: Int
     }
     var intervalLimit = 500_000
     private var rays: [SIMD3<Int>: [Span]] = [:]
     private var intervals = 0
     private(set) var incomplete = false
-    package mutating func record(axis: Int, j: Int, k: Int, spans: [SIMD2<Float>], owner: Int) {
+    mutating func record(axis: Int, j: Int, k: Int, spans: [SIMD2<Float>], owner: Int) {
         guard !incomplete else { return }
         let solidSpans = spans.filter { $0.x.isFinite && $0.y.isFinite && $0.x < $0.y }
         guard !solidSpans.isEmpty else { return }

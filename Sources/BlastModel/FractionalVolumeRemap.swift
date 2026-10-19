@@ -3,11 +3,11 @@ import simd
 
 /// Capacity-constrained displacement reference on an adjacent-face graph. Face area
 /// establishes connectivity, not a physical flux or time-integrated aperture capacity.
-package enum FractionalVolumeRemap {
-    package enum Failure: Error { case invalidGeometry, volumeImbalance, unroutable }
-    package struct Face {
-        package let a: Int
-        package let b: Int
+enum FractionalVolumeRemap {
+    enum Failure: Error { case invalidGeometry, volumeImbalance, unroutable }
+    struct Face {
+        let a: Int
+        let b: Int
         let openArea: Double
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
@@ -21,17 +21,17 @@ package enum FractionalVolumeRemap {
             self.openArea = openArea
         }
     }
-    package struct Plan {
+    struct Plan {
         let transfers: [FractionalGasTransport.Transfer]
         let maximumVolumeResidual: Double
         let maximumOutflowFraction: Double
     }
     private struct Edge {
-        package let to: Int
-        package var capacity: Double
+        let to: Int
+        var capacity: Double
         var flow: Double = 0
     }
-    package static func build(old: [Double], new: [Double], faces: [Face], relativeTolerance: Double = 1e-9)
+    static func build(old: [Double], new: [Double], faces: [Face], relativeTolerance: Double = 1e-9)
         throws
         -> Plan
     {

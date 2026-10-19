@@ -5,9 +5,9 @@ import simd
 /// reconstruction reuses its geometry factors across the five Euler components.
 /// Quadratic basis functions subtract their local volume mean, so the fitted polynomial
 /// retains the supplied average even on asymmetric merged gas volumes.
-package enum FiniteVolumePressureFit {
-    package struct Sample {
-        package let centre: SIMD3<Double>
+enum FiniteVolumePressureFit {
+    struct Sample {
+        let centre: SIMD3<Double>
         let covariance: simd_double3x3
         let average: Double
 
@@ -22,17 +22,17 @@ package enum FiniteVolumePressureFit {
             self.average = average
         }
     }
-    package struct Fit {
-        package let cell: Sample
-        package let scale: Double
+    struct Fit {
+        let cell: Sample
+        let scale: Double
         let coefficients: [Double]
         let volumeAware: Bool
-        package let lower: Double
-        package let upper: Double
+        let lower: Double
+        let upper: Double
         let stencilSize: Int
 
         var degree: Int { coefficients.count == 9 ? 2 : (coefficients.count == 3 ? 1 : 0) }
-        package func value(at point: SIMD3<Double>) -> Double {
+        func value(at point: SIMD3<Double>) -> Double {
             let covariance = volumeAware ? (-1 / (scale * scale)) * cell.covariance : zero
             let terms = basis((point - cell.centre) / scale, covariance: covariance)
             return cell.average + zip(coefficients, terms).reduce(0) { $0 + $1.0 * $1.1 }
@@ -52,15 +52,15 @@ package enum FiniteVolumePressureFit {
             return .init(fit: self, factor: max(0, min(1, factor)))
         }
     }
-    package struct BoundedFit {
-        package let fit: Fit
-        package let factor: Double
+    struct BoundedFit {
+        let fit: Fit
+        let factor: Double
 
-        package func value(at point: SIMD3<Double>) -> Double {
+        func value(at point: SIMD3<Double>) -> Double {
             fit.cell.average + factor * (fit.value(at: point) - fit.cell.average)
         }
     }
-    package static let zero = simd_double3x3(columns: (.zero, .zero, .zero))
+    static let zero = simd_double3x3(columns: (.zero, .zero, .zero))
 
     // Coefficients are g*h, Hxx*h², Hyy*h², Hzz*h², Hxy*h², Hxz*h², Hyz*h².
     private static func basis(_ d: SIMD3<Double>, covariance c: simd_double3x3) -> [Double] {
@@ -71,7 +71,7 @@ package enum FiniteVolumePressureFit {
         ]
     }
 
-    package static func fit(
+    static func fit(
         cell: Sample, neighbours: [Sample], scale: Double, quadratic: Bool, volumeAware: Bool
     ) -> Fit {
         Stencil(cell: cell, neighbours: neighbours, scale: scale, volumeAware: volumeAware).fit(
@@ -79,7 +79,7 @@ package enum FiniteVolumePressureFit {
     }
 
     /// Geometry is factored once and reused for all conserved components of a gas group.
-    package struct Stencil {
+    struct Stencil {
         private let cell: Sample
         private let scale: Double
         private let volumeAware: Bool
@@ -112,7 +112,7 @@ package enum FiniteVolumePressureFit {
                 rows: weighted.map { Array($0.prefix(3)) }, relativeRankTolerance: 1e-10)
         }
 
-        package func fit(average: Double, neighbourAverages: [Double], quadratic: Bool) -> Fit {
+        func fit(average: Double, neighbourAverages: [Double], quadratic: Bool) -> Fit {
             precondition(neighbourAverages.count == weights.count)
             let rhs = zip(neighbourAverages, weights).map { ($0.0 - average) * $0.1 }
             let coefficients =

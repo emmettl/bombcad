@@ -36,7 +36,7 @@ public struct FireballShape: Sendable, Equatable {
     /// none.
     public let temperatures: [UInt16]
     /// The hottest block's temperature.
-    package let hottest: UInt16
+    let hottest: UInt16
     /// What sampling the shape needs, worked out from the rest once, where it is first wanted:
     /// on the receivers' queue, not on the thread that drives the GPU, which only cuts the shape
     /// out.
@@ -62,17 +62,17 @@ public struct FireballShape: Sendable, Equatable {
 
     /// The blocks gathered into a few compact tiles; and whether the surface may pass through
     /// each block, which it can only where it or a block round it is at least half luminous.
-    package struct Sampling: Sendable {
-        package var tiles: [FireballTile]
-        package var near: [Bool]
+    struct Sampling: Sendable {
+        var tiles: [FireballTile]
+        var near: [Bool]
     }
 
     private final class Derived: @unchecked Sendable {
-        package let lock = NSLock()
-        package var sampling: Sampling?
+        let lock = NSLock()
+        var sampling: Sampling?
     }
 
-    package var sampling: Sampling {
+    var sampling: Sampling {
         derived.lock.lock()
         defer { derived.lock.unlock() }
         if let sampling = derived.sampling { return sampling }
@@ -101,7 +101,7 @@ public struct FireballShape: Sendable, Equatable {
     public var tileCount: Int { sampling.tiles.count }
 
     /// A share of 128 255ths or more is at least half.
-    package static let half: UInt8 = 128
+    static let half: UInt8 = 128
 
     /// The blocks' corner nearest the domain's, and farthest from it, in metres.
     public var low: SIMD3<Float> { SIMD3<Float>(first) * blockSize }
@@ -112,7 +112,7 @@ public struct FireballShape: Sendable, Equatable {
         Double(fills.reduce(0) { $0 + Int($1) }) / 255 * pow(Double(blockSize), 3)
     }
 
-    package func index(_ cell: SIMD3<Int>) -> Int {
+    func index(_ cell: SIMD3<Int>) -> Int {
         cell.x + Int(counts.x) * (cell.y + Int(counts.y) * cell.z)
     }
 
@@ -129,7 +129,7 @@ public struct FireballShape: Sendable, Equatable {
 
     /// The share of luminous air at `point`, in 255ths: the blocks' shares interpolated
     /// trilinearly between their centres, with none outside the box.
-    package func fill(at point: SIMD3<Float>) -> Float {
+    func fill(at point: SIMD3<Float>) -> Float {
         let u = (point - low) / blockSize - 0.5
         let base = floor(u)
         let f = u - base
@@ -149,11 +149,11 @@ public struct FireballShape: Sendable, Equatable {
     }
 
     /// Whether `point` is within the flame.
-    package func isInside(_ point: SIMD3<Float>) -> Bool { fill(at: point) >= 127.5 }
+    func isInside(_ point: SIMD3<Float>) -> Bool { fill(at: point) >= 127.5 }
 
     /// The block whose temperature the flame has at `point`: the one it is in if that has
     /// luminous gas, otherwise the most luminous of those whose centres are round it.
-    package func radiatingBlock(at point: SIMD3<Float>) -> Int? {
+    func radiatingBlock(at point: SIMD3<Float>) -> Int? {
         let cell = SIMD3<Int>(floor((point - low) / blockSize))
         if inBox(cell), temperatures[index(cell)] > 0 { return index(cell) }
         let corner = SIMD3<Int>(floor((point - low) / blockSize - 0.5))
@@ -174,7 +174,7 @@ public struct FireballShape: Sendable, Equatable {
     /// far along it, and the block whose temperature it has there. Stepped through the blocks the
     /// ray crosses (Amanatides and Woo's traversal), looking for the surface in only those it may
     /// pass through, at four points across each and then by halving.
-    package func firstHit(from origin: SIMD3<Float>, along direction: SIMD3<Float>, near: [Bool]) -> (
+    func firstHit(from origin: SIMD3<Float>, along direction: SIMD3<Float>, near: [Bool]) -> (
         distance: Float, radiating: Int
     )? {
         let low = self.low
@@ -257,11 +257,11 @@ public struct FireballShape: Sendable, Equatable {
     /// cut in two across the longest side of those blocks, until every tile is at least
     /// `compactness` or there are `maximumTiles`. A sphere, a cube, a hemisphere on the ground or a
     /// box twice as long as it is wide stays one tile; a street full of fire becomes a row of them.
-    package static let compactness: Float = 0.2
+    static let compactness: Float = 0.2
 
     /// The volume's tiles take every block with any luminous gas, `threshold` 1, as the surface's
     /// take those at least half luminous.
-    package static func tiles(
+    static func tiles(
         blockSize: Float, first: SIMD3<Int32>, counts n: SIMD3<Int>, fills: [UInt8], threshold: UInt8 = half
     ) -> [FireballTile] {
         let origin = SIMD3<Float>(first) * blockSize
@@ -339,8 +339,8 @@ public struct FireballShape: Sendable, Equatable {
 /// least half luminous within `tight`, and the sphere within which the flame's surface in the
 /// region lies.
 package struct FireballTile: Sendable, Equatable {
-    package var low: SIMD3<Int>
-    package var high: SIMD3<Int>
+    var low: SIMD3<Int>
+    var high: SIMD3<Int>
     var tight: (low: SIMD3<Int>, high: SIMD3<Int>)
     package var centre: SIMD3<Float>
     package var radius: Float

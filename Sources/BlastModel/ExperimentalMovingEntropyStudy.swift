@@ -4,7 +4,7 @@ import simd
 /// Pressure and velocity are constant, isolating mass transport and wet/dry state accuracy
 /// from nonuniform pressure loads, shocks and free-body feedback.
 public enum ExperimentalMovingEntropyStudy {
-    package enum Failure: Error { case invalidConfiguration }
+    enum Failure: Error { case invalidConfiguration }
     public static func run(
         cellSizes: [Double] = [0.4, 0.2, 0.1], rotations: [Double] = [0, 0.23],
         cfls: [Double] = [0.2, 0.1], amplitude: Double = 0.2, limited: Bool = false,

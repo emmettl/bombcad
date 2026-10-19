@@ -4,29 +4,29 @@ import simd
 /// One-dimensional planar piston with conservative end-cell merging/splitting.
 /// A small end cell is joined to its neighbour at a configurable volume fraction.
 /// This changes spatial diffusion; it is not a general moving cut-cell solver.
-package enum PrescribedPistonTube {
-    package enum Reconstruction: String, Codable, Sendable { case constant, minmod }
+enum PrescribedPistonTube {
+    enum Reconstruction: String, Codable, Sendable { case constant, minmod }
     package enum StepControl: String, Codable, Sendable { case halving, stageAware }
-    package enum Failure: Error { case invalidGeometry, stepLimit }
+    enum Failure: Error { case invalidGeometry, stepLimit }
     /// Loads from one accepted physical interval. Rejected trial stages do not emit records.
-    package struct AcceptedStep {
-        package let time: Double  // Interval start, seconds.
-        package let duration: Double
+    struct AcceptedStep {
+        let time: Double  // Interval start, seconds.
+        let duration: Double
         let pistonImpulse: Double  // Right-wall impulse, N s.
         let pistonWork: Double  // Work delivered to right wall, J.
     }
-    package struct Snapshot {
-        package let time: Double
-        package let cells: [FractionalGasTransport.Cell]
+    struct Snapshot {
+        let time: Double
+        let cells: [FractionalGasTransport.Cell]
         let wallWork: Double
         let wallImpulse: SIMD3<Double>
         let pistonImpulse: Double
-        package let steps: Int
+        let steps: Int
         let rejectedSteps: Int
     }
-    package struct Result {
-        package let cells: [FractionalGasTransport.Cell]
-        package let steps: Int
+    struct Result {
+        let cells: [FractionalGasTransport.Cell]
+        let steps: Int
         let rejectedSteps: Int
         let remeshes: Int
         let gridCrossings: Int
@@ -34,7 +34,7 @@ package enum PrescribedPistonTube {
         let wallImpulse: SIMD3<Double>
         let pistonImpulse: Double
         let initialAmount: SIMD8<Double>
-        package let snapshots: [Snapshot]
+        let snapshots: [Snapshot]
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
         package init(
@@ -62,7 +62,7 @@ package enum PrescribedPistonTube {
         }
     }
 
-    package static func run(
+    static func run(
         cellLength h: Double, area: Double, length: Double, pistonVelocity: Double, duration: Double,
         density: Double = 1.225, pressure: Double = 101325, maximumSteps: Int = 100000,
         mergeFraction: Double = 0.25, cfl: Double = 0.4, outputTimes: [Double] = [],

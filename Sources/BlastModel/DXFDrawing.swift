@@ -231,16 +231,16 @@ public struct DXFDrawing: Sendable {
 
     /// The pairs' parser: sections, the LAYER table, BLOCKS and ENTITIES.
     private struct Reader {
-        package let pairs: [(Int, String)]
-        package var position = 0
-        package var units: Int?
+        let pairs: [(Int, String)]
+        var position = 0
+        var units: Int?
         var tableLayers: [String] = []
         var entities: [Entity] = []
-        package var blocks: [String: Block] = [:]
+        var blocks: [String: Block] = [:]
 
         init(pairs: [(Int, String)]) { self.pairs = pairs }
 
-        package mutating func read() throws {
+        mutating func read() throws {
             while position < pairs.count {
                 let (code, value) = pairs[position]
                 position += 1
@@ -266,7 +266,7 @@ public struct DXFDrawing: Sendable {
             }
         }
 
-        package mutating func header() {
+        mutating func header() {
             while position < pairs.count {
                 let (code, value) = pairs[position]
                 position += 1

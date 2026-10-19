@@ -2,9 +2,9 @@ import simd
 
 /// Adaptive reference for constant COM velocity and world spin with arbitrary initial pose.
 /// Endpoint geometry checks volume integration. This is not a complete event detector.
-package enum AdaptiveBoxCellSweep {
-    package enum Failure: Error { case resolutionLimit }
-    package struct Result {
+enum AdaptiveBoxCellSweep {
+    enum Failure: Error { case resolutionLimit }
+    struct Result {
         let volumeChange: Double
         let sweptVolume: Double
         let gasWork: Double
@@ -12,8 +12,8 @@ package enum AdaptiveBoxCellSweep {
         let errorEstimate: Double
         let intervals: Int
         let evaluations: Int
-        package let linearImpulse: SIMD3<Double>
-        package let angularImpulse: SIMD3<Double>
+        let linearImpulse: SIMD3<Double>
+        let angularImpulse: SIMD3<Double>
         let impulseErrorEstimate: Double
         let angularErrorEstimate: Double
         let integratedOpenFaceAreas: [Double]
@@ -54,10 +54,10 @@ package enum AdaptiveBoxCellSweep {
         }
     }
     private struct Interval {
-        package let low: Double
-        package let high: Double
-        package let value: SIMD16<Double>
-        package let error: Double
+        let low: Double
+        let high: Double
+        let value: SIMD16<Double>
+        let error: Double
         let impulseError: Double
         let angularError: Double
         let faceError: Double

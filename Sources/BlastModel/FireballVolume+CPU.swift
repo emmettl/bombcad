@@ -232,15 +232,15 @@ extension LuminousCells: Codable {
 /// them for the shape: each tile's sphere, or the hemisphere above the receiver from within it,
 /// with the samples shared by each cone's solid angle and how much of it the tile fills, at least
 /// four a cone.
-package struct SamplingCone {
-    package var axis: SIMD3<Float>
-    package var cosHalfAngle: Float
-    package var solidAngle: Float
+struct SamplingCone {
+    var axis: SIMD3<Float>
+    var cosHalfAngle: Float
+    var solidAngle: Float
     package var count: Int
     /// Samples a steradian.
-    package var density: Float
+    var density: Float
 
-    package static func cones(at x: SIMD3<Float>, normal: SIMD3<Float>, tiles: [FireballTile], samples: Int)
+    static func cones(at x: SIMD3<Float>, normal: SIMD3<Float>, tiles: [FireballTile], samples: Int)
         -> [SamplingCone]
     {
         var cones: [SamplingCone] = []
@@ -271,7 +271,7 @@ package struct SamplingCone {
     }
 
     /// The `s`th of the cone's directions, `spiral` the spread of `ThermalExposure.spread`.
-    package func direction(_ s: Int, spiral: [SIMD3<Float>]) -> SIMD3<Float> {
+    func direction(_ s: Int, spiral: [SIMD3<Float>]) -> SIMD3<Float> {
         let helper: SIMD3<Float> = abs(axis.z) < 0.9 ? SIMD3(0, 0, 1) : SIMD3(1, 0, 0)
         let u = simd_normalize(simd_cross(axis, helper))
         let v = simd_cross(axis, u)

@@ -74,7 +74,7 @@ extension BuildingEnvelope {
     static let wallSpan = SIMD2<Float>(6, 3)
     static let slabSpan = SIMD2<Float>(6, 6)
     /// Façade strips are a storey tall; a remainder under a metre joins the strip below.
-    package static let storey: Float = 3
+    static let storey: Float = 3
 
     /// How a solid of the envelope is read.
     package enum SolidRole: Equatable {

@@ -34,8 +34,8 @@ public struct PenetrationResult: Codable, Sendable, Equatable {
 
 public enum FragmentPenetration {
     static let ounce: Float = 0.028_349_523
-    package static let inch: Float = 0.0254
-    package static let foot: Float = 0.3048
+    static let inch: Float = 0.0254
+    static let foot: Float = 0.3048
     static let grain: Float = 0.000_064_798_91
     static let psi: Float = 6_894.757
 

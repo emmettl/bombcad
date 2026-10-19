@@ -90,7 +90,7 @@ public enum ExperimentalWallReflectionStudy {
             self.frames = frames
         }
     }
-    package enum Failure: Error { case invalidConfiguration, stepLimit }
+    enum Failure: Error { case invalidConfiguration, stepLimit }
     public static func run(
         cellLengths: [Double] = [0.1, 0.05, 0.025, 0.0125],
         cfls: [Double] = [0.2, 0.1], machNumbers: [Double] = [1.2, 2], limited: Bool = false,

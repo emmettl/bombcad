@@ -200,7 +200,7 @@ public struct Anchorage: Sendable, Hashable, Codable {
 
     /// The fraction of the tensile strength left once the joint has opened by `peak` metres:
     /// all of it to the end of the plateau, then falling linearly to nothing.
-    package func envelope(peak: Float, normalStiffness kn: Float) -> Float {
+    func envelope(peak: Float, normalStiffness kn: Float) -> Float {
         let plateau = max(tensionPlateau, tensileStrength / kn)
         let end = max(tensionOpening, plateau)
         if peak <= plateau { return 1 }
@@ -231,7 +231,7 @@ public enum JointSide: String, CaseIterable, Sendable, Hashable, Codable {
     case below, above, negativeX, positiveX, negativeY, positiveY
 
     /// The lattice axis across the joint.
-    package var axis: Int {
+    var axis: Int {
         switch self {
         case .below, .above: 2
         case .negativeX, .positiveX: 0
@@ -240,7 +240,7 @@ public enum JointSide: String, CaseIterable, Sendable, Hashable, Codable {
     }
 
     /// Which way along `axis` the joint lies from the body: -1 or 1.
-    package var direction: Int { self == .below || self == .negativeX || self == .negativeY ? -1 : 1 }
+    var direction: Int { self == .below || self == .negativeX || self == .negativeY ? -1 : 1 }
 
     /// The unit vector across the joint from the support into the body, the way it opens.
     public var normal: SIMD3<Float> {

@@ -435,7 +435,7 @@ public struct OverheadGlassHazard: Codable, Sendable, Equatable {
         return hazard
     }
 
-    package static func with(_ fall: Fall, drop: Double) -> OverheadGlassHazard {
+    static func with(_ fall: Fall, drop: Double) -> OverheadGlassHazard {
         var hazard = none
         hazard.fall = fall
         hazard.dropM = drop
@@ -664,7 +664,7 @@ public enum EnvelopeDamageAssessment {
     }
 
     /// Real fragments striking `owner`'s walls and roofs judged as `outcome`, or all judged.
-    package static func tally(
+    static func tally(
         _ strikes: [FragmentImpact], owner: UUID, at outcome: PenetrationResult.Outcome?
     )
         -> Float
@@ -675,7 +675,7 @@ public enum EnvelopeDamageAssessment {
         }.reduce(0) { $0 + $1.count }
     }
 
-    package static func rotation(_ response: SDOFResponse, span: Double) -> Double {
+    static func rotation(_ response: SDOFResponse, span: Double) -> Double {
         atan(max(response.peakDeflection, -response.reboundDeflection) / (span / 2)) * 180 / .pi
     }
 
@@ -694,7 +694,7 @@ public enum EnvelopeDamageAssessment {
 
     /// What a component that failed at `time` (from its load's first bin) moving at `speed` (m/s,
     /// inward positive, at its largest deflection) throws; nil where it did not.
-    package static func launch(
+    static func launch(
         time: Double?, speed: Double?, system: SDOFSystem, material: EnvelopeComponentDamage.Material,
         thickness: Double, span: Double, pane: SIMD2<Double>? = nil, rotation: Double
     ) -> DebrisLaunch? {
@@ -880,7 +880,7 @@ public enum EnvelopeDamageAssessment {
     /// 3-5 measures a cantilever's; masonry uncracked, cracked or fallen (its top past its
     /// thickness), as panels are graded. The rotation range is one value: a cantilever's base is
     /// fixed, its top free. The short span reported is the height.
-    package static func cantilever(
+    static func cantilever(
         _ load: EnvelopeComponentLoad, construction: EnvelopeConstruction, pressures net: [Double],
         peak: Double
     ) -> EnvelopeComponentDamage {
@@ -1051,11 +1051,11 @@ public enum EnvelopeDamageAssessment {
     private static let paneSystems = SystemCache()
 
     /// The pane systems built so far, by thickness and size; shared between threads behind a lock.
-    package final class SystemCache: @unchecked Sendable {
+    final class SystemCache: @unchecked Sendable {
         private let lock = NSLock()
         private var systems: [SIMD4<Double>: SDOFSystem] = [:]
 
-        package func system(_ key: SIMD4<Double>, _ make: () -> SDOFSystem) -> SDOFSystem {
+        func system(_ key: SIMD4<Double>, _ make: () -> SDOFSystem) -> SDOFSystem {
             lock.lock()
             defer { lock.unlock() }
             if let system = systems[key] { return system }
@@ -1099,7 +1099,7 @@ public enum EnvelopeDamageAssessment {
 
     /// The weight per metre of a wall's own masonry above it, to the building's top, N/m: what a
     /// wall of a building of several storeys carries at least (its floors' loads are not known).
-    package static func overburden(
+    static func overburden(
         _ load: EnvelopeComponentLoad, _ buildingTop: Double?, thickness: Double, material: StructureMaterial
     ) -> Double {
         guard let top = buildingTop, load.axis != 2 else { return 0 }
@@ -1107,7 +1107,7 @@ public enum EnvelopeDamageAssessment {
     }
 
     /// A member's tension bars: a wall's as its construction says, a roof's a central mat.
-    package static func section(_ construction: EnvelopeConstruction, thickness: Double, roof: Bool)
+    static func section(_ construction: EnvelopeConstruction, thickness: Double, roof: Bool)
         -> (depth: Double, steelArea: Double)
     {
         roof

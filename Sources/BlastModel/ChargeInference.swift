@@ -53,7 +53,7 @@ public enum ChargeInference {
         }
 
         /// The ratio at `massKg`, interpolated in log mass between the runs, held at the ends.
-        package func ratio(at massKg: Double) -> Double {
+        func ratio(at massKg: Double) -> Double {
             guard let first = ratios.first, let last = ratios.last else { return 1 }
             if massKg <= first.massKg { return first.ratio }
             if massKg >= last.massKg { return last.ratio }
@@ -82,7 +82,7 @@ public enum ChargeInference {
         }
 
         /// Whether it faces a charge at (`east`, `north`), within 60°.
-        package func faces(east chargeEast: Double, north chargeNorth: Double) -> Bool {
+        func faces(east chargeEast: Double, north chargeNorth: Double) -> Bool {
             guard let azimuth = normalAzimuth else { return false }
             let toward = SIMD2(chargeEast - east, chargeNorth - north)
             let length = (toward.x * toward.x + toward.y * toward.y).squareRoot()
@@ -239,7 +239,7 @@ public enum ChargeInference {
     }()
 
     /// Kingery–Bulmash's arrival at scaled distance `z`, s/kg^(1/3).
-    package static func scaledArrival(_ z: Double) -> Double {
+    static func scaledArrival(_ z: Double) -> Double {
         let table = arrivalTable
         if z >= 40 { return table.values[table.values.count - 1] + (z - 40) / 340.3 }
         let x = (log(max(z, 0.06)) - table.logLow) / table.step
@@ -257,11 +257,11 @@ public enum ChargeInference {
 
     /// The chance that a façade of `settings.facadeAreaM2` holding `settings.glazing` has some pane
     /// broken, `range` metres from `massKg` of TNT, tabulated in log range and log mass.
-    package struct GlassTable: Sendable {
+    struct GlassTable: Sendable {
         let logRange: (low: Double, step: Double, count: Int)
         let logMass: (low: Double, step: Double, count: Int)
-        package let incident: [Double]
-        package let reflected: [Double]
+        let incident: [Double]
+        let reflected: [Double]
 
         init(settings: Settings) {
             let ranges = (low: log(100.0), high: log(8000.0), count: 48)
@@ -291,7 +291,7 @@ public enum ChargeInference {
             reflected = settings.glassLoad == .incident ? [] : table(reflected: true)
         }
 
-        package func value(massKg: Double, range: Double, reflected useReflected: Bool) -> Double {
+        func value(massKg: Double, range: Double, reflected useReflected: Bool) -> Double {
             let values = useReflected ? reflected : incident
             let x = (log(max(range, 1)) - logRange.low) / logRange.step
             let y = (log(massKg) - logMass.low) / logMass.step
@@ -309,7 +309,7 @@ public enum ChargeInference {
 
     /// Kingery–Bulmash's peak (Pa) and impulse (Pa s) at `range` from `massKg`, side-on or normally
     /// reflected; beyond 40 m/kg^(1/3) falling as an acoustic wave does, as 1/range.
-    package static func load(massKg: Double, range: Double, reflected: Bool) -> (
+    static func load(massKg: Double, range: Double, reflected: Bool) -> (
         peak: Double, impulse: Double
     ) {
         let scale = cbrt(massKg)
@@ -366,7 +366,7 @@ public enum ChargeInference {
 
     /// The parameters, in order: log10 of the TNT mass (kg), east and north (m), log of the
     /// inliers' spread, then the height (m) and the clock offset (s) when inferred.
-    package static func names(_ settings: Settings) -> [String] {
+    static func names(_ settings: Settings) -> [String] {
         ["log10MassKg", "east", "north", "logSpread"] + (settings.heightRange != nil ? ["height"] : [])
             + (settings.offsetRange != nil ? ["offset"] : [])
     }

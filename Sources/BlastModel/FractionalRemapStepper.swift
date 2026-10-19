@@ -3,17 +3,17 @@ import simd
 
 /// Transactional, capacity-limited remapping with prescribed geometry. This is not an
 /// acoustic CFL controller, a wall-work integrator or a physical numerical gas flux.
-package enum FractionalRemapStepper {
-    package enum Failure: Error { case initialGeometry, substepLimit }
-    package struct Step {
-        package let start: Double
-        package let end: Double
+enum FractionalRemapStepper {
+    enum Failure: Error { case initialGeometry, substepLimit }
+    struct Step {
+        let start: Double
+        let end: Double
         let transfers: Int
         let maximumOutflowFraction: Double
     }
-    package struct Result {
-        package let cells: [FractionalGasTransport.Cell]
-        package let steps: [Step]
+    struct Result {
+        let cells: [FractionalGasTransport.Cell]
+        let steps: [Step]
         let rejectedIntervals: Int
 
         /// The memberwise initialiser, written out so that BlastCore can use it.
@@ -27,7 +27,7 @@ package enum FractionalRemapStepper {
             self.rejectedIntervals = rejectedIntervals
         }
     }
-    package static func advance(
+    static func advance(
         _ initial: [FractionalGasTransport.Cell], duration: Double,
         maximumSubsteps: Int = 4096, maximumBisections: Int = 24, relativeTolerance: Double = 1e-9,
         volumesAt: (Double) throws -> [Double],

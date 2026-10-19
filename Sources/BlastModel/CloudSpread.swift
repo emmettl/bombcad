@@ -51,7 +51,7 @@ public enum PasquillClass: String, CaseIterable, Codable, Sendable {
     /// A spread of `sigma` grown over `distance` more metres of travel: from the distance at
     /// which a puff of this class would have reached it, so that its growth depends on its size
     /// and not on where it started, and goes on smoothly when the class changes.
-    package static func grow(
+    static func grow(
         _ sigma: Double, by distance: Double, _ law: (coefficient: Double, exponent: Double)
     ) -> Double {
         let travelled = pow(max(sigma, 0) / law.coefficient, 1 / law.exponent)
@@ -65,8 +65,7 @@ extension CloudRise.Model {
     /// there as a gravity current where the air is stable, and grows as a passive puff in the
     /// air's turbulence, drawing in the air around it as it grows, drifting with the wind at its
     /// centre, and raining out its water as the rising cloud does.
-    package func spread(from state: CloudRise.State, time start: Double, at times: [Double]) -> [CloudSample]
-    {
+    func spread(from state: CloudRise.State, time start: Double, at times: [Double]) -> [CloudSample] {
         let g = CloudRise.gravity
         let r = CloudRise.gasConstant
         let cp = spec.specificHeat

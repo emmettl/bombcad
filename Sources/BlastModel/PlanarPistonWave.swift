@@ -3,17 +3,17 @@ import simd
 
 /// Uniform resting gas to the left of a constant-speed piston, before the wave reaches x=0.
 /// Euler shock/rarefaction relations: https://www.clawpack.org/riemann_book/html/Euler.html
-package struct PlanarPistonWave {
-    package enum Failure: Error { case invalidInput, vacuumUnsupported, reflectedWave }
+struct PlanarPistonWave {
+    enum Failure: Error { case invalidInput, vacuumUnsupported, reflectedWave }
     package let length: Double
-    package let density: Double
-    package let pressure: Double
-    package let velocity: Double
+    let density: Double
+    let pressure: Double
+    let velocity: Double
     let wallPressure: Double
     let sound: Double
     let starSound: Double
     let starDensity: Double
-    package let shockSpeed: Double
+    let shockSpeed: Double
     private let gamma = 1.4
 
     init(length: Double, density: Double, pressure: Double, velocity: Double) throws {
@@ -39,7 +39,7 @@ package struct PlanarPistonWave {
 
     /// Extensive exact cell average. Four-point Gaussian quadrature integrates the degree-seven
     /// rarefaction conserved state for gamma=1.4, after splitting at each wave boundary.
-    package func cell(lower: Double, upper: Double, time: Double, area: Double) throws
+    func cell(lower: Double, upper: Double, time: Double, area: Double) throws
         -> FractionalGasTransport.Cell
     {
         guard time.isFinite && time > 0, area.isFinite && area > 0,

@@ -20,8 +20,8 @@ public enum EnvelopePanel {
     /// Timoshenko & Woinowsky-Krieger (1959) for a uniformly loaded rectangular plate, ν 0.3:
     /// the deflection at the middle α q a⁴ / D and the largest bending moment β q a² (at the
     /// middle when simply supported, at the middle of a long edge when clamped), against b / a.
-    package static let ratios: [Double] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 1e9]
-    package static let deflection: [Edges: [Double]] = [
+    static let ratios: [Double] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 1e9]
+    static let deflection: [Edges: [Double]] = [
         .simplySupported: [
             0.00406, 0.00485, 0.00564, 0.00638, 0.00705, 0.00772, 0.00830, 0.00883, 0.00931, 0.00974,
             0.01013, 0.01302,
@@ -31,7 +31,7 @@ public enum EnvelopePanel {
             0.00254, 0.00260,
         ],
     ]
-    package static let moment: [Edges: [Double]] = [
+    static let moment: [Edges: [Double]] = [
         .simplySupported: [
             0.0479, 0.0554, 0.0627, 0.0694, 0.0755, 0.0812, 0.0862, 0.0908, 0.0948, 0.0985, 0.1017, 0.125,
         ],
@@ -41,7 +41,7 @@ public enum EnvelopePanel {
     ]
 
     /// A coefficient interpolated in b / a, held at the last tabulated ratio below infinity.
-    package static func coefficient(_ table: [Double], aspect: Double) -> Double {
+    static func coefficient(_ table: [Double], aspect: Double) -> Double {
         let ratio = max(aspect, 1)
         for index in 1..<ratios.count where ratio <= ratios[index] {
             if ratios[index] > 100 { return table[index] }

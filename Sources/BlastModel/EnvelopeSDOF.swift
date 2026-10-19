@@ -102,7 +102,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         public func stress(at x: Double) -> Double { Self.stress(stress, at: x) }
 
         /// The same on the (deflection, stress) points `stress`.
-        package static func stress(_ stress: [SIMD2<Double>], at x: Double) -> Double {
+        static func stress(_ stress: [SIMD2<Double>], at x: Double) -> Double {
             let x = abs(x)
             guard x > stress[0].x else { return stress[0].y * x / stress[0].x }
             for (a, b) in zip(stress, stress.dropFirst()) where x <= b.x {
@@ -167,7 +167,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
     }
 
     /// The backbone's resistance at deflection `x` ≥ 0.
-    package func envelope(_ x: Double) -> Double {
+    func envelope(_ x: Double) -> Double {
         if x <= backbone[0].x { return stiffness * x }
         for (a, b) in zip(backbone, backbone.dropFirst()) where x <= b.x {
             return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
@@ -336,11 +336,11 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
 /// (`FacadeLoadSurrogate`'s pulses) are integrated once each. Exact: a response is reused only for
 /// an equal system, load, step, tail and watch.
 public final class SDOFResponseMemo: @unchecked Sendable {
-    package struct Key: Hashable {
-        package var system: SDOFSystem
-        package var pressures: [Double]
-        package var step: Double
-        package var tail: Double
+    struct Key: Hashable {
+        var system: SDOFSystem
+        var pressures: [Double]
+        var step: Double
+        var tail: Double
         var watch: Double?
     }
 
@@ -348,7 +348,7 @@ public final class SDOFResponseMemo: @unchecked Sendable {
     /// are classes in a `let` array, so that writing one never touches the array the others are
     /// read through.
     private final class Shard: @unchecked Sendable {
-        package let lock = NSLock()
+        let lock = NSLock()
         var responses: [Key: SDOFResponse] = [:]
     }
 
@@ -358,7 +358,7 @@ public final class SDOFResponseMemo: @unchecked Sendable {
     public private(set) var misses = 0
     public private(set) var hits = 0
 
-    package func response(_ key: Key, _ make: () -> SDOFResponse) -> SDOFResponse {
+    func response(_ key: Key, _ make: () -> SDOFResponse) -> SDOFResponse {
         let shard = shards[abs(key.hashValue % Self.shardCount)]
         shard.lock.lock()
         if let known = shard.responses[key] {
@@ -384,7 +384,7 @@ public final class SDOFResponseMemo: @unchecked Sendable {
 
     /// The memo `remembering` set on this thread, or on the thread that handed this one its work
     /// through `concurrently`; nil elsewhere, so concurrent callers never share one.
-    package static var active: SDOFResponseMemo? {
+    static var active: SDOFResponseMemo? {
         get { Thread.current.threadDictionary[key] as? SDOFResponseMemo }
         set { Thread.current.threadDictionary[key] = newValue }
     }

@@ -10,11 +10,11 @@ public enum ExperimentalBoxRemap: String, Codable, Sendable {
 /// It preserves these sums, but not angular momentum or a sharp pressure field; it is not a
 /// cut-cell scheme. The caller supplies adjacent cells, including across patch boundaries.
 package enum ConservativeCellRemap {
-    package enum Failure: Error, LocalizedError {
+    enum Failure: Error, LocalizedError {
         case enclosedClosingCell(Int)
         case disconnectedOpening(Int)
 
-        package var errorDescription: String? {
+        var errorDescription: String? {
             switch self {
             case .enclosedClosingCell(let index):
                 "Conservative remap: closing cell \(index) has no adjacent new air."
@@ -211,7 +211,7 @@ package struct ExperimentalBoxGeometry {
             SIMD4(SIMD3<Float>(body.angularVelocity), 0), SIMD4(centre, 0), SIMD4(low, 0), SIMD4(high, 0),
         ]
     }
-    package func contains(_ point: SIMD3<Float>, cellSize: Float) -> Bool {
+    func contains(_ point: SIMD3<Float>, cellSize: Float) -> Bool {
         let q = vectors[0]
         let imaginary = -SIMD3(q.x, q.y, q.z)
         let v = point - centre

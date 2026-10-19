@@ -3,11 +3,11 @@ import simd
 
 /// Static connected control-volume aggregation. Exterior patches retain their original
 /// normals and centroids; evolving geometry and angular-momentum transport remain separate.
-package enum ConnectedGasGroups {
-    package enum Failure: Error { case invalidGeometry, unmergeable, groupLimit, invalidState }
-    package struct Face {
-        package let a: Int
-        package let b: Int
+enum ConnectedGasGroups {
+    enum Failure: Error { case invalidGeometry, unmergeable, groupLimit, invalidState }
+    struct Face {
+        let a: Int
+        let b: Int
         package let area: Double
         package let normal: SIMD3<Double>  // From a to b.
         let centroid: SIMD3<Double>
@@ -27,17 +27,17 @@ package enum ConnectedGasGroups {
             self.centroid = centroid
         }
     }
-    package struct SurfaceSample {
-        package let point: SIMD3<Double>
+    struct SurfaceSample {
+        let point: SIMD3<Double>
         package let area: Double
     }
-    package struct Boundary {
-        package let cell: Int
+    struct Boundary {
+        let cell: Int
         package let area: Double
         package let normal: SIMD3<Double>  // Outward from gas.
         let centroid: SIMD3<Double>
-        package let owner: Int
-        package let samples: [SurfaceSample]?
+        let owner: Int
+        let samples: [SurfaceSample]?
         init(
             cell: Int, area: Double, normal: SIMD3<Double>, centroid: SIMD3<Double>, owner: Int = 0,
             samples: [SurfaceSample]? = nil
@@ -62,15 +62,15 @@ package enum ConnectedGasGroups {
             }
         }
     }
-    package struct Group {
-        package let members: [Int]
-        package let cell: FractionalGasTransport.Cell
-        package let centre: SIMD3<Double>
+    struct Group {
+        let members: [Int]
+        let cell: FractionalGasTransport.Cell
+        let centre: SIMD3<Double>
     }
-    package struct Plan {
-        package let groups: [Group]
+    struct Plan {
+        let groups: [Group]
         let cellToGroup: [Int]  // -1 for dry cells.
-        package let faces: [Face]
+        let faces: [Face]
         let boundaries: [Boundary]
         let memberVolumes: [Double]
         let maximumAreaResidual: Double
@@ -78,8 +78,7 @@ package enum ConnectedGasGroups {
 
         /// Constant-state splitting at the original geometry. A largest-volume member
         /// receives the packet remainder, avoiding roundoff amplification in tiny members.
-        package func scatter(_ updated: [FractionalGasTransport.Cell]) throws -> [FractionalGasTransport.Cell]
-        {
+        func scatter(_ updated: [FractionalGasTransport.Cell]) throws -> [FractionalGasTransport.Cell] {
             guard updated.count == groups.count else { throw Failure.invalidState }
             _ = try FractionalGasTransport.advance(updated, newVolumes: updated.map(\.volume), transfers: [])
             var amounts = [SIMD8<Double>](repeating: .zero, count: memberVolumes.count)
@@ -105,7 +104,7 @@ package enum ConnectedGasGroups {
         }
     }
 
-    package static func build(
+    static func build(
         cells: [FractionalGasTransport.Cell], centres: [SIMD3<Double>], nominalVolume: Double,
         faces: [Face], boundaries: [Boundary], minimumFraction: Double = 0.25,
         maximumMembers: Int = 64, tolerance: Double = 1e-8, areaScale: Double? = nil
