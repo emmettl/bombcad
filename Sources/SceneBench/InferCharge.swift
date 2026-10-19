@@ -17,7 +17,8 @@ import Foundation
 /// Observers: Rigby et al.'s CSV (video_ref, type, …, toa_best_s, toa_minus_err_s, lat_deg, lon_deg;
 /// the fireball's rows left out), or any CSV with `name,lat,lon,earliest_s,latest_s`. Glass:
 /// GEER's façade shapefile (each segment's bounding-box centre, class `Facade_num` 1–3 damaged,
-/// `Azimuth_N` its normal), or a CSV `lat,lon,class[,normal_azimuth_rad]`. Corrections: BombCAD's
+/// `Azimuth_N` its normal), or a CSV `lat,lon,class[,normal_azimuth_deg]`
+/// (degrees clockwise from north, as GEER's layer has them). Corrections: BombCAD's
 /// `district-compare` comparison.json files, one per yield, whose arrivals over Kingery–Bulmash's
 /// become each observer's ratio (matched by name and distance).
 enum InferCharge {
@@ -375,7 +376,9 @@ enum InferCharge {
                     })
                 else { return nil }
                 let place = projection.metres(centre)
+                // In degrees clockwise from north (0–359 in the layer), though its README says radians.
                 let normal = record["Azimuth_N"].flatMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+                    .map { $0 * .pi / 180 }
                 return ChargeInference.Facade(
                     east: place.x, north: place.y, damaged: level >= 1, normalAzimuth: normal)
             }
@@ -386,7 +389,8 @@ enum InferCharge {
             guard f.count >= 3 else { return nil }
             let place = projection.metres(SIMD2(f[1], f[0]))
             return ChargeInference.Facade(
-                east: place.x, north: place.y, damaged: f[2] >= 1, normalAzimuth: f.count > 3 ? f[3] : nil)
+                east: place.x, north: place.y, damaged: f[2] >= 1,
+                normalAzimuth: f.count > 3 ? f[3] * .pi / 180 : nil)
         }
     }
 
