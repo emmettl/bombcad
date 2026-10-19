@@ -623,7 +623,6 @@ struct EnvelopeComponentHistoryTests {
         #expect(high.refinedBlocksByHeight()[0].dropFirst(3).reduce(0, +) > 0)
     }
 
-
     @Test(
         "Refinement confined to boxes stays in them, at both levels, and a box holding the domain changes nothing"
     )

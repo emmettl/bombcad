@@ -2616,7 +2616,12 @@ struct StandingScene {
             assumptions: [
                 "Fixed geometry: no broken windows, deformation, collapse or changing shielding.",
                 "Openings and walls thinner than a cell can vanish.",
-            ] + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures]),
+            ] + (inputs.scenario.structuralObjects.isEmpty ? [] : [Self.envelopesBesideStructures])
+                + ((inputs.scenario.importNotes ?? []).contains(MapBuildingReport.clearedChargeNote)
+                    ? [
+                        MapBuildingReport.clearedChargeNote
+                            + " Its walls neither confine the blast nor vent it, and it takes no damage."
+                    ] : []),
             documents: ["building-envelopes.md#scope-and-verification"])
     }
 

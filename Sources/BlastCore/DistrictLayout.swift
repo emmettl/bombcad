@@ -19,6 +19,8 @@ public struct DistrictLayout: Sendable {
     public var seaBase: Float = 6
     /// Credits for the files, added to the map's.
     public var attributions: [String] = []
+    /// Clear the building over the charge (`MapBuildingPlacement.clearsChargeBuilding`).
+    public var clearsChargeBuilding = true
 
     public init(buildings: [MapBuilding], charge: SIMD2<Double>, mass: Float) {
         self.buildings = buildings
@@ -139,6 +141,7 @@ public struct DistrictLayout: Sendable {
         // outlines are the buildings' own), or the air's cells.
         var placement = MapBuildingPlacement(origin: corner, resolution: footprintCells ?? cellSize)
         placement.heightGrid = heights
+        placement.clearsChargeBuilding = clearsChargeBuilding
         let report = try scene.addMapBuildings(placed, placement: placement)
         scene.attributions = (scene.attributions ?? []) + attributions
         if height == nil {

@@ -92,6 +92,9 @@ final class NewDistrictModel {
     var radius: Float = 500
     /// The side faces 4 m/kg^(1/3) beyond the outermost building.
     var clearFaces = true
+    /// Clear the building whose footprint holds the charge, leaving open ground
+    /// (`DistrictLayout.clearsChargeBuilding`): on, a charge put inside a building goes off.
+    var clearsChargeBuilding = true
     /// The air's kind: the advisor's (`DistrictAir` refined where that is both cheaper and finer
     /// at the façades than the uniform cells that fit), or one the user chose.
     enum AirChoice: String, CaseIterable, Identifiable {
@@ -178,6 +181,7 @@ final class NewDistrictModel {
         guard let map, let charge, mass > 0 else { return nil }
         var layout = DistrictLayout(buildings: map.buildings, charge: charge, mass: mass)
         layout.heights = heights?.grid
+        layout.clearsChargeBuilding = clearsChargeBuilding
         if let heights { layout.attributions.append("Building heights: \(heights.name)") }
         if let terrain {
             layout.ground =
@@ -601,6 +605,11 @@ struct NewDistrictView: View {
                     "The open faces release a blast that grazes them; kept 4 m/kg^(1/3) from the charge and the "
                         + "buildings, they do not reach the buildings' loads. The top is always kept so from the charge."
                 )
+            Toggle("Clear the building over the charge", isOn: $model.clearsChargeBuilding)
+                .help(
+                    "Real charges are often inside a building (Beirut's Warehouse 12). On, its footprint is open "
+                        + "ground and the charge goes off in the open; off, the building stands and the charge, buried "
+                        + "in its solid block, releases nothing.")
             Toggle("Near field + far field", isOn: $model.nearAndFar)
                 .help(
                     "Run the air only to a hand-over where the shock has become weak and nearly spherical, and judge "
@@ -671,9 +680,14 @@ struct NewDistrictView: View {
                     Text("Left out: \(preview.report.skipped.count) (too small, outside or under a cell).")
                         .foregroundStyle(.secondary)
                 }
-                if preview.report.skipped.contains(where: { $0.reason == "holds the charge" }) {
+                if preview.report.clearedCharge {
                     Text(
-                        "The building over the charge is left out: the charge would be buried in its solid block. A charge inside a building is beyond the envelope model."
+                        "The building over the charge is cleared to open ground, so that the charge goes off in the open; its walls neither confine nor vent the blast (in the standing)."
+                    )
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                } else if preview.scenario.blocks(preview.scenario.charge.position) {
+                    Text(
+                        "The charge is buried in a building's solid block and will release nothing: turn on Clear the building over the charge, or move the charge."
                     )
                     .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                 }

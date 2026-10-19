@@ -155,8 +155,12 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   **Surface model** takes a surface model's roofs and trees down to the ground (opened over 100 m)
   and puts what lies within a metre of sea level at it; turn it off for a bare-earth model.
 - **Charge**: click the map (drawn from the file's footprints) or type a longitude and latitude,
-  and give the TNT yield and the ground under it. The air is centred on the charge. A building
-  whose footprint holds the charge is left out, as the charge would be buried in its solid block.
+  and give the TNT yield and the ground under it. The air is centred on the charge. **Clear the
+  building over the charge** (on) leaves open ground where a footprint holds the charge, so that
+  it goes off in the open, as a real event's charge inside a building did; the standing says so,
+  and the building's walls neither confine nor vent the blast. Off, the building stands and the
+  charge, buried in its solid block, releases nothing (the sheet warns). The Map buildings section
+  has the same option.
 - **Extent**: the buildings whose footprint's centre lies within the radius are placed. The open
   faces are kept 4 m/kg^(1/3) from them: the sides beyond the outermost building (unless turned
   off), the top above the charge and at least half that above the highest roof or ground

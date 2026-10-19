@@ -108,7 +108,22 @@ struct DistrictLayoutTests {
         let layout = try Self.layout()
         let half = layout.halfSide(radius: 100, cellSize: 10)
         let (scene, report) = try layout.scene(halfSide: half, cellSize: 10, radius: 100, footprintCells: 5)
-        #expect(report.skipped.map(\.reason) == ["holds the charge"])
+        #expect(report.skipped.map(\.reason) == ["holds the charge"] && report.clearedCharge)
+        #expect(!scene.blocks(scene.charge.position))
+        // The standing says the building was cleared.
+        let standing = SceneStanding(
+            StandingInputs(scenario: scene, cellSize: 10, configuration: .recommended))
+        #expect(
+            standing.results.contains { result in
+                result.assumptions.contains { $0.hasPrefix(MapBuildingReport.clearedChargeNote) }
+            })
+        // Kept, the building stands over the charge, which is buried.
+        var kept = layout
+        kept.clearsChargeBuilding = false
+        let (keptScene, keptReport) = try kept.scene(
+            halfSide: half, cellSize: 10, radius: 100, footprintCells: 5)
+        #expect(keptReport.skipped.isEmpty && keptReport.placed.count == report.placed.count + 1)
+        #expect(keptScene.blocks(keptScene.charge.position))
         let device = try #require(MTLCreateSystemDefaultDevice())
         // The largest overpressure 40–60 m from the charge after 0.15 s.
         func peak(refined: Bool) throws -> Float {
