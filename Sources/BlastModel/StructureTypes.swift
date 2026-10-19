@@ -864,7 +864,7 @@ public struct StructureModel: Sendable, Hashable, Codable {
     public package(set) var detectedLoading: StructuralLoading?
     /// The terrain the model's footings stand in, from the scene it runs in (`standing(on:)`);
     /// not saved. Nil on level ground.
-    public package(set) var ground: Terrain?
+    public internal(set) var ground: Terrain?
     /// Whether a cracked solid element's hourglass control (the bending its one integration point
     /// cannot feel) stiffens only as its most opened crack's secant share of the elastic, instead
     /// of as an uncracked element whatever its cracking, up to the cap.
@@ -1363,20 +1363,20 @@ public struct StructureSummary: Sendable, Hashable {
 
 /// Layout matches `StructureUniforms` in `Structure.metal`.
 package struct StructureUniforms {
-    package var ex: UInt32
-    package var ey: UInt32
-    package var ez: UInt32
+    var ex: UInt32
+    var ey: UInt32
+    var ez: UInt32
     package var substep: UInt32 = 0
     package var h: Float
-    package var originX: Float
-    package var originY: Float
-    package var originZ: Float
-    package var bulkLinear: Float
-    package var bulkQuadratic: Float
-    package var criticalStep: Float
+    var originX: Float
+    var originY: Float
+    var originZ: Float
+    var bulkLinear: Float
+    var bulkQuadratic: Float
+    var criticalStep: Float
     package var fixedStep: Float = 0
     package var gravity: Float
-    package var damping: Float
+    var damping: Float
     package var ambientPressure: Float = 101_325
     package var fluidGamma: Float = 1.4
     package var fluidCell: Float = 1
@@ -1384,16 +1384,16 @@ package struct StructureUniforms {
     package var fluidNy: UInt32 = 1
     package var fluidNz: UInt32 = 1
     package var coupled: UInt32 = 0
-    package var minVolumeRatio: Float
-    package var groundFriction: Float
-    package var contactMode: UInt32 = 0
+    var minVolumeRatio: Float
+    var groundFriction: Float
+    var contactMode: UInt32 = 0
     package var stamp: UInt32 = 0
-    package var contactNx: UInt32 = 1
-    package var contactNy: UInt32 = 1
-    package var contactNz: UInt32 = 1
-    package var gridOriginX: Float = 0
-    package var gridOriginY: Float = 0
-    package var gridOriginZ: Float = 0
+    var contactNx: UInt32 = 1
+    var contactNy: UInt32 = 1
+    var contactNz: UInt32 = 1
+    var gridOriginX: Float = 0
+    var gridOriginY: Float = 0
+    var gridOriginZ: Float = 0
     package var contactStiffness: Float = 0
     package var contactDamping: Float = 0
     package var contactFriction: Float = 0
@@ -1649,14 +1649,14 @@ package struct StructureUniforms {
 /// One material as the element kernel sees it. Layout matches `MaterialParameters` in
 /// `Structure.metal`.
 package struct MaterialParameters {
-    package var density: Float = 0
-    package var lambda: Float = 0
+    var density: Float = 0
+    var lambda: Float = 0
     package var mu: Float = 0
-    package var yieldStress: Float = 1e30
-    package var hardening: Float = 0
-    package var failureStrain: Float = 1e30
-    package var hourglassStiffness: Float = 0
-    package var soundSpeed: Float = 0
+    var yieldStress: Float = 1e30
+    var hardening: Float = 0
+    var failureStrain: Float = 1e30
+    var hourglassStiffness: Float = 0
+    var soundSpeed: Float = 0
     package var materialModel: UInt32 = 0
     package var youngsModulus: Float = 0
     package var compressiveStrength: Float = 0
@@ -1893,27 +1893,27 @@ package struct MaterialParameters {
 
 /// Layout matches `CouplingUniforms` in `Structure.metal`.
 package struct CouplingUniforms {
-    package var regionX: UInt32
-    package var regionY: UInt32
-    package var regionZ: UInt32
-    package var regionNx: UInt32
-    package var regionNy: UInt32
-    package var regionNz: UInt32
-    package var fluidNx: UInt32
-    package var fluidNy: UInt32
-    package var fluidNz: UInt32
+    var regionX: UInt32
+    var regionY: UInt32
+    var regionZ: UInt32
+    var regionNx: UInt32
+    var regionNy: UInt32
+    var regionNz: UInt32
+    var fluidNx: UInt32
+    var fluidNy: UInt32
+    var fluidNz: UInt32
     package var threshold: UInt32
     package var ex: UInt32
     package var ey: UInt32
-    package var fluidCell: Float
+    var fluidCell: Float
     package var h: Float
     package var originX: Float
     package var originY: Float
     package var originZ: Float
-    package var gamma: Float
-    package var ambientDensity: Float
-    package var ambientPressure: Float
-    package var airModel: UInt32 = 0
+    var gamma: Float
+    var ambientDensity: Float
+    var ambientPressure: Float
+    var airModel: UInt32 = 0
     /// What each splatted point counts for in a cell's occupancy (see `threshold`).
     package var splatWeight: UInt32 = 1
     /// The air's refinement: its ratio (0 when not refined), the size of its grid of blocks, the

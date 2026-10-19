@@ -92,7 +92,7 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var name: String
     /// Extent of the simulated volume in metres; its origin is at a ground-level corner.
     public var domainSize: SIMD3<Float>
-    public package(set) var objects: [SceneObject]
+    public internal(set) var objects: [SceneObject]
     /// Compatibility adapter for the existing air solver and legacy callers.
     public var boxes: [Box] {
         get { fixedObjects.compactMap(\.fixedBox) }
@@ -234,18 +234,18 @@ extension Scenario {
 
     private struct Ownership: Codable {
         var version = 1
-        package var blocks: [SceneObject.Ownership]
-        package var structure: SceneObject.Ownership?
-        package var order: [UUID]
+        var blocks: [SceneObject.Ownership]
+        var structure: SceneObject.Ownership?
+        var order: [UUID]
     }
 
     private struct AdditionalStructure: Codable {
-        package var model: StructureModel
+        var model: StructureModel
         var ownership: SceneObject.Ownership?
     }
 
     private struct SavedEnvelope: Codable {
-        package var model: BuildingEnvelope
+        var model: BuildingEnvelope
         var ownership: SceneObject.Ownership?
     }
 

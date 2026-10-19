@@ -375,16 +375,16 @@ package struct SolverUniforms {
     package var nz: UInt32
     package var axis: UInt32 = 0
     package var dx: Float
-    package var gamma: Float
-    package var cfl: Float
-    package var ambientPressure: Float
-    package var densityFloor: Float
-    package var pressureFloor: Float
-    package var limiterTheta: Float
-    package var riemannSolver: UInt32
-    package var boundaryFlags: UInt32
+    var gamma: Float
+    var cfl: Float
+    var ambientPressure: Float
+    var densityFloor: Float
+    var pressureFloor: Float
+    var limiterTheta: Float
+    var riemannSolver: UInt32
+    var boundaryFlags: UInt32
     package var finalSweep: UInt32 = 0
-    package var gaugeCount: UInt32 = 0
+    var gaugeCount: UInt32 = 0
     package var forcedStep: Float = 0
     package var regionX: UInt32 = 0
     package var regionY: UInt32 = 0
@@ -592,7 +592,7 @@ package struct StepControl {
     package var stepIndex: UInt32 = 0
     package var activeSteps: UInt32 = 0
     package var maxOverpressure: Float = .greatestFiniteMagnitude
-    package var activeTiles: UInt32 = 0
+    var activeTiles: UInt32 = 0
     package var tileSweeps: UInt32 = 0
     package var stopped: UInt32 = 0
     package var lastStep: Float = 0
@@ -690,10 +690,9 @@ public enum AirModel: UInt32, Sendable, Codable, CaseIterable {
 
     /// N2 then O2: mass fraction, gas constant, dissociation temperature, characteristic
     /// density and vibrational temperature (see `Solver.metal`).
-    package static let species:
-        [(share: Double, r: Double, theta: Double, density: Double, vibration: Double)] = [
-            (0.767, 296.8, 113_000, 1.3e5, 3390), (0.233, 259.8, 59_500, 1.5e5, 2270),
-        ]
+    static let species: [(share: Double, r: Double, theta: Double, density: Double, vibration: Double)] = [
+        (0.767, 296.8, 113_000, 1.3e5, 3390), (0.233, 259.8, 59_500, 1.5e5, 2270),
+    ]
 
     /// The fraction of each species' molecules, N2 then O2, dissociated in air at `density` and
     /// `temperature`, by Lighthill's alpha^2 / (1 - alpha) = (rho_d / rho_s) exp(-theta_d / T).
@@ -707,7 +706,7 @@ public enum AirModel: UInt32, Sendable, Codable, CaseIterable {
     }
 
     /// Dissociating air at `density` and `temperature`: energy per kilogram and p / (rho T).
-    package static func dissociating(density: Float, temperature: Float) -> (
+    static func dissociating(density: Float, temperature: Float) -> (
         energy: Double, gasConstant: Double
     ) {
         let t = Double(max(temperature, 1e-12))
