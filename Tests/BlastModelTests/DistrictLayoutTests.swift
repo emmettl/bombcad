@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 /// File ▸ New District's layout (`DistrictLayout`) on a made-up district (Fixtures/SyntheticDistrict).
@@ -10,6 +9,12 @@ import simd
 struct DistrictLayoutTests {
     static let folder = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().appending(path: "Fixtures/SyntheticDistrict")
+
+    /// A fixture's ESRI ASCII grid, as `ElevationGrid(contentsOf:)` reads an `.asc` file (that
+    /// initialiser, which also reads GeoTIFF through Apple's Compression, is BlastCore's).
+    static func grid(_ url: URL) throws -> ElevationGrid {
+        try ElevationGrid(esriASCII: String(contentsOf: url, encoding: .utf8))
+    }
 
     /// The charge at the grid's centre, 1 t of TNT, on the fixture's ground and heights.
     static func layout(ground: Bool = true) throws -> DistrictLayout {
@@ -19,10 +24,10 @@ struct DistrictLayoutTests {
         var layout = DistrictLayout(
             buildings: buildings, charge: SIMD2(612 / east, 608 / ElevationGrid.metresPerDegree), mass: 1_000)
         #expect(simd_length(centre.position(layout.charge) - SIMD2(612, 608)) < 0.01)
-        layout.heights = try ElevationGrid(contentsOf: folder.appending(path: "heights.asc"))
+        layout.heights = try Self.grid(folder.appending(path: "heights.asc"))
         if ground {
             layout.ground = DistrictLayout.ground(
-                try ElevationGrid(contentsOf: folder.appending(path: "ground.asc")), openingM: 0, seaM: 1)
+                try Self.grid(folder.appending(path: "ground.asc")), openingM: 0, seaM: 1)
         }
         return layout
     }
@@ -88,7 +93,7 @@ struct DistrictLayoutTests {
 
     @Test("The sea stays at the base when a surface model is opened")
     func sea() throws {
-        let dem = try ElevationGrid(contentsOf: Self.folder.appending(path: "ground.asc"))
+        let dem = try Self.grid(Self.folder.appending(path: "ground.asc"))
         let ground = DistrictLayout.ground(dem, openingM: 100, seaM: 1)
         for n in dem.elevations.indices where dem.elevations[n] < 1 { #expect(ground.elevations[n] == 0) }
         // Opening takes the hill down: nowhere higher than before.
