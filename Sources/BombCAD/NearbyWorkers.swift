@@ -16,6 +16,15 @@ enum NearbyWorkers {
     static let pairingService = "_bombcad-pair._tcp"
     static let hostPrefix = "nearby:"
 
+    /// How long a connection has to open, TLS handshake and all, before it is dropped as stalled:
+    /// a Mac on the local network does it in milliseconds, but one that stops answering half-way
+    /// would otherwise be waited for for ever.
+    static let connectLimit = Duration.seconds(20)
+    /// How long the other Mac has for each message of an exchange that waits on no one.
+    static let messageLimit = Duration.seconds(30)
+    /// How long the other Mac's user has to check a pairing code.
+    static let checkLimit = Duration.seconds(300)
+
     /// Finds the sharing Mac `id` offering `service`, waiting up to a time: by Bonjour, or in tests
     /// the address a server in the same process listens on.
     typealias Resolve =
@@ -189,9 +198,9 @@ enum NearbyWorkers {
         let parameters = sessionParameters(keys: [(store.me.id.uuidString, pairing.key)])
         if let link = found.bestInterface { parameters.requiredInterface = link }
         let connection = NWConnection(to: found.endpoint, using: parameters)
-        let channel = ConnectionChannel(connection)
-        try await channel.start()
+        let channel = ConnectionChannel(connection, peer: name)
         do {
+            try await channel.start()
             try await channel.sendFrame(JSONEncoder().encode(SessionRequest(gate: gate)))
             let answer = try JSONDecoder().decode(SessionAnswer.self, from: try await channel.receiveFrame())
             guard answer.accepted else {
@@ -235,9 +244,9 @@ enum NearbyWorkers {
         let parameters = pairingParameters()
         if let link = found.bestInterface { parameters.requiredInterface = link }
         let connection = NWConnection(to: found.endpoint, using: parameters)
-        let channel = ConnectionChannel(connection)
-        try await channel.start()
+        let channel = ConnectionChannel(connection, peer: found.name)
         defer { connection.cancel() }
+        try await channel.start()
         let pairing = try await NearbyPairing.pair(over: channel, me: store.me, confirm: confirm)
         try store.keep(pairing)
         return pairing
@@ -274,6 +283,13 @@ final class Locked<Value>: @unchecked Sendable {
     var value: Value {
         get { lock.withLock { stored } }
         set { lock.withLock { stored = newValue } }
+    }
+
+    /// Changes the value in place under one hold of the lock. Through `value`, a change such as
+    /// `value[key] = x` reads and writes under separate holds, and of two threads changing it at
+    /// once one change can be lost.
+    func update<Result>(_ change: (inout Value) throws -> Result) rethrows -> Result {
+        try lock.withLock { try change(&stored) }
     }
 }
 
@@ -359,15 +375,62 @@ final class NearbyBrowser {
 
 // MARK: - Connections
 
-/// A connection as length-prefixed frames, for pairing and a session's first exchange.
+/// A connection as length-prefixed frames, for pairing and a session's first exchange. Each step
+/// has a deadline (`NearbyWorkers.connectLimit` and the rest): a Mac that stops answering, or a
+/// handshake that stalls, drops the connection with `NearbyError.timedOut` rather than waiting for
+/// ever, as Network.framework would.
 final class ConnectionChannel: PairingChannel, @unchecked Sendable {
     let connection: NWConnection
+    /// The other Mac as messages name it.
+    let peer: String
     private let queue = DispatchQueue(label: "dev.bombcad.nearby.connection")
 
-    init(_ connection: NWConnection) { self.connection = connection }
+    init(_ connection: NWConnection, peer: String = "The other Mac") {
+        self.connection = connection
+        self.peer = peer
+    }
 
-    /// Starts the connection and waits until it is ready, or fails.
-    func start() async throws {
+    /// `body`'s result, unless it takes longer than `limit`: then the connection is cancelled,
+    /// which ends whatever `body` waits on, and the error is `NearbyError.timedOut(reason)`.
+    func within<T>(
+        _ limit: Duration, _ reason: @autoclosure () -> String, _ body: () async throws -> T
+    ) async throws -> T {
+        // The first of the timer and `body` to finish claims it.
+        let once = OnceFlag()
+        let connection = connection
+        let timer = DispatchWorkItem {
+            if once.claim() { connection.cancel() }
+        }
+        let (seconds, attoseconds) = limit.components
+        queue.asyncAfter(
+            deadline: .now() + .nanoseconds(Int(seconds) * 1_000_000_000 + Int(attoseconds / 1_000_000_000)),
+            execute: timer)
+        let value: T
+        do {
+            value = try await body()
+        } catch {
+            guard once.claim() else { throw NearbyError.timedOut(reason()) }
+            timer.cancel()
+            throw error
+        }
+        guard once.claim() else { throw NearbyError.timedOut(reason()) }
+        timer.cancel()
+        return value
+    }
+
+    /// A limit as a person reads it: "20 seconds".
+    static func describe(_ limit: Duration) -> String {
+        limit.formatted(.units(allowed: [.minutes, .seconds], width: .wide))
+    }
+
+    /// Starts the connection and waits until it is ready, TLS handshake and all, or fails.
+    func start(within limit: Duration = NearbyWorkers.connectLimit) async throws {
+        try await within(limit, "\(peer) did not finish connecting within \(Self.describe(limit)).") {
+            try await open()
+        }
+    }
+
+    private func open() async throws {
         let connection = connection
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let once = OnceFlag()
@@ -392,23 +455,31 @@ final class ConnectionChannel: PairingChannel, @unchecked Sendable {
         }
     }
 
-    func sendFrame(_ data: Data) async throws {
+    func sendFrame(_ data: Data, within limit: Duration = NearbyWorkers.messageLimit) async throws {
         var count = UInt32(data.count).bigEndian
         let frame = Data(bytes: &count, count: 4) + data
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            connection.send(
-                content: frame,
-                completion: .contentProcessed { error in
-                    if let error { continuation.resume(throwing: error) } else { continuation.resume() }
-                })
+        let connection = connection
+        try await within(limit, "\(peer) stopped taking messages for \(Self.describe(limit)).") {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                connection.send(
+                    content: frame,
+                    completion: .contentProcessed { error in
+                        if let error { continuation.resume(throwing: error) } else { continuation.resume() }
+                    })
+            }
         }
     }
 
-    func receiveFrame() async throws -> Data {
-        let header = try await receive(exactly: 4)
-        let count = Int(header.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian })
-        guard count <= 1 << 20 else { throw NearbyError.refused("A message of \(count) bytes is too large.") }
-        return count == 0 ? Data() : try await receive(exactly: count)
+    /// The next frame, waiting up to `limit` for it.
+    func receiveFrame(within limit: Duration = NearbyWorkers.messageLimit) async throws -> Data {
+        try await within(limit, "\(peer) stopped answering for \(Self.describe(limit)).") {
+            let header = try await receive(exactly: 4)
+            let count = Int(header.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian })
+            guard count <= 1 << 20 else {
+                throw NearbyError.refused("A message of \(count) bytes is too large.")
+            }
+            return count == 0 ? Data() : try await receive(exactly: count)
+        }
     }
 
     private func receive(exactly count: Int) async throws -> Data {
@@ -433,6 +504,16 @@ final class ConnectionChannel: PairingChannel, @unchecked Sendable {
 
     func receive() async throws -> NearbyPairing.Message {
         try JSONDecoder().decode(NearbyPairing.Message.self, from: try await receiveFrame())
+    }
+
+    func receiveAfterCheck() async throws -> NearbyPairing.Message {
+        let limit = NearbyWorkers.checkLimit
+        do {
+            return try JSONDecoder().decode(
+                NearbyPairing.Message.self, from: try await receiveFrame(within: limit))
+        } catch NearbyError.timedOut {
+            throw NearbyError.timedOut("The code was not checked on \(peer) within \(Self.describe(limit)).")
+        }
     }
 }
 
@@ -550,29 +631,30 @@ final class NearbyServer {
         sessionListener = nil
     }
 
-    /// The port `service` listens on, once it is ready.
-    func port(of service: String) async throws -> NWEndpoint.Port {
+    /// The port `service` listens on, once it is ready, waiting up to `limit`. It looks at the
+    /// listener's state rather than taking over its handler: a handler set while the listener is
+    /// becoming ready can miss the change, and the wait had no end.
+    func port(of service: String, within limit: Duration = NearbyWorkers.connectLimit) async throws
+        -> NWEndpoint.Port
+    {
         guard let listener = service == NearbyWorkers.pairingService ? pairingListener : sessionListener
         else {
             throw NearbyError.closed
         }
-        return try await withCheckedThrowingContinuation { continuation in
-            let once = OnceFlag()
-            let previous = listener.stateUpdateHandler
-            listener.stateUpdateHandler = { state in
-                previous?(state)
-                switch state {
-                case .ready:
-                    if once.claim(), let port = listener.port { continuation.resume(returning: port) }
-                case .failed(let error): if once.claim() { continuation.resume(throwing: error) }
-                case .cancelled: if once.claim() { continuation.resume(throwing: NearbyError.closed) }
-                default: break
-                }
+        let deadline = ContinuousClock.now + limit
+        while true {
+            switch listener.state {
+            case .ready: if let port = listener.port { return port }
+            case .failed(let error): throw error
+            case .cancelled: throw NearbyError.closed
+            default: break
             }
-            // Ready before the handler was set.
-            if listener.state == .ready, let port = listener.port, once.claim() {
-                continuation.resume(returning: port)
+            guard ContinuousClock.now < deadline else {
+                throw NearbyError.timedOut(
+                    "This Mac's \(service) service was not listening within \(ConnectionChannel.describe(limit))."
+                )
             }
+            try await Task.sleep(for: .milliseconds(10))
         }
     }
 
@@ -599,15 +681,23 @@ final class NearbyServer {
         try restartSessions()
     }
 
+    private func keep(_ pairing: NearbyPairing.Pairing) throws {
+        try store.keep(pairing)
+        try restartSessions()
+    }
+
     private func answerPairing(_ connection: NWConnection) {
         let channel = ConnectionChannel(connection)
         Task { @MainActor in
             defer { connection.cancel() }
             do {
                 try await channel.start()
-                let pairing = try await NearbyPairing.answer(over: channel, me: store.me, allow: allow)
-                try store.keep(pairing)
-                try restartSessions()
+                // The key opens sessions before the client is told it holds: a client that
+                // connects straight away must not reach the listener being replaced.
+                let pairing = try await NearbyPairing.answer(over: channel, me: store.me, allow: allow) {
+                    pairing in
+                    try await self.keep(pairing)
+                }
                 log("Paired with \(pairing.peer.name).")
                 paired(pairing.peer)
             } catch {
