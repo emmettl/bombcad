@@ -5256,6 +5256,38 @@ tests dissipated about ten points of damping more than the slow one, for the sam
 were tried on a quasi-static replica of the bed driven by the slow test's measured rotation
 (within 2% of the model's moment and 4% of its settlement there) before the shaken runs.
 
+**The lurch, and the rest of the energy (19 October 2026).**
+- **The lurch is a ratchet, not the input.** The tests that lurched were shaken evenly both ways:
+  SSG04 DSW 5 at ±0.72 g, yet left leaning −11 mrad; SHW 4 +8 mrad; the embedded footing +12 and
+  +27 mrad. Once leaning, the weight pressed the crushed side harder, and it went on that way.
+- **The model rocks evenly and is left upright.** Its sand under the footing ends level within
+  about 1 mrad. That holds whatever the heave (0, the default 0.7, 1.0), and with the bed's
+  points keeping their memory of the force they bore (`--memory 1`). Memory also stiffens the
+  first event tenfold (0.4 mrad against 3.6).
+- **Spreading the crushing inwards: rejected.** On the replica (now kept as
+  `Scripts/footing-bed/bed_replica.py`), each point's crushing was spread to its neighbours,
+  rounding the surface as the tests' sand was. It raised the energy a cycle towards the test's
+  (the five packets within 0.75–1.45 of measured, at a reach of 1.4 m and half the crushing),
+  and it broke the moment's symmetry. But it settled 3.4 to 4.4 times as much as measured,
+  against 1.45 to 1.6 without it. Taking the spread from the point itself, keeping volume,
+  settled 1.1 to 4.5 times as much (about twice at most settings), and ran away at the strongest.
+- **More heave: only the settlement.** A heave of 0.8 of each contact's crushing (0.565 by
+  default on this sand) brings the slow test's settlement from 1.45–1.6 times measured to
+  0.9–1.4. The energy at the larger packets does not move: at d and e it stays about 15 and 28
+  ×10⁻³ against 24.5 and 61. It would also lower the shaken tests' settlement, already 0.6–1.1
+  times measured. Not adopted.
+- **What caps the energy.** At the larger packets the replica's moment levels off at 0.81 of
+  P L / 2, the rigid footing's capacity (1 − 1/FS); the test's climbs on to 0.87–0.96 as the
+  footing sinks into its own crater. A loop's energy scales with its moment, and no point law
+  on a level bed raises that cap. Raising the capacity with sinkage was tried before (better on
+  the slow test, worse on the shaken ones).
+- **So this stops.** The bed's points cannot interact as a sand does: crushing that rounds the
+  surface, a crater that holds the footing and raises its capacity, and a lean that feeds
+  itself. Each wants the sand under the footing as a continuum of its own. That is beyond a bed
+  of springs. It belongs with a shared soil model, if one comes (it would be shared, not
+  BombCAD's alone). The footings' standing stays as recorded: energy a sixth to two thirds of a
+  shaken event's, no lurch.
+
 ## Footings on a slope
 
 Footings on a hillside (`FootingGround`, [structural model](structural-model.md#footings)) are
