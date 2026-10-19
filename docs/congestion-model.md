@@ -257,3 +257,37 @@ describes but does not measure, is not in the layout.
 Neither came within a factor of two at two grids a factor of two apart, so neither is kept. A
 model that gets the pitch's effect would have to share the obstacles between what the grid resolves
 and what it models, as the cells shrink.
+
+**Tried again and not kept** (19 October 2026; branch `congestion-placed`, outputs in
+`/Volumes/StudioData/bombcad/merge2/`). Each pipe was placed in the cell its centreline crosses,
+symmetric about the rig's middle, and counted over the cell as PDRsetFields counts. A cell holding
+one pipe then has no Schelkin term (n^¼ − 1 is nought) and folds the flame only by its own pipe,
+D over the cell, so nothing modelled is counted twice. The obstacle turbulence also took PDRFoam's
+production by the resolved shear, ν_t 2|S|² with C₁ 1.44 in ε's equation, so that the wakes the
+grid now resolves make turbulence. The model's peak over the measured, methane / propane:
+
+| Cells per pitch | A | C | E | C* |
+|---|---|---|---|---|
+| 2 | 0.03 / 0.01 | 0.38 / 0.27 | 0.35 / 0.22 | 0.04 / 0.02 |
+| 4 | 0.69 / 0.38 | 1.63 / 1.12 | 1.69 / 1.28 | 0.77 / 0.36 |
+| 8 | | 8.6 / 4.9 | 6.7 / 4.4 | |
+
+- **At 4 cells per pitch** methane came within a factor of two on all four rigs and propane within
+  0.36–1.28. Even there the trends fall short: half the pitch gave 2.6–2.8 times the peak (measured
+  5.7–6.5), and propane only about 1.3 times methane (measured 2–2.8).
+- **Across the grids** the level rose four to five times with each halving of the cells, as on
+  17 October: 4 cells per pitch is where a rising curve crosses the measurements, not where it
+  settles. At 2 the flames hardly accelerate (Mach 0.1–0.3), as the modelled wakes and folding have
+  gone with the counts and the grid cannot yet resolve them (a cell is 2.3 diameters across); at 8
+  they pass Mach 2. Production by the resolved shear alone moved the 2-per-pitch peaks by under a
+  tenth (A 0.02 to 0.03, C 0.35 to 0.38).
+
+What would bound it is still missing. The flame's wrinkling here is at its equilibrium in each cell,
+and the turbulence in a resolved wake is made at the rate its shear allows, so a finer grid resolves
+more shear and more folding while the modelled share of neither shrinks to match. PDRFoam carries
+the wrinkling, approaching its equilibrium at a rate set by the flow over the obstacles' size, which
+both bounds the feedback and makes a coarser pitch slower; tried alone on the spread obstacles
+(17 October, above) it starved the flame from the start. Doing both together, placed obstacles,
+the resolved shear's production and the transported wrinkling as one set, is the next attempt if
+this resumes. Until then congestion stays illustrative, the standing's guideline (cells no larger
+than the smallest pitch) stands, and the process plant keeps its fitted factor of 6.5.
