@@ -69,7 +69,9 @@ side, rising along x or y.
   [joints between parts](structural-model.md#base-connections). A joint's `solids` name the slope,
   so that it ties only the slope's faces, and its `partners` name what the slope may bear on.
   Otherwise, on a steep slope, the tiles of a lower course lie under the rafters further up,
-  nearer than the wall, and the slope and its tiles would hold each other up.
+  nearer than the wall, and the slope and its tiles would hold each other up. A joint whose
+  region a slope now crosses, as a gable's cavity ties up to the ridge, wants the same: tied at
+  their edges, the slope and tiles flew apart there.
 - **Elements.** Each element takes its axes from its corners, the first edge along the slope's low
   edge, the second up it, the normal out of the plane. The element's strains, bars and timber
   grain are read in those axes (a timber slope's `grainAxis` 2 runs up the slope). The kernel

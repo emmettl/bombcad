@@ -321,6 +321,12 @@ extension ScenarioPreset {
         ] {
             var law = ties
             law.jointNormal = inward
+            // The leaves alone: a gable's region, up to the ridge, holds the slope's and the tiles'
+            // edges too.
+            if pitch != nil {
+                law.solids = Array(walls.indices)
+                law.partners = Array(walls.indices)
+            }
             structure.supports.append(region)
             structure.setAnchorage(law, ofSupport: structure.supports.count - 1)
         }
@@ -375,10 +381,13 @@ extension ScenarioPreset {
             for (low, high) in [(ys[0], ys[0] + wall)] + ys[1...2].map({ ($0 - party / 2, $0 + party / 2) })
                 + [(ys[3] - wall, ys[3])]
             {
+                // Past the front and back walls' seats, so that no point of a slope is seated twice.
                 seat(
-                    Box(min: SIMD3(x0, low, top - h), max: SIMD3(middle - 0.01, high, ridge + 0.1)), slope: 0)
+                    Box(min: SIMD3(x0 + wall, low, top - h), max: SIMD3(middle - 0.01, high, ridge + 0.1)),
+                    slope: 0)
                 seat(
-                    Box(min: SIMD3(middle + 0.01, low, top - h), max: SIMD3(x1, high, ridge + 0.1)), slope: 1)
+                    Box(min: SIMD3(middle + 0.01, low, top - h), max: SIMD3(x1 - wall, high, ridge + 0.1)),
+                    slope: 1)
             }
             // Each slope's covering on it.
             for (n, solid) in coveringSolids.enumerated() {

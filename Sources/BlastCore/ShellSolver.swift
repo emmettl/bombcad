@@ -921,6 +921,22 @@ public final class ShellSolver {
         }
     }
 
+    /// The `count` fastest nodes: their speed, reference position and the solids they belong to.
+    public func fastestNodes(_ count: Int) -> [(speed: Float, position: SIMD3<Float>, solids: [Int])] {
+        var owners = [Set<Int>](repeating: [], count: mesh.positions.count)
+        for element in mesh.elements {
+            for c in 0..<4 { owners[Int(element.nodes[c])].insert(element.solid) }
+        }
+        for beam in mesh.beams { for end in 0..<2 { owners[Int(beam.nodes[end])].insert(beam.solid) } }
+        var speeds: [(speed: Float, node: Int)] = []
+        mutateNodes { nodes in
+            for n in nodes.indices { speeds.append((simd_length(SIMD3<Float>(nodes[n].velocity)), n)) }
+        }
+        return speeds.sorted { $0.speed > $1.speed }.prefix(count).map {
+            ($0.speed, mesh.positions[$0.node], owners[$0.node].sorted())
+        }
+    }
+
     /// The connections between parts of the body after the last step, those of support region
     /// `support` alone if given, or nil without any.
     public func pairSummary(support: Int? = nil) -> PartPairs.Summary? {

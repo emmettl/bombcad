@@ -178,6 +178,11 @@ struct TerracedHousesTests {
         #expect(
             abs(rafters.force.z / (roofWeight + tileWeight) - 1) < 0.05,
             "rafters carry \(rafters.force.z) N of \(roofWeight + tileWeight)")
+        // The cavity ties tie the leaves alone and carry nothing at rest.
+        let ties = try (0..<4).reduce(PartPairs.Summary()) {
+            $0.combined(with: try #require(shells.pairSummary(support: $1)))
+        }
+        #expect(simd_length(ties.force) < 1e3, "ties carry \(ties.force) N at rest")
         // Nothing slides: the tiles held on their nibs, the rafters on their seats.
         #expect(tiles.maxSlip < 1e-3 && tiles.separated == 0 && tiles.unseated == 0, "tiles \(tiles)")
         #expect(rafters.maxSlip < 1e-3 && rafters.unseated == 0, "rafters \(rafters)")
