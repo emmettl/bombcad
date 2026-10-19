@@ -286,8 +286,14 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   comparison ([run comparison](run-comparison.md)); an offscreen review of the panels in both
   appearances ([review log](native-interface-review.md#review-log)), and of every sidebar section and
   editor at the sidebar's width, with six layout fixes; release 0.2.0.
-- **Next:** keyboard focus, VoiceOver and the window at its minimum on a real screen, which offscreen
-  tests cannot reach ([remaining checks](native-interface-review.md#remaining-checks)).
+- **Done, 18 October:** the real-screen review's labels and keyboard paths
+  ([on the real screen](native-interface-review.md#on-the-real-screen-labels-and-keyboard)); materials
+  that look like what they are in the viewport and snapshots (concrete, steel, sheeting, glass,
+  timber, brick, blockwork, earth), the damage colouring and rubble apart from each to every common
+  colour deficiency (`MaterialAppearance`).
+- **Next:** the fixes seen on a real screen, Full Keyboard Access and VoiceOver's speech
+  ([remaining checks](native-interface-review.md#remaining-checks)); exposure-only buildings drawn by
+  their construction.
 
 ## Horizons
 

@@ -3438,6 +3438,7 @@ struct CouplingUniforms {
     uint overlapUnits;  // 0: elements counted as points; else each sample box by its overlap, in these units
     uint maskHysteresis;  // 1: a cell turns solid an eighth above `threshold` and opens an eighth below
     uint keepsAir;  // 1: cells marked in `keptAir` (beside stationary envelopes' recorded faces) stay air
+    uint holdsBoxes;  // 1: freestanding objects' cells (`boxMask`) stay solid with their own wall velocities
 };
 
 // Decode a compact slot for remasking/exchange, or the historical dense-region coordinate.
@@ -3641,6 +3642,7 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                           device float *wallVelocity [[buffer(5)]],
                           const device uint *couplingTiles [[buffer(6)]],
                           const device uchar *keptAir [[buffer(7)]],
+                          const device uchar *boxMask [[buffer(8)]],
                           uint3 tid [[thread_position_in_grid]]) {
     int3 cell = couplingWorldCell(tid, u, couplingTiles);
     if (any(cell < 0)) { return; }
@@ -3655,7 +3657,9 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
     if (u.keepsAir != 0u && keptAir[index] != 0) {
         count = 0u;
     }
-    bool solid = rigid[index] != 0 || count >= need;
+    // A freestanding object's cell is its own: solid, at the velocity the object gave it.
+    bool box = u.holdsBoxes != 0u && boxMask[index] != 0;
+    bool solid = rigid[index] != 0 || box || count >= need;
 
     // The air sees a solid cell moving at the mean velocity of the elements in it.
     float3 velocity = float3(0.0f);
@@ -3664,9 +3668,11 @@ kernel void remaskPrepare(device uchar *mask [[buffer(0)]],
                         int(occupancy[4 * local + 3]));
         velocity = float3(sum) / (wallSpeedScale * float(count));
     }
-    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local] = velocity.x;
-    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 1] = velocity.y;
-    wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 2] = velocity.z;
+    if (!box) {
+        wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local] = velocity.x;
+        wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 1] = velocity.y;
+        wallVelocity[(u.couplingMapCount == 0u ? 0u : u.couplingMapCount + 2u) + 3 * local + 2] = velocity.z;
+    }
 
     if (wasSolid && !solid) {
         const int3 offsets[6] = {
