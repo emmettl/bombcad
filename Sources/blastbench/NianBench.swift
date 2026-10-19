@@ -52,9 +52,10 @@ func runNian(device: MTLDevice) throws {
                 charge: Charge(mass: mass, position: charge),
                 gauges: gauges.map { Gauge($0.name, at: $0.position) })
             let solver = try BlastSolver(
-                // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
+                // The mapped start since its rerun on 19 October 2026; `--balloon-start` for the balloon it was first run on.
                 device: device, scenario: scenario, cellSize: cellSize,
-                configuration: .recommended.balloonStart)
+                configuration: (flag("balloon-start")
+                    ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended))
             solver.advance(until: duration)
             let ambient = scenario.atmosphere.pressure
             peaks[withWall] = solver.gaugeHistories.map { history in

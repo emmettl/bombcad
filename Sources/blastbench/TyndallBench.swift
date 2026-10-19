@@ -42,7 +42,7 @@ func runTyndall(device: MTLDevice) throws {
                 if flag("wall-read") { c.gaugesReadWallPressure = true }
                 configureRefinement(&c)
             },
-            progress: flag("progress") ? { print("  " + $0) } : nil)
+            balloonStart: flag("balloon-start"), progress: flag("progress") ? { print("  " + $0) } : nil)
         if let path = option("history") { try rows.write(toFile: path, atomically: true, encoding: .utf8) }
         func mm(_ v: SIMD2<Float>) -> String {
             "\(format(Double(v.x) * 1000, 0)) / \(format(Double(v.y) * 1000, 0))"

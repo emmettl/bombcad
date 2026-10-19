@@ -4615,8 +4615,11 @@ func runAnchorage() throws {
                     margin: option("margin").flatMap { Float($0) } ?? 12,
                     domainHeight: option("height").flatMap { Float($0) } ?? 18, soil: soil,
                     air: {
-                        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-                        var air = SolverConfiguration.recommended.balloonStart
+                        // The mapped start since its rerun on 19 October 2026; `--balloon-start` for the balloon.
+                        var air =
+                            (flag("balloon-start")
+                                ? SolverConfiguration.recommended.balloonStart
+                                : SolverConfiguration.recommended)
                         applyChosenAir(&air)
                         return air
                     }(),

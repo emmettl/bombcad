@@ -8,15 +8,16 @@ extension TyndallCLTTest {
         device: MTLDevice, test: Test, cellSize: Float = 0.25, refinement: Int = 2, elementSize: Float = 0.15,
         duration: Double = 0.25, pad: SIMD3<Float> = .zero,
         history: ((Double, Float, Float, [Float]) -> Void)? = nil,
-        configure: ((inout SolverConfiguration) -> Void)? = nil,
+        configure: ((inout SolverConfiguration) -> Void)? = nil, balloonStart: Bool = false,
         progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let scenario = scenario(test, elementSize: elementSize, pad: pad)
         let x0 = 24 + pad.x
         let yc = 8 + pad.y
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-        solver.configuration = .recommended.balloonStart
+        // The mapped start since its rerun on 19 October 2026; `balloonStart` for the balloon it was
+        // first run on.
+        solver.configuration = balloonStart ? .recommended.balloonStart : .recommended
         solver.configuration.refinement = refinement
         configure?(&solver.configuration)
         try solver.load(scenario)

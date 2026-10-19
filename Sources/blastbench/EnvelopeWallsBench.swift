@@ -191,8 +191,10 @@ func runEnvelopeWalls(device: MTLDevice) throws {
                 [EnvelopeComponentHistory].self,
                 from: Data(contentsOf: from.appending(path: "\(wallCase.id).json")))
         } else {
-            // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-            var configuration = SolverConfiguration.recommended.balloonStart
+            // The mapped start since its rerun on 19 October 2026; `--balloon-start` for the balloon it was first run on.
+            var configuration =
+                (flag("balloon-start")
+                    ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended)
             configuration.airSleepThreshold = 0
             configuration.airSleepCrossings = 0
             let solver = try BlastSolver(

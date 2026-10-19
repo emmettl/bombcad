@@ -56,8 +56,10 @@ func runFacade(device: MTLDevice) throws {
             name: "Facade", domainSize: domain, boxes: [], charge: Charge(mass: mass, position: charge),
             gauges: [Gauge("Front", at: SIMD3(front - 0.05, middle, 1.5))])
         try scene.addEnvelopeObject(envelope, name: "Building")
-        // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
-        var configuration = SolverConfiguration.recommended.balloonStart
+        // The mapped start since its rerun on 19 October 2026; `--balloon-start` for the balloon it was first run on.
+        var configuration =
+            (flag("balloon-start")
+                ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended)
         configuration.refinement = ratio
         configuration.refinementLevels = levels
         configureRefinement(&configuration)
