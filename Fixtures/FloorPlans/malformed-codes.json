@@ -1,0 +1,10 @@
+{
+  "file": "malformed-codes.dxf",
+  "description": "A DXF whose group codes and values are out of step.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "readError": true
+  }
+}

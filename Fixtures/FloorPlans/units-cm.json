@@ -1,0 +1,19 @@
+{
+  "file": "units-cm.dxf",
+  "description": "The house by faces in cm.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.01,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.1": 1
+    },
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.01
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "file": "thin-partitions.dxf",
+  "description": "Partitions by faces 60 mm apart (a wall) and 40 mm apart (under the 50 mm limit).",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.06": 1
+    },
+    "noWallThinnerThan": 0.05
+  }
+}

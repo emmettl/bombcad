@@ -1,0 +1,20 @@
+{
+  "file": "grid-coordinates.dxf",
+  "description": "The house at national-grid coordinates (530 km, 180 km) in millimetres.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.1": 1
+    },
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.01
+  }
+}

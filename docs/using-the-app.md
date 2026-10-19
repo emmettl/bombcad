@@ -525,6 +525,13 @@ How the plan is read:
   inside one, and the notes say so.
 - **Floors**: closed polylines on a floor-outline layer (square-cornered), else the walls' outer
   rectangle.
+- **Untidy drafting**: lines that stop up to 6 mm short of each other meet, a wall's two faces
+  that stop together with nothing across them are closed there, and lines drawn twice count once.
+  Blocks on a wall layer (furniture, symbols, columns) are not walls, and hatching and dimensions
+  are not read; the notes say what was passed over, and that no walls were found if none were.
+  A door drawn with its leaf and swing is placed where it crosses its wall.
+  [Fixtures/FloorPlans](../Fixtures/FloorPlans/README.md) holds 25 small plans, each trying one of
+  these, with what reading them should give (`scenebench plan-check`).
 - **A plan drawn turned** (a site plan drawn to north) is first turned square to its walls, so
   that they lie square to the air's cells: the angle most of their length runs at, to a tenth of
   a degree (**Turn square to its walls**).

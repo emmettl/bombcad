@@ -1,0 +1,17 @@
+{
+  "file": "opening-gaps.dxf",
+  "description": "Gaps in walls drawn by faces with jambs, nothing drawn in them: two in outer walls, one in the partition.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "gaps": 3,
+    "gapWindows": 2,
+    "gapDoors": 1,
+    "notes": [
+      "gaps in walls"
+    ]
+  }
+}

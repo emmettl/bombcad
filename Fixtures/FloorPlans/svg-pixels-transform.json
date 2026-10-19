@@ -1,0 +1,22 @@
+{
+  "file": "svg-pixels-transform.svg",
+  "description": "SVG in pixels, the walls in a group scaled and moved, paths in relative commands.",
+  "options": {
+    "roles": {
+      "walls": "wall:cavityBrickBlock"
+    },
+    "metresPerUnit": 0.05
+  },
+  "expect": {
+    "units": null,
+    "byFaces": true,
+    "wallThicknesses": {
+      "0.3": 4
+    },
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.02
+  }
+}

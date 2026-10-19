@@ -109,6 +109,13 @@ public struct DXFDrawing: Sendable {
         guard pairs.contains(where: { $0.0 == 0 && $0.1 == "SECTION" }) else {
             throw ReadError(message: "Not a DXF: no SECTION.")
         }
+        // Every section closed: a file cut off part way would otherwise read as what came before.
+        let opened = pairs.filter { $0.0 == 0 && $0.1 == "SECTION" }.count
+        let closed = pairs.filter { $0.0 == 0 && $0.1 == "ENDSEC" }.count
+        guard closed >= opened else {
+            throw ReadError(
+                message: "The DXF ends part way through a section: it was cut off, or not saved whole.")
+        }
         var reader = Reader(pairs: pairs)
         try reader.read()
         insertionUnits = reader.units

@@ -1,0 +1,20 @@
+{
+  "file": "svg-symbols.svg",
+  "description": "SVG at 1:100: centreline walls, windows and a door (with its swing) as symbols placed with <use>, one turned.",
+  "options": {
+    "roles": {
+      "WALL-EXT": "wall:cavityBrickBlock",
+      "WINDOWS": "window",
+      "DOORS": "door"
+    },
+    "drawingScale": 100
+  },
+  "expect": {
+    "units": 0.001,
+    "doors": 1,
+    "windows": 2,
+    "notNotes": [
+      "drawn away from any wall"
+    ]
+  }
+}

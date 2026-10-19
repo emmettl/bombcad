@@ -1,0 +1,20 @@
+{
+  "file": "svg-faces-rects.svg",
+  "description": "SVG at 1:100 in mm: walls' two faces as rectangles on an Inkscape layer; furniture and labels on theirs.",
+  "options": {
+    "roles": "guess",
+    "drawingScale": 100
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "wallThicknesses": {
+      "0.3": 4
+    },
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.02
+  }
+}

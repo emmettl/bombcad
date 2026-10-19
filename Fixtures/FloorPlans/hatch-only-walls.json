@@ -1,0 +1,14 @@
+{
+  "file": "hatch-only-walls.dxf",
+  "description": "Walls drawn only as solid hatches, with no outline lines.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "wallThicknesses": {
+      "0.3": 4
+    }
+  },
+  "limitation": "Hatches are not read: a plan whose walls are drawn only as hatching, with no outline lines, has no walls to find. Their boundaries could be read as faces; not done, as most plans outline walls and hatch them too, and a hatch's boundary is often the room's."
+}

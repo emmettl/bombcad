@@ -1,0 +1,21 @@
+{
+  "file": "opening-blocks.dxf",
+  "description": "A door block with its leaf and swing, and window blocks turned into three walls.",
+  "options": {
+    "roles": {
+      "WALL-EXT": "wall:cavityBrickBlock",
+      "WALL-INT": "wall:block100",
+      "A-DOOR": "door",
+      "A-GLAZ": "window"
+    }
+  },
+  "expect": {
+    "units": 0.001,
+    "doors": 1,
+    "windows": 3,
+    "gaps": 0,
+    "notNotes": [
+      "drawn away from any wall"
+    ]
+  }
+}

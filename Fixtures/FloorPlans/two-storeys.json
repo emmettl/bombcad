@@ -1,0 +1,31 @@
+{
+  "file": "two-storeys.dxf",
+  "description": "Each storey's openings on a layer of its own; the partition on the first floor only.",
+  "options": {
+    "roles": {
+      "WALL-EXT": "wall:cavityBrickBlock",
+      "WALL-FF": "wall:block100",
+      "DOOR-GF": "door",
+      "WINDOW-GF": "window",
+      "WINDOW-FF": "window"
+    },
+    "layerStoreys": {
+      "DOOR-GF": 0,
+      "WINDOW-GF": 0,
+      "WINDOW-FF": 1,
+      "WALL-FF": 1
+    }
+  },
+  "expect": {
+    "units": 0.001,
+    "doors": 1,
+    "windowsByStorey": {
+      "0": 1,
+      "1": 4
+    },
+    "elementWalls": {
+      "0": 4,
+      "1": 5
+    }
+  }
+}

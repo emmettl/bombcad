@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="297mm" height="210mm" viewBox="0 0 297 210">
+<defs><symbol id="win"><line x1="0" y1="-1.5" x2="12" y2="-1.5"/><line x1="0" y1="1.5" x2="12" y2="1.5"/></symbol><symbol id="door"><line x1="0" y1="0" x2="9" y2="0"/><line x1="0" y1="0" x2="0" y2="-9"/><path d="M9,0 A9 9 0 0 0 0,-9"/></symbol></defs><g inkscape:groupmode="layer" inkscape:label="WALL-EXT"><path d="M21.5,188.5 H98.5 V131.5 H21.5 Z"/></g><g inkscape:groupmode="layer" inkscape:label="WINDOWS"><use xlink:href="#win" x="70" y="188.5"/><use xlink:href="#win" transform="translate(98.5 170) rotate(-90)"/></g><g inkscape:groupmode="layer" inkscape:label="DOORS"><use xlink:href="#door" x="32" y="188.5"/></g>
+</svg>

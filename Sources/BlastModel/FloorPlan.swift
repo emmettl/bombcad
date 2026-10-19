@@ -282,18 +282,24 @@ public enum FloorPlan {
         if low.x.isFinite { analysis.bounds = (low, high) }
 
         // Walls, layer by layer.
+        var blocksOnWalls = Set<Int>()
         for (layer, role) in options.roles.sorted(by: { $0.key < $1.key }) {
             guard case .wall(let construction) = role else { continue }
             var lines: [Line] = []
             var slanted: [(a: SIMD2<Double>, b: SIMD2<Double>)] = []
             for s in segments where s.layer == layer {
+                // Blocks on a wall layer are furniture, symbols or columns, not walls.
+                if s.insert != nil {
+                    blocksOnWalls.insert(s.insert!)
+                    continue
+                }
                 if let line = squareLine(s.a, s.b) {
                     lines.append(line)
                 } else if simd_distance(s.a, s.b) > 1e-4 {
                     slanted.append((s.a, s.b))
                 }
             }
-            lines = merged(lines)
+            lines = capped(merged(lines), options: options)
             let lineLength = lines.reduce(0) { $0 + $1.length }
             let found = solidPieces(lines, options: options)
             // Drawn by both faces where the solid's outline is most of what is drawn; by centrelines
@@ -379,6 +385,16 @@ public enum FloorPlan {
                 }
             }
         }
+        if analysis.walls.isEmpty && analysis.angled.isEmpty {
+            analysis.notes.append(
+                "No walls were found on the layers marked as walls: check the layers' roles, the units, and that the walls are drawn by lines (hatching alone is not read)."
+            )
+        }
+        if !blocksOnWalls.isEmpty {
+            analysis.notes.append(
+                "\(blocksOnWalls.count) blocks on wall layers (furniture, symbols, columns) are not read as walls."
+            )
+        }
         if analysis.angledLines > 0 {
             analysis.notes.append(
                 options.angledWalls
@@ -407,10 +423,12 @@ public enum FloorPlan {
         }
         if low.x.isFinite { analysis.bounds = (low, high) }
 
-        // Openings drawn on their layers, by INSERT or by clusters of lines.
-        var drawn: [(box: (min: SIMD2<Double>, max: SIMD2<Double>), kind: OpeningKind, layer: String)] = []
-        var groups: [String: (min: SIMD2<Double>, max: SIMD2<Double>, kind: OpeningKind, layer: String)] = [:]
+        // Openings drawn on their layers, by INSERT or by clusters of lines, each kept with its
+        // lines.
+        var groups: [String: (kind: OpeningKind, layer: String, lines: [(SIMD2<Double>, SIMD2<Double>)])] =
+            [:]
         var loose: [(min: SIMD2<Double>, max: SIMD2<Double>, kind: OpeningKind, layer: String)] = []
+        var looseLines: [(SIMD2<Double>, SIMD2<Double>)] = []
         for s in segments {
             let kind: OpeningKind
             switch options.roles[s.layer] {
@@ -418,21 +436,30 @@ public enum FloorPlan {
             case .window: kind = .window
             default: continue
             }
-            let lo = simd_min(s.a, s.b)
-            let hi = simd_max(s.a, s.b)
             if let insert = s.insert {
-                let key = "\(insert)"
-                if let g = groups[key] {
-                    groups[key] = (simd_min(g.min, lo), simd_max(g.max, hi), kind, s.layer)
-                } else {
-                    groups[key] = (lo, hi, kind, s.layer)
-                }
+                groups["\(insert)", default: (kind, s.layer, [])].lines.append((s.a, s.b))
             } else {
-                loose.append((lo, hi, kind, s.layer))
+                loose.append((simd_min(s.a, s.b), simd_max(s.a, s.b), kind, s.layer))
+                looseLines.append((s.a, s.b))
             }
         }
-        drawn += groups.values.map { (($0.min, $0.max), $0.kind, $0.layer) }
-        drawn += clusters(loose).map { (($0.min, $0.max), $0.kind, $0.layer) }
+        var items: [(kind: OpeningKind, layer: String, lines: [(SIMD2<Double>, SIMD2<Double>)])] =
+            groups.keys.sorted().map { groups[$0]! }
+        for cluster in clusters(loose) {
+            let lines = looseLines.enumerated().filter { n, _ in
+                loose[n].layer == cluster.layer && all(loose[n].min .>= cluster.min - 1e-9)
+                    && all(loose[n].max .<= cluster.max + 1e-9)
+            }.map(\.element)
+            items.append((cluster.kind, cluster.layer, lines))
+        }
+        // Each one's extent the part of its lines in the wall that holds most of them: a door's
+        // leaf and swing reach into the room, its opening is where it crosses the wall.
+        let drawn = items.map { item in
+            (
+                box: focusedBox(item.lines, walls: analysis.walls, angled: analysis.angled), kind: item.kind,
+                layer: item.layer
+            )
+        }
         // Walls carried across what is drawn just past their ends; then gaps in the walls, then
         // what is drawn in them or in centreline walls.
         analysis.walls = bridged(analysis.walls, over: drawn)
@@ -524,13 +551,24 @@ public enum FloorPlan {
         guard bins.contains(where: { $0 > 0 }) else { return nil }
         let smoothed = bins.indices.map { i in (-5...5).reduce(0.0) { $0 + bins[(i + $1 + 900) % 900] } }
         guard let peak = smoothed.indices.max(by: { smoothed[$0] < smoothed[$1] }) else { return nil }
-        // The weighted mean angle within half a degree of the peak.
+        // The weighted mean of the lines' own angles within a degree of the peak.
+        let centre = Double(peak) / 10 - 45 + 0.05
         var sum = 0.0
         var weight = 0.0
-        for k in -5...5 {
-            let i = (peak + k + 900) % 900
-            sum += bins[i] * (Double(peak + k) / 10 - 45 + 0.05)
-            weight += bins[i]
+        for s in segments {
+            let d = s.b - s.a
+            let length = simd_length(d)
+            guard length > 1e-6 else { continue }
+            var angle = atan2(d.y, d.x) * 180 / .pi
+            angle = angle - 90 * (angle / 90).rounded(.down)
+            if angle >= 45 { angle -= 90 }
+            // Nearest the peak, across the ±45° seam.
+            var offset = angle - centre
+            if offset > 45 { offset -= 90 }
+            if offset < -45 { offset += 90 }
+            guard abs(offset) <= 1 else { continue }
+            sum += length * (centre + offset)
+            weight += length
         }
         return weight > 0 ? sum / weight : nil
     }
@@ -625,7 +663,10 @@ public enum FloorPlan {
         }
         var left = 0.0
         var count = 0
-        for (i, p) in slants.enumerated() where p.to - p.from - used[i] > 0.05 {
+        // A short line left over, no longer than a wall is thick, is a wall's end (a curved wall's
+        // cap, a jamb), not a wall.
+        for (i, p) in slants.enumerated()
+        where p.to - p.from - used[i] > 0.05 && p.to - p.from > options.thickestWall + 0.01 {
             left += p.to - p.from - used[i]
             count += 1
         }
@@ -711,6 +752,35 @@ public enum FloorPlan {
         return nil
     }
 
+    /// Lines drawn by both faces whose wall is left open at an end (its two faces ending together,
+    /// a wall's thickness apart, with nothing across them), closed there with a line across: an
+    /// outline not closed at a corner or a jamb not drawn would otherwise let a room into the wall.
+    static func capped(_ lines: [Line], options: Options, tolerance: Double = 0.006) -> [Line] {
+        var caps: [Line] = []
+        func covered(_ cap: Line) -> Bool {
+            (lines + caps).contains { other in
+                other.axis == cap.axis && abs(other.offset - cap.offset) <= tolerance
+                    && other.from <= cap.from + tolerance && other.to >= cap.to - tolerance
+            }
+        }
+        for (i, line) in lines.enumerated() {
+            for (j, other) in lines.enumerated() where j > i && other.axis == line.axis {
+                let gap = abs(other.offset - line.offset)
+                guard gap >= options.thinnestWall, gap <= options.thickestWall else { continue }
+                for end in [line.from, line.to] {
+                    guard abs(other.from - end) <= tolerance || abs(other.to - end) <= tolerance else {
+                        continue
+                    }
+                    let cap = Line(
+                        axis: 1 - line.axis, offset: end, from: min(line.offset, other.offset),
+                        to: max(line.offset, other.offset))
+                    if !covered(cap) { caps.append(cap) }
+                }
+            }
+        }
+        return lines + caps
+    }
+
     /// Collinear lines that overlap or touch, joined.
     package static func merged(_ lines: [Line], tolerance: Double = 0.001) -> [Line] {
         var result: [Line] = []
@@ -754,7 +824,8 @@ public enum FloorPlan {
     static func solidPieces(_ lines: [Line], options: Options, cellLimit: Int = 4_000_000)
         -> (pieces: [SolidPiece], outline: Double)?
     {
-        let snap = 0.001
+        // Lines that stop a few millimetres short of each other (untidy corners) still close.
+        let snap = 0.006
         func coordinates(_ values: [Double]) -> [Double] {
             var result: [Double] = []
             for v in values.sorted() where result.last.map({ v - $0 > snap }) ?? true { result.append(v) }
@@ -1026,6 +1097,77 @@ public enum FloorPlan {
     }
 
     // MARK: - Openings
+
+    /// The extent of an opening drawn as `lines`: the box of their parts within the band of the
+    /// wall (square or at an angle) that holds the most of them running along it (its thickness and
+    /// 15 cm either side, along its line however far: an opening beside a wall's end, which the
+    /// wall is carried across), of walls holding alike the nearer; the box of them all if none does.
+    static func focusedBox(
+        _ lines: [(SIMD2<Double>, SIMD2<Double>)], walls: [Wall], angled: [AngledWall]
+    ) -> (min: SIMD2<Double>, max: SIMD2<Double>) {
+        let points = lines.flatMap { [$0.0, $0.1] }
+        let whole = (
+            min: points.reduce(SIMD2(repeating: Double.infinity), simd_min),
+            max: points.reduce(SIMD2(repeating: -Double.infinity), simd_max)
+        )
+        // A wall's frame: its start, along, across, length and half width of band.
+        var frames: [(origin: SIMD2<Double>, along: SIMD2<Double>, length: Double, half: Double)] = walls.map
+        { wall in
+            let along = wall.axis == 0 ? SIMD2<Double>(1, 0) : SIMD2<Double>(0, 1)
+            let origin = wall.axis == 0 ? SIMD2(wall.from, wall.offset) : SIMD2(wall.offset, wall.from)
+            return (origin, along, wall.length, wall.thickness / 2 + 0.15)
+        }
+        frames += angled.map { ($0.a, $0.direction, $0.length, $0.thickness / 2 + 0.15) }
+        var best: (length: Double, box: (min: SIMD2<Double>, max: SIMD2<Double>))?
+        for frame in frames {
+            let across = SIMD2(-frame.along.y, frame.along.x)
+            var inside: [SIMD2<Double>] = []
+            var length = 0.0
+            for (a, b) in lines {
+                // In the wall's frame, clipped to its band (Liang and Barsky).
+                let p = SIMD2(simd_dot(a - frame.origin, frame.along), simd_dot(a - frame.origin, across))
+                let q = SIMD2(simd_dot(b - frame.origin, frame.along), simd_dot(b - frame.origin, across))
+                let d = q - p
+                var t0 = 0.0
+                var t1 = 1.0
+                var outside = false
+                for (delta, low, high, start) in [
+                    (d.x, -Double.infinity, Double.infinity, p.x), (d.y, -frame.half, frame.half, p.y),
+                ] {
+                    if abs(delta) < 1e-12 || !low.isFinite {
+                        if start < low || start > high { outside = true }
+                        continue
+                    }
+                    var ta = (low - start) / delta
+                    var tb = (high - start) / delta
+                    if ta > tb { swap(&ta, &tb) }
+                    t0 = max(t0, ta)
+                    t1 = min(t1, tb)
+                }
+                guard !outside, t1 > t0 else { continue }
+                let c0 = a + (b - a) * t0
+                let c1 = a + (b - a) * t1
+                inside += [c0, c1]
+                // An opening runs along its wall: its pieces counted by how nearly they do (a door's
+                // leaf open square to the wall counts for nothing; its threshold, or a closed leaf, whole).
+                let run = simd_length(d) > 1e-12 ? abs(d.x) / simd_length(d) : 0
+                length += simd_distance(c0, c1) * run
+            }
+            // Of walls holding alike, the nearer: how far past its ends the pieces lie.
+            let alongs = inside.map { simd_dot($0 - frame.origin, frame.along) }
+            let beyond = max(0, -(alongs.min() ?? 0), (alongs.max() ?? 0) - frame.length)
+            length -= 1e-3 * beyond
+            guard !inside.isEmpty, length > (best?.length ?? 0.05) else { continue }
+            best = (
+                length,
+                (
+                    inside.reduce(SIMD2(repeating: Double.infinity), simd_min),
+                    inside.reduce(SIMD2(repeating: -Double.infinity), simd_max)
+                )
+            )
+        }
+        return best?.box ?? whole
+    }
 
     /// Lines of one layer that touch or nearly do (within `reach`) grouped, as a window or door
     /// drawn without a block.

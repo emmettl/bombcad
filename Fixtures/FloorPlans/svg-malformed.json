@@ -1,0 +1,10 @@
+{
+  "file": "svg-malformed.svg",
+  "description": "An SVG whose elements are not closed.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "readError": true
+  }
+}

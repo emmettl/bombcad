@@ -1,0 +1,19 @@
+{
+  "file": "units-m.dxf",
+  "description": "The house by faces in m.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 1.0,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.1": 1
+    },
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.01
+  }
+}

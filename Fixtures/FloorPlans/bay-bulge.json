@@ -1,0 +1,16 @@
+{
+  "file": "bay-bulge.dxf",
+  "description": "A bay by a polyline's bulge on a centreline wall.",
+  "options": {
+    "roles": {
+      "WALL-EXT": "wall:cavityBrickBlock"
+    }
+  },
+  "expect": {
+    "units": 0.001,
+    "angled": 6,
+    "notes": [
+      "walls at an angle"
+    ]
+  }
+}

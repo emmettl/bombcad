@@ -1,0 +1,20 @@
+{
+  "file": "hatch-dims.dxf",
+  "description": "Hatching and a dimension on the wall layer, more on layers of their own.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.1": 1
+    },
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.01
+  }
+}

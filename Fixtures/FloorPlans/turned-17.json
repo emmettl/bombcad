@@ -1,0 +1,20 @@
+{
+  "file": "turned-17.dxf",
+  "description": "The house by faces turned 17\u00b0.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "turn": 17,
+    "wallThicknesses": {
+      "0.3": 4
+    },
+    "angled": 0,
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.02
+  }
+}

@@ -94,6 +94,10 @@ enum SceneBench {
             try SurrogateBench.extract(Array(args.dropFirst()))
             return
         }
+        if args.first == "plan-check" {
+            try PlanCheck.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "district-glass" {
             try DistrictGlass.run(Array(args.dropFirst()))
             return

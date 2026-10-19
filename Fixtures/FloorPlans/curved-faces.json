@@ -1,0 +1,19 @@
+{
+  "file": "curved-faces.dxf",
+  "description": "A curved wall 200 mm thick by its two faces as concentric arcs, in a house by faces.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "angledAtLeast": 8,
+    "angledThickness": 0.2,
+    "wallThicknesses": {
+      "0.3": 4
+    },
+    "notNotes": [
+      "pair with no other"
+    ]
+  }
+}

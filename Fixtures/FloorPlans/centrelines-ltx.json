@@ -1,0 +1,27 @@
+{
+  "file": "centrelines-ltx.dxf",
+  "description": "Centrelines: the outer walls' L corners, a partition at Ts to them and another crossing it (an X).",
+  "options": {
+    "roles": {
+      "WALL-EXT": "wall:cavityBrickBlock",
+      "WALL-INT": "wall:block100"
+    }
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": false,
+    "wallThicknesses": {
+      "0.28": 4,
+      "0.1": 2
+    },
+    "wallsAtMost": 8,
+    "bounds": [
+      8.14,
+      6.14
+    ],
+    "boundsTolerance": 0.2,
+    "notes": [
+      "centrelines"
+    ]
+  }
+}

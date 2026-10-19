@@ -1,0 +1,10 @@
+{
+  "file": "malformed-truncated.dxf",
+  "description": "A DXF cut off part way through an entity.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "readError": true
+  }
+}

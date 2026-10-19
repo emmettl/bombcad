@@ -1,0 +1,19 @@
+{
+  "file": "units-inch.dxf",
+  "description": "The house by faces in inch.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.0254,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.1": 1
+    },
+    "bounds": [
+      8,
+      6
+    ],
+    "boundsTolerance": 0.01
+  }
+}

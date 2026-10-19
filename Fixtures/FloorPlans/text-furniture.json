@@ -1,0 +1,19 @@
+{
+  "file": "text-furniture.dxf",
+  "description": "Room names, chairs on a furniture layer and one chair on the wall layer.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.1": 1
+    },
+    "wallsAtMost": 5,
+    "notes": [
+      "blocks on wall layers"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "file": "gap-no-jambs.dxf",
+  "description": "A partition by faces with a doorway where its faces simply stop, no jambs drawn.",
+  "options": {
+    "roles": "guess"
+  },
+  "expect": {
+    "units": 0.001,
+    "byFaces": true,
+    "wallThicknesses": {
+      "0.3": 4,
+      "0.1": 1
+    },
+    "gaps": 1,
+    "gapDoors": 1
+  }
+}
