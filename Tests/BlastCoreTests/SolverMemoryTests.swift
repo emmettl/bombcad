@@ -45,7 +45,7 @@ struct SolverMemoryTests {
         let grid = solver.grid
         // An autoreleased buffer keeps the retain the pool holds until it drains: through
         // `MTLBuffer.contents()` every read added one.
-        try autoreleasepool {
+        autoreleasepool {
             let before = CFGetRetainCount(solver.maskBuffer)
             var sum: Float = 0
             for k in 0..<grid.nz {
