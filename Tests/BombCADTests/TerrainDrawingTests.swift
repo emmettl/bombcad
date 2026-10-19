@@ -52,9 +52,11 @@ struct TerrainDrawingTests {
         let plain = try hilltop(shade: nil)
         let cold = try hilltop(shade: 0)
         let hot = try hilltop(shade: 1)
-        // Unpainted ground is grey; painted hot, the hill's top glows pale yellow, as the ground's
-        // patch would on flat ground.
-        #expect(abs(plain.red - plain.blue) < 0.08 && abs(cold.red - cold.blue) < 0.08, "\(plain), \(cold)")
+        // Unpainted ground is earth, a restrained brown (`MaterialAppearance`), and painted cold it
+        // looks the same; painted hot, the hill's top glows pale yellow, as the ground's patch would
+        // on flat ground.
+        #expect(plain.red - plain.blue > 0.04 && plain.red - plain.blue < 0.3, "\(plain)")
+        #expect(abs(cold.red - plain.red) < 0.08 && abs(cold.blue - plain.blue) < 0.08, "\(plain), \(cold)")
         #expect(hot.red > cold.red + 0.2 && hot.red - hot.blue > 0.1, "\(hot) against \(cold)")
     }
 
