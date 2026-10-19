@@ -3,7 +3,7 @@
   "source": "Sources/BlastCore/BlastSolver.swift",
   "folder": "Sources/BlastCore",
   "class": "BlastSolver",
-  "base": "bec647836aaa8bd33af03fae6735acf1422cd73f",
+  "base": "24e8b6a5e2ab99ec71fff37ccff63c6a3f4b70aa",
   "stays": [
    "maxStepsPerBatch",
    "checkpointInterval",
@@ -25,6 +25,8 @@
    "rampStart",
    "lastFiring",
    "mappedStartLatest",
+   "earlyFrameVoxelLimit",
+   "earlyFrameSampleCount",
    "exposureNeedsInitialSample",
    "envelopeExposure",
    "envelopeNeedsInitialSample",
@@ -155,18 +157,23 @@
    "frameExtractor",
    "rigidBoxes",
    "terrain",
+   "ceilingExemptions",
    "terrainSurface",
    "fineDeposit",
    "blockedCharges",
    "init(device:commandQueue:grid:configuration:)",
    "settlements",
    "structuresSettled",
-   "gpuSteps"
+   "gpuSteps",
+   "stepGPUSeconds"
   ],
   "files": {
    "BlastSolver+Stepping.swift": {
     "about": "The air solver's stepping: batches of steps encoded into command buffers, the sweeps and their uniforms, the per-cell kernels for the gas model, tiles of still air, and the GPU time each buffer aims at.",
     "moves": [
+     "enableGPUProfiling(_:detailed:)",
+     "wakeTiles(around:radius:)",
+     "measureWaveSpeedAgain()",
      "batchSteps(_:)",
      "encodeBatch(steps:timeLimit:updateVisualization:)",
      "encodeBatchPart(steps:range:timeLimit:updateVisualization:)",
@@ -182,9 +189,6 @@
      "cellKernels()",
      "tileThreads(for:)",
      "dispatchGrid(_:pipeline:)",
-     "wakeTiles(around:radius:)",
-     "measureWaveSpeedAgain()",
-     "enableGPUProfiling(_:detailed:)",
      "struct GPUStepRate"
     ]
    },
@@ -242,30 +246,36 @@
      "bodyContactPipeline(_:)",
      "encodeBodyContact(_:_:control:)",
      "encodeDebrisExchange(_:)",
-     "bodySummary()",
-     "structureSubsteps",
      "struct Settlement",
      "settleDamping",
      "settleMinimum",
      "settleLimit",
      "settleTolerance",
-     "settleStructures()"
+     "settleStructures()",
+     "bodySummary()",
+     "structureSubsteps"
     ]
    },
    "BlastSolver+Mask.swift": {
     "about": "The air solver's solid mask: editing it, keeping cells in the rigid mask, and remasking the air around structures as they move.",
     "moves": [
+     "keepAir(_:)",
+     "keptAirCells",
      "keepInRigidMask(_:)",
      "mutateMask(_:)",
      "editMaskKeepingTerrain(_:)",
-     "encodeRemask(_:fine:allocate:)",
-     "keepAir(_:)",
-     "keptAirCells"
+     "encodeRemask(_:fine:allocate:)"
     ]
    },
    "BlastSolver+AirModels.swift": {
     "about": "The air solver's options on the air itself: gravity's hydrostatic fill and background tables, sub-grid mixing's eddy viscosity, periodic sides, and the species (unburnt products and oxygen) the air carries.",
     "moves": [
+     "hasSpecies",
+     "currentSpecies",
+     "oxygenInAir",
+     "oxygenPerFuel",
+     "hasFlame",
+     "speciesHoldDetonationProducts",
      "fillHydrostatic()",
      "gravityVariant(_:_:)",
      "mixingViscosity()",
@@ -273,12 +283,6 @@
      "encodePeriodicHalo(_:uniforms:)",
      "assignGravityTables()",
      "gravityTable(scale:)",
-     "hasSpecies",
-     "currentSpecies",
-     "oxygenInAir",
-     "oxygenPerFuel",
-     "hasFlame",
-     "speciesHoldDetonationProducts",
      "mutateSpecies(_:)",
      "readSpecies(_:)",
      "speciesTotals()"
@@ -287,8 +291,8 @@
    "BlastSolver+CutCells.swift": {
     "about": "The air solver's cut cells: structures' outlines laid as cut cells, and each step's redistribution of what cut cells could not hold, the terrain's up its column and the structures' along the wall's normal.",
     "moves": [
-     "setUpStructureCut()",
      "encodeStructureCutRedistribution(_:cut:kernels:uniforms:state:species:)",
+     "setUpStructureCut()",
      "encodeCutRedistribution(_:cut:pipeline:uniforms:state:species:)"
     ]
    },
@@ -322,13 +326,13 @@
     "moves": [
      "configureExposurePlane(heightM:arrivalThresholdPa:spacingM:)",
      "exposureSnapshot()",
-     "encodeExposure(_:initial:)",
      "setGauges(cells:points:)",
      "moveGauges(cells:points:)",
      "encodeFinerGaugeBuffers(_:)",
      "updateGaugeChildren()",
      "prependGaugeHistory(_:_:)",
-     "spliceGaugeHistory(_:_:from:through:)"
+     "spliceGaugeHistory(_:_:from:through:)",
+     "encodeExposure(_:initial:)"
     ]
    },
    "BlastSolver+Envelopes.swift": {
@@ -376,6 +380,13 @@
     "about": "The air solver's freestanding objects in the air (experimental boxes): their cells, the air's conservative remap as they move, and the loads on them.",
     "moves": [
      "extension BlastSolver from installExperimentalBox(_:)"
+    ]
+   },
+   "BlastSolver+Checkpoints.swift": {
+    "about": "The air solver's checkpoints: the state saved part by part and restored, and the digest of the state that says a restored run is the same.",
+    "moves": [
+     "extension BlastSolver from checkpointName",
+     "extension BlastSolver from stateDigest()"
     ]
    }
   }

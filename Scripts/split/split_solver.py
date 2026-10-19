@@ -2,6 +2,7 @@
 
     python3 Scripts/split/split_solver.py inventory [swift|metal]
     python3 Scripts/split/split_solver.py check
+    python3 Scripts/split/split_solver.py refresh
     python3 Scripts/split/split_solver.py split
     python3 Scripts/split/split_solver.py editors [--days N]
 
@@ -27,9 +28,11 @@ besides the moves:
 `inventory` prints each file's members or declarations with their keys, as the plan names them.
 `check` compares the plan with the tree and stops, naming them, at a member or declaration the
 plan does not place, or one it places that is not there: main has moved under the plan. A change
-inside a member that keeps the inventory is carried along as it is (and reported). `split` does
-the cut, and does nothing when it has been done. `editors` lists who has been changing the two
-files: commits by day and by the plan's parts, and the worktrees with changes to them.
+inside a member that keeps the inventory is carried along as it is (and reported). `refresh`
+writes the plan again for the tree as it is: what it does not name goes with what is above it
+(read the difference before committing it). `split` does the cut, and does nothing when it has
+been done. `editors` lists who has been changing the two files: commits by day and by the plan's
+parts, and the worktrees with changes to them.
 """
 
 from __future__ import annotations
@@ -903,6 +906,33 @@ def worktree_changes(sources: list[str]):
 # --- Command line -------------------------------------------------------------------------------
 
 
+def refresh(plan: dict) -> None:
+    """Brings the plan up to date with the tree: what it does not name goes with what is above
+    it, what it names that is gone is dropped, and the bases are the files as they are. Read the
+    plan's difference before committing it."""
+    global LENIENT
+    LENIENT = True
+    try:
+        _, _, units, swift_place, _ = swift_state(plan)
+        _, items, metal_place, problems = metal_state(plan)
+    finally:
+        LENIENT = False
+    if problems:
+        fail("; ".join(problems))
+    for side, keys, place in (
+            ("swift", [u.key for u in units if u.key in swift_place.target], swift_place),
+            ("metal", [i.key for i in items], metal_place)):
+        gone = plan_keys(plan, side) - set(keys)
+        for key in sorted(gone):
+            print(f"  {key}: no longer in {place.source}; dropped from the plan")
+        plan[side]["stays"] = [k for k in keys if not place.target[k]]
+        for name, spec in plan[side]["files"].items():
+            spec["moves"] = [k for k in keys if place.target[k] == name]
+        plan[side]["base"] = blob(place.source)
+    PLAN.write_text(json.dumps(plan, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"wrote {PLAN.relative_to(ROOT) if PLAN.is_relative_to(ROOT) else PLAN}")
+
+
 def inventory(plan: dict, side: str | None) -> None:
     if side in (None, "swift"):
         _, sf, units, place, _ = swift_state(plan)
@@ -920,7 +950,7 @@ def inventory(plan: dict, side: str | None) -> None:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("command", choices=["inventory", "check", "split", "editors"])
+    parser.add_argument("command", choices=["inventory", "check", "refresh", "split", "editors"])
     parser.add_argument("side", nargs="?", choices=["swift", "metal"])
     parser.add_argument("--days", type=int, default=7)
     parser.add_argument("--root", type=Path, help="the checkout to work on (default: this one)")
@@ -937,6 +967,8 @@ def main(argv: list[str]) -> int:
             inventory(plan, args.side)
         elif args.command == "check":
             return 0 if check(plan) else 1
+        elif args.command == "refresh":
+            refresh(plan)
         elif args.command == "split":
             split(plan)
         else:

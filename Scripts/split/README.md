@@ -44,7 +44,7 @@ and function constants are as they were. The plan is `solver-split.json`.
 
 | File | What it is |
 |---|---|
-| `split_solver.py` | `inventory` (each member's or declaration's key and where the plan puts it), `check` (the plan against the tree), `split`, and `editors` (who has been changing the two files) |
+| `split_solver.py` | `inventory` (each member's or declaration's key and where the plan puts it), `check` (the plan against the tree), `refresh` (the plan brought up to date), `split`, and `editors` (who has been changing the two files) |
 | `solver-split.json` | The plan: for each new file, what moves to it and a line on what it is; the rest stays. `base` is each file's blob when the plan was made |
 | `split-solver.sh` | The split itself, on a branch of a clean checkout |
 | `solver-digests.sh` | `blastbench digest` on uniform, refined and twice-refined air, recommended, gravity, terrain and the mapped start, to compare before and after |
@@ -82,9 +82,10 @@ In the window:
 1. On `main` before the cut, with a current release build:
    `gpu-slot Scripts/split/solver-digests.sh /Volumes/StudioData/bombcad/solver-split/before.txt`.
 2. Branch, and `python3 Scripts/split/split_solver.py check`. If it fails, `main` has added,
-   removed or renamed a member or declaration: `inventory` lists the keys; place the new ones in
-   `solver-split.json` (a kernel after what it uses) and commit the plan. A change inside a member
-   needs nothing: it moves with the member.
+   removed or renamed a member or declaration: `refresh` places each new one with what is above
+   it and drops what is gone; read the plan's difference (move a new member to a better file by
+   hand if need be; `inventory` lists the keys) and commit it. A change inside a member needs
+   nothing: it moves with the member.
 3. `Scripts/split/split-solver.sh` (it formats and lints what it wrote and runs the shader mirrors'
    check).
 4. `make build-strict`, a release build, and `solver-digests.sh … after.txt`: the digests must

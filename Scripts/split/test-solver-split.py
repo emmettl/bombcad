@@ -202,6 +202,15 @@ class SplitTests(unittest.TestCase):
         self.write_plan(moved)
         self.assertFalse(split.check(split.load_plan(), quiet=True))
 
+    def test_refresh(self):
+        source = self.root / "Sources/BlastCore/BlastSolver.swift"
+        source.write_text(SWIFT.replace("    private func uniforms()", "    func added() {}\n\n    private func uniforms()"))
+        self.assertFalse(split.check(split.load_plan(), quiet=True))
+        split.refresh(split.load_plan())
+        self.assertTrue(split.check(split.load_plan(), quiet=True))
+        moves = split.load_plan()["swift"]["files"]["BlastSolver+Stepping.swift"]["moves"]
+        self.assertEqual(moves[moves.index("advanceOnce()") + 1], "added()")
+
     def test_metal_order(self):
         wrong = plan()
         wrong["metal"]["stays"].remove("pressureOf")
