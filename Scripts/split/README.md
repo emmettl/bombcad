@@ -67,7 +67,7 @@ What goes where:
 Two things change besides the moves. Swift's `private` reaches extensions in the same file only,
 so a `private` declaration another of the new files uses becomes internal, and a `private(set)`
 property another file sets becomes `internal(set)`: about 170, nearly all the stored buffers and
-pipelines (`split` lists them). And ShaderLibrary's list (StructureTypes.swift) names the new
+pipelines (`split` lists them). And ShaderLibrary's list (`ShaderLibrary.make`) names the new
 Metal files right after `Solver`: the library is one source, the files joined in order, so `check`
 proves that each file uses only what an earlier one, or an earlier line of its own, defines.
 check-affected's core files take `BlastSolver+*.swift` too, and comments naming a moved kernel or

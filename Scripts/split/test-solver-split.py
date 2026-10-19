@@ -148,7 +148,7 @@ class SplitTests(unittest.TestCase):
         files = {
             "Sources/BlastCore/BlastSolver.swift": SWIFT,
             "Sources/BlastCore/Shaders/Solver.metal": METAL,
-            "Sources/BlastCore/StructureTypes.swift": LIBRARY,
+            "Sources/BlastCore/StructureTypes+GPU.swift": LIBRARY,
             "Scripts/check-affected.py": AFFECTED,
             "docs/air.md": DOC,
         }
@@ -231,7 +231,7 @@ class SplitTests(unittest.TestCase):
         sweep = self.read("Sources/BlastCore/Shaders/SolverSweep.metal")
         self.assertIn("// Sweeps.\nkernel void sweep(device Cell *state [[buffer(0)]]", sweep)
         self.assertNotIn("kernel void", self.read("Sources/BlastCore/Shaders/Solver.metal"))
-        self.assertIn('"Solver", "SolverSweep", "SolverView", "Refine"', self.read("Sources/BlastCore/StructureTypes.swift"))
+        self.assertIn('"Solver", "SolverSweep", "SolverView", "Refine"', self.read("Sources/BlastCore/StructureTypes+GPU.swift"))
         self.assertIn(r"(BlastSolver(\+\w+)?|SolverTypes)", self.read("Scripts/check-affected.py"))
         self.assertIn("(`sweep` in SolverSweep.metal) and `advanceOnce` in BlastSolver+Stepping.swift",
                       self.read("docs/air.md"))

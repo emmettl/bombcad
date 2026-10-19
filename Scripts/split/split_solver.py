@@ -19,7 +19,7 @@ besides the moves:
 - access: a `private` declaration used from another of the new files becomes internal, and a
   `private(set)` property set from another file becomes `internal(set)` (or settable, when the
   property is internal). Swift's `private` reaches extensions in the same file only.
-- the list of shader files compiled together (`ShaderLibrary` in StructureTypes.swift) names
+- the list of shader files compiled together (`ShaderLibrary.make`) names
   the new Metal files right after Solver.metal, in the plan's order. The library is one source,
   the files joined in that order, so a part may use only what an earlier part or itself defines;
   `check` proves that for every name defined at file scope.
@@ -51,7 +51,6 @@ PLAN = Path(__file__).resolve().with_name("solver-split.json")
 # Porting a branch's commits over the split (`--lenient`): what the plan does not name goes with
 # the member or declaration above it, and what it names that is not there is passed over.
 LENIENT = False
-SHADER_LIBRARY = "Sources/BlastCore/StructureTypes.swift"
 CHECK_AFFECTED = "Scripts/check-affected.py"
 # Calls through which code elsewhere changes a property in place.
 MUTATING = {
@@ -720,6 +719,16 @@ def split_metal(plan: dict) -> dict[str, str]:
     return result
 
 
+def shader_library() -> str:
+    """The file that lists the shaders compiled together (`ShaderLibrary.make`)."""
+    found = [path for path in git("ls-files", "Sources").split()
+             if path.endswith(".swift") and re.search(r'let files = \[\s*"Solver",',
+                                                      (ROOT / path).read_text(encoding="utf-8"))]
+    if len(found) != 1:
+        fail(f"ShaderLibrary's list of shader files, starting with \"Solver\", is in {len(found)} files")
+    return found[0]
+
+
 def library_edit(plan: dict, text: str) -> str:
     """ShaderLibrary's list of files with the new Metal files right after Solver."""
     names = [Path(name).stem for name in plan["metal"]["files"]]
@@ -727,7 +736,7 @@ def library_edit(plan: dict, text: str) -> str:
         return text
     anchor = re.search(r'let files = \[\s*"Solver",', text)
     if not anchor:
-        fail(f"{SHADER_LIBRARY}: ShaderLibrary's file list does not start with \"Solver\"")
+        fail("ShaderLibrary's file list does not start with \"Solver\"")
     insert = "".join(f' "{n}",' for n in names)
     return text[:anchor.end()] + insert + text[anchor.end():]
 
@@ -792,8 +801,9 @@ def split(plan: dict) -> None:
         fail("the plan no longer describes the tree (run `check` to see where)")
     out = split_swift(plan)
     out |= split_metal(plan)
-    library = (ROOT / SHADER_LIBRARY).read_text(encoding="utf-8")
-    out[SHADER_LIBRARY] = library_edit(plan, out.get(SHADER_LIBRARY, library))
+    library_path = shader_library()
+    library = (ROOT / library_path).read_text(encoding="utf-8")
+    out[library_path] = library_edit(plan, out.get(library_path, library))
     affected = ROOT / CHECK_AFFECTED
     if affected.exists():
         out[CHECK_AFFECTED] = affected_edit(affected.read_text(encoding="utf-8"))
