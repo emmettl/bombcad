@@ -398,6 +398,9 @@ struct ThermalMedium: Sendable {
     var tiles: [FireballTile]
     /// The march's step within voxels where gas may be found, in metres.
     var step: Float
+    /// The fireball in spherical shells, which rays are marched through in place of the voxels
+    /// where a frame has them (`FireballFrame.spheres`).
+    var spherical: SphericalMedium?
 
     var high: SIMD3<Float> { low + SIMD3<Float>(counts) * voxelSize }
 
@@ -411,7 +414,8 @@ struct ThermalMedium: Sendable {
     /// The medium of `cells` under `spec`: each voxel's gas absorbs `spec.absorption` a metre for
     /// itself, as soot `spec.sootYield` of its unburnt products would, and, with
     /// `spec.hotAirAbsorption`, as hot air at its temperature and density.
-    init(_ cells: LuminousCells, spec: ThermalSpec) {
+    init(_ cells: LuminousCells, spheres: [FireballSphere]? = nil, spec: ThermalSpec) {
+        spherical = spheres.map { SphericalMedium($0, spec: spec) }
         low = cells.low
         voxelSize = cells.voxelSize
         counts = cells.counts
@@ -519,6 +523,7 @@ struct ThermalMedium: Sendable {
     /// emits its gas's radiance times 1 - e^(-κ s) (see `step(_:_:length:)`), dimmed by the steps
     /// before it, e^(-Σκs). Given up once less than 10⁻⁴ of what lies beyond could get through.
     func radiance(from origin: SIMD3<Float>, along direction: SIMD3<Float>, limit: Float) -> Float {
+        if let spherical { return spherical.radiance(from: origin, along: direction, limit: limit) }
         let low = self.low
         let high = self.high
         var enter: Float = 0

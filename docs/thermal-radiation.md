@@ -551,34 +551,40 @@ from the contact; their soot blackened the shock's layer of air with a cooler sk
 layer, 0.6 m of air at up to 6,600 K and five times the ambient density, is as transparent as
 0.1/m makes it; with hot air's own absorption (above), about 10 a metre at its hottest, it shows.
 
+The volume marches these frames through the solution's own shells (`FireballFrame.spheres`,
+one sphere a charge), exactly, piece by piece between the shells' boundaries, rather than through
+their voxels: the front is about a voxel thick (0.23 m at 1 ms) against the soot-black products
+behind it, and the voxels' κB, interpolated with κ between their centres, gave most of its voxel
+the products' cooler radiance, three-fifths of the exact intensity (an opaque shell 0.6 m thick
+round a black core, `blastbench shell-sphere`, comes out exact on 0.25 m voxels; the solution's
+own front 0.65 to 0.86 of exact). The voxels still give the frames' shape, the directions each
+receiver samples, and the picture; the shells are marched on the CPU's cores, as the GPU's march
+knows only voxels.
+
 Against Dial Pack (`blastbench dialpack --mapped`, the charge on the ground so that it can be
 mapped, 4 m cells, to 0.5 s), the intensity toward 1,700 m in cal/sr/s × 10⁷, the 18 October
-frames, and since 19 October with the soot within the products and hot air absorbing; and exact
-rays through the same one-dimensional solution, on its own 0.15 m cells (`blastbench
-radial-profile --reach 2.5 --dump`):
+frames, and since 19 October with the soot within the products, hot air absorbing and the
+shells marched; and exact rays through the same one-dimensional solution, on its own 0.15 m
+cells (`blastbench radial-profile --reach 2.5 --dump`):
 
 | | Measured | Balloon | Mapped, early frames | Since 19 October | Exact, same solution |
 |---|---|---|---|---|---|
-| 1 ms | 80 | | 33 | 50 | 91 |
-| The first maximum, 1.25 ms | 157 | 25 | 38 | 55 | 99 |
-| 2 ms | 80 | 19 | 47 | 61 | 84 |
-| 3 ms | 69 | | 32 | 48 | 55 |
-| 5 ms | 74 | | 28 | 42 | 43 |
-| The second maximum, 25 ms | 112 | 20 | 16 | 28 | |
+| 1 ms | 80 | | 33 | 88 | 91 |
+| The first maximum, 1.25 ms | 157 | 25 | 38 | 94 | 99 |
+| 2 ms | 80 | 19 | 47 | 82 | 84 |
+| 3 ms | 69 | | 32 | 54 | 55 |
+| 5 ms | 74 | | 28 | 41 | 43 |
+| The second maximum, 25 ms | 112 | 20 | 16 | 25 | |
 | 50 to 200 ms | 55 to 101 | 0 to 4 | 0 to 3 | 0 to 3 | |
 | Fluence at 600 m by 0.5 s | 3.83 kJ/m² | 0.77 | 1.54 | 1.57 | |
 
-Either change alone does little: the soot within the products and grey air gives 46 at
-1.25 ms, hot air with the soot spread to the shock 38. Together the first maximum comes at about
-the right time and falls away as measured, at a third of its height. Exact rays through the same
-solution give three-fifths of it; the rest is the volume's: the front is about a voxel thick
-(0.23 m at 1 ms) against the soot-black products behind it, and the march's κB, interpolated
-with κ between voxels' centres, gives most of its voxel the products' cooler radiance (an opaque
-shell 0.6 m thick round a black core, `blastbench shell-sphere`, comes out exact on 0.25 m voxels;
-the solution's own front 0.65 to 0.86 of exact). Eight times the voxels make it 66. The rest, to
-157, would need the front hotter than the 6,600 K the start's air reaches: the report finds
-7,500 to 8,000 K, and the start's thermally perfect air takes up energy in vibration but neither
-dissociates nor is out of equilibrium behind the shock.
+No one change does it: through the voxels, the soot within the products and grey air gives 46 at
+1.25 ms, hot air with the soot spread to the shock 38, both 55. Together, and marched through the
+shells, the first maximum comes at about the right time, three-fifths of its height, and falls
+away as measured; the exact rays' remaining difference is the frames' half-millisecond spacing.
+The rest, to 157, would need the front hotter than the 6,600 K the start's air reaches: the
+report finds 7,500 to 8,000 K, and the start's thermally perfect air takes up energy in vibration
+but neither dissociates nor is out of equilibrium behind the shock.
 
 Against Clough and Clubley's 41 kg (`blastbench gauging`), the products reach 3 m by 3.2 ms (the
 camera's fireball 4 m), but they have cooled below the luminous temperature as they expanded,
@@ -720,7 +726,7 @@ than in thin flame sheets round a fuel-rich core.
 and an extinction limit for afterburning left Dial Pack at about 21% of the blast yield radiated
 by 6 s, against 5.1%. If it resumes, the candidates are burning in flame sheets round a fuel-rich
 core (a mixture-fraction flame model); the hot luminous shock layer, which the grid smears out,
-now shows in the early frames from the one-dimensional start, at a third of the first
+now shows in the early frames from the one-dimensional start, at three-fifths of the first
 millisecond's measured pulse ([before the grid's clock](#before-the-grids-clock)). Until then the thermal
 radiation stays illustrative.
 

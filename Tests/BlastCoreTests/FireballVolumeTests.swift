@@ -352,6 +352,43 @@ struct FireballVolumeTests {
         #expect(abs(ThermalMedium(cells, spec: spec).voxels[0].y - 5.1) < 1e-5)
     }
 
+    @Test("Rays through the early frames' shells come out exact, ground or block cutting them short")
+    func shells() throws {
+        var spec = spec(absorption: 0)
+        spec.hotAirAbsorption = true
+        let sigma = Float(ThermalExposure.stefanBoltzmann / Double.pi)
+        // Ten shells of 0.1 m: the outer two hot air at 6,600 K absorbing 10/m, the rest a core at
+        // 3,500 K absorbing 5,000/m, opaque.
+        let sphere = FireballSphere(
+            centre: SIMD3(5, 5, 5), shellSize: 0.1, temperatures: (0..<10).map { $0 >= 8 ? 6600 : 3500 },
+            products: [Float](repeating: 0, count: 10),
+            airAbsorption: (0..<10).map { $0 >= 8 ? 10 : 5000 })
+        let medium = SphericalMedium([sphere], spec: spec)
+        let hot = sigma * pow(6600, 4)
+        let core = sigma * pow(3500, 4)
+        // Through the middle: 0.2 m of hot air, then the black core.
+        let passed = exp(-10 * Float(0.2))
+        let middle = medium.radiance(from: SIMD3(0, 5, 5), along: SIMD3(1, 0, 0), limit: .infinity)
+        #expect(abs(middle / (hot * (1 - passed) + passed * core) - 1) < 1e-4)
+        // Grazing the outer shell only, 0.95 m off the centre: its chord, 2√(1 − 0.95²) m.
+        let chord = 2 * (1 - 0.95 * 0.95 as Float).squareRoot()
+        let grazing = medium.radiance(from: SIMD3(0, 5.95, 5), along: SIMD3(1, 0, 0), limit: .infinity)
+        #expect(abs(grazing / (hot * (1 - exp(-10 * chord))) - 1) < 1e-3)
+        // Cut short where the hot air begins, nothing; and missing it, nothing.
+        #expect(medium.radiance(from: SIMD3(0, 5, 5), along: SIMD3(1, 0, 0), limit: 4) == 0)
+        #expect(medium.radiance(from: SIMD3(0, 6.5, 5), along: SIMD3(1, 0, 0), limit: .infinity) == 0)
+        // Without the hot air's absorption the outer shells absorb nothing at all here.
+        spec.hotAirAbsorption = false
+        let grey = SphericalMedium([sphere], spec: spec)
+        #expect(grey.radiance(from: SIMD3(0, 5.95, 5), along: SIMD3(1, 0, 0), limit: .infinity) == 0)
+        // They travel intact, and a kept frame drops them.
+        let frame = FireballFrame(
+            time: 0.001, volume: 4, centre: sphere.centre, temperature: 4000, hottest: 6600, spheres: [sphere]
+        )
+        #expect(try JSONDecoder().decode(FireballFrame.self, from: JSONEncoder().encode(frame)) == frame)
+        #expect(frame.withoutShape.spheres == nil)
+    }
+
     @Test("The cells travel intact, and a fireball too large is merged until it fits")
     func cells() throws {
         let cells = LuminousCells(

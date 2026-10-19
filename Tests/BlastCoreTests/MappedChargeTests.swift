@@ -152,8 +152,12 @@ struct MappedChargeTests {
             #expect(frame.volume > 0 && frame.temperature >= spec.luminousTemperature, "\(frame.time) s")
             let cells = try #require(frame.cells)
             #expect(cells.fills.contains { $0 > 0 })
-            // Each voxel's gas absorbing as hot air, for a volume that asks for it.
+            // Each voxel's gas absorbing as hot air, for a volume that asks for it; and the shells
+            // themselves, as far out as the luminous gas, for the volume to march.
             #expect(cells.airAbsorption?.contains { $0 > 0 } == true)
+            let sphere = try #require(frame.spheres?.first)
+            #expect(frame.spheres?.count == 1 && sphere.centre == scenario.charge.position)
+            #expect(sphere.temperatures.last.map { $0 >= spec.luminousTemperature } == true)
             // Mirrored by the ground: the luminous gas above it, round the charge.
             #expect(frame.centre.z > 0 && abs(frame.centre.x - scenario.charge.position.x) < 0.5)
         }

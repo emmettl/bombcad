@@ -102,13 +102,18 @@ public struct FireballFrame: Codable, Sendable, Equatable {
     /// The luminous gas cell by cell, for the volume model; nil unless asked for, and in the
     /// frames a result keeps.
     public var cells: LuminousCells?
+    /// The fireball in spherical shells, one sphere a charge, where it comes from the mapped
+    /// start's one-dimensional solution (`BlastSolver.earlyFireballFrames`); the volume marches
+    /// rays through them exactly, in place of `cells`. Nil otherwise, and in the frames a result
+    /// keeps.
+    public var spheres: [FireballSphere]?
     /// What the fireball radiated at this moment, in watts, as the volume model measured it
     /// round it (see `ThermalExposure.radiatedPower`); nil where it was not.
     public var radiatedPower: Double?
 
     public init(
         time: Double, volume: Double, centre: SIMD3<Float>, temperature: Float, hottest: Float,
-        shape: FireballShape? = nil, cells: LuminousCells? = nil
+        shape: FireballShape? = nil, cells: LuminousCells? = nil, spheres: [FireballSphere]? = nil
     ) {
         self.time = time
         self.volume = volume
@@ -117,6 +122,7 @@ public struct FireballFrame: Codable, Sendable, Equatable {
         self.hottest = hottest
         self.shape = shape
         self.cells = cells
+        self.spheres = spheres
     }
 
     /// The equivalent sphere's radius.
@@ -135,6 +141,7 @@ public struct FireballFrame: Codable, Sendable, Equatable {
         var frame = self
         frame.shape = nil
         frame.cells = nil
+        frame.spheres = nil
         return frame
     }
 }
@@ -357,7 +364,7 @@ public struct ThermalExposure: Sendable {
         guard spec.fireball == .volume, march != nil, frame.volume > 0, let cells = frame.cells else {
             return nil
         }
-        return ThermalMedium(cells, spec: spec)
+        return ThermalMedium(cells, spheres: frame.spheres, spec: spec)
     }
 
     /// The irradiance at every receiver from `frame`'s fireball: every receiver's rays toward it,

@@ -117,6 +117,24 @@ extension BlastSolver {
         guard laid.volume > 0 else {
             return FireballFrame(time: time, volume: 0, centre: .zero, temperature: 0, hottest: 0)
         }
+        // The shells themselves, for the volume to march exactly.
+        let spheres =
+            spec.fireball == .volume
+            ? lit.map { profile -> FireballSphere in
+                let count = min(
+                    Int((Double(profile.reach) / profile.cellSize).rounded()), profile.temperature.count)
+                return FireballSphere(
+                    centre: profile.centre, shellSize: Float(profile.cellSize),
+                    temperatures: profile.temperature[..<count].map {
+                        $0 >= spec.luminousTemperature ? $0 : 0
+                    },
+                    products: configuration.afterburning
+                        ? Array(profile.unburnt[..<count])
+                        : [Float](
+                            repeating: 0, count: count),
+                    airAbsorption: profile.absorption.isEmpty
+                        ? [Float](repeating: 0, count: count) : Array(profile.absorption[..<count]))
+            } : nil
         let cells =
             spec.fireball == .volume
             ? LuminousCells(
@@ -126,6 +144,7 @@ extension BlastSolver {
                 airAbsorption: laid.airAbsorption.map { Float16(min($0, 65504)) }) : nil
         return FireballFrame(
             time: time, volume: laid.volume, centre: SIMD3<Float>(laid.moment / laid.volume),
-            temperature: Float(pow(laid.fourth / laid.volume, 0.25)), hottest: laid.hottest, cells: cells)
+            temperature: Float(pow(laid.fourth / laid.volume, 0.25)), hottest: laid.hottest, cells: cells,
+            spheres: spheres)
     }
 }
