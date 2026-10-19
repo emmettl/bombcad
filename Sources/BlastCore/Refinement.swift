@@ -597,6 +597,67 @@ final class AirRefinement {
         }
     }
 
+    /// Reads this level's fine cells, by their fine coordinates, for editing between batches: a
+    /// cell's state and its fuel and oxygen (zero without afterburning) where a patch holds it and
+    /// it is not solid, else nil.
+    func fineCells() -> (SIMD3<Int>) -> (state: CellState, species: SIMD2<Float>)? {
+        let side = side
+        let tileDims = tileDims
+        let total = side * side * side
+        let map = UnsafePointer(
+            (patchOfTile.contents() + offset(of: patchOfTile)).bindMemory(
+                to: Int32.self, capacity: tileDims.x * tileDims.y * tileDims.z))
+        let solid = UnsafePointer(
+            (fineMask.contents() + offset(of: fineMask)).bindMemory(
+                to: UInt8.self, capacity: maxPatches * total))
+        let state = UnsafePointer(
+            (fine[0].contents() + offset(of: fine[0])).bindMemory(
+                to: CellState.self, capacity: maxPatches * total))
+        let carried =
+            species
+            ? UnsafePointer(
+                fineSpecies[0].contents().bindMemory(to: SIMD2<Float>.self, capacity: maxPatches * total))
+            : nil
+        return { cell in
+            let block = cell / side
+            guard all(cell .>= 0), all(block .< tileDims) else { return nil }
+            let patch = Int(map[block.x + tileDims.x * (block.y + tileDims.y * block.z)])
+            guard patch >= 0 else { return nil }
+            let local = cell &- block &* side
+            let at = patch * total + local.x + side * (local.y + side * local.z)
+            guard solid[at] & 1 == 0 else { return nil }
+            return (state[at], carried?[at] ?? .zero)
+        }
+    }
+
+    /// Adds `added` (by coarse cell index) to the impulse the patches holding those cells count
+    /// theirs from: impulse laid on the coarse cells during the run, which the patches' fine cells
+    /// did not see.
+    func addImpulseBase(_ added: [Int: Float], grid: Grid) {
+        guard !added.isEmpty else { return }
+        let tiles = tileOfPatch.contents().bindMemory(to: UInt32.self, capacity: maxPatches)
+        let size = Self.patchSize
+        let perPatch = size * size * size
+        let base = impulseBase.contents().bindMemory(to: Float.self, capacity: maxPatches * perPatch)
+        for patch in 0..<maxPatches where tiles[patch] != UInt32.max {
+            let tile = Int(tiles[patch])
+            let origin =
+                SIMD3(tile % tileDims.x, (tile / tileDims.x) % tileDims.y, tile / (tileDims.x * tileDims.y))
+                &* size
+            for z in 0..<size {
+                for y in 0..<size {
+                    for x in 0..<size {
+                        let cell = origin &+ SIMD3(x, y, z)
+                        guard cell.x < grid.nx, cell.y < grid.ny, cell.z < grid.nz,
+                            let more = added[grid.index(cell.x, cell.y, cell.z)]
+                        else { continue }
+                        base[patch * perPatch + x + size * (y + size * z)] += more
+                    }
+                }
+            }
+        }
+    }
+
     /// Sets fine cells, by their fine coordinates, where a patch holds them, with their fuel and
     /// oxygen where afterburning is on.
     func setFine(_ cells: [SIMD3<Int>: (state: CellState, species: SIMD2<Float>)]) {

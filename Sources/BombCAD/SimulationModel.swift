@@ -704,6 +704,8 @@ final class SimulationModel {
     private(set) var estimatingEnvelopeDamage = false
     /// Why the glazing is not vented though asked to be, or empty.
     private(set) var envelopeVentingStatus = ""
+    /// How each charge fired after the main one was laid down in the last run, and when.
+    private(set) var firingNotes: [String] = []
     /// Whether the view colours envelopes by their damage (over the air's paint) once judged.
     var showsEnvelopeDamage = true {
         didSet { applyEnvelopeDamageColours() }
@@ -2620,8 +2622,10 @@ final class SimulationModel {
                                 }
                                 // Close-in charges breach concrete by UFC 3-340-02's curves; the
                                 // main charge's casing, if it is cased, from its fragments.
+                                var main = scenario.charge
+                                main.delay = nil
                                 try solver.setEnvelopeCloseIn(
-                                    charges: [(scenario.charge, fragmentSpec?.casingMass ?? 0)]
+                                    charges: [(main, fragmentSpec?.casingMass ?? 0)]
                                         + (scenario.additionalCharges ?? []).map { ($0, 0) },
                                     constructions: { scenario.envelopeConstruction(for: $0) })
                             } catch {
@@ -2830,6 +2834,18 @@ final class SimulationModel {
 
     private func finish() {
         isRunning = false
+        firingNotes = (solver?.firings ?? []).map { firing in
+            let how =
+                switch firing.how {
+                case .balloon: "as a ball of hot gas"
+                case .mapped: "from its one-dimensional solution"
+                case .balloonInsteadOfMapped: "as a ball of hot gas, not mapped"
+                }
+            return String(
+                format: "The charge fired at %.2f ms was laid %@ at %.2f ms.",
+                firing.charge.firingTime * 1000, how,
+                firing.laidAt * 1000) + (firing.note.map { " " + $0 } ?? "")
+        }
         if let solver, let snapshot = solver.exposureSnapshot() {
             injuryField = InjuryField(
                 snapshot, centre: SIMD2(scenario.charge.position.x, scenario.charge.position.y),

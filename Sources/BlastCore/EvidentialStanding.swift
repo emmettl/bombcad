@@ -1135,6 +1135,7 @@ public enum StandingTable {
         "Terrain.heights": .input,
         "Terrain.source": .input,
         "Charge.mass": .input,
+        "Charge.delay": .input,
         "Charge.position": .input,
         // The air solver.
         "SolverConfiguration.bodyCouplingLayout": .numerical,
@@ -1640,7 +1641,17 @@ struct StandingScene {
             has(.hotAir) || has(.dissociatingAir)
                 ? "The detonation products are treated as hot air."
                 : "The detonation products are treated as air, an ideal gas of γ = 1.4.")
-        if !(inputs.scenario.additionalCharges ?? []).isEmpty {
+        let further = inputs.scenario.additionalCharges ?? []
+        if further.contains(where: { $0.firingTime > 0 }) {
+            lines.append(
+                "Several charges fire, some after the main one; the comparisons are of one charge, and of "
+                    + "two delayed ones against a finer run. A delayed charge is laid down when the run's clock "
+                    + "reaches it: with the fine start, from its one-dimensional solution where the air about "
+                    + "it stays still until that is due, else (and without the fine start) as a ball of hot "
+                    + "gas; laid during the run where the air is not yet refined, it is resolved by the coarse cells "
+                    + "until the refinement takes it up, and its fireball's first moments are not in the thermal record."
+            )
+        } else if !further.isEmpty {
             lines.append("Several charges fire together; the comparisons are of one charge.")
         }
         if inputs.scenario.charge.position.z > 0.1 * cubeRoot {

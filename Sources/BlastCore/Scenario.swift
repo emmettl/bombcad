@@ -11,13 +11,21 @@ public struct Charge: Sendable, Hashable, Codable {
     /// TNT-equivalent mass in kilograms.
     public var mass: Float
     public var position: SIMD3<Float>
+    /// Seconds after the scenario's main charge that this one detonates; nil (or 0) at the same
+    /// moment. The main charge always fires at t = 0, and a delay given it is not used. Optional,
+    /// and left out of a saved layout when nil, so that layouts and runs saved before it read as
+    /// before.
+    public var delay: Float?
 
-    public init(mass: Float, position: SIMD3<Float>) {
+    public init(mass: Float, position: SIMD3<Float>, delay: Float? = nil) {
         self.mass = mass
         self.position = position
+        self.delay = delay
     }
 
     public var energy: Float { mass * Self.energyPerKilogram }
+    /// When it detonates on the run's clock, as a further charge: its delay, never negative.
+    public var firingTime: Double { Double(max(delay ?? 0, 0)) }
 }
 
 public struct Gauge: Sendable, Hashable, Identifiable, Codable {
@@ -111,8 +119,8 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var importNotes: [String]?
     public var importedModels: [ImportedModel]?
     public var charge: Charge
-    /// Further charges, fired at the same moment as `charge`. (Optional so that layouts saved
-    /// before it existed still open.)
+    /// Further charges, each fired its own `delay` after `charge` (at the same moment without
+    /// one). (Optional so that layouts saved before it existed still open.)
     public var additionalCharges: [Charge]?
     public var gauges: [Gauge]
     /// Legacy adapter to the first deformable object. Multi-body callers address objects by ID.
@@ -470,23 +478,59 @@ extension BlastSolver {
             return cell
         }
         let gaugeCentres = gaugeCells.map { grid.cellCentre($0.i, $0.j, $0.k) }
-        var mapped: [SphericalBlast] = []
+        let all = charges(of: scenario)
+        let positions = all.map(\.position)
+        pendingFirings = []
+        firings = []
+        firingCharges = all
+        firingProbes = gaugeCentres
+        var laid: [(blast: SphericalBlast, mapping: ChargeMapping)] = []
+        var clockStart = 0.0
         if !mappings.isEmpty {
+            let (solutions, start) = solveMapped(mappings, probes: gaugeCentres)
+            clockStart = start
             // Charges too near anything to be mapped are laid as the balloon, first, so that the
             // mapped ones are laid over nothing of theirs; the balloon stands for its charge some
-            // time after it fired, and is laid as the mapped ones are, at their clock.
-            for (k, charge) in charges(of: scenario).enumerated()
-            where !mappings.contains(where: { $0.index == k }) {
-                deposit(charge)
+            // time after it fired, and is laid as the mapped ones are, at their clock. Those that
+            // fire after it are laid when they do.
+            for (k, charge) in all.enumerated() where !mappings.contains(where: { $0.index == k }) {
+                if charge.firingTime <= start {
+                    deposit(charge)
+                    if charge.firingTime > 0 {
+                        firings.append(Firing(charge: charge, laidAt: start, how: .balloon))
+                    }
+                } else {
+                    pendingFirings.append(
+                        PendingFiring(time: charge.firingTime, charge: charge, stage: .balloon))
+                }
             }
-            mapped = depositMapped(
-                mappings, among: charges(of: scenario).map(\.position), probes: gaugeCentres)
+            for (blast, mapping) in zip(solutions, mappings) {
+                if mapping.charge.firingTime < start {
+                    laid.append((blast, mapping))
+                    if mapping.charge.firingTime > 0 {
+                        firings.append(Firing(charge: mapping.charge, laidAt: start, how: .mapped))
+                    }
+                } else {
+                    pendingFirings.append(
+                        PendingFiring(
+                            time: mapping.charge.firingTime, charge: mapping.charge,
+                            stage: .check(mapping, blast)))
+                }
+            }
+            layMapped(laid, among: positions)
         } else if let deflagration = scenario.deflagration {
             deflagrationStage?.initialUnburnt = depositCloud(deflagration)
         } else {
-            deposit(scenario.charge)
-            for charge in scenario.additionalCharges ?? [] { deposit(charge) }
+            for charge in all {
+                if charge.firingTime == 0 {
+                    deposit(charge)
+                } else {
+                    pendingFirings.append(
+                        PendingFiring(time: charge.firingTime, charge: charge, stage: .balloon))
+                }
+            }
         }
+        pendingFirings.sort { $0.time < $1.time }
         setGauges(cells: gaugeCells, points: scenario.gauges.map(\.position))
         restart()
         // Bodies must start apart: contact between them is no reason to bond them.
@@ -497,10 +541,8 @@ extension BlastSolver {
         if scenario.structuralObjects.count > 1, configuration.refinement > 1, refinement == nil {
             throw BlastError.allocationFailed("multi-body air refinement")
         }
-        if !mapped.isEmpty {
-            recordMapped(
-                mapped, mappings: mappings, among: charges(of: scenario).map(\.position), gauges: gaugeCentres
-            )
+        if !laid.isEmpty {
+            recordMapped(laid, among: positions, gauges: gaugeCentres, start: clockStart)
         }
     }
 
@@ -514,8 +556,12 @@ extension BlastSolver {
         var mirrors: Int
     }
 
-    /// The scene's charges, the main one first.
-    func charges(of scenario: Scenario) -> [Charge] { [scenario.charge] + (scenario.additionalCharges ?? []) }
+    /// The scene's charges, the main one first, at t = 0 whatever delay it was given.
+    func charges(of scenario: Scenario) -> [Charge] {
+        var main = scenario.charge
+        main.delay = nil
+        return [main] + (scenario.additionalCharges ?? [])
+    }
 
     /// The charges whose blast can be solved in one dimension before it meets anything, each as
     /// far as it can (`mapping(of:among:scenario:)`); the rest are laid as the balloon. Empty if
@@ -631,6 +677,12 @@ extension BlastSolver {
             depositRefined(charge)
             return
         }
+        depositCoarse(charge)
+    }
+
+    /// The balloon laid on the grid's own cells, refined or not.
+    func depositCoarse(_ charge: Charge) {
+        guard charge.mass > 0 else { return }
         let grid = self.grid
         let dx = grid.cellSize
         let radius = balloonRadius(for: charge)

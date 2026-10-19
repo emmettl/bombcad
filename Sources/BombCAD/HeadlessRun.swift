@@ -11,6 +11,7 @@ enum HeadlessRun {
     static let usage = """
         Usage: BombCAD run <project.bombcad | layout.json> [--name <name>] [--out <new.bombcad>]
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
+                           [--charge <kg>@<x>,<y>,<z>[+<delay ms>]]…
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m] [--surrogate <file.json>]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
@@ -69,6 +70,8 @@ enum HeadlessRun {
         way (Kingery–Bulmash corrected by terms fitted to BombCAD's district runs), judged as a
         run's are. It writes the damage as JSON, marked as an estimate with its error band, and
         does not run.
+        --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
+        main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
         structures' debris lands on: the hard ground, or soil (50 MN/m³ unless a subgrade modulus is
         given, 10 to 150). A ground type (rock, soilOverSandstone, playa, alluvium, clay,
@@ -86,6 +89,8 @@ enum HeadlessRun {
         var csv: URL?
         var resolution: Resolution?
         var mass: Float?
+        /// Further charges, after the project's own.
+        var charges: [Charge] = []
         var duration: Double?
         /// With `--ground`, what the structures' debris lands on: soil of this subgrade modulus
         /// (Pa/m), or, as `.some(nil)`, the hard ground.
@@ -140,10 +145,28 @@ enum HeadlessRun {
         /// Where the consumer `name` runs: "local", an SSH host or "auto".
         func place(_ name: String) -> String { consumers[name] ?? "local" }
 
+        /// A charge from `<kg>@<x>,<y>,<z>[+<delay ms>]`.
+        static func charge(_ text: String) throws -> Charge {
+            let invalid = ProjectFileError.invalid(
+                "--charge takes <kg>@<x>,<y>,<z>[+<delay ms>], such as 10@20,15,0+5.")
+            let parts = text.split(separator: "@", maxSplits: 1)
+            guard parts.count == 2, let mass = Float(parts[0]), mass > 0 else { throw invalid }
+            let placed = parts[1].split(separator: "+", maxSplits: 1)
+            let numbers = placed[0].split(separator: ",").compactMap { Float($0) }
+            guard numbers.count == 3 else { throw invalid }
+            var delay: Float?
+            if placed.count == 2 {
+                guard let ms = Float(placed[1]), ms >= 0, ms.isFinite else { throw invalid }
+                delay = ms > 0 ? ms / 1000 : nil
+            }
+            return Charge(mass: mass, position: SIMD3(numbers[0], numbers[1], numbers[2]), delay: delay)
+        }
+
         static func parse(_ arguments: [String]) throws -> Options {
             var positional: [String] = []
             var values: [String: String] = [:]
             var workers: [String] = []
+            var charges: [Charge] = []
             var index = 0
             while index < arguments.count {
                 let argument = arguments[index]
@@ -157,16 +180,19 @@ enum HeadlessRun {
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
-                            "surrogate",
+                            "surrogate", "charge",
                         ]
                         .contains(key)
                     else {
                         throw ProjectFileError.invalid("Unknown option \(argument).")
                     }
-                    guard index + 1 < arguments.count, values[key] == nil || key == "worker" else {
+                    guard index + 1 < arguments.count,
+                        values[key] == nil || key == "worker" || key == "charge"
+                    else {
                         throw ProjectFileError.invalid("Give \(argument) one value.")
                     }
                     if key == "worker" { workers.append(arguments[index + 1]) }
+                    if key == "charge" { charges.append(try Self.charge(arguments[index + 1])) }
                     values[key] = arguments[index + 1]
                     index += 2
                 } else {
@@ -176,6 +202,7 @@ enum HeadlessRun {
             }
             guard positional.count == 1 else { throw ProjectFileError.invalid("Name one project to run.") }
             var options = Options(project: URL(filePath: positional[0]))
+            options.charges = charges
             options.name = values["name"]
             options.out = values["out"].map { URL(filePath: $0) }
             options.csv = values["csv"].map { URL(filePath: $0) }
@@ -427,6 +454,9 @@ enum HeadlessRun {
             inputs = try ParameterSweepPlan(prefix: "Run", parameter: .chargeMass([mass])).prepare(
                 from: inputs)[0]
                 .inputs
+        }
+        if !options.charges.isEmpty {
+            inputs.scenario.additionalCharges = (inputs.scenario.additionalCharges ?? []) + options.charges
         }
         if let duration = options.duration {
             inputs.settings.duration = duration
@@ -886,6 +916,7 @@ enum HeadlessRun {
         // The blast's hazards: the safety standards' distances, the minimum safe distance (with the
         // fragments' hazard, when flown) and the injury at standing height over the run.
         model.setFragmentHazard(fragments?.hazard)
+        streams += model.firingNotes
         // The structures' rubble flown on to land, while the scene can still take its ring.
         let debris = model.debrisResult()
         if let debris { scene?.addHazard(debris.hazard, name: "DebrisHazard") }

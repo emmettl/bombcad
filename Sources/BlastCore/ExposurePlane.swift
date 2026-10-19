@@ -66,7 +66,9 @@ final class ExposurePlane {
 
     /// The peak, impulse and arrival `blast`, a one-dimensional solution about `centre`, left at the
     /// plane's points within `radius` of it, before the grid takes over.
-    func seed(_ blast: SphericalBlast, centre: SIMD3<Float>, radius: Float) {
+    func seed(
+        _ blast: SphericalBlast, centre: SIMD3<Float>, radius: Float, delay: Double = 0, adding: Bool = false
+    ) {
         let records = buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: nx * ny)
         for j in 0..<ny {
             for i in 0..<nx {
@@ -74,8 +76,16 @@ final class ExposurePlane {
                 let r = simd_distance(point, centre)
                 guard r < radius else { continue }
                 let extremes = blast.extremes(at: Double(r))
-                let arrival = blast.arrival(at: Double(r)).map { Float($0) } ?? -1
-                records[i + nx * j] = SIMD4(Float(extremes.x), Float(extremes.y), arrival, 0)
+                let arrival = blast.arrival(at: Double(r)).map { Float($0 + delay) } ?? -1
+                let old = records[i + nx * j]
+                // Laid during the run, over what an earlier charge left: the larger peak, the
+                // impulses together, the first arrival.
+                records[i + nx * j] =
+                    adding && old.w == 0
+                    ? SIMD4(
+                        max(old.x, Float(extremes.x)), old.y + Float(extremes.y),
+                        old.z >= 0 ? old.z : arrival, 0)
+                    : SIMD4(Float(extremes.x), Float(extremes.y), arrival, 0)
             }
         }
     }
