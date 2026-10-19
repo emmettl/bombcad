@@ -90,6 +90,22 @@ that was the build, from cold in a fresh worktree, and its largest process peake
 slot is free the Studio's steps are about as quick as the mini's. The time saved is the wait for
 the slot.
 
+### Full studies
+
+A few tests run a whole study: a building settled under its own weight and then loaded, an
+assembly pushed to failure, a convergence sweep. Since 19 October 2026 such a test can carry the
+`.fullStudy` trait (`Tests/BlastCoreTests/FullStudies.swift`, and the same in BombCADTests), which
+runs it only with `BOMBCAD_FULL_STUDIES=1` in the environment. The nightly full check sets it, and
+so does `make release` (`Scripts/release.py`); the pre-push checks (`make check-affected`,
+`make check`, `make check-anywhere`) and the test-impact map don't. A gated test's suite keeps a
+check-time version beside it, on a smaller mesh or a shorter run, that goes down the same code and
+asserts the same kind of answer with tolerances set from measured values, so the map still sees
+the suite and `check-affected` still chooses it. To run the full versions by hand:
+
+```sh
+BOMBCAD_FULL_STUDIES=1 ~/.local/bin/gpu-slot swift test --filter '<Suite>'
+```
+
 ### Choosing tests by coverage
 
 `Scripts/test-impact.py build` (`make test-impact`) builds a map of which suites execute which
