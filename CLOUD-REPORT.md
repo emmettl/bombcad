@@ -1,7 +1,6 @@
 # Cloud report: second docs audit and the 0.6.0 notes draft
 
-Branch `claude/project-thread-krtmng` (the cloud session can push only to its assigned branch, so
-not `cloud/docs-audit-2`), from main at `505eca7`, 19 October 2026. This box is Linux without
+Branch `cloud/docs-audit-2`, from main at `505eca7`, 19 October 2026. This box is Linux without
 Metal: nothing in Swift or Metal was built or run. Every check below is by reading the code,
 the records and the fragments, and by running the Python scripts named.
 
