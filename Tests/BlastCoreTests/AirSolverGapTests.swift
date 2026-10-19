@@ -85,7 +85,7 @@ struct AirSolverGapTests {
     /// oxygen and no products (`ambient` in `sweepCell`), and a domain left under ambient fills
     /// until its pressure is ambient again. Through faces that copy, a uniform state is held as it
     /// is. (That the oxygen gained is exactly air's share of the mass gained is checked apart, in
-    /// `farFieldInflowConserved`, which a fault at the first face inside keeps disabled.)
+    /// `farFieldInflowConserved`.)
     @Test("Air drawn in through far-field faces is ambient air, with its oxygen, and a deficit relaxes")
     func farFieldInflowIsAmbientAir() throws {
         let tube = try underPressuredTube(.farField)
@@ -130,12 +130,9 @@ struct AirSolverGapTests {
     /// ghost (`farFieldGhost`), while the next cell in, two cells from the face, stands a copy of
     /// the cell at the face for it (`wM2 = wM1`, `wP2 = wP1` in `sweepCell`). While the ghost
     /// differs from that cell the two mass fluxes differ, and gas is made or lost there, at the
-    /// species' share of the cell at the face (still nearly none of oxygen here).
-    @Test(
-        "Through far-field faces the oxygen gained is air's share of the mass gained",
-        .disabled(
-            "solver fault: the first face inside a far-field face is fluxed differently by its two cells (wM2/wP2 copy vs farFieldGhost), so mass is not conserved there"
-        ))
+    /// species' share of the cell at the face (still nearly none of oxygen here). Since 19 October
+    /// 2026 the next cell in builds that ghost as the cell at the face does.
+    @Test("Through far-field faces the oxygen gained is air's share of the mass gained")
     func farFieldInflowConserved() throws {
         let tube = try underPressuredTube(.farField)
         let start = tube.totals()

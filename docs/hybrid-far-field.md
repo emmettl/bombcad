@@ -93,7 +93,8 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
 
   `district.json` holds each building's damage, as `BombCAD run --envelope-damage` writes it, with
   the mode's method, its standing and the match. `scenebench hybrid-judge` sets it against a full
-  run's saved loads.
+  run's saved loads; unlike `district-hybrid`, it fits the trend only when given `--trend-from`
+  (500 m for a hand-over at 1 km), and otherwise carries the match on flat.
 - **In the app:** not yet. A project holds only the buildings inside its air, so the far field's
   buildings need a place to live first (see Future work).
 

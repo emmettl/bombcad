@@ -129,6 +129,8 @@ enum InferCharge {
         let posterior = ChargeInference.infer(arrivals: arrivals, facades: facades, settings: settings)
         let elapsed = ContinuousClock.now - start
         report(posterior, arrivals: arrivals, projection: projection, settings: settings)
+        print("Standing:")
+        for line in ChargeInference.standing { print("  " + line) }
         print(
             String(
                 format: "%d samples, acceptance %.2f, R-hat %.3f, %.1f s", posterior.samples.count,
@@ -142,7 +144,7 @@ enum InferCharge {
                 acceptance: posterior.acceptance,
                 rHat: posterior.rHat, parameters: posterior.summaries,
                 yieldKt: kilotonnes(posterior),
-                place: place(posterior, projection: projection))
+                place: place(posterior, projection: projection), standing: ChargeInference.standing)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(summary).write(to: URL(filePath: out))
@@ -169,6 +171,7 @@ enum InferCharge {
         var parameters: [ChargeInference.Summary]
         var yieldKt: [String: Double]
         var place: [String: Double]
+        var standing: [String]
     }
 
     /// The yield's median and credible bounds in kilotonnes of TNT.
