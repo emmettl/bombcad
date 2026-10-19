@@ -96,9 +96,9 @@ struct ProtectionSearchTests {
             threats: [.init(mass: 100, x: 10, y: 30)],
             target: .init(worseThan: "3b", chance: 0.1, buildings: nil),
             glazing: [
-                .init(name: "toughened", kind: .toughened, costPerM2: 4, strength: nil, laminate: nil),
-                .init(name: "laminated", kind: .laminated, costPerM2: 5, strength: nil, laminate: nil),
-                .init(name: "infill", kind: .infill, costPerM2: 6, strength: nil, laminate: nil),
+                .init(name: "toughened", kind: .toughened, costPerM2: 4),
+                .init(name: "laminated", kind: .laminated, costPerM2: 5),
+                .init(name: "infill", kind: .infill, costPerM2: 6),
             ],
             standOffs: [.init(name: "keep it back", cost: 50, moves: [.init(threat: 0, x: -60, y: 30)])],
             barriers: nil, draws: 4, seed: 1)

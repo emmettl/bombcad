@@ -44,9 +44,19 @@ enum Protect {
         }
         var inputs = try JSONDecoder().decode(
             ProtectionModel.Inputs.self, from: Data(contentsOf: URL(filePath: inputsPath)))
-        let scene: Scenario
+        var scene: Scenario
         let cellSize: Float
-        if let path = value("scene") {
+        // Confirming on a run: the scene as the run's strips are matched to it, so that its
+        // buildings' ids are the ones the plans' constructions name.
+        let reference = try value("confirm").map { folder -> SurrogateBench.Reference in
+            var a = args
+            a += ["--loads", folder]
+            return try SurrogateBench.Reference(a)
+        }
+        if let reference {
+            scene = reference.scene
+            cellSize = reference.cellSize
+        } else if let path = value("scene") {
             scene = try JSONDecoder().decode(Scenario.self, from: Data(contentsOf: URL(filePath: path)))
             cellSize = Float(value("dx").flatMap(Double.init) ?? 4)
         } else {
@@ -95,10 +105,8 @@ enum Protect {
         let seconds = DistrictBenchmark.seconds(start)
 
         // Confirmation on a run's histories, for the plans that leave the threat in place.
-        let confirmations = try value("confirm").map { folder in
-            try confirm(
-                args: args, folder: folder, scene: scene, model: model, inputs: inputs,
-                plans: plans.map(\.1).filter { $0.site.isEmpty })
+        let confirmations = reference.map { reference in
+            confirm(reference: reference, model: model, plans: plans.map(\.1).filter { $0.site.isEmpty })
         }
 
         let target = problem.targetChance
@@ -169,92 +177,61 @@ enum Protect {
         }
     }
 
-    /// Each plan's sides judged on a run's saved histories under its glazing: each building's
-    /// glass strength drawn as the surrogate's chances draw it, the run's load as recorded.
+    /// Each plan's sides judged on a run's saved façade histories by `EnvelopeDamageAssessment`
+    /// itself, its buildings under the plan's constructions (`ProtectionModel.constructions`): each
+    /// side's chance that some pane is thrown worse than its condition, as the assessment gives it
+    /// (`GlazingBreakage.worse`), averaged over each building's glass strength drawn as the chances
+    /// drew it (`ProtectionModel.strength`), with E1300's scatter from pane to pane within each draw.
     static func confirm(
-        args: [String], folder: String, scene: Scenario, model: ProtectionModel.Model,
-        inputs: ProtectionModel.Inputs,
-        plans: [ProtectionSearch.Plan]
-    ) throws -> [[Int]: Confirmation] {
-        var a = args
-        a += ["--loads", folder]
-        let reference = try SurrogateBench.Reference(a)
+        reference: SurrogateBench.Reference, model: ProtectionModel.Model, plans: [ProtectionSearch.Plan]
+    ) -> [[Int]: Confirmation] {
+        let scene = reference.scene
         let objects = reference.objects
-        // The run's strips by side, named as the model names them.
-        var bySide: [String: [Int]] = [:]
-        for (m, strip) in reference.strips.enumerated() {
+        let loads = reference.strips.map { strip -> EnvelopeComponentLoad in
+            let saved = reference.index.strips[strip.saved]
             let c = strip.component
-            let face = c.axis == 0 ? (c.outward > 0 ? "east" : "west") : (c.outward > 0 ? "north" : "south")
-            bySide["\(objects[strip.object].name) \(face)", default: []].append(m)
+            return EnvelopeComponentLoad(
+                id: c.id, owner: objects[strip.object].id, kind: .facade, region: c.region, axis: c.axis,
+                binS: saved.binS, outerPa: reference.net(strip.saved),
+                innerPa: Array(repeating: 0, count: saved.count), supportEdges: c.supportEdges,
+                outward: c.outward)
         }
         let problem = model.problem
-        let draws = max(1, inputs.draws ?? 64)
-        let seed = inputs.seed ?? 1
+        let object = Dictionary(zip(model.owners, model.objects), uniquingKeysWith: { a, _ in a })
         var out: [[Int]: Confirmation] = [:]
         for plan in plans where out[plan.choices] == nil {
+            let changed = Dictionary(
+                uniqueKeysWithValues: ProtectionModel.constructions(plan, model: model, scene: scene).map {
+                    ($0.objectID, $0)
+                })
             var chances = [Double?](repeating: nil, count: problem.sides.count)
-            chances.withUnsafeMutableBufferPointer { result in
-                SurrogateBench.concurrentlyEach(problem.sides.count) { s in
-                    let name = model.names[s]
-                    guard let members = bySide[name], !members.isEmpty else { return }
-                    let option = plan.choices[s]
-                    let glazing = option == 0 ? nil : inputs.glazing[option - 1]
-                    if glazing?.kind == .infill {
-                        result[s] = 0
-                        return
-                    }
-                    let object = reference.strips[members[0]].object
-                    // The run's scene is laid out again, its buildings' ids its own.
-                    guard let mix = reference.scene.envelopeConstruction(for: objects[object].id).glazing
-                    else {
-                        return
-                    }
-                    let condition = model.condition[s]
-                    var sum = 0.0
-                    for k in 0..<draws {
-                        let strength =
-                            ProtectionModel.strength(seed: seed, draw: k, object: object)
-                            * (glazing?.kind == .toughened ? (glazing?.strength ?? 4) : 1)
-                        var logNone = 0.0
-                        var worse = 0.0
-                        for m in members {
-                            let saved = reference.strips[m].saved
-                            let strip = reference.index.strips[saved]
-                            let net = reference.net(saved)
-                            if glazing?.kind == .laminated {
-                                for pane in mix.panes
-                                where pane.areaM2 > 0 && pane.share > 0
-                                    && FacadeLoadSurrogate.laminatedCondition(
-                                        pane, laminate: glazing?.laminate ?? .facade, pressures: net,
-                                        binS: strip.binS)
-                                        > condition
-                                {
-                                    worse = 1
-                                }
-                            } else {
-                                logNone +=
-                                    FacadeLoadSurrogate.glassOutcome(
-                                        mix, netPa: net, binS: strip.binS, areaM2: strip.areaM2,
-                                        strength: strength,
-                                        worseThan: condition
-                                    ).logNoneWorse
-                            }
+            // Each building's glass drawn as its sides' chances drew it, the run's loads as they were.
+            for condition in Set(model.condition) {
+                for draw in 0..<model.draws {
+                    let assessed = EnvelopeDamageAssessment.assess(
+                        loads: loads, constructions: { changed[$0] ?? scene.envelopeConstruction(for: $0) },
+                        hazard: condition,
+                        glassStrength: { owner in
+                            object[owner].map {
+                                ProtectionModel.strength(seed: model.seed, draw: draw, object: $0)
+                            } ?? 1
+                        })
+                    let byOwner = Dictionary(uniqueKeysWithValues: assessed.map { ($0.id, $0) })
+                    for s in problem.sides.indices where model.condition[s] == condition {
+                        let side = byOwner[model.owners[s]]?.facadeGlass?.first {
+                            $0.axis == model.axes[s] && $0.outward == model.outwards[s]
                         }
-                        sum += glazing?.kind == .laminated ? worse : 1 - exp(logNone)
-                        // The run's load does not vary between draws: one draw is all a laminate needs.
-                        if glazing?.kind == .laminated {
-                            sum *= Double(draws)
-                            break
+                        if let side {
+                            chances[s] = (chances[s] ?? 0) + (side.glass.worse ?? 0) / Double(model.draws)
                         }
                     }
-                    result[s] = sum / Double(draws)
                 }
             }
             let judged = chances.indices.compactMap { s in chances[s].map { (problem.sides[s].name, $0) } }
             out[plan.choices] = Confirmation(
                 sides: judged.count, meets: judged.allSatisfy { $0.1 <= problem.targetChance },
                 worst: judged.map(\.1).max() ?? 0, expectedFailing: judged.reduce(0) { $0 + $1.1 },
-                chances: Dictionary(uniqueKeysWithValues: judged))
+                chances: Dictionary(judged, uniquingKeysWith: { a, b in max(a, b) }))
         }
         return out
     }

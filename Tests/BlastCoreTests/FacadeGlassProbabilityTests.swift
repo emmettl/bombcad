@@ -100,4 +100,58 @@ struct FacadeGlassProbabilityTests {
         let far = sorted.suffix(half).map(\.someBroken).reduce(0, +) / Double(half)
         #expect(near > far)
     }
+
+    @Test(
+        "Glass types: annealed alone keeps its own path, toughened breaks less, laminated and filmed hold their glass"
+    )
+    func glassTypes() {
+        let pressures = FacadeLoadSurrogate.pulse(peak: 6_000, impulse: 90, riseShare: 0.2, binS: 0.7e-3)
+        let annealed = GlazingMix.apartments
+        let alone = annealed.breakage(netPa: pressures, binS: 0.7e-3, areaM2: 40)
+        // Annealed glass judged by the general path (an empty glass type) gives the same.
+        let general = annealed.with(.init()).breakage(
+            netPa: pressures, binS: 0.7e-3, areaM2: 40, worseThan: nil)
+        #expect(
+            abs(alone.broken - general.broken) < 1e-12
+                && abs(alone.logNoneBroken - general.logNoneBroken) < 1e-12)
+        #expect(alone.logNoneWorse == nil)
+        let threw = annealed.breakage(netPa: pressures, binS: 0.7e-3, areaM2: 40, worseThan: .threeB)
+        let toughened = annealed.with(.init(toughened: true))
+            .breakage(netPa: pressures, binS: 0.7e-3, areaM2: 40, worseThan: .threeB)
+        #expect(toughened.broken < threw.broken)
+        #expect((toughened.worse ?? 0) <= (threw.worse ?? 0))
+        for glass in [GlazingMix.Glass(laminate: .facade), .init(film: .mils(7, anchorage: .wetGlazed))] {
+            let held = annealed.with(glass).breakage(
+                netPa: pressures, binS: 0.7e-3, areaM2: 40, worseThan: .threeB)
+            #expect((held.worse ?? 1) < (threw.worse ?? 0), "\(glass.label)")
+        }
+    }
+
+    @Test("A side's own windows are judged in place of its building's, and the others not at all differently")
+    func sideGlazing() throws {
+        let scene = try Self.row()
+        let estimate = FacadeLoadSurrogate.estimate(scene: scene, cellSize: 2)
+        let id = scene.envelopeObjects[0].id
+        var construction = scene.envelopeConstruction(for: id)
+        let before = EnvelopeDamageAssessment.assess(
+            loads: estimate.loads, constructions: { scene.envelopeConstruction(for: $0) })
+        var filled = GlazingMix.apartments
+        filled.glazedFraction = 0
+        construction.sideGlazing = [EnvelopeConstruction.sideKey(axis: 0, outward: -1): filled]
+        let after = EnvelopeDamageAssessment.assess(
+            loads: estimate.loads,
+            constructions: { $0 == id ? construction : scene.envelopeConstruction(for: $0) })
+        let west = { (b: [EnvelopeBuildingDamage]) in
+            b.first { $0.id == id }?.facadeGlass?.first { $0.axis == 0 && $0.outward == -1 }?.glass
+        }
+        #expect((west(before)?.panes ?? 0) > 0)
+        #expect(west(after)?.panes == 0)
+        let east = { (b: [EnvelopeBuildingDamage]) in
+            b.first { $0.id == id }?.facadeGlass?.first { $0.axis == 0 && $0.outward == 1 }?.glass
+        }
+        #expect(east(before) == east(after))
+        for (a, b) in zip(before, after) where a.id != id {
+            #expect(a.facadeGlass == b.facadeGlass && a.structuralLevels == b.structuralLevels)
+        }
+    }
 }

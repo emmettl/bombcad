@@ -1093,6 +1093,7 @@ public enum StandingTable {
         "EnvelopeConstruction.glassToughened": .input,
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
+        "EnvelopeConstruction.sideGlazing": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,

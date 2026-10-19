@@ -23,13 +23,16 @@ public enum ProtectionModel {
         }
     }
 
-    /// A glazing a side may be given instead of its own.
+    /// A glazing a side may be given instead of its own: its panes' sizes kept, their glass
+    /// changed (`GlazingMix.Glass`), or the windows filled in.
     public struct Glazing: Codable, Sendable {
         public enum Kind: String, Codable, Sendable {
-            /// Its panes' glass `strength` times stronger (fully toughened: E1300's factor of 4).
+            /// Fully toughened (E1300's factor of 4 on its strength).
             case toughened
             /// Each pane laminated (`LaminatedGlass.facade` unless `laminate` says).
             case laminated
+            /// Security film on each pane (7 mil, wet glazed, unless `film` says).
+            case filmed
             /// The windows filled in: no glass.
             case infill
         }
@@ -37,8 +40,32 @@ public enum ProtectionModel {
         public var kind: Kind
         /// Per square metre of glass.
         public var costPerM2: Double
-        public var strength: Double?
         public var laminate: LaminatedGlass?
+        public var film: SecurityFilm?
+
+        public init(
+            name: String, kind: Kind, costPerM2: Double, laminate: LaminatedGlass? = nil,
+            film: SecurityFilm? = nil
+        ) {
+            self.name = name
+            self.kind = kind
+            self.costPerM2 = costPerM2
+            self.laminate = laminate
+            self.film = film
+        }
+
+        /// A side's windows `mix` given this glazing.
+        public func applied(to mix: GlazingMix) -> GlazingMix {
+            switch kind {
+            case .toughened: return mix.with(.init(toughened: true))
+            case .laminated: return mix.with(.init(laminate: laminate ?? .facade))
+            case .filmed: return mix.with(.init(film: film ?? .mils(7, anchorage: .wetGlazed)))
+            case .infill:
+                var filled = mix
+                filled.glazedFraction = 0
+                return filled
+            }
+        }
     }
 
     /// A stand-off line: the threats it keeps back, each moved to where it would be stopped.
@@ -59,10 +86,18 @@ public enum ProtectionModel {
     public struct Target: Codable, Sendable {
         public struct Override: Codable, Sendable {
             public var worseThan: String?
+
+            public init(worseThan: String?) { self.worseThan = worseThan }
         }
         public var worseThan: String
         public var chance: Double
         public var buildings: [String: Override]?
+
+        public init(worseThan: String, chance: Double, buildings: [String: Override]? = nil) {
+            self.worseThan = worseThan
+            self.chance = chance
+            self.buildings = buildings
+        }
     }
 
     /// The user's file: the threat, the target, the changes allowed and their costs.
@@ -76,6 +111,19 @@ public enum ProtectionModel {
         public var barriers: [String]?
         public var draws: Int?
         public var seed: UInt64?
+
+        public init(
+            threats: [Threat], target: Target, glazing: [Glazing], standOffs: [StandOff]? = nil,
+            barriers: [String]? = nil, draws: Int? = nil, seed: UInt64? = nil
+        ) {
+            self.threats = threats
+            self.target = target
+            self.glazing = glazing
+            self.standOffs = standOffs
+            self.barriers = barriers
+            self.draws = draws
+            self.seed = seed
+        }
     }
 
     /// A building side: its owner, its strips and their glazed area.
@@ -97,6 +145,36 @@ public enum ProtectionModel {
         public let names: [String]
         public let glazedM2: [Double]
         public let condition: [GlazingHazard.Condition]
+        /// Each side's building, by id, and which way it faces.
+        public let owners: [UUID]
+        public let axes: [Int]
+        public let outwards: [Int]
+        /// Each side's windows as built.
+        public let mixes: [GlazingMix]
+        public let glazing: [Glazing]
+        /// Each side's building by its index in the scene's envelopes, and the chances' draws and
+        /// seed: what `strength(seed:draw:object:)` takes to draw a side's glass as its chance did.
+        public let objects: [Int]
+        public let draws: Int
+        public let seed: UInt64
+    }
+
+    /// The constructions `plan` writes into the scene: each building with a side changed, its
+    /// construction with that side's windows as the plan gives them (`EnvelopeConstruction.sideGlazing`).
+    public static func constructions(_ plan: ProtectionSearch.Plan, model: Model, scene: Scenario)
+        -> [EnvelopeConstruction]
+    {
+        var changed: [UUID: EnvelopeConstruction] = [:]
+        for (s, option) in plan.choices.enumerated() where option != 0 {
+            let id = model.owners[s]
+            var construction = changed[id] ?? scene.envelopeConstruction(for: id)
+            var sides = construction.sideGlazing ?? [:]
+            sides[EnvelopeConstruction.sideKey(axis: model.axes[s], outward: model.outwards[s])] =
+                model.glazing[option - 1].applied(to: model.mixes[s])
+            construction.sideGlazing = sides
+            changed[id] = construction
+        }
+        return changed.values.sorted { $0.objectID.uuidString < $1.objectID.uuidString }
     }
 
     public enum InputError: Error, CustomStringConvertible {
@@ -171,7 +249,10 @@ public enum ProtectionModel {
         }
         return Model(
             problem: problem, names: sides.map(\.name), glazedM2: sides.map(\.glazedM2),
-            condition: sides.map(\.condition))
+            condition: sides.map(\.condition), owners: sides.map { objects[$0.object].id },
+            axes: sides.map(\.axis),
+            outwards: sides.map(\.outward), mixes: sides.map(\.mix), glazing: inputs.glazing,
+            objects: sides.map(\.object), draws: max(1, inputs.draws ?? 64), seed: inputs.seed ?? 1)
     }
 
     /// Draw `draw`'s glass strength for building `object` (by its index in the scene's envelopes),
@@ -260,23 +341,20 @@ public enum ProtectionModel {
         /// target condition, the threats weighted, with the stand-offs `site` in place.
         func chance(site: [Int], side: Int, option: Int) -> Double {
             let s = sides[side]
-            let glazing = option == 0 ? nil : inputs.glazing[option - 1]
-            if glazing?.kind == .infill { return 0 }
+            let mix = option == 0 ? s.mix : inputs.glazing[option - 1].applied(to: s.mix)
+            guard mix.glazedFraction > 0 else { return 0 }
             let threats = threats(site)
             let total = threats.reduce(0) { $0 + $1.weight }
             var chance = 0.0
             for threat in threats where threat.weight > 0 {
                 let features = features(side, threat)
+                let middle = features.map(\.distanceM).sorted()[features.count / 2]
+                let scatter = FacadeLoadSurrogate.Uncertainty().scatter(atZ: middle / cbrt(threat.mass))
                 var sum = 0.0
                 for k in 0..<draws {
-                    let strength =
-                        ProtectionModel.strength(seed: seed, draw: k, object: s.object)
-                        * (glazing?.kind == .toughened ? (glazing?.strength ?? 4) : 1)
-                    let middle = features.map(\.distanceM).sorted()[features.count / 2]
+                    let strength = ProtectionModel.strength(seed: seed, draw: k, object: s.object)
                     var errors = SIMD2<Double>.zero
-                    if let scatter = FacadeLoadSurrogate.Uncertainty().scatter(
-                        atZ: middle / cbrt(threat.mass))
-                    {
+                    if let scatter {
                         let a = FacadeLoadSurrogate.Random.normal(seed, 3, UInt64(k), UInt64(side))
                         let b = FacadeLoadSurrogate.Random.normal(seed, 4, UInt64(k), UInt64(side))
                         let r = scatter.correlation
@@ -284,29 +362,19 @@ public enum ProtectionModel {
                             scatter.peak * a, scatter.impulse * (r * a + (1 - r * r).squareRoot() * b))
                     }
                     var logNone = 0.0
-                    var worse = 0.0
                     for (strip, f) in zip(s.strips, features) {
                         var p = FacadeLoadSurrogate.predict(
                             f, mass: threat.mass, cellSize: Double(cellSize), coefficients: coefficients)
                         p.peakPa *= exp(errors.x)
                         p.impulsePaS *= exp(errors.y)
-                        let area = Double(strip.spans.x * strip.spans.y)
-                        if glazing?.kind == .laminated {
-                            worse = max(
-                                worse,
-                                table.laminatedWorse(
-                                    s.mix, laminate: glazing?.laminate ?? .facade, prediction: p,
-                                    areaM2: area,
-                                    worseThan: s.condition))
-                        } else {
-                            logNone +=
-                                table.outcome(
-                                    s.mix, prediction: p, areaM2: area, strength: strength,
-                                    worseThan: s.condition
-                                ).logNoneWorse
-                        }
+                        logNone +=
+                            table.outcome(
+                                mix, prediction: p, areaM2: Double(strip.spans.x * strip.spans.y),
+                                strength: strength,
+                                worseThan: s.condition
+                            ).logNoneWorse
                     }
-                    sum += glazing?.kind == .laminated ? worse : 1 - exp(logNone)
+                    sum += 1 - exp(logNone)
                 }
                 chance += threat.weight / total * sum / Double(draws)
             }

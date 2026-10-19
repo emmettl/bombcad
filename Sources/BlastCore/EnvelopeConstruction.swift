@@ -77,6 +77,35 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// probability (`GlazingMix`): what the building's glass fractions come from. Nil for none
     /// (map buildings are given one by their tag and height).
     public var glazing: GlazingMix?
+    /// A side's own windows where they differ from the building's (`glazing`), by the side
+    /// (`sideKey`): what a protective plan changes side by side. Nil for none (left out of the JSON).
+    public var sideGlazing: [String: GlazingMix]?
+
+    /// "x-", "x+", "y-", "y+": the side facing `outward` along `axis`.
+    public static func sideKey(axis: Int, outward: Int) -> String {
+        (axis == 0 ? "x" : axis == 1 ? "y" : "z") + (outward > 0 ? "+" : "-")
+    }
+
+    /// The windows of the side facing `outward` along `axis`: its own, or the building's.
+    public func glazing(axis: Int, outward: Int) -> GlazingMix? {
+        sideGlazing?[Self.sideKey(axis: axis, outward: outward)] ?? glazing
+    }
+
+    /// The construction a side's façade pane is judged in (`EnvelopeDamageAssessment.facadePane`):
+    /// the building's, with its glass as the side's own windows' where they say (none, filled in).
+    public func facade(axis: Int, outward: Int) -> EnvelopeConstruction {
+        guard let mix = sideGlazing?[Self.sideKey(axis: axis, outward: outward)] else { return self }
+        var side = self
+        if mix.glazedFraction <= 0 { side.facadePaneM = .zero }
+        if let glass = mix.glass {
+            side.laminate = glass.laminate
+            side.film = glass.laminate == nil ? glass.film : nil
+            side.glassToughened = glass.toughened
+            if let laminate = glass.laminate { side.glassThicknessM = Float(laminate.thickness) }
+        }
+        return side
+    }
+
     /// A window in each storey of a façade, where nothing says otherwise.
     public static let assumedFacadePane = SIMD2<Float>(1.2, 1.5)
     public var source: Source

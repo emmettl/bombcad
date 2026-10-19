@@ -516,10 +516,15 @@ public enum EnvelopeDamageAssessment {
 
     /// With `vented`, the run's glazing broke in the air: each pane breaks when the GPU's glass did
     /// (its history after that is the open window's), and the inside is the air's worst room.
+    /// With `hazard`, each façade side's glass also carries the chance that some pane is thrown
+    /// worse than that GSA condition (`GlazingBreakage.worse`). `glassStrength` scales each
+    /// building's glass strength over the flaw model's median, for the side's breakage only (1 if
+    /// not given).
     public static func assess(
         loads: [EnvelopeComponentLoad], constructions: (UUID) -> EnvelopeConstruction,
         rooms: [UUID: Double] = [:], strikes: [FragmentImpact]? = nil,
-        vented: EnvelopeVentingSnapshot? = nil
+        vented: EnvelopeVentingSnapshot? = nil, hazard: GlazingHazard.Condition? = nil,
+        glassStrength: ((UUID) -> Double)? = nil
     ) -> [EnvelopeBuildingDamage] {
         let byOwner = Dictionary(grouping: loads, by: \.owner)
         let owners = byOwner.keys.sorted { $0.uuidString < $1.uuidString }
@@ -533,6 +538,8 @@ public enum EnvelopeDamageAssessment {
         // Each building on its own core: a district's thousands take seconds rather than minutes.
         // The constructions are looked up first, on this thread.
         let built = owners.map(constructions)
+        // Each building's glass strength over the flaw model's median, 1 unless drawn.
+        let strengths = owners.map { glassStrength?($0) ?? 1 }
         var judged = [EnvelopeBuildingDamage?](repeating: nil, count: owners.count)
         judged.withUnsafeMutableBufferPointer { out in
             concurrently(iterations: owners.count) { n in out[n] = building(n) }
@@ -549,11 +556,15 @@ public enum EnvelopeDamageAssessment {
             var broken: [(load: EnvelopeComponentLoad, at: Double)] = []
             var sides: [Int: GlazingBreakage] = [:]
             for load in mine {
-                if load.kind == .facade, let mix = construction.glazing {
+                if load.kind == .facade,
+                    let mix = construction.glazing(axis: load.axis, outward: load.outward)
+                {
                     let spans = load.spans
                     sides[load.axis * 2 + (load.outward > 0 ? 1 : 0), default: GlazingBreakage()] =
                         sides[load.axis * 2 + (load.outward > 0 ? 1 : 0), default: GlazingBreakage()]
-                        + mix.breakage(netPa: load.netPa, binS: load.binS, areaM2: spans.short * spans.long)
+                        + mix.breakage(
+                            netPa: load.netPa, binS: load.binS, areaM2: spans.short * spans.long,
+                            worseThan: hazard, strength: strengths[n])
                 }
                 guard
                     var damage = assess(
@@ -586,7 +597,11 @@ public enum EnvelopeDamageAssessment {
                 }
                 components.append(damage)
                 if damage.material.isGlass, let at = damage.failedAtS { broken.append((load, at)) }
-                if let pane = facadePane(load, construction: construction) { components.append(pane) }
+                if let pane = facadePane(
+                    load, construction: construction.facade(axis: load.axis, outward: load.outward))
+                {
+                    components.append(pane)
+                }
             }
             // The broken panes' outer pressures from the first of their windows' starts.
             let first = broken.map(\.load.startS).min() ?? 0

@@ -220,6 +220,39 @@ inferred, becomes the charge's. It needs the simulation reset, and says so if th
 the scene. BombCAD's own ratios (`--correction`, which bring the yield within 3% on BombCAD's
 charges) are for the command line only.
 
+## Protective design
+
+**Simulation ▸ Protective Design…** looks for the least costly glazing changes that keep each
+building side's chance of glass thrown worse than a target under the chance you accept, against
+the scene's charges. It is the [`scenebench protect`](protective-design.md#in-bombcad-scenebench-protect)
+search in a sheet, without the stand-offs and barriers for now, and needs buildings with a glazing
+mix (a district from a map, or constructions given glazing).
+
+![The Protective Design sheet on the two glazed blocks in the tests](protective-design-sheet.png)
+
+- **Target**: the worst GSA condition allowed (2, 3a, 3b or 4) and the largest chance accepted of
+  passing it, per side. **Draws** of the loads' scatter and the glass's strength make each side's
+  chance; 32 by default, fewer for a quick look.
+- **Changes allowed**: security film (7 mil, wet glazed), toughened glass, laminated glass, or
+  filling the window in, each with your cost per square metre of glass. The costs shown are only
+  their usual order; none are shipped.
+- **Search** runs off the main thread: the quick estimate's loads on every glazed side, each side's
+  chance for every change, then every plan's cost. Two blocks take seconds; the made-up district's
+  200 sides take about half a minute.
+- **Plans**, the cheapest meeting the target first, with the plan as built above them: cost,
+  whether the target is met, the sides expected to fail, the worst side's chance, the sides passing
+  narrowly (within a third of the chance accepted, the ones to confirm with a run) and what changes.
+  Choosing a plan colours each side in the view by its residual chance (the glass chances' colours);
+  closing the sheet puts the view back.
+- **Apply Plan** writes the plan's glazing into the project: each changed side gets its own glazing
+  mix in its building's envelope construction, marked as from the plan, which the quick estimate and
+  a run's envelope damage then judge as they judge any construction.
+
+A plan is illustrative: your costs and charges, the quick estimate's loads and the glass's chances
+a run's spread, not the event's. To confirm one, run the scene with its façade histories saved
+(`scenebench district-compare --save-loads`) and judge the plans on them with `scenebench protect
+--confirm` ([protective design](protective-design.md#in-bombcad-scenebench-protect)).
+
 ## Importing models
 
 **Import Model…** reads watertight OBJ/STL geometry and IFC buildings. Confirm source units, up axis and

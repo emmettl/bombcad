@@ -288,6 +288,11 @@ extension FacadeLoadSurrogate {
 
         public init() {}
 
+        init(_ glass: GlazingBreakage) {
+            self.glass = glass
+            logNoneWorse = glass.logNoneWorse ?? 0
+        }
+
         /// The chance some broken pane is thrown worse than the condition asked.
         public var worse: Double { 1 - exp(logNoneWorse) }
 
@@ -299,96 +304,15 @@ extension FacadeLoadSurrogate {
         }
     }
 
-    /// `mix`'s glass over a façade region of `areaM2`, its panes' strength `strength` times the
-    /// flaw model's median, as `GlazingMix.breakage` judges it: each pane type's chance of breaking
-    /// from the 60 s stress its load gives it (`answer`: let go, and that stress), and whether a
-    /// pane of it that breaks is thrown worse than `worseThan` (`thrown`: its condition, given the
-    /// 60 s strength it broke at: the draw's, or just under the stress reached where that is less,
-    /// as the panes that break are the weaker).
-    static func glassOutcome(
-        _ mix: GlazingMix, areaM2: Double, strength: Double, worseThan: GlazingHazard.Condition = .threeB,
-        answer: (GlazingMix.Pane) -> (lost: Bool, stress: Double),
-        thrown: (GlazingMix.Pane, Double) -> GlazingHazard.Condition
-    ) -> GlassOutcome {
-        var result = GlassOutcome()
-        for pane in mix.panes where pane.areaM2 > 0 && pane.share > 0 {
-            let count = Double(mix.glazedFraction * pane.share) * areaM2 / Double(pane.areaM2)
-            guard count > 0 else { continue }
-            result.glass.panes += count
-            result.glass.glazedM2 += count * Double(pane.areaM2)
-            let response = answer(pane)
-            let area = Double(min(pane.widthM, pane.heightM)) * Double(max(pane.widthM, pane.heightM))
-            let probability =
-                response.lost ? 1 : GlassStrength.probability(stress: response.stress / strength, area: area)
-            result.glass.broken += count * probability
-            result.glass.brokenM2 += count * probability * Double(pane.areaM2)
-            result.glass.logNoneBroken += count * log(max(1 - probability, 1e-300))
-            guard probability > 0 else { continue }
-            let median = GlassStrength.sixtySecond(area: area)
-            let broke = response.lost ? strength * median : min(strength * median, 0.99 * response.stress)
-            if thrown(pane, broke) > worseThan {
-                result.logNoneWorse += count * log(max(1 - probability, 1e-300))
-            }
-        }
-        return result
-    }
-
-    /// The condition of a pane of `pane`'s type with 60 s strength `strength` Pa under `pressures`
-    /// (in bins `binS` long): where its glass lands if it breaks.
-    static func thrownCondition(_ pane: GlazingMix.Pane, strength: Double, pressures: [Double], binS: Double)
-        -> GlazingHazard.Condition
-    {
-        let a = Double(min(pane.widthM, pane.heightM))
-        let b = Double(max(pane.widthM, pane.heightM))
-        let system = EnvelopePanel.largeDeflectionGlass(
-            thickness: Double(pane.thicknessM), material: .annealedGlass, a: a, b: b,
-            sixtySecondStrength: strength)
-        let response = system.response(pressures: pressures, step: binS)
-        let hazard = GlazingHazard.broken(
-            response: response, netPa: pressures, binS: binS, massPerArea: system.massPerArea,
-            paneHeight: Double(pane.heightM))
-        return hazard.condition
-    }
-
-    /// The condition of a laminated pane of `pane`'s size under `pressures`: held cracked in its
-    /// frame (2), or torn or pulled out and thrown. Its interlayer, not its glass's flaws, decides,
-    /// so the load alone does.
-    public static func laminatedCondition(
-        _ pane: GlazingMix.Pane, laminate: LaminatedGlass, pressures: [Double], binS: Double
-    ) -> GlazingHazard.Condition {
-        let a = Double(min(pane.widthM, pane.heightM))
-        let b = Double(max(pane.widthM, pane.heightM))
-        let system = EnvelopePanel.laminatedGlass(laminate, a: a, b: b)
-        let response = system.response(pressures: pressures, step: binS)
-        return GlazingHazard.broken(
-            response: response, netPa: pressures, binS: binS, massPerArea: system.massPerArea,
-            paneHeight: Double(pane.heightM)
-        ).condition
-    }
-
     /// `mix`'s glass under a recorded history (net pressures, Pa, in bins `binS` long), its panes
-    /// `strength` times the flaw model's median, against `worseThan`: as `glassOutcome` on the
-    /// surrogate's pulses, for judging them.
+    /// `strength` times their glass's median, against `worseThan` (`GlazingMix.breakage`): as the
+    /// surrogate's pulses are judged, for judging them.
     public static func glassOutcome(
         _ mix: GlazingMix, netPa: [Double], binS: Double, areaM2: Double, strength: Double = 1,
         worseThan: GlazingHazard.Condition = .threeB
     ) -> GlassOutcome {
-        let peak = netPa.map(abs).max() ?? 0
-        return glassOutcome(
-            mix, areaM2: areaM2, strength: strength, worseThan: worseThan,
-            answer: { pane in
-                guard peak > 50 else { return (false, 0) }
-                let a = Double(min(pane.widthM, pane.heightM))
-                let b = Double(max(pane.widthM, pane.heightM))
-                let r = EnvelopeDamageAssessment.unbreakablePane(
-                    thickness: Double(pane.thicknessM), a: a, b: b
-                )
-                .response(pressures: netPa, step: binS)
-                return (r.lostResistanceAt != nil, r.equivalentStress ?? 0)
-            },
-            thrown: { pane, strength in
-                thrownCondition(pane, strength: strength, pressures: netPa, binS: binS)
-            })
+        GlassOutcome(
+            mix.breakage(netPa: netPa, binS: binS, areaM2: areaM2, worseThan: worseThan, strength: strength))
     }
 
     /// A pane type's response to the surrogate's pulses, by their rounded peak, impulse and rise:
@@ -403,9 +327,9 @@ extension FacadeLoadSurrogate {
             var peak: Int32
             var impulse: Int32
             var rise: Int8
-            /// For a throw: the strength it broke at; 0 for the stress; `laminated` for a laminate's
-            /// condition.
+            /// For a throw: the strength it broke at; 0 for the stress.
             var strength: Int16 = 0
+            var glass: GlazingMix.Glass?
         }
         /// One part of the table, by its keys' hash, with its own lock: classes in a `let` array,
         /// so that writing one never touches the array the others are read through (as
@@ -422,7 +346,6 @@ extension FacadeLoadSurrogate {
         init(binS: Double) { self.binS = binS }
 
         static let step = log(1 + FacadeLoadSurrogate.quantum)
-        static let laminated = Int16.max
 
         /// The rounded pulse of `prediction`: its keys' parts and its pressures, made once.
         struct Pulse {
@@ -453,63 +376,46 @@ extension FacadeLoadSurrogate {
                 return load
             }
 
-            func key(_ pane: GlazingMix.Pane, strength: Int16 = 0) -> Key {
+            func key(_ pane: GlazingMix.Pane, glass: GlazingMix.Glass?, strength: Int16 = 0) -> Key {
                 Key(
                     thickness: pane.thicknessM, width: pane.widthM, height: pane.heightM, peak: peak,
-                    impulse: impulse, rise: rise, strength: strength)
+                    impulse: impulse, rise: rise, strength: strength, glass: glass)
             }
-        }
-
-        /// The chance that some pane of `mix` over a façade region of `areaM2`, all its panes
-        /// `laminate`, is thrown worse than `worseThan` under `prediction`'s pulse: 1 or 0, the
-        /// load deciding.
-        func laminatedWorse(
-            _ mix: GlazingMix, laminate: LaminatedGlass, prediction: Prediction, areaM2: Double,
-            worseThan: GlazingHazard.Condition
-        ) -> Double {
-            var pulse = Pulse(prediction, binS: binS)
-            for pane in mix.panes where pane.areaM2 > 0 && pane.share > 0 {
-                guard Double(mix.glazedFraction * pane.share) * areaM2 > 0 else { continue }
-                let rank = lookup(pulse.key(pane, strength: Self.laminated)) {
-                    let condition = FacadeLoadSurrogate.laminatedCondition(
-                        pane, laminate: laminate, pressures: pulse.pressures(), binS: binS)
-                    return (false, Double(GlazingHazard.Condition.allCases.firstIndex(of: condition)!))
-                }.stress
-                if GlazingHazard.Condition.allCases[Int(rank)] > worseThan { return 1 }
-            }
-            return 0
         }
 
         /// `mix`'s glass over a façade region of `areaM2` under `prediction`'s pulse, its panes'
-        /// strength `strength` times the flaw model's (`glassOutcome`), against `worseThan`.
+        /// strength `strength` times their glass's (`GlazingMix.judged`), against `worseThan`.
         func outcome(
             _ mix: GlazingMix, prediction: Prediction, areaM2: Double, strength: Double,
             worseThan: GlazingHazard.Condition = .threeB
         ) -> GlassOutcome {
             var pulse = Pulse(prediction, binS: binS)
-            return FacadeLoadSurrogate.glassOutcome(
-                mix, areaM2: areaM2, strength: strength, worseThan: worseThan,
-                answer: { pane in
-                    lookup(pulse.key(pane)) {
-                        // Under 50 Pa no pane comes near breaking (as `GlazingMix.breakage`).
-                        guard (pulse.pressures().max() ?? 0) > 50 else { return (false, 0) }
-                        let a = Double(min(pane.widthM, pane.heightM))
-                        let b = Double(max(pane.widthM, pane.heightM))
-                        let r = EnvelopeDamageAssessment.unbreakablePane(
-                            thickness: Double(pane.thicknessM), a: a, b: b
-                        ).response(pressures: pulse.pressures(), step: binS)
-                        return (r.lostResistanceAt != nil, r.equivalentStress ?? 0)
-                    }
-                },
-                thrown: { pane, broke in
-                    let step = Int16(max(min((log(broke) * 20).rounded(), 32_000), -32_000))
-                    let rank = lookup(pulse.key(pane, strength: step)) {
-                        let condition = FacadeLoadSurrogate.thrownCondition(
-                            pane, strength: exp(Double(step) / 20), pressures: pulse.pressures(), binS: binS)
-                        return (false, Double(GlazingHazard.Condition.allCases.firstIndex(of: condition)!))
-                    }.stress
-                    return GlazingHazard.Condition.allCases[Int(rank)]
-                })
+            return GlassOutcome(
+                mix.judged(
+                    areaM2: areaM2, strength: strength, worseThan: worseThan,
+                    answer: { pane in
+                        lookup(pulse.key(pane, glass: mix.glass)) {
+                            // Under 50 Pa no pane comes near breaking (as `GlazingMix.breakage`).
+                            guard (pulse.pressures().max() ?? 0) > 50 else { return (false, 0) }
+                            let (a, b) = GlazingMix.sides(pane)
+                            let r = EnvelopeDamageAssessment.unbreakablePane(
+                                thickness: mix.glassAlone(pane), a: a, b: b
+                            ).response(pressures: pulse.pressures(), step: binS)
+                            return (r.lostResistanceAt != nil, r.equivalentStress ?? 0)
+                        }
+                    },
+                    thrown: { pane, broke in
+                        let step = Int16(max(min((log(broke) * 20).rounded(), 32_000), -32_000))
+                        let rank = lookup(pulse.key(pane, glass: mix.glass, strength: step)) {
+                            let condition = mix.condition(
+                                pane, strength: exp(Double(step) / 20), pressures: pulse.pressures(),
+                                binS: binS)
+                            return (
+                                false, Double(GlazingHazard.Condition.allCases.firstIndex(of: condition)!)
+                            )
+                        }.stress
+                        return GlazingHazard.Condition.allCases[Int(rank)]
+                    }))
         }
 
         /// `mix`'s glass alone (`outcome`), as `GlazingMix.breakage` on the pulse.

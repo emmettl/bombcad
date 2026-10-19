@@ -107,6 +107,11 @@ struct SimulationCommands: Commands {
                 .disabled(model == nil || model?.sweep.isActive == true)
             Button("Infer Charge from Arrivals…") { model?.showsChargeInference = true }
                 .disabled(model == nil)
+            Button("Protective Design…") { model?.showsProtectivePlanner = true }
+                .disabled(
+                    model?.settings.scenario.envelopeObjects.contains(where: {
+                        model?.settings.scenario.envelopeConstruction(for: $0.id).glazing != nil
+                    }) != true)
             Button("Quick Estimate of Envelope Damage") { model?.quickEstimate() }
                 .disabled(
                     model == nil || model?.settings.scenario.envelopeObjects.isEmpty != false

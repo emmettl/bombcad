@@ -190,6 +190,9 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $model.showsRenderExport) { RenderExportView(model: model) }
+        .sheet(isPresented: $model.showsProtectivePlanner) {
+            ProtectionPlannerView(model: model, planner: model.protectionPlanner)
+        }
         .sheet(isPresented: $model.showsChargeInference) {
             ChargeInferenceView(model: model, inference: model.chargeInference)
         }
