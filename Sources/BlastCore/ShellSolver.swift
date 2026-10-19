@@ -290,6 +290,10 @@ public final class ShellSolver {
     /// Fastened sheets' links: their pass, and where their data begin in the load table's buffer.
     private let linkPipeline: MTLComputePipelineState?
     private let linkLayout: (records: Int, starts: Int, entries: Int)
+    /// The load table from the spring supports on (their records, then the links'), as built:
+    /// `reset()` puts it back, so that no support or link carries its yielding or release into
+    /// the next run.
+    private var connectionRecords: (offset: Int, bytes: [UInt8])?
     /// Nodes tied rigidly to a column's node at a slab.
     public var tieCount: Int { mesh.ties.count }
     private let incidenceStartBuffer: MTLBuffer
@@ -667,6 +671,17 @@ public final class ShellSolver {
             (loadTableBuffer.contents() + linkLayout.entries).copyMemory(
                 from: entries, byteCount: entries.count * 4)
         }
+        if !springs.isEmpty || !mesh.links.isEmpty {
+            let start = loadTableBuffer.contents() + springOffset
+            connectionRecords = (
+                springOffset,
+                Array(
+                    UnsafeBufferPointer(
+                        start: start.bindMemory(
+                            to: UInt8.self, capacity: loadTableBuffer.length - springOffset),
+                        count: loadTableBuffer.length - springOffset))
+            )
+        }
         tiedBuffer = tiedStorage
         tieBuffer = try buffer(mesh.ties.count * 8, "shell ties")
         let tiePairs = tieBuffer.contents().bindMemory(
@@ -876,6 +891,10 @@ public final class ShellSolver {
         settledDisplacements = nil
         footings?.reset()
         pairs?.reset()
+        if let connectionRecords {
+            (loadTableBuffer.contents() + connectionRecords.offset).copyMemory(
+                from: connectionRecords.bytes, byteCount: connectionRecords.bytes.count)
+        }
         memset(failureGateBuffer.contents(), 0, failureGateBuffer.length)
         failedAtCheckpoint = nil
         memset(flagBuffer.contents(), Int32(ElementFlag.active.rawValue), flagBuffer.length)
