@@ -67,7 +67,7 @@ import simd
 //                       [--standing]   (the standing a new document of the preset shows, in place of a run)
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
 //                       [--mapped [--early-voxels n] [--early-samples s]] [--hot-air|--grey-air] [--frame-detail]
-//   blastbench radial-profile [--mass 453600] [--reach 2] [--times 0.5,1,1.25,2,5] [--every 4] [--dump prefix]
+//   blastbench radial-profile [--mass 453600] [--reach 2] [--times 0.5,1,1.25,2,5] [--every 4] [--dump prefix] [--jwl]
 //                      (the mapped start's one-dimensional burst through its products' edge and shock)
 //   blastbench shell-sphere [--profile file.csv [--mass kg]] [--voxel 0.5,0.25]
 //                      (the thermal volume's march against exact rays through a layered sphere)

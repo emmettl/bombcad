@@ -6,7 +6,7 @@ import RadialBlast
 /// 453,600; today's air) at `--times` ms (0.5,1,1.25,2,5): from the products' edge out through the
 /// shock, every `--every`-th cell (4), its radius, temperature, density, unburnt products and
 /// absorption as hot air (`HotAir`), to see where the luminous gas is and how thick and hot the
-/// shock's layer of air is.
+/// shock's layer of air is; `--jwl` with the products by JWL's law.
 func runRadialProfile() throws {
     let mass = option("mass").flatMap { Float($0) } ?? 453_600
     let times = (option("times") ?? "0.5,1,1.25,2,5").split(separator: ",").compactMap { Double($0) }
@@ -15,7 +15,7 @@ func runRadialProfile() throws {
     let configuration = SolverConfiguration.recommended
     var blast = BlastSolver.mappedStartStudy(
         mass: mass, reach: option("reach").flatMap { Float($0) } ?? 2, configuration: configuration,
-        products: nil)
+        products: flag("jwl") ? .tnt : nil)
     blast.snapshotTimes = times
     blast.run(toShockRadius: .infinity, until: times.max() ?? 0)
     let model = configuration.airModel

@@ -584,8 +584,18 @@ No one change does it: through the voxels, the soot within the products and grey
 shells, the first maximum comes at about the right time, three-fifths of its height, and falls
 away as measured; the exact rays' remaining difference is the frames' half-millisecond spacing.
 The rest, to 157, would need the front hotter than the 6,600 K the start's air reaches: the
-report finds 7,500 to 8,000 K, and the start's thermally perfect air takes up energy in vibration
-but neither dissociates nor is out of equilibrium behind the shock.
+report finds 7,500 to 8,000 K. Air that dissociates in equilibrium would make it cooler, not
+hotter: behind a shock at the start's 3.9 km/s it reaches 4,960 K where the start's thermally
+perfect air reaches 6,320 K (the Rankine–Hugoniot jump with each of the air models), a third of
+the radiance, so it was not tried in the start. What is short is the shock's speed near the
+charge: at the start's front, 10.2 m at 1.25 ms, Kingery–Bulmash's shock moves at 5.0 km/s, behind
+which air in equilibrium reaches 6,800 to 7,500 K, the report's range; the start's products,
+expanding as hot air does, drive it at 3.9. With JWL's products (`mappedChargeProducts`, tried for
+the loads and not adopted) the front reaches 7,700 K at 1 ms and 8,000 K at 1.25 ms (`blastbench
+radial-profile --jwl`), but those cells, air by the mass behind them, hold 70% to 90% products by
+the tag the eddy diffusivity spreads, which the products' law reads; until the tag stays behind
+the contact early, the products' law at the front cannot be trusted, and the first flash rests at
+three-fifths.
 
 Against Clough and Clubley's 41 kg (`blastbench gauging`), the products reach 3 m by 3.2 ms (the
 camera's fireball 4 m), but they have cooled below the luminous temperature as they expanded,
