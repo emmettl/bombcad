@@ -1,0 +1,47 @@
+# Builds BlastModel, the model without Metal, and runs its tests on Linux, on GitHub's hosted
+# runner. Package.swift keeps only RadialBlast, BlastModel and BlastModelTests on Linux, so this
+# builds nothing else; the Mac mini's Check workflow stays the reference for everything, BlastModel
+# included. Unlike Check, this runs no code on a self-hosted machine, so pull requests may run it.
+# Modelled on ContinuumKit's .github/workflows/linux.yml. See Scripts/split/.
+name: Linux BlastModel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-blastmodel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    # The tests take about 12 minutes on four cores in a debug build.
+    timeout-minutes: 60
+    container:
+      image: swift:6.4.1-noble@sha256:19cbe56bdaec1918f7cf5fdeba42b9bd55bdd8a6149c9990d0e0e3a89a127d63
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: swift --version
+      # Until the split lands there is no BlastModel to build.
+      - name: Look for BlastModel
+        id: model
+        run: |
+          if [ -d Sources/BlastModel ]; then echo "present=true" >> "$GITHUB_OUTPUT"
+          else echo "Sources/BlastModel does not exist yet; nothing to build."; fi
+      # Not -warnings-as-errors: Linux's Foundation warns where Apple's does not (an unused
+      # FileManager.createFile result); the Mac's strict build is the check for warnings.
+      - name: Build
+        if: steps.model.outputs.present == 'true'
+        run: swift build --build-tests
+      - name: Test
+        if: steps.model.outputs.present == 'true'
+        run: swift test --skip-build --filter BlastModelTests

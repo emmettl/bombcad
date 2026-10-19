@@ -134,4 +134,62 @@ struct FacadeLoadSurrogateTests {
         let far = try #require(sorted.last?.glass)
         #expect(near.fraction > far.fraction)
     }
+
+    static func facing(_ distance: Double) -> FacadeLoadSurrogate.Features {
+        FacadeLoadSurrogate.Features(
+            distanceM: distance, cosIncidence: 1, buildingsCrossed: 0, blockedM: 0, ridgeM: 0, groundRiseM: 0,
+            heightM: 1.5, shadowM: 0, frontM: 50)
+    }
+
+    @Test("Close in, the fitted terms are held at the fitted range's end, not carried to nothing, and marked")
+    func fittedRange() {
+        let mass = 20_000.0
+        let root = cbrt(mass)
+        let range = FacadeLoadSurrogate.Coefficients.fitted.scaledRange
+        func correction(_ z: Double) -> Double {
+            let f = Self.facing(z * root)
+            let p = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 4)
+            return p.peakPa / FacadeLoadSurrogate.base(f, mass: mass).peak
+        }
+        // Inside the range, its own; below it, the range's end's.
+        #expect(abs(correction(1) / correction(range.lowerBound) - 1) < 1e-9)
+        #expect(correction(1) > 0.2)
+        #expect(FacadeLoadSurrogate.predict(Self.facing(root), mass: mass, cellSize: 4).outsideFit)
+        #expect(!FacadeLoadSurrogate.predict(Self.facing(10 * root), mass: mass, cellSize: 4).outsideFit)
+        #expect(FacadeLoadSurrogate.predict(Self.facing(60 * root), mass: mass, cellSize: 4).outsideFit)
+    }
+
+    @Test("Beyond the curves the shock goes on at the speed of sound; no charge gives no load")
+    func farAndNone() {
+        let mass = 20_000.0
+        let root = cbrt(mass)
+        let at40 = FacadeLoadSurrogate.base(Self.facing(40 * root), mass: mass).arrival
+        let just = FacadeLoadSurrogate.base(Self.facing(40.001 * root), mass: mass).arrival
+        let far = FacadeLoadSurrogate.base(Self.facing(80 * root), mass: mass).arrival
+        #expect(abs(just - at40) < 1e-3)
+        #expect(abs((far - at40) - 40 * root / 340.3) < 1e-9)
+        let none = FacadeLoadSurrogate.predict(Self.facing(100), mass: 0, cellSize: 4)
+        #expect(none.peakPa == 0 && none.impulsePaS == 0 && none.arrivalS == 0)
+    }
+
+    @Test("The memo holds up under many threads at once")
+    func memoConcurrently() {
+        let pane = EnvelopeDamageAssessment.annealedPane(thickness: 0.006, a: 1.2, b: 1.5)
+        let loads: [[Double]] = (0..<32).map { n in
+            let peak = 1_000 * Double(n + 1)
+            return (0..<40).map { (k: Int) -> Double in peak * max(0, 1 - Double(k) / 30) }
+        }
+        let direct = loads.map { pane.response(pressures: $0, step: 0.5e-3) }
+        var answers = [SDOFResponse?](repeating: nil, count: 2_000)
+        let (_, memo) = SDOFResponseMemo.remembering {
+            answers.withUnsafeMutableBufferPointer { out in
+                concurrently(iterations: out.count) { n in
+                    out[n] = pane.response(pressures: loads[n % loads.count], step: 0.5e-3)
+                }
+            }
+        }
+        #expect(answers.indices.allSatisfy { answers[$0] == direct[$0 % loads.count] })
+        #expect(memo.hits + memo.misses == answers.count)
+        #expect(memo.misses >= loads.count)
+    }
 }

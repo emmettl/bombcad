@@ -5928,14 +5928,18 @@ The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), aga
   of sides deep in the district (89–97% in sight of the charge and behind one to three buildings),
   never two states apart; the shares broken by distance band come within about 0.1 of the run's to
   2 km.
-- **Walls and roofs:** of the components either calls damaged, 8–27% of the concrete and 37–46% of
+- **Walls and roofs:** of the components either calls damaged, 0–10% of the concrete and 35–42% of
   the stone take the run's level. Not to be relied on.
-- **Loads** at 0.5 kt, the surrogate's over the run's on the median: peaks 0.84–0.99 and impulses
+- **Loads** at 0.5 kt, the surrogate's over the run's on the median: peaks 0.85–1.00 and impulses
   0.81–1.01 inside Z = 20 m/kg^(1/3), each strip scattered by about ×1.3 (the logarithm's standard
-  deviation 0.14–0.26); beyond it, 1.08–1.63 times the run's on the median, over the hills and
+  deviation 0.14–0.26); beyond it, 1.09–1.63 times the run's on the median, over the hills and
   near the run's open faces, and far more scattered.
-- **Time:** 22–28 s over Beirut's 724,512 components on the Studio, against the run's 25–28
-  minutes on the CI mini.
+- **Outside its fitted range** (Z = 4.6–38.7 m/kg^(1/3)) its terms are held at the range's end and
+  the components marked as extrapolated; within Z = 3 of Beirut's charge, among the port's silos and
+  warehouses, it gives eight times the run's peak.
+- **Time:** 22–28 s over Beirut's 724,512 components on the Studio, against 25–41 minutes for a
+  full run on the CI mini (25–28 as the Beirut page timed its runs, 27–41 timed again for the
+  hybrid comparison).
 
 Standing: an approximation for the glass across a district, illustrative for walls and roofs.
 
