@@ -46,7 +46,7 @@ connections (ties, joist bearings, roof fixings) that the tests show decide how 
 ### Can it use ContinuumKit's law?
 
 ContinuumKit has three of the laws, all from Edgerton's plywood coupons, all released (BombCAD
-pins alpha.28; alpha.26 added `TimberFailure`, BombCAD's):
+pins alpha.29; alpha.26 added `TimberFailure`, BombCAD's):
 
 - `SolidMechanics.OrthotropicPlaneStress` (alpha.22): small-strain linear orthotropic plane
   stress in a frame with a grain angle. It has no damage, plasticity or rate effects, and it

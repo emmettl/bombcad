@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Sub-grid turbulent mixing in the air.
 @Suite("Sub-grid mixing", .gpuThreads)

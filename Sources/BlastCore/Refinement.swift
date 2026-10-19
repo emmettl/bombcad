@@ -1,3 +1,4 @@
+import BlastModel
 import Foundation
 import Metal
 import simd
@@ -2038,33 +2039,6 @@ extension AirRefinement {
     }
 }
 
-/// Matches `TerrainUniforms` in Refine.metal.
-struct TerrainUniforms {
-    var origin: SIMD2<Float> = .zero
-    var spacing: Float = 1
-    var columns: UInt32 = 0
-    var rows: UInt32 = 0
-    var enabled: UInt32 = 0
-    /// With cut cells, the coarse grid's quadrature points to an edge (`TerrainCutGeometry.samples`).
-    var cutSamples: UInt32 = 8
-}
-
-/// `PaneLookup` in Refine.metal: 32 bytes, as the kernels read its (cell, pane) entries from the
-/// byte after it. Its padding is three floats, not a `SIMD3<Float>`, whose 16-byte alignment made
-/// it 48 in Swift: the kernels then took two zeros for entries and missed the last two, so the two
-/// highest pane cells never opened on the fine grid and pane 0 breaking opened coarse cell
-/// (0, 0, 0)'s fine cells.
-struct PaneLookup {
-    var count: UInt32 = 0
-    var nx: UInt32 = 0
-    var ny: UInt32 = 0
-    var nz: UInt32 = 0
-    var coarseDx: Float = 0
-    var pad0: Float = 0
-    var pad1: Float = 0
-    var pad2: Float = 0
-}
-
 extension AirRefinement {
     /// Venting's panes, for the fine cells to open under them (`cells` led by `lookup`, the header
     /// `PaneLookup` in Refine.metal); nil without venting.
@@ -2097,19 +2071,4 @@ extension AirRefinement {
             MTLSize(width: Int(panes.lookup.count) * Int(scale * scale * scale), height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
     }
-}
-
-/// Refine.metal's `FacadeBand`: the coarse grid's size, the ratio from a level's cells to coarse
-/// ones, the overpressure (Pa) above which the band holds refinement, the ambient pressure, on.
-struct FacadeBandParameters {
-    var nx: UInt32 = 0
-    var ny: UInt32 = 0
-    var nz: UInt32 = 0
-    var ratio: UInt32 = 1
-    var threshold: Float = 0
-    var ambient: Float = 0
-    var on: UInt32 = 0
-    /// 1 where the band's bit 2 marks the coarse cells above the refinement's ceiling
-    /// (`SolverConfiguration.refinementCeiling`), never refined; 0 for none.
-    var ceiling: UInt32 = 0
 }

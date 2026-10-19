@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Spatial exposure and diagnostic profiling", .serialized, .gpuThreads)
 struct ExposurePlaneTests {

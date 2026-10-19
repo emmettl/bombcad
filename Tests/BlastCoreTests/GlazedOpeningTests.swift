@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// A window as users and IFC imports model it: an opening cut through a wall, and a pane of glass
 /// in it. The opening cuts the wall; the pane is kept, on the wall's midsurface, joined to the

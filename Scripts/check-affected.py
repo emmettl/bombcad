@@ -57,7 +57,7 @@ REMOTE_SPEC.loader.exec_module(remote)
 CORE = [
     re.compile(r"^Package\.(swift|resolved)$"),
     re.compile(r"^Sources/[^/]+/Shaders/"),
-    re.compile(r"^Sources/BlastCore/(BlastSolver|SolverTypes|StructureSolver|StructureTypes|"
+    re.compile(r"^Sources/Blast(Core|Model)/(BlastSolver|SolverTypes|StructureSolver|StructureTypes|"
                r"ShellSolver|Scenario|MappedStart|Refinement|StructuralBody)\.swift$"),
     re.compile(r"^Sources/RadialBlast/"),
 ]

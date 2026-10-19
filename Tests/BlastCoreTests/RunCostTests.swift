@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The cost model against the runs timed on an unloaded Mac in docs/performance.md.
 @Suite("Run cost", .timeLimit(.minutes(120)))

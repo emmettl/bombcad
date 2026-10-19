@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Glazing thinner than a cell holds its own cells in the air (`BuildingEnvelope.paneCells`).
 @Suite("Envelope pane cells", .serialized, .gpuThreads)

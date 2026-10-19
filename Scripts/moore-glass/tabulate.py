@@ -1,6 +1,6 @@
-"""Tabulate Moore's nonlinear glass plate curves for BlastCore (Sources/BlastCore/MooreGlassCurves.swift).
+"""Tabulate Moore's nonlinear glass plate curves for BlastCore (Sources/BlastModel/MooreGlassCurves.swift).
 
-    python3 Scripts/moore-glass/tabulate.py <DPlot directory> Sources/BlastCore/MooreGlassCurves.swift
+    python3 Scripts/moore-glass/tabulate.py <DPlot directory> Sources/BlastModel/MooreGlassCurves.swift
 
 Reads UFC 3-340-02's figures 6-52 (nondimensional load against the centre's and the corners'
 largest principal stress) and 6-53 (against the centre's deflection over the thickness), the

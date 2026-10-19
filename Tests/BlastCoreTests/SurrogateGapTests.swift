@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Paths through the façade load surrogate (`FacadeLoadSurrogate`) that `FacadeLoadSurrogateTests`
 /// does not reach: the sign and monotonicity of each fitted feature taken alone, the rise share's

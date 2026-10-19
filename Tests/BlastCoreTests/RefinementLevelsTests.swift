@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The air refined in two levels, the second refining the first.
 @Suite("Refinement in two levels", .gpuThreads)

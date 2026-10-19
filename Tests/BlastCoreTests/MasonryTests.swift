@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Masonry meshed as units and mortar joints.
 @Suite("Masonry units and joints", .gpuThreads)

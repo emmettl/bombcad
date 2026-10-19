@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// `advance` hands the GPU its steps in command buffers of about `BlastSolver.commandBufferTarget`
 /// of its time, so that none holds it long enough to starve the window server, and the steps are

@@ -1,26 +1,8 @@
+import BlastModel
 import Foundation
 import Metal
 import RadialBlast
 import simd
-
-/// A horizontal plane of fixed Eulerian probes, sampled after each complete air step.
-/// Pressure is trilinearly interpolated from coarse cell centres at fixed physical points.
-/// Values include restricted fine state, rather than fine-cell maxima.
-/// Arrival is the first endpoint at or above an absolute overpressure threshold.
-public struct ExposurePlaneSnapshot: Codable, Sendable {
-    public var nx: Int
-    public var ny: Int
-    public var cellSizeM: Float
-    public var airCellSizeM: Float
-    public var heightM: Float
-    public var thresholdPa: Float
-    public var elapsedS: Double
-    public var peakPa: [Float?]
-    public var positiveImpulsePaS: [Float?]
-    public var arrivalS: [Float?]
-    /// A stencil that ever included a solid cell is excluded from all three maps.
-    public var everSolid: [Bool]
-}
 
 final class ExposurePlane {
     let layer: Int

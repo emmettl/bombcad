@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Whether the shell solver's beams buckle (`BucklingStudy`): a 50 mm square steel strut shortened
 /// slowly carries, once buckled, its Euler load for its ends, or squashes where it is stocky; and

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Options and paths of the air solver's core that no other test reaches: the far-field faces
 /// under gravity and their species, the floors, the afterburning's energy and time, the startup

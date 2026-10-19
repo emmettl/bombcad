@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Sampling uncertain inputs for an ensemble", .timeLimit(.minutes(120)))
 struct EnsembleSamplingTests {

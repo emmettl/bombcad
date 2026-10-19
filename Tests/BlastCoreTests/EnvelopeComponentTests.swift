@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Envelope components from the geometry alone (the component spec, v1.2).
 @Suite("Envelope components")

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Panes holed by a cased charge's fragments opening in the air, with glazing vented.
 @Suite("Fragments holing vented panes", .serialized, .gpuThreads)

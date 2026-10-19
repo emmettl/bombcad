@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Checks that the air loads shells correctly and that their solid mask follows them.
 @Suite("Shell coupling", .gpuThreads)

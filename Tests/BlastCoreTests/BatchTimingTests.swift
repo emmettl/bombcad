@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// What a run reports of when things happened is the same to the bit however its steps are cut
 /// into batches, as the air is: the batches' boundaries move with the GPU's speed (the command

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="297mm" height="210mm" viewBox="0 0 297 210">
+<defs><symbol id="opening"><line x1="0" y1="0" x2="1" y2="0" stroke="black" stroke-width="0.25"/></symbol></defs>
+<g inkscape:groupmode="layer" inkscape:label="WALL-EXT" id="layer-wall-ext">
+<path d="M 21.4,188.6 L 98.6,188.6" fill="none" stroke="black"/>
+<path d="M 98.6,188.6 L 98.6,131.4" fill="none" stroke="black"/>
+<path d="M 98.6,131.4 L 21.4,131.4" fill="none" stroke="black"/>
+<path d="M 21.4,131.4 L 21.4,188.6" fill="none" stroke="black"/>
+</g>
+<g inkscape:groupmode="layer" inkscape:label="WALL-INT" id="layer-wall-int">
+<path d="M 60,187.2 L 60,132.8" fill="none" stroke="black"/>
+</g>
+<g inkscape:groupmode="layer" inkscape:label="DOOR" id="layer-door">
+<use xlink:href="#opening" transform="translate(32 188.6) rotate(0) scale(9 1)"/>
+</g>
+<g inkscape:groupmode="layer" inkscape:label="WINDOW-GF" id="layer-window-gf">
+<use xlink:href="#opening" transform="translate(70 188.6) rotate(0) scale(12 1)"/>
+<use xlink:href="#opening" transform="translate(70 131.4) rotate(0) scale(12 1)"/>
+</g>
+<g inkscape:groupmode="layer" inkscape:label="WINDOW-FF" id="layer-window-ff">
+<use xlink:href="#opening" transform="translate(32 188.6) rotate(0) scale(12 1)"/>
+<use xlink:href="#opening" transform="translate(70 188.6) rotate(0) scale(12 1)"/>
+<use xlink:href="#opening" transform="translate(32 131.4) rotate(0) scale(12 1)"/>
+</g>
+</svg>

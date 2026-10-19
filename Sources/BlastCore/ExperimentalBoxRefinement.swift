@@ -1,3 +1,4 @@
+import BlastModel
 import Foundation
 
 // Only the explicit ExperimentalRigidBox/CarSimulation drivers call this synchronous reference path.

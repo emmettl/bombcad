@@ -2,6 +2,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The populated scenes are well formed: their objects stand apart, on the ground, clear of the
 /// blocks and the charge, and stay put until something moves them.

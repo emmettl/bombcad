@@ -1,7 +1,9 @@
 # ContinuumKit adoption
 
-BombCAD pins [ContinuumKit `0.1.0-alpha.28`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.28)
-and commits the resolved Git revision (`872b204`). Since alpha.19 the pressure-gradient
+BombCAD pins [ContinuumKit `0.1.0-alpha.29`](https://github.com/emmettl/ContinuumKit/releases/tag/0.1.0-alpha.29)
+and commits the resolved Git revision (`eae6589`). Alpha.29 changes nothing that the Mac
+compiles for the modules BombCAD uses; its CPU libraries build on Linux, which BlastModel needs
+there (the BlastModel split, [Scripts/split](../Scripts/split/README.md)). Since alpha.19 the pressure-gradient
 fit (`FiniteVolumePressureFit`) solves its least squares with the shared `PivotedQR`;
 since alpha.25 contact's table and search are the shared `ContactSearchMetal`; since alpha.26
 its timber shells and beams run a single-precision copy of the shared `TimberFailure`, which

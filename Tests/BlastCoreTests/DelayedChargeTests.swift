@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Charges fired after the main one (`Charge.delay`): laid down when the run's clock reaches them,
 /// as the balloon or, where the air about them is still, from their one-dimensional solution.

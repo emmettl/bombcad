@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Reading DEMs and cropping them into a scene's terrain. The fixtures in Samples/Terrain are
 /// synthetic (a hill on a gentle slope, one cell missing), written by numpy and tifffile; the

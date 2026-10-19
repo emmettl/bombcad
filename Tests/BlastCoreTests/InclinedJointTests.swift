@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Joints at angles to the lattice (`Anchorage.jointNormal`): a block on an inclined joint slides
 /// at the friction angle, a staircase of faces is tied over the joint's own area, and a wall turned

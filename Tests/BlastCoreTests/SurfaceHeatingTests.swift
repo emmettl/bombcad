@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Surfaces heated by the fireball's radiation", .timeLimit(.minutes(120)))
 struct SurfaceHeatingTests {

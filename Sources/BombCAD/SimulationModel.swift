@@ -469,6 +469,27 @@ final class SimulationModel {
     var showsRunComparison = false
     /// The Infer Charge sheet, and its observers and posterior, kept while the window is open.
     var showsChargeInference = false
+    /// The Protective Design sheet, and its target, changes and plans, kept while the window is open.
+    var showsProtectivePlanner = false
+    @ObservationIgnored lazy var protectionPlanner = ProtectionPlannerModel()
+    /// The plan Protective Design shows: each building's sides' residual chances; empty for none.
+    private(set) var protectionPlanChances: [UUID: [(axis: Int, outward: Int, chance: Double)]] = [:]
+
+    /// Colours each side by `chances` (a protective plan's residual chances), or stops.
+    func showProtectionPlan(_ chances: [UUID: [(axis: Int, outward: Int, chance: Double)]]) {
+        protectionPlanChances = chances
+        applyEnvelopeDamageColours()
+    }
+
+    /// Writes a protective plan's glazing into the project: each building it changes given its
+    /// sides' new windows (`EnvelopeConstruction.sideGlazing`), as the user's choice.
+    func applyProtectionPlan(_ plan: ProtectionSearch.Plan, model: ProtectionModel.Model, label: String) {
+        for var construction in ProtectionModel.constructions(plan, model: model, scene: settings.scenario) {
+            construction.source = .user
+            construction.detail = "glazing from protective plan \(label)"
+            settings.scenario.setEnvelopeConstruction(construction)
+        }
+    }
     let chargeInference = ChargeInferenceModel()
     /// Asked of the views that own them from the menus, and cleared there: choosing a model to
     /// import, naming the run to keep, and saving the results as CSV.
@@ -713,6 +734,10 @@ final class SimulationModel {
 
     private func applyEnvelopeDamageColours() {
         defer { applyFarFieldColours() }
+        if !protectionPlanChances.isEmpty {
+            renderer?.setEnvelopeDamage(protectionPlanChances.mapValues { EnvelopeChanceColour.code($0) })
+            return
+        }
         guard showsEnvelopeDamage else {
             renderer?.setEnvelopeDamage([:])
             return

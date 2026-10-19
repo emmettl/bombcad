@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The air's finer level near the shock.
 @Suite("Refinement", .gpuThreads)

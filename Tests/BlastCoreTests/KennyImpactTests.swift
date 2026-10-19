@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Kenny's drop-hammer tests on slender strips (`KennyImpactTest`): the final deflection of the
 /// peak buckle against the measured, as shell-model.md's table records it, so a change that moves

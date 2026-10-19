@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Imported parts and materials", .gpuThreads)
 struct ImportedPartTests {

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Blast injury from the run's own fields", .serialized, .gpuThreads)
 struct InjuryFieldTests {

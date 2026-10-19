@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Gravity acting on the air.
 @Suite("Gravity", .gpuThreads)

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Profiled metal sheeting as a skin with the ribs as beams (docs/profiled-sheeting.md).
 @Suite("Profiled sheeting", .gpuThreads)

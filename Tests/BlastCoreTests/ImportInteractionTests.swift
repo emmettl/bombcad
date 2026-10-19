@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Imported model picking and placement", .timeLimit(.minutes(120)))
 struct ImportInteractionTests {

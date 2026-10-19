@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// `ShellSolver.reset()` puts the structure back as built, its connections' state too: their
 /// yielding and release live in the load table, which only the solver's construction wrote.

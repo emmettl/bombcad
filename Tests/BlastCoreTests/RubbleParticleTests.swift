@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Failed concrete that becomes particles keeping its mass (`StructureModel.rubbleParticles`).
 @Suite("Rubble particles", .gpuThreads)

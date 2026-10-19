@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Footings on a hillside (`FootingGround`): level footings stepped into the slope, their soil read
 /// from the terrain, against Vesić's ground factor on the bearing capacity and Coulomb's earth

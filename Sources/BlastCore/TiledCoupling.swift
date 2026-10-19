@@ -1,8 +1,5 @@
+import BlastModel
 import simd
-
-public enum BodyCouplingLayout: String, Sendable, CaseIterable {
-    case automatic, dense, tiled
-}
 
 /// Coarse boundary pages. The air solution and its refinement pool are separate allocations.
 struct TiledCoupling {

@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Scenario setup", .gpuThreads)
 struct ScenarioTests {

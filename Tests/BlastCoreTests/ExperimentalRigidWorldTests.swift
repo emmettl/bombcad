@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Several freestanding objects with one in the air. Consistency checks only.
 @Suite("Experimental rigid-world coupling", .serialized, .gpuThreads)

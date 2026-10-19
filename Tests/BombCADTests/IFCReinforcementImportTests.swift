@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 @testable import BombCAD
 
 /// Reinforcement read from an IFC through the converter (`IFCReinforcementReader`): a concrete

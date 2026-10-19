@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Connections between two moving parts of one body (`Anchorage.betweenParts`): a block seated
 /// across a gap on another bears on it, holds and slides on it with its forces equal and

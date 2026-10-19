@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("OpenVDB writer", .timeLimit(.minutes(120)))
 struct OpenVDBWriterTests {

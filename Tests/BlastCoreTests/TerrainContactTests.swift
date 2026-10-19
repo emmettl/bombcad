@@ -3,6 +3,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Freestanding objects on the terrain: resting, sliding and tipping as statics says.
 @Suite("Freestanding objects on the terrain", .gpuThreads)

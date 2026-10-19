@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The terrain's ground surface as cut cells.
 @Suite("Terrain cut cells")

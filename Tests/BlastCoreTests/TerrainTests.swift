@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// The ground's shape as a heightfield the air sees as solid.
 @Suite("Terrain", .gpuThreads)

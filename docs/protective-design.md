@@ -478,6 +478,7 @@ are shipped):
   "threats": [{"mass": 500, "x": 700, "y": 700, "weight": 1}],
   "target": {"worseThan": "3b", "chance": 0.1, "buildings": {"Store": {"worseThan": "4"}}},
   "glazing": [
+    {"name": "film", "kind": "filmed", "costPerM2": 2.5},
     {"name": "toughened", "kind": "toughened", "costPerM2": 4},
     {"name": "laminated", "kind": "laminated", "costPerM2": 5},
     {"name": "infill", "kind": "infill", "costPerM2": 6}
@@ -494,37 +495,44 @@ are shipped):
   ([glass by chance](glass-probability.md)), the threats weighted. `--samples` takes the threat
   from `infer-charge --samples` instead, places about the scene's charge.
 - **Options.** The side as built (its map glazing mix, annealed), or any glazing allowed:
-  toughened (the panes' strength times E1300's factor of 4 unless said), laminated (each pane
-  `LaminatedGlass.facade` unless said: held cracked, or torn and thrown, by its interlayer), or
-  infill (no glass). Walls are not searched: the surrogate's walls are not to be relied on.
+  security film (7 mil, wet glazed, unless `film` says: the [film](building-envelopes.md#security-film)
+  holds the cracked pane until it tears or its anchorage lets go), toughened (the panes' strength
+  times E1300's factor of 4), laminated (each pane `LaminatedGlass.facade` unless `laminate` says:
+  held cracked, or torn and thrown, by its interlayer), or infill (no glass). Each is a glass type
+  on the side's `GlazingMix`, so a plan's glazing is an `EnvelopeConstruction` (a mix per side,
+  `sideGlazing`) that `EnvelopeDamageAssessment` judges as it judges any building; a map façade's
+  own mix, with no glass type, is judged as before, bit for bit. Walls are not searched: the
+  surrogate's walls are not to be relied on.
 - **Search.** Exact over the stand-offs (to 12), with greedy and annealing beside it; the same
   draws for every option and stand-off, so that plans are compared on the same luck. On the sparse
   made-up district (51 buildings, 204 glazed sides, 4 options, 2 stand-offs, 32 draws) every chance
-  the exact search needs takes 18 s on the Studio.
+  the exact search needs takes 26 s on the Studio, and confirming two plans on a run another 20 s.
 - **Output.** The ranked plans as JSON and a table: cost, whether the target is met, the sides
   expected to fail, the worst side's chance, the sides passing narrowly (within a third of the
   target) and the standing: `illustrative` (the user's costs and threat, the surrogate's loads, the
   glass's chances a run's spread), `approximation` once a run confirms the plan.
 - **Confirmation** (`--confirm`). The plans that leave the threat where a run of the scene had its
-  charge are judged again on that run's saved façade histories (`district-compare --save-loads`),
-  each side under the plan's glazing, its glass strength drawn as the chances draw it. On the sparse
-  district at 20 t, the cheapest plan without a stand-off meets the target on the surrogate's loads
-  (3.1 sides expected to fail, the worst 10%) but not on the run's (1.3 expected, but one side at
-  18%): one of its narrow passes. That run's loads were saved capped at 65.5 kPa, before 983409a8.
+  charge are judged again on that run's saved façade histories (`district-compare --save-loads`):
+  the plan's glazing written as constructions and judged by `EnvelopeDamageAssessment` itself, each
+  building's glass strength drawn as the chances draw it and the run's loads as they were. On the
+  sparse district at 20 t (rerun after 983409a8, so its close-in peaks are no longer capped at
+  65.5 kPa), the cheapest plan without a stand-off meets the target on the surrogate's loads (3.1
+  sides expected to fail, the worst 10%) but not on the run's: 1.3 expected, and six sides over 10%,
+  the worst at 15%. Three of the four worst passed narrowly on the surrogate's loads (4–7%); the
+  fourth, at 0.3% there, is a side the surrogate misjudges. On the capped loads the worst side was
+  at 18%, the rest as now.
 
 What it still lacks:
 
 - **Barriers** (roadmap #63): a wall the surrogate's raster sees, and terms for thin walls, which
   the surrogate was not fitted on. The inputs file's `barriers` is refused until then.
 - **Stand-off lines from the scene:** today each stand-off is given as moves of the threats it keeps
-  back; #63's lines will give the stopping place.
-- **Glazing as a construction.** `EnvelopeDamageAssessment` takes constructions apart from the
-  scene, but a map façade's glazing is a `GlazingMix` of annealed panes with no glass type, so a
-  plan's toughened or laminated glazing cannot be written as an `EnvelopeConstruction` and judged
-  by it. Both the chances and the confirmation judge those panes directly (strength ×4, the
-  laminate's SDOF), as `GlazingMix` judges annealed ones.
-- **Film, wall retrofits, close-in loads** (the surrogate's terms are held below Z = 4.6), and the
-  app's panel.
+  back; #63's lines will give the stopping place. The app's sheet searches glazing only until then.
+- **Wall retrofits and close-in loads** (the surrogate's terms are held below Z = 4.6).
+
+In the app, **Simulation ▸ Protective Design…** runs the same search on the scene's charges and
+glazing changes, colours each side by the chosen plan's residual chance, and writes a plan's
+glazing into the project's constructions ([using the app](using-the-app.md#protective-design)).
 
 ## Open questions
 
@@ -575,8 +583,9 @@ What it still lacks:
   - Kingery–Bulmash outside its fits for the closest sides (counted in each plan's standing).
 
   Its plans illustrate the method, not any real building.
-- Only the search, the glass's chances and their confirmation on a run are built in BombCAD
-  (`scenebench protect`); walls, film, barriers and the app are not.
+- Only the search over glazing (film among it) and stand-offs, the glass's chances and their
+  confirmation on a run are built in BombCAD (`scenebench protect`, and the app's sheet for
+  glazing); walls and barriers are not.
 
 ## Sources
 

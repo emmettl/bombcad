@@ -4,6 +4,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Shells at a pitch (`Inclination`): planes laid through their solids' boxes, meshed in their own
 /// planes, their elements taking their axes from their corners.

@@ -3,6 +3,7 @@ import Metal
 import Testing
 
 @testable import BlastCore
+@testable import BlastModel
 
 @Suite("Independent structural bodies", .serialized, .gpuThreads)
 struct MultiBodyTests {

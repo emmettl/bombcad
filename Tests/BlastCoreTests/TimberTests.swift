@@ -5,6 +5,7 @@ import Testing
 import simd
 
 @testable import BlastCore
+@testable import BlastModel
 
 /// Timber in shells: ContinuumKit's orthotropic plane stress, copied into the shell kernel in
 /// single precision, checked against ContinuumKit's own, and layered timber against beam theory.
