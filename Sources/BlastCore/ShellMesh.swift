@@ -881,13 +881,55 @@ struct ShellMesh {
                 Int32(axis), Int32((point[i1] / side).rounded(.down)) + di,
                 Int32((point[i2] / side).rounded(.down)) + dj)
         }
-        // Elements at a pitch shield nothing and are shielded by nothing.
         for (e, element) in elements.enumerated() where element.axis < 3 {
             cells[key(element.axis, centres[e]), default: []].append(e)
         }
+        // Elements at a pitch shield and are shielded by others at the same pitch (a roof's tiles
+        // over its slope), never by those square to the axes: keyed by their plane's normal and
+        // where they lie along its two axes, so that parallel planes' elements share a key.
+        struct PlaneKey: Hashable {
+            var normal: SIMD3<Int32>
+            var at: SIMD2<Int32>
+        }
+        func planeKey(_ e: Int, _ di: Int32 = 0, _ dj: Int32 = 0) -> PlaneKey {
+            let (first, second, normal) = frame(of: elements[e])
+            return PlaneKey(
+                normal: SIMD3<Int32>((normal * 1000).rounded(.toNearestOrEven)),
+                at: SIMD2(
+                    Int32((simd_dot(centres[e], first) / side).rounded(.down)) + di,
+                    Int32((simd_dot(centres[e], second) / side).rounded(.down)) + dj))
+        }
+        var pitched: [PlaneKey: [Int]] = [:]
+        for (e, element) in elements.enumerated() where element.axis == 3 {
+            pitched[planeKey(e), default: []].append(e)
+        }
+        func inclinedShields(_ e: Int) -> (below: Int32, above: Int32) {
+            let element = elements[e]
+            let (first, second, normal) = frame(of: element)
+            let at = centres[e]
+            var below: (index: Int32, distance: Float) = (-1, .infinity)
+            var above: (index: Int32, distance: Float) = (-1, .infinity)
+            for di: Int32 in -1...1 {
+                for dj: Int32 in -1...1 {
+                    for f in pitched[planeKey(e, di, dj)] ?? [] where elements[f].solid != element.solid {
+                        let other = elements[f]
+                        let d = centres[f] - at
+                        guard abs(simd_dot(d, first)) <= 0.5 * other.size.x + 1e-4,
+                            abs(simd_dot(d, second)) <= 0.5 * other.size.y + 1e-4
+                        else { continue }
+                        let offset = simd_dot(d, normal)
+                        let gap = abs(offset) - 0.5 * (element.thickness + other.thickness)
+                        guard abs(offset) > 1e-4, gap <= reach else { continue }
+                        if offset > 0, offset < above.distance { above = (Int32(f), offset) }
+                        if offset < 0, -offset < below.distance { below = (Int32(f), -offset) }
+                    }
+                }
+            }
+            return (below.index, above.index)
+        }
         return elements.indices.map { e in
             let element = elements[e]
-            guard element.axis < 3 else { return (below: -1, above: -1) }
+            guard element.axis < 3 else { return inclinedShields(e) }
             let k = element.axis
             let (i1, i2) = ((k + 1) % 3, (k + 2) % 3)
             let at = centres[e]

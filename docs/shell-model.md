@@ -77,6 +77,9 @@ side, rising along x or y.
   before to the bit.
 - **Gables.** With `trimsWalls`, the walls under the plane lose their elements whose centres lie
   above it, so a wall run up to the ridge becomes a gable, stepped by up to half an element.
+- **Air.** Parallel planes at a pitch shield each other's facing faces, as a cavity wall's leaves
+  do ([coupling to the air](#coupling-to-the-air)). So the tiles and the slope 62.5 mm under them,
+  in one air cell, do not both take the whole blast; the air shut between them is a spring.
 - **Checked.** A plate 2 m long cantilevered from its low edge at 30° deflects, square to itself,
   within 2% as the same plate laid flat under the share of its weight across it
   (`InclinedShellTests`). No pitched roof under blast was found to compare with.
@@ -453,7 +456,8 @@ houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m sto
   pitch](#shells-at-a-pitch)).
   - **Pitch.** Plain clay tiles want at least 35° (BS 5534; the makers' data). No survey of
     1930s houses' pitches was found, so 40° is an assumption within what the tiles allow.
-  - **Slopes.** Rafters smeared into a timber plate (`rafteredRoof`), with a purlin under each
+  - **Slopes.** Rafters smeared into a timber plate (`rafteredRoof`), not beams: the 125 mm
+    mesh cannot hold 50 mm rafters, as it cannot the joists. A purlin runs under each
     slope at mid-slope (100 × 175 mm C24, assumed), built into the gables and party walls.
   - **Seats.** The rafters bear level on the front and back walls' tops and on the purlins,
     house by house, and on the gables and party walls, each by the joist pocket's law below.
@@ -487,6 +491,8 @@ houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m sto
   on the party walls) and the English Housing Survey's *Floor space in English homes* (2018).
   The storey height is assumed. Pre-1919 terraces, a third of them, have solid one-brick walls
   instead.
+
+![The terraced row 100 ms after 25 kg in the street, 10 m in front: its 40° roof, gables and open windows, coloured by damage](terraced-row.png)
 
 At rest the floors' seats carry the floors' weight within 3%, and the ties carry nothing
 (`TerracedHousesTests`). Under the pitched roof the tiles hang on the slopes with their weight,

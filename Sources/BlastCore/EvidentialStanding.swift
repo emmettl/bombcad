@@ -846,9 +846,10 @@ public enum StandingTable {
                 title: "Shells at a pitch", affects: structure, limit: .approximation,
                 note:
                     "Roof slopes meshed in their own planes: a plate cantilevered at 30° bends within 2% as the "
-                    + "flat one does under its weight's share across it. Rafters are smeared into a plate, "
-                    + "their seats and the tiles' nibs are laws assumed from their make, not measured; no "
-                    + "pitched roof under blast was found to compare with.",
+                    + "flat one does under its weight's share across it. Rafters are smeared into a plate, not "
+                    + "beams; the tiles hang on their nibs by an assumed 5 kPa, not on friction alone; the "
+                    + "terraced row's 40° is assumed (plain tiles want 35° or more). No pitched roof under "
+                    + "blast was found to compare with.",
                 document: "shell-model.md#shells-at-a-pitch")
         case .inclinedBars:
             return Entry(

@@ -44,6 +44,18 @@ struct TerracedHousesTests {
         .intersection(
             mesh.elements.filter { $0.solid == slopes[1] }.flatMap { e in (0..<4).map { e.nodes[$0] } })
         #expect(shared.count == 121 && shared.allSatisfy { abs(mesh.positions[Int($0)].z - ridge) < 1e-3 })
+        // The tiles and the slope under them shield each other's faces, as a cavity wall's leaves
+        // do, so that the air between them, unresolved, does not load both.
+        let tiles = mesh.elements.indices.filter {
+            TerracedRowDamage.isCovering(in: model)(mesh.elements[$0].solid)
+        }
+        #expect(!tiles.isEmpty)
+        #expect(
+            tiles.allSatisfy {
+                let below = shields[$0].below
+                return below >= 0 && slopes.contains(mesh.elements[Int(below)].solid)
+                    && shields[Int(below)].above == $0
+            })
         let top = model.solids[slopes[0]].min.z
         let x0 = model.solids[slopes[0]].min.x
         let half = model.solids[slopes[0]].max.x - x0

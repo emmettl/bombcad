@@ -334,6 +334,12 @@ static inline float2 shapeSlope(float2 corner, float2 p) {
 
 constant float2 shellCorners[4] = {float2(-1.0f, -1.0f), float2(1.0f, -1.0f), float2(1.0f, 1.0f), float2(-1.0f, 1.0f)};
 
+// Elements at a pitch (axis 3, `Inclination`): compiled in only for bodies that have them, so that
+// every other body's kernels are as they were. Such an element takes its axes from its reference
+// corners, along its first and second edges, and reads its strains along them.
+constant bool inclinedShellsConstant [[function_constant(25)]];
+constant bool inclinedShells = is_function_constant_defined(inclinedShellsConstant) && inclinedShellsConstant;
+
 // Whether the face of element `el` at `centre`, facing `outward`, is shielded by the element `s`
 // of another member: intact, facing it, and nearer than an air cell, so that the air between them
 // is not resolved and the first fluid cell beyond the face lies beyond the other element too (the
@@ -362,7 +368,12 @@ static inline bool shellShielded(int s, ShellElement el, float3 centre, float3 o
         return false;
     }
     float3 axis = float3(0.0f);
-    axis[el.axis] = 1.0f;
+    if (inclinedShells && el.axis == 3u) {
+        float3 origin = reference[el.node[0]].xyz;
+        axis = normalize(cross(reference[el.node[1]].xyz - origin, reference[el.node[3]].xyz - origin));
+    } else {
+        axis[el.axis] = 1.0f;
+    }
     float rest = abs(dot(0.25f * (restOther - restOwn), axis)) - faces;
     pressure = rest > 1e-3f
         ? u.ambientPressure * (pow(rest / max(gap, 0.1f * rest), u.fluidGamma) - 1.0f) : 0.0f;
@@ -930,11 +941,6 @@ static inline bool shellBar(device ShellBar &bar, float green, float rate, const
     return true;
 }
 
-// Elements at a pitch (axis 3, `Inclination`): compiled in only for bodies that have them, so that
-// every other body's kernels are as they were. Such an element takes its axes from its reference
-// corners, along its first and second edges, and reads its strains along them.
-constant bool inclinedShellsConstant [[function_constant(25)]];
-constant bool inclinedShells = is_function_constant_defined(inclinedShellsConstant) && inclinedShellsConstant;
 
 kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                           device ShellForces *forces [[buffer(1)]],
