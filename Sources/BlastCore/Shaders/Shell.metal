@@ -95,6 +95,10 @@ struct ShellUniforms {
     uint pairs;             // connections between two parts (`Anchorage.betweenParts`)
     uint contactEncoded;    // 1: contact's forces were found this substep, when it is on
     uint fragmentPanes;     // panes of laminated glass that can fragment (the solids), or 0
+    uint hingeCount;        // steel connections' hinges, and where their data begin (bytes)
+    uint hingeRecords;
+    uint hingeStarts;
+    uint hingeEntries;
 };
 
 
@@ -2211,6 +2215,91 @@ kernel void shellLinks(const device ShellNode *nodes [[buffer(0)]],
     link[5] = float4(force, 0.0f);
 }
 
+// Steel connections' hinges (`ShellMesh.Hinge`), compiled into the nodes' pass only for bodies with them.
+constant bool hingesConstant [[function_constant(24)]];
+constant bool hinged = is_function_constant_defined(hingesConstant) && hingesConstant;
+
+// The vector of the turn a unit quaternion makes, its size the angle.
+static inline float3 turnVector(float4 q) {
+    float s = length(q.xyz);
+    if (s < 1e-12f) {
+        return 2.0f * q.xyz;
+    }
+    float angle = 2.0f * atan2(s, fabs(q.w));
+    return (q.w < 0.0f ? -1.0f : 1.0f) * angle * q.xyz / s;
+}
+
+// Each steel connection's hinge, before the nodes move (`SteelConnection`): the beam's end held to
+// the joint stiffly in pull, shear and torsion, and about the beam's two cross axes by springs that
+// turn plastically at the connection's moment; once it has turned its fracture rotation about them
+// it lets go for good. Its force and moment on the beam's end (the joint's the opposite).
+kernel void shellHinges(const device ShellNode *nodes [[buffer(0)]],
+                        device uchar *table [[buffer(1)]],
+                        constant ShellUniforms &u [[buffer(2)]],
+                        const device StepControl &control [[buffer(3)]],
+                        uint h [[thread_position_in_grid]]) {
+    bool active;
+    shellStep(u, control, active);
+    if (!active || h >= u.hingeCount) {
+        return;
+    }
+    device float4 *hinge = (device float4 *)(table + u.hingeRecords) + 8 * h;
+    float4 head = hinge[0];
+    if (head.w > 0.5f) {
+        hinge[5] = float4(0.0f);
+        hinge[6] = float4(0.0f);
+        return;
+    }
+    uint a = uint(head.x);
+    uint b = uint(head.y);
+    uint k = uint(head.z);
+    float4 bending = hinge[1];
+    float4 stiff = hinge[2];
+    float4 state = hinge[3];
+    float4 moved = hinge[4];
+    ShellNode beamEnd = nodes[a];
+    ShellNode joint = nodes[b];
+    float3 apart = float3(beamEnd.displacement) - float3(joint.displacement);
+    // The beam end's turn relative to the joint's, in the joint's turned frame.
+    float4 qa = beamEnd.rotation;
+    float4 qb = joint.rotation;
+    float4 inverse = float4(-qb.xyz, qb.w);
+    float3 turn = turnVector(quaternionProduct(qa, inverse));
+    float3 axes[3];
+    for (uint i = 0; i < 3; ++i) {
+        float3 e = float3(0.0f);
+        e[(k + i) % 3u] = 1.0f;
+        axes[i] = e + rotationOffset(qb, e);
+    }
+    float3 force = -stiff.x * apart;
+    float axialOffset = moved.z, axialMoved = moved.w;
+    if (stiff.w > 0.0f) {
+        // Along the beam, plastic at the connection's strength (a shear tab's bolts and plate).
+        float along = dot(apart, axes[0]);
+        float pull = springForce(along, axialOffset, axialMoved, float4(stiff.x, stiff.w, 0.0f, 0.0f), 1.0f);
+        force += (stiff.x * along - pull) * axes[0];
+    }
+    float twist = dot(turn, axes[0]);
+    float first = dot(turn, axes[1]);
+    float second = dot(turn, axes[2]);
+    float firstOffset = state.x, secondOffset = state.y, firstMoved = moved.x, secondMoved = moved.y;
+    float momentFirst = springForce(first, firstOffset, firstMoved, float4(bending.x, bending.z, 0.0f, 0.0f), 1.0f);
+    float momentSecond =
+        springForce(second, secondOffset, secondMoved, float4(bending.y, bending.w, 0.0f, 0.0f), 1.0f);
+    float3 moment = -(stiff.y * twist * axes[0] + momentFirst * axes[1] + momentSecond * axes[2]);
+    float bent = sqrt(first * first + second * second);
+    bool fractured = bent >= stiff.z;
+    hinge[3] = float4(firstOffset, secondOffset, max(state.z, bent), 0.0f);
+    hinge[4] = float4(firstMoved, secondMoved, axialOffset, axialMoved);
+    if (fractured) {
+        hinge[0] = float4(head.xyz, 1.0f);
+        force = float3(0.0f);
+        moment = float3(0.0f);
+    }
+    hinge[5] = float4(force, 0.0f);
+    hinge[6] = float4(moment, 0.0f);
+}
+
 kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
                        const device ShellForces *forces [[buffer(1)]],
                        device uchar *flags [[buffer(2)]],
@@ -2305,7 +2394,7 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             } else {
                 // On a footing: the point is tied to the footing's top, which moves and turns.
                 float3 rest = reference[n].xyz + arm;
-                pointForce = footingJoint(state, settlement, rest, rest + float3(node.displacement) + turn,
+                pointForce = footingJoint(state, settlement, rest, float3(node.displacement) + turn,
                                           pointVelocity, point.w, damper, law, footingConstants[footing - 1],
                                           footingStates[footing - 1], footingLinks + 2 * f);
             }
@@ -2327,6 +2416,21 @@ kernel void shellNodes(device ShellNode *nodes [[buffer(0)]],
             uint entry = entries[i];
             float3 linkForce = records[6 * (entry >> 1) + 5].xyz;
             force += (entry & 1u) != 0 ? -linkForce : linkForce;
+        }
+    }
+    // A steel beam's end, or the joint it is held to: its hinges' forces and moments.
+    if (hinged) {
+        const device uchar *bytes = (const device uchar *)loadTable;
+        const device uint *starts = (const device uint *)(bytes + u.hingeStarts);
+        const device uint *entries = (const device uint *)(bytes + u.hingeEntries);
+        const device float4 *records = (const device float4 *)(bytes + u.hingeRecords);
+        for (uint i = starts[n]; i < starts[n + 1]; ++i) {
+            uint entry = entries[i];
+            float3 hingeForce = records[8 * (entry >> 1) + 5].xyz;
+            float3 hingeMoment = records[8 * (entry >> 1) + 6].xyz;
+            bool joint = (entry & 1u) != 0;
+            force += joint ? -hingeForce : hingeForce;
+            moment += joint ? -hingeMoment : hingeMoment;
         }
     }
     // The springs follow the applied load's table and shares, from the next 16 bytes: each node's
@@ -2946,4 +3050,44 @@ kernel void shellPairGather(const device float4 *pairState [[buffer(0)]],
         force += entry > 0 ? pairForce : -pairForce;
     }
     contact[n] = force;
+}
+
+// On a terrain, after the node pass: a shell or beam node that falls onto it lands there as on
+// the floor (`shellNodes`), the ground's height the terrain's under it; one buried at rest is held
+// no deeper than it started. Held, prescribed, tied and connected nodes are left to their supports.
+// Dispatched only over a terrain.
+kernel void shellTerrainLanding(device ShellNode *nodes [[buffer(0)]],
+                                const device float4 *reference [[buffer(1)]],
+                                constant ShellUniforms &u [[buffer(2)]],
+                                const device StepControl &control [[buffer(3)]],
+                                const device uint *anchorStart [[buffer(4)]],
+                                constant TerrainUniforms &t [[buffer(5)]],
+                                const device float *heights [[buffer(6)]],
+                                uint n [[thread_position_in_grid]]) {
+    if (n >= u.nodeCount) {
+        return;
+    }
+    bool active;
+    float dt = shellStep(u, control, active);
+    if (!active || u.groundFriction < 0.0f) {
+        return;
+    }
+    ShellNode node = nodes[n];
+    if (node.mass <= 0.0f || (node.flags & (15u | shellTied | shellOnSolid)) != 0u
+        || (u.anchored != 0 && anchorStart[n + 1] > anchorStart[n])) {
+        return;
+    }
+    float3 rest = reference[n].xyz;
+    float3 displacement = float3(node.displacement);
+    float3 velocity = float3(node.velocity);
+    float buried = max(terrainHeight(rest.xy, t, heights) - rest.z, 0.0f);
+    float ground = terrainHeight(rest.xy + displacement.xy, t, heights) - buried;
+    if (rest.z + displacement.z >= ground) {
+        return;
+    }
+    displacement.z = ground - rest.z;
+    velocity.z = max(velocity.z, 0.0f);
+    velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+    nodes[n].displacement = displacement;
+    nodes[n].velocity = velocity;
 }

@@ -4,6 +4,8 @@ struct ParameterSweepView: View {
     let model: SimulationModel
     @Environment(\.dismiss) private var dismiss
     @State private var prefix = "Experiment"
+    /// Opens in the name prefix, the first field, so that Tab moves on from there.
+    @FocusState private var focusesPrefix: Bool
     @State private var variesGrid = false
     @State private var masses = "1, 2, 5"
     @State private var grids: Set<Resolution> = [.coarse, .medium, .fine]
@@ -25,6 +27,7 @@ struct ParameterSweepView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Result name prefix").font(.caption).fixedSize(horizontal: false, vertical: true)
                 TextField("Result name prefix", text: $prefix).textFieldStyle(.roundedBorder)
+                    .focused($focusesPrefix)
                 Picker("Vary", selection: $variesGrid) {
                     Text("Primary charge mass").tag(false)
                     Text("Air grid resolution").tag(true)
@@ -100,6 +103,8 @@ struct ParameterSweepView: View {
             .font(.caption).foregroundStyle(.secondary)
         }.frame(width: 530, alignment: .leading).padding(20).frame(minHeight: 450, alignment: .top)
             .onAppear { masses = String(model.settings.scenario.charge.mass) }
+            .defaultFocus($focusesPrefix, true)
+            .task { focusesPrefix = true }
     }
 
     /// Starts a worker on each Mac set in Settings, if sweeps are to share them.

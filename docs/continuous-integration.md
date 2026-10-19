@@ -25,6 +25,22 @@ the suspects (`Scripts/nightly-suspects.py`; the runner keeps that commit in
 `~/bombcad-nightly/last-green-full`). A full run by hand is still there for a change that wants
 it at once.
 
+**The pre-push check is sized to the change** (since 18 October 2026, at the user's request: while
+the project's only user is its author, velocity counts for more than repeating the whole suite on
+every push). `~/.local/bin/gpu-slot make check-affected` (`Scripts/check-affected.py`) compares
+the branch with `origin/main` and runs one of three tiers:
+
+| Change | Runs |
+|---|---|
+| Documents, images and the Python scripts only | `make lint` and `make ci-test` (the scripts' tests and the documents' links); no Swift build |
+| Other code | lint, `make build-strict`, `ci-test`, and the Swift suites that name a changed file's type or sit in a changed test file, plus the standing's and the shader layouts' suites |
+| The core: any shader, `Package.swift`/`.resolved`, RadialBlast, or BlastSolver, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody | the full `make check-anywhere` |
+
+`--dry-run` prints the tier and the suites; `--full` forces the full check. The full check still
+runs nightly on `main` and on every release commit, and its suspect list names the commit that broke
+anything the tiers missed. When the project gains users, the full check before every push comes
+back.
+
 **No compiler warnings.** Every check builds with `make build-strict` (`Scripts/build-strict.py`):
 the package and its tests, failing on any warning in this package's own code, each listed once;
 SwiftPM suppresses ContinuumKit's. There were none on 12 October 2026, down from 108 (mostly

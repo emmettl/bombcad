@@ -8,9 +8,12 @@ stand two smaller buildings as envelopes, and a van's worth of explosive is park
 **Standing.** A showcase on the model as it stands, compared as a building with nothing measured
 ([standing](standing.md)). Its gauges take the open blast's bands (Kingery–Bulmash on today's
 air). Its structure is an approximation: its steel members are compared with Nassr's blasted
-beams and columns ([shell model](shell-model.md#validation)), its connections are not, and
-its toughened glass is the annealed panes' model with a higher strength. Its damage is
-illustrative, and the neighbours' envelope damage is the one-way model's, an approximation.
+beams and columns ([shell model](shell-model.md#validation)). Its fin-plate connections are
+checked against slow column-removal tests only, so their fracture under a blast is an
+approximation and may be too late ([steel connections](shell-model.md#steel-connections)). Its
+toughened glass is the annealed panes' model with a higher strength. Its damage, and the
+collapse it starts on fin plates (below), are illustrative: no collapse is compared with
+anything measured. The neighbours' envelope damage is the one-way model's, an approximation.
 
 ![The office 250 ms after 1,000 kg at the kerb: its front glazing gone on the lower floors, glass and frame thrown into the street and out of its sides](office-tower.png)
 
@@ -39,9 +42,12 @@ simplification is listed here.
 - **Composite floors.** The beams lie on their slab's midsurface and share its nodes: full shear
   connection between them, but without the composite section's lever arm. The floors are a
   little less stiff than real composite ones.
-- **Connections.** Every joint of the frame is rigid, because the shell model has no pinned
-  joints. A real frame of this kind has simple (pinned) beam-to-column connections and leans on
-  its core.
+- **Connections.** Since 18 October 2026 the beams sit on fin plates (single-plate shear
+  connections, [steel connections](shell-model.md#steel-connections)), as a gravity frame
+  leaning on its core does. A fin plate turns freely at 0.05 of the beam's plastic moment,
+  yields along the beam at 435 kN in the tested size, and fractures at 0.089 rad, as Weigand
+  and Berman's tests did. Columns run on through their joints. Before 18 October every joint
+  was rigid.
 - **Curtain wall.** It is one plate, 150 mm thick (a mullion's depth), round each storey of each
   face. Its frame material (`ScenarioPreset.curtainWallFrame`) is scaled so that a strip one
   element wide bends as stiffly and as strongly as a mullion, and weighs as much. The vision
@@ -77,7 +83,8 @@ once when a run started, and the frame sagged its 7 mm while the blast was on it
 ## The blast
 
 Run with `blastbench snapshot --preset office --dx 0.5 --time 3 --frames 0.05,0.25,1,2`: 1,000 kg
-at the kerb, 5 m from the front façade, on 0.5 m air.
+at the kerb, 5 m from the front façade, on 0.5 m air. This run and its images are from before 18
+October 2026, on rigid joints. On fin plates, see [below](#on-fin-plates).
 
 | Time | What happens |
 |---|---|
@@ -92,9 +99,60 @@ The largest displacement the run reports, hundreds of metres, is a glass fragmen
 structure's own movement is far smaller.
 
 The frame is probably too strong against the blast near the charge. Each column is a rectangle
-0.19 m wide where the real section's flanges are 0.31 m, so it catches less of the blast. Its
-joints are rigid where a real frame's are pinned, so it is stiffer. And the equivalent
-rectangle's axial stiffness is about twice the section's.
+0.19 m wide where the real section's flanges are 0.31 m, so it catches less of the blast. The
+equivalent rectangle's axial stiffness is about twice the section's. The run above had rigid
+joints; how the fin plates change it is below.
+
+### On fin plates
+
+Rerun on 18 October 2026 to 1 s with the beams on fin plates (`blastbench snapshot --preset
+office --dx 0.5 --time 1 --hinges`), against the same frame with rigid joints (`--rigid-joints`).
+
+**Under gravity alone it stands as before:** 99.9% of the weight carried, 8.5 mm, and none of
+its 480 fin plates fractures, damped or (over 1 s at 2/s) nearly undamped.
+
+**Under the blast:**
+
+| Time | Fin plates fractured | Where | Steel members moved, most |
+|---|---|---|---|
+| 0.25 s | 27 of 480 | 23 at the first floor, 4 at the second | 1.5 m |
+| 0.5 s | 42 | 26 at the first floor, the rest up to the seventh | 2.5 m |
+| 1 s | 334 | 26–30 of the 40 on every floor | 2.4 m |
+| 3 s | 428 | 34–40 of the 40 on every floor | 8.6 m |
+
+With rigid joints at 0.5 s the members move 745 mm, and no connection can fracture.
+
+**The front columns are lost, by this reading.** No beam holds the front's ground-storey columns
+from turning at the first floor, so the blast bows them and they shorten. At 0.5 s:
+- On every floor above the first, the floors' beams have moved up to about 650 mm vertically.
+  The joints have moved 240–360 mm along y on average, the same on every floor above the
+  first.
+- A 650 mm drop over a 7.5 m bay turns the beams by about 0.087 rad against the columns still
+  standing. The largest turns, 0.084–0.089 rad, are the same on every floor.
+- So the fin plates fracture floor by floor as the frame hangs over the lost columns. The
+  columns' own shortening was not measured.
+
+With rigid joints, the beams hold those columns at every floor and nothing drops that far.
+
+**By 3 s it is collapsing** (`--time 3 --frames 0.5,1,2`, 48 minutes on the Studio, about 1 GB).
+- **The floors.** On every floor, beams freed at both ends have dropped up to 7.5–8.5 m, about
+  two storeys. The slabs, still tied to the columns at their heads, sag and slope between them.
+- **The perimeter** leans out: the joints have moved 0.9–1.5 m along y on average, more the
+  higher they are. The side façade peels away from the floors behind it.
+- **The columns** stand, bent at the front corner. Only 2 of the 16,080 member elements have
+  failed. Whether the core is damaged was not looked at.
+- **Elsewhere**, 39,474 of 236,868 elements have failed.
+
+The run stops with the floors still coming down. Whether the columns and core stay up once
+they have lost their floors is not known. The collapse is the model's alone: nothing measured
+judges it.
+
+![The office on fin plates 3 s after the blast: the floors sagging and sloping between columns still standing, the side façade peeling away](office-tower-fin-3s.png)
+
+With rigid joints the same blast left the frame standing at 3 s (above).
+
+The fin plates' fracture turn comes from tests in which the turn came with a pull. No test of a fin plate turned without one has been compared, so the
+count above is only as good as that turn.
 
 ### Cost
 

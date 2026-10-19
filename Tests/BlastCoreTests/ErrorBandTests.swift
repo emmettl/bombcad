@@ -309,7 +309,7 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         burns.airModel = .thermallyPerfect
         let hot = SceneStanding(StandingInputs(scenario: scenario, cellSize: 0.25, configuration: burns))
         #expect(hot.gauge("Face")?.peak?.document == ValidationTables.burningDocument)
-        #expect(face.peak?.inputSpread == 0.02 && face.impulse?.inputSpread == 0.01)
+        #expect(face.peak?.inputSpread == 0.02 && face.impulse?.inputSpread == 0.02)
         #expect(face.peak?.referenceScatter == 0.08 && face.impulse?.referenceScatter == 0.08)
         // Under-resolved peaks lie outside the tests' scatter; the difference is the model's.
         #expect(

@@ -457,6 +457,15 @@ final class SimulationModel {
     var isPlacingCharge = false
     /// Shows the sheet for exporting the project's run for rendering.
     var showsRenderExport = false
+    /// The parameter sweep's and the kept runs' comparison sheets, which the chart's buttons and
+    /// the menus open.
+    var showsParameterSweep = false
+    var showsRunComparison = false
+    /// Asked of the views that own them from the menus, and cleared there: choosing a model to
+    /// import, naming the run to keep, and saving the results as CSV.
+    var requestsModelImport = false
+    var requestsKeptRun = false
+    var requestsResultsExport = false
 
     private(set) var isRunning = false {
         didSet {
@@ -2291,6 +2300,15 @@ final class SimulationModel {
             ? SurfaceHeating.Layout(spec: spec.heating, grids: thermalGrids, scene: scene) : nil
         reckonedSpec = spec
         nextFireballTime = 0
+        // A mapped start's clock starts at its solution's time: the fireball before it, a frame a
+        // millisecond, from the one-dimensional solution, so that the record starts at detonation.
+        if solver.stepCount == 0, solver.time > 0.001 {
+            let times = (1...Int((solver.time / 0.001).rounded(.down))).map { Double($0) * 0.001 }
+            for frame in solver.earlyFireballFrames(for: spec, at: times) {
+                fireballFrames.append(frame.withoutShape)
+                thermal?.send(.fireball(frame))
+            }
+        }
         sendFireball(solver)
         updateThermalStatus()
     }
@@ -2483,13 +2501,19 @@ final class SimulationModel {
                     throw BlastError.allocationFailed(
                         "\(grid.cellCount / 1_000_000) million cells; try a coarser resolution")
                 }
-                let created = try BlastSolver(
-                    device: device, commandQueue: commandQueue, scenario: scenario,
-                    cellSize: settings.resolution.cellSize)
-                // Always: even with both options off the air takes the far-field faces (and gravity)
-                // from the settings, not the bare core's.
-                configureAir(created)
-                try created.load(scenario)
+                // In a pool of its own: what building a solver autoreleases keeps it alive until a
+                // pool drains, and a headless worker's runs, one after another, kept every one's
+                // memory (`SolverMemoryTests`).
+                let created = try autoreleasepool { () throws -> BlastSolver in
+                    let created = try BlastSolver(
+                        device: device, commandQueue: commandQueue, scenario: scenario,
+                        cellSize: settings.resolution.cellSize)
+                    // Always: even with both options off the air takes the far-field faces (and
+                    // gravity) from the settings, not the bare core's.
+                    configureAir(created)
+                    try created.load(scenario)
+                    return created
+                }
                 solver = created
             }
             // The blast's injury at a standing person's height, from the run's own peaks (`InjuryField`):

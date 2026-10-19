@@ -84,6 +84,30 @@ Expand the final ZIP somewhere fresh and test that copy, ideally downloaded thro
 another Mac with Gatekeeper enabled: first launch, Metal rendering, a run of each preset, and
 opening and saving a layout.
 
+## The notes
+
+Each change a user would notice adds a fragment under
+[release-notes/next](release-notes/next/README.md) in its own push. Before building, assemble them
+into the version's notes with `python3 Scripts/release-notes.py assemble X.Y.Z`, read the result as
+a whole, and commit it.
+
+## After publishing: the Homebrew cask
+
+The app installs with `brew install emmettl/tap/bombcad`, from the cask in
+[emmettl/homebrew-tap](https://github.com/emmettl/homebrew-tap) (`Casks/bombcad.rb`), which also
+links the app's headless runner as `bombcad`. Once `gh release create` has published the ZIP and
+its `.sha256`, point the cask at it:
+
+```bash
+python3 Scripts/update-homebrew-tap.py 0.5.0
+```
+
+It takes the checksum from the release's own `.sha256`, rewrites the cask's `version` and `sha256`
+and commits that to the tap through the GitHub API (`--dry-run` prints the new cask instead). Then
+check it as Homebrew would: `brew update`, `brew audit --cask --strict --online emmettl/tap/bombcad`
+and `brew style emmettl/tap`. The official homebrew-cask repository needs more evidence of use
+than this project has yet, so the tap is the only route for now.
+
 ## Checked so far
 
 The release tests (`make ci-test`) exercise the script with every external tool stubbed out:
@@ -210,7 +234,8 @@ through a change of source, before signing and again before archiving. Apple acc
   ContinuumKit's contact search and scene render; RadialBlast has none);
 - is version 0.5.0, build 11, arm64;
 - ran the small project and the structure on the fine start from inside its bundle and drew its
-  views through a change of source (`Scripts/release.py smoke`, on that copy).
+  views through a change of source (`Scripts/release.py smoke`, on that copy);
+- opened one of the user's projects by hand, which the user reported working.
 
 Its notes, reviewed independently, are in `docs/release-notes/0.5.0.md`; on the release page their
 links point at the docs as tagged. Its ZIP, checksum and manifest are attached to the GitHub release

@@ -117,6 +117,7 @@ struct StructureUniforms {
     float fragmentStrain;   // ...and the crack strain across one that make concrete fragments
     float groundCoulomb;    // > 0: the ground's Coulomb friction coefficient (else `groundFriction`'s decay)
     float groundStiffness;  // > 0: soft ground, Pa/m over a node's h² (else the hard ground)
+    uint fluidCutCells;     // 1: the air holds structures' outlines as cut cells (`structureCutCells`)
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -523,11 +524,80 @@ static inline float3 cornerSign(uint a) {
     return float3(float(a & 1u), float((a >> 1) & 1u), float((a >> 2) & 1u)) * 2.0f - 1.0f;
 }
 
+// The pressure at a wall the gas (`rho`, `p`, sound speed `c`) meets moving towards it at `towards`
+// (negative: away): two shocks, or two rarefactions, between it and its mirror, for a gas of
+// ratio `gamma`.
+static inline float reflectedPressure(float rho, float p, float towards, float gamma) {
+    float c = sqrt(gamma * p / rho);
+    if (towards <= 0.0f) {
+        float base = max(1.0f + 0.5f * (gamma - 1.0f) * towards / c, 0.0f);
+        return p * pow(base, 2.0f * gamma / (gamma - 1.0f));
+    }
+    float a = 2.0f / ((gamma + 1.0f) * rho);
+    float b = (gamma - 1.0f) / (gamma + 1.0f) * p;
+    // Newton's method on (q - p) sqrt(a / (q + b)) = towards, from the acoustic estimate.
+    float q = p + rho * c * towards;
+    for (int n = 0; n < 6; ++n) {
+        float root = sqrt(a / (q + b));
+        float f = (q - p) * root - towards;
+        float slope = root * (1.0f - 0.5f * (q - p) / (q + b));
+        q = max(q - f / slope, p);
+    }
+    return q;
+}
+
+// Where the air holds the structure's outline as cut cells (unrefined air): the overpressure at the
+// face, as the air's own update takes it at its wall (`cutCellUpdate` in Solver.metal), of the
+// air in the cell the face lies in against its mirror across the face, so that the face takes
+// what the air gives up. Read off the cells as they stand, the load fell 6% below a straight line
+// between a wall on the lattice and one a cell further, where the air at a gauge before it moved
+// along that line; read half a cell out it jumped at the middle of the cell.
+static inline float cutFaceOverpressure(float3 point, float3 normal, const device Cell *fluid,
+                                        const device uchar *fluidMask, constant StructureUniforms &u) {
+    float h = u.fluidCell;
+    int3 dims = int3(u.fluidNx, u.fluidNy, u.fluidNz);
+    float3 magnitude = fabs(normal);
+    int axis = magnitude.x >= max(magnitude.y, magnitude.z) ? 0 : (magnitude.y >= magnitude.z ? 1 : 2);
+    auto open = [&](int3 c) {
+        return all(c >= 0) && all(c < dims) && fluidMask[c.x + dims.x * (c.y + dims.y * c.z)] == 0;
+    };
+    auto atWall = [&](int3 c) {
+        Cell cell = fluid[c.x + dims.x * (c.y + dims.y * c.z)];
+        float rho = max(cell.rho, 1e-6f);
+        float3 velocity = float3(cell.mx, cell.my, cell.mz) / rho;
+        float p = max(gasPressure(rho, cell.energy - 0.5f * rho * dot(velocity, velocity), u.fluidAirModel,
+                                  u.fluidGamma),
+                      1.0f);
+        return reflectedPressure(rho, p, -dot(velocity, normal), u.fluidGamma) - u.ambientPressure;
+    };
+    // The cell the face lies in, `alpha` of it air along the normal, and the next cell out, weighted
+    // by that share: a sliver's own state, whose speed swings as small cells' do, peaked 19% high
+    // a tenth of a cell off the lattice; on the lattice both weights fall on the cell beside the face.
+    int out = normal[axis] > 0.0f ? 1 : -1;
+    int3 here = int3(floor((point + normal * (1e-4f * h)) / h));
+    float position = point[axis] / h - float(here[axis]);
+    float alpha = clamp(out > 0 ? 1.0f - position : position, 0.0f, 1.0f);
+    int3 next = here;
+    next[axis] += out;
+    bool hereOpen = open(here);
+    bool nextOpen = open(next);
+    if (!hereOpen) {
+        return nextOpen ? atWall(next) : 0.0f;
+    }
+    if (!nextOpen || alpha >= 1.0f) {
+        return atWall(here);
+    }
+    return alpha * atWall(here) + (1.0f - alpha) * atWall(next);
+}
+
 // Overpressure of the air just outside an element face: the first fluid cell within two cells.
 static inline float faceOverpressure(float3 point, float3 normal, const device Cell *fluid,
                                      const device uchar *fluidMask, const device int *patchOfTile,
                                      const device Cell *fine, const device uchar *fineMask,
                                      constant StructureUniforms &u) {
+    if (structureCut && u.fluidCutCells != 0) {
+        return cutFaceOverpressure(point, normal, fluid, fluidMask, u);
+    }
     return overpressureAlong(point, normal, 0.0f, 2, fluid, fluidMask, patchOfTile, fine, fineMask, u.fluidRefine,
                              u.fluidBlocksX, u.fluidBlocksY, u.fluidCell, int3(u.fluidNx, u.fluidNy, u.fluidNz),
                              u.fluidAirModel, u.fluidGamma, u.ambientPressure, patchOfTile + u.fluidDeepPatchOffset,
@@ -3068,23 +3138,28 @@ static inline float3 footingUnrotate(float4 q, float3 v) {
     return footingRotate(float4(-q.xyz, q.w), v);
 }
 
-// A point of a body tied to a footing: it started at `rest`, is now at `position` and moves at
+// A point of a body tied to a footing: it started at `rest`, has moved by `moved` and moves at
 // `velocity`. The connection acts across the footing's top as it does across the ground
 // (`anchorTraction`), in the footing's frame, which moves and turns with it. Returns the force on
 // the point, and writes the footing's reaction and its moment about the footing's centre to
-// `link`. `state` and `settlement` are as `anchorTraction`'s.
-static inline float3 footingJoint(thread float4 &state, thread float &settlement, float3 rest, float3 position,
+// `link`. `state` and `settlement` are as `anchorTraction`'s. The point's place relative to the
+// footing is worked out from displacements alone, never from positions: a scene's positions are
+// tens of metres, rounded to microns, and the joint's stiffness (E/h) turned that rounding into a
+// fresh traction of about a megapascal every step, which kept the body chattering at rest.
+static inline float3 footingJoint(thread float4 &state, thread float &settlement, float3 rest, float3 moved,
                                   float3 velocity, float area, float damper, AnchorLaw law, FootingConstants c,
                                   FootingState s, device float4 *link) {
-    float3 centre = c.rest.xyz + s.centre.xyz;
-    float3 arm = footingRotate(s.rotation, rest - c.rest.xyz);
-    float3 held = centre + arm;
+    // The point's arm from the footing's centre at rest, and how the footing's turning has moved it.
+    float3 a = rest - c.rest.xyz;
+    float3 t = 2.0f * cross(s.rotation.xyz, a);
+    float3 turned = s.rotation.w * t + cross(s.rotation.xyz, t);
+    float3 arm = a + turned;
     float3 heldVelocity = s.velocity.xyz + cross(s.spin.xyz, arm);
-    float3 relative = footingUnrotate(s.rotation, position - held);
+    float3 relative = footingUnrotate(s.rotation, moved - s.centre.xyz - turned);
     float rise = footingUnrotate(s.rotation, velocity - heldVelocity).z;
     float3 force = footingRotate(s.rotation, -area * anchorTraction(state, settlement, relative, rise, damper, law));
     link[0] = float4(-force, 0.0f);
-    link[1] = float4(cross(held - centre, -force), 0.0f);
+    link[1] = float4(cross(arm, -force), 0.0f);
     return force;
 }
 
@@ -3097,7 +3172,7 @@ float3 footingAnchorForce(device float4 *anchors, uint index, StructureNode node
     float4 state = float4(stored.yzw, anchors[3 * index + 1].w);
     float settlement = anchors[3 * index + 2].x;
     float damper = 2.0f * u.contactDamping * sqrt(law.kn * node.mass / area);
-    float3 force = footingJoint(state, settlement, rest, rest + float3(node.displacement), float3(node.velocity),
+    float3 force = footingJoint(state, settlement, rest, float3(node.displacement), float3(node.velocity),
                                 area, damper, law, c, s, links + 2 * index);
     anchors[3 * index] = float4(area, state.xyz);
     anchors[3 * index + 1] = float4(force, state.w);
@@ -4195,4 +4270,114 @@ kernel void discreteBarGather(const device uint *gatherStart [[buffer(0)]],
         force += entry.y * barTransfer[as_type<uint>(entry.x)].xyz;
     }
     barNodeForce[id] = float4(force, 0.0f);
+}
+
+// On a terrain, after the node pass: a node that falls onto it lands there as on the floor
+// (`structureNodes`, which keeps z = 0), the ground's height the terrain's under it
+// (`terrainHeight`). A node buried at rest, as a base set into a slope, is held no deeper than it
+// started, not thrown up to the surface. Held, prescribed and connected nodes are left to their
+// supports. Dispatched only over a terrain, so level ground's runs are as they were.
+kernel void structureTerrainLanding(device StructureNode *nodes [[buffer(0)]],
+                                    const device StepControl &control [[buffer(1)]],
+                                    constant StructureUniforms &u [[buffer(2)]],
+                                    const device uint *nodeList [[buffer(3)]],
+                                    const device float4 *anchors [[buffer(4)]],
+                                    constant TerrainUniforms &t [[buffer(5)]],
+                                    const device float *heights [[buffer(6)]],
+                                    uint threadIndex [[thread_position_in_grid]]) {
+    bool active;
+    float dt = structureStep(u, control, active);
+    if (!active || u.groundFriction < 0.0f) {
+        return;
+    }
+    StructureNode node = nodes[threadIndex];
+    if (node.mass <= 0.0f || (node.flags & 15u) != 0u || (u.anchored != 0 && anchors[3 * threadIndex].x > 0.0f)) {
+        return;
+    }
+    float3 reference = float3(u.originX, u.originY, u.originZ) + float3(latticeNode(nodeList[threadIndex], u)) * u.h;
+    float3 displacement = float3(node.displacement);
+    float3 velocity = float3(node.velocity);
+    float buried = max(terrainHeight(reference.xy, t, heights) - reference.z, 0.0f);
+    float ground = terrainHeight(reference.xy + displacement.xy, t, heights) - buried;
+    float penetration = ground - (reference.z + displacement.z);
+    if (penetration <= 0.0f) {
+        return;
+    }
+    if (u.groundStiffness > 0.0f) {
+        // Soft ground, as on the floor: a Winkler bed of the given modulus over h², damped at 30%.
+        float k = u.groundStiffness * u.h * u.h / node.mass;
+        float push = dt * (k * penetration - 2.0f * 0.3f * sqrt(k) * velocity.z);
+        float gained = max(push, 0.0f);
+        velocity.z += push;
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * gained / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
+    } else {
+        // Landing: the fall stopped at the surface (along z; friction in the plan), as on the floor.
+        float stopped = max(-velocity.z, 0.0f);
+        displacement.z = ground - reference.z;
+        velocity.z = max(velocity.z, 0.0f);
+        if (u.groundCoulomb > 0.0f) {
+            float sliding = length(velocity.xy);
+            velocity.xy *= sliding > 0.0f ? max(0.0f, 1.0f - u.groundCoulomb * stopped / sliding) : 0.0f;
+        } else {
+            velocity.xy *= max(0.0f, 1.0f - u.groundFriction * dt);
+        }
+    }
+    nodes[threadIndex].displacement = displacement;
+    nodes[threadIndex].velocity = velocity;
+}
+
+// A structure standing on the terrain's cut cells: a cut cell less than half air (below its
+// column's first cell at least half full) with the structure solid in the cell above it is shut in
+// between the ground and the structure. Its column's difference would come back to it, magnified
+// (1 − α)/α every step, as under a block (`redistributeCutDefects`; the scene's blocks are dealt
+// with when it loads). Between `remaskPrepare` and `remaskApply`, such a cell, and any shut in
+// beneath it, becomes solid, and stays so for the rest of the run: `capped` keeps each column's
+// lowest such cell (plus one), and every remask marks them again, so that a rocking footing does
+// not open and refill it. Its air is given up as a newly solid cell's is, and its difference for
+// the step is dropped. One thread a column with cut cells; dispatched only where a structure
+// stands on cut terrain.
+kernel void remaskCapSlivers(device uchar *mask [[buffer(0)]],
+                             const device uchar *rigid [[buffer(1)]],
+                             const device uint4 *columns [[buffer(2)]],
+                             const device uint *cutColumns [[buffer(3)]],
+                             device float4 *defects [[buffer(4)]],
+                             constant uint4 &dims [[buffer(5)]],
+                             device uint *capped [[buffer(6)]],
+                             uint gid [[thread_position_in_grid]]) {
+    if (gid >= dims.w) {
+        return;
+    }
+    uint columnIndex = cutColumns[gid];
+    uint4 column = columns[columnIndex];
+    uint i = columnIndex % (dims.x + 1u);
+    uint j = columnIndex / (dims.x + 1u);
+    uint stride = dims.x * dims.y;
+    uint base = i + dims.x * j;
+    // From the cell under the first at least half full down to the first of air: shut in while the
+    // cell above is solid (after `remaskPrepare`, bit 1 is the new outline).
+    int lowest = capped[gid] > 0u ? int(capped[gid]) - 1 : int(column.w);
+    for (int k = int(column.w) - 1; k >= int(column.y); --k) {
+        if (uint(k) + 1u >= dims.z) {
+            continue;
+        }
+        uint above = base + stride * uint(k + 1);
+        if (k < lowest && (mask[above] & 2) == 0 && rigid[above] == 0) {
+            break;
+        }
+        if (k < lowest) {
+            uint record = column.x + uint(k) - column.y;
+            defects[2u * record] = float4(0.0f);
+            defects[2u * record + 1u] = float4(0.0f);
+            lowest = k;
+        }
+        mask[base + stride * uint(k)] |= 2;
+    }
+    if (lowest < int(column.w)) {
+        capped[gid] = uint(lowest) + 1u;
+    }
 }

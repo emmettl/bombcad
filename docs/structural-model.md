@@ -151,6 +151,15 @@ How it works (`BlastSolver.settleStructures()`):
   deformation, stresses and any cracking from its own weight stay.
 - **Falling bodies:** a body that is still moving after 1 s, such as one falling or not standing,
   is put back undeformed. It then starts as it did before.
+- **Still, if not quiet** (since 18 October 2026): a body whose nodes still move at 1 s but whose
+  displacement over the last 5 ms part has stood still, its mean speed over the part (the change
+  of its displacement over the part's time) within 1% of the largest, has settled all the same.
+  Bodies that settled before the limit settle as they did. It was added for bodies on footings,
+  whose joints chattered at rest at a few cm/s and microns and never came below 1%: the joint
+  was worked out from the scene's positions, tens of metres rounded to microns, and its stiffness
+  turned the rounding into a fresh traction every step. It is now worked out from displacements
+  ([footings](#footings)), and the frame on a hillside settles in 0.18 s; the rule stays for any
+  other body that rings without moving.
 
 It is left out, so that the run is as before, bit for bit:
 - with the option off;
@@ -354,7 +363,10 @@ falling as the pressure's −0.20th power (Magliulo et al.'s law for elastomeric
 −0.163). Its two constants were fitted on the first half of the cycles of the one-pad tests at 50
 and 150 kN, by their energy and sliding force, and the law judged on the rest: on the GPU, every
 pad test's energy within 0.91–1.09 of measured and its sliding force 0.86–0.92, two pads without
-refitting, as Batalha et al. found two pads as strong as one. Wear over the cycles and a pad
+refitting, as Batalha et al. found two pads as strong as one. The seat slides at less than the
+law gives at its mean pressure (0.355 of the load at 150 kN against 0.38): its points are pressed
+unevenly, and the law's friction falls with pressure, so the harder-pressed points give up more
+than the lighter gain. Wear over the cycles and a pad
 shear spring before sliding were tried and dropped: the wear made the later cycles worse, and
 the spring, sliding nothing in the small cycles, dissipated too little in them. The pressure is
 over the seat, 0.35 × 0.35 m; the pads' own size is in the paper, not read, so a pad of another
@@ -822,6 +834,36 @@ thick set 1 m into the sand: the footing turns 186, 51, 20 and 6.5 mrad at 6, 10
 against 395, 101, 37 and 12 on the surface, the wall sways 657, 178, 70 and 23 mm against
 1,372 (over), 355, 128 and 41, and at 6 m it is left leaning 0.6 m rather than going over.
 
+**On a slope** (`FootingGround`, from the scene's terrain when it runs: `StructureModel.ground`,
+set by `standing(on:)`). A footing on a hillside stays level, as footings are cut level into a
+slope, and stands where the body's base puts it, a support region a level for a stepped base; the
+terrain gives the soil round it. Embedded, each column of side points is buried as deep as the
+surface stands over the base there, so the uphill side bears from deeper than the downhill one
+(none where the base is out of the ground), and each side's active and passive pressures are
+C. A. Coulomb's for its ground rising or falling away from it: downhill the passive wedge, its
+ground falling away, gives about half at 20° (φ = 35°), uphill the active more. The given depth
+gives way to the terrain's: the mean over the perimeter sets Gazetas's factors, and the
+shallowest side the overburden on the base; the sides' slope is a plane fitted to the ground
+over the plan widened by its width B. The bearing capacity takes A. S. Vesić's ground factor
+(1 − tan β)², tan β the ground's steepest fall over 4B beyond the base's edge, the way the soil
+under it would be pushed out: on a slope's face the slope, near a crest b from it (1 − b/4B) of
+it, as Meyerhof's footings near a crest regain their level capacity. Checks and the judge are in
+[validation](validation.md#footings-on-a-slope); `blastbench hillside` runs the two-storey frame
+stepped across a 1 in 4 slope ("Two-storey frame on a hillside"). The footing's stiffness is
+the level footing's (Gazetas has no slope factor), the soil's radiation is the level
+half-space's, the pressure at rest is Jáky's for level ground, and cohesive soil's own slope
+factor (Vesić's 1 − 2β / (π + 2) on cohesion) is not needed, the soil being sand.
+
+**The joint to the footing** is worked out from displacements alone (`footingJoint`): the
+point's place relative to the footing's top as its own displacement less the footing's and less
+how the footing's turning has carried it, never as the difference of two positions. A scene's
+positions are tens of metres, rounded to microns in single precision, and the joint's stiffness
+(E/h, 2.4 × 10¹¹ Pa/m for concrete on 0.125 m elements) turned that rounding into about a
+megapascal of traction, fresh every step: a frame on footings 26 m from the origin chattered at
+rest at 4-8 cm/s and never settled (until 18 October 2026). Rerun since, FoRCy's slow test moved
+by under 0.004 in its moment ratios and FoRDy's shaken events by up to 2.4 mrad in their peak
+rotations ([validation](validation.md#a-footing-shaken-on-dry-sand)).
+
 **Not modelled.** The footing is rigid, rectangular and flat-bottomed. Embedded, the soil
 against its sides is springs with limits, its rocking past their reach a spring on the footing
 with its own limit; the soil's radiation from the sides, and a gap left by soil that has given
@@ -1022,6 +1064,71 @@ up to a cell off the structure's face, and a sixth of a cell outside it on avera
   default. A half places the wall without bias but loses layers thinner than half a cell, and
   through a cell it spread slab 4's gauges as much (28% against 29%).
 
+**Outlines as cut cells** (an option since 18 October 2026, `SolverConfiguration.structureCutCells`,
+off; roadmap limitation 6, stage 1). A cell a structure's solid elements cross holds the air it
+has, and its faces open as far as they are. The air updates it as it does the terrain's
+[cut cells](terrain.md#cut-cells) and shares each step's difference along the wall's normal into
+a cell at least half air (`StructureCutGeometry`).
+- **The outline is the elements'.** Elements sit on a lattice of their size from the origin, an
+  element wherever its centre lies in the body. So a wall's faces lie on that lattice, not where its
+  box says. With elements half a cell across, a wall moves in half cells whatever its box. The
+  shares and apertures are the exact overlaps of the cells with the elements.
+- **A wall thinner than two cells** leaves air either side of a closed face. That face is a wall to
+  the sweep's stencil, so neither side reads the other's air through it.
+- **A sliver** under half air with no cell to take its difference becomes solid. It would otherwise
+  grow its difference by 1/α each step.
+- **Loads.** A face takes the pressure at the wall that the air's own cut update takes there: the
+  cell's air against its mirror, two shocks or two rarefactions. Where the wall shuts a cell's
+  face along a sweep, the air pushes with the sweep's own flux there, reconstructed as a whole cell
+  beside a solid one takes it. The face reads its own cell and the next one out, weighted by the
+  share of its own cell that is air.
+- **Limits.** Unrefined air only (refined runs keep the staircase). Solid elements only. The records
+  are made from the structure as built and are not remade as it moves, so this is for walls and
+  slabs before they fail. A cell the terrain's cut cells hold is the terrain's: neither a structure
+  cut cell nor one that takes a difference. The ground below them and rigid blocks are solid to the
+  structure's cut cells as to the air.
+- **On the lattice** a structure has no cut cells, and the option leaves the air as it is, bit for
+  bit (specialised for cut cells with nothing to do, fast math rounded the same sums differently).
+
+`blastbench walloffset --element 0.025 [--cut]` places a free wall 0.3 m thick, 3 m from 1 kg, at
+tenths of a 0.25 m cell off the lattice. It gives the wall's momentum over the 3 ms from arrival
+(N s), its peak force (kN), and the impulse at a gauge 1 m before it (Pa s):
+
+| Offset | Staircase: impulse, peak, gauge | Cut cells: impulse, peak, gauge | 0.0625 m air: impulse, peak, gauge |
+|---|---|---|---|
+| 0 | 1032, 534, 160.0 | 1253, 647, 160.0 | 1130, 693, 142.1 |
+| 0.1 | 1032, 534, 160.0 | 1277, 723, 160.8 | 1130, 693, 142.1 |
+| 0.3 | 1039, 535, 160.0 | 1242, 666, 157.9 | 1108, 677, 141.2 |
+| 0.5 | 1039, 535, 160.0 | 1199, 628, 152.6 | 1085, 662, 139.9 |
+| 0.7 | 942, 482, 138.5 | 1160, 600, 146.6 | 1064, 647, 137.8 |
+| 0.9 | 942, 482, 138.5 | 1149, 590, 141.0 | 1067, 647, 137.8 |
+| 1 | 942, 482, 138.5 | 1142, 583, 138.5 | 1043, 633, 134.8 |
+
+- **The air.** With cut cells the gauge falls smoothly between the staircase's two values on the
+  lattice. The staircase holds 160 and then drops 13% in a step, where its outline moves a cell.
+- **Impulse.** The wall's impulse lies within 2.6% of the line between its values on the lattice,
+  against the staircase's steps of up to 6%. It falls 9% across the cell, as the finer air's 8%.
+- **Peak force does not.** A tenth of a cell off the lattice it is 12% above that line, and the
+  excess shrinks as the offset grows. The overshoot is in the air beside a small cut cell, not in
+  how the face reads it: weighting the small cell's own reading less does not move it. Merging
+  each cut cell under half air with the cell taking its difference, as one, the standard cure,
+  made it worse: from a tenth to a half of a cell the impulse and peak fell 15% below the line,
+  and jumped back past it. Sharing the difference among all the neighbours on the air's side
+  instead (Colella's redistribution) cannot help a plane wave on a flat wall, since each column
+  then takes back from its neighbours' small cells what its own gave them.
+- **The level.** The cut cells' read is higher than the staircase's, which reads the cell beside the
+  face, not the pressure at the wall. With the air refined it comes down to the same value: on the
+  lattice, 1253, 1202 and 1165 N s on 0.25, 0.0625 and 0.03125 m air, against the staircase's 1032,
+  1130 and 1125. The coarse air's own impulse is high too: 160 Pa s at the gauge, against 140 on
+  the finer airs.
+- **Cost.** The air with a cut structure costs 1.23 times the recommended air per cell
+  (`blastbench aircost --preset wall --dx 0.3 --cut`: 0.570 against 0.465 ns per update, the
+  least of 30 rounds).
+
+Stage 2, moving solids and shells, waits on the peak's overshoot, by the roadmap's rule that it
+follows only if stage 1 pays. The car and the freestanding objects are rigid boxes in the air,
+not structures, so this stage does not touch their late flow.
+
 **Debris.** A node with no intact element left around it is loose debris, and the air loads it
 directly, since it no longer belongs to any face. It stands for a lump of volume *V*, an eighth
 of each element the body started with around it, whatever those were made of, and feels
@@ -1132,8 +1239,8 @@ air sees the ground as hard either way. See [Validation](validation.md#brick-wal
 the app it is Run ▸ Terrain ▸ Made of ▸ Soil under debris only, or any earth or rock type (`SolverConfiguration.groundStiffness`,
 saved with the project, `--ground` for a headless run), 10–150 MN/m³ from loose sand to dense
 sand (50 by default, as a footing's soil), on solid elements only; the rigid ground stays the
-default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by an
-eighth to a third but not to what was measured. The standing names it ("Soft ground under debris").
+default, the one comparison (Keys's walls in the open, one run each) narrowing the debris by up to a
+quarter but not to what was measured. The standing names it ("Soft ground under debris").
 
 ### Debris as a hazard
 

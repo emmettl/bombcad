@@ -172,6 +172,9 @@ extension ScenarioPreset {
 
         var structure = StructureModel(solids: solids, elementSize: 0.25)
         structure.elementKind = .shell
+        // A gravity frame leaning on its core: its beams on simple fin-plate connections, which turn
+        // freely and fracture as Weigand and Berman's tested shear tabs did.
+        structure.steelConnection = .singlePlateShear
         for (index, material) in materials.enumerated() {
             if let material { structure.setMaterial(material, of: index) }
             structure.setReinforcement(reinforcement[index], of: index)

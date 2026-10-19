@@ -157,8 +157,8 @@ claimed for another: the shells' 124% is the slab test's one mesh.
 
 **Uncertain inputs.** Where the ensemble ran a band's case with its inputs sampled (see
 [the model's spread from uncertain inputs](validation.md#the-models-spread-from-uncertain-inputs)),
-the band carries that spread: the slab's 12%, Wu's 4%, the close-in gauges' 8%, and 2% and 1% for a
-wall's peak and impulse. The expected range adds the inputs' 5–95% range (1.645 coefficients of
+the band carries that spread: the slab's 12%, Wu's 4%, the close-in gauges' 8%, and 2% for a
+wall's peak and its impulse (rerun 18 October; the impulse 1% before). The expected range adds the inputs' 5–95% range (1.645 coefficients of
 variation) to the band's half-width in quadrature, since the model's error and its spread from
 uncertain inputs are separate, and comparison uses the combined width. Elsewhere the band stands
 alone.

@@ -88,6 +88,14 @@ struct RenderExportView: View {
     let model: SimulationModel
     @State private var export = RenderExport()
     @Environment(\.dismiss) private var dismiss
+    /// The sheet opens in its interval, so that Tab and typing reach it without Full Keyboard
+    /// Access (a stepper alone is not a key view then).
+    @FocusState private var focusesInterval: Bool
+
+    /// The interval typed, kept to the stepper's 1–100 ms.
+    private var interval: Binding<Int> {
+        Binding(get: { export.frameInterval }, set: { export.frameInterval = min(max($0, 1), 100) })
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -97,8 +105,15 @@ struct RenderExportView: View {
             )
             .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Form {
-                Stepper(value: $export.frameInterval, in: 1...100) {
-                    LabeledContent("A frame every", value: "\(export.frameInterval) ms")
+                LabeledContent("A frame every") {
+                    HStack(spacing: 4) {
+                        TextField("A frame every (ms)", value: interval, format: .number)
+                            .labelsHidden().frame(width: 48).multilineTextAlignment(.trailing)
+                            .focused($focusesInterval)
+                        Text("ms")
+                        Stepper("A frame every (ms)", value: $export.frameInterval, in: 1...100)
+                            .labelsHidden()
+                    }
                 }
                 LabeledContent("Volumes") {
                     VStack(alignment: .leading) {
@@ -133,6 +148,8 @@ struct RenderExportView: View {
         }
         .padding(20)
         .frame(width: 440)
+        .defaultFocus($focusesInterval, true)
+        .task { focusesInterval = true }
         .onDisappear { export.cancel() }
     }
 

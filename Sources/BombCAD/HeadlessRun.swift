@@ -44,8 +44,9 @@ enum HeadlessRun {
         and writes it as JSON; each building's line is printed too. A structure making rubble
         (rubbleParticles) has its debris flown on to where it lands and judged against the
         hazardous-fragment criteria, as fragments are; --debris-results writes it as JSON.
-        --envelope-window starts each component's history when the air at it first moves and keeps
-        that many seconds of it, not the whole run: across a district, the bins stay fine.
+        --envelope-window starts each component's history when the blast reaches it (500 Pa on
+        either side) and keeps that many seconds of it, not the whole run: across a district, the
+        bins stay fine.
         --thermal reckons the fireball's thermal radiation on the ground and the scene's faces,
         frame by frame; the receivers go into the USD scene and, with --thermal-results, a JSON
         file. --cloud hands the hot gas left at the end of the run over to a model of the
@@ -113,7 +114,7 @@ enum HeadlessRun {
         /// Where each envelope component's pressure history goes, as JSON.
         var envelopeHistories: URL?
         var envelopeDamage: URL?
-        /// Seconds of each component's history kept from when its air first moves; nil for the
+        /// Seconds of each component's history kept from when the blast reaches it; nil for the
         /// whole run from t = 0.
         var envelopeWindow: Double?
         /// Where the structures' debris landings and their hazard go, as JSON.
@@ -720,7 +721,8 @@ enum HeadlessRun {
                 if !started {
                     started = true
                     // A mapped start's clock starts at its solution's time: the frames before it are
-                    // the structure at rest and the air as it is then, no volumes and no fireball.
+                    // the structure at rest, the fireball from the one-dimensional solution and the
+                    // air as it is then, no volumes.
                     let first = max(Int((solver.time / interval - 1e-6).rounded(.up)), 0)
                     if first > 0 {
                         do {
@@ -1005,13 +1007,22 @@ enum HeadlessRun {
     }
 
     /// The frames `0..<count` that fall before a mapped start's clock: the structure at rest into
-    /// the scene, without volumes; no fireball for the thermal radiation; the fragments' and ground
-    /// shock's air as it is at the start.
+    /// the scene, without volumes; the thermal radiation's fireball from the one-dimensional
+    /// solution (none at detonation); the fragments' and ground shock's air as it is at the start.
     @MainActor
     static func sendFramesBefore(
         _ count: Int, solver: BlastSolver, interval: Double, scene: USDSceneWriter?, feeds: [Feed],
         scenario: Scenario
     ) throws {
+        let times = (0..<count).map { Double($0) * interval }
+        var early: [Int: FireballFrame] = [:]
+        for feed in feeds {
+            if case .thermal(let spec, _, _) = feed.consumer.kind {
+                for frame in solver.earlyFireballFrames(for: spec, at: times) {
+                    early[Int((frame.time / interval).rounded())] = frame
+                }
+            }
+        }
         for k in 0..<count {
             try scene?.append(solver.structureSurface(), volume: nil)
             for feed in feeds {
@@ -1025,9 +1036,9 @@ enum HeadlessRun {
                 case .thermal:
                     feed.consumer.send(
                         .fireball(
-                            FireballFrame(
-                                time: Double(k) * interval, volume: 0, centre: .zero, temperature: 0,
-                                hottest: 0)))
+                            early[k]
+                                ?? FireballFrame(
+                                    time: times[k], volume: 0, centre: .zero, temperature: 0, hottest: 0)))
                 case .groundShock(let spec, _):
                     let region = spec.region(cellSize: solver.grid.cellSize)
                     feed.consumer.send(.ground(solver.groundSlice(low: region.low, high: region.high)))

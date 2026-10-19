@@ -279,7 +279,7 @@ public enum RunCost {
             let patch = Double(
                 AirRefinement.bytesPerPatch(
                     ratio: configuration.refinement, species: burning,
-                    cut: configuration.cutsTerrain(of: scenario)))
+                    cut: configuration.cutsTerrain(of: scenario, cellSize: grid.cellSize)))
             let wanted =
                 (peakRefined.x / block * poolShares.x + peakRefined.y * r * r * r / block * poolShares.y)
                 * patch
@@ -289,7 +289,7 @@ public enum RunCost {
         let memory = coarseMemory(grid, configuration: configuration) + pools
         let updateCost =
             (burning ? afterburningUpdateCost : 1)
-            * (configuration.cutsTerrain(of: scenario) ? terrainCutUpdateCost : 1)
+            * (configuration.cutsTerrain(of: scenario, cellSize: grid.cellSize) ? terrainCutUpdateCost : 1)
         let twoLevels = configuration.refinement > 1 && configuration.refinementLevels > 1
         let overhead = Double(steps) * (stepOverhead + (twoLevels ? twoLevelStepOverhead : 0))
         if configuration.refinement > 1 && configuration.refinementOwnSteps {
@@ -305,27 +305,45 @@ public enum RunCost {
             peakRefinedCells: peakRefined, refinementMemory: pools)
     }
 
-    /// The fine one-dimensional start's own time, s, on the CPU before the run: as far out as its
-    /// caps allow (the cells, the scaled reach and 0.8 of the way to the domain's nearest open or
-    /// reflecting face; the blocks, which may hold it closer, are not looked at, so it errs high).
+    /// The fine one-dimensional start's own time, s, on the CPU before the run: for each charge as
+    /// far out as its caps allow (the cells, the scaled reach, 0.8 of the way to the domain's
+    /// nearest open or reflecting face and half the way to the nearest other charge; the blocks,
+    /// which may hold it closer, are not looked at, so it errs high), alike charges solved once.
     static func mappedStartSeconds(_ scenario: Scenario, cellSize: Float, configuration: SolverConfiguration)
         -> Double
     {
         guard configuration.mappedCharge, configuration.airModel != .dissociating,
             configuration.afterburnLimit == nil, configuration.gravity == nil, configuration.mixing == nil,
-            configuration.radiativeCooling == nil, scenario.deflagration == nil,
-            (scenario.additionalCharges ?? []).isEmpty, scenario.charge.mass > 0
+            scenario.deflagration == nil
         else { return 0 }
-        let c = scenario.charge.position
-        let size = scenario.domainSize
-        var nearest = min(c.x, size.x - c.x, c.y, size.y - c.y, size.z - c.z)
-        if c.z > 0.5 * cellSize { nearest = min(nearest, c.z) }
-        let scale = cbrt(scenario.charge.mass)
-        let radius = min(
-            0.8 * nearest, configuration.mappedChargeCells * cellSize,
-            configuration.mappedChargeScaledReach * scale)
-        guard radius >= 3 * cellSize else { return 0 }
-        return mappedStartSeconds(scaledReach: Double(radius / scale))
+        let charges = [scenario.charge] + (scenario.additionalCharges ?? [])
+        var solved: Set<SIMD2<Float>> = []
+        var seconds = 0.0
+        for (k, charge) in charges.enumerated() where charge.mass > 0 {
+            let c = charge.position
+            let size = scenario.domainSize
+            var nearest = Float.infinity
+            // A charge on the ground, or on another reflecting face, is mirrored by it.
+            let faces: [(BoundaryFaces, Float)] = [
+                (.xMin, c.x), (.xMax, size.x - c.x), (.yMin, c.y), (.yMax, size.y - c.y),
+                (.zMax, size.z - c.z),
+            ]
+            for (face, distance) in faces
+            where !(distance <= 0.5 * cellSize && scenario.reflectiveFaces.contains(face)) {
+                nearest = min(nearest, distance)
+            }
+            if c.z > 0.5 * cellSize { nearest = min(nearest, c.z) }
+            let scale = cbrt(charge.mass)
+            var radius = min(
+                0.8 * nearest, configuration.mappedChargeCells * cellSize,
+                configuration.mappedChargeScaledReach * scale)
+            for (j, other) in charges.enumerated() where j != k {
+                radius = min(radius, 0.5 * simd_distance(other.position, c))
+            }
+            guard radius >= 3 * cellSize, solved.insert(SIMD2(charge.mass, radius)).inserted else { continue }
+            seconds += mappedStartSeconds(scaledReach: Double(radius / scale))
+        }
+        return seconds
     }
 
     /// The one-dimensional solution's time, s, out to `z` m/kg^(1/3), whatever the charge (its grid is

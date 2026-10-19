@@ -298,6 +298,35 @@ struct HeadlessRunTests {
         #expect(text.contains("8: @./mapped.volumes/blast.0008.vdb@"))
     }
 
+    @Test(
+        "On a mapped start the fireball's frames before the hand-over come from the one-dimensional solution")
+    func mappedStartFireball() async throws {
+        // 1 kg on the ground, mapped 6 m out on 0.5 m cells: the grid's clock starts at about 9 ms.
+        var scene = Scenario(
+            name: "Mapped fireball", domainSize: SIMD3(24, 20, 10), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(10, 10, 0)))
+        scene.gauges = [Gauge("Near", at: SIMD3(12, 10, 0.25))]
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        document.runSettings?.duration = 0.016
+        document.runSettings?.detailedCharge = true
+        document.runSettings?.mappedStart = true
+        let folder = try directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let project = folder.appending(path: "fireball.bombcad")
+        try write(document, to: project)
+        let spec = folder.appending(path: "thermal.json")
+        try Data(#"{"groundSpacing": 4, "surfaceSpacing": 4}"#.utf8).write(to: spec)
+        let result = try await HeadlessRun.execute(
+            HeadlessRun.Options.parse([project.path, "--thermal", spec.path, "--frame-interval", "2"]))
+        let thermal = try #require(result.thermal)
+        // 0, 2, … 16 ms; none at detonation, then luminous from the first frame on.
+        #expect(thermal.fireball.count == 9, "\(thermal.fireball.map(\.time))")
+        #expect(thermal.fireball.first?.volume == 0)
+        #expect(thermal.fireball.dropFirst().prefix(4).allSatisfy { $0.volume > 0 })
+        #expect(thermal.fluence.contains { $0 > 0 })
+    }
+
     @Test("The hot gas left at the end is handed over to the cloud, into the scene and a JSON file")
     func cloud() async throws {
         var scene = Scenario(

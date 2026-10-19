@@ -115,6 +115,10 @@ line and the minimum safe distance with it. Headless, it is a `Hazards:` line, w
     under half, the unsafe side. Here the pieces are 1 kg cubes leaving within 10° of square to
     their sections; the tests' spread of sizes and angles is not modelled. DESR's structure
     distance for 80 kg, 268 m, governs the minimum safe distance.
+  - on the mapped start, since 18 October 2026 (`--balloon-start` for the balloon these were run
+    on): the walls fail 0.2 ms sooner and leave at under 1% less speed. The reach is 129 m, and
+    the furthest hazardous piece 256 m. Kasun III's speeds below are the same on either start, within
+    1 m/s.
 - **Kasun III's launch speeds** (the same cubicle, its bars 12 mm at 100 mm in both faces; Weerheijm,
   Stolz, Riedel and Mediavilla, TU Delft repository, Table 2, from high-speed film). PETN is taken
   as 1.27 TNT, and the bench builds the cubicle with these bars (1.5% of the section). At failure,

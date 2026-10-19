@@ -227,20 +227,26 @@ air (next) it does not.
 
 ### A finely resolved start
 
-Since 18 October 2026 a lone charge starts from a one-dimensional solution instead of the
+Since 18 October 2026 each charge starts from a one-dimensional solution instead of the
 balloon (`SolverConfiguration.mappedCharge`, on in `recommended` and, with afterburning and hot
 air, in the app's runs; a project saved before then keeps the balloon). The blast is solved with
 spherical symmetry (the same MUSCL–Hancock and HLLC scheme, with the face areas 4πr² and the
 pressure's geometric source), on a radial grid of a twentieth of the charge's radius, from a
 sphere of the charge's own size (TNT's density). It reaches as far as it can before meeting
-anything: 0.8 of the distance to the nearest block, structure, ground that is not flat or open
-face, at most 64 cells and 6 m/kg^(1/3). A charge on the ground spreads as one of twice the
-mass, mirrored. The state is then laid onto the grid (each cell averaged over 64 samples, the
-radial momentum turned into vectors) and the clock set to the time that took. Gauges, cells and
+anything: 0.8 of the distance to the nearest block, structure, pane, ground that is not flat or
+open face, half the way to the nearest other charge, at most 64 cells and 6 m/kg^(1/3). A charge
+on the ground spreads as one of twice the mass, mirrored; on more reflecting faces (a model's
+mirror planes, a corner of them), as one of 2, 4 or 8 times the mass. The state is then laid onto the grid (each cell averaged over 64 samples, the
+radial momentum turned into vectors) and the clock set to the time that took. With several
+charges, all are solved to one time, the earliest at which any shock reaches its radius (the
+others then still within theirs), and each is laid in the cells nearer it than any other charge,
+which its radius keeps it to; alike charges share one solution. Gauges, cells and
 the injury plane (`configureExposurePlane`) the shock has already passed take their histories,
 peaks, impulses and arrivals from the one-dimensional solution. Where it cannot reach three
-cells, or with dissociating air, gravity, sub-grid mixing, radiative cooling, the afterburning
-limit or more than one charge, the balloon starts it instead.
+cells the balloon starts that charge instead, laid as the others are mapped, at their clock
+(the balloon stands for its charge some time after it fired anyway); with dissociating air,
+gravity, sub-grid mixing, radiative cooling or the afterburning limit, every charge. The model
+has no delays between charges: all fire together.
 
 **Its gas.** The one-dimensional solution has the air's own gas, the ideal gas or hot air (the
 same vibrational energy, in double precision), and with afterburning carries the products and the
@@ -278,7 +284,9 @@ of a surface burst's ground-level curves close in, where the wave off the ground
 **Its cost** is the one-dimensional solution's own, on the CPU before the run: about 4 s out to 4
 m/kg^(1/3) and 8 s to 6 on an M4 Max, whatever the charge (`blastbench mapped-cost`), which the
 run advisor adds (`RunCost.mappedStartSeconds`). It is solved once for each charge, gas and
-reach and kept (the last four), so a scene run again starts at once. The solver is its own
+reach and kept (the last four), so a scene run again starts at once. The fireball before the grid's clock, for the thermal
+radiation, comes from the same solution kept at the frames' times ([before the grid's
+clock](thermal-radiation.md#before-the-grids-clock)). The solver is its own
 module (`RadialBlast`), built optimised even for tests, which would otherwise take many minutes
 over it. In the app the solution stops at half the run's duration if its shock has not reached
 the radius by then, so that a short run still steps the grid (`BlastSolver.mappedStartLatest`).
@@ -832,12 +840,21 @@ UFC 3-340-02, lowest for light charges.
   ([above](#a-finely-resolved-start)); in contact, where the charge is too near anything to be
   mapped, a ball of air at the charge's density delivers about twice the products' impulse
   ([Hupfauf](validation.md#slabs-under-contact-charges)), and the products would need a second
-  gas on the grid. (Dissociation of the air is done, as an option; it changes the checked loads
+  gas on the grid. Deferred (18 October 2026) as larger than one validated regime warrants. The
+  plan, if contact charges become a priority:
+  - a products tracer per cell, as the grid's fuel species is only the unburnt products and
+    vanishes as they burn, so the species' layout changes;
+  - the products' JWL, beside the air's laws, at every call of the gas law (some 44, in the
+    solver, refinement, extraction, deflagration, gravity and structure shaders), in single
+    precision up to some 10 GPa;
+  - the tracer carried through refinement's transfers and the cut cells;
+  - wave bounds that do not assume an ideal gas's Roe average (Davis's, as in the
+    one-dimensional start).
+
+  It touches the refinement and cut-cell kernels, so it would be planned with their owners. (Dissociation of the air is done, as an option; it changes the checked loads
   by under 1%.)
-- **A mapped start for each charge.** Scenes of several charges (the chamber's four) start from
-  the balloon, as one solution cannot hold two centres. Each could be solved in one dimension
-  and mapped until their shells meet; as the solutions are kept by start, alike charges would
-  cost one solve.
+- **Delays between charges**: every charge fires at once. A delayed one would need its own
+  start on the clock, its one-dimensional solution laid when the grid reaches its time.
 - **Better open boundaries**, if they are ever needed: a perfectly matched or sponge layer
   works at any angle, unlike the one-dimensional characteristic condition that was tried.
 - **More of the refinement**: patches placed and released over a fine outline without the gas

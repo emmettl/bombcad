@@ -156,7 +156,7 @@ public enum MasonryDebrisTests {
         clearance: Float = 8, height: Float = 10, groundFriction: Float = 0.6, base: Anchorage? = mortarBed,
         afterburning: Bool = SolverConfiguration.recommended.afterburning,
         airModel: AirModel? = nil, openFaces: OpenFaces = SolverConfiguration.recommended.openFaces,
-        groundStiffness: Float = 0,
+        groundStiffness: Float = 0, balloonStart: Bool = false,
         progress: ((String) -> Void)? = nil
     ) throws -> Result {
         let started = ContinuousClock.now
@@ -186,7 +186,11 @@ public enum MasonryDebrisTests {
             ],
             structure: model)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: cellSize)
-        solver.configuration.mappedCharge = !afterburning
+        // The mapped one-dimensional start since 18 October 2026; `balloonStart` keeps the hot-gas
+        // balloon these comparisons were recorded on before then (with afterburning; the ideal gas
+        // was mapped already).
+        solver.configuration.mappedCharge =
+            balloonStart ? !afterburning : SolverConfiguration.recommended.mappedCharge
         solver.configuration.afterburning = afterburning
         solver.configuration.openFaces = openFaces
         // As the app's "Afterburning and hot air": both or neither.
