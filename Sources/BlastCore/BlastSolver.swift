@@ -655,6 +655,9 @@ public final class BlastSolver {
     /// The experimental rigid boxes, as last placed; nil for one taken out of the air.
     private var experimentalBoxes: [RigidBoxBody?] = []
     private var experimentalBoxMaxStep: Float = 0
+    /// A longest air step a driver sets while its objects are near a structure (nil for none), so
+    /// that each air step is one of the structure's steps and contact keeps its time.
+    var experimentalStepCeiling: Float?
     var experimentalBoxRemapMode: ExperimentalBoxRemap = .redistribution
 
     let library: MTLLibrary
@@ -2638,7 +2641,9 @@ public final class BlastSolver {
                 // Only the substeps this step is likely to need are encoded, a quarter more than
                 // the step before the last checkpoint took; the air may step no further than
                 // they cover.
-                uniforms.maxStep = 0.999 * Float(substeps) * bodyStep
+                // Freestanding objects in the air keep their own limit too, whichever is shorter.
+                let covered = 0.999 * Float(substeps) * bodyStep
+                uniforms.maxStep = uniforms.maxStep > 0 ? min(uniforms.maxStep, covered) : covered
             }
 
             if asleep {
@@ -3700,7 +3705,7 @@ public final class BlastSolver {
             uniforms.regionNx = UInt32(grid.nx)
             uniforms.regionNy = UInt32(grid.ny)
             uniforms.regionNz = UInt32(grid.nz)
-            uniforms.maxStep = experimentalBoxMaxStep
+            uniforms.maxStep = min(experimentalBoxMaxStep, experimentalStepCeiling ?? .infinity)
         }
         if let limit = configuration.afterburnLimit {
             uniforms.ignitionTemperature = limit.ignitionTemperature
