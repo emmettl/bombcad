@@ -16,7 +16,8 @@ The [portal-frame warehouse sample](#the-portal-frame-warehouse-sample) uses bot
   tests, both ways, and none runs away. Three, where buckling comes on earlier than plate theory
   says, are not.
 - **ADBLAST's building cladding**, screwed to its supports and shot in air: the first deflection
-  is 0.90–1.35 of that measured on all ten tests. What is left after is not right.
+  is 0.90–1.35 of that measured on all ten tests. What is left after misses by 27 mm on average
+  since buckled flanges keep their folds ([below](#what-is-left-scoped); 66 mm before).
 - **The envelope construction on the same ten tests**: under the same load it gives within 1.0–1.35
   of the shells' deflection. Under the air's load, on the strip of ribs across the span that it is
   judged on, it gives 0.65–1.09 of measured; on a whole component's mean, 0.49–1.36
@@ -291,10 +292,16 @@ What this shows:
 - **The measured centre pulse over the whole panel over-reads by 1.3–5 times.** The ends and
   corners are 4 m from the charge, not 3.5, and the blast wraps under the panel. The load's spread
   is the difference: the coupling to the air is what the comparison needs.
-- **What is left after is not right.** The 1.5 mm sheets ended level or lifted (ADBLAST: they
-  lifted in every test, as the buckles formed in the first loading changed their shape); the model
-  leaves them 1.5 mm down to 122 mm down, or up 23. The 0.75 mm sheets ended within 23 mm of level;
-  the model leaves them 14–63 mm down. Buckled shapes and their snap-through are not modelled.
+- **What is left after was not right; nearer since the fold.** The 1.5 mm sheets ended level or
+  lifted (ADBLAST: they lifted in every test, as the buckles formed in the first loading changed
+  their shape). The 0.75 mm sheets ended within 23 mm of level. Before the buckled flanges kept
+  their folds, the model left the 1.5 mm sheets 1.5–122 mm down, and the 0.75 mm 14–63 mm down
+  (the table above, run then). With the fold, the default since 19 October 2026
+  ([below](#what-is-left-scoped)):
+  - the 1.5 mm sheets end 2 mm down to 5 mm up;
+  - the 0.75 mm sheets end 14–40 mm down.
+
+  The buckle's own shape is still not modelled.
 - **The screws**: ADBLAST does not report screws pulling through in these tests. The model pulls
   them through at one tube at 1.0 kg on 0.75 mm. That is the safe side for debris, or a fault of
   the screws' strength without its rate, or both.
@@ -477,6 +484,44 @@ deflections on ten shots, signs included. Its deliverables D4–D6 would add his
 al. (IJIE 90, 2016, open on NTNU Open) measured reversed snap buckling by 3-D image correlation,
 which would check the shells' snap-through on its own; no open test of profiled sheeting
 snapping through was found.
+
+**Built: the buckled flange's fold** (19 October 2026; the default since, `ProfiledSheet.foldMemory`,
+`--no-fold` in `blastbench langdon` and `adblast` for the old behaviour). Of the two ways in above, the resolved mesh
+cannot be built here: the shell mesher lays plates only along the axes, and the profiles' webs
+slope (Langdon's at 45°). The memory needs no fitting once it is taken from plastic mechanism
+theory rather than fitted:
+
+- **The fold.** What a buckled flange shortens past its buckling is kept as a fold, a half-sine
+  over the flange's width b, its amplitude w = (2b/π)√ε for a shortening ε.
+- **Straightening it.** Tension pulls the fold straight at the strength of its plastic hinges.
+  With hinges at its middle and ends, T w = 2 M_p with M_p = σ_y t² / 4, a stress of σ_y t / 2w,
+  until the shortening is taken back. Without the option a buckled fibre is pulled back at its
+  yield.
+- **On the rib.** Carried to the rib's fibre as the onset is (strain by d / h, stress by h / d),
+  the one parameter is πt/4b (h/d)^(3/2): 0.015 for TR84 at 1.5 mm.
+
+The fold changes only fibres on a flange that buckles, and nothing until one has; off, the runs
+are bit-identical.
+
+| Test | Measured final (mm) | Without (mm) | With the fold (mm) |
+|---|---|---|---|
+| 1, 2 (1.5 kg, 1.5 mm) | +30, +19 | −121 | −2 |
+| 3 (0.5 kg, 1.5 mm) | 0 | −1.5 | −0.2 |
+| 4, 6 (1.0 kg, 1.5 mm) | 0, not given | −1.7 | +5.2 |
+| 7 (0.5 kg, 0.75 mm) | +4 | −14 | −14 |
+| 8, 10 (1.0 kg, 0.75 mm) | +14, +23 | −64 | −27 |
+| 11, 12 (1.5 kg, 0.75 mm) | −13, +6 | −62 | −40 |
+
+The table is ADBLAST in the air (`profiled-sheeting/fold/` on StudioData).
+
+- **ADBLAST's final sets move the right way.** The mean miss falls from 66 to 27 mm. Every test
+  is nearer, but for test 4, which ends 5 mm up where it ended level. The 1.5 mm sheets end
+  level or lifted, as ADBLAST saw. The first peaks are unchanged (within 1 mm).
+- **Langdon's tests hardly move.** Only the negative direction changes, where the wide flange
+  buckles: its permanent sets fall 1–5%, a little further under, nine of twelve still within half
+  to twice. The design direction is unchanged: its compressed flange does not buckle.
+
+Made the default on 19 October 2026, the user agreeing.
 
 **Buckling earlier than plate theory says.** Three of Langdon's tests miss
 ([above](#against-langdons-corrugated-panels)). In c1212 and c1803 the compressed flange is the

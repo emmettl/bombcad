@@ -52,15 +52,16 @@ public enum FacadeLoadSurrogate {
         package let terrain: Terrain?
 
         /// The blocks of `objects`' envelopes on cells `cell` m across, each over the cells whose
-        /// centres it covers, as the air's grid would hold it.
-        public init(objects: [SceneObject], terrain: Terrain?, cell: Float) {
+        /// centres it covers, as the air's grid would hold it; and the scene's fixed `blocks`
+        /// (barrier walls and the like), block n owned by −2 − n (−1 is no building), each over
+        /// every cell it overlaps where it is thinner than a cell, so that a thin wall is not lost
+        /// between cell centres.
+        public init(objects: [SceneObject], blocks: [Box] = [], terrain: Terrain?, cell: Float) {
             var low = SIMD2<Float>(repeating: .greatestFiniteMagnitude)
             var high = SIMD2<Float>(repeating: -.greatestFiniteMagnitude)
-            for object in objects {
-                for block in object.envelope?.blocks ?? [] {
-                    low = simd_min(low, SIMD2(block.min.x, block.min.y))
-                    high = simd_max(high, SIMD2(block.max.x, block.max.y))
-                }
+            for block in objects.flatMap({ $0.envelope?.blocks ?? [] }) + blocks {
+                low = simd_min(low, SIMD2(block.min.x, block.min.y))
+                high = simd_max(high, SIMD2(block.max.x, block.max.y))
             }
             if low.x > high.x {
                 low = .zero
@@ -84,6 +85,31 @@ public enum FacadeLoadSurrogate {
                         for i in i0...i1 {
                             lists[i + columns * j].append((block.min.z, block.max.z, Int32(owner)))
                         }
+                    }
+                }
+            }
+            for (n, block) in blocks.enumerated() {
+                // By centres along a side at least a cell long; by overlap across a thinner one.
+                func span(_ lo: Float, _ hi: Float, _ o: Float, _ count: Int) -> ClosedRange<Int>? {
+                    let first: Int
+                    let last: Int
+                    if hi - lo >= cell {
+                        first = Int(((lo - o) / cell - 0.5).rounded(.up))
+                        last = Int(((hi - o) / cell - 0.5).rounded(.up)) - 1
+                    } else {
+                        first = Int(((lo - o) / cell).rounded(.down))
+                        last = Int(((hi - o) / cell).rounded(.up)) - 1
+                    }
+                    let a = max(0, first)
+                    let b = min(count - 1, last)
+                    return a <= b ? a...b : nil
+                }
+                guard let iRange = span(block.min.x, block.max.x, origin.x, columns),
+                    let jRange = span(block.min.y, block.max.y, origin.y, rows)
+                else { continue }
+                for j in jRange {
+                    for i in iRange {
+                        lists[i + columns * j].append((block.min.z, block.max.z, Int32(-2 - n)))
                     }
                 }
             }
@@ -155,7 +181,7 @@ public enum FacadeLoadSurrogate {
                         break
                     }
                 }
-                if inside >= 0 {
+                if inside != -1 {
                     blocked += step
                     lastBlocked = s
                     if inside != last { crossed += 1 }
@@ -447,7 +473,7 @@ public enum FacadeLoadSurrogate {
     ) -> Estimate {
         let start = ContinuousClock.now
         let objects = scene.envelopeObjects
-        let raster = Raster(objects: objects, terrain: scene.terrain, cell: cellSize)
+        let raster = Raster(objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
         let charge = scene.charge.position
         let mass = Double(scene.charge.mass)
         var perObject = [[(EnvelopeComponent, Features, Prediction, EnvelopeComponentLoad)]](

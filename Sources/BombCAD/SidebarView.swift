@@ -506,6 +506,16 @@ struct SidebarView: View {
                 .font(.caption)
                 .foregroundStyle(.orange)
             }
+            let inside = model.settings.scenario.chargesInsideStandOff
+            if !inside.isEmpty {
+                Label(
+                    (inside == [0] ? "The charge stands" : "\(inside.count) charges stand")
+                        + " inside a stand-off line, where the layout keeps charges back.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+            }
             AdditionalChargesView(model: model)
         }
     }

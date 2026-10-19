@@ -2208,6 +2208,7 @@ public final class StructureSolver {
             parameters.bucklingOnset = buckling.onsetStrain
             parameters.bucklingSoftening = max(buckling.softeningStrain, 1e-9)
             parameters.bucklingResidual = buckling.residual
+            parameters.bucklingFold = buckling.foldRatio ?? 0
         }
         if material.model == .timber, let timber = material.timber {
             parameters.materialModel = MaterialModel.timber.rawValue

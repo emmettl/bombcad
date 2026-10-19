@@ -1,5 +1,6 @@
 import BlastModel
 import Foundation
+import RadialBlast
 import simd
 
 extension BlastSolver {
@@ -61,7 +62,7 @@ extension BlastSolver {
     /// `coarse` (packed as `extractLuminousCells` writes it), where none does. Nil where no patch
     /// holds any of the box, which then goes as the coarse cells have it.
     func refinedLuminousCells(
-        low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float, coarse: (SIMD3<Int>) -> UInt32
+        low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float, coarse: (SIMD3<Int>) -> SIMD2<UInt32>
     ) -> LuminousCells? {
         let levels = refinementLevels
         guard let first = levels.first, first.holdsAny(from: low, through: low &+ counts &- 1),
@@ -78,13 +79,13 @@ extension BlastSolver {
         let gamma = configuration.gamma
         let airModel = configuration.airModel
         let hasProducts = speciesHoldDetonationProducts
-        var packed = [UInt32](repeating: 0, count: fineCounts.x * fineCounts.y * fineCounts.z)
+        var packed = [SIMD2<UInt32>](repeating: .zero, count: fineCounts.x * fineCounts.y * fineCounts.z)
         packed.withUnsafeMutableBufferPointer { packed in
             concurrently(iterations: fineCounts.z) { k in
                 for j in 0..<fineCounts.y {
                     for i in 0..<fineCounts.x {
                         let at = fineLow &+ SIMD3(i, j, k)
-                        var value: UInt32?
+                        var value: SIMD2<UInt32>?
                         for (cells, read) in readers {
                             guard let cell = read(at / (scale / cells)) else { continue }
                             value = Self.packedLuminous(
@@ -102,31 +103,33 @@ extension BlastSolver {
         ) { packed[$0] }
     }
 
-    /// A cell of air packed as `extractLuminousCells` writes it: its temperature in kelvin in the
-    /// low 16 bits and its unburnt products' density as a half float in the high, or zero if it
-    /// is cooler than `luminousTemperature`.
+    /// A cell of air packed as `extractLuminousCells` writes it: in x its temperature in kelvin in
+    /// the low 16 bits and its unburnt products' density as a half float in the high, in y its
+    /// absorption as hot air as a half; or zero if it is cooler than `luminousTemperature`.
     static func packedLuminous(
         _ cell: CellState, products held: Float, gamma: Float, airModel: AirModel, luminousTemperature: Float
-    ) -> UInt32 {
+    ) -> SIMD2<UInt32> {
         let air = primitive(of: cell, gamma: gamma, airModel: airModel)
         let bound = air.pressure / (air.density * AirModel.gasConstant)
-        guard bound >= luminousTemperature, bound.isFinite else { return 0 }
+        guard bound >= luminousTemperature, bound.isFinite else { return .zero }
         let t =
             airModel == .dissociating
             ? airModel.temperature(density: air.density, pressure: air.pressure) : bound
-        guard t >= luminousTemperature, t.isFinite else { return 0 }
+        guard t >= luminousTemperature, t.isFinite else { return .zero }
         let kelvin = UInt32(min(max(t.rounded(), 1), 65535))
         let products = Float16(min(max(held, 0), 65504))
-        return kelvin | UInt32(products.bitPattern) << 16
+        let absorption = Float16(min(HotAir.planckAbsorption(temperature: t, density: cell.density), 65504))
+        return SIMD2(kelvin | UInt32(products.bitPattern) << 16, UInt32(absorption.bitPattern))
     }
 
     /// The cells of the box of `counts` from `low` packed as `extractLuminousCells` writes them,
     /// read from the state across the CPU's cores.
-    func cpuLuminousCells(low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float) -> [UInt32] {
+    func cpuLuminousCells(low: SIMD3<Int>, counts: SIMD3<Int>, luminousTemperature: Float) -> [SIMD2<UInt32>]
+    {
         let gamma = configuration.gamma
         let airModel = configuration.airModel
         let mask = maskContents.bindMemory(to: UInt8.self, capacity: grid.cellCount)
-        var packed = [UInt32](repeating: 0, count: counts.x * counts.y * counts.z)
+        var packed = [SIMD2<UInt32>](repeating: .zero, count: counts.x * counts.y * counts.z)
         let hasProducts = speciesHoldDetonationProducts
         withState { cells in
             readSpecies { species in
@@ -169,6 +172,9 @@ struct ThermalMedium: Sendable {
     var tiles: [FireballTile]
     /// The march's step within voxels where gas may be found, in metres.
     var step: Float
+    /// The fireball in spherical shells, which rays are marched through in place of the voxels
+    /// where a frame has them (`FireballFrame.spheres`).
+    var spherical: SphericalMedium?
 
     var high: SIMD3<Float> { low + SIMD3<Float>(counts) * voxelSize }
 
@@ -180,8 +186,10 @@ struct ThermalMedium: Sendable {
     static let sootDensity: Float = 1800
 
     /// The medium of `cells` under `spec`: each voxel's gas absorbs `spec.absorption` a metre for
-    /// itself, and as soot `spec.sootYield` of its unburnt products would.
-    init(_ cells: LuminousCells, spec: ThermalSpec) {
+    /// itself, as soot `spec.sootYield` of its unburnt products would, and, with
+    /// `spec.hotAirAbsorption`, as hot air at its temperature and density.
+    init(_ cells: LuminousCells, spheres: [FireballSphere]? = nil, spec: ThermalSpec) {
+        spherical = spheres.map { SphericalMedium($0, spec: spec) }
         low = cells.low
         voxelSize = cells.voxelSize
         counts = cells.counts
@@ -198,7 +206,8 @@ struct ThermalMedium: Sendable {
                     guard cells.fills[v] > 0, t > 0 else { continue }
                     let share = Float(cells.fills[v]) / 255
                     let products = cells.products.map { Float($0[v]) } ?? 0
-                    let kappa = share * (spec.absorption + soot * products * t)
+                    let air = spec.hotAirAbsorption ? cells.airAbsorption.map { Float($0[v]) } ?? 0 : 0
+                    let kappa = share * (spec.absorption + soot * products * t + air)
                     let square = t * t
                     voxels[v] = SIMD4(share, kappa, kappa * sigma * square * square, 0)
                 }
@@ -288,6 +297,7 @@ struct ThermalMedium: Sendable {
     /// emits its gas's radiance times 1 - e^(-κ s) (see `step(_:_:length:)`), dimmed by the steps
     /// before it, e^(-Σκs). Given up once less than 10⁻⁴ of what lies beyond could get through.
     func radiance(from origin: SIMD3<Float>, along direction: SIMD3<Float>, limit: Float) -> Float {
+        if let spherical { return spherical.radiance(from: origin, along: direction, limit: limit) }
         let low = self.low
         let high = self.high
         var enter: Float = 0

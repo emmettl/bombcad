@@ -855,8 +855,10 @@ public enum StandingTable {
                     + "keeping their effective width by how they buckle), screwed to their rails and purlins "
                     + "by screws that pull through. Langdon's corrugated panels: 10 of 13 permanent sets within "
                     + "half to twice of measured. ADBLAST's screwed cladding in air: first deflection 0.90–1.35 "
-                    + "of measured on all ten tests, but what is left after is not right, and cladding torn off "
-                    + "a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
+                    + "of measured on all ten tests; with the buckled flanges' folds straightened at their "
+                    + "hinges' strength, what is left after misses by 27 mm on average (66 without), the 1.5 mm "
+                    + "sheets level or lifted as tested, the 0.75 mm still 14–40 mm down where they ended within "
+                    + "23 mm of level. Cladding torn off a deforming purlin is not compared. Sheeted purlins and rails are held straight by the "
                     + "screws, which under uplift, their free flange in compression, is the unsafe side.",
                 document: "profiled-sheeting.md#against-adblasts-cladding-tests")
         case .steelConnections:
@@ -1075,6 +1077,7 @@ public enum StandingTable {
         "Scenario.reflectiveFaces": .option([.closedBoundaries]),
         "Scenario.terrain": .option([.terrain, .footingsOnSlope]),
         "Scenario.attributions": .input,
+        "Scenario.standOffLines": .input,
         "Scenario.envelopeSources": .option([.importedEnvelopes, .mapBuildings]),
         "EnvelopeSource.objectID": .input,
         "EnvelopeSource.kind": .option([.importedEnvelopes, .mapBuildings]),
@@ -1323,6 +1326,7 @@ public enum StandingTable {
         "ThermalSpec.fireball": .option([.thermalVolume, .thermalShape, .thermalSphere]),
         "ThermalSpec.absorption": .input,
         "ThermalSpec.sootYield": .input,
+        "ThermalSpec.hotAirAbsorption": .input,
         "ThermalSpec.marchStep": .numerical,
         "ThermalSpec.heating": .option([.surfaceHeating]),
         "SurfaceHeatingSpec.enabled": .option([.surfaceHeating]),

@@ -23,6 +23,11 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
     /// afterburning keeps track of: 0.185 for TNT, whose products by the H₂O–CO rule keep half its
     /// carbon as soot. Zero leaves the soot out.
     public var sootYield: Float = 0.185
+    /// Whether the volume's gas absorbs, besides `absorption`, as hot equilibrium air does at its
+    /// temperature and density (`HotAir`): nothing to speak of below 3,000 K, but opaque within
+    /// centimetres in a strong shock's layer at 6,000 to 8,000 K. On unless turned off; frames
+    /// from before 19 October 2026 carry no absorption of the kind, and absorb only `absorption`.
+    public var hotAirAbsorption = true
     /// The volume's step through the gas, as a share of its voxels' edge.
     public var marchStep: Float = 0.5
     /// How the receivers' surfaces heat up (see `SurfaceHeating`); on unless turned off.
@@ -45,6 +50,8 @@ public struct ThermalSpec: Codable, Sendable, Equatable {
         fireball = try values.decodeIfPresent(FireballModel.self, forKey: .fireball) ?? defaults.fireball
         absorption = try values.decodeIfPresent(Float.self, forKey: .absorption) ?? defaults.absorption
         sootYield = try values.decodeIfPresent(Float.self, forKey: .sootYield) ?? defaults.sootYield
+        hotAirAbsorption =
+            try values.decodeIfPresent(Bool.self, forKey: .hotAirAbsorption) ?? defaults.hotAirAbsorption
         marchStep = try values.decodeIfPresent(Float.self, forKey: .marchStep) ?? defaults.marchStep
         heating = try values.decodeIfPresent(SurfaceHeatingSpec.self, forKey: .heating) ?? defaults.heating
     }
@@ -95,13 +102,18 @@ public struct FireballFrame: Codable, Sendable, Equatable {
     /// The luminous gas cell by cell, for the volume model; nil unless asked for, and in the
     /// frames a result keeps.
     public var cells: LuminousCells?
+    /// The fireball in spherical shells, one sphere a charge, where it comes from the mapped
+    /// start's one-dimensional solution (`BlastSolver.earlyFireballFrames`); the volume marches
+    /// rays through them exactly, in place of `cells`. Nil otherwise, and in the frames a result
+    /// keeps.
+    public var spheres: [FireballSphere]?
     /// What the fireball radiated at this moment, in watts, as the volume model measured it
     /// round it (see `ThermalExposure.radiatedPower`); nil where it was not.
     public var radiatedPower: Double?
 
     public init(
         time: Double, volume: Double, centre: SIMD3<Float>, temperature: Float, hottest: Float,
-        shape: FireballShape? = nil, cells: LuminousCells? = nil
+        shape: FireballShape? = nil, cells: LuminousCells? = nil, spheres: [FireballSphere]? = nil
     ) {
         self.time = time
         self.volume = volume
@@ -110,6 +122,7 @@ public struct FireballFrame: Codable, Sendable, Equatable {
         self.hottest = hottest
         self.shape = shape
         self.cells = cells
+        self.spheres = spheres
     }
 
     /// The equivalent sphere's radius.
@@ -128,6 +141,7 @@ public struct FireballFrame: Codable, Sendable, Equatable {
         var frame = self
         frame.shape = nil
         frame.cells = nil
+        frame.spheres = nil
         return frame
     }
 }

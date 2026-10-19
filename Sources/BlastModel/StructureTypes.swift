@@ -1733,6 +1733,7 @@ package struct MaterialParameters {
     package var bucklingOnset: Float = 1e30
     package var bucklingSoftening: Float = 1
     package var bucklingResidual: Float = 1
+    package var bucklingFold: Float = 0
     // Cowper and Symonds's law (`SteelRateLaw`): D (0 for none), 1 / q, and the factor at the
     // tensile test's rate, which the yield is taken from.
     package var rateConstant: Float = 0
@@ -2408,13 +2409,21 @@ public struct LocalBuckling: Codable, Hashable, Sendable {
     public var onsetStrain: Float
     public var softeningStrain: Float
     public var residual: Float
+    /// The buckled flange's fold straightening in tension (`ProfiledSheet.foldMemory`): the
+    /// fibre's shortening past the onset is kept as a fold, which tension pulls straight at
+    /// σ_y · foldRatio / √(shortening) until it is taken back; nil for none (left out of the JSON).
+    public var foldRatio: Float?
 
-    public init(axis: Int, side: Int, onsetStrain: Float, softeningStrain: Float, residual: Float) {
+    public init(
+        axis: Int, side: Int, onsetStrain: Float, softeningStrain: Float, residual: Float,
+        foldRatio: Float? = nil
+    ) {
         self.axis = axis
         self.side = side
         self.onsetStrain = onsetStrain
         self.softeningStrain = softeningStrain
         self.residual = residual
+        self.foldRatio = foldRatio
     }
 }
 

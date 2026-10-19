@@ -143,7 +143,7 @@ final class FrameExtractor {
         }
         var cells = false
         if var temperature = luminous, request.fireballCells {
-            let bytes = MemoryLayout<UInt32>.stride * grid.cellCount
+            let bytes = MemoryLayout<SIMD2<UInt32>>.stride * grid.cellCount
             if (cellsBuffer?.length ?? 0) < bytes {
                 cellsBuffer = device.makeBuffer(length: bytes, options: .storageModeShared)
             }
@@ -218,13 +218,14 @@ final class FrameExtractor {
     /// Each cell's luminous temperature and unburnt products cut out at `luminous` kelvin, at
     /// `time` and `steps`, if they are ready, packed as `extractLuminousCells` writes them, one a
     /// cell of the grid.
-    func luminousCells(luminous: Float, time: Double, steps: Int, count: Int) -> UnsafeBufferPointer<UInt32>?
+    func luminousCells(luminous: Float, time: Double, steps: Int, count: Int)
+        -> UnsafeBufferPointer<SIMD2<UInt32>>?
     {
         guard let ready, ready.time == time, ready.steps == steps, ready.luminous == luminous, ready.cells,
             let cellsBuffer
         else { return nil }
         return UnsafeBufferPointer(
-            start: cellsBuffer.contents().bindMemory(to: UInt32.self, capacity: count), count: count)
+            start: cellsBuffer.contents().bindMemory(to: SIMD2<UInt32>.self, capacity: count), count: count)
     }
 
     private static func threadgroup(_ pipeline: MTLComputePipelineState, depth: Bool) -> MTLSize {

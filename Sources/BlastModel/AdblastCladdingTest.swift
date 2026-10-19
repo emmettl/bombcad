@@ -57,6 +57,8 @@ public enum AdblastCladdingTest {
         /// Whether the sheets' flanges soften once they buckle.
         public var buckles = true
         public var postBuckling = ProfiledSheet.PostBuckling.automatic
+        /// The buckled flanges keep their folds (`ProfiledSheet.foldMemory`).
+        public var foldMemory = true
         /// Whether the screws can pull through (false: the sheet held to the tubes).
         public var releases = true
         public init() {}
@@ -111,11 +113,12 @@ public enum AdblastCladdingTest {
         model.elementKind = .shell
         model.shellLayers = 4
         let (span, width): (Float, Float) = (2.46, 3.263)
-        let sheet = ProfiledSheet(
+        var sheet = ProfiledSheet(
             profile: profile,
             region: Box(min: offset + SIMD3(0, 0, 0.99), max: offset + SIMD3(span, width, 1.01)), span: 0,
             steel: steel, crestSide: 1, buckles: settings.buckles,
             postBuckling: settings.postBuckling)
+        sheet.foldMemory = settings.foldMemory
         sheet.add(to: &model)
         // The screws, one in each trough: 1 / 0.273 a metre.
         let perMetre: Float = 1 / profile.pitch

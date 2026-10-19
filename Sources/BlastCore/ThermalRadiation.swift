@@ -126,7 +126,7 @@ public struct ThermalExposure: Sendable {
         guard spec.fireball == .volume, march != nil, frame.volume > 0, let cells = frame.cells else {
             return nil
         }
-        return ThermalMedium(cells, spec: spec)
+        return ThermalMedium(cells, spheres: frame.spheres, spec: spec)
     }
 
     /// The irradiance at every receiver from `frame`'s fireball: every receiver's rays toward it,

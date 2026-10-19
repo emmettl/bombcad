@@ -72,7 +72,7 @@ enum ConsumerInput: Sendable, Equatable {
     var byteCount: Int {
         switch self {
         case .air(let slice): 2 * slice.values.count
-        case .fireball(let frame): frame.cells.map { $0.fills.count * ($0.products == nil ? 3 : 5) } ?? 0
+        case .fireball(let frame): frame.cells.map { $0.fills.count * $0.bytesPerVoxel } ?? 0
         case .ground(let slice): 4 * slice.values.count
         }
     }

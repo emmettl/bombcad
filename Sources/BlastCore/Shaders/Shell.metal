@@ -1745,7 +1745,9 @@ static inline float beamConcrete(float axial, float2 shear, float instantaneous,
 // One steel fibre of a beam: uniaxial von Mises with linear hardening; shear stays elastic. A
 // fibre on a flange that buckles locally (`buckles`), past its onset in compression, carries no
 // more than a stress falling from the yield to the residual share of it (`LocalBuckling`), its
-// largest compression kept in `crack.y`.
+// largest compression kept in `crack.y`. With a fold (`bucklingFold`), what it shortens past the
+// cap is kept in `residual.x` as the buckle's fold, which tension pulls straight at the strength
+// of its plastic hinges, σ_y t / 2w for a fold of amplitude w, before the fibre yields.
 static inline float beamVonMises(float axial, float2 shear, bool buckles, float dt,
                                  thread ShellLayer &state, constant MaterialParameters &m,
                                  constant ShellUniforms &u, thread float2 &shearStress, thread LayerOutcome &outcome) {
@@ -1753,6 +1755,15 @@ static inline float beamVonMises(float axial, float2 shear, bool buckles, float 
     float stress = young * (axial - state.crack.x);
     float flow = steelFlowFactor(state, m);
     float yield = flow * (m.yieldStress + m.hardening * state.crush.y);
+    if (buckles && m.bucklingFold > 0.0f && state.residual.x > 0.0f && stress > 0.0f) {
+        float fold = min(yield, flow * m.yieldStress * m.bucklingFold * rsqrt(state.residual.x));
+        if (stress > fold) {
+            float straightened = min((stress - fold) / young, state.residual.x);
+            state.crack.x += straightened;
+            state.residual.x -= straightened;
+            stress = young * (axial - state.crack.x);
+        }
+    }
     float increment = 0.0f;
     if (fabs(stress) > yield) {
         increment = (fabs(stress) - yield) / (young + flow * m.hardening);
@@ -1767,7 +1778,11 @@ static inline float beamVonMises(float axial, float2 shear, bool buckles, float 
         if (past > 0.0f) {
             float cap = m.yieldStress * max(m.bucklingResidual, 1.0f - (1.0f - m.bucklingResidual) * past);
             if (stress < -cap) {
-                state.crack.x = axial + cap / young;
+                float clipped = axial + cap / young;
+                if (m.bucklingFold > 0.0f) {
+                    state.residual.x += state.crack.x - clipped;
+                }
+                state.crack.x = clipped;
                 stress = -cap;
             }
         }
