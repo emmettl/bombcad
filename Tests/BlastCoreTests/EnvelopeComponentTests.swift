@@ -571,14 +571,14 @@ struct EnvelopeComponentHistoryTests {
         let free = try run(nil)
         let capped = try run(2)
         // Blocks are 4 coarse cells (1 m) high at the first level and 4 of its cells (0.5 m) at the
-        // second. Capped at 2 m, none from 4 m up: the sphere left free about the charge reaches
-        // 2.9 m, and a jump just below it refines the block round it, which may reach the block over
-        // it. Some there without.
+        // second. Capped at 2 m, the second level holds none from 3 m up, just over the 2.9 m the
+        // sphere left free about the charge reaches; the first none from 4 m up, as a jump just below
+        // 3 m refines the block round it, which may reach the block over it. Some there without.
         #expect(
-            free.rows[0].dropFirst(4).reduce(0, +) > 0 && free.rows[1].dropFirst(8).reduce(0, +) > 0,
+            free.rows[0].dropFirst(4).reduce(0, +) > 0 && free.rows[1].dropFirst(6).reduce(0, +) > 0,
             "\(free.rows) \(capped.rows)")
         #expect(capped.rows[0].dropFirst(4).allSatisfy { $0 == 0 }, "\(capped.rows[0])")
-        #expect(capped.rows[1].dropFirst(8).allSatisfy { $0 == 0 }, "\(capped.rows[1])")
+        #expect(capped.rows[1].dropFirst(6).allSatisfy { $0 == 0 }, "\(capped.rows[1])")
         #expect(capped.rows[0].prefix(2).reduce(0, +) > 0 && capped.rows[1].prefix(4).reduce(0, +) > 0)
         // A ceiling above the domain is no ceiling: the same air, bit for bit.
         let high = try run(100)

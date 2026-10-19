@@ -307,6 +307,8 @@ enum HybridBench {
         var farField: HybridFarField
         var nearComponents: Int
         var farComponents: Int
+        /// Of those, the ones beyond the distances the surrogate was fitted over: extrapolated.
+        var outsideFit: Int?
         var farFieldS: Double
         var damageS: Double
         var nearWallS: Double?
@@ -388,6 +390,7 @@ enum HybridBench {
         var nearCount = 0
         var farCount = 0
         var unmatched = 0
+        var outsideFit = 0
         for n in estimate.components.indices {
             let component = estimate.components[n]
             if let j = nearOfComponent[n] {
@@ -403,6 +406,7 @@ enum HybridBench {
                 // Beyond the hand-over, and any strip inside it the near run does not hold, on the far
                 // field (never the surrogate unmatched).
                 if distances[n] < handover { unmatched += 1 }
+                if estimate.predictions[n].outsideFit { outsideFit += 1 }
                 estimate.loads[n] = FacadeLoadSurrogate.load(
                     component, far.apply(estimate.predictions[n], distanceM: distances[n]),
                     binS: estimate.loads[n].binS)
@@ -444,6 +448,9 @@ enum HybridBench {
                 handover,
                 far.peak,
                 far.impulse, far.peakSlope, far.impulseSlope, farFieldS, damageS))
+        if outsideFit > 0 {
+            print("  \(outsideFit) of them beyond the distances the surrogate was fitted over: extrapolated.")
+        }
         print("Sides with some glass broken | GEER W1+; blown out | GEER W3:")
         for b in bands {
             print(
@@ -456,7 +463,8 @@ enum HybridBench {
             let result = District(
                 method: HybridFarField.method, standing: HybridFarField.standing, massKg: mass,
                 radiusM: radius,
-                farField: far, nearComponents: nearCount, farComponents: farCount, farFieldS: farFieldS,
+                farField: far, nearComponents: nearCount, farComponents: farCount, outsideFit: outsideFit,
+                farFieldS: farFieldS,
                 damageS: damageS, nearWallS: nearReport?.wallS, bands: bands, buildings: buildings)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]

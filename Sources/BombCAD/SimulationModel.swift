@@ -761,11 +761,15 @@ final class SimulationModel {
                 case .success(let judged):
                     self.farFieldDamage = judged.buildings
                     self.farField = judged.farField
-                    self.farFieldStatus = String(
-                        format:
-                            "Far field estimate: %d buildings beyond %.0f m in %.1f s, matched to the run's %d façade strips (peak ×%.2f, impulse ×%.2f at the hand-over).",
-                        judged.buildings.count, Double(set.handoverM), judged.seconds, judged.nearStrips,
-                        judged.farField.peak, judged.farField.impulse)
+                    self.farFieldStatus =
+                        String(
+                            format:
+                                "Far field estimate: %d buildings beyond %.0f m in %.1f s, matched to the run's %d façade strips (peak ×%.2f, impulse ×%.2f at the hand-over).",
+                            judged.buildings.count, Double(set.handoverM), judged.seconds, judged.nearStrips,
+                            judged.farField.peak, judged.farField.impulse)
+                        + (judged.outsideFit > 0
+                            ? " \(judged.outsideFit) components lie beyond the distances the surrogate was fitted over: their loads are extrapolated."
+                            : "")
                 case .failure(let error):
                     self.farFieldDamage = []
                     self.farFieldStatus = "The far field could not be judged: \(error)"

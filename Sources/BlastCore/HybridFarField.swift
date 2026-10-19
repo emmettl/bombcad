@@ -171,6 +171,9 @@ extension HybridFarField {
         public var buildings: [EnvelopeBuildingDamage]
         /// The near run's strips the match was taken from.
         public var nearStrips: Int
+        /// Components judged on the far field beyond the distances the surrogate was fitted over
+        /// (`FacadeLoadSurrogate.Prediction.outsideFit`): extrapolated.
+        public var outsideFit: Int
         public var seconds: Double
     }
 
@@ -229,10 +232,12 @@ extension HybridFarField {
             }
         }
         var loads: [EnvelopeComponentLoad] = []
+        var outsideFit = 0
         for (n, component) in estimate.components.enumerated() where judged.contains(component.owner) {
             if distances[n] < handover, let history = recorded[component.id] {
                 loads.append(EnvelopeComponentLoad(history))
             } else {
+                if estimate.predictions[n].outsideFit { outsideFit += 1 }
                 loads.append(
                     FacadeLoadSurrogate.load(
                         component, farField.apply(estimate.predictions[n], distanceM: distances[n]),
@@ -244,7 +249,7 @@ extension HybridFarField {
             estimate, constructions: { combined.envelopeConstruction(for: $0) })
         let took = start.duration(to: .now)
         return Judgement(
-            farField: farField, buildings: buildings, nearStrips: samples.count,
+            farField: farField, buildings: buildings, nearStrips: samples.count, outsideFit: outsideFit,
             seconds: Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18)
     }
 }
