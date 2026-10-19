@@ -48,7 +48,8 @@ public struct Anchorage: Sendable, Hashable, Codable {
     /// Coefficient of friction, on the joint and on the ground once it has separated.
     public var friction: Float
     /// Friction that falls as the joint is pressed harder, as an elastomer's does:
-    /// `friction` × (pressure / `frictionReferencePressure`)^(−`frictionExponent`). Nil: constant.
+    /// `friction` × (pressure / `frictionReferencePressure`)^(−`frictionExponent`), the exponent
+    /// below 1 so that the friction force still grows with the pressure. Nil: constant.
     public var frictionExponent: Float?
     /// The pressure, in Pa, at which the friction is `friction` (with `frictionExponent`).
     public var frictionReferencePressure: Float?
@@ -352,6 +353,12 @@ extension Anchorage {
         ]
         guard frictionReferencePressure.map({ $0.isFinite && $0 > 0 }) ?? true else {
             throw ImportedMesh.ImportError.invalid("A joint's friction reference pressure must be positive.")
+        }
+        // The friction's limit, μ p (p / p_ref)^(−n), grows from nothing with the pressure only for
+        // n below 1: at 1 it jumps to μ p_ref at the least pressure, past 1 it grows without bound
+        // as the pressure falls.
+        guard (frictionExponent ?? 0) < 1 else {
+            throw ImportedMesh.ImportError.invalid("A joint's friction exponent must be below 1.")
         }
         guard values.allSatisfy({ $0.isFinite && $0 >= 0 }),
             tensionOpening >= tensionPlateau,
