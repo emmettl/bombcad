@@ -1,4 +1,4 @@
-.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected release-check release
+.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected test-impact release-check release
 
 CONFIGURATION ?= release
 
@@ -101,9 +101,15 @@ check-anywhere:
 	python3 Scripts/remote.py anywhere $(TARGET)
 
 # The pre-push check sized to the change (Scripts/check-affected.py): documents and scripts get
-# lint and ci-test, other code its own tests too, and the solver's core the full check-anywhere.
+# lint and ci-test; code the suites that executed it, by the test-impact map; the package's pins,
+# and the core without a map, the full check-anywhere.
 check-affected:
 	python3 Scripts/check-affected.py $(ARGS)
+
+# The test-impact map at HEAD (Scripts/test-impact.py): a coverage build, then each suite alone,
+# the suites under gpu-slot. Nightly on the mini; about an hour.
+test-impact:
+	python3 Scripts/test-impact.py build $(ARGS)
 
 release-check:
 	python3 Scripts/release.py check
