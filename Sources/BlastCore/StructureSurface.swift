@@ -188,7 +188,17 @@ extension ShellSolver {
                 // The slab between its two faces, half its thickness either side of the
                 // midsurface along the rotated directors.
                 var normal = SIMD3<Float>.zero
-                normal[Int(element.axis)] = 1
+                if element.axis == 3 {
+                    // At a pitch: square to its first and second edges, from its reference corners.
+                    func rest(_ node: UInt32) -> SIMD3<Float> {
+                        let r = reference[Int(node)]
+                        return SIMD3(r.x, r.y, r.z)
+                    }
+                    normal = simd_normalize(
+                        simd_cross(rest(element.n1) - rest(element.n0), rest(element.n3) - rest(element.n0)))
+                } else {
+                    normal[Int(element.axis)] = 1
+                }
                 let corners = (0..<8).map { corner -> SIMD3<Float> in
                     let id = ids[corner & 3]
                     let director = nodes[Int(id)].rotation.act(normal)

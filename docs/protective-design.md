@@ -8,7 +8,8 @@ barriers and openings. This is [Horizons](roadmap.md#horizons) item 6. This page
 - how BombCAD would do it, which of its parts each step would call, and what is missing from them;
 - what a prototype on a toy model shows.
 
-The prototype is in `Scripts/protective/`. Nothing here is in the app or in `scenebench`. The
+The prototype is in `Scripts/protective/`. Its search is built in BombCAD as `scenebench protect`
+([below](#in-bombcad-scenebench-protect)), headless; nothing is in the app yet. The
 prototype's numbers are illustrative: its loads, shielding and costs are assumptions, not
 BombCAD's runs or anyone's prices.
 
@@ -456,6 +457,83 @@ The tests check:
 - that the exact search's best plan meets the target;
 - that greedy is never cheaper than exact and annealing matches it.
 
+## In BombCAD: `scenebench protect`
+
+The search is built in Swift (`ProtectionSearch`), with BombCAD's own forward model in place of
+the prototype's toy (`ProtectionModel`). On the prototype's three problems, given the prototype's
+own chances (`Scripts/protective/export.py` writes them to `Fixtures/ProtectiveDesign`), it finds the
+prototype's plans exactly: the best of the exact search, its ranked list, greedy's and the district
+as built; its annealing walks its own random path and reaches the same optimum
+(`ProtectionSearchTests`).
+
+```bash
+scenebench protect <district-scene's inputs> --inputs protect.json [--samples posterior.csv] [--confirm loads-folder] --out plans.json
+```
+
+The inputs file gives the threat, the target and the changes allowed, with the user's costs (none
+are shipped):
+
+```json
+{
+  "threats": [{"mass": 500, "x": 700, "y": 700, "weight": 1}],
+  "target": {"worseThan": "3b", "chance": 0.1, "buildings": {"Store": {"worseThan": "4"}}},
+  "glazing": [
+    {"name": "film", "kind": "filmed", "costPerM2": 2.5},
+    {"name": "toughened", "kind": "toughened", "costPerM2": 4},
+    {"name": "laminated", "kind": "laminated", "costPerM2": 5},
+    {"name": "infill", "kind": "infill", "costPerM2": 6}
+  ],
+  "standOffs": [{"name": "close the crossing", "cost": 80, "moves": [{"threat": 0, "x": 700, "y": 640}]}],
+  "draws": 32
+}
+```
+
+- **Sides and chances.** Each map building side (those with a glazing mix) is one side of the
+  search. Its chance of failing is the chance that some pane is thrown worse than its target
+  condition, from the façade load surrogate's loads under each threat (moved by the stand-offs in
+  place), drawn over the surrogate's scatter and each building's glass strength
+  ([glass by chance](glass-probability.md)), the threats weighted. `--samples` takes the threat
+  from `infer-charge --samples` instead, places about the scene's charge.
+- **Options.** The side as built (its map glazing mix, annealed), or any glazing allowed:
+  security film (7 mil, wet glazed, unless `film` says: the [film](building-envelopes.md#security-film)
+  holds the cracked pane until it tears or its anchorage lets go), toughened (the panes' strength
+  times E1300's factor of 4), laminated (each pane `LaminatedGlass.facade` unless `laminate` says:
+  held cracked, or torn and thrown, by its interlayer), or infill (no glass). Each is a glass type
+  on the side's `GlazingMix`, so a plan's glazing is an `EnvelopeConstruction` (a mix per side,
+  `sideGlazing`) that `EnvelopeDamageAssessment` judges as it judges any building; a map façade's
+  own mix, with no glass type, is judged as before, bit for bit. Walls are not searched: the
+  surrogate's walls are not to be relied on.
+- **Search.** Exact over the stand-offs (to 12), with greedy and annealing beside it; the same
+  draws for every option and stand-off, so that plans are compared on the same luck. On the sparse
+  made-up district (51 buildings, 204 glazed sides, 4 options, 2 stand-offs, 32 draws) every chance
+  the exact search needs takes 26 s on the Studio, and confirming two plans on a run another 20 s.
+- **Output.** The ranked plans as JSON and a table: cost, whether the target is met, the sides
+  expected to fail, the worst side's chance, the sides passing narrowly (within a third of the
+  target) and the standing: `illustrative` (the user's costs and threat, the surrogate's loads, the
+  glass's chances a run's spread), `approximation` once a run confirms the plan.
+- **Confirmation** (`--confirm`). The plans that leave the threat where a run of the scene had its
+  charge are judged again on that run's saved façade histories (`district-compare --save-loads`):
+  the plan's glazing written as constructions and judged by `EnvelopeDamageAssessment` itself, each
+  building's glass strength drawn as the chances draw it and the run's loads as they were. On the
+  sparse district at 20 t (rerun after 983409a8, so its close-in peaks are no longer capped at
+  65.5 kPa), the cheapest plan without a stand-off meets the target on the surrogate's loads (3.1
+  sides expected to fail, the worst 10%) but not on the run's: 1.3 expected, and six sides over 10%,
+  the worst at 15%. Three of the four worst passed narrowly on the surrogate's loads (4–7%); the
+  fourth, at 0.3% there, is a side the surrogate misjudges. On the capped loads the worst side was
+  at 18%, the rest as now.
+
+What it still lacks:
+
+- **Barriers** (roadmap #63): a wall the surrogate's raster sees, and terms for thin walls, which
+  the surrogate was not fitted on. The inputs file's `barriers` is refused until then.
+- **Stand-off lines from the scene:** today each stand-off is given as moves of the threats it keeps
+  back; #63's lines will give the stopping place. The app's sheet searches glazing only until then.
+- **Wall retrofits and close-in loads** (the surrogate's terms are held below Z = 4.6).
+
+In the app, **Simulation ▸ Protective Design…** runs the same search on the scene's charges and
+glazing changes, colours each side by the chosen plan's residual chance, and writes a plan's
+glazing into the project's constructions ([using the app](using-the-app.md#protective-design)).
+
 ## Open questions
 
 - **Shielding.**
@@ -505,7 +583,9 @@ The tests check:
   - Kingery–Bulmash outside its fits for the closest sides (counted in each plan's standing).
 
   Its plans illustrate the method, not any real building.
-- The design has not been built in Swift, and nothing on this page ran in BombCAD.
+- Only the search over glazing (film among it) and stand-offs, the glass's chances and their
+  confirmation on a run are built in BombCAD (`scenebench protect`, and the app's sheet for
+  glazing); walls and barriers are not.
 
 ## Sources
 

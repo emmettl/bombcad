@@ -29,6 +29,10 @@ public struct DXFDrawing: Sendable {
     public struct Block: Sendable {
         public var base: SIMD2<Double>
         public var entities: [Entity]
+        public init(base: SIMD2<Double>, entities: [Entity]) {
+            self.base = base
+            self.entities = entities
+        }
     }
 
     /// The header's $INSUNITS, if it has one: 1 inch, 2 foot, 4 millimetre, 5 centimetre, 6 metre…
@@ -44,10 +48,25 @@ public struct DXFDrawing: Sendable {
         public var errorDescription: String? { message }
     }
 
-    /// Metres per drawing unit for the header's $INSUNITS, or nil where it gives none (0, or a
-    /// unit a plan is not drawn in).
+    /// Metres per drawing unit given outright, as an SVG's size and view box give it; nil to go by
+    /// `insertionUnits`.
+    public var unitMetres: Double?
+
+    /// A drawing of these layers, entities and blocks, `unitMetres` metres to its unit if known.
+    public init(
+        layers: [String], entities: [Entity], blocks: [String: Block] = [:], unitMetres: Double? = nil
+    ) {
+        self.layers = layers
+        self.entities = entities
+        self.blocks = blocks
+        self.unitMetres = unitMetres
+    }
+
+    /// Metres per drawing unit for the header's $INSUNITS (or as given, `unitMetres`), or nil where
+    /// it gives none (0, or a unit a plan is not drawn in).
     public var metresPerUnit: Double? {
-        switch insertionUnits {
+        if let unitMetres { return unitMetres }
+        return switch insertionUnits {
         case 1: 0.0254
         case 2: 0.3048
         case 4: 0.001

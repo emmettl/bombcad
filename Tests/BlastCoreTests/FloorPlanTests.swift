@@ -209,12 +209,12 @@ struct FloorPlanTests {
         // Partitions 124 mm, as in the IFC.
         #expect(ground.walls.filter { abs($0.thickness - 0.124) < 0.002 }.count >= 5)
         // First floor: the outer walls whole; a gap in an inside wall (the landing) is a doorway,
-        // not a window; the dormers' angled lines are left out and said so.
+        // not a window; the corners' mitre seams are joints, not walls.
         let first = try Self.cutPlan("duplex-level-2.dxf")
         #expect(Self.outerWalls(first, thickness: 0.417).count == 4, "\(first.walls)")
         #expect(first.openings.filter { $0.layer == nil }.allSatisfy { $0.kind == .door })
         #expect(first.openings.filter { $0.kind == .window }.count >= 10)
-        #expect(first.angledLines > 0 && first.notes.contains { $0.contains("not square") })
+        #expect(first.angledLines == 0 && first.angled.isEmpty)
         // The small house: three walls of 200 mm; its fourth, 24 mm, is thinner than any wall.
         let small = try Self.cutPlan("small-house.dxf")
         #expect(small.walls.count == 3 && small.walls.allSatisfy { abs($0.thickness - 0.2) < 0.002 })
@@ -224,6 +224,155 @@ struct FloorPlanTests {
                 elements: FloorPlan.buildingElements(plan, options: FloorPlan.Options()))
             #expect(structure.members.contains { $0.role == .shell })
             #expect(structure.members.contains { $0.role == .pane })
+        }
+    }
+
+    static func houseOptions(_ drawing: DXFDrawing) throws -> FloorPlan.Options {
+        var options = FloorPlan.Options()
+        options.metresPerUnit = try #require(drawing.metresPerUnit)
+        options.roles = [
+            "WALL-EXT": .wall(.cavityBrickBlock), "WALL-INT": .wall(.block100), "DOOR": .door,
+            "WINDOW-GF": .window, "WINDOW-FF": .window,
+        ]
+        options.layerStoreys = ["DOOR": 0, "WINDOW-GF": 0, "WINDOW-FF": 1]
+        return options
+    }
+
+    @Test("The house drawn turned by 17° is turned square to its walls and read as drawn square")
+    func turnedPlan() throws {
+        let drawing = try Self.sample("house-plan-turned.dxf")
+        let plan = FloorPlan.analyse(drawing, options: try Self.houseOptions(drawing))
+        #expect(abs(plan.turn - 17) < 0.2, "turned \(plan.turn)°")
+        #expect(plan.angled.isEmpty && plan.angledLines == 0)
+        #expect(plan.walls.count == 5, "\(plan.walls)")
+        #expect(plan.walls.filter { abs($0.thickness - 0.28) < 1e-6 }.count == 4)
+        // The same walls as drawn square, to the millimetre: 8 by 6 m over their faces.
+        let size = plan.bounds.max - plan.bounds.min
+        #expect(abs(size.x - 8) < 0.01 && abs(size.y - 6) < 0.01, "\(size)")
+        #expect(plan.openings.filter { $0.kind == .door }.count == 1)
+        #expect(plan.openings.filter { $0.kind == .window && $0.storey == 0 }.count == 2)
+        #expect(plan.openings.filter { $0.kind == .window && $0.storey == 1 }.count == 3)
+    }
+
+    @Test("A curved bay drawn by a bulge is raised as walls turned in plan, chord by chord, tied in")
+    func bay() throws {
+        let drawing = try Self.sample("house-plan-bay.dxf")
+        let options = try Self.houseOptions(drawing)
+        let plan = FloorPlan.analyse(drawing, options: options)
+        // A bulge of 0.4 sweeps 87°: six chords of under 15°, each a wall 280 mm thick.
+        #expect(plan.angled.count == 6, "\(plan.angled)")
+        #expect(plan.angled.allSatisfy { abs($0.thickness - 0.28) < 1e-6 })
+        // Chord by chord they share their corners, and the bay's ends meet the front wall's midline.
+        let ends = plan.angled.flatMap { [$0.a, $0.b] }
+        let shared = ends.filter { p in ends.filter { simd_distance($0, p) < 1e-6 }.count >= 2 }
+        #expect(shared.count == 10, "\(ends)")
+        let front = try #require(plan.walls.first { $0.axis == 0 && abs($0.offset - 0.14) < 1e-6 })
+        #expect(ends.filter { abs($0.y - front.offset) < 1e-6 }.count == 2)
+        // Its window, on each floor, in a chord; left open.
+        #expect(plan.angledOpenings.count == 2 && plan.angledOpenings.allSatisfy { $0.kind == .window })
+        #expect(plan.notes.contains { $0.contains("left open") })
+        // As a structure: each chord's stretch a shell in its own plane, upright, tied to the walls
+        // and slabs it meets.
+        var structural = IFCStructure.Options()
+        structural.inclinedPlates = true
+        let structure = try IFCStructure(
+            elements: FloorPlan.buildingElements(plan, options: options), options: structural)
+        let turned = structure.members.filter { $0.notes.contains { $0.contains("Turned in plan") } }
+        #expect(turned.count >= 12, "\(turned.count) of \(structure.members.count)")
+        let model = structure.model
+        let frames = model.solids.indices.filter { model.inclination(of: $0)?.frame != nil }
+        #expect(frames.count == turned.count)
+        for index in frames {
+            let frame = try #require(model.inclination(of: index)?.frame)
+            #expect(abs(frame.up.z - 1) < 1e-6 && abs(frame.along.z) < 1e-6)
+        }
+        let mesh = try ShellMesh(model: model)
+        // Every chord's elements upright (axis 3), and each chord tied to what it meets.
+        let chordElements = mesh.elements.filter { frames.contains($0.solid) }
+        #expect(!chordElements.isEmpty && chordElements.allSatisfy { $0.axis == 3 })
+        // A wall turned in plan with an opening through it (two stretches, one element) is not
+        // taken as whole.
+        let left = try FloorPlan.uprightMesh(
+            from: SIMD2(0, 0), to: SIMD2(0.8, 0.6), thickness: 0.2, z0: 0, z1: 2.5)
+        let right = try FloorPlan.uprightMesh(
+            from: SIMD2(1.6, 1.2), to: SIMD2(2.4, 1.8), thickness: 0.2, z0: 0, z1: 2.5)
+        #expect(IFCStructure.uprightPlane(left.triangles) != nil)
+        #expect(IFCStructure.uprightPlane(left.triangles + right.triangles) == nil)
+        let tied = Set(mesh.contactTies.flatMap { [$0.first, $0.second] })
+        #expect(frames.filter { tied.contains($0) }.count >= frames.count / 2, "\(mesh.contactTies)")
+    }
+
+    @Test("The Duplex's first floor: its lines at an angle are its corners' mitre seams, taken as joints")
+    func duplexMitres() throws {
+        let plan = try Self.cutPlan("duplex-level-2.dxf")
+        // Sixteen short lines at 45° in the four corners, from each one's outer point to its inner.
+        #expect(plan.angled.isEmpty && plan.angledLines == 0, "\(plan.notes)")
+        #expect(plan.notes.contains { $0.contains("16 short lines at an angle") }, "\(plan.notes)")
+        #expect(Self.outerWalls(plan, thickness: 0.417).count == 4)
+    }
+
+    static func svgSample(_ name: String) throws -> DXFDrawing {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Samples/Plans/\(name)")
+        return try DXFDrawing(svg: Data(contentsOf: url))
+    }
+
+    @Test("SVG: paths, arcs, symbols placed by use, transforms and the page's units, read as the DXF is")
+    func svgReader() throws {
+        let text = """
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                 xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="200mm" height="100mm"
+                 viewBox="0 0 400 200">
+              <defs><symbol id="w"><line x1="0" y1="0" x2="1" y2="0"/></symbol></defs>
+              <g inkscape:groupmode="layer" inkscape:label="Walls">
+                <g id="g12" transform="translate(10 20)">
+                  <path d="M0,0 h100 v-50 a25 25 0 0 1 -50 0 Z"/>
+                  <rect x="0" y="10" width="40" height="5"/>
+                </g>
+              </g>
+              <g id="Windows"><use xlink:href="#w" transform="translate(100 100) rotate(90) scale(30 1)"/></g>
+            </svg>
+            """
+        let drawing = try DXFDrawing(svg: Data(text.utf8))
+        // 200 mm over 400 units: half a millimetre each.
+        #expect(abs((drawing.metresPerUnit ?? 0) - 0.0005) < 1e-12)
+        #expect(Set(drawing.layers) == ["Walls", "Windows"], "\(drawing.layers)")
+        let segments = drawing.segments()
+        let walls = segments.filter { $0.layer == "Walls" }
+        // y turned up: the path's first point (10, 20) is (10, -20).
+        #expect(walls.contains { simd_distance($0.a, SIMD2(10, -20)) < 1e-9 })
+        // The half circle of radius 25 between (110, -30) and (60, -30) in pieces of at most 15°:
+        // its top 25 above them.
+        #expect(walls.flatMap { [$0.a, $0.b] }.contains { abs($0.y - 5) < 1e-9 && abs($0.x - 85) < 1e-9 })
+        #expect(walls.count == 3 + 12 + 4, "\(walls.count)")
+        // The window, a symbol placed, one insert of its own, turned a quarter and 30 long.
+        let window = segments.filter { $0.layer == "Windows" }
+        #expect(window.count == 1 && window[0].insert != nil)
+        #expect(
+            simd_distance(window[0].a, SIMD2(100, -100)) < 1e-9
+                && simd_distance(window[0].b, SIMD2(100, -130)) < 1e-9)
+        #expect(throws: DXFDrawing.ReadError.self) { try DXFDrawing(svg: Data("not xml".utf8)) }
+    }
+
+    @Test("The example house as SVG at 1:100 reads as its DXF does, square and with its bay")
+    func svgHouse() throws {
+        for (name, bay) in [("house-plan.svg", false), ("house-plan-bay.svg", true)] {
+            let drawing = try Self.svgSample(name)
+            var options = try Self.houseOptions(Self.sample(bay ? "house-plan-bay.dxf" : "house-plan.dxf"))
+            options.metresPerUnit = try #require(drawing.metresPerUnit)
+            #expect(abs(options.metresPerUnit - 0.001) < 1e-12)
+            options.drawingScale = 100
+            let plan = FloorPlan.analyse(drawing, options: options)
+            let dxf = FloorPlan.analyse(
+                try Self.sample(bay ? "house-plan-bay.dxf" : "house-plan.dxf"),
+                options: try Self.houseOptions(Self.sample(bay ? "house-plan-bay.dxf" : "house-plan.dxf")))
+            #expect(plan.walls.count == dxf.walls.count && plan.angled.count == dxf.angled.count, "\(name)")
+            let size = plan.bounds.max - plan.bounds.min
+            let dxfSize = dxf.bounds.max - dxf.bounds.min
+            #expect(simd_distance(size, dxfSize) < 0.01, "\(name): \(size) against \(dxfSize)")
+            #expect(
+                plan.openings.count == dxf.openings.count
+                    && plan.angledOpenings.count == dxf.angledOpenings.count)
         }
     }
 }

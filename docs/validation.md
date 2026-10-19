@@ -3020,6 +3020,33 @@ leaf's thickness, a tenth of a second and three tenths after the burst. With the
 The model's percentages are the external brickwork destroyed. By 0.3 s the tiles had moved on
 half of each roof at 23 m and on more of it nearer.
 
+**On the pitched roof** (19 October; the row's default since then: 40° slopes on purlins, gables
+to the ridge, tiles hung on their nibs; [the terraced houses](shell-model.md#the-terraced-houses)),
+the same runs:
+
+| Distance (m) | Surveyed median | 3 mm, 0.1 s | 3 mm, 0.3 s | 50 mm, 0.1 s | 50 mm, 0.3 s |
+|---|---|---|---|---|---|
+| 4.7 | A | A (87%) | A (98%) | A (83%) | A (96%) |
+| 7.8 | B | B (47%) | A (89%) | B (36%) | B (72%) |
+| 10.8 | B, near C | B (38%) | B (49%) | Cb (25%) | B (40%) |
+| 13.9 | C | B (27%) | B (48%) | Cb (13%) | B (28%) |
+| 16.9 | below C | Cb (5%) | B (46%) | Ca (2%) | B (28%) |
+| 20.0 | below C | Ca (1%) | B (35%) | Ca (0%) | Cb (24%) |
+| 23.0 | below C | Ca (0.4%) | Cb (16%) | D | Cb (13%) |
+
+What the roof moves:
+- **At 0.1 s:** the same category or one worse, from 13.9 m out. With bricks kept to 50 mm the
+  houses at 16.9 and 20 m go from D to Ca: 4–10% of their rafters come off their seats, and any
+  joist or rafter off its seat is Ca by the grading's rule. 13.9 m with the default brick goes
+  from Cb (14%) to B (27%).
+- **By 0.3 s:** more brickwork down from 20 m out: 35% against 27% at 20 m and 16% against 5% at
+  23 m with the default brick, 24% against 8% and 13% against 2% with 50 mm. The gables now run up
+  to the ridge, more brickwork that falls from the top. The roof bears on the front wall's top,
+  which the flat roof did not. A fifth to two fifths of the rafters are off their seats at
+  13.9–23 m, more nearer.
+- **So the judgement stands, a little worse:** right at 0.1 s with bricks kept to 50 mm to 13.9 m
+  and a category severe beyond. The toppling front walls after it remain the gap.
+
 **What it shows:**
 - **The blast's damage, at 0.1 s:** with bricks kept to a 50 mm crack, every house falls in the
   surveyed median's category or the one below, out to 23 m, and within Jarrett's radii out to
@@ -4642,6 +4669,40 @@ With the gas losing what it radiates (the default since 19 October 2026), the 10
 moves by 0.4% or less in every peak, impulse and arrival (`blastbench validate --mass 100
 --radiate`), so its tables stand.
 
+#### Delayed charges (19 October)
+
+A charge fired after the main one is laid down when the run's clock reaches it
+([how](air-blast-model.md#a-finely-resolved-start)). `blastbench delayedcharges`: two 1 kg
+surface bursts 4.6 m apart on rigid ground, the second fired 0, 1, 5 or 20 ms after the first, on
+today's start at 0.2 m cells, against the same scene run without interruption on cells four
+times finer (0.05 m), both charges as the balloon, the second laid at its firing time. Gauges at
+Z 2, 3, 4 and 6 beyond and beside the second, beyond the first and between them, 1.5 m up; the
+peak and arrival of the whole record, and its impulse:
+
+| Delay | The second laid | Second's waves: peak / impulse | First's: peak / impulse | Arrivals |
+|---|---|---|---|---|
+| 0 ms | mapped with the first | 0.66–0.68 / 1.01–1.07 | 0.70–0.74 / 1.07–1.09 | 0.14–0.47 ms early |
+| 1 ms | mapped during the run, at 2.10 ms | 0.65–0.69 / 1.01–1.05 | 0.70–0.74 / 1.08 | 0.12–0.51 ms early |
+| 5 ms | the balloon: the first's blast was passing (50 kPa, 111 m/s) | 0.64–0.74 / 1.05–1.14 | 0.70–0.74 / 1.02–1.06 | within 0.36 ms |
+| 20 ms | the balloon: still not still (4.6 kPa, 9 m/s) | 0.62–0.68 / 1.00–1.06 | 0.70–0.74 / 1.07–1.08 | within 0.48 ms |
+
+- **The delay adds nothing of its own.** The second charge's waves stand to the finer run as the
+  first's do, at every delay, whether it was mapped with the first, mapped during the run or laid
+  as the balloon; the peaks' shortfall, the same for the undelayed first charge, is 0.2 m cells'
+  for 1 kg (0.2 m/kg^(1/3)), against cells a quarter that size.
+- **Arrivals** of the second's waves come within half a millisecond of the finer run's, early by
+  as much as the mapped first charge's (the balloon of the finer run starts slower close in), and
+  laid as the balloon, from on time close in to 0.48 ms early at Z 6.
+- **Fallback.** Fired into the first's passing blast, or its tail, the second is the balloon, as
+  laying a solution over moving air would erase it; there its impulse reads up to 14% high,
+  against 7% mapped. The stillness asked (2% of ambient, 5 m/s) is strict: 20 ms after the first,
+  its tail still moves the air 9 m/s there.
+- **Not compared with tests.** No open test of delayed charges with gauges in tables was found:
+  Zaker's sequential explosions (IIT Research Institute, 1969, DTIC AD0861625) and the DIPOLE
+  WEST non-simultaneous bursts (BRL Report 1921, 1976, ADA031985) are the candidates, unread
+  while DTIC was down for maintenance on 19 October; Chen et al. (Sensors 2023) fired six charges
+  with 0–30 ms delays into a confined tube, plotted only.
+
 #### The products' own equation of state (18 October)
 
 The mapped start with its products as TNT's detonation products (JWL, the LLNL handbook's set;
@@ -5228,6 +5289,38 @@ itself was shaken, which the model's sand, moving rigidly with the base, is not:
 tests dissipated about ten points of damping more than the slow one, for the same model. All these
 were tried on a quasi-static replica of the bed driven by the slow test's measured rotation
 (within 2% of the model's moment and 4% of its settlement there) before the shaken runs.
+
+**The lurch, and the rest of the energy (19 October 2026).**
+- **The lurch is a ratchet, not the input.** The tests that lurched were shaken evenly both ways:
+  SSG04 DSW 5 at ±0.72 g, yet left leaning −11 mrad; SHW 4 +8 mrad; the embedded footing +12 and
+  +27 mrad. Once leaning, the weight pressed the crushed side harder, and it went on that way.
+- **The model rocks evenly and is left upright.** Its sand under the footing ends level within
+  about 1 mrad. That holds whatever the heave (0, the default 0.7, 1.0), and with the bed's
+  points keeping their memory of the force they bore (`--memory 1`). Memory also stiffens the
+  first event tenfold (0.4 mrad against 3.6).
+- **Spreading the crushing inwards: rejected.** On the replica (now kept as
+  `Scripts/footing-bed/bed_replica.py`), each point's crushing was spread to its neighbours,
+  rounding the surface as the tests' sand was. It raised the energy a cycle towards the test's
+  (the five packets within 0.75–1.45 of measured, at a reach of 1.4 m and half the crushing),
+  and it broke the moment's symmetry. But it settled 3.4 to 4.4 times as much as measured,
+  against 1.45 to 1.6 without it. Taking the spread from the point itself, keeping volume,
+  settled 1.1 to 4.5 times as much (about twice at most settings), and ran away at the strongest.
+- **More heave: only the settlement.** A heave of 0.8 of each contact's crushing (0.565 by
+  default on this sand) brings the slow test's settlement from 1.45–1.6 times measured to
+  0.9–1.4. The energy at the larger packets does not move: at d and e it stays about 15 and 28
+  ×10⁻³ against 24.5 and 61. It would also lower the shaken tests' settlement, already 0.6–1.1
+  times measured. Not adopted.
+- **What caps the energy.** At the larger packets the replica's moment levels off at 0.81 of
+  P L / 2, the rigid footing's capacity (1 − 1/FS); the test's climbs on to 0.87–0.96 as the
+  footing sinks into its own crater. A loop's energy scales with its moment, and no point law
+  on a level bed raises that cap. Raising the capacity with sinkage was tried before (better on
+  the slow test, worse on the shaken ones).
+- **So this stops.** The bed's points cannot interact as a sand does: crushing that rounds the
+  surface, a crater that holds the footing and raises its capacity, and a lean that feeds
+  itself. Each wants the sand under the footing as a continuum of its own. That is beyond a bed
+  of springs. It belongs with a shared soil model, if one comes (it would be shared, not
+  BombCAD's alone). The footings' standing stays as recorded: energy a sixth to two thirds of a
+  shaken event's, no lurch.
 
 ## Footings on a slope
 
@@ -5945,13 +6038,31 @@ The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), aga
   deviation 0.14–0.26); beyond it, 1.09–1.63 times the run's on the median, over the hills and
   near the run's open faces, and far more scattered.
 - **Outside its fitted range** (Z = 4.6–38.7 m/kg^(1/3)) its terms are held at the range's end and
-  the components marked as extrapolated; within Z = 3 of Beirut's charge, among the port's silos and
-  warehouses, it gives eight times the run's peak.
+  the components marked as extrapolated. Within Z = 3 of Beirut's charge it gives eight times the
+  run's peak, but there the saved loads were capped at 65.5 kPa (16-bit floats, fixed in 983409a8),
+  as within about Z = 7 in the runs it was fitted to: the near field awaits a refit.
 - **Time:** 22–28 s over Beirut's 724,512 components on the Studio, against 25–41 minutes for a
   full run on the CI mini (25–28 as the Beirut page timed its runs, 27–41 timed again for the
   hybrid comparison).
 
 Standing: an approximation for the glass across a district, illustrative for walls and roofs.
+
+### The glass chances against Beirut's runs and survey
+
+The [glass chances](glass-probability.md#judged), each building side's chance of some glass
+broken and of being blown out, drawn a hundred times over the yield, each building's glass
+strength and the surrogate's scatter (its spread taken from the made-up districts, not Beirut):
+
+- **Against the runs**, drawn over their three yields: blown out, Brier score 0.020, against 0.108
+  giving every side the mean chance; each tenth of chance within 0.05 of the share of runs. Glass
+  thrown worse than GSA's condition 3b: skill 0.72, each tenth within 0.06. Some glass broken:
+  skill 0.62, the middle chances a little high. All three pass the protective-design report's
+  test, each tenth of chance holding 200 sides or more within 0.1 of the share seen.
+- **Against GEER's survey** of 8,227 façades, drawn over the inferred yield: not calibrated (skill
+  −1.2 and −1.0). They share the glass model's over-breaking: blown out 0.91 at 0.75–1 km where
+  GEER saw 0.27, and no one glass strength brings both classes into line.
+
+Standing: an approximation of a run's spread for the glass; not of the event's.
 
 ### The hybrid far field against Beirut's runs
 

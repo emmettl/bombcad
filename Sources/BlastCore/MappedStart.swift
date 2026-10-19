@@ -70,14 +70,15 @@ extension BlastSolver {
         return (Date().timeIntervalSince(start), blast.density.count, blast.steps, blast.digest)
     }
 
-    /// Lays down each of `mappings` from its own one-dimensional solution, all stopped at one time:
-    /// the earliest at which any of their shocks reaches its radius, the others then still within
-    /// theirs (and no later than `mappedStartLatest`). Each is laid in the cells nearer it than any
-    /// other of the scene's charges at `positions`, which its radius, at most half the way to the
-    /// nearest, keeps it to. Returns the solutions, in the order of `mappings`.
-    func depositMapped(_ mappings: [ChargeMapping], among positions: [SIMD3<Float>], probes: [SIMD3<Float>])
-        -> [SphericalBlast]
-    {
+    /// Each of `mappings` solved in one dimension, and the time on the run's clock the grid starts
+    /// at: the earliest at which any of their shocks, counted from its charge's firing time,
+    /// reaches its radius (no later, from its firing, than `mappedStartLatest`). Those that fire
+    /// before then are solved to then, the others still within their radius; those that fire
+    /// after, to their radius, to be laid down when the grid's clock reaches that
+    /// (`fireDueCharges`). Returns the solutions in the order of `mappings`.
+    func solveMapped(_ mappings: [ChargeMapping], probes: [SIMD3<Float>]) -> (
+        solutions: [SphericalBlast], start: Double
+    ) {
         let unrun = mappings.map { mapping -> SphericalBlast in
             var blast = Self.mappedSolution(
                 mapping.charge, radius: mapping.radius, mirrors: mapping.mirrors,
@@ -91,18 +92,28 @@ extension BlastSolver {
         var solved = zip(unrun, mappings).map { blast, mapping in
             blast.solved(toShockRadius: Double(mapping.radius), until: mappedStartLatest ?? .infinity)
         }
-        let start = solved.map(\.time).min() ?? 0
-        for k in solved.indices where solved[k].time > start {
-            solved[k] = unrun[k].solved(toShockRadius: Double(mappings[k].radius), until: start)
+        let start = zip(solved, mappings).map { $0.time + $1.charge.firingTime }.min() ?? 0
+        for k in solved.indices {
+            let delay = mappings[k].charge.firingTime
+            if delay < start, solved[k].time + delay > start {
+                solved[k] = unrun[k].solved(toShockRadius: Double(mappings[k].radius), until: start - delay)
+            }
         }
-        for (blast, mapping) in zip(solved, mappings) {
+        return (solved, start)
+    }
+
+    /// Lays down each solution of `laid` in the cells nearer its charge than any other of the
+    /// scene's charges at `positions`, which its radius, at most half the way to the nearest,
+    /// keeps it to.
+    func layMapped(_ laid: [(blast: SphericalBlast, mapping: ChargeMapping)], among positions: [SIMD3<Float>])
+    {
+        for (blast, mapping) in laid {
             lay(blast, charge: mapping.charge, radius: mapping.radius, among: positions)
         }
-        return solved
     }
 
     /// Whether `point` is nearer `centre` than any of `positions` other than itself.
-    private func nearest(_ point: SIMD3<Float>, to centre: SIMD3<Float>, among positions: [SIMD3<Float>])
+    func nearest(_ point: SIMD3<Float>, to centre: SIMD3<Float>, among positions: [SIMD3<Float>])
         -> Bool
     {
         let own = simd_distance_squared(point, centre)
@@ -111,8 +122,7 @@ extension BlastSolver {
 
     /// Lays `blast`, the solution for `charge` mapped `radius` m out, onto the cells within reach
     /// of it and nearer it than any other of the charges at `positions`.
-    private func lay(_ blast: SphericalBlast, charge: Charge, radius: Float, among positions: [SIMD3<Float>])
-    {
+    func lay(_ blast: SphericalBlast, charge: Charge, radius: Float, among positions: [SIMD3<Float>]) {
         let grid = self.grid
         let dx = grid.cellSize
         let reach = radius + dx
@@ -159,53 +169,79 @@ extension BlastSolver {
         }
     }
 
-    /// After `restart()`, sets the clock to the time the mapped solutions took, and gives the cells
-    /// and gauges inside each one's reach (and nearer its charge than any other of `positions`) the
-    /// peaks, impulses and histories it recorded.
+    /// After `restart()`, sets the clock to `start`, and gives the cells and gauges inside each laid
+    /// solution's reach (and nearer its charge than any other of `positions`) the peaks, impulses
+    /// and histories it recorded, at their times from its charge's firing.
     func recordMapped(
-        _ blasts: [SphericalBlast], mappings: [ChargeMapping], among positions: [SIMD3<Float>],
-        gauges: [SIMD3<Float>]
+        _ laid: [(blast: SphericalBlast, mapping: ChargeMapping)], among positions: [SIMD3<Float>],
+        gauges: [SIMD3<Float>], start: Double
     ) {
-        startClock(at: blasts.map(\.time).min() ?? 0)
-        mappedStart = zip(blasts, mappings).map { ($0, $1.charge.position, $1.radius, $1.charge, $1.mirrors) }
-        let grid = self.grid
-        let dx = grid.cellSize
-        let shared = positions.count > 1
+        startClock(at: start)
+        mappedStart = laid.map {
+            ($0.blast, $0.mapping.charge.position, $0.mapping.radius, $0.mapping.charge, $0.mapping.mirrors)
+        }
         setFields { peak, impulse in
             defer {
                 // Patches placed already (at the restart) took their coarse cells' impulse then,
                 // before this: they take it again, or their cells would rebuild it from nothing.
                 refinement?.reseedImpulseBase(from: UnsafeBufferPointer(impulse), grid: grid)
             }
-            for (blast, mapping) in zip(blasts, mappings) {
-                let charge = mapping.charge
-                let radius = mapping.radius
-                let low = grid.cell(containing: charge.position - radius)
-                let high = grid.cell(containing: charge.position + radius)
-                for k in low.k...high.k {
-                    for j in low.j...high.j {
-                        for i in low.i...high.i {
-                            let centre = (SIMD3(Float(i), Float(j), Float(k)) + 0.5) * dx
-                            let r = Double(simd_distance(centre, charge.position))
-                            guard r < Double(radius) else { continue }
-                            if shared, !nearest(centre, to: charge.position, among: positions) { continue }
-                            let extremes = blast.extremes(at: r)
-                            peak[grid.index(i, j, k)] = Float(extremes.x)
-                            impulse[grid.index(i, j, k)] = Float(extremes.y)
-                        }
-                    }
+            for (blast, mapping) in laid {
+                record(blast, mapping: mapping, among: positions, peak: peak, impulse: impulse, adding: false)
+            }
+        }
+        for (blast, mapping) in laid {
+            recordGauges(blast, mapping: mapping, among: positions, gauges: gauges)
+        }
+    }
+
+    /// The cells within `mapping`'s radius (and nearer its charge than any other of `positions`)
+    /// given `blast`'s peaks and impulses: in place of theirs, or, `adding`, their peak the larger
+    /// and its impulse added to theirs.
+    func record(
+        _ blast: SphericalBlast, mapping: ChargeMapping, among positions: [SIMD3<Float>],
+        peak: UnsafeMutableBufferPointer<Float>, impulse: UnsafeMutableBufferPointer<Float>, adding: Bool
+    ) {
+        let grid = self.grid
+        let dx = grid.cellSize
+        let shared = positions.count > 1
+        let charge = mapping.charge
+        let radius = mapping.radius
+        let low = grid.cell(containing: charge.position - radius)
+        let high = grid.cell(containing: charge.position + radius)
+        for k in low.k...high.k {
+            for j in low.j...high.j {
+                for i in low.i...high.i {
+                    let centre = (SIMD3(Float(i), Float(j), Float(k)) + 0.5) * dx
+                    let r = Double(simd_distance(centre, charge.position))
+                    guard r < Double(radius) else { continue }
+                    if shared, !nearest(centre, to: charge.position, among: positions) { continue }
+                    let extremes = blast.extremes(at: r)
+                    let index = grid.index(i, j, k)
+                    peak[index] = adding ? max(peak[index], Float(extremes.x)) : Float(extremes.x)
+                    impulse[index] = (adding ? impulse[index] : 0) + Float(extremes.y)
                 }
             }
         }
-        for (blast, mapping) in zip(blasts, mappings) {
-            let charge = mapping.charge
-            for (index, gauge) in gauges.enumerated()
-            where simd_distance(gauge, charge.position) < mapping.radius {
-                if shared, !nearest(gauge, to: charge.position, among: positions) { continue }
-                prependGaugeHistory(
-                    index,
-                    blast.records[index].map { GaugeSample(time: $0.time, pressure: Float($0.pressure)) })
+    }
+
+    /// The gauges within `mapping`'s radius (and nearer its charge than any other of `positions`)
+    /// given `blast`'s records, at their times from its charge's firing, in place of what they
+    /// recorded over the same time.
+    func recordGauges(
+        _ blast: SphericalBlast, mapping: ChargeMapping, among positions: [SIMD3<Float>],
+        gauges: [SIMD3<Float>]
+    ) {
+        let charge = mapping.charge
+        let delay = charge.firingTime
+        for (index, gauge) in gauges.enumerated() where simd_distance(gauge, charge.position) < mapping.radius
+        {
+            if positions.count > 1, !nearest(gauge, to: charge.position, among: positions) { continue }
+            let samples = blast.records[index].map {
+                GaugeSample(time: $0.time + delay, pressure: Float($0.pressure))
             }
+            guard let first = samples.first, let last = samples.last else { continue }
+            spliceGaugeHistory(index, samples, from: first.time, through: last.time)
         }
     }
 }

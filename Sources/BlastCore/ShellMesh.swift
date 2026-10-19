@@ -125,7 +125,24 @@ struct ShellMesh {
         let tolerance: Float = 1e-4
         var plates: [Plate] = []
         var columns: [Column] = []
+        // Solids laid at a pitch are meshed in their own planes below; the walls under one that trims
+        // lose their elements above it.
+        var inclined: [(solid: Int, box: Box, inclination: Inclination)] = []
         for (index, box) in model.solids.enumerated() {
+            guard let inclination = model.inclination(of: index) else { continue }
+            try inclination.validate()
+            inclined.append((index, box, inclination))
+        }
+        let trimmers = inclined.filter(\.inclination.trimsWalls)
+        func trimmed(_ centre: SIMD3<Float>) -> Bool {
+            trimmers.contains { trimmer in
+                guard let height = trimmer.inclination.height(at: SIMD2(centre.x, centre.y), in: trimmer.box)
+                else { return false }
+                return centre.z > height + tolerance
+            }
+        }
+        for (index, box) in model.solids.enumerated() {
+            if model.inclination(of: index) != nil { continue }
             let extent = box.size
             let axis = (0..<3).min { extent[$0] < extent[$1] } ?? 0
             let others = (0..<3).filter { $0 != axis }
@@ -331,6 +348,7 @@ struct ShellMesh {
                     centre[first] = 0.5 * (grid[first][u] + grid[first][u + 1])
                     centre[second] = 0.5 * (grid[second][v] + grid[second][v + 1])
                     if cutting.contains(where: { $0.contains(centre) }) { continue }
+                    if !trimmers.isEmpty && trimmed(centre) { continue }
                     var keys: [SIMD3<Int32>] = []
                     for (du, dv) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
                         var key = SIMD3<Int32>(repeating: 0)
@@ -417,6 +435,47 @@ struct ShellMesh {
                         axis: k,
                         material: material, section: section,
                         length: grid[k][w + 1] - grid[k][w], bars: bars, tieRatio: ties, solid: column.solid))
+            }
+        }
+        // Planes at a pitch, each in its own plane: elements square to it, `elementSize` or less a
+        // side, their corners in order along the low edge and up the slope (axis 3: the kernels
+        // take their axes from their corners). Planes meeting along an edge, as a roof's two slopes
+        // at its ridge, share their nodes there.
+        var inclinedNode: [SIMD3<Int32>: UInt32] = [:]
+        func inclinedNodeAt(_ position: SIMD3<Float>) -> UInt32 {
+            let key = SIMD3<Int32>((position / tolerance).rounded(.toNearestOrEven))
+            if let index = inclinedNode[key] { return index }
+            let index = UInt32(positions.count)
+            inclinedNode[key] = index
+            positions.append(position)
+            return index
+        }
+        for piece in inclined {
+            let plane = piece.inclination.plane(in: piece.box)
+            let counts = SIMD2<Int>(
+                max(1, Int((plane.lengths.x / size).rounded(.up))),
+                max(1, Int((plane.lengths.y / size).rounded(.up))))
+            let step = plane.lengths / SIMD2<Float>(counts)
+            let material = materials.firstIndex(of: model.material(of: piece.solid)) ?? 0
+            let first = elements.count
+            for v in 0..<counts.y {
+                for u in 0..<counts.x {
+                    func corner(_ du: Int, _ dv: Int) -> UInt32 {
+                        inclinedNodeAt(
+                            plane.origin + Float(u + du) * step.x * plane.along + Float(v + dv) * step.y
+                                * plane.up)
+                    }
+                    var element = Element(
+                        nodes: SIMD4(corner(0, 0), corner(1, 0), corner(1, 1), corner(0, 1)), axis: 3,
+                        material: material, thickness: piece.inclination.thickness, size: step, bars: [],
+                        solid: piece.solid)
+                    // Its neighbours in the plane: −first, +first, −second, +second.
+                    let index = first + u + counts.x * v
+                    element.neighbours = SIMD4(
+                        u > 0 ? Int32(index - 1) : -1, u + 1 < counts.x ? Int32(index + 1) : -1,
+                        v > 0 ? Int32(index - counts.x) : -1, v + 1 < counts.y ? Int32(index + counts.x) : -1)
+                    elements.append(element)
+                }
             }
         }
         // Column heads: where a column meets a slab, the slab's nodes within the column's footprint
@@ -734,6 +793,46 @@ struct ShellMesh {
                 }
             }
         }
+        // A wall turned in plan (a plane given outright, `Inclination.frame`) meets the walls at its
+        // ends, the slabs over and under it and the chords beside it, none on its grid: each of its
+        // nodes within another member's reach follows that member's nearest node, whatever joins
+        // them already elsewhere.
+        for i in solids.indices where model.inclination(of: i)?.frame != nil && !sets[i].isEmpty {
+            for j in solids.indices where j != i && !sets[j].isEmpty && touch(solids[i], solids[j]) {
+                // Chords of one curved wall share their edges' nodes already.
+                if model.inclination(of: j)?.frame != nil { continue }
+                let reach = max(0.5 * model.elementSize, 0.5 * solids[j].size.min()) + tolerance
+                var region = solids[j]
+                region.min -= SIMD3(repeating: reach)
+                region.max += SIMD3(repeating: reach)
+                let candidates = nodes[j].filter { node in
+                    let p = positions[Int(node)]
+                    return (0..<3).allSatisfy { p[$0] >= region.min[$0] && p[$0] <= region.max[$0] }
+                }
+                guard !candidates.isEmpty else { continue }
+                var count = 0
+                for slave in nodes[i] where !sets[j].contains(slave) {
+                    let p = positions[Int(slave)]
+                    guard (0..<3).allSatisfy({ p[$0] >= region.min[$0] && p[$0] <= region.max[$0] }),
+                        masterOf[slave] == nil, !masters.contains(slave), !anchored.contains(Int(slave)),
+                        !held(p)
+                    else { continue }
+                    guard
+                        var master = candidates.min(by: {
+                            simd_distance_squared(positions[Int($0)], p)
+                                < simd_distance_squared(positions[Int($1)], p)
+                        }), simd_distance(positions[Int(master)], p) <= 2 * reach + model.elementSize
+                    else { continue }
+                    if let up = masterOf[master] { master = up }
+                    guard master != slave else { continue }
+                    ties.append((slave, master))
+                    masterOf[slave] = master
+                    masters.insert(master)
+                    count += 1
+                }
+                if count > 0 { contactTies.append((i, j, count)) }
+            }
+        }
     }
 
     /// The punching strength of the slab elements around each column head, as the mean shear
@@ -822,11 +921,55 @@ struct ShellMesh {
                 Int32(axis), Int32((point[i1] / side).rounded(.down)) + di,
                 Int32((point[i2] / side).rounded(.down)) + dj)
         }
-        for (e, element) in elements.enumerated() {
+        for (e, element) in elements.enumerated() where element.axis < 3 {
             cells[key(element.axis, centres[e]), default: []].append(e)
+        }
+        // Elements at a pitch shield and are shielded by others at the same pitch (a roof's tiles
+        // over its slope), never by those square to the axes: keyed by their plane's normal and
+        // where they lie along its two axes, so that parallel planes' elements share a key.
+        struct PlaneKey: Hashable {
+            var normal: SIMD3<Int32>
+            var at: SIMD2<Int32>
+        }
+        func planeKey(_ e: Int, _ di: Int32 = 0, _ dj: Int32 = 0) -> PlaneKey {
+            let (first, second, normal) = frame(of: elements[e])
+            return PlaneKey(
+                normal: SIMD3<Int32>((normal * 1000).rounded(.toNearestOrEven)),
+                at: SIMD2(
+                    Int32((simd_dot(centres[e], first) / side).rounded(.down)) + di,
+                    Int32((simd_dot(centres[e], second) / side).rounded(.down)) + dj))
+        }
+        var pitched: [PlaneKey: [Int]] = [:]
+        for (e, element) in elements.enumerated() where element.axis == 3 {
+            pitched[planeKey(e), default: []].append(e)
+        }
+        func inclinedShields(_ e: Int) -> (below: Int32, above: Int32) {
+            let element = elements[e]
+            let (first, second, normal) = frame(of: element)
+            let at = centres[e]
+            var below: (index: Int32, distance: Float) = (-1, .infinity)
+            var above: (index: Int32, distance: Float) = (-1, .infinity)
+            for di: Int32 in -1...1 {
+                for dj: Int32 in -1...1 {
+                    for f in pitched[planeKey(e, di, dj)] ?? [] where elements[f].solid != element.solid {
+                        let other = elements[f]
+                        let d = centres[f] - at
+                        guard abs(simd_dot(d, first)) <= 0.5 * other.size.x + 1e-4,
+                            abs(simd_dot(d, second)) <= 0.5 * other.size.y + 1e-4
+                        else { continue }
+                        let offset = simd_dot(d, normal)
+                        let gap = abs(offset) - 0.5 * (element.thickness + other.thickness)
+                        guard abs(offset) > 1e-4, gap <= reach else { continue }
+                        if offset > 0, offset < above.distance { above = (Int32(f), offset) }
+                        if offset < 0, -offset < below.distance { below = (Int32(f), -offset) }
+                    }
+                }
+            }
+            return (below.index, above.index)
         }
         return elements.indices.map { e in
             let element = elements[e]
+            guard element.axis < 3 else { return inclinedShields(e) }
             let k = element.axis
             let (i1, i2) = ((k + 1) % 3, (k + 2) % 3)
             let at = centres[e]
@@ -926,6 +1069,25 @@ struct ShellMesh {
     /// - a side of a beam, `across` points across it at each end, over half its length.
     /// The points run from face to face with the trapezoid rule's weights, so that a base rocking
     /// on its toe bears at the face, as solid elements' corner nodes do.
+    /// An element's own axes, in order, and its normal: the global axes after its `axis`, or for
+    /// an element at a pitch (axis 3), along its first and second edges from its corners.
+    func frame(of element: Element) -> (first: SIMD3<Float>, second: SIMD3<Float>, normal: SIMD3<Float>) {
+        guard element.axis == 3 else {
+            let k = element.axis
+            var first = SIMD3<Float>.zero
+            var second = SIMD3<Float>.zero
+            var normal = SIMD3<Float>.zero
+            first[(k + 1) % 3] = 1
+            second[(k + 2) % 3] = 1
+            normal[k] = 1
+            return (first, second, normal)
+        }
+        let origin = positions[Int(element.nodes[0])]
+        let first = simd_normalize(positions[Int(element.nodes[1])] - origin)
+        let second = simd_normalize(positions[Int(element.nodes[3])] - origin)
+        return (first, second, simd_cross(first, second))
+    }
+
     func jointPoints(
         across: Int, normals: [SIMD3<Float>],
         joint: (_ point: SIMD3<Float>, _ node: SIMD3<Float>) -> (slot: Int, normal: SIMD3<Float>)?
@@ -954,17 +1116,16 @@ struct ShellMesh {
             }
         }
         for element in elements {
-            let k = element.axis
-            let (first, second) = ((k + 1) % 3, (k + 2) % 3)
+            let (first, second, normal) = frame(of: element)
             let through = (0..<across).map { point($0) }
             // Free edges: -first (corners 0, 3), +first (1, 2), -second (0, 1), +second (2, 3).
             let edges: [(corners: [Int], outward: SIMD3<Float>, length: Float)] = [
-                ([0, 3], unit(first, -1), element.size.y), ([1, 2], unit(first), element.size.y),
-                ([0, 1], unit(second, -1), element.size.x), ([2, 3], unit(second), element.size.x),
+                ([0, 3], -first, element.size.y), ([1, 2], first, element.size.y),
+                ([0, 1], -second, element.size.x), ([2, 3], second, element.size.x),
             ]
             for (e, edge) in edges.enumerated() where element.neighbours[e] < 0 {
                 let arms = through.map {
-                    ($0.offset * element.thickness * unit(k), $0.weight * element.thickness * edge.length / 2)
+                    ($0.offset * element.thickness * normal, $0.weight * element.thickness * edge.length / 2)
                 }
                 for corner in edge.corners { add(element.nodes[corner], outward: edge.outward, arms) }
             }
@@ -972,8 +1133,8 @@ struct ShellMesh {
             for sign in [Float(-1), 1] {
                 for corner in 0..<4 {
                     add(
-                        element.nodes[corner], outward: unit(k, sign),
-                        [(sign * element.thickness / 2 * unit(k), element.size.x * element.size.y / 4)])
+                        element.nodes[corner], outward: sign * normal,
+                        [(sign * element.thickness / 2 * normal, element.size.x * element.size.y / 4)])
                 }
             }
         }

@@ -18,6 +18,10 @@
 // (FPRSqrtEstimate, RecipSqrtEstimate, FPRSqrtStepFused). Minimum and maximum follow FMINNM and
 // FMAXNM: a NaN loses to a number, and -0 is less than +0.
 //
+// On the Mac Studio (macOS 27 SDK) on 19 October 2026 every function here but those named next
+// matched Apple's simd bit for bit, run there in place of it (scratch package, same inputs as
+// SIMDParity); the from-to rotation follows that SDK's header, which differs from 11.3's reading.
+//
 // Not matched bit for bit: `simd_inverse` of a matrix (Apple's is a library function whose method
 // is not published; the stand-in's inverse by cofactors is used), and the sines, cosines and
 // arc tangents of the quaternions' angles (Glibc's and Apple's libm may round differently in the
@@ -37,9 +41,11 @@
 
     /// Whether Apple's simd headers fuse `a*b - c*d` where they do not ask for it: in
     /// `simd_cross` and `simd_determinant`, which are written as single expressions and compiled
-    /// with clang's default floating-point contraction. LinuxSIMDParityTests tells which on the
-    /// Mac; false keeps every product rounded, as written.
-    @usableFromInline let appleFusesCross = false
+    /// with clang's default floating-point contraction. They do: on the Mac Studio (macOS 27 SDK,
+    /// arm64) on 19 October 2026, LinuxSIMDParityTests found Apple's cross products, float and
+    /// double, and the 3 × 3 determinant fused, and this shim, run there with this set, matched
+    /// all three bit for bit.
+    @usableFromInline let appleFusesCross = true
 
     // MARK: Lanes
 
@@ -459,7 +465,9 @@
         public func act(_ v: SIMD3<Double>) -> SIMD3<Double> { quaternionAct(vector, v) }
 
         /// `simd_quaternion(from, to)`: the rotation from one unit vector to another, in two
-        /// halves where they are more than 90 degrees apart.
+        /// halves where they are more than 90 degrees apart. As the macOS 27 SDK's header has it:
+        /// past 90 degrees the halfway vector is the sum of the two vectors normalised, and they
+        /// count as opposite when its squared length is at most 2^-104.
         public init(from: SIMD3<Double>, to: SIMD3<Double>) {
             func reduced(_ from: SIMD3<Double>, _ to: SIMD3<Double>) -> simd_quatd {
                 let half = simd_normalize(from + to)
@@ -470,8 +478,8 @@
                 self = reduced(from, to)
                 return
             }
-            let half = from + to
-            if simd_length_squared(half) == 0 {
+            let half = simd_normalize(from) + simd_normalize(to)
+            if simd_length_squared(half) <= 0x1p-104 {
                 let a = simd_abs(from)
                 let other: SIMD3<Double> =
                     a.x <= a.y && a.x <= a.z ? SIMD3(1, 0, 0) : a.y <= a.z ? SIMD3(0, 1, 0) : SIMD3(0, 0, 1)

@@ -15,25 +15,31 @@ extension BlastSolver {
     /// start mapped, or for times from its start on. In a run's thermal record they come before
     /// the grid's own frames, so that it starts at detonation.
     public func earlyFireballFrames(for spec: ThermalSpec, at times: [Double]) -> [FireballFrame] {
-        guard let start = mappedStart.first?.blast.time else { return [] }
+        // The grid's clock started when the first laid solution stopped, each counted from its
+        // charge's firing; a charge fired after a frame's time is not yet in it.
+        guard let start = mappedStart.map({ $0.blast.time + $0.charge.firingTime }).min() else { return [] }
         let wanted = times.filter { $0 > 0 && $0 < start - 1e-9 }.sorted()
         guard !wanted.isEmpty else { return [] }
-        let solutions = mappedStart.map { entry -> SphericalBlast in
+        let solutions = mappedStart.map { entry -> (blast: SphericalBlast, times: [Double]) in
+            let delay = entry.charge.firingTime
             var blast = Self.mappedSolution(
                 entry.charge, radius: entry.radius, mirrors: entry.mirrors, configuration: configuration,
                 ambientDensity: ambientDensity, products: configuration.mappedChargeProducts ? .tnt : nil)
-            blast.snapshotTimes = wanted
-            return blast.solved(toShockRadius: Double(entry.radius), until: start)
+            let own = wanted.filter { $0 > delay }
+            blast.snapshotTimes = own.map { $0 - delay }
+            return (blast.solved(toShockRadius: Double(entry.radius), until: start - delay), own)
         }
-        return wanted.indices.map { n in
+        return wanted.map { time in
             earlyFrame(
-                at: wanted[n],
-                profiles: zip(solutions, mappedStart).compactMap { blast, entry in
-                    n < blast.snapshots.count
-                        ? profile(
-                            blast.snapshots[n], cellSize: blast.cellSize, centre: entry.centre,
-                            mass: Double(entry.charge.mass) * Double(1 << entry.mirrors), spec: spec)
-                        : nil
+                at: time,
+                profiles: zip(solutions, mappedStart).compactMap { solution, entry in
+                    guard let n = solution.times.firstIndex(of: time), n < solution.blast.snapshots.count
+                    else {
+                        return nil
+                    }
+                    return profile(
+                        solution.blast.snapshots[n], cellSize: solution.blast.cellSize, centre: entry.centre,
+                        mass: Double(entry.charge.mass) * Double(1 << entry.mirrors), spec: spec)
                 }, spec: spec)
         }
     }

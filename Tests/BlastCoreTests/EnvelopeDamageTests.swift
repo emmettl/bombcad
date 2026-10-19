@@ -196,5 +196,22 @@ struct EnvelopeDamageTests {
             #expect(shader.contains(text), "\(text) not in Render.metal")
         }
         #expect(EnvelopeDamageColour.labels.count == EnvelopeDamageColour.palette.count)
+        for colour in EnvelopeChanceColour.ramp {
+            let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", colour.x, colour.y, colour.z)
+            #expect(shader.contains(text), "\(text) not in Render.metal")
+        }
+    }
+
+    @Test("A building's sides' glass chances go to the view as one code and come back by side")
+    func chanceCode() {
+        let code = EnvelopeChanceColour.code([
+            (axis: 0, outward: -1, chance: 0.05), (axis: 0, outward: 1, chance: 1),
+            (axis: 1, outward: 1, chance: 0.5),
+        ])
+        #expect(code >= EnvelopeChanceColour.first && code < 1 << 24)
+        #expect(EnvelopeChanceColour.eighth(code: code, axis: 0, outward: -1) == 0)
+        #expect(EnvelopeChanceColour.eighth(code: code, axis: 0, outward: 1) == 7)
+        #expect(EnvelopeChanceColour.eighth(code: code, axis: 1, outward: -1) == 0)
+        #expect(EnvelopeChanceColour.eighth(code: code, axis: 1, outward: 1) == 4)
     }
 }

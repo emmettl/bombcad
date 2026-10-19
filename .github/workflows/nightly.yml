@@ -57,6 +57,9 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         timeout-minutes: 100
         shell: bash
+        # The long studies in full, which the pre-push checks shorten (Tests/*/FullStudies.swift).
+        env:
+          BOMBCAD_FULL_STUDIES: "1"
         run: |
           set -o pipefail
           log_dir="${{ runner.temp }}/full-${{ github.run_id }}-${{ github.run_attempt }}"

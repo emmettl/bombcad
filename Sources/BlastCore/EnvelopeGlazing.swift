@@ -23,11 +23,41 @@ public struct GlazingMix: Codable, Hashable, Sendable {
         public var areaM2: Float { widthM * heightM }
     }
 
+    /// What its panes' glass is, all alike: toughened, laminated or filmed; nil for annealed (left
+    /// out of the JSON, which older records lack).
+    public struct Glass: Codable, Hashable, Sendable {
+        /// Fully toughened monolithic glass: E1300's glass type factor of 4 on its strength.
+        public var toughened: Bool?
+        /// Laminated glass in every pane (its plies' glass cracks; its interlayer holds it).
+        public var laminate: LaminatedGlass?
+        /// Security film on every (monolithic) pane, ignored on laminated glass.
+        public var film: SecurityFilm?
+
+        public init(toughened: Bool? = nil, laminate: LaminatedGlass? = nil, film: SecurityFilm? = nil) {
+            self.toughened = toughened
+            self.laminate = laminate
+            self.film = film
+        }
+
+        /// The panes' strength over annealed glass's.
+        var strengthFactor: Double { laminate == nil && toughened == true ? 4 : 1 }
+
+        /// In a few words.
+        public var label: String {
+            if laminate != nil { return "laminated" }
+            let base = toughened == true ? "toughened" : "annealed"
+            guard let film else { return base }
+            return "\(base), \(film.anchorage.label.lowercased()) film"
+        }
+    }
+
     /// What the mix stands for, in words.
     public var name: String
     public var panes: [Pane]
     /// The glazed share of the façade's area.
     public var glazedFraction: Float
+    /// Its panes' glass; nil for annealed.
+    public var glass: Glass?
 
     public init(name: String, panes: [Pane], glazedFraction: Float) {
         self.name = name
@@ -97,6 +127,116 @@ public struct GlazingMix: Codable, Hashable, Sendable {
     /// gives it on Moore's large-deflection plate (simply supported, the whole pane at its largest
     /// stress); one deflected past ten thicknesses lets go of its frame, and breaks.
     public func breakage(netPa pressures: [Double], binS: Double, areaM2: Double) -> GlazingBreakage {
+        breakage(netPa: pressures, binS: binS, areaM2: areaM2, worseThan: nil)
+    }
+
+    /// The same for panes of any glass, and with `worseThan` the log of the chance that no pane is
+    /// thrown worse than that GSA condition (`GlazingBreakage.logNoneWorse`, `judged`); its panes
+    /// `strength` times their glass's median. Annealed panes judged alone take the path above, as
+    /// before.
+    public func breakage(
+        netPa pressures: [Double], binS: Double, areaM2: Double, worseThan: GlazingHazard.Condition?,
+        strength: Double = 1
+    ) -> GlazingBreakage {
+        guard glass == nil, worseThan == nil, strength == 1 else {
+            let peak = pressures.map(abs).max() ?? 0
+            return judged(
+                areaM2: areaM2, strength: strength, worseThan: worseThan,
+                answer: { pane in
+                    // Under 50 Pa no pane comes near breaking.
+                    guard peak > 50 else { return (false, 0) }
+                    let (a, b) = Self.sides(pane)
+                    let r = EnvelopeDamageAssessment.unbreakablePane(thickness: glassAlone(pane), a: a, b: b)
+                        .response(pressures: pressures, step: binS)
+                    return (r.lostResistanceAt != nil, r.equivalentStress ?? 0)
+                },
+                thrown: { pane, broke in condition(pane, strength: broke, pressures: pressures, binS: binS) })
+        }
+        return annealedBreakage(netPa: pressures, binS: binS, areaM2: areaM2)
+    }
+
+    /// The shorter and longer of a pane's sides, m.
+    static func sides(_ pane: Pane) -> (Double, Double) {
+        (Double(min(pane.widthM, pane.heightM)), Double(max(pane.widthM, pane.heightM)))
+    }
+
+    /// The glass of a pane of `pane`'s type that cracks, m: the laminate's plies, or the pane.
+    func glassAlone(_ pane: Pane) -> Double {
+        glass?.laminate.map { $0.plies.reduce(0, +) } ?? Double(pane.thicknessM)
+    }
+
+    /// A façade region of `areaM2` judged pane type by pane type: each type's chance of cracking
+    /// from the 60 s stress its load gives it (`answer`: let go, and that stress), its strength
+    /// `strength` times its glass's; and with `worseThan`, whether a pane of it that cracks is
+    /// thrown worse than that (`thrown`: its condition, given the 60 s strength it broke at: the
+    /// draw's, or just under the stress reached where that is less, as the panes that break are the
+    /// weaker). A laminated or filmed pane cracks as its glass does and is thrown only if its
+    /// interlayer or film lets it go.
+    func judged(
+        areaM2: Double, strength: Double, worseThan: GlazingHazard.Condition?,
+        answer: (Pane) -> (lost: Bool, stress: Double), thrown: (Pane, Double) -> GlazingHazard.Condition
+    ) -> GlazingBreakage {
+        var result = GlazingBreakage()
+        if worseThan != nil { result.logNoneWorse = 0 }
+        let factor = strength * (glass?.strengthFactor ?? 1)
+        for pane in panes where pane.areaM2 > 0 && pane.share > 0 {
+            let count = Double(glazedFraction * pane.share) * areaM2 / Double(pane.areaM2)
+            guard count > 0 else { continue }
+            result.panes += count
+            result.glazedM2 += count * Double(pane.areaM2)
+            let response = answer(pane)
+            let (a, b) = Self.sides(pane)
+            let probability =
+                response.lost ? 1 : GlassStrength.probability(stress: response.stress / factor, area: a * b)
+            result.broken += count * probability
+            result.brokenM2 += count * probability * Double(pane.areaM2)
+            result.logNoneBroken += count * log(max(1 - probability, 1e-300))
+            guard let worseThan, probability > 0 else { continue }
+            let median = GlassStrength.sixtySecond(area: a * b)
+            let broke = response.lost ? factor * median : min(factor * median, 0.99 * response.stress)
+            if thrown(pane, broke) > worseThan {
+                result.logNoneWorse! += count * log(max(1 - probability, 1e-300))
+            }
+        }
+        return result
+    }
+
+    /// Where a cracked pane of `pane`'s type ends, under `pressures` (Pa, in bins `binS` long):
+    /// monolithic glass of 60 s strength `strength` Pa breaking and thrown; laminated glass held by
+    /// its interlayer, or torn or pulled out and thrown; filmed glass held by its film, or let go.
+    public func condition(_ pane: Pane, strength: Double, pressures: [Double], binS: Double)
+        -> GlazingHazard.Condition
+    {
+        let (a, b) = Self.sides(pane)
+        let system: SDOFSystem
+        if let laminate = glass?.laminate {
+            system = EnvelopePanel.laminatedGlass(laminate, a: a, b: b)
+        } else if let film = glass?.film {
+            system = EnvelopePanel.filmedGlass(
+                film, thickness: Double(pane.thicknessM), toughened: glass?.toughened == true, a: a, b: b,
+                sixtySecondStrength: strength)
+        } else {
+            system = EnvelopePanel.largeDeflectionGlass(
+                thickness: Double(pane.thicknessM),
+                material: glass?.toughened == true ? .toughenedGlass : .annealedGlass,
+                a: a, b: b, sixtySecondStrength: strength)
+        }
+        let response = system.response(pressures: pressures, step: binS)
+        return GlazingHazard.broken(
+            response: response, netPa: pressures, binS: binS, massPerArea: system.massPerArea,
+            paneHeight: Double(pane.heightM)
+        ).condition
+    }
+
+    /// The same mix with its panes' glass `glass`.
+    public func with(_ glass: Glass?) -> GlazingMix {
+        var mix = self
+        mix.glass = glass
+        return mix
+    }
+
+    /// Annealed panes, the mix's own path since it was written.
+    func annealedBreakage(netPa pressures: [Double], binS: Double, areaM2: Double) -> GlazingBreakage {
         var result = GlazingBreakage()
         let peak = pressures.map(abs).max() ?? 0
         for pane in panes where pane.areaM2 > 0 && pane.share > 0 {
@@ -132,8 +272,14 @@ public struct GlazingBreakage: Codable, Hashable, Sendable {
     public var brokenM2 = 0.0
     /// The log of the chance that none breaks (sums over regions, as their panes break apart).
     public var logNoneBroken = 0.0
+    /// Where asked (`GlazingMix.breakage(worseThan:)`): the log of the chance that no pane is
+    /// thrown worse than the GSA condition asked; nil otherwise (left out of the JSON).
+    public var logNoneWorse: Double?
 
     public init() {}
+
+    /// The chance that some pane is thrown worse than the condition asked, where asked.
+    public var worse: Double? { logNoneWorse.map { 1 - exp($0) } }
 
     /// The fraction of panes broken.
     public var fraction: Double { panes > 0 ? broken / panes : 0 }
@@ -147,6 +293,9 @@ public struct GlazingBreakage: Codable, Hashable, Sendable {
         sum.glazedM2 += b.glazedM2
         sum.brokenM2 += b.brokenM2
         sum.logNoneBroken += b.logNoneBroken
+        if a.logNoneWorse != nil || b.logNoneWorse != nil {
+            sum.logNoneWorse = (a.logNoneWorse ?? 0) + (b.logNoneWorse ?? 0)
+        }
         return sum
     }
 }

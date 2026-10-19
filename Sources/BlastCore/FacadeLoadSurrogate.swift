@@ -392,10 +392,23 @@ public enum FacadeLoadSurrogate {
     public static func load(_ component: EnvelopeComponent, _ prediction: Prediction, binS: Double)
         -> EnvelopeComponentLoad
     {
-        let peak = quantized(prediction.peakPa)
-        let impulse = quantized(prediction.impulsePaS)
+        let pressures = pulse(
+            peak: quantized(prediction.peakPa), impulse: quantized(prediction.impulsePaS),
+            riseShare: (prediction.riseShare * 20).rounded() / 20, binS: binS)
+        return EnvelopeComponentLoad(
+            id: component.id, owner: component.owner,
+            kind: EnvelopeComponentLoad.Kind(rawValue: component.kind.rawValue)!,
+            region: component.region,
+            axis: component.axis, binS: binS, outerPa: pressures,
+            innerPa: [Double](repeating: 0, count: pressures.count),
+            supportEdges: component.supportEdges, startS: prediction.arrivalS, outward: component.outward)
+    }
+
+    /// A triangular pulse's bins' mean pressures, Pa: `peak` Pa reached over `riseShare` of its
+    /// length, then falling straight to nothing, carrying `impulse` Pa s.
+    static func pulse(peak: Double, impulse: Double, riseShare: Double, binS: Double) -> [Double] {
         let duration = peak > 0 ? 2 * impulse / peak : 0
-        let rise = (prediction.riseShare * 20).rounded() / 20 * duration
+        let rise = riseShare * duration
         let count = max(1, Int((duration / binS).rounded(.up)))
         // The impulse to time t, its rise then its fall.
         func impulseTo(_ t: Double) -> Double {
@@ -407,17 +420,10 @@ public enum FacadeLoadSurrogate {
             return 0.5 * peak * rise + 0.5 * peak * (fall - left * left / fall)
         }
         // Each bin's mean over its width.
-        let pressures = (0..<count).map { n -> Double in
+        return (0..<count).map { n -> Double in
             let a = Double(n) * binS
             return (impulseTo(a + binS) - impulseTo(a)) / binS
         }
-        return EnvelopeComponentLoad(
-            id: component.id, owner: component.owner,
-            kind: EnvelopeComponentLoad.Kind(rawValue: component.kind.rawValue)!,
-            region: component.region,
-            axis: component.axis, binS: binS, outerPa: pressures,
-            innerPa: [Double](repeating: 0, count: count),
-            supportEdges: component.supportEdges, startS: prediction.arrivalS, outward: component.outward)
     }
 
     /// A first look at `scene`'s envelopes: every component with a face on the air, its features

@@ -326,6 +326,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     /// Steel beams hinged at their joints by connections that fracture (`StructureModel.steelConnection`).
     case steelConnections
     case inclinedBars
+    /// Shells laid at a pitch, as a roof's slopes (`Inclination`).
+    case pitchedShells
     case baseConnections
     case jointsBetweenParts
     case footings
@@ -425,6 +427,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .profiledSheets: return any { $0.solidSheets.contains { $0 != nil } }
         case .steelConnections: return any { $0.steelConnection != nil }
         case .inclinedBars: return any { !$0.inclinedBars.isEmpty }
+        case .pitchedShells: return any(\.hasInclinedSolids)
         case .baseConnections:
             return any { s in
                 (s.fixedBase && s.baseAnchorage.map { $0.footing == nil } == true)
@@ -871,6 +874,18 @@ public enum StandingTable {
                     + "13–41% too strong and 1.5–1.7 times too ductile at a blast's rate, and the welded and "
                     + "fin-plate types, from slow tests, may be too ductile too.",
                 document: "shell-model.md#steel-connections")
+        case .pitchedShells:
+            return Entry(
+                title: "Shells at a pitch", affects: structure, limit: .approximation,
+                note:
+                    "Roof slopes meshed in their own planes: a plate cantilevered at 30° bends within 2% as the "
+                    + "flat one does under its weight's share across it. Rafters are smeared into a plate, not "
+                    + "beams; the tiles hang on their nibs by an assumed 5 kPa, not on friction alone; the "
+                    + "terraced row's 40° is assumed (plain tiles want 35° or more). No pitched roof under "
+                    + "blast was found to compare with. Walls turned in plan, and curved walls' chords, are "
+                    + "meshed the same way, upright, each node within reach of what they meet following its "
+                    + "nearest node; not compared with a test either.",
+                document: "shell-model.md#shells-at-a-pitch")
         case .inclinedBars:
             return Entry(
                 title: "Inclined bars", affects: structure, limit: nil,
@@ -1073,8 +1088,12 @@ public enum StandingTable {
         "EnvelopeConstruction.reinforcementRatio": .input,
         "EnvelopeConstruction.glassThicknessM": .input,
         "EnvelopeConstruction.laminate": .input,
+        "EnvelopeConstruction.film": .input,
+        "EnvelopeConstruction.wallLiner": .input,
+        "EnvelopeConstruction.glassToughened": .input,
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
+        "EnvelopeConstruction.sideGlazing": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,
@@ -1122,6 +1141,7 @@ public enum StandingTable {
         "Terrain.heights": .input,
         "Terrain.source": .input,
         "Charge.mass": .input,
+        "Charge.delay": .input,
         "Charge.position": .input,
         // The air solver.
         "SolverConfiguration.bodyCouplingLayout": .numerical,
@@ -1166,6 +1186,7 @@ public enum StandingTable {
         "SolverConfiguration.refinementHoldsEnvelopes": .numerical,
         "SolverConfiguration.refinementHoldsStructures": .numerical,
         "SolverConfiguration.refinementCeiling": .numerical,
+        "SolverConfiguration.refinementConfinedTo": .numerical,
         "SolverConfiguration.refinementMargin": .numerical,
         "SolverConfiguration.refinementLevels": .option([.twoLevelRefinement]),
         "SolverConfiguration.refinementOwnSteps": .option([.adaptiveSubsteps]),
@@ -1192,6 +1213,7 @@ public enum StandingTable {
         "StructureModel.baseAnchorage": .option([.baseConnections, .footings]),
         "StructureModel.reinforcement": .input,
         "StructureModel.inclinedBars": .option([.inclinedBars]),
+        "StructureModel.solidInclinations": .option([.pitchedShells]),
         "StructureModel.solidReinforcement": .input,
         "StructureModel.solidMaterial": .input,
         "StructureModel.solidSourceParts": .input,
@@ -1286,6 +1308,8 @@ public enum StandingTable {
         "Anchorage.closingGap": .input,
         "Anchorage.frictionExponent": .input,
         "Anchorage.frictionReferencePressure": .input,
+        "Anchorage.solids": .input,
+        "Anchorage.partners": .input,
         "Anchorage.footing": .option([.footings, .cyclicSand, .footingsOnSlope]),
         "Anchorage.side": .input,
         "Anchorage.jointNormal": .input,
@@ -1625,7 +1649,17 @@ struct StandingScene {
             has(.hotAir) || has(.dissociatingAir)
                 ? "The detonation products are treated as hot air."
                 : "The detonation products are treated as air, an ideal gas of γ = 1.4.")
-        if !(inputs.scenario.additionalCharges ?? []).isEmpty {
+        let further = inputs.scenario.additionalCharges ?? []
+        if further.contains(where: { $0.firingTime > 0 }) {
+            lines.append(
+                "Several charges fire, some after the main one; the comparisons are of one charge, and of "
+                    + "two delayed ones against a finer run. A delayed charge is laid down when the run's clock "
+                    + "reaches it: with the fine start, from its one-dimensional solution where the air about "
+                    + "it stays still until that is due, else (and without the fine start) as a ball of hot "
+                    + "gas; laid during the run where the air is not yet refined, it is resolved by the coarse cells "
+                    + "until the refinement takes it up, and its fireball's first moments are not in the thermal record."
+            )
+        } else if !further.isEmpty {
             lines.append("Several charges fire together; the comparisons are of one charge.")
         }
         if inputs.scenario.charge.position.z > 0.1 * cubeRoot {
@@ -2408,6 +2442,30 @@ struct StandingScene {
                         + "of his speeds but at 73 mm where his held to 140–209 mm",
                     "building-envelopes.md#laminated-glass")
             ] : []
+        let filmed = envelopes.contains { inputs.scenario.envelopeConstruction(for: $0).film != nil }
+        let filmEvidence =
+            filmed
+            ? [
+                StandingEvidence(
+                    "Security film: 67 shock-tube and arena tests of filmed 1/4\" panes in the open GSA reports "
+                        + "of 3M, Solar Gard and ARA",
+                    "Wet-glazed: held, condition 2, as 18 of 24 were graded, the rest worse; daylight: held "
+                        + "while pushed, gone on the rebound, condition 3a, one class better than 16 of 17 tests; "
+                        + "mechanical: pulled out at a vendor's capacity, condition 5, never better than its 26 "
+                        + "tests (no open capacity)",
+                    "building-envelopes.md#security-film")
+            ] : []
+        let linerEvidence =
+            envelopes.contains { inputs.scenario.envelopeConstruction(for: $0).wallLiner != nil }
+            ? [
+                StandingEvidence(
+                    "Polyurea-lined masonry: Ciornei's lined and bare blockwork walls in the University of Ottawa's "
+                        + "shock tube (2012)",
+                    "Past the masonry's thickness, 1.3–1.9 times the measured deflection; held through the shot "
+                        + "that tore the test's wall (246 mm against its 254 mm, after nine shots); the masonry "
+                        + "does not arch, so small shots go several times as far as measured",
+                    "building-envelopes.md#polyurea-liners-on-masonry")
+            ] : []
         return result(
             .envelopeDamage, .approximation,
             "One way, from each component's load, "
@@ -2477,7 +2535,7 @@ struct StandingScene {
                         + "not converged: 0.5 m stone cracks where partial collapses were found, concrete "
                         + "hardly damaged where GEER's was D1–D3",
                     "validation.md#a-district-beirut-2020"),
-            ] + laminatedEvidence,
+            ] + laminatedEvidence + filmEvidence + linerEvidence,
             assumptions: [
                 "Compared with measurement as freestanding and one-way walls, as slabs held on their edges "
                     + "(mostly on two; one panel clamped all round), and glass only under a load far past what "

@@ -48,6 +48,50 @@ struct ScenarioTests {
         #expect(abs(totals.mass - baseline.mass - 10) < 0.05)
     }
 
+    @Test(
+        "A charge inside a block releases nothing, on uniform cells and refined alike; one against it all",
+        arguments: [1, 2])
+    func blockedCharge(refinement: Int) throws {
+        var configuration = SolverConfiguration()
+        configuration.refinement = refinement
+        configuration.refinementLevels = refinement
+        // Refined: 2 m coarse cells, 0.5 m fine ones; cells x 10–12 m solid (the block holds their centres).
+        // The energy laid is the coarse cells' (which take each fine deposit's mean, and on refined air
+        // the patches' finer outline adds air of its own beside the block).
+        func coarseEnergy(_ solver: BlastSolver) -> Double {
+            solver.withState { cells in
+                (0..<solver.grid.cellCount).reduce(0.0) { sum, n in
+                    let grid = solver.grid
+                    let solid = solver.isSolid(n % grid.nx, (n / grid.nx) % grid.ny, n / (grid.nx * grid.ny))
+                    return solid ? sum : sum + Double(cells[n].energy) * Double(pow(grid.cellSize, 3))
+                }
+            }
+        }
+        func released(at position: SIMD3<Float>) throws -> (energy: Double, blocked: [Int]) {
+            var scene = Scenario(
+                name: "Block", domainSize: SIMD3(24, 24, 8), boxes: [Box(x: 4...11.02, y: 4...20, height: 4)],
+                charge: Charge(mass: 0, position: position))
+            let baseline = coarseEnergy(
+                try BlastSolver(device: device, scenario: scene, cellSize: 2, configuration: configuration))
+            scene.charge.mass = 1
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: 2, configuration: configuration)
+            #expect(scene.chargeIsBlocked == !solver.blockedCharges.isEmpty)
+            return ((coarseEnergy(solver) - baseline) / Double(scene.charge.energy), solver.blockedCharges)
+        }
+        // Inside, as a district's charge on a map building: the 4 m balloon of uniform cells laid it
+        // in the air around the block, the 1 m one of the fine cells found none and lost it.
+        let inside = try released(at: SIMD3(10, 12, 0))
+        #expect(inside.blocked == [0] && abs(inside.energy) < 1e-6, "\(inside)")
+        // Just outside its face but in a solid coarse cell, no fine cell's air within 1 m: the coarse
+        // cells' balloon takes it, all of it.
+        let against = try released(at: SIMD3(11.03, 12, 0))
+        #expect(against.blocked.isEmpty && abs(against.energy - 1) < 1e-3, "\(against)")
+        // On its face, as a contact charge: air on that side.
+        let contact = try released(at: SIMD3(4, 12, 0))
+        #expect(contact.blocked.isEmpty && abs(contact.energy - 1) < 1e-3, "\(contact)")
+    }
+
     @Test("Gauges inside a block move to the nearest air cell")
     func gaugePlacement() throws {
         let scenario = ScenarioPreset.singleBuilding.scenario

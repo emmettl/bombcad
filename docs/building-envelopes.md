@@ -1138,6 +1138,136 @@ the floor).
 shape factor, the failure-strain tear) is general and does not depend on BombCAD. Edgerton's
 glass impacts could use it once its edge tearing is better founded.
 
+## Security film
+
+A construction can put security (anti-shatter) film on its monolithic panes
+(`EnvelopeConstruction.film`, `SecurityFilm`), and its glass can be toughened
+(`EnvelopeConstruction.glassToughened`). Both are set in the app's construction editor. The
+film is polyester, 4–14 mil (0.1–0.36 mm), bonded to the pane's inner face. It is the retrofit
+the [protective design](protective-design.md) prototype found cheapest.
+
+**The model** (`EnvelopePanel.filmedGlass`), on the laminated pane's framework:
+
+- **Before the glass cracks**, the bare pane on Moore's large-deflection plate and E1300's flaw
+  model, the film adding only its mass. Toughened glass breaks at four times annealed glass's
+  strength, E1300's glass type factor under a short load.
+- **Once it cracks**, the film holds the fragments and carries the load as a membrane at its
+  yield, 103 MPa times its thickness: 21 kN/m for 8 mil. The values are 3M Ultra S800's (product
+  bulletin, 2021; technical data sheet, 2025, ASTM D882): yield 103 MPa, modulus 3.59 GPa,
+  135% at break. Mattei, Cozzarini and Bedon measured 3.31 GPa on another film (*Symmetry* 14,
+  2022, 162). It tears when its average strain reaches its strain at break.
+- **Its edges**, by how it is held there (`SecurityFilm.Anchorage`):
+
+| Anchorage | The model | Why |
+|---|---|---|
+| Wet glazed (a silicone bead from film to frame) | Holds the film's tension | 20 of 22 wet-glazed panes stayed where their film had yielded. Hooper's joints for laminated glass, 1.11 MPa at 0.1 m/s over the bead's 13 mm, would hold 14 kN/m and let 6 and 8 mil film go. |
+| Mechanical (a batten or gasketed profile screwed through) | 7.3 kN/m, unless a product's tested capacity is given (`anchorageCapacity`) | The lower end of Madico's FrameGard claim, 500–800 lb per foot; no open test of a capacity. 6 and 8 mil film carry more, so they pull out once they yield. |
+| Daylight (film short of the frame) | Held while pushed in, gone once it moves back out | Nothing holds its edges. In 21 of the 22 open tests its sheet was not thrown in; it tore round its edges and fell or was drawn outward ("ejected to exterior"). |
+
+- **Hazard.** A filmed pane that leaves its frame goes whole, as a laminated one does, and is
+  graded by where it lands (`GlazingHazard`). Thrown outward, it lands at the window: condition
+  3a. Filmed and laminated panes stay shut in the air when they go, as [venting](#venting-glazing-that-breaks-in-the-air)
+  takes laminated glass. Toughened glass, filmed or not, is not vented either. Thrown, it is 8 mm
+  dice (EN 12150-1's fragmentation count).
+
+**Against the open tests** (`SecurityFilmTests`). Film makers post the GSA-TS01 and ASTM F1642
+reports of their products: Intertek-ATI's shock tube and arena for 3M (2014–15), ATI's arena for
+Solar Gard (2010, 2016) and ARA's arena at the DTRA Chestnut site for MSC (2000). They give 67
+tests of filmed 1/4" monolithic panes, 0.9 × 1.2 m to 1.2 × 1.6 m, at 4.3–11.2 psi (30–77 kPa)
+and 25.6–63 psi·ms (176–434 kPa·ms). Each gives its measured reflected peak and impulse, and the
+condition and the tears and pull-outs seen. None gives a deflection or a speed.
+
+| Anchorage | Tests | As graded | Model better | Model worse |
+|---|---|---|---|---|
+| Wet glazed | 24 | 18 | 6 | 0 |
+| Daylight | 17 | 0 | 16 | 1 |
+| Mechanical | 26 | 4 | 0 | 22 |
+
+What this says:
+
+- **Wet glazing holds, as tested.** The model holds every pane (condition 2). Six tests were
+  graded worse, with tears of up to 44 inches along an edge or part of an edge pulled out. One
+  shock-tube pane was graded 5 with no tear or pull-out recorded. The model never grades a pane
+  worse than its test did.
+- **Daylight film is graded one class too lightly.** Its sheets did not come in, but their loose fragments
+  reached 1–3 m (3b) where the model has 3a, at the window. The toughened pane at 11 psi runs
+  past the end of Moore's curves, ten thicknesses, unbroken, and is lost there (5); the test's
+  broke (3b).
+- **Mechanical attachment is judged on a vendor's number, on the cautious side.** The tests are
+  mixed:
+  - 3M's gasketed profile held small panes (8 of 12 graded 2) and lost large ones (3 of 4 graded
+    5);
+  - a screwed batten held its film (ARA);
+  - a flexible profile let go round its perimeter (Solar Gard).
+
+  A product's tested capacity can be given. The vendor's own figure is below what 6 and 8 mil
+  film carries at its yield, so every such pane pulls out, and is graded 5.
+- **Not modelled:**
+  - the film's tearing at the edges and corners, which most tests saw in an inch or two and
+    some along a whole edge;
+  - the film's hardening beyond its yield, to 207–227 MPa at break;
+  - its rate dependence (no open high-rate data for oriented PET film);
+  - ageing, which Mattei et al. found weakens its adhesion;
+  - film on insulating units (the reports' IGU tests are left out).
+
+The standing is an approximation, with these comparisons in its line.
+
+## Polyurea liners on masonry
+
+A construction can line its unreinforced masonry walls with spray-on polyurea
+(`EnvelopeConstruction.wallLiner`, `WallLiner`), set in the construction editor. The polyurea is
+sprayed on the inside face and lapped onto the supports. It was developed by the US Air Force
+Research Laboratory (Knox et al., 2000; Davidson et al., 2004).
+
+**The model** (`SDOFSystem.lined`): the wall's own one-way system, with the liner's membrane
+added to its backbone. This follows Ciornei's (MASc, University of Ottawa, 2012, §4.2.3.2):
+
+- The liner takes the arc of a parabola over the span.
+- Its stretch is taken up over a tenth of the span, where it has come away from the cracked
+  masonry.
+- At its stress, it pulls on the supports at atan(4Δ/h).
+- It tears at its strain at break, and the wall is lost.
+
+Line-X, as Ciornei's: E 386 MPa, 14 MPa, 82% at break. A lined wall is heavy once its masonry
+cracks, and failed once its liner tears; until then its debris is held. Freestanding walls
+and roofs are judged without it.
+
+**Against the open tests** (`WallLinerTests`). Ciornei's 2 × 2 m walls of 90 mm hollow block
+(140 kg/m²) spanned up between steel supports in the University of Ottawa's shock tube:
+- URM-1 bare;
+- URM-2 with 3 mm of polyurea;
+- each shot in turn, with its reflected peak and impulse and the largest deflection.
+
+Each shot is run from the wall as built.
+
+| Wall | Shots | Measured | Model |
+|---|---|---|---|
+| Bare | 6–31 kPa, 53–265 kPa·ms | 9, 24, 56 mm, then collapse | 16 mm, then lost from the second shot |
+| Lined, small shots | 9–46 kPa, 68–434 kPa·ms | 2–69 mm | 26–147 mm |
+| Lined, past the thickness | 54 and 84 kPa, 483 and 597 kPa·ms | 88 and 159 mm (the liner debonding, then tearing) | 1.84 and 1.26 times as far |
+| Lined, last shot | 78 kPa, 723 kPa·ms | tore through at 254 mm | holds at 246 mm; it tears at about 350 mm |
+
+What this says:
+
+- **The test walls arched; this model's masonry does not.** Their top gap was filled, so arching
+  carried the small shots. Here the bare wall is lost on the second shot, where the test's held
+  to its fourth, and the lined wall goes several times as far under small shots. Masonry built
+  tight to its frame is stronger than the envelope takes it, lined or not.
+- **Past the masonry's thickness, the liner carries the wall** to within twice the measured
+  deflection.
+- **Its tear is late.** The test's liner debonded at about 5° and tore from 9°, and the wall
+  failed at 14.5° after nine shots. The model's liner tears only at its full strain at break over
+  Ciornei's strained length, about 19°.
+- **One wall.** Ezekiel's six walls (PhD, Ottawa, 2025) carry a stainless mesh under 6 mm of
+  polyurea, a different system, not modelled.
+- **Not founded, so not offered:**
+  - FRP sheets: Carney and Myers's open tests give damage levels only.
+  - Steel-stud liners and geotextile catch systems: abstracts only.
+
+  Their tests are in paywalled journals and DTIC reports that could not be read.
+
+The standing is illustrative: one lined wall.
+
 ## Damage for envelope buildings: built
 
 Envelopes make district-scale scenes possible: the air is cheap at that scale (a 3.3 km domain of
@@ -1199,6 +1329,9 @@ thrown (`EnvelopeComponentDamage.launch`).
 - **Laminated glass's edges.** Tearing at the frame (Hooper's single-crack tests, Table 5.3),
   the edge tension's build-up, and the load's relief as a large pane moves away from it; and
   laminated panes venting in the air when they go.
+- **Security film's anchorages.** A tested capacity for mechanical attachments (the open reports
+  give none), the film's tearing at its edges, and a pane's flight once filmed; a deflection
+  measured on a filmed pane would judge the membrane, which no open report gives.
 - **Pressure–impulse curves.** Each component's peak overpressure and impulse placed against
   curves of equal damage: cheaper still, needing no time history.
 - **Fragility curves.** A probability of each damage state from the same loads, where published.

@@ -389,9 +389,28 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
         float3 base = look >= 1 && look <= 8 ? looks[look - 1] : float3(0.72f, 0.72f, 0.72f);
         // Drawn in its own colour, lit but without the air's paint, which would hide it.
         int code = int(boxes[n].low.w + 0.5f);
-        colour = code >= 1 && code <= 6
-            ? damage[code - 1] * light
-            : fieldTint(base, light, field.sample(linearSampler, uvw), u);
+        // A building side's glass chance, in eighths, from 16 up: three bits a side, −x, +x, −y,
+        // +y; a roof its worst side's (EnvelopeChanceColour; a test keeps the ramps the same).
+        const float3 chance[8] = {
+            float3(0.992f, 0.906f, 0.145f), float3(0.627f, 0.855f, 0.224f), float3(0.290f, 0.757f, 0.427f),
+            float3(0.122f, 0.631f, 0.529f), float3(0.153f, 0.498f, 0.557f), float3(0.212f, 0.361f, 0.553f),
+            float3(0.275f, 0.196f, 0.494f), float3(0.267f, 0.005f, 0.329f)};
+        if (code >= 16) {
+            int sides = code - 16;
+            int eighth = 0;
+            if (abs(normal.x) > 0.5f) {
+                eighth = (sides >> (normal.x > 0.0f ? 3 : 0)) & 7;
+            } else if (abs(normal.y) > 0.5f) {
+                eighth = (sides >> (normal.y > 0.0f ? 9 : 6)) & 7;
+            } else {
+                for (int side = 0; side < 4; ++side) { eighth = max(eighth, (sides >> (3 * side)) & 7); }
+            }
+            colour = chance[eighth] * light;
+        } else {
+            colour = code >= 1 && code <= 6
+                ? damage[code - 1] * light
+                : fieldTint(base, light, field.sample(linearSampler, uvw), u);
+        }
     }
 
     // Gauge markers and the charge marker.
@@ -573,7 +592,13 @@ vertex MeshOut shellVertex(uint vertexID [[vertex_id]],
         return out;
     }
     float3 normal = float3(0.0f);
-    normal[el.axis] = 1.0f;
+    if (el.axis == 3u) {
+        // At a pitch: square to its first and second edges, from its reference corners.
+        float3 origin = reference[el.node[0]].xyz;
+        normal = normalize(cross(reference[el.node[1]].xyz - origin, reference[el.node[3]].xyz - origin));
+    } else {
+        normal[el.axis] = 1.0f;
+    }
     // Box corners: the four nodes on the lower face, then on the upper.
     const uint faces[6][4] = {{0, 1, 2, 3}, {4, 5, 6, 7}, {0, 1, 5, 4}, {1, 2, 6, 5}, {2, 3, 7, 6}, {3, 0, 4, 7}};
     const uint triangle[6] = {0, 1, 2, 0, 2, 3};

@@ -29,7 +29,7 @@ public final class BlastSolver {
     /// The run's clock on the GPU, in ticks of 2^-40 s (`StepControl.clock`), carried from batch to
     /// batch: the steps' times it gives are the same however the run is batched.
     private var clockTicks: UInt64 = 0
-    private var exposurePlane: ExposurePlane?
+    var exposurePlane: ExposurePlane?
     /// The one-dimensional solution a charge was mapped from, where it was and how far it reached,
     /// for an exposure plane set up after it (`configureExposurePlane`); nil otherwise.
     var mappedStart:
@@ -38,6 +38,21 @@ public final class BlastSolver {
     /// How far out each mapped charge was laid from its one-dimensional solution, m; empty for the
     /// balloon.
     public var mappedRadii: [Float] { mappedStart.map(\.radius) }
+    /// Charges still to fire, or mapped charges still to be laid, in order of time
+    /// (`DelayedCharges.swift`).
+    var pendingFirings: [PendingFiring] = []
+    /// The charges' positions and the gauges' cells' centres the scene was loaded with, for those
+    /// laid later.
+    var firingCharges: [Charge] = []
+    var firingProbes: [SIMD3<Float>] = []
+    /// What became of each delayed charge: when it fired and how it was laid down.
+    public internal(set) var firings: [Firing] = []
+    /// The step from which the time step grows again from a small share of the CFL limit, as at the
+    /// start: the step after a charge fired during the run.
+    var rampStart = 0
+    /// When the last charge laid down during the run was, s (0 without one): the air sleeps late
+    /// counting from it.
+    var lastFiring = 0.0
     /// The latest a mapped start may begin, s: its one-dimensional solution stops there should the
     /// shock not have reached its radius yet, so that a short run still steps the grid. Nil for no
     /// limit; the app sets half the run's duration. Takes effect at the next `load`.
@@ -100,7 +115,9 @@ public final class BlastSolver {
             bodies.isEmpty ? nil : (bodies.map(\.model), threshold)
         }
         let ceiling = refinementLevels.isEmpty ? nil : configuration.refinementCeiling
-        guard envelopes != nil || structures != nil || ceiling != nil, !refinementLevels.isEmpty else {
+        let regions = refinementLevels.isEmpty ? nil : configuration.refinementConfinedTo
+        let bounded = ceiling != nil || regions != nil
+        guard envelopes != nil || structures != nil || bounded, !refinementLevels.isEmpty else {
             facadeBand = nil
             for level in refinementLevels {
                 level.facadeBand = nil
@@ -129,6 +146,24 @@ public final class BlastSolver {
                         for k in first..<grid.nz { band[grid.index(i, j, k)] |= 2 }
                     }
                 }
+            }
+            // Bit 2 too: outside every region refinement is confined to.
+            if let regions {
+                var inside = [Bool](repeating: false, count: grid.cellCount)
+                for region in regions {
+                    // The cells whose centres lie in the box.
+                    let low = simd_max(SIMD3<Int>((region.low / grid.cellSize - 0.5).rounded(.up)), .zero)
+                    let high = simd_min(
+                        SIMD3<Int>((region.high / grid.cellSize - 0.5).rounded(.down)),
+                        SIMD3(grid.nx, grid.ny, grid.nz) &- 1)
+                    guard all(low .<= high) else { continue }
+                    for k in low.z...high.z {
+                        for j in low.y...high.y {
+                            for i in low.x...high.x { inside[grid.index(i, j, k)] = true }
+                        }
+                    }
+                }
+                for index in 0..<grid.cellCount where !inside[index] { band[index] |= 2 }
             }
             for model in structures?.0 ?? [] {
                 for solid in model.solids {
@@ -164,7 +199,7 @@ public final class BlastSolver {
                 nx: UInt32(grid.nx), ny: UInt32(grid.ny), nz: UInt32(grid.nz),
                 ratio: UInt32(level.parentScale),
                 threshold: held ? threshold : 0, ambient: configuration.ambientPressure,
-                on: held && facadeBand != nil ? 1 : 0, ceiling: ceiling != nil && facadeBand != nil ? 1 : 0)
+                on: held && facadeBand != nil ? 1 : 0, ceiling: bounded && facadeBand != nil ? 1 : 0)
         }
     }
 
@@ -323,7 +358,8 @@ public final class BlastSolver {
     /// The burst counts as on the surface when the charge touches the slab or sits within two of
     /// its radii of the ground, and in free air otherwise. Each component's worst outcome is kept
     /// for its damage (`EnvelopeVentingSnapshot.closeIn`); spalling opens nothing, as it does not
-    /// go through. Replaces any set before; call before the run.
+    /// go through. A charge's breaches open its `delay` later (give the main charge none). Replaces
+    /// any set before; call before the run.
     @discardableResult
     public func setEnvelopeCloseIn(
         charges: [(charge: Charge, casing: Float)], constructions: (UUID) -> EnvelopeConstruction
@@ -389,7 +425,8 @@ public final class BlastSolver {
                         }
                         guard !cells.isEmpty else { continue }
                         let arrival =
-                            KingeryBulmash.point(at: distance / cbrt(mass))?.arrival(mass: mass) ?? 0
+                            charge.firingTime
+                            + (KingeryBulmash.point(at: distance / cbrt(mass))?.arrival(mass: mass) ?? 0)
                         list.append((n, owner, cells, arrival, "breach"))
                     }
                 }
@@ -523,7 +560,9 @@ public final class BlastSolver {
         // A charge mapped from one dimension has already passed the plane within its mapped radius:
         // there it takes the solution's own peak, impulse and arrival.
         for mappedStart in mappedStart {
-            plane.seed(mappedStart.blast, centre: mappedStart.centre, radius: mappedStart.radius)
+            plane.seed(
+                mappedStart.blast, centre: mappedStart.centre, radius: mappedStart.radius,
+                delay: mappedStart.charge.firingTime)
         }
         exposurePlane = plane
         exposureNeedsInitialSample = true
@@ -716,6 +755,13 @@ public final class BlastSolver {
     var cappedSliverBuffer: MTLBuffer?
     private let debrisExchangePipeline: MTLComputePipelineState
     private let shellSplatPipeline: MTLComputePipelineState
+    /// The shells' splat with elements at a pitch compiled in, for bodies that have them.
+    private lazy var inclinedShellSplatPipeline: MTLComputePipelineState? = {
+        let constants = MTLFunctionConstantValues()
+        var pitched = true
+        constants.setConstantValue(&pitched, type: .bool, index: 25)
+        return try? ShaderLibrary.pipeline("shellSplat", in: library, constants: constants)
+    }()
     private let beamSplatPipeline: MTLComputePipelineState
 
     private let stateBuffers: [MTLBuffer]
@@ -778,7 +824,7 @@ public final class BlastSolver {
     private var stillCell = CellState(Primitive(density: 1.225, pressure: 101_325), gamma: 1.4)
     private var batchInFlight = false
     /// True once the blast has left and the air has been frozen; only the structure advances.
-    public private(set) var airIsAsleep = false
+    public internal(set) var airIsAsleep = false
     /// The air's last time step (before any clipping to a time limit), which at a checkpoint
     /// sizes the substeps of the steps up to the next.
     private var lastFluidStep: Float = 0
@@ -850,6 +896,9 @@ public final class BlastSolver {
     /// density and energy per volume, over the uniform state the air was filled with. Given to the
     /// fine cells at the next `restart()`; forgotten when the air is filled or edited by hand.
     var fineDeposit: [SIMD3<Int>: SIMD2<Float>] = [:]
+    /// The scene's charges (0 the main one, then the additional ones) that the last `load` laid
+    /// nothing of, being inside a block, the ground or a structure (`Scenario.blocks`).
+    public internal(set) var blockedCharges: [Int] = []
 
     public init(
         device: MTLDevice,
@@ -1155,6 +1204,7 @@ public final class BlastSolver {
 
     /// Sets every cell from a closure and restarts the clock. Intended for small grids.
     public func fill(_ body: (_ i: Int, _ j: Int, _ k: Int) -> Primitive) {
+        pendingFirings = []
         mutateState { cells in
             for k in 0..<grid.nz {
                 for j in 0..<grid.ny {
@@ -1849,7 +1899,10 @@ public final class BlastSolver {
                             width: beamSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
                 }
                 var count = UInt32(shells.elementCount)
-                encoder.setComputePipelineState(shellSplatPipeline)
+                let splat =
+                    body.model.hasInclinedSolids
+                    ? inclinedShellSplatPipeline ?? shellSplatPipeline : shellSplatPipeline
+                encoder.setComputePipelineState(splat)
                 encoder.setBuffer(shells.elementBuffer, offset: 0, index: 0)
                 encoder.setBuffer(shells.flagBuffer, offset: 0, index: 1)
                 encoder.setBuffer(shells.nodeBuffer, offset: 0, index: 2)
@@ -1864,7 +1917,7 @@ public final class BlastSolver {
                     encoder.dispatchThreads(
                         MTLSize(width: shells.elementCount, height: 1, depth: 1),
                         threadsPerThreadgroup: MTLSize(
-                            width: shellSplatPipeline.threadExecutionWidth, height: 1, depth: 1))
+                            width: splat.threadExecutionWidth, height: 1, depth: 1))
                 }
             }
 
@@ -1996,9 +2049,58 @@ public final class BlastSolver {
     }
 
     /// Puts `samples` in front of gauge `index`'s history.
+    /// Marks the tiles of still air within `radius` of `centre` to be swept, for a charge laid down
+    /// there during the run.
+    func wakeTiles(around centre: SIMD3<Float>, radius: Float) {
+        guard tilesEnabled else { return }
+        let dims = SIMD3(grid.nx, grid.ny, grid.nz)
+        let low =
+            simd_max(SIMD3<Int>(((centre - radius) / grid.cellSize).rounded(.down)), .zero) / Self.tileSize
+        let high =
+            simd_min(SIMD3<Int>(((centre + radius) / grid.cellSize).rounded(.down)), dims &- 1)
+            / Self.tileSize
+        guard all(low .<= high) else { return }
+        let flags = tileFlagBuffer.contents().bindMemory(to: UInt8.self, capacity: tileFlagBuffer.length)
+        for z in low.z...high.z {
+            for y in low.y...high.y {
+                for x in low.x...high.x where flags[x + tileDims.x * (y + tileDims.y * z)] == 0 {
+                    flags[x + tileDims.x * (y + tileDims.y * z)] = 1
+                }
+            }
+        }
+    }
+
+    /// The fastest wave in the air measured again, as at the start, for the next step's length:
+    /// after a charge laid down during the run, which the last step's did not see.
+    func measureWaveSpeedAgain() {
+        guard let commandBuffer = commandQueue.makeCommandBuffer(),
+            let encoder = commandBuffer.makeComputeCommandEncoder()
+        else { return }
+        // Taken as the larger of the last step's and the air's now, by the kernel's atomic maximum.
+        var uniforms = makeUniforms()
+        encoder.setComputePipelineState(measurePipeline)
+        encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+        encoder.setBuffer(maskBuffer, offset: 0, index: 1)
+        encoder.setBuffer(maxSpeedBuffer, offset: 0, index: 2)
+        encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 3)
+        dispatchGrid(encoder, pipeline: measurePipeline)
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+    }
+
     func prependGaugeHistory(_ index: Int, _ samples: [GaugeSample]) {
         guard gaugeHistories.indices.contains(index) else { return }
         gaugeHistories[index] = samples + gaugeHistories[index]
+    }
+
+    /// Puts `samples` in a gauge's history in place of what it recorded from `start` through `end`,
+    /// in order of time.
+    func spliceGaugeHistory(_ index: Int, _ samples: [GaugeSample], from start: Double, through end: Double) {
+        guard gaugeHistories.indices.contains(index) else { return }
+        let history = gaugeHistories[index]
+        gaugeHistories[index] =
+            history.filter { $0.time < start } + samples + history.filter { $0.time > end }
     }
 
     /// How one body was brought to rest under its own weight before the blast.
@@ -2127,6 +2229,8 @@ public final class BlastSolver {
         time = 0
         stepCount = 0
         clockTicks = 0
+        rampStart = 0
+        lastFiring = 0
         // The slivers a structure shut in are found again from where it stands (`remaskCapSlivers`).
         if let cappedSliverBuffer { memset(cappedSliverBuffer.contents(), 0, cappedSliverBuffer.length) }
         exposurePlane?.reset()
@@ -2556,6 +2660,13 @@ public final class BlastSolver {
     ) -> MTLCommandBuffer? {
         let first = range.lowerBound == 0
         let last = range.upperBound == steps
+        // A charge due now is laid down before the batch, which then stops at the next one's time.
+        var timeLimit = timeLimit
+        if first, !pendingFirings.isEmpty {
+            precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
+            fireDueCharges()
+            if let next = pendingFirings.first?.time { timeLimit = min(timeLimit ?? .infinity, next) }
+        }
         if first {
             precondition(!batchInFlight, "completeBatch() must be called before encoding another batch")
             guard !interObjectContactDetected && !couplingCapacityExceeded else { return nil }
@@ -2641,7 +2752,7 @@ public final class BlastSolver {
             phase("air")
             airStage("prepare")
             let globalStep = stepCount + step
-            let ramp = min(1, Float(globalStep + 1) / Float(max(configuration.startupSteps, 1)))
+            let ramp = min(1, Float(globalStep - rampStart + 1) / Float(max(configuration.startupSteps, 1)))
             var uniforms = makeUniforms(cfl: configuration.cfl * ramp)
             // With the air asleep, each step is exactly as long as the structure's substeps cover.
             let asleep = airIsAsleep && hasBody
@@ -3060,9 +3171,10 @@ public final class BlastSolver {
             let crossing = Double(simd_length(grid.size) / ambientSoundSpeed)
             let late =
                 configuration.airSleepCrossings > 0
-                && time > Double(configuration.airSleepCrossings) * crossing
-            // A deflagration's pressure rises slowly from nothing, and lasts many crossings.
-            airIsAsleep = (quiet || late) && !hasFlame
+                && time - lastFiring > Double(configuration.airSleepCrossings) * crossing
+            // A deflagration's pressure rises slowly from nothing, and lasts many crossings; a
+            // charge still to fire will wake it.
+            airIsAsleep = (quiet || late) && !hasFlame && pendingFirings.isEmpty
         }
         if control.activeSteps > 0 { lastFluidStep = control.lastStep }
         var swept = 1.0

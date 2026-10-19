@@ -43,7 +43,7 @@ nothing in it should be used to judge the safety of a real structure.
 | 4 | Peak pressure is under-resolved near the charge                         | Incident peaks close in come within a sixth of Kingery–Bulmash from 1 m/kg^(1/3) for 10–100 kg since the mapped start (18 October 2026; 63–99% for 1 kg), where the balloon left 32–84% (11–47%); reflected peaks near walls still read low, the unsafe side, and need fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab; the comparisons of structures were run on the balloon start ([still on it](validation.md#still-on-the-balloon-start)) | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse compared once, blind, and missed (two of Mendonça's slabs under an open-air charge); debris twice, off slabs under contact charges and brick walls under blasts | Debris held back rather than thrown, the unsafe side for a hazard (as rubble particles, an option, thrown at nearer the measured speed); brick walls crack at the measured heights but fall as one column, shattering on a rigid ground in the open (soft ground, an option, halves that) and thrown half as far as measured in a shock tube; collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges), [brick walls](validation.md#brick-walls-debris) |
 | 6 | Moving solids are a staircase of whole cells                            | Either way, to a cell: wall positions are good to a cell; small fragments are crude. Cut-cell outlines for structures before failure (an option, unrefined air) take the offset out of a wall's impulse but not its peak | [Structural model](structural-model.md#coupling-to-the-air) |
-| 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry; debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
+| 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry but for planes at one pitch (roof slopes); debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, roof slabs at one pitch if asked, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
 | 8 | The rebound after a slab's peak is too large; concrete broken under a close-in charge is never removed by default | Too stiff close in, the unsafe side: no hole under a close-in charge, and rebound too large (strength with pressure, and cracks pressed shut, checked: not the cause); removing fragments, an option, holes slabs both ways; rubble kept as particles, an option, holes none | [Validation](validation.md#holes-under-close-in-and-contact-charges) |
 | 9 | Supports and freestanding objects are checked against statics and theory, and footings against nine centrifuge events on one sand (FoRCy, FoRDy) | Either way for a footing's rocking moment, settlement within a factor of 1.7, energy a sixth to two thirds of a shaken test's; footings on soil and connections that open and slide are in, as are boxes and cars that slide, lift and overturn; every object takes the air's load, but late flow is not converged and the cars and furniture are illustrative | [Freestanding objects and supports](#freestanding-objects-and-supports) |
 | 10 | Only selected panels and document workflows have had visual review      | Other layouts and native interactions may still have problems | Below |
@@ -155,9 +155,13 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   held at the terrain's height and landing on it; a frame on a hillside
   ([validation](validation.md#footings-on-a-slope)). No measured footing near a slope under fast
   loading was found.
-- **Next:** a shaken footing's lurch, and the rest of its
-  energy (sand crushed across the whole contact, the shaken sand's own); the cap on cut slivers
-  under structures on refined levels.
+- **Stopped, beyond a bed of springs (19 October):** a shaken footing's lurch and the rest of its
+  energy. The lurch is a ratchet of the sand under a leaning footing. The energy at large
+  rotations is capped by the rigid footing's capacity, which the test's sinking footing passed.
+  Neither yields to a point law: spreading the crushing inwards raised the energy and the
+  settlement together, more heave only the settlement
+  ([validation](validation.md#a-footing-shaken-on-dry-sand)). Both want the sand as a continuum.
+- **Next:** the cap on cut slivers under structures on refined levels.
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
   as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
   connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are
@@ -247,7 +251,9 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   the [large-panel flats](large-panel-flats.md) and the [process plant](process-plant-explosion.md).
 - **Built, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
   - UK terraced brick houses: built ([the terraced houses](shell-model.md#the-terraced-houses)):
-    cavity walls tied across, timber joists seated in pockets, roof tiles thrown as debris.
+    cavity walls tied across, timber joists seated in pockets, a 40° pitched roof on purlins with
+    gables (19 October; [shells at a pitch](shell-model.md#shells-at-a-pitch)), roof tiles hung
+    on their nibs and thrown as debris.
     Judged against wartime bomb damage
     ([validation](validation.md#terraced-houses-against-wartime-bomb-damage)): right a tenth of
     a second in, but cracked front walls then go over that surveyed houses kept standing. SBEDS's
@@ -295,18 +301,29 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
   colour deficiency (`MaterialAppearance`).
 - **Next:** the fixes seen on a real screen, Full Keyboard Access and VoiceOver's speech
   ([remaining checks](native-interface-review.md#remaining-checks)).
+- **Now (asked for 19 October): scrubbable timelines.** An expensive live run can be watched only
+  once. In two tiers:
+  - **Recorded frames:** what the viewport draws, recorded at a frame interval during the run and
+    kept with the saved run, so a slider scrubs and replays it with no physics.
+  - **Solver checkpoints:** saved along the same timeline, so any moment can be re-run at full
+    detail from the nearest one, or continued with changes.
+  The first tier reuses the frames the USD and VDB export already takes. The second rests on the
+  checkpoints that also make mid-run images and ensembles from a shared start cheap.
 
 ## Horizons
 
 Longer aims, set on 18 October 2026. The binding limit is how long a run takes on one Mac, so
 most are about reaching an answer for less, with the full solver kept as the referee. In order:
 
-1. **Refinement steered by the decision** (started). Refine where the answer the user asked
-   for is uncertain: a component near its damage threshold, an injury contour near a boundary,
-   a pane near breaking. Today refinement follows pressure gradients everywhere. The first step
-   is an error estimate on the advisor's target quantity driving the existing refinement flags,
-   judged on whether refined districts then beat uniform cells by a clear factor at equal
-   answers.
+1. **Refinement steered by the decision** (first step traced, 19 October 2026). Refine where the
+   answer the user asked for is uncertain: a component near its damage threshold, an injury
+   contour near a boundary, a pane near breaking. For a district it does not pay: the buildings
+   whose outcome the coarse cells leave in doubt fill a domain drawn to the damage's reach. For
+   one building it does: a corridor from the charge gives full refinement's answer there at 2–9%
+   of its refined work, and about a third of its GPU time on Beirut. Refining only beside the
+   building is worse than coarse cells
+   ([refinement steering](refinement-steering.md)). Next: refining toward buildings the user
+   selects, and refinement's fixed costs scaling with the blocks held.
 2. **Answers in seconds.** Surrogates trained on BombCAD's own runs (reduced-order loads by
    geometry and charge, or a small learned model of envelope response), giving an instant first
    look that real runs then refine where it matters, and inheriting the standing's error bands.
@@ -324,7 +341,9 @@ most are about reaching an answer for less, with the full solver kept as the ref
    some glass broken comes within 0.03 of the full run's to 1.5 km at every yield; it is not yet
    in the app ([a city in minutes](hybrid-far-field.md)).
 4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
-   from the scatter in yield, materials and rounding, cheap once item 2 exists.
+   from the scatter in yield, materials and rounding, cheap once item 2 exists. First step done for the
+   glass: each building side's chance of broken, blown-out and thrown glass in about a minute, calibrated to
+   Beirut's runs but not to its survey ([glass by chance](glass-probability.md)).
 5. **From damage back to the explosion** (first step done). Infer yield, place and height from
    observed arrival times, broken glass and damage, as the Beirut page did by hand for its yield.
    `scenebench infer-charge` ([charge inference](charge-inference.md)) now samples the yield and

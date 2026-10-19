@@ -215,6 +215,11 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// beside envelopes and structures (`refinementHoldsEnvelopes`, `refinementHoldsStructures`)
     /// too: a face above it is loaded on the coarse cells. Nil, the default, refines at any height.
     public var refinementCeiling: Float?
+    /// Refinement only inside these boxes (metres, the domain's frame): a coarse cell whose
+    /// centre lies in none of them is never refined, as above the ceiling, and nor are the bands
+    /// held in it. For refinement steered by a decision (docs/refinement-steering.md): the boxes
+    /// about the components whose outcome is in doubt. Nil, the default, refines anywhere.
+    public var refinementConfinedTo: [RefinementRegion]?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October
@@ -311,6 +316,17 @@ public struct SolverConfiguration: Sendable, Hashable {
 }
 
 /// Primitive gas state in SI units.
+/// A box of the domain in which air may be refined (`SolverConfiguration.refinementConfinedTo`).
+public struct RefinementRegion: Sendable, Hashable {
+    public var low: SIMD3<Float>
+    public var high: SIMD3<Float>
+
+    public init(low: SIMD3<Float>, high: SIMD3<Float>) {
+        self.low = low
+        self.high = high
+    }
+}
+
 public struct Primitive: Sendable, Hashable {
     public var density: Float
     public var velocity: SIMD3<Float>
@@ -630,6 +646,9 @@ public enum BlastError: Error, CustomStringConvertible {
     case barOutsideConcrete(Int, SIMD3<Float>)
     /// Timber in solid elements, which have no law for it: it is meshed as shells and beams.
     case timberNeedsShells(String)
+    /// The charge is inside a block, a building, the ground or a structure, where it would
+    /// release no energy into the air (`Scenario.chargeIsBlocked`).
+    case chargeBlocked(SIMD3<Float>)
 
     public var description: String {
         switch self {
@@ -646,6 +665,11 @@ public enum BlastError: Error, CustomStringConvertible {
             "Discrete bar \(index + 1) does not lie wholly within the structure's elements: at \(point)"
         case .timberNeedsShells(let name):
             "\(name) is timber, which is meshed with shells and beams; choose shells for the structure"
+        case .chargeBlocked(let point):
+            String(
+                format:
+                    "The charge at %.1f, %.1f, %.1f m is inside a block, a building, the ground or a structure, where it would release no energy",
+                point.x, point.y, point.z)
         case .notPlateLike(let index):
             "Solid \(index + 1) is neither a wall or slab nor a column, so it cannot be meshed with shells and beams"
         }

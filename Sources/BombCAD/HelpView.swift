@@ -67,7 +67,7 @@ private enum HelpTopic: String, CaseIterable, Identifiable {
             [
                 (
                     "Open your model",
-                    "Choose Import Model… in the toolbar or drop one local OBJ, STL or IFC file into the viewport. An ASCII DXF floor plan is raised into a building: mark its layers as walls, doors, windows or floor outlines, give the storeys, and review it as an IFC building. Export closed, watertight volumes from your CAD tool. Triangles or convex planar polygons are supported; textures and OBJ visual materials are ignored. Checking runs in the background and can be cancelled. For OBJ/STL material editing, start with Open ground and enable Deformable solid; the layout must not already contain another deformable structure. Leaving it off creates rigid obstacles."
+                    "Choose Import Model… in the toolbar or drop one local OBJ, STL or IFC file into the viewport. An ASCII DXF or an SVG floor plan is raised into a building: mark its layers as walls, doors, windows or floor outlines, give the storeys, and review it as an IFC building. Export closed, watertight volumes from your CAD tool. Triangles or convex planar polygons are supported; textures and OBJ visual materials are ignored. Checking runs in the background and can be cancelled. For OBJ/STL material editing, start with Open ground and enable Deformable solid; the layout must not already contain another deformable structure. Leaving it off creates rigid obstacles."
                 ),
                 (
                     "Import an IFC building",

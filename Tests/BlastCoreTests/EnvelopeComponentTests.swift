@@ -582,6 +582,48 @@ struct EnvelopeComponentHistoryTests {
         #expect(high.digest.map(\.bitPattern) == free.digest.map(\.bitPattern))
     }
 
+    @Test(
+        "Refinement confined to boxes stays in them, at both levels, and a box holding the domain changes nothing"
+    )
+    func refinementConfined() throws {
+        let scene = Scenario(
+            name: "Open", domainSize: SIMD3(12, 12, 8), boxes: [],
+            charge: Charge(mass: 0.5, position: SIMD3(6, 6, 0.5)))
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        func run(_ regions: [RefinementRegion]?) throws -> (rows: [[Int]], digest: [Float]) {
+            var config = SolverConfiguration()
+            config.refinement = 2
+            config.refinementLevels = 2
+            config.refinementMemory = 64 << 20
+            config.refinementConfinedTo = regions
+            let solver = try BlastSolver(
+                device: device, scenario: scene, cellSize: 0.25, configuration: config)
+            var rows: [[Int]] = []
+            while solver.time < 0.01 {
+                let batch = solver.advance(steps: 8, timeLimit: 0.01)
+                if batch.steps == 0 { break }
+                let now = solver.refinedBlocksByHeight()
+                rows = rows.isEmpty ? now : zip(rows, now).map { zip($0, $1).map { max($0, $1) } }
+            }
+            let digest = solver.withState { cells in
+                stride(from: 0, to: cells.count, by: 997).map { cells[$0].density + cells[$0].energy }
+            }
+            return (rows, digest)
+        }
+        let free = try run(nil)
+        // Two boxes, side by side, holding the air below 2 m: as the ceiling at 2 m above.
+        let low = try run([
+            RefinementRegion(low: SIMD3(0, 0, 0), high: SIMD3(6, 12, 2)),
+            RefinementRegion(low: SIMD3(6, 0, 0), high: SIMD3(12, 12, 2)),
+        ])
+        #expect(free.rows[0].dropFirst(3).reduce(0, +) > 0 && free.rows[1].dropFirst(6).reduce(0, +) > 0)
+        #expect(low.rows[0].dropFirst(3).allSatisfy { $0 == 0 }, "\(low.rows[0])")
+        #expect(low.rows[1].dropFirst(6).allSatisfy { $0 == 0 }, "\(low.rows[1])")
+        #expect(low.rows[0].prefix(2).reduce(0, +) > 0 && low.rows[1].prefix(4).reduce(0, +) > 0)
+        let whole = try run([RefinementRegion(low: SIMD3(-1, -1, -1), high: SIMD3(13, 13, 9))])
+        #expect(whole.digest.map(\.bitPattern) == free.digest.map(\.bitPattern))
+    }
+
     @Test("Refinement held beside a wall while its air is loaded keeps it fine after the shock has gone")
     func heldBand() throws {
         var scene = Scenario(

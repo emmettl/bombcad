@@ -321,6 +321,29 @@ struct InterfaceSnapshotTests {
         #expect(ProjectDocument(model: model) == original)
     }
 
+    @Test("Render the Protective Design sheet empty and with plans", arguments: ["light", "dark"])
+    func protectivePlanner(style: String) async throws {
+        let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])
+        let folder = URL(filePath: output, directoryHint: .isDirectory).appending(path: style)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let appearance: NSAppearance.Name = style == "dark" ? .darkAqua : .aqua
+        let model = SimulationModel(document: try ProtectionPlannerTests.document())
+        let original = ProjectDocument(model: model)
+        let planner = ProtectionPlannerModel()
+        try snapshot(
+            ProtectionPlannerView(model: model, planner: planner), size: CGSize(width: 640, height: 560),
+            appearance: appearance, to: folder.appending(path: "protective-design-empty.png"))
+        planner.draws = 2
+        planner.search(model.settings.scenario, cellSize: model.settings.resolution.cellSize)
+        while planner.isRunning { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(!planner.plans.isEmpty)
+        try snapshot(
+            ProtectionPlannerView(model: model, planner: planner).frame(height: 900),
+            size: CGSize(width: 640, height: 900), appearance: appearance,
+            to: folder.appending(path: "protective-design.png"))
+        #expect(ProjectDocument(model: model) == original)
+    }
+
     @Test("Render the panels not yet reviewed, whole and at a short height", arguments: ["light", "dark"])
     func remainingPanels(style: String) throws {
         let output = try #require(ProcessInfo.processInfo.environment["BOMBCAD_INTERFACE_REVIEW"])

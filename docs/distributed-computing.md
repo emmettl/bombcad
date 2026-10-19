@@ -675,8 +675,9 @@ wrong way round: the Studio here takes no SSH logins. Built in October 2026 (`Ne
   IPv4 address, Wi-Fi, then the rest (`BOMBCAD_NEARBY_LINK` forces one, for measuring).
 - **Deadlines.** Network.framework waits for ever on a TLS handshake or a receive that the other
   side never answers, so each step before a session starts has its own (19 October 2026):
-  connecting, handshake and all, 20 s; each message of pairing or of a session's first exchange,
-  30 s; a pairing code checked on the other Mac, 5 minutes. A step that runs out cancels the
+  connecting, handshake and all, a minute; each message of pairing or of a session's first
+  exchange, a minute; a pairing code checked on the other Mac, 5 minutes. The first two were 20 s
+  and 30 s until a Studio loaded to 150 by other runs took past 20 s to connect over loopback. A step that runs out cancels the
   connection and fails with `NearbyError.timedOut`, naming the Mac. Once the worker has greeted
   (itself within 60 s, as over SSH), a run has no deadline. The sharing Mac keeps a new pairing,
   and restarts its session listener with the key, before it sends its last pairing message, so a

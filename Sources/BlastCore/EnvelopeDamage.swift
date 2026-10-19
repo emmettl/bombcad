@@ -184,9 +184,13 @@ public struct EnvelopeComponentDamage: Codable, Sendable, Identifiable {
         case reinforcedConcrete, unreinforcedMasonry, annealedGlass, reinforcedBlockwork, profiledSteel
         case crossLaminatedTimber
         case laminatedGlass
+        /// Monolithic glass with security film, and toughened glass without it.
+        case filmedGlass, toughenedGlass
 
-        /// A pane's glass, annealed or laminated.
-        public var isGlass: Bool { self == .annealedGlass || self == .laminatedGlass }
+        /// A pane's glass, annealed, toughened, filmed or laminated.
+        public var isGlass: Bool {
+            [.annealedGlass, .laminatedGlass, .filmedGlass, .toughenedGlass].contains(self)
+        }
     }
     public var id: String
     public var owner: UUID
@@ -512,10 +516,15 @@ public enum EnvelopeDamageAssessment {
 
     /// With `vented`, the run's glazing broke in the air: each pane breaks when the GPU's glass did
     /// (its history after that is the open window's), and the inside is the air's worst room.
+    /// With `hazard`, each façade side's glass also carries the chance that some pane is thrown
+    /// worse than that GSA condition (`GlazingBreakage.worse`). `glassStrength` scales each
+    /// building's glass strength over the flaw model's median, for the side's breakage only (1 if
+    /// not given).
     public static func assess(
         loads: [EnvelopeComponentLoad], constructions: (UUID) -> EnvelopeConstruction,
         rooms: [UUID: Double] = [:], strikes: [FragmentImpact]? = nil,
-        vented: EnvelopeVentingSnapshot? = nil
+        vented: EnvelopeVentingSnapshot? = nil, hazard: GlazingHazard.Condition? = nil,
+        glassStrength: ((UUID) -> Double)? = nil
     ) -> [EnvelopeBuildingDamage] {
         let byOwner = Dictionary(grouping: loads, by: \.owner)
         let owners = byOwner.keys.sorted { $0.uuidString < $1.uuidString }
@@ -529,6 +538,8 @@ public enum EnvelopeDamageAssessment {
         // Each building on its own core: a district's thousands take seconds rather than minutes.
         // The constructions are looked up first, on this thread.
         let built = owners.map(constructions)
+        // Each building's glass strength over the flaw model's median, 1 unless drawn.
+        let strengths = owners.map { glassStrength?($0) ?? 1 }
         var judged = [EnvelopeBuildingDamage?](repeating: nil, count: owners.count)
         judged.withUnsafeMutableBufferPointer { out in
             concurrently(iterations: owners.count) { n in out[n] = building(n) }
@@ -545,11 +556,15 @@ public enum EnvelopeDamageAssessment {
             var broken: [(load: EnvelopeComponentLoad, at: Double)] = []
             var sides: [Int: GlazingBreakage] = [:]
             for load in mine {
-                if load.kind == .facade, let mix = construction.glazing {
+                if load.kind == .facade,
+                    let mix = construction.glazing(axis: load.axis, outward: load.outward)
+                {
                     let spans = load.spans
                     sides[load.axis * 2 + (load.outward > 0 ? 1 : 0), default: GlazingBreakage()] =
                         sides[load.axis * 2 + (load.outward > 0 ? 1 : 0), default: GlazingBreakage()]
-                        + mix.breakage(netPa: load.netPa, binS: load.binS, areaM2: spans.short * spans.long)
+                        + mix.breakage(
+                            netPa: load.netPa, binS: load.binS, areaM2: spans.short * spans.long,
+                            worseThan: hazard, strength: strengths[n])
                 }
                 guard
                     var damage = assess(
@@ -582,7 +597,11 @@ public enum EnvelopeDamageAssessment {
                 }
                 components.append(damage)
                 if damage.material.isGlass, let at = damage.failedAtS { broken.append((load, at)) }
-                if let pane = facadePane(load, construction: construction) { components.append(pane) }
+                if let pane = facadePane(
+                    load, construction: construction.facade(axis: load.axis, outward: load.outward))
+                {
+                    components.append(pane)
+                }
             }
             // The broken panes' outer pressures from the first of their windows' starts.
             let first = broken.map(\.load.startS).min() ?? 0
@@ -606,8 +625,9 @@ public enum EnvelopeDamageAssessment {
                 openings.isEmpty
                 ? (peak: 0.0, impulse: 0.0)
                 : air.map { (peak: $0.peakPa, impulse: $0.impulsePaS) } ?? filled()
-            // Laminated panes stay shut in the air when they go, so the fill through them stands in.
-            if construction.laminate != nil, air != nil, !openings.isEmpty {
+            // Laminated and filmed panes stay shut in the air when they go, so the fill through them
+            // stands in.
+            if construction.holdsFragments, air != nil, !openings.isEmpty {
                 let through = filled()
                 inside = (max(inside.peak, through.peak), max(inside.impulse, through.impulse))
             }
@@ -733,7 +753,7 @@ public enum EnvelopeDamageAssessment {
         }
         if load.kind == .pane {
             let pane =
-                construction.laminate == nil
+                construction.hasPlainGlass
                 ? annealedPane(thickness: Double(construction.glassThicknessM), a: a, b: b)
                 : construction.pane(a: a, b: b)
             var response = pane.response(pressures: pressures, step: load.binS)
@@ -747,7 +767,7 @@ public enum EnvelopeDamageAssessment {
             let level = Self.paneLevel(response)
             let rotation = Self.rotation(response, span: a)
             var result = damage(
-                construction.laminate == nil ? .annealedGlass : .laminatedGlass, rotation...rotation,
+                construction.paneMaterial, rotation...rotation,
                 level...level,
                 response.lostResistanceAt)
             result.crackedAtS = response.crackedAt
@@ -755,8 +775,7 @@ public enum EnvelopeDamageAssessment {
             result.launch = Self.launch(
                 time: response.lostResistanceAt, speed: response.velocityAtLoss, system: pane,
                 material: result.material,
-                thickness: construction.laminate.map { $0.plies.reduce(0, +) }
-                    ?? Double(construction.glassThicknessM),
+                thickness: construction.glassAloneM,
                 span: a, pane: SIMD2(a, b), rotation: atan((response.deflectionAtBreak ?? 0) / (a / 2)))
             result.blastArrivalS = arrival
             if load.axis != 2 {
@@ -764,14 +783,12 @@ public enum EnvelopeDamageAssessment {
                     response: response, netPa: pressures, binS: load.binS, massPerArea: pane.massPerArea,
                     paneHeight: Double(load.region.size.z))
             } else {
-                let glass =
-                    construction.laminate.map { $0.plies.reduce(0, +) }
-                    ?? Double(construction.glassThicknessM)
+                let glass = construction.glassAloneM
                 result.overhead = OverheadGlassHazard.falling(
                     response: response, netPa: pressures, binS: load.binS, massPerArea: pane.massPerArea,
                     a: a, b: b,
                     thickness: glass, drop: Double(load.region.min.z) - (buildingBase ?? 0),
-                    laminated: construction.laminate != nil)
+                    laminated: construction.holdsFragments)
             }
             return result
         }
@@ -832,15 +849,19 @@ public enum EnvelopeDamageAssessment {
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
-            let system = EnvelopePanel.unreinforcedMasonry(
+            var system = EnvelopePanel.unreinforcedMasonry(
                 thickness: thickness, material: masonry, a: a, b: b,
                 axialLoad: isRoof
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry),
                 height: load.panelHeight
             )
+            // A liner spans the shorter way, as a membrane between the supports it is lapped onto.
+            if let liner = construction.wallLiner, !isRoof { system = system.lined(liner, span: a) }
             let response = system.response(pressures: pressures, step: load.binS)
+            // Cracked once past the backbone's first point, lined or not.
             let level: EnvelopeDamageLevel =
-                response.lostResistanceAt != nil ? .failed : (response.ductility > 1 ? .heavy : .none)
+                response.lostResistanceAt != nil
+                ? .failed : (response.peakDeflection > system.backbone[0].x ? .heavy : .none)
             let rotation = Self.rotation(response, span: a)
             var result = damage(
                 .unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
@@ -978,14 +999,17 @@ public enum EnvelopeDamageAssessment {
         case .unreinforcedMasonry:
             var masonry = StructureMaterial.masonry
             masonry.steel = nil
-            let system = EnvelopePanel.unreinforcedMasonryOneWay(
+            var system = EnvelopePanel.unreinforcedMasonryOneWay(
                 thickness: thickness, material: masonry, span: span, edges: .fixed,
                 axialLoad: isRoof || !load.spansVertically
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry)
             )
+            if let liner = construction.wallLiner, !isRoof { system = system.lined(liner, span: span) }
             let response = system.response(pressures: pressures, step: load.binS)
+            // Cracked once past the backbone's first point, lined or not.
             let level: EnvelopeDamageLevel =
-                response.lostResistanceAt != nil ? .failed : (response.ductility > 1 ? .heavy : .none)
+                response.lostResistanceAt != nil
+                ? .failed : (response.peakDeflection > system.backbone[0].x ? .heavy : .none)
             let rotation = Self.rotation(response, span: span)
             var result = damage(
                 .unreinforcedMasonry, rotation...rotation, level...level, response.lostResistanceAt)
@@ -1052,7 +1076,7 @@ public enum EnvelopeDamageAssessment {
         guard size.x > 0, size.y > 0 else { return nil }
         let (a, b) = (Double(min(size.x, size.y)), Double(max(size.x, size.y)))
         let pane =
-            construction.laminate == nil
+            construction.hasPlainGlass
             ? annealedPane(thickness: Double(construction.glassThicknessM), a: a, b: b)
             : construction.pane(a: a, b: b)
         let pressures = load.netPa
@@ -1061,7 +1085,7 @@ public enum EnvelopeDamageAssessment {
         let rotation = Self.rotation(response, span: a)
         var damage = EnvelopeComponentDamage(
             id: load.id + "/pane", owner: load.owner, kind: .pane,
-            material: construction.laminate == nil ? .annealedGlass : .laminatedGlass, shortSpanM: a,
+            material: construction.paneMaterial, shortSpanM: a,
             peakNetPa: pressures.map(abs).max() ?? 0, rotationDeg: rotation...rotation, levels: level...level,
             failedAtS: response.lostResistanceAt.map { $0 + load.startS })
         damage.crackedAtS = response.crackedAt.map { $0 + load.startS }

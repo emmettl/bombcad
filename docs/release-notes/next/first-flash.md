@@ -9,4 +9,6 @@ is now opaque within centimetres and shows: Dial Pack's first maximum at 1.25 ms
 bright as measured, from a quarter, and falls away over the next milliseconds as measured.
 Cooler gas, the fireball from tens of milliseconds on, is as before, and so is everything
 measured against Clough and Clubley's 41 kg. The thermal radiation stays illustrative
-([before the grid's clock](../../thermal-radiation.md#before-the-grids-clock)).
+([before the grid's clock](../../thermal-radiation.md#before-the-grids-clock)). The fireball's cells now travel with
+the hot air's absorption, so Macs reckoning the radiation for each other need this version
+(worker protocol 15).

@@ -55,7 +55,33 @@ struct PlanHouseStudyTests {
         try await run(source, name: "house-plan.dxf", report: "plan-house-dxf-20kg")
     }
 
-    func run(_ source: ImportedMesh, name: String, report reportName: String) async throws {
+    /// The house with a curved bay in its front wall, read from its plan (`house-plan-bay.dxf`): the
+    /// bay's chords as walls turned in plan, under the same charge.
+    @Test("The house with a bay, read from its plan, takes the same blast", .enabled(if: output != nil))
+    func studyBay() async throws {
+        let url = fixture().deletingLastPathComponent().appendingPathComponent("house-plan-bay.dxf")
+        let drawing = try DXFDrawing(data: Data(contentsOf: url))
+        var options = FloorPlan.Options()
+        options.metresPerUnit = try #require(drawing.metresPerUnit)
+        options.roles = [
+            "WALL-EXT": .wall(.cavityBrickBlock), "WALL-INT": .wall(.block100), "DOOR": .door,
+            "WINDOW-GF": .window, "WINDOW-FF": .window,
+        ]
+        options.layerStoreys = ["DOOR": 0, "WINDOW-GF": 0, "WINDOW-FF": 1]
+        let plan = FloorPlan.analyse(drawing, options: options)
+        let source = try ImportedMesh(
+            buildingElements: FloorPlan.buildingElements(plan, options: options), notes: plan.notes,
+            origin: SIMD3(plan.bounds.min.x, plan.bounds.min.y, 0))
+        var structural = IFCStructure.Options(elementSize: 0.25)
+        structural.inclinedPlates = true
+        try await run(
+            source, name: "house-plan-bay.dxf", report: "plan-house-bay-20kg", structural: structural)
+    }
+
+    func run(
+        _ source: ImportedMesh, name: String, report reportName: String,
+        structural: IFCStructure.Options = IFCStructure.Options(elementSize: 0.25)
+    ) async throws {
         let output = try #require(Self.output)
         let preview = try source.transformed(scale: 1, yUp: false, corner: Self.corner)
             .preview(cellSize: Self.cellSize, domain: Self.domain)
@@ -63,7 +89,7 @@ struct PlanHouseStudyTests {
             name: name, source: source, scale: 1, yUp: false, corner: Self.corner,
             behavior: .deformable,
             preview: preview)
-        model.structuralOptions = IFCStructure.Options(elementSize: 0.25)
+        model.structuralOptions = structural
         var scenario = Scenario(
             name: "House from a plan", domainSize: Self.domain, boxes: [], charge: Self.charge,
             gauges: [Gauge("Before the front wall", at: Self.corner + SIMD3(4, -0.2, 1.5))])
@@ -102,12 +128,17 @@ struct PlanHouseStudyTests {
         // From the house at rest under its own weight (settled as `load` leaves it).
         let rest = nodes.map { list in list.map { shells.node($0).displacement } }
         var peaks = [Float](repeating: 0, count: walls.count)
+        var peakAt = [SIMD3<Float>](repeating: .zero, count: walls.count)
         while solver.time < Self.duration {
             let batch = solver.advance(steps: 16, timeLimit: Self.duration)
             if batch.steps == 0 && !solver.airIsAsleep { break }
             for (w, list) in nodes.enumerated() {
                 for (k, n) in list.enumerated() {
-                    peaks[w] = max(peaks[w], simd_length(shells.node(n).displacement - rest[w][k]))
+                    let moved = simd_length(shells.node(n).displacement - rest[w][k])
+                    if moved > peaks[w] {
+                        peaks[w] = moved
+                        peakAt[w] = shells.referencePositions[n] - Self.corner
+                    }
                 }
             }
         }
@@ -129,8 +160,11 @@ struct PlanHouseStudyTests {
         for line in report.supports + report.assumptions { text += "  \(line)\n" }
         text += String(format: "\nBefore the front wall: %.0f kPa\n", peak / 1000)
         text += "Elements failed: \(summary.erodedElements) of \(shells.elementCount)\n"
-        for (wall, value) in zip(walls, peaks) {
-            text += String(format: "  %@: peak %.1f mm\n", wall.0, value * 1000)
+        for (w, (wall, value)) in zip(walls, peaks).enumerated() {
+            text += String(
+                format: "  %@: peak %.1f mm at (%.2f, %.2f, %.2f) m\n", wall.0, value * 1000, peakAt[w].x,
+                peakAt[w].y,
+                peakAt[w].z)
         }
         try FileManager.default.createDirectory(atPath: output, withIntermediateDirectories: true)
         try text.write(toFile: output + "/\(reportName).txt", atomically: true, encoding: .utf8)

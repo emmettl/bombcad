@@ -28,7 +28,7 @@ it at once.
 
 **The pre-push check is sized to the change** (since 18 October 2026, at the user's request: while
 the project's only user is its author, velocity counts for more than repeating the whole suite on
-every push). `~/.local/bin/gpu-slot make check-affected` (`Scripts/check-affected.py`) compares
+every push). `make check-affected` (`Scripts/check-affected.py`) compares
 the branch with `origin/main` and runs one of four tiers. Since 19 October the suites are chosen
 by coverage when a [test-impact map](#choosing-tests-by-coverage) is at hand, so a change to the
 solver's core no longer means the whole suite:
@@ -38,7 +38,7 @@ solver's core no longer means the whole suite:
 | Documents, images and the Python scripts only | `make lint` and `make ci-test` (the scripts' tests and the documents' links); no Swift build |
 | Code, with a map at or behind the merge base (tier `covered`) | lint, `make build-strict`, `ci-test`, and the Swift suites that executed a changed function when the map was built; for a shader, the suites that ran the Swift lines dispatching the kernels the change reaches, and the quickest suite that compiles that library. Plus the suites in changed test files, those whose test files read a changed file by its path, those the map has no coverage for, and the standing's and the shader layouts' suites |
 | Code without a map (tier `affected`), or a file the map can't speak for | as before: the suites that name a changed file's type or sit in a changed test file, plus the standing's and the shader layouts' suites |
-| `Package.swift`/`.resolved` always; without a map for them, the core: any shader, RadialBlast, or BlastSolver, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody | the full `make check-anywhere` |
+| `Package.swift`/`.resolved` always; without a map for them, the core: any shader, RadialBlast, or BlastSolver, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody | the full `make check`, here or on the mini (below) |
 
 `--dry-run` prints the tier, the map's commit, what was made of each changed file and the suites,
 each with why it was chosen; `--full` forces the full check; `--no-map` chooses by name as without
@@ -48,6 +48,63 @@ dry run, which prints the command and runs nothing. The full check still
 runs nightly on `main` and on every release commit, and its suspect list names the commit that broke
 anything the tiers missed. When the project gains users, the full check before every push comes
 back.
+
+### Where the build and tests run
+
+Lint and `ci-test` take a minute or two and always run on the Studio. The expensive steps (the
+strict build, the IFC converter and the `swift test` run of the chosen suites; for the full tier,
+`make check`) go to the mini when the Studio's GPU line is long and the mini is free (since 19
+October 2026). Before them, `check-affected` reads `gpu-slot --status` and decides:
+
+- **The Studio is busy** when 3 or more jobs are waiting for a gpu-slot slot (`--min-waiting`), or
+  when the memory declared by the jobs holding slots and those waiting is more than its budget, so
+  a new job would wait for memory as well.
+- **Then it asks the mini**, by `Scripts/remote.py`'s own look (`remote.py free` gives the same
+  answer): free unless one of its CI runners has a job, it is Scrimply's nightly window, its load
+  is above a core each, or another BombCAD job holds it. A second lane is allowed beside that job
+  only under the rules [below](#two-lanes-on-the-mini).
+- **Busy and free: on the mini.** The worktree is copied over, as for `check-anywhere`, and
+  `python3 Scripts/check-affected.py check-steps --suites …` runs there, the same steps in the
+  same order. Its output streams back and its exit status is check-affected's. Lines starting
+  with `remote:` say where it ran, in which lane, how long it took and its peak memory. If the
+  mini is taken between the look and the run, the steps run here instead.
+- **Otherwise here**, under gpu-slot, as before: `gpu-slot python3 Scripts/check-affected.py
+  check-steps`, the suites passed in `CHECK_AFFECTED_SUITES`, so that gpu-slot learns one
+  command's memory, whatever the suites.
+
+It prints the decision and its reason (`build and tests on scrimply-ci-tb, since this Mac is busy
+(6 waiting for gpu-slot, 46 GB declared …) and scrimply-ci-tb is free`). `ARGS=--dry-run` prints
+it without running anything. `ARGS=--local` keeps the steps here. `ARGS=--remote` sends them to
+the mini, waiting up to two hours for it if it is taken. Run as `gpu-slot make check-affected`
+(the habit before 19 October), check-affected already holds a slot, so it stays here; holding a
+Studio slot while the mini works would only lengthen the line. A full check run that way still
+goes to `make check-anywhere`, as before. Run it without gpu-slot, which it now uses itself.
+
+Measured on 19 October, with 6 jobs waiting and the Studio's load average at about 150: a
+covered-tier check (15 suites) took 175 s from start to finish with the build and tests on the
+mini. That was 93 s for lint and `ci-test` here, then 81 s for the copy and the remote steps,
+78 s of them building incrementally and running the suites. In a fresh lane the same steps took
+82 s, 65 s of it the build. The same check with `--local`, started minutes later, took 819 s. It
+waited 628 s for a slot, behind seven jobs, then took 114 s for the build and tests: 95 s of
+that was the build, from cold in a fresh worktree, and its largest process peaked at 2 GB. Once a
+slot is free the Studio's steps are about as quick as the mini's. The time saved is the wait for
+the slot.
+
+### Full studies
+
+A few tests run a whole study: a building settled under its own weight and then loaded, an
+assembly pushed to failure, a convergence sweep. Since 19 October 2026 such a test can carry the
+`.fullStudy` trait (`Tests/BlastCoreTests/FullStudies.swift`, and the same in BombCADTests), which
+runs it only with `BOMBCAD_FULL_STUDIES=1` in the environment. The nightly full check sets it, and
+so does `make release` (`Scripts/release.py`); the pre-push checks (`make check-affected`,
+`make check`, `make check-anywhere`) and the test-impact map don't. A gated test's suite keeps a
+check-time version beside it, on a smaller mesh or a shorter run, that goes down the same code and
+asserts the same kind of answer with tolerances set from measured values, so the map still sees
+the suite and `check-affected` still chooses it. To run the full versions by hand:
+
+```sh
+BOMBCAD_FULL_STUDIES=1 ~/.local/bin/gpu-slot swift test --filter '<Suite>'
+```
 
 ### Choosing tests by coverage
 
@@ -249,6 +306,37 @@ wait: if the mini is not free it runs here. Everything runs in one folder on the
 `~/bombcad-remote/check`, so that its paths, and with them SwiftPM's build cache, are the same
 every time; after a check only the cache is kept, and it is cleared when it passes 20 GB.
 
+### Two lanes on the mini
+
+The mini can run two of check-affected's build-and-test jobs at once (since 19 October 2026). The
+first BombCAD job takes lane 1, in `~/bombcad-remote/check`, and the lock as before. A second job
+may take lane 2, in `~/bombcad-remote/check-2`, which has a build cache of its own. A SwiftPM
+`.build` folder can't be shared by two builds at once, and a separate folder keeps the paths, and
+so the cache, the same for each lane. A second lane runs only when all of the following hold:
+
+- both jobs declare their memory, at most 7 GB each (`laneGB`) and 14 GB together (`lanesGB`).
+  check-affected's build and tests declare 7 GB. A full `make check`, a `BombCAD worker` and a
+  check from an older copy of `remote.py` declare nothing, so they take the mini whole: nothing
+  runs beside them, and they wait for both lanes;
+- no runner of any project there has a job: every `~/Developer/*runner*`, which includes
+  Edgerton's, ContinuumKit's, RoomCAD's and hellomini's as well as the three in `runners`;
+- the mini's memory pressure is normal and at least half its memory is free (`laneFreePercent`);
+- its load is under two a core (`laneLoadPerCore`), where the first lane's build is most of it.
+
+The lanes are taken and released one at a time, under a file lock (`~/bombcad-remote/lanes.mutex`),
+and recorded in `~/bombcad-remote/lanes/<n>`. `~/bombcad-remote/lock` stays held while any lane runs.
+When its holder finishes first it hands the lock to the job still running, so a worker or an older
+copy of `remote.py` (which know only the lock) always finds the mini taken. One gap remains: if a
+lane's process is killed outright (`kill -9`), the lock's owner is dead, and a worker could start
+beside the surviving lane until it ends. `remote.py status` lists the lanes and says whether a 7 GB
+job would be taken.
+
+Measured on 19 October, two check-affected runs side by side: one took lane 2 with a cold cache and
+the other lane 1, warm. The lane-2 job's processes peaked at 5.2 GB together, sampled every 5 s
+(the build: 65 s on the mini), and the warm job's at 0.5 to 1.0 GB. The mini's memory stayed 77%
+free throughout, and its load average reached 41 during the cold build. Both runs passed, and when
+the lane-1 job ended first the lock went over to the lane-2 job.
+
 **The mini as a worker.** `BombCAD sweep` and `BombCAD ensemble` take the Macs named as `workers`
 below when no `--worker` is given (`--no-default-workers` stops them). Such a worker decides on its
 own Mac, before it greets, whether to take work (the same runners, window and lock, and a load
@@ -270,7 +358,9 @@ so every session and worktree shares them:
 }
 ```
 
-Without the file nothing goes to another Mac. **When to use which:** `make check` here when the
+The lane settings ([above](#two-lanes-on-the-mini): `lanes` 2, `laneGB` 7, `lanesGB` 14,
+`laneFreePercent` 50, `laneLoadPerCore` 2) take those defaults when left out; `"lanes": 1` goes
+back to one job at a time. Without the file nothing goes to another Mac. **When to use which:** `make check` here when the
 Studio is quiet or the change needs this Mac (the M4 Max's timings, the app's window);
 `make check-anywhere` otherwise, which is most of the time; `make check-remote` to keep this Mac
 free for a measurement.

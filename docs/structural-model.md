@@ -32,7 +32,9 @@ stops where bodies come close. See [contact between bodies](multiple-object-scen
 ## Mesh
 
 The structure is the union of axis-aligned boxes (walls, slabs, columns) minus other boxes
-(openings), filled with cubic elements on a regular lattice. An opening cuts the boxes it
+(openings), filled with cubic elements on a regular lattice. (A shell structure may also have
+planes at a pitch, a roof's slopes, meshed in their own planes:
+[shells at a pitch](shell-model.md#shells-at-a-pitch).) An opening cuts the boxes it
 crosses but not one it holds whole, so a pane set in a wall's opening stays. An element exists wherever a
 lattice cell's centre lies inside the body. Most built-in solid layouts use elements of 62.5 mm or 125 mm
 (50 mm for the close-in column, 75 mm for the blockwork wall); the shell layouts use 0.25 m or
@@ -877,7 +879,9 @@ the footing as the tests' did, which leaves its loops narrower and its energy a 
 thirds of a shaken test's; the sand moves rigidly with a shaken base, without its own
 hysteresis or densification (the free field settled a fifth to a quarter as much as the
 footing in SSG04); and a shaken footing does not lurch one way as the tests' did. Its share
-given back is one sand's and its heave fitted to one test.
+given back is one sand's and its heave fitted to one test. Why no point law closes the lurch or
+the rest of the energy, and what was tried, is in
+[validation](validation.md#a-footing-shaken-on-dry-sand) (19 October 2026).
 
 ## Supports and connections, as they were built
 
