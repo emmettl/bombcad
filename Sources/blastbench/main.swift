@@ -1017,6 +1017,8 @@ func runChamber() throws {
         contact: flag("no-contact") ? .off : nil,
         // Each charge from its own mapped one-dimensional start; `--balloon-start` for the balloon.
         mappedCharge: !flag("balloon-start"),
+        // The gas losing what it radiates; `--no-radiate` keeps it, as before 19 October 2026.
+        radiativeCooling: flag("no-radiate") ? nil : RadiativeCooling(),
         // `--progress` reports every 10 ms of a long run.
         progress: flag("progress")
             ? { line in
@@ -2172,6 +2174,7 @@ func runBeam() throws {
 
 /// A 1 kg charge burst in the air at each scaled distance above rigid ground, against the
 /// Kingery-Bulmash reflected peak and impulse under it (the surface-burst curves at W / 1.8).
+/// `--history path` writes the gauge's history at each height to path-Z.csv.
 func runCloseAir() throws {
     let distances =
         option("z").map { $0.split(separator: ",").compactMap { Float($0) } } ?? [0.3, 0.5, 0.75, 1]
@@ -2206,6 +2209,12 @@ func runCloseAir() throws {
         solver.advance(until: Double(height) / 340 + 0.004)
         let samples = solver.gaugeHistories[0]
         let ambient = scenario.atmosphere.pressure
+        // `--history path`: the gauge's history, one file per height (path-Z.csv), ms and kPa.
+        if let path = option("history") {
+            let rows = samples.map { "\($0.time * 1000),\(($0.pressure - ambient) / 1000)" }
+            try? (["time_ms,overpressure_kpa"] + rows).joined(separator: "\n")
+                .write(toFile: "\(path)-\(format(Double(z), 2)).csv", atomically: true, encoding: .utf8)
+        }
         let peak = (samples.map(\.pressure).max() ?? ambient) - ambient
         var impulse: Float = 0
         for (a, b) in zip(samples, samples.dropFirst()) {

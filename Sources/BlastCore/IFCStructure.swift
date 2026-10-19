@@ -1504,11 +1504,6 @@ public struct IFCStructure: Sendable {
         }
         var notes: [String] = []
         let chosen = structural.max { ($0.thickness ?? 0) < ($1.thickness ?? 0) }
-        if let chosen, structural.count > 1 {
-            notes.append(
-                "Of its \(structural.count) load-bearing layers (\(structural.map(\.name).joined(separator: ", "))), one of "
-                    + "\(chosen.name) is taken; the others are left out, mass and all.")
-        }
         guard let chosen else {
             let named = layers.map(\.name).filter { !$0.isEmpty }
             let why =
@@ -1520,7 +1515,7 @@ public struct IFCStructure: Sendable {
             return Reading(
                 material: fallback, source: "Assumed: \(why)", assumed: true, thickness: nil, notes: [])
         }
-        let material: StructureMaterial
+        var material: StructureMaterial
         switch classify(chosen.name) {
         case .concrete:
             if let grade = grade(in: chosen.name) {
@@ -1536,6 +1531,38 @@ public struct IFCStructure: Sendable {
         case .masonry: material = .masonry
         case .steel: material = .structuralSteel
         default: material = fallback
+        }
+        // A wall of two or more load-bearing leaves, as a cavity wall's brick and block, is meshed as
+        // its thickest: the others' stiffness is left out, but their mass, which a blast must move,
+        // is carried by it.
+        var others = structural
+        if let index = structural.firstIndex(of: chosen) { others.remove(at: index) }
+        if !others.isEmpty {
+            func mass(_ layer: Layer, _ density: Float) -> Float? { layer.thickness.map { $0 * density } }
+            func density(of layer: Layer) -> Float {
+                switch classify(layer.name) {
+                case .concrete: StructureMaterial.reinforcedConcrete.density
+                case .block: StructureMaterial.concreteBlock.density
+                case .masonry: StructureMaterial.masonry.density
+                case .steel: StructureMaterial.structuralSteel.density
+                default: material.density
+                }
+            }
+            let names = structural.map(\.name).joined(separator: ", ")
+            if let own = mass(chosen, material.density), own > 0,
+                case let added = others.compactMap({ mass($0, density(of: $0)) }), added.count == others.count
+            {
+                let factor = (own + added.reduce(0, +)) / own
+                material.density *= factor
+                notes.append(
+                    "Of its \(structural.count) load-bearing layers (\(names)), \(chosen.name) is meshed; the others' "
+                        + "stiffness is left out and their mass carried by it, its density "
+                        + String(format: "%.2f", factor) + " times its own.")
+            } else {
+                notes.append(
+                    "Of its \(structural.count) load-bearing layers (\(names)), one of \(chosen.name) is taken; the "
+                        + "others, whose thicknesses the IFC does not give, are left out, mass and all.")
+            }
         }
         return Reading(
             material: material, source: "IFC: \(chosen.name) → \(material.name)", assumed: false,

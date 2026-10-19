@@ -21,11 +21,18 @@ enum DistrictGlass {
         var binS: Double
         var first: Int
         var count: Int
+        /// The strip's box, m (saved since 19 October 2026; nil in older files).
+        var low: SIMD3<Float>?
+        var high: SIMD3<Float>?
     }
 
     struct Index: Codable {
         var buildings: [Building]
         var strips: [Strip]
+        /// Pascals per stored unit: a power of two that keeps the largest net pressure inside 16-bit
+        /// floats' ±65,504, whose relative precision is the same at any scale (saved since 19
+        /// October 2026; nil, 1 Pa, in older files, whose close-in peaks were clipped).
+        var scalePa: Float?
     }
 
     /// GEER-070's façades (DesignSafe layer; data/Beirut2020/SURVEY.md §3.1) by distance band, from
@@ -50,7 +57,7 @@ enum DistrictGlass {
             Building(distanceM: distance($0.id), heightM: height($0.id), mix: mix($0.id))
         }
         var strips: [Strip] = []
-        var values: [Float16] = []
+        var values: [Float] = []
         for load in loads where load.kind == .facade {
             guard let building = order[load.owner] else { continue }
             let net = load.netPa
@@ -59,12 +66,17 @@ enum DistrictGlass {
                 Strip(
                     building: building, axis: load.axis, outward: load.outward,
                     areaM2: spans.short * spans.long,
-                    binS: load.binS, first: values.count, count: net.count))
-            values += net.map { Float16(Float(min(max($0, -65_504), 65_504))) }
+                    binS: load.binS, first: values.count, count: net.count, low: load.region.min,
+                    high: load.region.max))
+            values += net.map { Float($0) }
         }
-        try JSONEncoder().encode(Index(buildings: buildings, strips: strips)).write(
+        let largest = values.reduce(0) { max($0, abs($1)) }
+        var scale: Float = 1
+        while largest / scale > 65_504 { scale *= 2 }
+        let stored = values.map { Float16(min(max($0 / scale, -65_504), 65_504)) }
+        try JSONEncoder().encode(Index(buildings: buildings, strips: strips, scalePa: scale)).write(
             to: folder.appending(path: "strips.json"))
-        try values.withUnsafeBufferPointer { Data(buffer: $0) }.write(to: folder.appending(path: "net.f16"))
+        try stored.withUnsafeBufferPointer { Data(buffer: $0) }.write(to: folder.appending(path: "net.f16"))
     }
 
     /// Each building's façade sides' glass under `mix` (nil: the mix each was given), and its distance.
@@ -75,6 +87,7 @@ enum DistrictGlass {
             Index.self, from: Data(contentsOf: folder.appending(path: "strips.json")))
         let data = try Data(contentsOf: folder.appending(path: "net.f16"))
         let values = data.withUnsafeBytes { Array($0.bindMemory(to: Float16.self)) }
+        let scale = Double(index.scalePa ?? 1)
         let mixes = Dictionary(
             uniqueKeysWithValues: [GlazingMix.olderLowRise, .apartments, .commercial, .industrial].map {
                 ($0.name, $0)
@@ -83,7 +96,7 @@ enum DistrictGlass {
         for strip in index.strips {
             let building = index.buildings[strip.building]
             guard let mix = override ?? mixes[building.mix] else { continue }
-            let net = values[strip.first..<(strip.first + strip.count)].map { Double($0) }
+            let net = values[strip.first..<(strip.first + strip.count)].map { Double($0) * scale }
             let key = strip.axis * 2 + (strip.outward > 0 ? 1 : 0)
             sides[strip.building][key, default: GlazingBreakage()] =
                 sides[strip.building][key, default: GlazingBreakage()]

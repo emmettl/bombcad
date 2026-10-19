@@ -379,11 +379,19 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
         const float3 damage[6] = {
             float3(0.851f, 0.910f, 0.824f), float3(0.310f, 0.659f, 0.878f), float3(0.949f, 0.871f, 0.227f),
             float3(0.878f, 0.541f, 0.000f), float3(0.702f, 0.227f, 0.039f), float3(0.420f, 0.118f, 0.333f)};
+        // An exposure-only building by its walls' construction, a plain block neutral
+        // (MaterialAppearance.colour in allCases' order, from code 1; a test keeps the two the same).
+        const float3 looks[8] = {
+            float3(0.80f, 0.79f, 0.76f), float3(0.30f, 0.36f, 0.46f), float3(0.76f, 0.79f, 0.82f),
+            float3(0.55f, 0.74f, 0.74f), float3(0.66f, 0.50f, 0.34f), float3(0.64f, 0.40f, 0.31f),
+            float3(0.73f, 0.71f, 0.66f), float3(0.72f, 0.72f, 0.72f)};
+        int look = int(boxes[n].high.w + 0.5f);
+        float3 base = look >= 1 && look <= 8 ? looks[look - 1] : float3(0.72f, 0.72f, 0.72f);
         // Drawn in its own colour, lit but without the air's paint, which would hide it.
         int code = int(boxes[n].low.w + 0.5f);
         colour = code >= 1 && code <= 6
             ? damage[code - 1] * light
-            : fieldTint(float3(0.80f, 0.79f, 0.76f), light, field.sample(linearSampler, uvw), u);
+            : fieldTint(base, light, field.sample(linearSampler, uvw), u);
     }
 
     // Gauge markers and the charge marker.
@@ -415,7 +423,13 @@ struct MeshOut {
     float4 position [[position]];
     float3 world;
     float damage [[flat]];
+    // The element's material: linear RGB under full light, and in w its highlight's strength
+    // (`MaterialAppearance`).
+    float4 appearance [[flat]];
 };
+
+// Entries in a material palette, as `MaterialAppearance.paletteSize`.
+constant uint paletteSize = 16;
 
 // Which shells a draw takes: all of them, all but the glass, or the glass alone.
 constant uint drawAll = 0;
@@ -431,11 +445,16 @@ vertex MeshOut structureVertex(uint vertexID [[vertex_id]],
                                const device uchar *flags [[buffer(2)]],
                                const device float *states [[buffer(3)]],
                                constant MeshUniforms &u [[buffer(4)]],
-                               const device uint *nodeMap [[buffer(5)]]) {
+                               const device uint *nodeMap [[buffer(5)]],
+                               const device uchar *materialIndex [[buffer(6)]],
+                               constant float4 *palette [[buffer(7)]],
+                               constant uint &indexed [[buffer(8)]]) {
     MeshOut out;
     out.position = float4(0.0f, 0.0f, 0.0f, 1.0f);
     out.world = float3(0.0f);
     out.damage = 0.0f;
+    // The low four bits are the material; bits 4 to 6 mark mortar joints.
+    out.appearance = palette[indexed != 0u ? uint(materialIndex[instanceID] & uchar(15)) : 0u];
 
     int3 dims = int3(u.dims.xyz);
     int element = int(instances[instanceID]);
@@ -526,16 +545,24 @@ vertex MeshOut shellVertex(uint vertexID [[vertex_id]],
                            constant MeshUniforms &u [[buffer(4)]],
                            const device float4 *reference [[buffer(5)]],
                            constant uint &transparentMaterials [[buffer(6)]],
-                           constant uint &draw [[buffer(7)]]) {
+                           constant uint &draw [[buffer(7)]],
+                           constant float4 *palette [[buffer(8)]]) {
     MeshOut out;
     out.position = float4(0.0f, 0.0f, 0.0f, 1.0f);
     out.world = float3(0.0f);
     out.damage = 0.0f;
+    out.appearance = float4(0.0f);
     uint flag = flags[instanceID];
     if (flag == 0) {
         return out;
     }
     ShellMeshElement el = elements[instanceID];
+    out.appearance = palette[min(el.material, paletteSize - 1u)];
+    // Steel thinner than a few millimetres is profiled cladding, lighter as galvanised sheet reads
+    // (`MaterialAppearance.sheeting`, `sheetingThickness`).
+    if (out.appearance.w > 0.2f && el.thickness < 0.004f) {
+        out.appearance = float4(0.76f, 0.79f, 0.82f, 0.30f);
+    }
     bool glass = ((transparentMaterials >> min(el.material, 31u)) & 1u) != 0u;
     if ((draw == drawOpaque && glass) || (draw == drawGlass && !glass)) {
         return out;
@@ -610,16 +637,19 @@ vertex MeshOut beamVertex(uint vertexID [[vertex_id]],
                           const device uchar *flags [[buffer(2)]],
                           const device float *damage [[buffer(3)]],
                           constant MeshUniforms &u [[buffer(4)]],
-                          const device float4 *reference [[buffer(5)]]) {
+                          const device float4 *reference [[buffer(5)]],
+                          constant float4 *palette [[buffer(8)]]) {
     MeshOut out;
     out.position = float4(0.0f, 0.0f, 0.0f, 1.0f);
     out.world = float3(0.0f);
     out.damage = 0.0f;
+    out.appearance = float4(0.0f);
     uint flag = flags[instanceID];
     if (flag != 1 && flag != 3) {
         return out;
     }
     BeamMeshElement beam = beams[instanceID];
+    out.appearance = palette[min(beam.material, paletteSize - 1u)];
     float3 e2 = float3(0.0f);
     float3 e3 = float3(0.0f);
     e2[(beam.axis + 1) % 3] = 1.0f;
@@ -931,7 +961,8 @@ fragment float4 terrainFragment(TerrainOut in [[stage_in]],
     float3 domain = u.domain.xyz;
     float3 p = in.world;
     bool inside = p.x >= 0.0f && p.y >= 0.0f && p.x <= domain.x && p.y <= domain.y;
-    float3 base = inside ? float3(0.50f, 0.49f, 0.45f) : float3(0.36f, 0.35f, 0.33f);
+    // Earth: a restrained brown, under the blast's field and the paint.
+    float3 base = inside ? float3(0.53f, 0.47f, 0.38f) : float3(0.38f, 0.34f, 0.28f);
     // 10 m contour lines, antialiased with screen-space derivatives.
     float level = p.z / 10.0f;
     float line = abs(fract(level - 0.5f) - 0.5f) / max(fwidth(level), 1e-5f);
@@ -965,14 +996,20 @@ fragment float4 structureFragment(MeshOut in [[stage_in]], constant MeshUniforms
     float light = 0.50f + 0.50f * max(dot(normal, u.sun.xyz), 0.0f);
     float dataLight = 0.78f + 0.22f * light;
 
-    // Concrete grey, shading through amber to dark red as plastic strain approaches failure.
+    // The material's own colour, with steel's highlight of the sun; shading through amber to dark
+    // red as plastic strain approaches failure (`MaterialAppearance.damage`), the same over every
+    // material.
+    float3 base = in.appearance.rgb;
+    float3 view = normalize(u.eye.xyz - in.world);
+    float highlight = in.appearance.w * pow(saturate(dot(reflect(-view, normal), u.sun.xyz)), 24.0f);
     float damage = clamp(in.damage, 0.0f, 1.0f);
     float3 tint = damage < 0.5f
         ? mix(float3(0.98f, 0.82f, 0.25f), float3(0.93f, 0.42f, 0.12f), damage * 2.0f)
         : mix(float3(0.93f, 0.42f, 0.12f), float3(0.55f, 0.06f, 0.08f), damage * 2.0f - 1.0f);
-    float3 colour = mix(float3(0.80f, 0.79f, 0.76f) * light, tint * dataLight, smoothstep(0.0f, 0.08f, damage));
+    float3 colour = mix(base * light + highlight, tint * dataLight, smoothstep(0.0f, 0.08f, damage));
     if (in.damage > 1.5f) {
-        colour = float3(0.36f, 0.33f, 0.31f) * light;  // rubble
+        // Rubble: a dark grey at a fifth of the material's luminance (`MaterialAppearance.rubble`).
+        colour = float3(0.20f * dot(base, float3(0.2126f, 0.7152f, 0.0722f))) * light;
     }
     return float4(colour, 1.0f);
 }
@@ -1013,6 +1050,7 @@ vertex MeshOut freestandingVertex(uint vertexID [[vertex_id]],
                           far / (far - near) * (view.z - near), view.z);
     out.world = world;
     out.damage = box.centre.w;
+    out.appearance = float4(0.0f);
     return out;
 }
 

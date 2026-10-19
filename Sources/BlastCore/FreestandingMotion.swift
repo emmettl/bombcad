@@ -43,7 +43,8 @@ public struct FreestandingMotion: Codable, Sendable {
         public var errorDescription: String? {
             switch self {
             case .noObjects: "The scene has no freestanding objects."
-            case .structure: "Freestanding motion needs a scene without a deformable structure."
+            case .structure:
+                "Beside a deformable structure, freestanding motion runs on uniform air, without finer patches."
             case .tooLarge(let cells, let cellSize):
                 "The objects and the charge span \(cells) air cells of \(cellSize) m; place them closer together (at most 3 million)."
             }
@@ -68,6 +69,9 @@ public struct FreestandingMotion: Codable, Sendable {
     public let held: Bool
     /// The scene this was computed for, to tell when it is out of date.
     public let scenario: Scenario
+    /// Impulse the objects gave the scene's deformable structures by striking them (N s); nil
+    /// without a structure.
+    public var structureReaction: SIMD3<Double>? = nil
 
     public static let maximumCells = 3_000_000
 
@@ -80,14 +84,23 @@ public struct FreestandingMotion: Codable, Sendable {
         objects <= 4 ? (0.2, 4) : (0.15, 2)
     }
 
-    /// The scene cropped to the objects and the charge with `margin` metres around them (and
-    /// above), shifted so the crop starts at the origin; blocks inside it are kept, clipped.
+    /// Beside a deformable structure the objects' finer patches are not yet supported, so the
+    /// air is uniform: 0.1 m up to four objects, 0.15 m beyond.
+    public static func defaultResolution(objects: Int, structure: Bool) -> (cellSize: Float, refinement: Int)
+    {
+        guard structure else { return defaultResolution(objects: objects) }
+        return objects <= 4 ? (0.1, 1) : (0.15, 1)
+    }
+
+    /// The scene cropped to the objects, the charge and any deformable structures with `margin`
+    /// metres around them (and above), shifted so the crop starts at the origin; blocks inside it
+    /// are kept, clipped. The shift keeps each structure on its own element lattice, so that it
+    /// meshes as it would where it stands.
     static func cropped(_ scenario: Scenario, margin: Double = 2.4, cellSize: Double = 0.2) throws -> (
         scene: Scenario, offset: SIMD3<Double>
     ) {
         let world = try RigidBodyWorld(scenario: scenario)
         guard !world.members.isEmpty else { throw Failure.noObjects }
-        guard scenario.structure == nil else { throw Failure.structure }
         var low = SIMD3<Double>(scenario.charge.position)
         var high = low
         for member in world.members {
@@ -96,11 +109,25 @@ public struct FreestandingMotion: Codable, Sendable {
                 high = simd_max(high, point)
             }
         }
+        let structures = scenario.structuralObjects.compactMap(\.structure)
+        for model in structures {
+            low = simd_min(low, SIMD3<Double>(model.bounds.min))
+            high = simd_max(high, SIMD3<Double>(model.bounds.max))
+        }
         // Whole multiples of 0.6 m, which 0.2, 0.15 and 0.1 m cells all divide.
         let step = 0.6
         low = ((low - margin) / step).rounded(.down) * step
         high = ((high + margin) / step).rounded(.up) * step
         low.z = 0
+        // Further down in steps of 0.6 m until the shift is a whole number of each structure's
+        // elements (the origin always is).
+        let lattices = structures.flatMap { [$0.elementSize] + ($0.shellElementSize.map { [$0] } ?? []) }
+        func onLattices(_ x: Double) -> Bool {
+            lattices.allSatisfy { h in abs(x / Double(h) - (x / Double(h)).rounded()) < 1e-4 }
+        }
+        for axis in 0..<2 {
+            while low[axis] > 0, !onLattices(low[axis]) { low[axis] = max(low[axis] - step, 0) }
+        }
         // A terrain's nodes over the crop, moved with it; the domain kept above them.
         let terrain = scenario.terrain.flatMap { $0.isFlat ? nil : $0 }.map { whole -> Terrain in
             var piece = whole.cropped(
@@ -141,6 +168,10 @@ public struct FreestandingMotion: Codable, Sendable {
         }
         scene.gauges = []
         scene.terrain = terrain
+        let across = SIMD2<Float>(shift.x, shift.y)
+        for object in scene.structuralObjects {
+            try scene.updateStructureObject(id: object.id, model: object.structure?.moved(across: across))
+        }
         return (scene, low)
     }
 
@@ -155,9 +186,11 @@ public struct FreestandingMotion: Codable, Sendable {
         shouldContinue: (() -> Bool)? = nil
     ) throws -> FreestandingMotion {
         let count = (scenario.rigidObjects?.count ?? 0) + (scenario.rigidCars?.count ?? 0)
-        let resolution = defaultResolution(objects: count)
+        let structure = !scenario.structuralObjects.isEmpty
+        let resolution = defaultResolution(objects: count, structure: structure)
         let cellSize = cellSize ?? resolution.cellSize
         let refinement = refinement ?? resolution.refinement
+        guard !structure || refinement <= 1 else { throw Failure.structure }
         let refinementMemory = refinementMemory ?? max(512 << 20, count * (64 << 20))
         let (scene, offset) = try cropped(scenario, cellSize: Double(cellSize))
         // Tilt from the ground's normal under the object's centre: on a slope, lying on it is
@@ -230,7 +263,7 @@ public struct FreestandingMotion: Codable, Sendable {
             objects: objects, coupled: simulation.coupled, frames: frames, duration: simulation.air.time,
             failure: failure, timings: simulation.timings, cellSize: cellSize, refinement: refinement,
             steps: simulation.air.stepCount, cells: simulation.air.grid.cellCount, held: held,
-            scenario: scenario)
+            scenario: scenario, structureReaction: structure ? simulation.reaction : nil)
     }
 
     /// The frame nearest a time.

@@ -21,6 +21,8 @@ struct ModelImportView: View {
     }
     var draft: Draft?
     var chooseBuildingElements: ((Draft) -> Void)?
+    /// The button that goes back to the building's source: an IFC's elements, a plan's layers.
+    var chooseBuildingElementsLabel = "Choose IFC elements…"
     @Bindable var model: SimulationModel
     @Environment(\.dismiss) private var dismiss
     @State private var scale: Float = 1
@@ -61,8 +63,10 @@ struct ModelImportView: View {
     static let offeredReinforcement: Float = 0.003
     init(
         mesh: ImportedMesh, filename: String, existing: ImportedModel? = nil, model: SimulationModel,
-        draft: Draft? = nil, chooseBuildingElements: ((Draft) -> Void)? = nil
+        draft: Draft? = nil, chooseBuildingElements: ((Draft) -> Void)? = nil,
+        chooseBuildingElementsLabel: String = "Choose IFC elements…"
     ) {
+        self.chooseBuildingElementsLabel = chooseBuildingElementsLabel
         self.mesh = mesh
         self.filename = filename
         self.existing = existing
@@ -126,7 +130,7 @@ struct ModelImportView: View {
                 Text("\(existing == nil ? "Import" : "Update") \(filename)").font(.title2)
                 Spacer()
                 if let chooseBuildingElements {
-                    Button("Choose IFC elements…") {
+                    Button(chooseBuildingElementsLabel) {
                         chooseBuildingElements(
                             Draft(
                                 scale: scale, yUp: yUp, corner: corner,

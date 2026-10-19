@@ -105,6 +105,12 @@ struct SimulationCommands: Commands {
                 .disabled(model?.savedRuns.isEmpty != false)
             Button("Parameter Sweep…") { model?.showsParameterSweep = true }
                 .disabled(model == nil || model?.sweep.isActive == true)
+            Button("Infer Charge from Arrivals…") { model?.showsChargeInference = true }
+                .disabled(model == nil)
+            Button("Quick Estimate of Envelope Damage") { model?.quickEstimate() }
+                .disabled(
+                    model == nil || model?.settings.scenario.envelopeObjects.isEmpty != false
+                        || model?.stepCount != 0 || model?.estimatingEnvelopeDamage == true)
         }
     }
 }

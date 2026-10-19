@@ -19,6 +19,8 @@ struct DistrictInputs {
     /// How far the sea lies above the terrain's zero, m: the DEM's elevations are put on this.
     var seaBase: Float = 6
     var attributions: [String] = []
+    /// The footprints' cells (`--place-dx`), finer than the air's for refined runs; nil for the air's.
+    var footprintCells: Float?
 
     static func read(_ args: [String]) throws -> DistrictInputs {
         func value(_ name: String) -> String? {
@@ -56,7 +58,8 @@ struct DistrictInputs {
             buildings: buildings, ground: ground, heights: heights, centre: SIMD2(centre[0], centre[1]),
             cellSize: Float(value("dx").flatMap(Double.init) ?? 4),
             domainHeight: Float(value("height").flatMap(Double.init) ?? 120),
-            mass: Float(value("mass").flatMap(Double.init) ?? 500_000), attributions: attributions)
+            mass: Float(value("mass").flatMap(Double.init) ?? 500_000), attributions: attributions,
+            footprintCells: value("place-dx").flatMap(Float.init))
     }
 
     /// The square scene of side `2 radius` about the centre, every building in it placed.
@@ -66,7 +69,8 @@ struct DistrictInputs {
         layout.heights = heights
         layout.seaBase = seaBase
         layout.attributions = attributions
-        return try layout.scene(halfSide: radius, cellSize: cellSize, height: domainHeight)
+        return try layout.scene(
+            halfSide: radius, cellSize: cellSize, height: domainHeight, footprintCells: footprintCells)
     }
 }
 

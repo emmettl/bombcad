@@ -1128,9 +1128,30 @@ tenths of a 0.25 m cell off the lattice. It gives the wall's momentum over the 3
   (`blastbench aircost --preset wall --dx 0.3 --cut`: 0.570 against 0.465 ns per update, the
   least of 30 rounds).
 
-Stage 2, moving solids and shells, waits on the peak's overshoot, by the roadmap's rule that it
-follows only if stage 1 pays. The car and the freestanding objects are rigid boxes in the air,
-not structures, so this stage does not touch their late flow.
+**Why the peak overshoots, and stopped** (19 October 2026). Two errors, neither in the face's read:
+
+- *In three dimensions, the cell before a small cut cell runs on.* A tenth of a cell off the
+  lattice, 90% of the face's read is the cell before the sliver of air, and at the peak that cell
+  still moves at 65 m/s towards the wall (34 m/s on the lattice), so its reflected pressure reads
+  162 kPa against 142. The sliver takes inflow as the whole cell it is updated as, whose wall would
+  lie at the far face of its grid cell (flux redistribution's whole-cell reference, as Colella's
+  hybrid has it), and is itself squeezed to 158–174 kPa against the 113 beside a wall on the
+  lattice. Neither taking the wall's push from the open face (or blending the two) nor passing
+  no momentum on moves the peak; giving a cell under half air no whole-cell update at all made it
+  883 kN.
+- *In one dimension, the read sags across the cell.* `blastbench walloffset --plane` puts the wall
+  across a closed channel 1 m square, struck by a plane blast, whose loads hardly depend on the
+  offset: the staircase reads 776 kN at every offset, while the cut cells read 819 on the lattice
+  and sag to 737 (10% low) half a cell off it (809, 775, 754, 737 and 741 kN at a tenth, two, three,
+  five and seven).
+
+The established cure for small cells' accuracy is state redistribution (Berger and Giuliani 2021,
+*J. Comput. Phys.* 428): each small cell's state merged over a neighbourhood at least half a cell
+of air and given back through a linear reconstruction, conservative and stable. It is the route if
+walls placed off the lattice ever become a need. Until then structures' cut cells stay an option,
+off, and stage 2, moving solids and shells, does not follow, by the roadmap's rule that it follows
+only if stage 1 pays. The car and the freestanding objects are rigid boxes in the air, not
+structures, so this stage does not touch their late flow.
 
 **Debris.** A node with no intact element left around it is loose debris, and the air loads it
 directly, since it no longer belongs to any face. It stands for a lump of volume *V*, an eighth

@@ -59,9 +59,10 @@ free-air fits are not implemented, so the free-air values hold only as well as t
 
 **Against BombCAD's.** `KingeryBulmash.swift` evaluates M. M. Swisdak's simplified fits (1994):
 polynomials in ln Z, not log10 Z, fitted to the same curves. Over 0.2 to 40 m/kg^(1/3) the two
-agree within 0.7% in incident pressure, 0.95% in reflected pressure, 0.3% in arrival, 1.6% in
-positive duration (at Z 1.18), 2.1% in incident impulse (at Z 2.38, a join of Swisdak's pieces),
-0.01% in reflected impulse and 1.0% in shock speed. Swisdak's incident pressure starts at 0.2
+agree within 1.3% in incident pressure (just beyond Z 23.8, where Swisdak's own pieces meet 0.7%
+apart), 0.95% in reflected pressure, 0.3% in arrival, 1.6% in positive duration (at Z 1.18),
+2.1% in incident impulse (at Z 2.38, a join of Swisdak's pieces), 0.01% in reflected impulse and
+1.0% in shock speed. Swisdak's incident pressure starts at 0.2
 m/kg^(1/3), so BombCAD has no reference closer in; these start at 0.0674. The reference columns of
 docs/validation.md's Kingery–Bulmash tables (100 kg, 0.75 to 6 m/kg^(1/3)) all agree with these
 within 1.4% (the largest, an arrival rounded to 2.2 ms against 2.17). BombCAD takes a charge on
@@ -228,6 +229,7 @@ peak overpressure, positive impulse and arrival as ratios of Kingery–Bulmash's
 distance and, with `--oracle`, of the one-dimensional solution's:
 
 ```bash
+mkdir -p runs   # validate writes into the folder but does not make it
 swift run -c release blastbench validate --histories runs --until 0.25
 python3 Scripts/reference/compare.py runs --mass 100 --oracle
 ```
@@ -258,12 +260,15 @@ hand from validate's printed tables. The arrival is defined differently in each 
 peak, 1 kPa, 500 Pa), which moves arrival ratios by a few per cent close in.
 
 `--self-test` runs on the bundled tables alone: Kingery–Bulmash against IATG 01.80's examples, the
-bundled one-dimensional TNT solution against Kingery–Bulmash, and each reader on a made-up output
-holding Kingery–Bulmash's own values.
+bundled one-dimensional TNT solution against Kingery–Bulmash, and two of the readers (validate's
+histories and groundmotion's JSON) on a made-up output holding Kingery–Bulmash's own values; the
+other readers are not self-tested.
 
-**The committed street benchmark**, its open-ground control (2 kg 1 m up, 0.125 m cells, today's
-defaults), reads 0.73–0.87 of Kingery–Bulmash's peak at 7 to 21 m/kg^(1/3), 1.00–1.07 of its impulse
-(over the whole window, the ground's reflection included) and 1.00–1.02 of its arrival.
+**The committed street benchmark**, its open-ground control (2 kg 1 m up, 0.125 m cells, on the
+bare solver configuration `scenebench street` runs, `SolverConfiguration()`: the ideal gas, the
+balloon start, no afterburning and copying faces, not today's defaults), reads 0.73–0.87 of
+Kingery–Bulmash's peak at 7 to 21 m/kg^(1/3), 1.00–1.07 of its impulse (over the whole window, the
+ground's reflection included) and 1.00–1.02 of its arrival.
 
 ## Limitations
 

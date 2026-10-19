@@ -30,6 +30,15 @@ enum SceneViewCodec {
                 out.array([shells.transparentMaterials])
             }
         }
+        // The materials' colours, after everything a sender before them wrote (`decodeSetup`
+        // reads them where there are more bytes).
+        for body in setup.bodies {
+            if let solids = body.solids {
+                out.vectors(solids.palette)
+                out.array(solids.materialIndex)
+            }
+            if let shells = body.shells { out.vectors(shells.palette) }
+        }
         return out.data
     }
 
@@ -37,7 +46,7 @@ enum SceneViewCodec {
         var input = Reader(data)
         let size = SIMD3(try input.integer(), try input.integer(), try input.integer())
         let cellSize = try input.float()
-        let bodies = try (0..<input.count()).map { _ in
+        var bodies = try (0..<input.count()).map { _ in
             let solids: ViewSetup.Solids? =
                 try input.flag()
                 ? try {
@@ -66,6 +75,15 @@ enum SceneViewCodec {
                         reference: reference, transparentMaterials: mask[0])
                 }() : nil
             return ViewSetup.Body(solids: solids, shells: shells)
+        }
+        if !input.isAtEnd {
+            for n in bodies.indices {
+                if bodies[n].solids != nil {
+                    bodies[n].solids?.palette = try input.vectors4()
+                    bodies[n].solids?.materialIndex = try input.array()
+                }
+                if bodies[n].shells != nil { bodies[n].shells?.palette = try input.vectors4() }
+            }
         }
         try input.finish()
         return ViewSetup(fieldSize: size, fieldCellSize: cellSize, bodies: bodies)
@@ -170,6 +188,8 @@ enum SceneViewCodec {
         var offset = 0
 
         init(_ data: Data) { bytes = Data(data) }
+
+        var isAtEnd: Bool { offset >= bytes.count }
 
         mutating func raw<T: BitwiseCopyable>(_ count: Int, _: T.Type) throws -> [T] {
             let length = count * MemoryLayout<T>.size

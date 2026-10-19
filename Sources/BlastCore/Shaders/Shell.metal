@@ -1118,7 +1118,10 @@ kernel void shellElements(device ShellLayerStore *layers [[buffer(0)]],
                 continue;
             }
             for (uint j = 0; j < 2; ++j) {
-                if (layout[1 + j] > 0.0f && fabs(bars[((e * 4 + g) * u.barSlots + s) * 2 + j].plastic) < 1e8f) {
+                // A laminated pane's interlayer keeps its one state in the first bar's record, for
+                // both axes: once it has torn, it crosses neither.
+                uint record = m.fragments != 0u ? 0u : j;
+                if (layout[1 + j] > 0.0f && fabs(bars[((e * 4 + g) * u.barSlots + s) * 2 + record].plastic) < 1e8f) {
                     crossing[j] += layout[1 + j] / t;
                 }
             }

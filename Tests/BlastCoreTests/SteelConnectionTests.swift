@@ -60,6 +60,21 @@ struct SteelConnectionTests {
         #expect(rigid.steelConnection == nil)
     }
 
+    @Test("A connection a hinge cannot use is refused, from a document too")
+    func invalid() throws {
+        let bad = [
+            SteelConnection(name: "No turn", momentRatio: 0.5, fractureRotation: 0),
+            SteelConnection(name: "NaN turn", momentRatio: 0.5, fractureRotation: .nan),
+            SteelConnection(name: "Negative", momentRatio: -0.5, fractureRotation: 0.08),
+            SteelConnection(name: "Pushed", momentRatio: 0.5, fractureRotation: 0.08, tensionRatio: -0.1),
+        ]
+        for connection in bad { #expect(throws: (any Error).self) { try connection.validate() } }
+        try SteelConnection.singlePlateShear.validate()
+        let model = Self.joint(SteelConnection(name: "Broken", momentRatio: 0.5, fractureRotation: -0.01))
+        let data = try JSONEncoder().encode(model)
+        #expect(throws: (any Error).self) { try JSONDecoder().decode(StructureModel.self, from: data) }
+    }
+
     @Test(
         "Under a column's removal the hinged assemblies fail near their tests' drops and loads",
         arguments: ColumnRemovalTest.Specimen.allCases)
@@ -85,5 +100,32 @@ struct SteelConnectionTests {
         let rigid = try ColumnRemovalTest.run(
             device: device, specimen: .weldedFlange, connection: nil, drop: 0.8)
         #expect(rigid.failedAt == nil)
+    }
+
+    @Test("A reset puts the hinges back as built: none fractured before the next run")
+    func resetRestoresHinges() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "This test needs a Metal device")
+        let solver = try ShellSolver(device: device, model: Self.joint(.weldedFlange))
+        solver.gravity = 0
+        // The beam's free end pulled down at 2 m/s turns its hinge past 0.081 rad in a few tenths
+        // of a second.
+        let tip = solver.nodes { $0.x > 3 - 1e-4 }
+        func pull() {
+            solver.mutateNodes { nodes in
+                for n in tip {
+                    nodes[n].isPrescribed = true
+                    nodes[n].velocity = SIMD3(0, 0, -2)
+                }
+            }
+        }
+        pull()
+        while solver.hingesReleased == 0, solver.time < 1 { solver.advance(steps: 200) }
+        #expect(solver.hingesReleased == 1)
+        solver.reset()
+        #expect(solver.hingesReleased == 0)
+        // And it fractures again, as it did the first time.
+        pull()
+        while solver.hingesReleased == 0, solver.time < 1 { solver.advance(steps: 200) }
+        #expect(solver.hingesReleased == 1)
     }
 }

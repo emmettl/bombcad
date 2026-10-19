@@ -902,6 +902,36 @@ public struct StructureModel: Sendable, Hashable, Codable {
         }
     }
 
+    /// The structure moved `offset` across the ground, all it places with it: solids, openings,
+    /// supports, reinforcement regions, inclined and discrete bars, and spring supports.
+    public func moved(across offset: SIMD2<Float>) -> StructureModel {
+        let shift = SIMD3(offset.x, offset.y, 0)
+        var model = self
+        model.solids = solids.map { $0.moved(by: shift) }
+        model.openings = openings.map { $0.moved(by: shift) }
+        model.supports = supports.map { $0.moved(by: shift) }
+        for n in model.reinforcement.indices {
+            model.reinforcement[n].region = reinforcement[n].region.moved(by: shift)
+        }
+        for n in model.springSupports.indices {
+            model.springSupports[n].region = springSupports[n].region.moved(by: shift)
+        }
+        for n in model.discreteBars.indices {
+            model.discreteBars[n].start += shift
+            model.discreteBars[n].end += shift
+        }
+        for n in model.inclinedBars.indices {
+            let bars = inclinedBars[n]
+            model.inclinedBars[n].start = bars.start + shift
+            // The bars repeat over `span` along the axis they do not run along.
+            if let axis = (0..<3).first(where: { bars.direction[$0] == 0 }) {
+                model.inclinedBars[n].span =
+                    (bars.span.lowerBound + shift[axis])...(bars.span.upperBound + shift[axis])
+            }
+        }
+        return model
+    }
+
     public var bounds: Box {
         var low = SIMD3<Float>(repeating: .infinity)
         var high = SIMD3<Float>(repeating: -.infinity)
@@ -1572,6 +1602,9 @@ struct CouplingUniforms {
     /// 1 when the cells marked in the solver's kept air (beside stationary envelopes' recorded
     /// faces) must stay air (see `remaskPrepare`).
     var keepsAir: UInt32 = 0
+    /// 1 when freestanding objects share the air (`installExperimentalBoxes`): their cells stay
+    /// solid and keep the wall velocities the objects gave them (see `remaskPrepare`).
+    var holdsBoxes: UInt32 = 0
 }
 
 /// When nodes of the structure repel each other.
@@ -2016,6 +2049,7 @@ extension StructureModel {
         shellSectionShear = try container.decodeIfPresent(Bool.self, forKey: .shellSectionShear) ?? false
         retiredOptions = try Self.retiredOptions(in: decoder)
         try validateAnchorages()
+        try steelConnection?.validate()
     }
 }
 

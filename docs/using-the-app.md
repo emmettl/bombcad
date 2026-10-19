@@ -26,6 +26,13 @@ run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
 wheel to zoom (out to three times the domain's longest side). Space runs and pauses, ⌘R resets.
 
+Structures are drawn in their materials' colours: concrete warm grey, steel blue-grey, profiled
+sheeting light metallic, glass tinted and see-through, timber warm brown, brick red-brown, blockwork
+buff; exposure-only buildings by their walls' construction, plain blocks neutral, terrain earth.
+Damage shades every material alike, from amber through orange to dark red as an element nears
+failure, and failed elements fall as dark grey rubble. The colours are chosen so that damage and
+rubble stand apart from every material to people with each common colour deficiency.
+
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
@@ -151,16 +158,16 @@ out ([Beirut, 2020](beirut-2020.md)); the app fetches nothing.
   faces are kept 4 m/kg^(1/3) from them: the sides beyond the outermost building (unless turned
   off), the top above the charge and at least half that above the highest roof or ground
   ([open faces](air-blast-model.md#open-faces-near-a-structure)). **Air** is uniform cells, or
-  a coarser base refined twice, to a quarter of its cells, where the shock is (at a jump of 0.005
-  of the pressure, as Beirut's refined runs). The advisor's choice is the finest of each whose run
-  fits this Mac's memory with the components' histories, by its cost model, and takes the refined
-  air where that is both finer at the façades and no dearer; **Cells** sets a size instead (the
-  refined air's base). The refined air takes the ground as a staircase of whole cells for now:
-  with the ground cut through the cells, the finest level rang ahead of the shock over Beirut
-  (about ±0.5–0.9 kPa, 300 ms early), so that arrival times read early and some façades' windows
-  opened before the load. On the staircase the arrivals are within 4% of Kingery–Bulmash and the
-  façade loads, glass and stone those of 3 m cells, at 3.2 times their cost
-  ([Beirut's page](beirut-2020.md#what-cell-size-the-glass-and-the-damage-need)).
+  a coarser base refined once, to half its cells, where the shock is (at a jump of 0.005 of the
+  pressure) and only near the ground: to the height of all but the tallest 2% of the buildings and
+  four base cells over them, the footprints on the finer cells. The advisor's choice is the finest
+  of each whose run fits this Mac's memory with the components' histories, by its cost model, and
+  takes the refined air where that is both finer at the façades and no dearer; **Cells** sets a size
+  instead (the refined air's base). Over Beirut, 8 m refined so to 4 m gave the glass and the
+  arrivals of 4 m cells in 0.44 of their run time, the façades' peaks 2–12% lower; a tower above
+  the ceiling takes its upper floors' load on the coarse cells. The refined air takes the ground as
+  a staircase of whole cells for now: cut through the cells, a second refined level rang ahead of
+  the shock over Beirut ([Beirut's page](beirut-2020.md#what-cell-size-the-glass-and-the-damage-need)).
 - **Lay Out** places the buildings and shows, before anything is created, how many were placed, the
   air's size and cells, the memory and the time unloaded and as this Mac's runs have gone, and
   the same for the other kind of air.
@@ -178,6 +185,38 @@ Out shows what it costs before the project is made. What such a run gets right a
 1.5 km against the structure, is on [Beirut's page](beirut-2020.md#what-holds-and-what-does-not).
 The made-up district in `Fixtures/SyntheticDistrict` (a map, heights and terrain) tries the window
 in seconds.
+
+## Inferring the charge from arrivals
+
+**Simulation ▸ Infer Charge from Arrivals…** works back from when observers saw or heard the shock
+arrive to the charge: its yield in TNT and its place, each with its uncertainty, and if asked a
+clock offset common to every observer and the burst's height. It is
+[`scenebench infer-charge`](charge-inference.md) in a sheet, by Kingery–Bulmash's arrival times.
+- **Choose Arrivals…** reads a CSV with `name,lat,lon,earliest_s,latest_s`, each arrival a window
+  of time after the explosion (a video frame, or a sound's onset and the frame before it), or
+  Rigby et al.'s table as published. The reference point, about which the place is searched,
+  starts at the observers' centre.
+- **The search**: the air's temperature (a hot day lowers the yield the same arrivals give), the
+  yields searched (even in their logarithm, 1 t to 10 kt to start), the search radius about the
+  reference point, and whether to infer a clock offset or a height.
+- **Broken glass** (GEER's façade shapefile, its `.dbf` beside it, or a CSV
+  `lat,lon,class[,normal_azimuth_deg]`) is off unless chosen and turned on. It is illustrative: on
+  Beirut it fits no yield and pulls the result towards a small charge
+  ([broken glass](charge-inference.md#broken-glass)), and the standing falls to illustrative with it.
+- **Infer** samples the posterior on this Mac's processor, with progress, in about a second for
+  arrivals alone (half a minute with thousands of façades); Cancel stops it and keeps nothing.
+
+The result gives the yield's median and its 68% and 90% intervals, the place (its longitude and
+latitude, its distance from the reference point, and the radii holding half and 90% of the
+samples), the offset and height where inferred, and how far the observers lie off the model. A plan
+draws the observers, the reference point, the place's samples and the circles about the median,
+north up. The standing is the table's ([estimates beside a run](validation.md#the-charge-from-its-arrivals)).
+
+**Place Charge at Median** puts the scene's charge at the median place and yield, given the
+longitude and latitude of the scene's corner (0, 0), as a map import takes them; the height, if
+inferred, becomes the charge's. It needs the simulation reset, and says so if the place lies outside
+the scene. BombCAD's own ratios (`--correction`, which bring the yield within 3% on BombCAD's
+charges) are for the command line only.
 
 ## Importing models
 
@@ -374,6 +413,145 @@ A spatial hierarchy limits intersection checking to overlapping triangle bounds,
 2 million candidate-pair limit, a traversal budget and cancellation. Models that exceed
 validation limits must be simplified; they are not imported with incomplete checks. A scanline-work budget also limits
 expensive previews.
+
+## From architectural plans
+
+An architect's floor plan reaches BombCAD by one of two routes:
+
+- **In BombCAD, from the DXF.** Quick, for plain buildings: square walls, flat floors, the same
+  plan on every storey or one plan per storey's openings. It is described below.
+- **Through a BIM program, as IFC.** For anything more: angled or curved walls, pitched roofs,
+  storeys that differ, columns and beams. FreeCAD's BIM workbench (or Bonsai, Blender's IFC
+  add-on) raises the plan into a model, and BombCAD imports the IFC. See
+  [through FreeCAD](#through-freecad-as-ifc).
+
+[Samples/Plans](../Samples/Plans/README.md) holds a worked example for both routes, a two-storey
+house with cavity walls, and plans cut from two real buildings.
+
+### In BombCAD, from the DXF
+
+**Import Model…** (or drop the file) with a plan saved as **ASCII DXF**. A binary DXF, DWG or PDF
+has to be saved as ASCII DXF first. BombCAD reads lines, polylines (with their arcs), arcs,
+circles and blocks, on their layers. A sheet then asks what the plan means:
+
+- **Units**: from the drawing's header where it gives them; otherwise BombCAD guesses from the
+  plan's size (millimetres if it spans more than 200 units) and asks you to check.
+- **Layers**: each layer is marked **Walls**, **Doors**, **Windows**, **Floor outline** or
+  **Ignore**, guessed from its name ("WALL", "A-WALL", "DOOR", "GLAZ"…; a wall layer named for
+  partitions or interior walls gets 100 mm block). A wall layer takes a
+  construction, such as a cavity wall of brick and block, solid brick, block or concrete, and so
+  the wall's layers and materials. Any layer may be put on one storey only, which is how a plan
+  with each storey's windows on its own layer is read.
+- **Storeys**: how many, floor to floor, the floor and roof slabs' thickness, a flat roof, and a
+  ground-bearing slab.
+- **Openings**: door head, window sill and head (each storey's own), and whether a gap in a wall
+  with nothing drawn in it is a door or a window.
+
+The preview shows the drawing with the walls found filled, windows blue and doors red, with notes
+on what was read and what was assumed. **Preview building** raises it and opens the same review
+as an IFC building ([structures from IFC](structural-editing.md#structures-from-ifc)): keep it as
+rigid obstacles or turn on **Deformable shells and beams**. **Back to the plan…** returns to the
+sheet.
+
+How the plan is read:
+
+- **Walls drawn by both faces**, as architects draw them, are read as the regions the wall
+  layer's lines enclose: a region no wider than 0.6 m over most of it is wall, wider is a room.
+  Overlapping outlines and the lines between a wall's leaves stay inside one wall. Each wall's
+  thickness is the drawing's, its build-up the layer's construction.
+- **Walls drawn by centrelines** (lines that enclose only rooms) take their construction's
+  thickness. Where walls meet, they are carried to each other's far face at a corner, and to the
+  midline at a T, so that they join.
+- **Openings**: a block or a group of lines on a door or window layer names the opening it sits
+  in, or in a wall drawn by its centreline, cuts one. A door or window drawn just past a wall's
+  end, beside a pier or a corner, carries the wall across it. A gap of 0.3–6 m in a wall's line
+  with nothing drawn in it is taken as the kind you chose in an outer wall and as a doorway in an
+  inside one, and the notes say so.
+- **Floors**: closed polylines on a floor-outline layer (square-cornered), else the walls' outer
+  rectangle.
+- Only walls square to the plan's axes are read. Angled and curved walls are left out, and the
+  notes give their number and length; for them, take the IFC route.
+
+How it does on real plans (`FloorPlanTests`, `PlanHouseStudyTests`):
+
+- **The example house**, drawn by centrelines, gives the same building as the FreeCAD route:
+  13 shells (8 cavity walls as their brick leaf carrying the block's mass, 2 block partitions,
+  3 slabs), 5 panes of annealed glass and the door as a hole. Its members meet without the
+  89 mm gaps FreeCAD leaves. Under the 20 kg charge described below, the front reads the same
+  126 kPa; the front wall's brick leaf breaks at both storeys as it does from the IFC (274 of
+  6,021 elements removed, against 179 of 5,597); the side and back walls move 7–43 mm (8–53 mm
+  from the IFC), the partitions 25–33 mm (26–34 mm) and the roof 24 mm (11 mm). The plan's
+  roof spans the whole outline over the walls, where FreeCAD's sits within them.
+- **The Duplex Apartment** (buildingSMART's sample), its two floors cut from its IFC as an
+  architect's plan is drawn, by both faces. The reader finds the four 417 mm outer walls whole
+  and the 124 mm partitions. On the ground floor it places all 10 openings the cut crosses (the
+  IFC's 4 windows and the 6 of its 8 doors that appear in the cut). The stair core reads
+  as thick blocks of wall (520–740 mm), where the IFC has several walls overlapping. On the first
+  floor, the dormers' angled lines are left out and the notes say so.
+- **The small house** (buildingSMART's Building-Architecture): its three walls of 200 mm.
+  A 24 mm wall is thinner than the thinnest a plan's lines are read as (50 mm).
+
+These plans are drawn cleanly, as cuts from models. A drawing with hatching, dimensions or
+furniture on its wall layer needs those layers set to **Ignore**, and walls that are not quite
+closed at their ends can be lost; the preview shows what was found.
+
+### Through FreeCAD, as IFC
+
+BombCAD reads such a building as IFC. The steps below use FreeCAD's BIM workbench; Bonsai works
+too. The worked example in Samples/Plans gives the DXF plan, the FreeCAD script that raises it, and
+the IFC it writes.
+
+1. **The plan.** Export it from the CAD program as DXF, in millimetres. It helps to put each kind
+   of line on its own layer: the walls' centrelines (or one face), and the doors' and windows'
+   widths along their walls. A scanned drawing has to be traced first; FreeCAD can trace over an
+   image (BIM ▸ 2D drafting, with the image on a plane).
+2. **FreeCAD** (freecad.org, `brew install --cask freecad`). Open the DXF (File ▸ Import), switch
+   to the BIM workbench, and for each storey:
+   - **Walls**: select a wall's lines, then BIM ▸ Wall. Give its height (floor to floor) and
+     width, and its layers as a **multi-material** (BIM ▸ Multi-material). Name each layer's
+     material by what it is, such as "Facing brick" or "Aggregate concrete block", since that name
+     is what BombCAD reads (see below).
+   - **Windows and doors**: BIM ▸ Window, choose a preset, give its size, and place it in its wall
+     at its sill height. It cuts its own opening.
+   - **Floors and roof**: draw a rectangle over the inside, then BIM ▸ Slab, with a thickness and
+     a concrete material whose name gives its grade ("Concrete C30/37").
+   - **Storeys**: select each storey's walls, openings and slab, then BIM ▸ Level; then BIM ▸
+     Building and BIM ▸ Site over the levels.
+3. **IFC**: select the site, then File ▸ Export ▸ Industry Foundation Classes (*.ifc), IFC 4.
+   FreeCAD 1.1 leaves a wall's layers out of the file and calls every wall movable; its
+   development branch does too. Run the example's `add_wall_layers` on the exported file in
+   FreeCAD's Python console, or export from Bonsai, which writes the layers itself. Without them,
+   BombCAD takes the walls as the default material (it says so).
+4. **BombCAD**: **Import Model…**, choose the IFC, keep every element, and turn on **Deformable
+   shells and beams** ([structures from IFC](structural-editing.md#structures-from-ifc)). Then
+   place the charge and run.
+
+What the importer makes of the example's house:
+
+- **Walls**: each wall becomes a shell of its thickest load-bearing layer: the cavity walls as
+  their 102.5 mm brick leaf, the partitions as block. The block leaf's stiffness is left out, but
+  its mass is carried by the brick (its density 1.72 times its own), and the report says so. A
+  layer's material is read by its material's name. The converter gives only the layer's own name
+  ("Outer leaf"), which says nothing of what it is made of, so the name is found in the IFC itself.
+- **Windows** become panes of annealed glass, 6 mm thick unless the IFC gives the glass's
+  thickness, and the **door** an open hole. **Slabs** become shells of C30/37, unreinforced unless asked. The
+  ground-bearing slab rests on the ground.
+- **Connections**: walls are tied where they meet, and to the slabs, closing the gaps of up to
+  89 mm that FreeCAD leaves between a slab's edge and a wall's midsurface. The walls stand on the
+  ground on assumed starter bars.
+- **Meshes**: FreeCAD's windows and openings give meshes that are not closed solids. The
+  importer remakes them from their pieces and lists them.
+
+**Under a blast** (`PlanHouseStudyTests`, with `BOMBCAD_PLAN_STUDY` set to a folder for its
+report). Twenty kilograms of TNT on the ground 10 m before the front wall's middle, in air of 0.25 m
+cells whose open faces keep the clearance rule ([open faces](air-blast-model.md#open-faces-near-a-structure)),
+run for 0.15 s in about 30 s on an M4 Max:
+- the front reads 126 kPa reflected;
+- the front wall's brick leaf breaks at both storeys and is thrown into the house, its pieces 2.6–2.9 m in by the end, 179 of the 5,597 elements removed;
+- the side and back walls move 8–53 mm, the partitions 26–34 mm, the roof 11 mm.
+
+That is what an unreinforced leaf of brick would be expected to do under such a load. It is not
+compared with a test, so it stands as an illustration of the route, not of the walls.
 
 ## Results, tests and the command line
 

@@ -421,6 +421,9 @@ public enum ChargeInference {
                 (pow(observer.east - theta[1], 2) + pow(observer.north - theta[2], 2) + height * height)
                 .squareRoot()
             let t = arrival(massKg: mass, range: range, soundRatio: sound) * observer.ratio(at: mass) + offset
+            // A clock offset can bring an arrival to or before the explosion, which no observer saw:
+            // the parameters are impossible (and the log of the time would be a NaN).
+            guard t > 0, t.isFinite else { return -.infinity }
             let inlier = (pow(spread * t, 2) + pow(settings.timingSigma, 2)).squareRoot()
             let chance =
                 (1 - settings.outlierShare)
@@ -501,6 +504,8 @@ public enum ChargeInference {
                     .squareRoot()
                 let t =
                     arrival(massKg: mass, range: range, soundRatio: sound) * observer.ratio(at: mass) + offset
+                // (A sample's arrival is never at or before the explosion: such parameters are impossible.)
+                guard t > 0, t.isFinite else { continue }
                 let inlier =
                     (1 - settings.outlierShare)
                     * windowChance(
@@ -547,9 +552,12 @@ public enum ChargeInference {
 
     // MARK: - Sampling
 
-    /// The posterior of the charge given `arrivals` and, optionally, `facades`.
+    /// The posterior of the charge given `arrivals` and, optionally, `facades`. `progress` is told
+    /// the share done now and then, and stops the sampling, with no samples kept, if it returns
+    /// false; it changes nothing of the result otherwise.
     public static func infer(
-        arrivals: [Arrival], facades: [Facade] = [], settings: Settings = Settings()
+        arrivals: [Arrival], facades: [Facade] = [], settings: Settings = Settings(),
+        progress: (Double) -> Bool = { _ in true }
     ) -> Posterior {
         let names = names(settings)
         let dimensions = names.count
@@ -558,9 +566,12 @@ public enum ChargeInference {
             let prior = logPrior(theta, settings: settings)
             guard prior > -.infinity else { return (-.infinity, -.infinity) }
             var likelihood = arrivalLogLikelihood(theta, arrivals: arrivals, settings: settings)
-            if let table {
+            if let table, likelihood > -.infinity {
                 likelihood += glassLogLikelihood(theta, facades: facades, table: table, settings: settings)
             }
+            // Anything that is not a number counts as impossible, so that no search or walker
+            // settles on it.
+            guard !likelihood.isNaN else { return (-.infinity, -.infinity) }
             return (prior + likelihood, likelihood)
         }
         var random = SplitMix64(seed: settings.seed)
@@ -589,6 +600,10 @@ public enum ChargeInference {
             let theta = priorDraw()
             return (theta, logPosterior(theta).posterior)
         }.sorted { $0.score > $1.score }
+        func stopped() -> Posterior {
+            Posterior(names: names, samples: [], logLikelihoods: [], acceptance: 0, rHat: .nan, summaries: [])
+        }
+        guard progress(0.1) else { return stopped() }
         // The walkers start in a small ball about the best local optimum of the posterior, found by
         // Nelder–Mead from the best few dozen draws: a narrow mode (a big charge whose place the
         // arrivals pin to metres) is rarely among the draws themselves, and a broad one is.
@@ -596,7 +611,8 @@ public enum ChargeInference {
             nelderMead(start.theta, scales: settings.searchScales(dimensions), iterations: 600) {
                 -logPosterior($0).posterior
             }
-        }.sorted { $0.value < $1.value }
+        }.sorted { ($0.value.isNaN ? .infinity : $0.value) < ($1.value.isNaN ? .infinity : $1.value) }
+        guard progress(0.25) else { return stopped() }
         let best = optima[0].point
         var positions: [[Double]] = []
         let scale = settings.searchScales(dimensions).map { 0.01 * $0 }
@@ -610,9 +626,14 @@ public enum ChargeInference {
         var chains = [[[Double]]](repeating: [], count: walkers)
         var accepted = 0
         var proposed = 0
-        let burn = settings.steps / 2
+        // At least two steps, so that one is kept after the burn-in.
+        let steps = max(settings.steps, 2)
+        let burn = steps / 2
         let stretch = 2.0
-        for step in 0..<settings.steps {
+        for step in 0..<steps {
+            if step % max(steps / 100, 1) == 0, !progress(0.25 + 0.75 * Double(step) / Double(steps)) {
+                return stopped()
+            }
             // Halfway through the burn-in, a walker left far below the rest (stranded in a poor
             // mode, which the stretch move cannot leave) starts again from a good one's place.
             if step == burn / 2 {
@@ -690,8 +711,13 @@ public enum ChargeInference {
 
     /// The minimum of `f` near `start` by Nelder and Mead's simplex, first steps `scales`.
     static func nelderMead(
-        _ start: [Double], scales: [Double], iterations: Int, _ f: ([Double]) -> Double
+        _ start: [Double], scales: [Double], iterations: Int, _ objective: ([Double]) -> Double
     ) -> (point: [Double], value: Double) {
+        // A value that is not a number is taken as the worst there is.
+        func f(_ point: [Double]) -> Double {
+            let value = objective(point)
+            return value.isNaN ? .infinity : value
+        }
         let n = start.count
         var simplex =
             [start]
@@ -756,4 +782,22 @@ public enum ChargeInference {
                 name: "\(n)", east: place.x, north: place.y, earliest: latest - frame, latest: latest)
         }
     }
+}
+
+extension ChargeInference {
+    /// Its standing, worded from the standing table's figures (validation.md, "Estimates beside a
+    /// run").
+    public static let standing: [String] = {
+        let beirut = ValidationTables.figure("inferredBeirut")
+        let alone = ValidationTables.figure("inferredByCurvesAlone")
+        let corrected = ValidationTables.figure("inferredWithRatios")
+        return [
+            "Yield and place from arrival times: an approximation. On Beirut, \(beirut.ratio) kt and Warehouse 12 "
+                + "within 25–32 m from Rigby et al.'s observers, their own 0.50 kt.",
+            "On charges BombCAD ran, Kingery–Bulmash alone found the place but \(alone.ratio) times the yield; with "
+                + "BombCAD's ratios from a run at the estimate (--correction), \(corrected.ratio) of it on 2 m cells.",
+            "Height and a clock offset, left free, are not resolved by arrivals alone.",
+            "Broken glass: illustrative. It fits no yield and biases the result rather than tightening it.",
+        ]
+    }()
 }

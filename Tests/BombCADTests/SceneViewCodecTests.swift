@@ -31,6 +31,25 @@ struct SceneViewCodecTests {
         let (solver, _) = try solver()
         let setup = ViewSetup(solver: solver, fieldStride: 2)
         #expect(try SceneViewCodec.decodeSetup(SceneViewCodec.encode(setup)) == setup)
+        // The materials' colours travel with it: concrete walls, a glass pane.
+        let walls = try #require(setup.bodies.first?.solids)
+        #expect(walls.materialIndex.count == walls.instances.count)
+        #expect(walls.palette.first == MaterialAppearance.concrete.colour)
+        let pane = try #require(setup.bodies.compactMap(\.shells).first)
+        #expect(pane.palette.first == MaterialAppearance.glass.colour)
+        // A setup from a sender before the colours reads, drawn in the first colour.
+        var plain = setup
+        for n in plain.bodies.indices {
+            plain.bodies[n].solids?.materialIndex = []
+            plain.bodies[n].solids?.palette = []
+            plain.bodies[n].shells?.palette = []
+        }
+        var older = SceneViewCodec.encode(plain)
+        let tail = plain.bodies.reduce(0) { sum, body in
+            sum + (body.solids != nil ? 16 : 0) + (body.shells != nil ? 8 : 0)
+        }
+        older.removeLast(tail)
+        #expect(try SceneViewCodec.decodeSetup(older) == plain)
         let frame = try ViewFrame(solver: solver)
         let bytes = SceneViewCodec.encode(frame)
         #expect(SceneViewCodec.size(frame) == bytes.count)
@@ -40,6 +59,28 @@ struct SceneViewCodecTests {
         // A slice of a larger buffer, as a frame's payload is, reads the same.
         let padded = Data([1, 2, 3]) + bytes
         #expect(try SceneViewCodec.decodeFrame(padded.dropFirst(3)) == frame)
+    }
+
+    @Test("A view with the colours, which an app before them cannot read, comes only from protocol 13 on")
+    func protocolVersion() async throws {
+        // An app of protocol 12 reads a setup to its last body and throws at the colours after it.
+        #expect(SweepWorkerHello.protocolVersion >= 13)
+        let toWorker = Pipe()
+        let fromWorker = Pipe()
+        var hello = SweepWorkerHello(device: "Older GPU")
+        hello.protocolVersion = 12
+        try SweepWorkerWriter(fromWorker.fileHandleForWriting).send(.hello(hello))
+        let older = SweepWorkerClient(
+            name: "older worker", input: fromWorker.fileHandleForReading,
+            output: toWorker.fileHandleForWriting
+        ) { try? toWorker.fileHandleForWriting.close() }
+        await #expect(throws: ProjectFileError.self) { try await older.start() }
+        try? fromWorker.fileHandleForWriting.close()
+        let advert = NearbyWorkers.Advert(
+            id: UUID(), version: "0.5.0", protocolVersion: 12,
+            solverVersion: SavedSimulationRun.solverVersion,
+            device: "Older GPU")
+        #expect(!advert.compatible)
     }
 
     @Test("The field read whole is the solver's; coarser, each texel keeps its block's extremes")

@@ -97,6 +97,12 @@ level and summary, the resolution notes and what is not modelled), and each Open
 The headless standing covers the models fed alongside the run; the run it keeps covers what that
 run keeps, which does not include those models' results.
 
+**Estimates beside a run** (the quick estimate, the hybrid far field and charge inference) are
+not scenes, so they carry no `SceneStanding`; each prints a few lines of standing in the app, its
+JSON and its command, worded from the same table's figures
+([estimates beside a run](validation.md#estimates-beside-a-run)), and those lines are part of the
+table's identity.
+
 ## Error bands
 
 Where the validation record supports it, a result also carries a numeric band: model over
@@ -157,7 +163,7 @@ claimed for another: the shells' 124% is the slab test's one mesh.
 
 **Uncertain inputs.** Where the ensemble ran a band's case with its inputs sampled (see
 [the model's spread from uncertain inputs](validation.md#the-models-spread-from-uncertain-inputs)),
-the band carries that spread: the slab's 12%, Wu's 4%, the close-in gauges' 8%, and 2% for a
+the band carries that spread: the slab's 12%, Wu's 4%, the close-in gauges' 7% (8% before 18 October), and 2% for a
 wall's peak and its impulse (rerun 18 October; the impulse 1% before). The expected range adds the inputs' 5–95% range (1.645 coefficients of
 variation) to the band's half-width in quadrature, since the model's error and its spread from
 uncertain inputs are separate, and comparison uses the combined width. Elsewhere the band stands

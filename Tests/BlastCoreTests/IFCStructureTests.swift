@@ -157,6 +157,12 @@ struct IFCStructureTests {
                 && !cavity.assumed)
         let solid = try #require(cavity.solid)
         #expect(abs(structure.model.solids[solid].size.y - 0.193) < 1e-4)
+        // The brick leaf's stiffness is left out, but the block carries its mass.
+        let block = StructureMaterial.concreteBlock.density
+        let carried = (0.193 * block + 0.092 * StructureMaterial.masonry.density) / (0.193 * block)
+        let density = try #require(structure.model.solidMaterial[solid]?.density)
+        #expect(abs(density / block - carried) < 1e-4, "\(density / block) against \(carried)")
+        #expect(cavity.notes.contains { $0.contains("mass carried by it") })
         #expect(structure.members.first { $0.name == "Partition" }?.role == .rigid)
         let timber = try #require(structure.members.first { $0.name == "Timber wall" })
         #expect(timber.assumed && timber.materialSource.contains("timber"))

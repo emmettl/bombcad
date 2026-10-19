@@ -20,6 +20,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// The jump that refines the air, as a share of the pressure, when it is not the usual 0.1;
     /// nil, and left out of the file and the fingerprint, when it is.
     var shockThreshold: Float?
+    /// With `sharpShocks`, no air refined more than this many metres above the ground
+    /// (`SolverConfiguration.refinementCeiling`), as File ▸ New District sets over the roofs; nil,
+    /// and left out of the file and the fingerprint, for no ceiling.
+    var refinementCeiling: Float?
     /// True when each refined level takes only the substeps its own waves need; nil, and left out
     /// of the file and the fingerprint, when every level takes all of them.
     var adaptiveSubsteps: Bool?
@@ -57,6 +61,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// fingerprint, for the balloon of hot gas (so every run saved before then keeps its start), or
     /// without afterburning and hot air.
     var mappedStart: Bool?
+    /// True when, with afterburning and hot air, the fireball's gas lost the heat it radiated
+    /// (`SolverConfiguration.radiativeCooling`), as since 19 October 2026; nil, and left out of the
+    /// file and the fingerprint, where it kept it (every run saved before then).
+    var radiativeCooling: Bool?
     var solidElementSize: Float
     var duration: Double
 
@@ -66,6 +74,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         sharpShocks = settings.sharpShocks
         shockLevels = settings.shockLevels > 1 ? settings.shockLevels : nil
         shockThreshold = settings.shockThreshold != 0.1 ? settings.shockThreshold : nil
+        refinementCeiling = settings.sharpShocks ? settings.refinementCeiling : nil
         adaptiveSubsteps = settings.sharpShocks && settings.adaptiveSubsteps ? true : nil
         gravity = settings.gravity ? true : nil
         terrainCutCells =
@@ -78,6 +87,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         ventsGlazing = settings.ventsGlazing && settings.scenario.hasEnvelopePanes ? true : nil
         settlesStructures = settings.scenario.structuralObjects.isEmpty ? nil : settings.settlesStructures
         mappedStart = settings.detailedCharge && settings.mappedStart ? true : nil
+        radiativeCooling = settings.detailedCharge && settings.radiativeCooling ? true : nil
         solidElementSize = settings.solidElementSize
         self.duration = duration
     }
@@ -118,6 +128,10 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
     /// is not; without afterburning it does not apply, and it is on, for when afterburning is.
     var startsMapped: Bool { mappedStart ?? !detailedCharge }
 
+    /// Whether a run under these settings has its fireball lose the heat it radiates: as recorded,
+    /// nil (a run saved before 19 October 2026, or without afterburning) for not.
+    var cools: Bool { radiativeCooling ?? false }
+
     /// The craters the charges of `scenario` dig in the ground these settings name; none on the
     /// rigid ground. They form after the blast, so they are worked out from the scene, not the run.
     func craters(over scenario: Scenario) -> [CraterEstimate] {
@@ -135,6 +149,7 @@ struct ProjectRunSettings: Codable, Equatable, Sendable {
         guard Resolution(rawValue: resolution) != nil, solidElementSize.isFinite, solidElementSize > 0,
             duration.isFinite, duration > 0, shockLevels.map({ $0 == 2 }) ?? true,
             shockThreshold.map({ $0.isFinite && $0 > 0 && $0 <= 1 }) ?? true,
+            refinementCeiling.map({ $0.isFinite && $0 > 0 }) ?? true,
             groundStiffness.map({ $0.isFinite && $0 > 0 }) ?? true,
             waterTable.map({ $0.isFinite && $0 >= 0 && $0 <= 1000 }) ?? true
         else { throw ProjectFileError.invalid("Project simulation settings are invalid.") }

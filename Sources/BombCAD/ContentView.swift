@@ -38,8 +38,9 @@ struct ContentView: View {
                         if dropTargeted {
                             RoundedRectangle(cornerRadius: 12).stroke(.blue, lineWidth: 3)
                                 .overlay {
-                                    Text("Drop an OBJ, STL or IFC model").font(.title2).padding().background(
-                                        .regularMaterial, in: .rect(cornerRadius: 8))
+                                    Text("Drop an OBJ, STL or IFC model, or a DXF plan").font(.title2)
+                                        .padding().background(
+                                            .regularMaterial, in: .rect(cornerRadius: 8))
                                 }
                                 .padding(12).allowsHitTesting(false)
                         }
@@ -107,7 +108,9 @@ struct ContentView: View {
                 {
                     isImporting = true
                 }.disabled(importLoader.isLoading || model.sweep.isActive)
-                    .help("Open one OBJ, STL or IFC model, or drop it into the viewport (⇧⌘I).")
+                    .help(
+                        "Open one OBJ, STL or IFC model or a DXF floor plan, or drop it into the viewport (⇧⌘I)."
+                    )
             }
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
@@ -142,7 +145,7 @@ struct ContentView: View {
             isPresented: $isImporting,
             allowedContentTypes: [
                 UTType(filenameExtension: "obj") ?? .data, UTType(filenameExtension: "stl") ?? .data,
-                UTType(filenameExtension: "ifc") ?? .data,
+                UTType(filenameExtension: "ifc") ?? .data, UTType(filenameExtension: "dxf") ?? .data,
             ]
         ) { result in
             guard case .success(let url) = result else { return }
@@ -176,6 +179,8 @@ struct ContentView: View {
         ) { loaded in
             if let building = loaded.building {
                 IFCImportFlow(prepared: building, filename: loaded.filename, model: model)
+            } else if let plan = loaded.plan {
+                FloorPlanImportFlow(drawing: plan, filename: loaded.filename, model: model)
             } else if let mesh = loaded.inspection?.validatedMesh {
                 ModelImportView(mesh: mesh, filename: loaded.filename, model: model)
             } else if let inspection = loaded.inspection {
@@ -185,6 +190,9 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $model.showsRenderExport) { RenderExportView(model: model) }
+        .sheet(isPresented: $model.showsChargeInference) {
+            ChargeInferenceView(model: model, inference: model.chargeInference)
+        }
         .onChange(of: model.inspectedImportID) {
             if model.inspectedImportID != nil { sourceInspectorVisible = true }
         }

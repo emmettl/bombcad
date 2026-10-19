@@ -3,8 +3,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 import simd
 
-/// A district's air: uniform cells, or a base of cells refined twice, to a quarter of their size,
-/// where the shock is (at a jump of 0.005 of the pressure, as Beirut's refined runs were).
+/// A district's air: uniform cells, or a base of cells refined once, to half their size, where the
+/// shock is (at a jump of 0.005 of the pressure) and no higher above the ground than the
+/// buildings and the shock's top over them (`DistrictLayout.refinementCeiling`), the footprints
+/// on the finer cells. Over Beirut's 1 km box, 8 m refined so to 4 m kept the glass and the
+/// arrivals of 4 m cells at 0.44 of their run time (docs/beirut-2020.md).
 struct DistrictAir: Sendable, Equatable {
     /// The uniform cells, or the refined air's base.
     var cellSize: Float
@@ -14,11 +17,11 @@ struct DistrictAir: Sendable, Equatable {
 
     /// The cells at the façades as the shock loads them. A refined air takes the ground as a
     /// staircase of whole cells (`NewDistrictModel.settings`).
-    var finest: Float { refined ? cellSize / 4 : cellSize }
+    var finest: Float { refined ? cellSize / 2 : cellSize }
 
     var title: String {
         refined
-            ? "\(Resolution.metres(cellSize)) refined twice to \(Resolution.metres(finest)) at the shock"
+            ? "\(Resolution.metres(cellSize)) refined to \(Resolution.metres(finest)) at the shock, near the ground"
             : "uniform \(Resolution.metres(cellSize)) cells"
     }
 }
@@ -237,17 +240,19 @@ final class NewDistrictModel {
         guard !candidates.isEmpty else { throw tooLarge }
         // Finer cells hold more of the footprints' boxes, and the ground and roofs raise the top:
         // the finest whose buildings a scene holds and whose run, laid out, still fits. The
-        // footprints and the ground are on the air's own cells, a refined air's base, as Beirut's
-        // refined runs were.
+        // ground is on the air's own cells, a refined air's base; the footprints on its finest.
         while true {
             let air = candidates.removeFirst()
             do {
                 let half = layout.halfSide(radius: radius, cellSize: air.cellSize, clearFaces: clearFaces)
                 let made = try layout.scene(
                     halfSide: half, cellSize: air.cellSize, radius: radius,
-                    name: String(format: "District at %.4f, %.4f", layout.charge.y, layout.charge.x))
+                    name: String(format: "District at %.4f, %.4f", layout.charge.y, layout.charge.x),
+                    footprintCells: air.refined ? air.finest : nil)
                 var document = ProjectDocument(scenario: made.scene)
-                let run = settings(document.runSettings, air: air, ground: ground, duration: duration)
+                let run = settings(
+                    document.runSettings, air: air, ground: ground, duration: duration,
+                    ceiling: layout.refinementCeiling(radius: radius, cellSize: air.cellSize))
                 document.runSettings = run
                 try ProjectDocument.validate(made.scene)
                 try ProjectDocument.validateGrid(
@@ -262,7 +267,9 @@ final class NewDistrictModel {
                     DistrictPreview.Priced(
                         air: other,
                         cost: estimate(
-                            settings(document.runSettings, air: other, ground: ground, duration: duration),
+                            settings(
+                                document.runSettings, air: other, ground: ground, duration: duration,
+                                ceiling: layout.refinementCeiling(radius: radius, cellSize: other.cellSize)),
                             made.scene, memory: memory))
                 }
                 return DistrictPreview(
@@ -318,7 +325,8 @@ final class NewDistrictModel {
             charge: Charge(mass: layout.mass, position: SIMD3(half, half, 0)))
         let run = settings(
             ProjectDocument(scenario: scenario).runSettings, air: air, ground: ground,
-            duration: DistrictLayout.duration(radius: radius))
+            duration: DistrictLayout.duration(radius: radius),
+            ceiling: layout.refinementCeiling(radius: radius, cellSize: air.cellSize))
         return (estimate(run, scenario, memory: memory), scenario.grid(cellSize: air.cellSize))
     }
 
@@ -347,7 +355,7 @@ final class NewDistrictModel {
             shockLevels: run.shockLevels ?? 1, gravity: run.gravity ?? false,
             shockThreshold: run.shockThreshold ?? 0.1,
             adaptiveSubsteps: run.adaptiveSubsteps ?? false, terrainCutCells: run.cutsTerrain(over: scenario),
-            outlineByOverlap: run.countsByOverlap(over: scenario))
+            outlineByOverlap: run.countsByOverlap(over: scenario), refinementCeiling: run.refinementCeiling)
         let cellSize = (Resolution(rawValue: run.resolution) ?? .medium).cellSize
         configuration.fitRefinementMemory(scenario.grid(cellSize: cellSize), memory: memory)
         return RunCost.estimate(
@@ -359,16 +367,19 @@ final class NewDistrictModel {
     nonisolated static func historyBudget(memory: Int) -> Int { min(memory / 8, 4 << 30) }
 
     nonisolated private static func settings(
-        _ settings: ProjectRunSettings?, air: DistrictAir, ground: GroundType, duration: Double
+        _ settings: ProjectRunSettings?, air: DistrictAir, ground: GroundType, duration: Double,
+        ceiling: Float
     ) -> ProjectRunSettings {
         var run = settings ?? ProjectRunSettings(settings: SimulationSettings(), duration: duration)
         run.resolution = (Resolution(cellSize: air.cellSize) ?? .coarse).rawValue
         run.sharpShocks = air.refined
-        run.shockLevels = air.refined ? 2 : nil
+        run.shockLevels = nil
         run.shockThreshold = air.refined ? DistrictAir.threshold : nil
-        // Refined, the ground as a staircase of whole cells: cut through the cells, the second
-        // level's rang ahead of the shock over Beirut (±0.5–0.9 kPa from 0.8 s, 300 ms early) until
-        // the terrain's cut cells are fixed there; on a staircase the arrivals are within 4%.
+        run.refinementCeiling = air.refined ? ceiling : nil
+        // Refined, the ground as a staircase of whole cells: cut through the cells, a second level's
+        // rang ahead of the shock over Beirut (±0.5–0.9 kPa from 0.8 s, 300 ms early) until the
+        // terrain's cut cells are fixed there; on a staircase the arrivals are within 4%, and the
+        // capped runs were checked on it.
         if air.refined { run.terrainCutCells = nil }
         run.adaptiveSubsteps = nil
         run.ground = ground == .rigid ? nil : ground
@@ -558,7 +569,7 @@ struct NewDistrictView: View {
                 ForEach(NewDistrictModel.AirChoice.allCases) { Text($0.title).tag($0) }
             }
             .help(
-                "Uniform cells, or a coarser base refined twice where the shock is. The advisor takes the refined "
+                "Uniform cells, or a coarser base refined to half its cells where the shock is, near the ground. The advisor takes the refined "
                     + "air where it is both finer at the façades and no dearer than the uniform cells that fit."
             )
             Picker(model.airChoice == .refined ? "Base cells" : "Cells", selection: $model.cellSize) {
@@ -587,9 +598,9 @@ struct NewDistrictView: View {
                 }
                 if preview.air.refined {
                     Text(
-                        "Refined air takes the ground as a staircase of whole cells for now: cut through the cells, "
-                            + "the finest level rang ahead of the shock over Beirut, and arrival times read early "
-                            + "(docs/beirut-2020.md)."
+                        "Refined air is refined only near the ground, to the height of all but the tallest 2% of the "
+                            + "buildings and four base cells over them: a tower's top floors take the coarse cells' load. "
+                            + "It takes the ground as a staircase of whole cells for now (docs/beirut-2020.md)."
                     )
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }

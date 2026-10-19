@@ -88,8 +88,9 @@ report stays under **Edit layout → Structure from IFC**.
 
 - **Elements.** Walls, slabs and roofs square to the axes become shells: as thick as their
   structural layer where the IFC gives a material layer set (the block of a brick-on-block
-  wall), else as their geometry. With **Roof slabs at a pitch as shells at their pitch**, a slab
-  or roof at one pitch of 5–60°, rising along x or y, becomes a shell in its own plane ([shells at
+  wall, which then carries the brick's mass, though not its stiffness), else as their geometry.
+  With **Roof slabs at a pitch as shells at their pitch**, a slab or roof at one pitch of 5–60°,
+  rising along x or y, becomes a shell in its own plane ([shells at
   a pitch](shell-model.md#shells-at-a-pitch)). Its plane is fitted to its faces, the walls under
   it are cut to its line, and it is tied to them by the base connection. Without the option it
   stays a rigid obstacle. Columns, beams and members become beams of their section's
@@ -103,7 +104,8 @@ report stays under **Edit layout → Structure from IFC**.
   (stud partitions, flooring, tiles) and slabs on grade that walls pass through stay rigid
   obstacles, each with its reason.
 - **Materials.** Read from the IFC's material names where they name one the solver has
-  (concrete, with its grade if given, block, masonry, steel, glass). Elsewhere the stated
+  (concrete, with its grade if given, block, masonry, steel, glass). A layer of a layer set is
+  read by its material's name; its own name ("Outer leaf") is used only where it has no material. Elsewhere the stated
   default, flagged in the report, the standing and the parts list; choose a part's material
   under Parts to replace it. Past the solver's eight materials (flanged steel sections each
   have one), the nearest of a kind are merged, and the report gives the largest stiffness

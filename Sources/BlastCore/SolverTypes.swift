@@ -56,15 +56,19 @@ public struct SolverConfiguration: Sendable, Hashable {
         // The fine one-dimensional start, since 18 October 2026 (docs/air-blast-model.md, "A finely
         // resolved start"); the harnesses validated on the balloon before then take `balloonStart`.
         configuration.mappedCharge = true
+        // The fireball's gas losing the heat it radiates, since 19 October 2026
+        // (docs/thermal-radiation.md, "The gas losing what it radiates").
+        configuration.radiativeCooling = RadiativeCooling()
         return configuration
     }
 
-    /// This configuration with the charge started from the balloon of hot gas, as every comparison
-    /// recorded before 18 October 2026 was; each harness so pinned is listed in validation.md, "Still
-    /// on the balloon start", until it is rerun on the mapped start.
+    /// This configuration as the comparisons recorded before 18 October 2026 were run: the charge
+    /// started from the balloon of hot gas, the fireball keeping the heat it radiates. Each harness
+    /// so pinned is listed in validation.md, "Still on the balloon start", until it is rerun.
     public var balloonStart: SolverConfiguration {
         var configuration = self
         configuration.mappedCharge = false
+        configuration.radiativeCooling = nil
         return configuration
     }
 
@@ -205,6 +209,12 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// passed (the reflections, the second swing, the venting) on the finest cells. With both
     /// set, the band holds past the lower. Nil holds nothing.
     public var refinementHoldsStructures: Float?
+    /// No air is refined more than this many metres above the ground beneath it (the terrain, or
+    /// the domain's floor): over a district, the shock's top above the roofs, which loads no façade
+    /// (docs/beirut-2020.md, "What cell size the glass and the damage need"). It caps the bands held
+    /// beside envelopes and structures (`refinementHoldsEnvelopes`, `refinementHoldsStructures`)
+    /// too: a face above it is loaded on the coarse cells. Nil, the default, refines at any height.
+    public var refinementCeiling: Float?
     /// How close, in cells of the grid a level refines, such a pair must come to a block for the
     /// block to be refined too: the margin kept around the shock. A shock moves under half a cell
     /// a step and the blocks are placed afresh every step, so 1 still holds it. Until 15 October

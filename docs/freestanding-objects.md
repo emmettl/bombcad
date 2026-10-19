@@ -320,7 +320,10 @@ the air, on 0.2 m air with 0.05 m cells around each for up to four objects and o
 with 0.075 m cells beyond that. The section lists each object's displacement, peak speed, peak
 tilt and outcome, and whether it left the air, with the cost, and a slider shows the poses in
 the 3D view, which draws freestanding objects as oriented boxes. A result is marked out of
-date when the layout changes. A deformable structure in the scene is refused. The layouts
+date when the layout changes. Beside a deformable structure (stage 3 below) the crop takes in
+the structure too, moved with it whole elements at a time so that it meshes as it does where it
+stands, the air is uniform (0.1 m up to four objects, 0.15 m beyond), and the section gives the
+impulse the objects struck it with; the structure is drawn as placed, not as it moved. The layouts
 "Car park with parked cars (freestanding)" and "Furnished room (freestanding)" open the
 populated scenes above.
 
@@ -398,8 +401,8 @@ mechanics checked against theory, not validated vehicle or furniture models.
   cells, and a cell trapped between them trades gas with air a cell or two away.
 - The coupling still runs on the CPU every step, now well below the air's time in populated
   scenes (above); moving the outline pass to the GPU would cut it further.
-- Objects striking a deformable structure do so without air, and corners pressed into a face
-  between its nodes are not found; the motion run in the app refuses a deformable structure.
+- Corners pressed into a structure's face between its nodes are not found, in the air or
+  without it; the motion run in the app refuses a deformable structure (stage 3).
 - Edge-on-edge contact between boxes crossed at an angle is not found; contact is inelastic
   and first order in time; the stack test settles but does not prove stability of tall piles.
 - Locked wheels, rigid suspension, no crushing; the saloon is illustrative, and furniture is
@@ -407,6 +410,62 @@ mechanics checked against theory, not validated vehicle or furniture models.
 - Next: a fractional shell boundary, the air's gravity with these objects (it is now an
   [option](air-blast-model.md#gravity) for the air alone), objects and a deformable structure in
   the air together.
+- **Objects and a deformable structure in the air together, stage 1** (19 October 2026, on the
+  coarse grid). Their masks and wall velocities now coexist:
+  - (a) With objects installed beside a structure, the structure's coupling is laid over the
+    whole grid, so one wall-velocity buffer, a cell's at three times its index, serves both.
+  - (b) The structure's remask leaves the objects' cells solid at the objects' velocities.
+  - (c) The objects' remap keeps the cells the structure holds, with their velocities.
+
+  `ObjectsBesideStructureTests` holds a 0.4 m box, given 2 m/s, beside a steel plate that 1 kg
+  bends, in a closed domain, over 300 steps:
+  - **The box's cells** never open or lose their velocity.
+  - **The box's remaps** change no cell, while the plate's outline moves through 221.
+  - **The gas** changes by 16.3 g with both, against 16.8 g with the plate alone (its remask's
+    refills) and nothing with the box alone.
+
+  Scenes with one kind take their old paths unchanged.
+
+  **Refused for now.** The objects' own fine resolution
+  (`SolverConfiguration.refinement`) and refined air are refused beside a structure, and
+  structures must be set before the objects. The whole-grid layout costs a remask over every cell
+  at each structure step, and that has not been timed on a large scene.
+- **Stage 2, contact in the air** (19 October 2026). `ExperimentalRigidWorldSimulation` takes a
+  scene's structures, on the coarse grid. While an object is within 0.5 m of a structure, each air
+  step is held to one of the structure's steps (`experimentalStepCeiling`). After each air step,
+  the nodes the objects strike take part in the objects' contact, as in
+  `ExperimentalRigidStructureSimulation`, and their new velocities go back to the structure. The
+  reaction on the structure is recorded (`reaction`).
+
+  `ObjectsBesideStructureTests` throws a 0.4 m, 50 kg box at 5 m/s into a fixed elastic wall
+  5 mm away, in a closed domain with no charge, and compares it with the same throw without air
+  over 30 ms:
+  - **The reaction** is 266 N s in the air, against 259 N s without.
+  - **The box** rebounds at 0.32 m/s, against 0.17 m/s.
+  - **The air** takes 0.47 N s.
+  - **The budget:** the box's momentum lost equals the wall's reaction plus the air's impulse,
+    to 10⁻⁶.
+
+  Scenes without a structure take their old path.
+- **Stage 3, the app's and headless runs** (19 October 2026). `FreestandingMotion`, which the
+  app's Compute Motion runs, takes a scene's deformable structures (above, [In the
+  app](#in-the-app)). `ObjectsBesideStructureTests` blows a 50 kg box 5 mm from an elastic wall
+  well away from the origin at it with 0.5 kg: the cropped wall meshes to the same nodes and
+  elements; the box reaches 2.7 m/s, gives the wall 157 N s (more than its 133 N s, as the wall
+  throws it back), and gets less than 3 cm forward. `rigidboxdemo --car-wall` blows a saloon
+  broadside into a reinforced concrete wall 0.3 m away (0.2 m thick, 6 m long, 2.5 m high, with a
+  mat in each face) with 20 kg 3 m beyond it, the wall deformable and then a rigid block of the
+  same size, over 0.2 s on 0.1 m air:
+
+  | Wall | Car moved | Peak speed | Peak tilt | Wall's reaction | Steps | Time |
+  |---|---|---|---|---|---|---|
+  | Deformable | 0.45 m | 5.94 m/s | 3.1° | 1,296 N s | 14,062 | 149 s |
+  | Rigid block | 0.43 m | 5.95 m/s | 3.2° | not recorded | 4,356 | 33 s |
+
+  The car's centre moves 0.24 m of the 0.3 m gap towards the wall; its tilt brings its upper
+  side the rest of the way, and the two walls stop and throw it alike. The lockstep with the
+  structure's step makes the deformable run three times the steps and four and a half times the
+  time. The structure's motion is not drawn in the app.
 - Objects and a deformable structure in the air together need, as found on 18 October 2026:
   (a) one layout for the coarse wall velocities, which a structure's coupling indexes by its
   region or sparse tiles and the objects over the whole grid; (b) the structure's remask, coarse

@@ -70,6 +70,22 @@ enum SceneBench {
             try EnvelopeVentingBenchmark.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "surrogate-judge" {
+            try SurrogateBench.judge(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "district-hybrid" {
+            try HybridBench.district(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "hybrid-judge" {
+            try HybridBench.judge(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "surrogate-extract" {
+            try SurrogateBench.extract(Array(args.dropFirst()))
+            return
+        }
         if args.first == "district-glass" {
             try DistrictGlass.run(Array(args.dropFirst()))
             return
