@@ -2084,6 +2084,51 @@ public enum KernelRounding: String, Codable, Sendable, CaseIterable {
     }
 }
 
+extension KernelRounding {
+    package var mathMode: KernelMathMode? { self == .relaxed ? .relaxed : nil }
+}
+
+/// Metal's math modes for compiling the kernels (`MTLMathMode`), as a plain value.
+package enum KernelMathMode: Sendable {
+    case fast, relaxed, safe
+}
+
+/// How the kernels are compiled, for measuring what fast math does to results: unchanged unless
+/// set in the environment. `BOMBCAD_KERNEL_MATH` (fast, relaxed or safe) sets the math mode,
+/// `BOMBCAD_KERNEL_CONTRACT` (off, on or fast) prepends Metal's contraction pragma, and
+/// `BOMBCAD_STATE_PADDING` adds that many unused floats to the structure's element state, a change
+/// to the source that alters no arithmetic, as an unrelated edit would: at its end, or with
+/// `BOMBCAD_STATE_PADDING_AT=middle` after `compaction` (the last field read from Swift), which
+/// moves the fields after it. `BOMBCAD_KERNEL_PERTURB`, a comma-separated list, makes other such
+/// edits: `branch` a test in the element kernel that never passes, `kernel` an unused kernel calling
+/// the element kernel's helpers. See "Fast math and the build" in docs/performance.md.
+package struct BuildProbe {
+    package var mathMode: KernelMathMode?
+    package var contract: String?
+    package var statePadding = 0
+    package var padInMiddle = false
+    package var perturbations: Set<String> = []
+
+    package static let current: BuildProbe = {
+        let environment = ProcessInfo.processInfo.environment
+        var probe = BuildProbe()
+        switch environment["BOMBCAD_KERNEL_MATH"] {
+        case "fast": probe.mathMode = .fast
+        case "relaxed": probe.mathMode = .relaxed
+        case "safe": probe.mathMode = .safe
+        default: break
+        }
+        if let contract = environment["BOMBCAD_KERNEL_CONTRACT"], ["off", "on", "fast"].contains(contract) {
+            probe.contract = contract
+        }
+        probe.statePadding = max(0, environment["BOMBCAD_STATE_PADDING"].flatMap(Int.init) ?? 0)
+        probe.padInMiddle = environment["BOMBCAD_STATE_PADDING_AT"] == "middle"
+        probe.perturbations = Set(
+            (environment["BOMBCAD_KERNEL_PERTURB"] ?? "").split(separator: ",").map(String.init))
+        return probe
+    }()
+}
+
 /// Loads and compiles the compute kernels shared by the fluid and structural solvers.
 package enum ShaderLibrary {
     /// Index of the optional function constant that compiles a kernel for one gas model

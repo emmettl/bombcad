@@ -1,4 +1,3 @@
-import BlastModel
 import Foundation
 import simd
 
@@ -97,18 +96,16 @@ public struct TerracedRowDamage: Sendable {
 
     /// Judges `shells`, the row's body, against `rest`, each node's displacement once the row had
     /// settled.
-    public init(shells: ShellSolver, rest: [SIMD3<Float>]) {
+    package init(reading shells: some TerracedRowShells, rest: [SIMD3<Float>]) {
         let model = shells.model
-        let mesh = shells.mesh
+        let mesh = shells.rowMesh
         let party = Self.partyWalls.map { 0.5 * (model.solids[$0].min.y + model.solids[$0].max.y) }
         let edges = [-Float.infinity] + party + [Float.infinity]
         func house(_ y: Float) -> Int { (0..<3).first { y >= edges[$0] && y < edges[$0 + 1] } ?? 0 }
         var moved = [SIMD3<Float>](repeating: .zero, count: rest.count)
-        shells.mutateNodes { nodes in
-            for n in nodes.indices where n < rest.count { moved[n] = nodes[n].displacement - rest[n] }
-        }
-        let damage = shells.displayBuffer.contents().bindMemory(
-            to: Float.self, capacity: max(mesh.elements.count, 1))
+        let displacements = shells.nodeDisplacements()
+        for n in displacements.indices where n < rest.count { moved[n] = displacements[n] - rest[n] }
+        let damage = shells.elementDamage()
         let isCovering = Self.isCovering(in: model)
         let slopes = Set(model.solids.indices.filter { model.inclination(of: $0)?.trimsWalls == true })
         var slopeDrop = [(sum: Float, count: Int)](repeating: (0, 0), count: 3)
@@ -160,7 +157,7 @@ public struct TerracedRowDamage: Sendable {
                 var pairs = 0
                 var lost = 0
                 for side in 0..<2 {
-                    guard let part = shells.pairSummary(support: 4 + 2 * plate + side) else { continue }
+                    guard let part = shells.seats(support: 4 + 2 * plate + side) else { continue }
                     pairs += part.pairs
                     lost += part.unseated
                 }
@@ -175,7 +172,7 @@ public struct TerracedRowDamage: Sendable {
                 var pairs = 0
                 var lost = 0
                 for index in first..<(first + 4) {
-                    guard let part = shells.pairSummary(support: index) else { continue }
+                    guard let part = shells.seats(support: index) else { continue }
                     pairs += part.pairs
                     lost += part.unseated
                 }
@@ -188,4 +185,19 @@ public struct TerracedRowDamage: Sendable {
             return result
         }
     }
+}
+
+/// What `TerracedRowDamage` reads of the row's body after the blast; BlastCore's `ShellSolver` is
+/// one.
+package protocol TerracedRowShells {
+    var model: StructureModel { get }
+    var rowMesh: ShellMesh { get }
+    /// Each node's displacement now.
+    func nodeDisplacements() -> [SIMD3<Float>]
+    /// Each element's damage as drawn, 1 where cracked through.
+    func elementDamage() -> [Float]
+    func flag(_ element: Int) -> ElementFlag
+    /// The pairs between parts of support region `support`, and those slid off their seat; nil
+    /// without any.
+    func seats(support: Int) -> (pairs: Int, unseated: Int)?
 }

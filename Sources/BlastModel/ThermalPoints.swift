@@ -1,4 +1,3 @@
-import BlastModel
 import Foundation
 
 extension ThermalExposure {

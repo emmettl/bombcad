@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 @Suite("Surfaces heated by the fireball's radiation", .timeLimit(.minutes(120)))
@@ -189,7 +188,7 @@ struct SurfaceHeatingTests {
         func peaks(_ step: Float) -> [Float] {
             var spec = spec
             spec.heating.maximumStep = step
-            var exposure = ThermalExposure(spec: spec, scene: scene)
+            var exposure = ThermalExposure.cpu(spec: spec, scene: scene)
             for n in 0...40 {
                 let t = Double(n) * 0.005
                 let radius: Float = n == 0 ? 0 : 4 + Float(n) * 0.05
@@ -231,7 +230,7 @@ struct SurfaceHeatingTests {
         spec.heating.overrides = [
             SurfaceOverride(surface: "block 0", material: "timber", finish: "black paint")
         ]
-        var exposure = ThermalExposure(spec: spec, scene: scene(blocks: [block]))
+        var exposure = ThermalExposure.cpu(spec: spec, scene: scene(blocks: [block]))
         for n in 0...20 {
             exposure.add(sphere(SIMD3(50, 50, 5), radius: 4, temperature: 2600, time: Double(n) * 0.01))
         }
@@ -277,7 +276,7 @@ struct SurfaceHeatingTests {
         let off = try JSONDecoder().decode(
             ThermalSpec.self, from: Data(#"{"heating": {"enabled": false}}"#.utf8))
         #expect(!off.heating.enabled)
-        let exposure = ThermalExposure(spec: off, scene: scene(blocks: []))
+        let exposure = ThermalExposure.cpu(spec: off, scene: scene(blocks: []))
         #expect(exposure.heating == nil && exposure.result.heating == nil)
         var bad = ThermalSpec()
         bad.heating.ground = "marzipan"

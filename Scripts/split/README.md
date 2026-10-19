@@ -32,6 +32,13 @@ under them. The findings and the numbers are in the cloud report of 19 October 2
    `LinuxSIMDParityTests` there says whether Linux's simd results are Apple's bit for bit.
 6. Commit, and push the branch for review.
 
+After the split, the six plain types it had left in BlastCore for one coupling each
+(`ThermalExposure` with the thermal march, `FreestandingMotion`, `TiledCoupling`,
+`TerracedRowDamage`, `GPUStepRate` and `BuildProbe`) were moved by hand, each through a small
+seam: a plain value in BlastModel where a GPU type was stored, or a protocol or delegating
+initialiser that BlastCore's GPU type provides. `classification.json` still records them as the
+split found them.
+
 Running the script again changes nothing. `--no-seams` leaves the seam out, and with it about
 ninety declarations that depend on it stay in BlastCore (rewrite the map with
 `import-graph.py --write --no-seams` first).

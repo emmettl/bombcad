@@ -49,11 +49,7 @@ public final class ExperimentalRigidCarSimulation {
     /// Wall-clock seconds so far in the air solver's steps, in moving the shell through the air
     /// (masks, remapping, gathering impulses) and in the car's contact mechanics.
     public private(set) var timings = Timings()
-    public struct Timings: Codable, Sendable {
-        public var air = 0.0
-        public var coupling = 0.0
-        public var mechanics = 0.0
-    }
+    public typealias Timings = RigidSimulationTimings
 
     public init(
         device: MTLDevice, scenario: Scenario, cellSize: Float,

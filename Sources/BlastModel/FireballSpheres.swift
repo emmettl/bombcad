@@ -1,10 +1,9 @@
-import BlastModel
 import Foundation
 import simd
 
 /// The spheres as the march takes them, under a spec: each shell's absorption coefficient and
 /// black-body radiance.
-struct SphericalMedium: Sendable {
+package struct SphericalMedium: Sendable {
     struct Sphere: Sendable {
         var centre: SIMD3<Float>
         var shellSize: Float

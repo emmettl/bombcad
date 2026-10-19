@@ -2,7 +2,6 @@ import Foundation
 import Testing
 import simd
 
-@testable import BlastCore
 @testable import BlastModel
 
 /// The domain's extent: what it must hold, its headroom, and open scenes fitted to their charge.
