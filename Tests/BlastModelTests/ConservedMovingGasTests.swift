@@ -82,7 +82,10 @@ struct ConservedMovingGasTests {
 
     @Test("Strong normal-shock reflection closes stationary budgets on a coarse channel")
     func reflection() throws {
-        _ = try reflectionRows(cellLengths: [0.2])
+        // Five cells along the 2 m channel, as the moving piston's coarse check below has: the
+        // same budgets, which hold to round-off at any cell size. At 0.2 m it took 100 s of a
+        // debug check (19 October 2026); the refinement below runs 0.1 and 0.05 m optimized.
+        _ = try reflectionRows(cellLengths: [0.4])
     }
 
     @Test(

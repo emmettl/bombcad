@@ -1,7 +1,6 @@
 import Foundation
 import Testing
 
-@testable import BlastCore
 @testable import BlastModel
 
 /// Complex numbers, for the references' transforms.
