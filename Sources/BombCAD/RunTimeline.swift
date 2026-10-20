@@ -7,11 +7,12 @@ import simd
 
 /// One recorded moment of a run as the viewport draws it: the scene view (the blast's field and
 /// every structure, `ViewFrame`), and what is drawn over it that moves, the fragments in flight and
-/// the freestanding objects.
+/// the freestanding objects, and from encoding version 2 the layers that change (`TimelineLayers`).
 struct TimelineFrame: Sendable, Equatable {
     var view: ViewFrame
     var fragments: FragmentLive?
     var freestanding: [SceneRenderer.OrientedBox]
+    var layers = TimelineLayers()
 
     var time: Double { view.time }
 }
@@ -19,9 +20,13 @@ struct TimelineFrame: Sendable, Equatable {
 /// A frame's bytes: the scene view, compactly (`compact`), then whether there are fragments
 /// and if so their count, how many of them are fragments rather than tracers, and
 /// `FragmentLive.payload`, then the
-/// freestanding boxes (eleven floats and a flag each), little-endian.
+/// freestanding boxes (eleven floats and a flag each), little-endian; from version 2, then its
+/// layers (`TimelineLayerCodec`).
 enum TimelineCodec {
-    static func encode(_ frame: TimelineFrame) -> Data {
+    /// The encoding version recordings are written in (`RunTimelineManifest.encodingVersion`).
+    static let version = 2
+
+    static func encode(_ frame: TimelineFrame, version: Int = version) -> Data {
         var out = Data()
         func integer(_ value: Int) {
             withUnsafeBytes(of: UInt64(value).littleEndian) { out.append(contentsOf: $0) }
@@ -48,10 +53,18 @@ enum TimelineCodec {
                 box.isCar ? 1 : 0,
             ])
         }
+        if version >= 2 {
+            var writer = TimelineLayerCodec.Writer()
+            TimelineLayerCodec.write(frame.layers, into: &writer)
+            out.append(writer.out)
+        }
         return out
     }
 
-    static func decode(_ data: Data) throws -> TimelineFrame {
+    /// The frame in `data`, written in encoding `version`; with `layersOnly`, its layers alone, the
+    /// rest skipped and left empty.
+    static func decode(_ data: Data, version: Int = version, layersOnly: Bool = false) throws -> TimelineFrame
+    {
         var at = data.startIndex
         func bad() -> Error { ProjectFileError.invalid("A recorded frame is malformed.") }
         func integer() throws -> Int {
@@ -73,21 +86,26 @@ enum TimelineCodec {
             for k in 0..<4 { bits |= UInt32(raw[raw.startIndex + k]) << (8 * k) }
             return Float(bitPattern: bits)
         }
-        let view = try expand(bytes(try integer()))
+        let viewBytes = try bytes(try integer())
+        let view = layersOnly ? ViewFrame(time: 0, field: Data(), bodies: []) : try expand(viewBytes)
         var fragments: FragmentLive?
         if try integer() == 1 {
             let particles = try integer()
             let count = try integer()
-            var live = FragmentLive()
-            try live.read(bytes(16 * particles))
-            live.fragmentCount = min(count, particles)
-            live.time = view.time
-            fragments = live
+            let payload = try bytes(16 * particles)
+            if !layersOnly {
+                var live = FragmentLive()
+                try live.read(payload)
+                live.fragmentCount = min(count, particles)
+                live.time = view.time
+                fragments = live
+            }
         }
         let boxes = try integer()
         guard boxes <= (data.endIndex - at) / 44 else { throw bad() }
+        if layersOnly { _ = try bytes(44 * boxes) }
         var freestanding: [SceneRenderer.OrientedBox] = []
-        for _ in 0..<boxes {
+        for _ in 0..<(layersOnly ? 0 : boxes) {
             let v = try (0..<11).map { _ in try float() }
             freestanding.append(
                 .init(
@@ -95,8 +113,14 @@ enum TimelineCodec {
                     orientation: simd_quatf(vector: SIMD4(v[3], v[4], v[5], v[6])),
                     size: SIMD3(v[7], v[8], v[9]), isCar: v[10] != 0))
         }
+        var layers = TimelineLayers()
+        if version >= 2 {
+            var reader = TimelineLayerCodec.Reader(data: data, at: at)
+            layers = try TimelineLayerCodec.read(&reader)
+            at = reader.at
+        }
         guard at == data.endIndex else { throw bad() }
-        return TimelineFrame(view: view, fragments: fragments, freestanding: freestanding)
+        return TimelineFrame(view: view, fragments: fragments, freestanding: freestanding, layers: layers)
     }
 
     /// The scene view for display only, about half its size: displacements and rotations as
@@ -288,6 +312,7 @@ final class RunTimelineRecorder {
         manifest = RunTimelineManifest(
             sceneFingerprint: fingerprint, settingsFingerprint: fingerprint,
             budgetBytes: budgetBytes + checkpointBudgetBytes)
+        manifest.encodingVersion = TimelineCodec.version
         let setup = try TimelineCodec.compress(
             SceneViewCodec.encode(ViewSetup(solver: solver, fieldStride: stride)))
         try setup.write(to: folder.appending(path: "frames/setup.lzfse"))
@@ -295,10 +320,11 @@ final class RunTimelineRecorder {
         manifest.add(.init(kind: .setup, time: 0, step: 0, path: "frames/setup.lzfse", bytes: setup.count))
     }
 
-    /// Records a frame if the run has reached the next frame's time, or `force` (its last).
+    /// Records a frame if the run has reached the next frame's time, or `force` (its last), with
+    /// `layers` as they are then, each a value or none; each is stored only when it has changed.
     func recordIfDue(
         _ solver: BlastSolver, fragments: FragmentLive?, freestanding: [SceneRenderer.OrientedBox],
-        force: Bool = false
+        layers: () -> TimelineLayers = { TimelineLayers() }, force: Bool = false
     ) {
         guard !finished, solver.time >= nextTime - 1e-12 || force else { return }
         let start = ContinuousClock.now
@@ -313,12 +339,13 @@ final class RunTimelineRecorder {
         // The last frame forced at the moment of the one before it takes its place, with its field.
         let again = frames > 0 && last?.step == step && pending.last?.time == solver.time
         guard let field = again ? last?.field : try? solver.viewField(stride: stride) else { return }
-        let frame = TimelineFrame(
-            view: ViewFrame(solver: solver, field: field), fragments: fragments, freestanding: freestanding)
         if again {
             frames -= 1
             pending.removeLast()
         }
+        let frame = TimelineFrame(
+            view: ViewFrame(solver: solver, field: field), fragments: fragments, freestanding: freestanding,
+            layers: keeper.store(layers(), frame: frames))
         let path = String(format: "frames/f-%06d.lzfse", frames)
         last = (step, field)
         writer.write(frame, to: folder.appending(path: path))
@@ -346,6 +373,7 @@ final class RunTimelineRecorder {
     private var pending: [(path: String, time: Double, step: Int)] = []
     /// The last frame's step and field.
     private var last: (step: Int, field: Data)?
+    private var keeper = TimelineLayerKeeper()
 
     private func remainingFrames(at time: Double) -> Int {
         max(0, Int(((endTime - time) / interval).rounded(.up)))
@@ -478,16 +506,53 @@ final class RunTimelinePlayer {
         return low
     }
 
+    /// Whether its frames carry the layers that change (encoding version 2 on); a recording of
+    /// 0.6.0 does not, and its layers are drawn as the run left them.
+    var recordsLayers: Bool { manifest.encodingVersion >= 2 }
+
     /// Uploads frame `n` for drawing. Called only once the frames drawn from the last are done:
     /// the viewport draws one frame at a time and waits for none, so the upload goes between them.
     func show(_ n: Int) throws {
         let n = min(max(n, 0), entries.count - 1)
         guard n != index else { return }
         let data = try TimelineCodec.decompress(Data(contentsOf: folder.appending(path: entries[n].path)))
-        let decoded = try TimelineCodec.decode(data)
+        var decoded = try TimelineCodec.decode(data, version: manifest.encodingVersion)
+        decoded.layers = resolve(decoded.layers)
         try upload.apply(decoded.view)
         frame = decoded
         index = n
+    }
+
+    /// The layers of frames read for the layers they hold, by their file's number: the last few.
+    private var held: [(frame: Int, layers: TimelineLayers)] = []
+
+    /// `layers` with each layer that points to another frame taken from it, or none if that frame
+    /// cannot be read.
+    private func resolve(_ layers: TimelineLayers) -> TimelineLayers {
+        func source(_ frame: Int) -> TimelineLayers? {
+            if let found = held.first(where: { $0.frame == frame }) { return found.layers }
+            let path = String(format: "frames/f-%06d.lzfse", frame)
+            guard
+                let data = try? TimelineCodec.decompress(Data(contentsOf: folder.appending(path: path))),
+                let decoded = try? TimelineCodec.decode(
+                    data, version: manifest.encodingVersion, layersOnly: true)
+            else { return nil }
+            held.append((frame, decoded.layers))
+            if held.count > 4 { held.removeFirst() }
+            return decoded.layers
+        }
+        func from<V>(_ layer: TimelineStored<V>, _ path: KeyPath<TimelineLayers, TimelineStored<V>>)
+            -> TimelineStored<V>
+        {
+            guard case .sameAs(let frame) = layer else { return layer }
+            return source(frame).flatMap { $0[keyPath: path].value }.map { .here($0) } ?? .none
+        }
+        var resolved = layers
+        resolved.vents = from(layers.vents, \.vents)
+        resolved.envelopeCodes = from(layers.envelopeCodes, \.envelopeCodes)
+        resolved.thermal = from(layers.thermal, \.thermal)
+        resolved.cloud = from(layers.cloud, \.cloud)
+        return resolved
     }
 }
 
@@ -507,13 +572,22 @@ final class TimelinePlayback {
     static let framesPerSecond = 24.0
     private(set) var index = 0
     private(set) var isPlaying = false
+    /// For a kept run, its cloud (nil if it followed none), drawn from the frame it was handed
+    /// over in; nil for the last run, whose cloud is the model's.
+    let kept: CloudResult??
+    /// Called once each frame shown is uploaded, to draw its layers.
+    @ObservationIgnored var onShow: (() -> Void)?
     @ObservationIgnored private let commandQueue: MTLCommandQueue
     @ObservationIgnored private var task: Task<Void, Never>?
 
-    init(player: RunTimelinePlayer, title: String, scenario: Scenario, commandQueue: MTLCommandQueue) {
+    init(
+        player: RunTimelinePlayer, title: String, scenario: Scenario, kept: CloudResult?? = nil,
+        commandQueue: MTLCommandQueue
+    ) {
         self.player = player
         self.title = title
         self.scenario = scenario
+        self.kept = kept
         self.commandQueue = commandQueue
     }
 
@@ -522,6 +596,8 @@ final class TimelinePlayback {
     var startTime: Double { player.entries.first?.time ?? 0 }
     var endTime: Double { player.entries.last?.time ?? 0 }
     var frame: TimelineFrame? { player.frame }
+    var recordsLayers: Bool { player.recordsLayers }
+    var layers: TimelineLayers { player.frame?.layers ?? TimelineLayers() }
 
     /// Shows frame `n`, once the GPU has finished every frame drawn from the last: the queue runs
     /// in order, so an empty buffer's completion says they are done.
@@ -533,6 +609,7 @@ final class TimelinePlayback {
         }
         try player.show(n)
         index = player.index
+        onShow?()
     }
 
     func seek(to time: Double) { try? show(player.index(at: time)) }

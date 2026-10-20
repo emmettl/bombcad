@@ -381,7 +381,6 @@ extension SimulationModel {
         isRunning = false
         saveRequested = false
         pauseAfterSave = false
-        finishTimeline()
         firingNotes = (solver?.firings ?? []).map { firing in
             let how =
                 switch firing.how {
@@ -457,6 +456,8 @@ extension SimulationModel {
             completedRunSettings = inputs
         }
         if errorMessage == nil, let solver, solver.time >= duration - 1e-9 { followCloud(solver) }
+        // Last, so that its last frame holds the damage judged at the end and the cloud handed over.
+        finishTimeline()
     }
 
     /// Records the structure's deflection, and hands the solver to `onSample`, if a sample falls

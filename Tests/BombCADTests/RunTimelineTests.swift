@@ -83,6 +83,88 @@ struct RunTimelineTests {
         #expect(throws: (any Error).self) {
             try TimelineCodec.decode(TimelineCodec.encode(frame).dropLast(2))
         }
+
+        // The layers, from version 2: a fluence of megajoules keeps three figures over its scale.
+        var layered = frame
+        layered.layers.vents = .here(.init(panels: [false, true, true], panes: (0..<11).map { $0 % 3 == 0 }))
+        layered.layers.envelopeCodes = .sameAs(7)
+        layered.layers.thermal = .here(
+            .init(frames: 12, fluence: [0, 150, 2.5e6], peakIrradiance: [1e3, 4e7, 0], peakTemperature: []))
+        layered.layers.cloud = .here(.init(time: 0.5, centre: SIMD3(1, 2, 30), radius: 12, mass: 4.5))
+        let back = try TimelineCodec.decode(TimelineCodec.encode(layered))
+        #expect(back.layers.vents == layered.layers.vents && back.layers.envelopeCodes == .sameAs(7))
+        #expect(back.layers.cloud == layered.layers.cloud)
+        let thermal = try #require(back.layers.thermal.value)
+        let sent = try #require(layered.layers.thermal.value)
+        #expect(thermal.frames == 12 && thermal.peakTemperature.isEmpty)
+        for (got, want) in zip(thermal.fluence + thermal.peakIrradiance, sent.fluence + sent.peakIrradiance) {
+            #expect(abs(got - want) <= max(want / 1000, 1), "\(got) for \(want)")
+        }
+        let layersOnly = try TimelineCodec.decode(TimelineCodec.encode(layered), layersOnly: true)
+        #expect(layersOnly.layers.vents == layered.layers.vents && layersOnly.freestanding.isEmpty)
+        // Version 1, as 0.6.0 wrote it: no layers, and read as it was written.
+        let old = TimelineCodec.encode(layered, version: 1)
+        #expect(old.count < TimelineCodec.encode(layered).count)
+        let oldBack = try TimelineCodec.decode(old, version: 1)
+        #expect(oldBack.layers == TimelineLayers() && kept(oldBack.view, frame.view))
+        #expect(throws: (any Error).self) { try TimelineCodec.decode(old, version: 2) }
+    }
+
+    @Test("A frame stores a layer only when it has changed, and the player finds it where it was")
+    func layersAreStoredWhenTheyChange() async throws {
+        let (solver, _) = try solver()
+        let duration = 0.01
+        let recorder = try RunTimelineRecorder(
+            solver: solver, fingerprint: "test", duration: duration, frames: 10)
+        defer { recorder.discard() }
+        recorder.endTime = duration
+        recorder.maximumShare = .infinity
+        // A panel that opens at 4 ms; codes from 6 ms; the cloud at the end.
+        func layers() -> TimelineLayers {
+            var layers = TimelineLayers()
+            layers.vents = .here(.init(panels: [solver.time >= 0.004], panes: []))
+            if solver.time >= 0.006 { layers.envelopeCodes = .here([1, 3]) }
+            return layers
+        }
+        recorder.recordIfDue(solver, fragments: nil, freestanding: [], layers: layers)
+        while solver.time < duration - 1e-9 {
+            solver.advance(steps: 1, timeLimit: duration)
+            recorder.recordIfDue(solver, fragments: nil, freestanding: [], layers: layers)
+        }
+        recorder.recordIfDue(
+            solver, fragments: nil, freestanding: [],
+            layers: {
+                var last = layers()
+                last.cloud = .here(.init(time: duration, centre: SIMD3(1, 1, 3), radius: 2, mass: 1))
+                return last
+            }, force: true)
+        let folder = try #require(await recorder.finish())
+        let manifest = try RunTimelineManifest.decode(Data(contentsOf: folder.appending(path: "run.json")))
+        #expect(manifest.encodingVersion == 2)
+        let entries = manifest.entries(.frames)
+        let raw = try entries.map {
+            try TimelineCodec.decode(
+                TimelineCodec.decompress(Data(contentsOf: folder.appending(path: $0.path))))
+        }
+        // The vents twice (closed, then open), the codes and the cloud once each.
+        func stored<V>(_ path: KeyPath<TimelineLayers, TimelineStored<V>>) -> Int {
+            raw.filter { $0.layers[keyPath: path].value != nil }.count
+        }
+        #expect(stored(\.vents) == 2 && stored(\.envelopeCodes) == 1 && stored(\.cloud) == 1)
+        #expect(raw.allSatisfy { $0.layers.thermal == .none })
+
+        // Played back, each frame's layers are as they were at its time.
+        let player = try RunTimelinePlayer(folder: folder, device: try device())
+        #expect(player.recordsLayers)
+        for n in entries.indices.reversed() {
+            try player.show(n)
+            let layers = try #require(player.frame?.layers)
+            #expect(layers.isResolved)
+            let time = entries[n].time
+            #expect(layers.vents.value?.panels == [time >= 0.004], "\(time) s")
+            #expect(layers.envelopeCodes.value == (time >= 0.006 ? [1, 3] : nil), "\(time) s")
+            #expect((layers.cloud.value != nil) == (n == entries.count - 1))
+        }
     }
 
     @Test func aTimelineSpansTheRunWithinItsBudget() async throws {
@@ -119,6 +201,84 @@ struct RunTimelineTests {
         #expect(player.frame.map { kept($0.view, last) } == true)
         #expect(player.index(at: 0) == 0 && player.index(at: 1) == player.entries.count - 1)
         #expect(player.index(at: frames[3].time + 1e-9) == 3)
+    }
+
+    @Test("A replayed vented building shows its pane open and its glass broken from the frame it broke")
+    func aReplayShowsPanesOpeningInTime() async throws {
+        let model = SimulationModel(
+            document: try EnvelopeVentingAppTests().document(vented: true), playbackSpeed: .unlimited)
+        model.recordsTimelines = true
+        while !model.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        model.run()
+        while model.isRunning || model.hasPendingGPUWork || model.recentTimeline == nil {
+            try #require(model.errorMessage == nil)
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let broke = try #require(model.solver?.envelopeVentingSnapshot()?.panes.first?.brokenAtS)
+        model.replay(nil)
+        let playback = try #require(model.playback)
+        defer {
+            model.stopReplay()
+            if let recent = model.recentTimeline { try? FileManager.default.removeItem(at: recent) }
+        }
+        var before = 0
+        var after = 0
+        for n in 0..<playback.count {
+            try playback.show(n)
+            let panes = try #require(playback.layers.vents.value?.panes)
+            let code = playback.layers.envelopeCodes.value?.first ?? 0
+            // A frame between batches shows the pane as the batch that broke it left it; its
+            // building's colour is glass broken at least from then, ahead of its next judgement.
+            if playback.time < broke - 1e-6 {
+                before += 1
+                #expect(panes == [false], "\(playback.time) s")
+            } else if playback.time > broke + 1e-6 {
+                after += 1
+                #expect(panes == [true] && code >= 2, "\(playback.time) s")
+            }
+        }
+        #expect(before > 0 && after > 0, "pane broke at \(broke) s")
+    }
+
+    @Test("A recording of 0.6.0, without layers, still plays, its layers as the run left them")
+    func aVersionOneRecordingStillPlays() async throws {
+        let (solver, _) = try solver()
+        let duration = 0.005
+        let recorder = try RunTimelineRecorder(
+            solver: solver, fingerprint: "test", duration: duration, frames: 5)
+        recorder.endTime = duration
+        recorder.maximumShare = .infinity
+        let layers: () -> TimelineLayers = {
+            var layers = TimelineLayers()
+            layers.vents = .here(.init(panels: [true], panes: []))
+            return layers
+        }
+        recorder.recordIfDue(solver, fragments: nil, freestanding: [], layers: layers)
+        while solver.time < duration - 1e-9 {
+            solver.advance(steps: 1, timeLimit: duration)
+            recorder.recordIfDue(solver, fragments: nil, freestanding: [], layers: layers)
+        }
+        let folder = try #require(await recorder.finish())
+        defer { try? FileManager.default.removeItem(at: folder) }
+        // Written again as 0.6.0 wrote it.
+        let url = folder.appending(path: "run.json")
+        var manifest = try RunTimelineManifest.decode(Data(contentsOf: url))
+        for entry in manifest.entries(.frames) {
+            let file = folder.appending(path: entry.path)
+            let frame = try TimelineCodec.decode(TimelineCodec.decompress(Data(contentsOf: file)))
+            try TimelineCodec.compress(TimelineCodec.encode(frame, version: 1)).write(to: file)
+        }
+        manifest.encodingVersion = 1
+        try manifest.encoded().write(to: url)
+
+        let player = try RunTimelinePlayer(folder: folder, device: try device())
+        #expect(!player.recordsLayers)
+        for n in player.entries.indices {
+            try player.show(n)
+            #expect(player.frame?.layers == TimelineLayers())
+        }
+        let last = ViewFrame(solver: solver, field: try solver.viewField(stride: recorder.stride))
+        #expect(player.frame.map { kept($0.view, last) } == true)
     }
 
     @Test func capturingNeverTakesMoreThanItsShareOfTheRun() async throws {

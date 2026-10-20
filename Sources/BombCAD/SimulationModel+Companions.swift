@@ -443,6 +443,7 @@ extension SimulationModel {
             return
         }
         let handOver = solver.cloudHandOver(hotterThan: spec.handOverTemperature)
+        handedOverCloud = handOver
         followingCloud = true
         cloudTask = Task { [weak self] in
             let result = await Task.detached(priority: .userInitiated) {
@@ -460,6 +461,7 @@ extension SimulationModel {
         cloudTask = nil
         followingCloud = false
         cloud = nil
+        handedOverCloud = nil
     }
 
     /// Frames the view on the cloud: the whole of its path up to where it stopped rising, if that

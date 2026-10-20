@@ -583,6 +583,8 @@ final class SimulationModel {
     var cloud: CloudResult?
     /// The cloud being followed, after the run has reached its end.
     @ObservationIgnored var cloudTask: Task<Void, Never>?
+    /// The hot gas the run handed over to the cloud model at its end, for its recording's last frame.
+    @ObservationIgnored var handedOverCloud: CloudHandOver?
     /// Whether the cloud is being followed now.
     var followingCloud = false
     @ObservationIgnored var groundShockEdit: Task<Void, Never>?
@@ -701,6 +703,11 @@ final class SimulationModel {
     @ObservationIgnored var fireballFrames: [FireballFrame] = []
     @ObservationIgnored var nextFireballTime = 0.0
     @ObservationIgnored var thermalPaintCache: (frames: Int, quantity: ThermalQuantity, paint: SurfacePaint)?
+    /// A replayed frame's paint, by the frame and the quantity.
+    @ObservationIgnored var replayPaintCache: (index: Int, quantity: ThermalQuantity, paint: SurfacePaint?)?
+    /// Each venting pane's building in the run under way (`BlastSolver.envelopePaneOwners`), as an
+    /// index among the scene's envelope buildings, for its recording; nil until first needed.
+    @ObservationIgnored var timelinePaneOwners: [Int]?
     /// What the companions cost, kept between runs for those placed automatically; nil keeps it
     /// for this model only, as in tests. The app keeps it in the user's caches.
     @ObservationIgnored var costStore: ConsumerCostStore?

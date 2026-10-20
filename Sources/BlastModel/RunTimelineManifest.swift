@@ -51,7 +51,11 @@ public struct RunTimelineManifest: Codable, Equatable, Sendable {
     }
 
     public var format = Self.format
+    /// How its frames are encoded: 1 the scene view, fragments and freestanding objects (0.6.0), 2
+    /// those and the layers that change, vents, envelope damage, thermal paint and the cloud.
     public var encodingVersion = 1
+    /// The versions this one reads.
+    public static let encodingVersions = 1...2
     /// The run's scene and settings, as `SavedSimulationRun.fingerprint` gives them, so that
     /// frames and checkpoints are never read against another run.
     public var sceneFingerprint: String
@@ -105,7 +109,7 @@ public struct RunTimelineManifest: Codable, Equatable, Sendable {
     /// Whether `data` is a manifest this version reads.
     public static func decode(_ data: Data) throws -> Self {
         let manifest = try JSONDecoder().decode(Self.self, from: data)
-        guard manifest.format == format, manifest.encodingVersion == 1,
+        guard manifest.format == format, encodingVersions.contains(manifest.encodingVersion),
             manifest.entries.allSatisfy({ !$0.path.contains("..") && !$0.path.hasPrefix("/") })
         else {
             throw DecodingError.dataCorrupted(

@@ -37,7 +37,50 @@ extension SimulationModel {
     func recordTimeline(_ solver: BlastSolver, last: Bool = false) {
         timelineRecorder?.recordIfDue(
             solver, fragments: fragments?.fragmentLive ?? fragmentLive, freestanding: freestandingBoxes(),
-            force: last)
+            layers: { self.timelineLayers(solver) }, force: last)
+    }
+
+    /// The layers a recorded frame keeps as the view shows them now: the vent panels opened and
+    /// the panes broken, each envelope building's damage colour (raised to "glass broken" as soon
+    /// as a pane of it breaks, ahead of the next judgement), the thermal paint reckoned so far and
+    /// the cloud once handed over.
+    func timelineLayers(_ solver: BlastSolver) -> TimelineLayers {
+        var layers = TimelineLayers()
+        let panels = solver.ventPanelOpenTimes.map { $0 != nil }
+        let panes = solver.envelopePanesBroken()
+        if !panels.isEmpty || !panes.isEmpty { layers.vents = .here(.init(panels: panels, panes: panes)) }
+        let objects = scenario.envelopeObjects
+        if !objects.isEmpty {
+            if timelinePaneOwners?.count != panes.count {
+                let index = Dictionary(
+                    objects.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
+                timelinePaneOwners = solver.envelopePaneOwners.map { index[$0] ?? -1 }
+            }
+            var codes = [UInt8](repeating: 0, count: objects.count)
+            if !envelopeDamageIsEstimate {
+                let judged = Dictionary(
+                    envelopeDamage.map { ($0.id, EnvelopeDamageColour.code($0)) },
+                    uniquingKeysWith: { a, _ in a })
+                for (n, object) in objects.enumerated() { codes[n] = UInt8(clamping: judged[object.id] ?? 0) }
+            }
+            for (pane, broken) in zip(timelinePaneOwners ?? [], panes) where broken && pane >= 0 {
+                codes[pane] = max(codes[pane], 2)
+            }
+            if codes.contains(where: { $0 != 0 }) { layers.envelopeCodes = .here(codes) }
+        }
+        if let live = thermal?.thermalLive, live.frames > 0 {
+            layers.thermal = .here(
+                .init(
+                    frames: live.frames, fluence: live.fluence, peakIrradiance: live.peakIrradiance,
+                    peakTemperature: live.peakTemperature))
+        }
+        if let handOver = handedOverCloud, handOver.mass > 0 {
+            layers.cloud = .here(
+                .init(
+                    time: handOver.time, centre: handOver.centre,
+                    radius: Float(cbrt(3 * handOver.volume / (4 * .pi))), mass: handOver.mass))
+        }
+        return layers
     }
 
     func finishTimeline() {
@@ -103,17 +146,81 @@ extension SimulationModel {
             let player = try RunTimelinePlayer(folder: folder, device: device)
             let shown = run?.scenario ?? scenario
             let playback = TimelinePlayback(
-                player: player, title: run?.name ?? "This run", scenario: shown, commandQueue: commandQueue)
+                player: player, title: run?.name ?? "This run", scenario: shown, kept: run.map(\.cloud),
+                commandQueue: commandQueue)
             renderer.setScene(shown, view: player.upload.view)
-            renderer.setVentPanels([])
-            renderer.setEnvelopeDamage([:])
-            try playback.show(player.entries.count - 1)
+            playback.onShow = { [weak self] in self?.showReplayedLayers() }
             self.playback = playback
+            try playback.show(player.entries.count - 1)
             sceneVersion += 1
         } catch {
             errorMessage = "This run's recording could not be read: \(error.localizedDescription)"
+            playback = nil
             restoreLiveView()
         }
+    }
+
+    /// Draws the replayed frame's vent panels and envelope colours as they were then; a recording
+    /// of 0.6.0, which kept neither, shows no panels and no colours.
+    func showReplayedLayers() {
+        guard let playback, let renderer else { return }
+        let layers = playback.layers
+        let panels = (playback.scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
+        if let opened = layers.vents.value?.panels, opened.count == panels.count {
+            renderer.setVentPanels(zip(panels, opened).compactMap { $1 ? nil : $0.box })
+        } else {
+            renderer.setVentPanels(playback.recordsLayers ? panels.map(\.box) : [])
+        }
+        let objects = playback.scenario.envelopeObjects
+        if showsEnvelopeDamage, let codes = layers.envelopeCodes.value, codes.count == objects.count {
+            renderer.setEnvelopeDamage(
+                Dictionary(
+                    zip(objects, codes).filter { $1 != 0 }.map { ($0.id, Int($1)) },
+                    uniquingKeysWith: { a, _ in a }))
+        } else {
+            renderer.setEnvelopeDamage([:])
+        }
+        sceneVersion += 1
+    }
+
+    /// The replayed frame's thermal paint of `quantity`, from the receivers' values recorded with
+    /// it; nil before any were reckoned, or where the scene's receivers are not those recorded.
+    func replayedThermalPaint(_ quantity: ThermalQuantity) -> SurfacePaint? {
+        guard let playback else { return nil }
+        if let cache = replayPaintCache, cache.index == playback.index, cache.quantity == quantity {
+            return cache.paint
+        }
+        var paint: SurfacePaint?
+        if let recorded = playback.layers.thermal.value, recorded.fluence.count == thermalReceivers.count {
+            var live = ThermalLive(receivers: 0)
+            live.frames = recorded.frames
+            live.fluence = recorded.fluence
+            live.peakIrradiance = recorded.peakIrradiance
+            live.peakTemperature = recorded.peakTemperature
+            let values: [Float]? =
+                switch quantity {
+                case .fluence: live.fluence
+                case .peakIrradiance: live.peakIrradiance
+                case .surfaceTemperature, .ignition:
+                    reckonedSpec.flatMap { heatingResult(live, spec: $0) }.map { heating in
+                        quantity == .ignition
+                            ? heating.ignition.map(Float.init)
+                            : heating.peakTemperature.map { $0 - heating.ambient }
+                    }
+                }
+            paint = values.map { SurfacePaint(grids: thermalGrids, shades: $0.map(quantity.shade)) }
+        }
+        replayPaintCache = (playback.index, quantity, paint)
+        return paint
+    }
+
+    /// The cloud the view draws: while replaying a recording that keeps it, the run's from the
+    /// frame it was handed over in, and none before.
+    var shownCloud: CloudResult? {
+        guard let playback else { return cloud }
+        let runs = playback.kept ?? cloud
+        guard playback.recordsLayers else { return runs }
+        return playback.layers.cloud.value == nil ? nil : runs
     }
 
     /// Back to the scene and the solver's state.
@@ -127,6 +234,8 @@ extension SimulationModel {
     private func restoreLiveView() {
         guard let renderer, let solver else { return }
         renderer.setScene(scenario, solver: solver)
+        // The scene drew every panel closed again: show those opened, however many.
+        openedVentPanels = -1
         showOpenedVentPanels(solver)
         applyEnvelopeDamageColours()
         sceneVersion += 1

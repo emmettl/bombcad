@@ -244,6 +244,22 @@ extension BlastSolver {
             holes.filter { $0.pane == nil }.map { ($0.owner, $0.time, $0.position, $0.areaM2) })
     }
 
+    /// Each venting pane's building, in the order `envelopePanesBroken()` gives them; empty
+    /// without venting.
+    public var envelopePaneOwners: [UUID] {
+        envelopeVenting.map { venting in venting.paneComponents.map { venting.components[$0].owner } } ?? []
+    }
+
+    /// Whether each venting pane's glass has broken and its cells opened, as of the last batch:
+    /// what `envelopeVentingSnapshot()` says of the panes, without the rest, for a recorded frame.
+    public func envelopePanesBroken() -> [Bool] {
+        precondition(!batchInFlight, "Cannot read observers during a batch")
+        guard let venting = envelopeVenting, venting.paneCount > 0 else { return [] }
+        let state = venting.stateBuffer.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: 2 * venting.paneCount)
+        return (0..<venting.paneCount).map { state[2 * $0 + 1].y >= 0 }
+    }
+
     /// The panes broken so far and what each building's rooms have seen, with venting on.
     public func envelopeVentingSnapshot() -> EnvelopeVentingSnapshot? {
         precondition(!batchInFlight, "Cannot read observers during a batch")

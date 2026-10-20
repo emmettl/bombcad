@@ -27,6 +27,22 @@ struct RunTimelineCostStudyTests {
         // On a Mac doing nothing else, recording must not slow a run by more than a few per cent.
         #expect(cost.seconds / cost.wall < 0.05, "\(name): \(cost.seconds) s of \(cost.wall) s")
         let grid = try #require(model.solver).grid
+        // The layers: what they add to the frames, before compression, and how many frames hold each.
+        let manifest = try RunTimelineManifest.decode(Data(contentsOf: recent.appending(path: "run.json")))
+        var layerBytes = 0
+        var held = [0, 0, 0, 0]
+        for entry in manifest.entries(.frames) {
+            let raw = try TimelineCodec.decompress(Data(contentsOf: recent.appending(path: entry.path)))
+            let frame = try TimelineCodec.decode(raw)
+            layerBytes += raw.count - TimelineCodec.encode(frame, version: 1).count
+            let layers = frame.layers
+            for (n, stored) in [
+                layers.vents.value != nil, layers.envelopeCodes.value != nil, layers.thermal.value != nil,
+                layers.cloud.value != nil,
+            ].enumerated() where stored {
+                held[n] += 1
+            }
+        }
         return String(
             format:
                 "%@ (%.1f M cells): %.3f s simulated in %.0f s; %d frames, %.2f MB each (%.0f MB in all), captured in %.2f ms each on the main thread, %.2f ms after the first, %.2f%% of the run",
@@ -35,6 +51,10 @@ struct RunTimelineCostStudyTests {
             1000 * cost.seconds / Double(max(cost.frames, 1)),
             1000 * cost.afterFirst / Double(max(cost.frames - 1, 1)),
             100 * cost.seconds / cost.wall)
+            + String(
+                format:
+                    "; layers %.1f kB in all before compression, held by %d, %d, %d and %d frames (vents, envelope codes, thermal, cloud)",
+                Double(layerBytes) / 1e3, held[0], held[1], held[2], held[3])
     }
 
     private func report(_ line: String, _ name: String) throws {

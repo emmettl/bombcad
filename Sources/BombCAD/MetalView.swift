@@ -110,11 +110,15 @@ struct MetalView: NSViewRepresentable {
                     : model.fragmentDots(
                         showFragments: settings.showFragments, showTracers: settings.showTracers))
                 + (settings.showGroundPoints ? model.groundShockDots() : [])
-            let paint = settings.thermal.flatMap { model.thermalPaint($0) }
+            // A replay of a recording that keeps the paint and the cloud draws them as they were then.
+            let replayed = model.playback?.recordsLayers == true
+            let paint = settings.thermal.flatMap {
+                replayed ? model.replayedThermalPaint($0) : model.thermalPaint($0)
+            }
             // The cloud's outlines are its silhouettes from the eye, so they follow the camera.
             let lines =
                 (settings.showCloud
-                    ? model.cloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : [])
+                    ? model.shownCloud.map { CloudOverlay.lines($0, eye: model.camera.eye) } ?? [] : [])
                 + (settings.showHazard ? model.hazardLines() : [])
                 + (settings.showBlastHazards ? model.blastHazardLines() : [])
             return Frame(
