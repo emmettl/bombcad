@@ -620,7 +620,7 @@ DIGEST_SETS = [
     ("refined twice", ["--refine", "2", "--refine-levels", "2"]),
     ("terrain", ["--recommended", "--terrain", "hill", "--gravity", "--refine", "2"]),
 ]
-DIGEST_MEM = 4  # GB declared to gpu-slot for the digest runs
+DIGEST_MEM = 8  # GB declared to gpu-slot for the digest runs: refined twice peaked at 5.1 to 7.3 GB
 DIGEST_LINE = re.compile(r"^(?P<case>[^:\n]+): (?P<hash>[0-9a-f]+) (?P<rest>.*)$")
 DIGEST_KEEP = 8  # base binaries kept in the cache
 DIGEST_TIMEOUT = 30 * 60  # seconds a set may take

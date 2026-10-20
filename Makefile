@@ -119,7 +119,7 @@ check-affected:
 
 # Land this branch on main (Scripts/ship.py): format, lint, build-strict, check-affected, fetch,
 # rebase, the diff check and the push to main, each step's exit status checked. ARGS takes
-# --dry-run, --remote or --local.
+# --dry-run, --remote, --local, --full or --allow-reverts.
 ship:
 	python3 Scripts/ship.py $(ARGS)
 

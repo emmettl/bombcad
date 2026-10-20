@@ -278,6 +278,7 @@ class ShipTests(unittest.TestCase):
         self.assertEqual(ship.default_commands("remote")["check"][-1], "--remote")
         self.assertEqual(ship.default_commands("local")["check-dry-run"][-2:], ["--local", "--dry-run"])
         self.assertEqual(ship.default_commands(None)["check"][-1], "Scripts/check-affected.py")
+        self.assertEqual(ship.default_commands(None, full=True)["check"][-1], "--full")
 
 
 class DiffParsingTests(unittest.TestCase):

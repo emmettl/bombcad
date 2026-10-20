@@ -12,7 +12,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 |---|---|---|
 | [Check](../.github/workflows/check.yml), light | By hand (suite `light`); no longer on each push since 20 October 2026 | `make check-light`: lint, script tests and the documents' links, a build without warnings, the core tests and the release-build smoke runs, 15 to 20 minutes on the mini, most of it building the tests |
 | [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
-| [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
+| [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then the [test-impact map](#choosing-tests-by-coverage) of that commit; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 | [Linux BlastModel](../.github/workflows/linux-blastmodel.yml) | Every push to `main` and every pull request, on GitHub's hosted Ubuntu runner | Once the BlastModel split has landed (see [`Scripts/split/`](../Scripts/split/)): builds BlastModel, the model without Metal, and runs `BlastModelTests` on Linux, about 12 minutes; before that it does nothing. The Mac mini stays the reference |
 
 **The gate is the full check before pushing.** Every session runs `make check` (or
@@ -29,25 +29,105 @@ it at once.
 **The pre-push check is sized to the change** (since 18 October 2026, at the user's request: while
 the project's only user is its author, velocity counts for more than repeating the whole suite on
 every push). `make check-affected` (`Scripts/check-affected.py`) compares
-the branch with `origin/main` and runs one of four tiers. Since 19 October the suites are chosen
-by coverage when a [test-impact map](#choosing-tests-by-coverage) is at hand, so a change to the
-solver's core no longer means the whole suite:
+the branch with `origin/main` and runs one of five tiers. Since 19 October the suites are chosen
+by coverage when a [test-impact map](#choosing-tests-by-coverage) is at hand, and since 20 October
+a change to the solvers' core runs its suites and the [digests](#the-digests), not the whole suite:
 
 | Change | Runs |
 |---|---|
 | Documents, images and the Python scripts only | `make lint` and `make ci-test` (the scripts' tests and the documents' links); no Swift build |
 | Code, with a map at or behind the merge base (tier `covered`) | lint, `make build-strict`, `ci-test`, and the Swift suites that executed a changed function when the map was built; for a shader, the suites that ran the Swift lines dispatching the kernels the change reaches, and the quickest suite that compiles that library. Plus the suites in changed test files, those whose test files read a changed file by its path, those the map has no coverage for, and the standing's and the shader layouts' suites |
-| Code without a map (tier `affected`), or a file the map can't speak for | as before: the suites that name a changed file's type or sit in a changed test file, plus the standing's and the shader layouts' suites |
-| `Package.swift`/`.resolved` always; without a map for them, the core: any shader, RadialBlast, or BlastSolver, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody | the full `make check`, here or on the mini (below) |
+| Code without a map (tier `affected`), or a file the map can't speak for | the suites that name a changed file's type (an extension's file, `BlastSolver+Stepping.swift`, by the type it extends) or sit in a changed test file, plus the standing's and the shader layouts' suites |
+| The solvers' core (tier `core`): the solvers' shaders (`Sources/BlastCore/Shaders`), RadialBlast, and BlastSolver and its extensions, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody (with their `+GPU`/`+CPU` halves) | the suites as for `covered` (or `affected` without a map); for a core file the map can't speak for, its names and every suite that ran any of it; for a shader the kernel lookup can't follow, the suites that ran the Swift mirrors of the shader types it touches. Then the six digest sets, bit for bit against the merge base |
+| `Package.swift`/`.resolved`, or `ARGS=--full` | the full `make check`, here or on the mini (below) |
 
 `--dry-run` prints the tier, the map's commit, what was made of each changed file and the suites,
-each with why it was chosen; `--full` forces the full check; `--no-map` chooses by name as without
-a map. Through make they go
-in `ARGS` (`make check-affected ARGS=--dry-run`): `make check-affected --dry-run` is make's own
-dry run, which prints the command and runs nothing. The full check still
-runs nightly on `main` and on every release commit, and its suspect list names the commit that broke
-anything the tiers missed. When the project gains users, the full check before every push comes
-back.
+each with why it was chosen, and for the core what the digests will build and reuse; `--full`
+forces the full check; `--no-map` chooses by name as without a map; `--base <commit>` compares
+with that commit instead of the merge base (to time a past commit as the branch it was). Through
+make they go in `ARGS` (`make check-affected ARGS=--dry-run`): `make check-affected --dry-run` is
+make's own dry run, which prints the command and runs nothing. The full check still runs nightly
+on `main` and on every release commit, and its suspect list names the commit that broke anything
+the tiers missed. When the project gains users, the full check before every push comes back.
+
+### The digests
+
+`blastbench digest` hashes, to the bit, five air scenes after 80 steps (open ground, a street with
+and without afterburning, a blast wall in solids and in shells: every cell, the peaks and the
+impulse) and two walls struck to failure on their own over 3,000 substeps, in solids and in
+shells. The core tier runs it in six sets (`DIGEST_SETS` in the script), the options sessions have
+used to show a change bit-identical:
+
+| Set | Options |
+|---|---|
+| plain | none |
+| recommended | `--recommended` |
+| mapped | `--recommended --mapped` |
+| refined | `--refine 2` |
+| refined twice | `--refine 2 --refine-levels 2` |
+| terrain | `--recommended --terrain hill --gravity --refine 2` (cut cells) |
+
+They run on this branch's release build (`swift build -c release --product blastbench` in the
+worktree) and on the merge base's, both on the Studio under `gpu-slot --mem 8`, and every
+variant's line (hash and counts) is compared. A difference fails the check and is listed by set and
+variant, with both hashes; a variant unstable at the base (`unstable`, a NaN) is not compared. A
+change meant to move results goes through `ARGS=--full`, with the reason in its commit message.
+
+The merge base's binary is built once, in a clone of this repository kept at
+`/Volumes/StudioData/bombcad/digest-cache/source` and checked out at each base in turn, so its
+release build is incremental. The binary and its resource bundles are copied to
+`digest-cache/<commit>/`, with the base's digests on that Mac (`digests-<host>.json`), so the next
+check on the same base runs only its own side. One base is built at a time, under a lock
+(`digest-cache/build.lock`); the last eight bases are kept. Without StudioData the cache is
+`~/bombcad-digest-cache`. The digests run beside the build and tests, on the Studio whether those
+run here or on the mini, and their output follows the steps'; a step that fails stops them.
+
+Measured on 20 October: each set takes 1 to 19 s on the Studio (the terrain set 101 s the first
+time, 12 s once its shaders were cached), about a minute for the six; two runs of the same binary
+gave the same 42 lines.
+
+Timed on 20 October on 5a045b56 (a refined patch's fill: `Refinement.swift`,
+`BlastSolver+Refinement.swift` and `Refine.metal`), as a branch on its parent (`--base 5a045b56^
+--remote`), against a map 23 commits behind: tier `core`, 106 of 375 suites, about 45% of the map's
+suite time (the BlastSolver extension files are newer than that map, so they went by name). Before,
+that branch meant the full check. It took 20 minutes (1,204 s) from start to finish: lint and
+`ci-test` a minute here; the build and tests 873 s on the mini; and meanwhile the digests here,
+1,150 s, of which both release builds from cold (211 s for the branch, 226 s for the base in the
+new clone), 460 s waiting for a slot (all five were held) and 245 s of runs for the two sides. The
+same digests again, the base's binary and digests cached and the branch's build current, took
+187 s: 162 s waiting for the slot and 22 s of runs. The full check it replaces held a slot for a
+median 41 minutes in its last 15 runs on the Studio (quartiles 26 and 46), its wait for the slot
+aside. The runs' memory peaked at 5.1 to 7.3 GB (refined twice), so they declare 8 GB.
+
+## Landing work: `make ship`
+
+`make ship` (`Scripts/ship.py`) is the one command a session uses to push. In order, each step's
+exit status checked and nothing piped:
+
+1. It refuses a dirty tree (untracked files too: check-affected would build them), a rebase or
+   merge in progress, a branch holding merge commits (a rebase drops them silently), nothing to
+   push, or being run inside gpu-slot.
+2. `make format`; if that changed anything, it stops and asks for the change to be committed.
+3. `make lint`, and `make build-strict` when the branch changes Swift, Metal or the package.
+4. `python3 Scripts/check-affected.py`, bare.
+5. `git fetch origin` and, if main has moved, `git rebase origin/main` (aborted, and refused, on a
+   conflict or a commit the rebase left out).
+6. The diff check. `git diff origin/main...HEAD --stat` is printed, and must hold only files the
+   branch's own commits change. And the branch must not look like a commit made over a stale copy,
+   as 459e15f8 was: blocks of five or more lines that one of the last 20 commits on main to touch a
+   file (within four days) put in, taken out and not moved elsewhere, with the text they replaced
+   back, or in the code of two files, or one block of 25 lines. Over the last 300 commits of main,
+   taken as branches on their parents, that flags 459e15f8 (six files) and two others, a file
+   split by script and a test rewritten whole. `ARGS=--allow-reverts` passes it when meant.
+7. If main moved since the check, the check runs again only when the new commits touch one of the
+   branch's files or a core file; otherwise straight to the push.
+8. `git push origin HEAD:main`. Rejected as not a fast-forward, it fetches, rebases, checks the diff
+   (re-checking by step 7) and pushes again, three times at most.
+9. One line: the commits pushed, the checks and their time, the rebases and pushes.
+
+`ARGS=--dry-run` says what it would do and runs check-affected's own dry run; `ARGS=--remote`,
+`ARGS=--local` and `ARGS=--full` (for a change meant to move the digests) reach check-affected. Its tests, on temporary repositories with made-up steps, are
+in `Scripts/test-ship.py` (`make ci-test`).
 
 ### Where the build and tests run
 
@@ -126,8 +206,10 @@ functions of `Sources/`:
 
 The map goes to `/Volumes/StudioData/bombcad/test-impact/<commit>.json` on the Studio
 (`~/bombcad-test-impact/` elsewhere), keyed by the commit it was built at, which must be clean; it
-is never committed. The last 30 are kept. The nightly builds one on the mini after its other jobs
-(the `test-impact` job); `check-affected` copies the mini's maps to the Studio at most hourly
+is never committed. The last three are kept, where they are built and where they are fetched to.
+The nightly builds one on the mini straight after the full check, for the commit that check tested
+(the `test-impact` job, about 35 minutes there; before 20 October it ran after the validation
+suite, three hours later); `check-affected` copies the mini's maps to the Studio at most hourly
 (`test-impact.py fetch`, over SSH to the host in `~/.config/bombcad/remote.json`). On the Studio,
 `python3 Scripts/test-impact.py build` builds one on demand. `test-impact.py show <file>` lists the
 suites covering a file, `list` the maps kept.
@@ -148,11 +230,15 @@ every suite that executed any of it. Then:
   (`setComputePipelineState(sweepPipeline)`) are the dispatch; otherwise the literal's own line.
   Those Swift lines are treated as changed, as above. The quickest mapped suite that compiles the
   library is added, so a shader that no longer compiles is caught whatever kernels it reaches.
-- **Files the map can't speak for** go by the name rules (a core file by the full check): a file
+- **Files the map can't speak for** go by the name rules (a core file by its names and every
+  suite that ran any of it, with the digests): a file
   the map doesn't hold (new, or without any compiled code), one changed by more than
   `--max-map-age` commits (30, merges not counted; BlastSolver.swift takes about 20 a day) since the map, and files that aren't Swift or shaders (scripts,
-  samples, the Makefile). A shader kernel dispatched from no Swift line found by name means the full
-  check.
+  samples, the Makefile). A shader the kernel lookup can't follow (a kernel dispatched from no
+  Swift line found by name, a shader changed in more than `--max-map-age` commits since the map, or
+  one new on the branch) takes the suites that ran the Swift mirrors of the shader types the change
+  touches or uses (the pairs `check-shader-mirrors.py` finds), or without any those of the Swift
+  that loads the library, and the quickest suite that compiles it.
 - **Package.swift and Package.resolved** always mean the full check: a new ContinuumKit moves code
   and shader source the map can't see.
 - **Suites the map lacks** (added since, or without coverage) are always run, as are the suites
@@ -204,7 +290,8 @@ them). So no path is kept on the full check beyond the package.
   (BuildProbe's edits anchor on them).
 - Kernels found through their pipeline's name: a pipeline dispatched through a name the lookup
   doesn't follow falls back to its literal's line, usually the solver's `init` (broader, not
-  narrower); a kernel with no Swift literal at all means the full check.
+  narrower); a kernel with no Swift literal at all goes by the mirrors of its types, and the
+  digests.
 
 **The GPU structs match on both sides.** `make ci-test` runs `Scripts/check-shader-mirrors.py`,
 which lays out each Swift struct uploaded to a Metal buffer and the shader struct that reads it by

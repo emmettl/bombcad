@@ -3,6 +3,7 @@
     make ship                    # check, rebase, push
     make ship ARGS=--dry-run     # what it would do, running nothing
     make ship ARGS=--remote      # check-affected's build and tests on the mini (--local: here)
+    make ship ARGS=--full        # the full check instead (a change meant to move the digests)
 
 In order, each step's exit status checked and nothing piped:
 
@@ -11,7 +12,7 @@ In order, each step's exit status checked and nothing piped:
    push. Run inside gpu-slot it refuses too: check-affected queues its own GPU steps.
 2. `make format`; if that changed anything, stops and asks for it to be committed.
 3. `make lint`, and `make build-strict` when the branch changes Swift, Metal or the package.
-4. `python3 Scripts/check-affected.py`, bare (with `--remote` or `--local` if given).
+4. `python3 Scripts/check-affected.py`, bare (with `--remote`, `--local` or `--full` if given).
 5. `git fetch origin`, and a rebase onto origin/main if main has moved.
 6. The diff check: `git diff origin/main...HEAD --stat` must hold only files that the branch's own
    commits changed, and the branch must not look like a commit made over a stale copy (as 459e15f8
@@ -62,8 +63,9 @@ class Refused(Exception):
     """Ship stops here: the message says why and what to do."""
 
 
-def default_commands(where):
-    check = [sys.executable, "Scripts/check-affected.py"] + ([f"--{where}"] if where else [])
+def default_commands(where, full=False):
+    check = [sys.executable, "Scripts/check-affected.py"] + ([f"--{where}"] if where else []) + (
+        ["--full"] if full else [])
     return {"format": ["make", "format"], "lint": ["make", "lint"], "build": ["make", "build-strict"],
             "check": check, "check-dry-run": check + ["--dry-run"]}
 
@@ -369,10 +371,12 @@ def main(argv=None):
     where = parser.add_mutually_exclusive_group()
     where.add_argument("--remote", action="store_true", help="check-affected's build and tests on the other Mac")
     where.add_argument("--local", action="store_true", help="check-affected's build and tests here")
+    parser.add_argument("--full", action="store_true",
+                        help="check-affected's full check (a change meant to move the digests)")
     parser.add_argument("--allow-reverts", action="store_true",
                         help="push although the branch takes out blocks recent commits on main put in")
     options = parser.parse_args(argv)
-    commands = default_commands("remote" if options.remote else "local" if options.local else None)
+    commands = default_commands("remote" if options.remote else "local" if options.local else None, options.full)
     try:
         return Ship(commands=commands, allow_reverts=options.allow_reverts).ship(dry_run=options.dry_run)
     except Refused as refusal:
