@@ -10,4 +10,5 @@ the outrunning limit between 400 and 560 ft, where Murrell found it at about 560
 speed alone never did ([Prairie Flat](../../ground-shock.md#against-prairie-flat)). *Illustrative:*
 against Prairie Flat the column and the estimate are within a factor of two at under half the
 gauges inside that limit (too low near the surface), and the half-space carries the motion ahead of
-the blast past it within a factor of two.
+the blast past it within a factor of two; the standing now bands that motion, with the half-space
+chosen, at 0.33 to 3 times the measured.

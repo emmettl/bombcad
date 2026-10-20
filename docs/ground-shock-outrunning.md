@@ -367,6 +367,12 @@ dimensions on the GPU, for streets and buildings, is proposed as a new issue**; 
 pass this comparison in its axisymmetric limit. The standing stays illustrative: one site, its
 densities assumed.
 
+**The band.** Since the motion ahead of the blast met its judge, the standing now bands it: with
+the half-space chosen, the peak downward and outward velocity at points labelled outrun carries
+a band of 0.33 to 3 times the measured, Prairie Flat's factor of three, which all 16 records met
+(0.41 to 1.91). It holds 170 to 350 m from 500 t, 0.5 to 3 m down, on two measured layers whose
+densities were assumed; the motion where the air arrives first stays unbanded.
+
 ## Stages
 
 1. Done: the elastic axisymmetric solver with its absorbing layer, checked against Lamb's

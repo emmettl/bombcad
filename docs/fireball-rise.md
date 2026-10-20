@@ -636,9 +636,12 @@ Church's 15 to 20%, and the two-minute tops kept at 1.04 ± 0.08.
 
 So the fall behind after two minutes was mostly the one lapse rate standing in for layered night
 air, not a missing hot core. The two-part thermal planned for the case that the profiles did
-not mend the mean (an unmixed core rising on) was not built: the mean is mended, and the spread
-that remains is as large between Church's repeated shots as between the model and them. Whether
-to build it anyway, fitted on half the shots and judged on the other half, is the user's call.
+not mend the mean (an unmixed core rising on) was not built, and will not be for this: the mean
+is mended, and the spread that remains is no larger than Church's repeated shots differ among
+themselves (1.44 at three minutes and 1.92 at four between shots 1 to 3, against the model's
+1.27 and 1.55 on all of them). A two-part thermal fitted on half the shots could only chase
+scatter that the measurements themselves do not repeat, so the scatter bar cannot judge it; a
+test with repeated shots that agree with each other would be needed first.
 The standing keeps its band to two minutes; to five minutes, in a measured sounding, the tops
 are within 12% on average, which the standing now says: at night, give the cloud a sounding.
 
@@ -769,10 +772,10 @@ and which ADMS describes otherwise.
 ## Future work
 
 - The spread of Church's tops shot by shot after two minutes, 27 to 55% even in their own measured
-  air: a cloud that is not well mixed, its hot core rising on (a two-part thermal), fitted on half
-  his shots and judged on the other half, is the candidate left; his repeated shots differ by as
-  much, so it may not gain. The preliminary shots' air above 300 m, which his appendix does not
-  give.
+  air, is no more than his repeated shots differ by, so it is not pursued with these data (a
+  two-part thermal was set aside on 20 October 2026 for that reason); a set of repeated shots that
+  agree among themselves would be needed to judge one. The preliminary shots' air above 300 m,
+  which his appendix does not give.
 - Measured widths of spreading explosion clouds, to check the spread against: Roller Coaster's
   and the large high-explosive tests' cloud photographs, if any are open.
 - The spread's gravity current with drag and the puff's growth with wind shear, a mixing height

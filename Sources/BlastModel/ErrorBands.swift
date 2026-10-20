@@ -24,6 +24,7 @@ public enum BandMeasure: String, Codable, CaseIterable, Sendable {
     case ventedPressure
     case breakageTime
     case insidePressure
+    case groundVelocity
 }
 
 /// How far a model result has been from measurement, as model/measured, and where that holds.
@@ -304,7 +305,7 @@ public enum ValidationTables {
     /// heading and holds the figure's numbers.
     public static let figures: [Figure] =
         envelopeFigures + structureFigures + airFigures + foundationFigures + thermalFigures
-        + deflagrationFigures + districtFigures
+        + deflagrationFigures + districtFigures + groundFigures
 
     public static func figure(_ id: String) -> Figure { figures.first { $0.id == id }! }
 
@@ -785,11 +786,7 @@ extension StandingScene {
         case .cloud:
             cloudBands(bands: &bands, unbanded: &unbanded)
         case .groundShock:
-            unbanded.append(
-                "Two measured surface bursts, too far off to band: at Xia's the vertical velocity 20 to 80 times "
-                    + "the measured near and past where the ground's wave outruns the air; at Prairie Flat's, inside "
-                    + "that limit, within a factor of two at under half the records."
-            )
+            groundBands(bands: &bands, unbanded: &unbanded)
         case .blastInjury:
             unbanded.append(
                 "Checked against the curves' own published distances and the free field, not against injury data."

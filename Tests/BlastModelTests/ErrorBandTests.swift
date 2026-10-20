@@ -463,6 +463,27 @@ private func percent(_ cell: String) -> Double? { Double(cell.replacingOccurrenc
         #expect(ideal.band(.radiatedEnergy) == nil && ideal.band(.cloudTop) == nil)
     }
 
+    /// Prairie Flat's motion ahead of the blast banded the half-space, and only the half-space.
+    @Test func groundShockIsBandedOnlyForTheHalfSpace() throws {
+        func standing(_ model: GroundShockModel) -> SceneStanding {
+            var spec = GroundShockSpec()
+            spec.model = model
+            return SceneStanding(
+                StandingInputs(
+                    scenario: ScenarioPreset.streetCanyon.scenario, cellSize: 0.25,
+                    configuration: .recommended, groundShock: spec))
+        }
+        let half = standing(.halfspace)
+        let band = try #require(half.band(.groundVelocity))
+        #expect(band.low == 0.33 && band.high == 3 && band.validity.contains("outrun"))
+        #expect(half[.groundShock]?.unbanded?.contains { $0.contains("Inside the outrunning limit") } == true)
+        for model in [GroundShockModel.column, .estimate] {
+            let other = standing(model)
+            #expect(other.band(.groundVelocity) == nil)
+            #expect(other[.groundShock]?.unbanded?.contains { $0.contains("too far off to band") } == true)
+        }
+    }
+
     @Test func meshSeriesQuoteTheStudy() throws {
         let series = ValidationTables.oa1
         let text = try section(series.document)

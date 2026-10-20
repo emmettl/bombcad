@@ -76,8 +76,8 @@ extension StandingScene {
                 + "against Xia's 1 t burst its vertical velocity 15 to 90 times too high (the safe side), its "
                 + "horizontal within one and a half to two and a half times at 21 m but 10 to 20 times too high "
                 + "at 42 m; against Prairie Flat's 500 t, past where the ground's wave outran the air, the motion "
-                + "ahead of the blast within a factor of two at 15 of 16 records, but inside it within two at "
-                + "only 21 of 34.",
+                + "ahead of the blast within a factor of two at 15 of 16 records, banded at a factor of three, "
+                + "but inside it within two at only 21 of 34.",
             evidence: [
                 StandingEvidence(
                     "The axisymmetric solver against Lamb's problem, Cole and Huth's moving load and Haskell's "
