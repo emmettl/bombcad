@@ -67,6 +67,11 @@ extension SimulationModel {
 
     func applyEnvelopeDamageColours() {
         defer { applyFarFieldColours() }
+        // A replay colours the buildings as its frame was.
+        if playback != nil {
+            showReplayedLayers()
+            return
+        }
         if !protectionPlanChances.isEmpty {
             renderer?.setEnvelopeDamage(protectionPlanChances.mapValues { EnvelopeChanceColour.code($0) })
             return
