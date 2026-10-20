@@ -45,6 +45,55 @@ protect`, byte for byte.
   trigonometry. A case run on Linux should be checked against the Mac's before its numbers are
   relied on (stage 2's parity check).
 
+## Sweeps on a Linux host
+
+`Scripts/remote-sweep.py` sends a sweep of `blastmodel` cases from the Studio to a Linux host,
+runs them there and brings the results back. `compare` then sets them beside the same sweep run
+on the Mac:
+
+```bash
+python3 -I Scripts/remote-sweep.py run bombcad-pc sweep.json --cores 16 --wait 30m
+python3 -I Scripts/remote-sweep.py run --here sweep.json
+python3 -I Scripts/remote-sweep.py compare /Volumes/StudioData/bombcad/sweeps/<name>-here /Volumes/StudioData/bombcad/sweeps/<name>-bombcad-pc
+```
+
+- **The sweep** is a JSON list of cases, each one `blastmodel` command's arguments, and the files
+  they read. `{repo}` and `{out}` stand for the repository's copy and the case's folder, and the
+  inputs are sent and their paths rewritten (the script's own help says how).
+- **On the host** it keeps to `~/bombcad-sweeps`:
+  - this worktree in `src`, its release build kept between sweeps;
+  - the inputs, and each sweep's results.
+- **One sweep at a time,** under the host's own lock, as `Scripts/ml/remote-train.py` locks
+  (`--wait` waits for it). It never touches the training runner's `~/bombcad-ml` or its lock.
+- **Each case is held** to `--cores` of the host's cores, 16 of the PC's 24 by default, so that a
+  sweep can share the box with a training job on the GPU.
+- **Every SSH and rsync** reads nothing from standard input.
+
+**The first sweep, 21 October 2026** (`cpu-studies-1`), on `bombcad-pc`: WSL2 Ubuntu 24.04 on 24
+cores and 30 GB, Swift 6.4.1 as CI's. BlastModel's 817 tests pass there in 170 s. The sweep has
+eleven cases:
+- protective design on the made-up district at 1, 2, 5, 10 and 20 t, the 20 t plans confirmed on
+  its saved run;
+- the soil column;
+- the half-space's calibration;
+- charge inference from Rigby et al.'s Beirut arrivals at four seeds.
+
+Against the same sweep on the Mac:
+- **The same answers in ten of the eleven.**
+  - Every protective plan agrees within 10⁻⁹, and the plans' tables print alike.
+  - The soil column's stresses and the half-space's velocities print alike.
+  - Three of the four inference seeds give the same posterior: two byte for byte, one within 10⁻⁹.
+- **The fourth seed's chain went another way.** Its yield is 0.540 kt here (90%: 0.392–0.852)
+  against 0.543 kt on the PC (0.396–0.830), within the sampler's own scatter.
+  - Linux's and Apple's maths libraries round some functions differently in the last bit (as the
+    other seeds' 10⁻⁹ show).
+  - In a Monte Carlo chain one such bit can flip an acceptance, and the chain then follows another
+    path to the same posterior.
+  - So a sampled result run on Linux is a draw from the same posterior, not the Mac's draw: mark
+    it Linux-run, and compare its summaries, not its bytes.
+- **Time:** 111 s on the PC's 16 cores, the release build 137 s on top. The Mac took 261 s,
+  shared with other sessions' runs at a load of 60–90.
+
 **Not yet** (emmettl/bombcad-work#48's later stages):
-- sending a sweep's cases to a Linux host from the Studio (`Scripts/remote.py`'s way to the mini);
+- teaching `BombCAD sweep` and `BombCAD ensemble` to hand their CPU-only cases to a Linux host;
 - the PC as a lane for `check-affected`'s BlastModel tests.

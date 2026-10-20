@@ -1,0 +1,212 @@
+{
+ "name": "cpu-studies-1",
+ "inputs": [
+  "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses",
+  "/Volumes/StudioData/bombcad/surrogate/loads-sparse-20t-r2",
+  "/Volumes/StudioData/bombcad/data/Beirut2020/Rigby2020/Rigby2020_ESM1_radius_time.csv"
+ ],
+ "cases": [
+  {
+   "name": "protect-1t",
+   "args": [
+    "protect",
+    "--osm",
+    "{repo}/Fixtures/SyntheticDistrict/district.osm",
+    "--dem",
+    "{repo}/Fixtures/SyntheticDistrict/ground.asc",
+    "--heights",
+    "{repo}/Fixtures/SyntheticDistrict/heights.asc",
+    "--centre",
+    "0.0059535,0.0059175",
+    "--dx",
+    "4",
+    "--radius",
+    "700",
+    "--inputs",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/protect.json",
+    "--samples",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/threat-1t.csv",
+    "--sample-count",
+    "1",
+    "--out",
+    "{out}/plans.json"
+   ]
+  },
+  {
+   "name": "protect-2t",
+   "args": [
+    "protect",
+    "--osm",
+    "{repo}/Fixtures/SyntheticDistrict/district.osm",
+    "--dem",
+    "{repo}/Fixtures/SyntheticDistrict/ground.asc",
+    "--heights",
+    "{repo}/Fixtures/SyntheticDistrict/heights.asc",
+    "--centre",
+    "0.0059535,0.0059175",
+    "--dx",
+    "4",
+    "--radius",
+    "700",
+    "--inputs",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/protect.json",
+    "--samples",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/threat-2t.csv",
+    "--sample-count",
+    "1",
+    "--out",
+    "{out}/plans.json"
+   ]
+  },
+  {
+   "name": "protect-5t",
+   "args": [
+    "protect",
+    "--osm",
+    "{repo}/Fixtures/SyntheticDistrict/district.osm",
+    "--dem",
+    "{repo}/Fixtures/SyntheticDistrict/ground.asc",
+    "--heights",
+    "{repo}/Fixtures/SyntheticDistrict/heights.asc",
+    "--centre",
+    "0.0059535,0.0059175",
+    "--dx",
+    "4",
+    "--radius",
+    "700",
+    "--inputs",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/protect.json",
+    "--samples",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/threat-5t.csv",
+    "--sample-count",
+    "1",
+    "--out",
+    "{out}/plans.json"
+   ]
+  },
+  {
+   "name": "protect-10t",
+   "args": [
+    "protect",
+    "--osm",
+    "{repo}/Fixtures/SyntheticDistrict/district.osm",
+    "--dem",
+    "{repo}/Fixtures/SyntheticDistrict/ground.asc",
+    "--heights",
+    "{repo}/Fixtures/SyntheticDistrict/heights.asc",
+    "--centre",
+    "0.0059535,0.0059175",
+    "--dx",
+    "4",
+    "--radius",
+    "700",
+    "--inputs",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/protect.json",
+    "--samples",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/threat-10t.csv",
+    "--sample-count",
+    "1",
+    "--out",
+    "{out}/plans.json"
+   ]
+  },
+  {
+   "name": "protect-20t",
+   "args": [
+    "protect",
+    "--osm",
+    "{repo}/Fixtures/SyntheticDistrict/district.osm",
+    "--dem",
+    "{repo}/Fixtures/SyntheticDistrict/ground.asc",
+    "--heights",
+    "{repo}/Fixtures/SyntheticDistrict/heights.asc",
+    "--centre",
+    "0.0059535,0.0059175",
+    "--dx",
+    "4",
+    "--height",
+    "112",
+    "--radius",
+    "700",
+    "--inputs",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/protect.json",
+    "--samples",
+    "/Volumes/StudioData/bombcad/sweeps/inputs/protect-masses/threat-20t.csv",
+    "--sample-count",
+    "1",
+    "--confirm",
+    "/Volumes/StudioData/bombcad/surrogate/loads-sparse-20t-r2",
+    "--out",
+    "{out}/plans.json"
+   ]
+  },
+  {
+   "name": "soil-column",
+   "args": [
+    "soil-column"
+   ]
+  },
+  {
+   "name": "halfspace-calibrate",
+   "args": [
+    "halfspace-calibrate"
+   ]
+  },
+  {
+   "name": "infer-beirut-seed1",
+   "args": [
+    "infer-charge",
+    "--observers",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/Rigby2020/Rigby2020_ESM1_radius_time.csv",
+    "--centre",
+    "35.519042,33.901425",
+    "--seed",
+    "1",
+    "--out",
+    "{out}/posterior.json"
+   ]
+  },
+  {
+   "name": "infer-beirut-seed2",
+   "args": [
+    "infer-charge",
+    "--observers",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/Rigby2020/Rigby2020_ESM1_radius_time.csv",
+    "--centre",
+    "35.519042,33.901425",
+    "--seed",
+    "2",
+    "--out",
+    "{out}/posterior.json"
+   ]
+  },
+  {
+   "name": "infer-beirut-seed3",
+   "args": [
+    "infer-charge",
+    "--observers",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/Rigby2020/Rigby2020_ESM1_radius_time.csv",
+    "--centre",
+    "35.519042,33.901425",
+    "--seed",
+    "3",
+    "--out",
+    "{out}/posterior.json"
+   ]
+  },
+  {
+   "name": "infer-beirut-seed4",
+   "args": [
+    "infer-charge",
+    "--observers",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/Rigby2020/Rigby2020_ESM1_radius_time.csv",
+    "--centre",
+    "35.519042,33.901425",
+    "--seed",
+    "4",
+    "--out",
+    "{out}/posterior.json"
+   ]
+  }
+ ]
+}

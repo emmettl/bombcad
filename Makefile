@@ -84,6 +84,7 @@ ci-test:
 	python3 Scripts/test-check-shader-mirrors.py
 	python3 Scripts/test-check-test-deadlines.py
 	python3 Scripts/calibration/test-calibration.py
+	python3 Scripts/test-remote-sweep.py
 	python3 Scripts/split/test-split.py
 	python3 Scripts/split/test-solver-split.py
 	python3 Scripts/split/test-narrow-access.py
