@@ -7,6 +7,9 @@ import simd
 
 @Suite("IFC batch geometry review", .hangLimit)
 struct IFCBatchReviewTests {
+    /// However long a loaded Mac takes the converter: the app gives it two minutes.
+    init() { IFCImporter.conversionLimit.value = nil }
+
     private func fixture(_ name: String) throws -> Data {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent()

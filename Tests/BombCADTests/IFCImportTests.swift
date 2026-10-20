@@ -7,6 +7,9 @@ import simd
 
 @Suite("IFC native import", .hangLimit)
 struct IFCImportTests {
+    /// However long a loaded Mac takes the converter: the app gives it two minutes.
+    init() { IFCImporter.conversionLimit.value = nil }
+
     private var fixture: URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent(

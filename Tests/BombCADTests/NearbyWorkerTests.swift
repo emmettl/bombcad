@@ -166,8 +166,9 @@ struct NearbyWorkerTests {
     }
 
     /// Finding the server waits on no clock: the resolver below answers at once. The connections
-    /// themselves fail in their own time if they stall (`NearbyWorkers.connectLimit`), and each
-    /// test has a network limit well short of the suite's hang limit.
+    /// have no deadlines either (`limits: .none`, and the server's), so that a loaded Mac cannot
+    /// fail them: a connection that stalls is the suite's hang limit's to catch. `stalls` and
+    /// NearbyDeadlineGapTests check the deadlines themselves, each giving its own.
     private let discovery = Duration.seconds(600)
 
     /// The server found where it listens on this Mac, without Bonjour, whose answers a test's
@@ -197,21 +198,21 @@ struct NearbyWorkerTests {
                 try? output.close()
             }
         }
+        server.limits = .none
         try server.start()
         return (server, store, shown)
     }
 
-    // The hang limit, not the network one: this test also runs a case on the GPU here and on the
-    // "worker", which under a loaded Studio (load 100–130, 19 October 2026) took past three minutes.
-    // A stalled connection still fails within the app's own deadlines (a minute a step).
-    @Test("A Mac paired over the network runs a case to the same answer", .hangLimit)
+    // Under a loaded Studio (load 100–130, 19 October 2026) this test, which also runs a case on the
+    // GPU here and on the "worker", took past three minutes.
+    @Test("A Mac paired over the network runs a case to the same answer")
     func session() async throws {
         let (server, serverStore, shown) = try server()
         defer { server.stop() }
         let clientStore = MemoryPairingStore(name: "Test client")
         let pairing = try await NearbyWorkers.pair(
             with: serverStore.me.id, store: clientStore, discovery: discovery,
-            resolve: resolver(server, serverStore)
+            resolve: resolver(server, serverStore), limits: .none
         ) { _, code in
             // As the user reads the server's code.
             var codes = shown.makeAsyncIterator()
@@ -222,7 +223,8 @@ struct NearbyWorkerTests {
         // The server restarted its sessions with the new key before it confirmed.
         let host = NearbyWorkers.host(serverStore.me.name)
         let worker = try await NearbyWorkers.connect(
-            host: host, store: clientStore, discovery: discovery, resolve: resolver(server, serverStore))
+            host: host, store: clientStore, discovery: discovery, resolve: resolver(server, serverStore),
+            limits: .none)
         let inputs = SimulationInputs(scenario: document().scenario, settings: document().runSettings!)
         let item = try ParameterSweepPlan(prefix: "Case", parameter: .chargeMass([0.02])).prepare(
             from: inputs)[0]
@@ -236,7 +238,7 @@ struct NearbyWorkerTests {
         await localServer.value
     }
 
-    @Test("An unpaired Mac, or one with the wrong key, is refused; a busy one says why", .networkLimit)
+    @Test("An unpaired Mac, or one with the wrong key, is refused; a busy one says why")
     func refusals() async throws {
         let (server, serverStore, _) = try server()
         defer { server.stop() }
@@ -244,14 +246,16 @@ struct NearbyWorkerTests {
         let stranger = MemoryPairingStore(name: "Stranger")
         await #expect(throws: NearbyError.self) {
             _ = try await NearbyWorkers.connect(
-                host: host, store: stranger, discovery: discovery, resolve: resolver(server, serverStore))
+                host: host, store: stranger, discovery: discovery, resolve: resolver(server, serverStore),
+                limits: .none)
         }
 
         // A key the server never agreed: TLS fails before any worker starts.
         try stranger.keep(.init(peer: serverStore.me, key: Data(repeating: 9, count: 32)))
         await #expect(throws: (any Error).self) {
             let worker = try await NearbyWorkers.connect(
-                host: host, store: stranger, discovery: discovery, resolve: resolver(server, serverStore))
+                host: host, store: stranger, discovery: discovery, resolve: resolver(server, serverStore),
+                limits: .none)
             worker.close()
         }
 
@@ -267,19 +271,20 @@ struct NearbyWorkerTests {
         do {
             let worker = try await NearbyWorkers.connect(
                 host: host, gate: busy, store: friend, discovery: discovery,
-                resolve: resolver(server, serverStore))
+                resolve: resolver(server, serverStore), limits: .none)
             worker.close()
             Issue.record("A gate in its quiet window took work.")
         } catch {
             #expect(error.localizedDescription.contains("not taking work"))
         }
         let worker = try await NearbyWorkers.connect(
-            host: host, store: friend, discovery: discovery, resolve: resolver(server, serverStore))
+            host: host, store: friend, discovery: discovery, resolve: resolver(server, serverStore),
+            limits: .none)
         #expect(worker.hello?.protocolVersion == SweepWorkerHello.protocolVersion)
         worker.close()
     }
 
-    @Test("A handshake or a message that stalls fails in time instead of waiting for ever", .networkLimit)
+    @Test("A handshake or a message that stalls fails in time instead of waiting for ever")
     func stalls() async throws {
         // Takes connections and never says a word.
         let listener = try NWListener(using: NearbyWorkers.pairingParameters())
@@ -331,7 +336,9 @@ struct NearbyWorkerTests {
             peer: "Silent")
         #expect(await timesOut { try await tls.start(within: limit) })
         // Connected, then nothing.
-        let plain = ConnectionChannel(NWConnection(to: endpoint, using: NearbyWorkers.pairingParameters()))
+        // Its own connecting has no deadline: only the receive's is under test.
+        let plain = ConnectionChannel(
+            NWConnection(to: endpoint, using: NearbyWorkers.pairingParameters()), limits: .none)
         defer { plain.connection.cancel() }
         try await plain.start()
         #expect(await timesOut { _ = try await plain.receiveFrame(within: limit) })

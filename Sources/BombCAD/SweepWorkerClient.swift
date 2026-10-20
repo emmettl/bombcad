@@ -30,6 +30,12 @@ final class SweepWorkerClient {
     private var closedError: Error?
     /// Why the worker stopped, for messages: what it last wrote to standard error, if anything.
     var diagnostics: () -> String = { "" }
+    /// How long a worker has to greet before it is taken as not answering: a minute, as the app
+    /// waits.
+    nonisolated static let helloLimit = Duration.seconds(60)
+    /// How long `start` waits for the greeting; nil waits however long it takes, as the tests'
+    /// workers in this process ask, so that a loaded Mac cannot fail them.
+    var helloTimeout: Duration? = SweepWorkerClient.helloLimit
 
     /// Talks to a worker that reads `output` and writes `input`, and waits for its greeting.
     init(name: String, input: FileHandle, output: FileHandle, onClose: @escaping () -> Void = {}) {
@@ -48,15 +54,17 @@ final class SweepWorkerClient {
         }
     }
 
-    /// Waits for the worker's greeting, and checks it runs this solver.
-    func start(timeout: Duration = .seconds(60)) async throws -> SweepWorkerHello {
+    /// Waits for the worker's greeting, up to `helloTimeout`, and checks it runs this solver.
+    func start() async throws -> SweepWorkerHello {
         if let hello { return hello }
-        let timer = Task { [weak self] in
-            // Cancelled once the greeting arrives.
-            guard (try? await Task.sleep(for: timeout)) != nil else { return }
-            self?.closed(ProjectFileError.invalid("The worker on \(self?.name ?? "") did not answer."))
+        let timer = helloTimeout.map { timeout in
+            Task { [weak self] in
+                // Cancelled once the greeting arrives.
+                guard (try? await Task.sleep(for: timeout)) != nil else { return }
+                self?.closed(ProjectFileError.invalid("The worker on \(self?.name ?? "") did not answer."))
+            }
         }
-        defer { timer.cancel() }
+        defer { timer?.cancel() }
         let hello = try await withCheckedThrowingContinuation {
             (continuation: CheckedContinuation<SweepWorkerHello, Error>) in
             if let closedError {

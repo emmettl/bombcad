@@ -176,34 +176,38 @@ struct GPUThreadsTests {
         var short = GPUThreads()
         short.hangLimit = .milliseconds(100)
         // Every dedicated thread but the one the test holds held too, as when tests hang or the GPU
-        // is busy, and the cooperative pool's threads as well, for longer than the watchdog may
-        // take: it must still fire while the test spins on its thread. The test holds its thread
-        // until it does, up to two minutes.
+        // is busy, and the cooperative pool's threads as well, until the watchdog fires: it must
+        // fire while the test spins on its thread, without waiting for a busy one, however long a
+        // loaded Mac takes it. Each holder says whether it let go before; the test and the holders
+        // hold for two minutes at most, so that a watchdog that does wait fails the test rather
+        // than holding every thread for ever.
+        let said = Message()
         let holders = (1..<GPUThreads.threads).map { _ in
-            Task(executorPreference: GPUThreads.executor) { Self.hold(8) }
+            Task(executorPreference: GPUThreads.executor) { Self.hold(until: said) }
         }
         let pool = (0..<ProcessInfo.processInfo.activeProcessorCount).map { _ in
-            Task.detached { Self.hold(8) }
+            Task.detached { Self.hold(until: said) }
         }
-        try await Task.sleep(for: .milliseconds(200))
-        let said = Message()
+        // Time for them to start, on this thread: a sleep awaited would wake only through the pool,
+        // so not until the holders let go (as it did, unseen, before 20 October 2026: the test then
+        // began after they had).
+        Self.hold(0.2)
         short.onHang = { said.set($0) }
-        let began = Message()
-        try await short.run("\"spinning\"") {
-            began.set("")
-            while said.value == nil && Date().timeIntervalSince(began.time ?? .now) < 120 { Self.hold(0.01) }
-        }
+        try await short.run("\"spinning\"") { _ = Self.hold(until: said) }
         #expect(
             said.value
                 == "Hung: \"spinning\" still running 0.1 seconds after it got its thread; stopping the test run."
         )
-        let waited = (said.time ?? .distantFuture).timeIntervalSince(began.time ?? .distantPast)
-        #expect(waited < 4, "The watchdog waited \(waited) s, for a busy thread.")
-        for task in holders + pool { await task.value }
-        // Held on its thread, not waiting for one, however busy the others: not caught.
+        var early = 0
+        for task in holders + pool {
+            if await !task.value { early += 1 }
+        }
+        #expect(early == 0, "\(early) busy threads let go before the watchdog fired: it waited for one.")
+        // Held on its thread, not waiting for one, however busy the others: not caught. An hour, so
+        // that no stall of a loaded Mac in the 50 ms takes it past the limit.
         let late = Message()
         short.onHang = { late.set($0) }
-        short.hangLimit = .seconds(30)
+        short.hangLimit = .seconds(3600)
         try await short.run("within") { Self.hold(0.05) }
         #expect(late.value == nil)
     }
@@ -220,6 +224,12 @@ struct GPUThreadsTests {
 
     /// Holds the thread, as a test waiting on the GPU does.
     private static func hold(_ seconds: Double) { Thread.sleep(forTimeInterval: seconds) }
+
+    /// Holds the thread until `message` is said, or for two minutes at most (a bound only on a
+    /// watchdog that never fires); whether it was said. Blocked, not polling: a thread that wakes
+    /// every few milliseconds is, on a loaded Mac, nearly always waiting to run, and with many such
+    /// the system starts no thread for the watchdog's timer (20 October 2026, at a load of 80).
+    private static func hold(until message: Message) -> Bool { message.wait(upTo: 120) }
 
     @Test("No more tests start than there are threads; the others wait their turn")
     func admission() async {
@@ -243,15 +253,25 @@ struct GPUThreadsTests {
 
 /// A message set from any thread, and when.
 private final class Message: @unchecked Sendable {
-    private let lock = NSLock()
+    private let condition = NSCondition()
     private var text: String?
     private var date: Date?
-    var value: String? { lock.withLock { text } }
-    var time: Date? { lock.withLock { date } }
+    var value: String? { condition.withLock { text } }
+    var time: Date? { condition.withLock { date } }
     func set(_ message: String) {
-        lock.withLock {
+        condition.withLock {
             text = message
             date = Date()
+            condition.broadcast()
+        }
+    }
+
+    /// Waits, blocked, until a message is set or `seconds` have passed; whether one was set.
+    func wait(upTo seconds: Double) -> Bool {
+        let until = Date(timeIntervalSinceNow: seconds)
+        return condition.withLock {
+            while text == nil && condition.wait(until: until) {}
+            return text != nil
         }
     }
 }

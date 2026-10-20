@@ -205,8 +205,16 @@ enum HeadlessEnsemble {
         var seconds = 0.0
     }
 
+    /// How long a worker has to answer a sample of the case `id` before it gives the sample back,
+    /// however slow its Mac: five minutes, and 30 times the case's estimate.
+    nonisolated static func answerLimit(_ id: String) -> Duration? {
+        .seconds(300 + 30 * ValidationEnsemble.estimatedSeconds(case: id))
+    }
+
     /// Runs `options`' cases, here and on its workers (`connect` starts one; tests stand
-    /// in-process workers in), and reports each case as it finishes to `log`.
+    /// in-process workers in), and reports each case as it finishes to `log`. A worker has
+    /// `answerLimit` of the case to answer each sample in (nil: however long it takes, as the tests
+    /// ask, so that a loaded Mac cannot fail them).
     static func run(
         _ options: Options, log: @escaping (String) -> Void = { _ in },
         connect: @escaping @MainActor @Sendable (String, RemoteGate?) async throws -> SweepWorkerClient = {
@@ -214,7 +222,8 @@ enum HeadlessEnsemble {
         },
         runHere: @escaping @Sendable (EnsembleSample) throws -> EnsembleOutcome = {
             try ValidationEnsemble.run($0)
-        }
+        },
+        answerLimit: @escaping @Sendable (String) -> Duration? = HeadlessEnsemble.answerLimit
     ) async throws -> Report {
         var jobs: [(caseIndex: Int, sample: EnsembleSample)] = []
         var report = Report(seed: options.seed, cases: [])
@@ -334,16 +343,19 @@ enum HeadlessEnsemble {
                     do {
                         // A worker that never answers gives its job back, however slow its Mac.
                         let sample = jobs[job].sample
-                        let limit = 300 + 30 * ValidationEnsemble.estimatedSeconds(case: sample.caseID)
+                        let limit = answerLimit(sample.caseID)
                         let outcome = try await withThrowingTaskGroup(of: EnsembleOutcome?.self) { group in
                             group.addTask { try await worker.run(sample) }
-                            group.addTask {
-                                try await Task.sleep(for: .seconds(limit))
-                                return nil
+                            if let limit {
+                                group.addTask {
+                                    try await Task.sleep(for: limit)
+                                    return nil
+                                }
                             }
                             defer { group.cancelAll() }
                             guard let first = try await group.next(), let outcome = first else {
-                                throw ProjectFileError.invalid("No answer in \(Int(limit)) s.")
+                                throw ProjectFileError.invalid(
+                                    "No answer in \(limit?.components.seconds ?? 0) s.")
                             }
                             return outcome
                         }

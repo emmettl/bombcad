@@ -8,15 +8,9 @@ import Testing
 /// are about (a run finished, a consumer caught up, a preview current), however long that takes,
 /// with no deadline of their own; a state never reached, a fault, is a hang, which this limit
 /// reports as a failure. Ten minutes: the slowest of them took 79 s at a load average of 141, and
-/// CI's test step stops at 45.
+/// CI's test step stops at 45. The app's own deadlines (a connection's steps, a probe, the end of
+/// a run waiting for its companions) take nil in the tests, so that this is the only bound; and
+/// no test may be given a shorter one (Scripts/check-test-deadlines.py).
 extension Trait where Self == TimeLimitTrait {
     static var hangLimit: Self { .timeLimit(.minutes(10)) }
-
-    /// For a test of connections between Macs nearby (over loopback here) that runs little else:
-    /// every step of a connection has a deadline of its own in the app (`NearbyWorkers.connectLimit`
-    /// and the rest, a minute each), so a stalled handshake fails in well under this instead of holding
-    /// the run, and its GPU slot, for the whole hang limit. Three minutes, not one: inside a full
-    /// check on a loaded Studio (19 October 2026) two of these tests, which run a case on the GPU
-    /// between the connections, passed alone in seconds but went past a minute.
-    static var networkLimit: Self { .timeLimit(.minutes(3)) }
 }

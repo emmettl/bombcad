@@ -777,10 +777,22 @@ final class SimulationModel {
     /// sidebar shows (`InspectedEnvelopeSection`); nil for none.
     var inspectedEnvelope: UUID?
 
-    /// Probes the thermal radiation, if placed automatically, here and on each Mac connected, so
-    /// that the next run is placed by each Mac's speed now.
-    /// How long a run's costs wait for its companions to catch up before they are left
-    /// unrecorded; nil waits however long it takes (the tests, so that a loaded Mac cannot fail
-    /// them).
-    var costCatchUpTimeout: Duration? = .seconds(60)
+    /// How long the end of a run waits for its companions' last frames: each, before what has
+    /// come in is shown and the wait given up (the status then says how many frames are left), and
+    /// all of them, before the run's costs are left unrecorded. Nil waits however long it takes,
+    /// as the tests ask (`.unbounded`), so that a loaded Mac cannot fail them; the app keeps these.
+    struct CatchUpLimits: Equatable {
+        var fragments: Duration? = .seconds(30)
+        var thermal: Duration? = .seconds(120)
+        var groundShock: Duration? = .seconds(60)
+        var costs: Duration? = .seconds(60)
+
+        static let unbounded = CatchUpLimits(fragments: nil, thermal: nil, groundShock: nil, costs: nil)
+
+        /// Whether `start`, the moment the wait began, is still within `limit`.
+        static func within(_ limit: Duration?, since start: ContinuousClock.Instant) -> Bool {
+            limit.map { start.duration(to: .now) < $0 } ?? true
+        }
+    }
+    var catchUpLimits = CatchUpLimits()
 }

@@ -13,6 +13,9 @@ import simd
     .enabled(if: IFCImporter.converterURL != nil, "Prepare the pinned IFC converter before integration tests")
 )
 struct IFCStructureImportTests {
+    /// However long a loaded Mac takes the converter: the app gives it two minutes.
+    init() { IFCImporter.conversionLimit.value = nil }
+
     private func fixture(_ name: String) -> URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Samples/Importer/Buildings/\(name)")

@@ -8,6 +8,9 @@ import simd
 
 @Suite("Selective IFC import and completeness")
 struct IFCSelectionTests {
+    /// However long a loaded Mac takes the converter: the app gives it two minutes.
+    init() { IFCImporter.conversionLimit.value = nil }
+
     private func fixture(_ name: String) throws -> Data {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Samples/Importer/Buildings")

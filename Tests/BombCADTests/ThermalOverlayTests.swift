@@ -73,6 +73,7 @@ struct ThermalOverlayTests {
         var document = document
         document.thermal = thermal
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         return (model, try await runAndKeep(model))
     }
 
@@ -150,6 +151,7 @@ struct ThermalOverlayTests {
         slow.fireball = .sphere
         document.thermal = slow
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         try await ready(model)
         try model.sweep.start(.init(prefix: "Mass", parameter: .chargeMass([1, 2])))
         while model.sweep.isActive {
@@ -163,6 +165,7 @@ struct ThermalOverlayTests {
     @Test("Each edit to the section settles into a step to undo")
     func undo() async throws {
         let model = SimulationModel(document: airOnly(), playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         try await ready(model)
         let steps = model.undoStack.count
         // Each edit settles into its step a moment later, however busy the Mac.
@@ -233,6 +236,7 @@ struct ThermalOverlayTests {
         var document = airOnly()
         document.thermal = spec
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
         model.useWorker(worker, host: "the mini")

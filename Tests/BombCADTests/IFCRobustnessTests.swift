@@ -13,6 +13,9 @@ import simd
     .enabled(if: IFCImporter.converterURL != nil, "Prepare the pinned IFC converter before integration tests")
 )
 struct IFCRobustnessTests {
+    /// However long a loaded Mac takes the converter: the app gives it two minutes.
+    init() { IFCImporter.conversionLimit.value = nil }
+
     /// A GlobalId of digits.
     static func id(_ n: Int) -> String { String(format: "%022d", n) }
 

@@ -5,6 +5,35 @@ import Testing
 
 @testable import BombCAD
 
+/// A worker in this process, as `localWorker`, and how many samples it has been given.
+@MainActor
+private func countingWorker(name: String) -> (SweepWorkerClient, Task<Void, Never>, Locked<Int>) {
+    let toRelay = Pipe()
+    let toWorker = Pipe()
+    let fromWorker = Pipe()
+    let given = Locked(0)
+    let server = Task {
+        await SweepWorker.serve(input: toWorker.fileHandleForReading, output: fromWorker.fileHandleForWriting)
+        try? fromWorker.fileHandleForWriting.close()
+    }
+    // Passes on all the app sends, counting the samples.
+    Task.detached {
+        let writer = SweepWorkerWriter(toWorker.fileHandleForWriting)
+        do {
+            for try await packet in SweepWorkerFrame.packets(from: toRelay.fileHandleForReading) {
+                if case .ensemble = packet.message { given.update { $0 += 1 } }
+                try writer.send(packet.message, payload: packet.payload)
+            }
+        } catch {}
+        try? toWorker.fileHandleForWriting.close()
+    }
+    let client = SweepWorkerClient(
+        name: name, input: fromWorker.fileHandleForReading, output: toRelay.fileHandleForWriting
+    ) { try? toRelay.fileHandleForWriting.close() }
+    client.helloTimeout = nil
+    return (client, server, given)
+}
+
 @MainActor @Suite("Ensembles of validation cases, here and on workers", .serialized)
 struct HeadlessEnsembleTests {
     @Test("BombCAD ensemble takes its cases, samples, seed and Macs")
@@ -104,16 +133,19 @@ struct HeadlessEnsembleTests {
         #expect(here.cases[0].places.allSatisfy { $0 == "here" })
 
         options.workers = ["mini"]
-        let (worker, server) = localWorker(name: "mini")
+        let (worker, server, given) = countingWorker(name: "mini")
         var lines: [String] = []
-        // Slow here, so that the worker takes some of the samples.
+        // This Mac waits until the worker has a sample, however long a loaded Mac takes it to
+        // start: slowing each sample here by a fixed time let this Mac take them all before the
+        // worker joined. And the worker answers however long it takes.
         let there = try await HeadlessEnsemble.run(
             options, log: { lines.append($0) },
             connect: { _, _ in worker },
             runHere: { sample in
-                Thread.sleep(forTimeInterval: 0.05)
+                while given.value == 0 { Thread.sleep(forTimeInterval: 0.005) }
                 return try ValidationEnsemble.run(sample)
-            })
+            },
+            answerLimit: { _ in nil })
         await server.value
         #expect(there.failures.isEmpty)
         #expect(there.cases[0].samples == here.cases[0].samples)

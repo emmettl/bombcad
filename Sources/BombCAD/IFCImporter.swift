@@ -315,6 +315,11 @@ enum IFCImporter {
         }
         return data
     }
+
+    /// How long the converter may run before it is stopped and the model refused: two minutes,
+    /// or, as the tests ask (nil), however long it takes, so that a loaded Mac cannot fail them.
+    static let conversionLimit = Locked<Duration?>(.seconds(120))
+
     static func run(_ executable: URL, arguments: [String], folder: URL) async throws -> String {
         try Task.checkCancellation()
         let log = folder.appendingPathComponent(UUID().uuidString + ".log")
@@ -329,12 +334,14 @@ enum IFCImporter {
         process.standardError = output
         try process.run()
         defer { if process.isRunning { kill(process.processIdentifier, SIGKILL) } }
-        let deadline = ContinuousClock.now + .seconds(120)
+        let limit = conversionLimit.value
+        let start = ContinuousClock.now
         while process.isRunning {
             try Task.checkCancellation()
-            guard ContinuousClock.now < deadline else {
+            if let limit, start.duration(to: .now) >= limit {
                 throw ImportedMesh.ImportError.invalid(
-                    "IFC conversion exceeded two minutes. Simplify or split the model.")
+                    "IFC conversion exceeded \(ConnectionChannel.describe(limit)). Simplify or split the model."
+                )
             }
             for url in try FileManager.default.contentsOfDirectory(
                 at: folder, includingPropertiesForKeys: [.fileSizeKey])

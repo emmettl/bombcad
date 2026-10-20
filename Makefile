@@ -62,8 +62,9 @@ lint:
 format:
 	swift format format --in-place --recursive Package.swift Sources Tests Scripts
 
-# The scripts' own tests, the documents' relative links and anchors (check-doc-links.py), and the
-# GPU structs' layouts on the Swift and Metal sides (check-shader-mirrors.py).
+# The scripts' own tests, the documents' relative links and anchors (check-doc-links.py), the
+# GPU structs' layouts on the Swift and Metal sides (check-shader-mirrors.py), and no wall-clock
+# bounds in the tests (check-test-deadlines.py).
 ci-test:
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
@@ -76,6 +77,7 @@ ci-test:
 	python3 Scripts/test-ship.py
 	python3 Scripts/test-release-notes.py
 	python3 Scripts/test-check-shader-mirrors.py
+	python3 Scripts/test-check-test-deadlines.py
 	python3 Scripts/calibration/test-calibration.py
 	python3 Scripts/split/test-split.py
 	python3 Scripts/split/test-solver-split.py
@@ -92,6 +94,7 @@ ci-test:
 	python3 -I Scripts/ml/test-field-runs.py
 	python3 Scripts/check-doc-links.py
 	python3 Scripts/check-shader-mirrors.py
+	python3 Scripts/check-test-deadlines.py
 
 check: lint build-strict test ci-test
 

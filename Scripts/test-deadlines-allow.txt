@@ -1,0 +1,15 @@
+# Wall-clock bounds in Tests/ that Scripts/check-test-deadlines.py may let through, each with its
+# reason after `=>`. An entry names the file, the kind of finding and the line's code exactly as it
+# reads (stripped), so it survives lines moving and fails when the line changes. One that no longer
+# matches anything is an error, so the list stays current: delete an entry in the commit that
+# removes what it allows.
+#
+#   <path> [<kind>] <code> => reason
+
+# The hang limit itself, for the core's GPU suites: the one bound a test has.
+Tests/BlastCoreTests/GPUThreads.swift [deadline] watchdog.schedule(deadline: .now() + limit.timeInterval) => the GPU suites' hang-limit watchdog, which is the bound every other test relies on
+Tests/BlastCoreTests/GPUThreads.swift [deadline] let until = Date(timeIntervalSinceNow: seconds) => the watchdog self-test's holders: two minutes only ends a watchdog that never fires, which then fails the test; the holders' saying whether they let go first is what is checked
+
+# Waits for time to pass, checking that nothing happens meanwhile: a slow Mac only lets less
+# happen, so it can make the check weaker but never fail it.
+Tests/BombCADTests/ImportPreviewTests.swift [long-sleep] try await Task.sleep(for: .milliseconds(1100)) => past the superseded request's 1 s delay, the latest preview must still stand

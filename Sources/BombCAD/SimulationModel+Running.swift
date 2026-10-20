@@ -406,9 +406,10 @@ extension SimulationModel {
         }
         // The fragments' last frames may still be in flight: show them once they are in.
         if let fragments {
+            let limit = catchUpLimits.fragments
             Task { [weak self] in
-                let deadline = ContinuousClock.now + .seconds(30)
-                while fragments.report.frame < fragments.sent - 1, ContinuousClock.now < deadline {
+                let start = ContinuousClock.now
+                while fragments.report.frame < fragments.sent - 1, CatchUpLimits.within(limit, since: start) {
                     try? await Task.sleep(for: .milliseconds(20))
                 }
                 guard self?.fragments === fragments else { return }
@@ -429,9 +430,10 @@ extension SimulationModel {
             }
         }
         if let thermal {
+            let limit = catchUpLimits.thermal
             Task { [weak self] in
-                let deadline = ContinuousClock.now + .seconds(120)
-                while !thermal.caughtUp, ContinuousClock.now < deadline {
+                let start = ContinuousClock.now
+                while !thermal.caughtUp, CatchUpLimits.within(limit, since: start) {
                     try? await Task.sleep(for: .milliseconds(20))
                     if self?.thermal === thermal { self?.updateThermalStatus() }
                 }
@@ -439,9 +441,10 @@ extension SimulationModel {
             }
         }
         if let groundShock {
+            let limit = catchUpLimits.groundShock
             Task { [weak self] in
-                let deadline = ContinuousClock.now + .seconds(60)
-                while !groundShock.caughtUp, ContinuousClock.now < deadline {
+                let start = ContinuousClock.now
+                while !groundShock.caughtUp, CatchUpLimits.within(limit, since: start) {
                     try? await Task.sleep(for: .milliseconds(20))
                 }
                 if self?.groundShock === groundShock { self?.updateGroundShockStatus() }

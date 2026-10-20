@@ -42,6 +42,7 @@ struct FragmentOverlayTests {
         var document = document
         document.fragments = fragments
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         while !model.experimentIsReady {
             try await Task.sleep(for: .milliseconds(5))
         }
@@ -149,6 +150,7 @@ struct FragmentOverlayTests {
         var document = airOnly()
         document.fragments = spec()
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
         model.useWorker(worker, host: "the mini")

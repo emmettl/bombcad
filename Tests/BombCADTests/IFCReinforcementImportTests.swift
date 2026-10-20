@@ -13,6 +13,9 @@ import simd
     .enabled(if: IFCImporter.converterURL != nil, "Prepare the pinned IFC converter before integration tests")
 )
 struct IFCReinforcementImportTests {
+    /// However long a loaded Mac takes the converter: the app gives it two minutes.
+    init() { IFCImporter.conversionLimit.value = nil }
+
     private var sample: Data {
         get throws {
             try Data(

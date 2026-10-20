@@ -239,6 +239,8 @@ extension SimulationModel {
         automaticPlaces = plan.places.filter { settings[$0.key] == ConsumerPlacement.automatic }
     }
 
+    /// Probes the thermal radiation, if placed automatically, here and on each Mac connected, so
+    /// that the next run is placed by each Mac's speed now.
     func probeAutomatic(timeout: Duration? = .seconds(30)) async {
         guard thermalHost == ConsumerPlacement.automatic, !isRunning, let kind = companionKinds["thermal"],
             let spec = thermalSpec, (try? spec.validate()) != nil,
@@ -256,8 +258,8 @@ extension SimulationModel {
     /// frame in: each where it ran, and the blast's GPU time, less that of companions here
     /// sharing its GPU.
     func recordCosts(blastGPUSeconds: Double, elapsed: Double) async {
-        let deadline = costCatchUpTimeout.map { ContinuousClock.now + $0 }
-        while !companionsCaughtUp, deadline.map({ ContinuousClock.now < $0 }) ?? true {
+        let start = ContinuousClock.now
+        while !companionsCaughtUp, CatchUpLimits.within(catchUpLimits.costs, since: start) {
             try? await Task.sleep(for: .milliseconds(20))
         }
         guard companionsCaughtUp, let key = runCostKey, elapsed > 0 else { return }

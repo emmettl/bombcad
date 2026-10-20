@@ -316,6 +316,8 @@ func localWorker(name: String = "test worker") -> (SweepWorkerClient, Task<Void,
     let client = SweepWorkerClient(
         name: name, input: fromWorker.fileHandleForReading, output: toWorker.fileHandleForWriting
     ) { try? toWorker.fileHandleForWriting.close() }
+    // However long a loaded Mac takes the worker to greet: one that never does is a hang.
+    client.helloTimeout = nil
     return (client, server)
 }
 

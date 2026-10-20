@@ -18,7 +18,7 @@ struct SimulationModelTests {
         return model
     }
 
-    private func waitUntil(timeout: Duration = .seconds(30), _ condition: () -> Bool) async throws {
+    private func waitUntil(_ condition: () -> Bool) async throws {
         while !condition() {
             try await Task.sleep(for: .milliseconds(5))
         }

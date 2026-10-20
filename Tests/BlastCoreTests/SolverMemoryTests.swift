@@ -28,9 +28,11 @@ struct SolverMemoryTests {
             solver = built
             mask = built.maskBuffer
         }
-        // Metal may let go of a buffer a little after its last command buffer finishes.
-        for _ in 0..<50 where mask != nil { Thread.sleep(forTimeInterval: 0.01) }
         #expect(solver == nil)
+        // Metal may let go of a buffer a little after its last command buffer finishes, and on a
+        // loaded Mac a lot after: however long that takes. A buffer kept for good is a leak, which
+        // the suite's hang limit reports, naming this test.
+        while mask != nil { Thread.sleep(forTimeInterval: 0.01) }
         #expect(mask == nil, "the mask buffer outlived its solver and its pool")
     }
 

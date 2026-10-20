@@ -721,10 +721,13 @@ Finding the port hung it too, now and then under load (19 October 2026): `Nearby
 put its own state handler on the listener and then looked whether it was already ready, and a
 listener coming up just then fell between the two. Timed in a probe, that missed `.ready` on 5 of
 3,000 fresh listeners, each then waiting for ever at no CPU; a test run calls it about seven times.
-It now looks at the listener's state every 10 ms, for up to 20 s. A
+It now looks at the listener's state every 10 ms, for up to the connect limit. A
 listener that takes connections and never speaks checks the deadlines (a stalled TLS handshake, a
-silent peer), and each network test has a one-minute limit (`.networkLimit`), so a stall fails
-in a minute instead of holding a check, and its GPU slot, for the ten-minute hang limit.
+silent peer, a send never taken in, a code never checked), each test giving its own and checking
+only that it never comes early. The other tests connect with no deadlines (`NearbyWorkers.Limits.none`,
+on both ends): on a loaded Studio (19 October 2026) a test process stalled for a minute, longer
+than any step's limit, so a stall there is the ten-minute hang limit's to catch. A three-minute
+limit on these tests (`.networkLimit`) went for the same reason.
 
 ## Better first
 

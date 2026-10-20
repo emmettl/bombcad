@@ -44,6 +44,7 @@ struct GroundShockOverlayTests {
         var document = document
         document.groundShock = groundShock
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         try await waitUntil(model) { model.experimentIsReady }
         model.run()
         try await waitUntil(model) {
@@ -168,6 +169,7 @@ struct GroundShockOverlayTests {
         var document = airOnly()
         document.groundShock = outside
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         try await waitUntil(model) { model.experimentIsReady }
         model.run()
         try await waitUntil(model) { !model.isRunning && !model.hasPendingGPUWork }
@@ -208,6 +210,7 @@ struct GroundShockOverlayTests {
         var document = airOnly()
         document.groundShock = spec()
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.catchUpLimits = .unbounded
         let (worker, server) = localWorker(name: "the mini")
         _ = try await worker.start()
         model.useWorker(worker, host: "the mini")

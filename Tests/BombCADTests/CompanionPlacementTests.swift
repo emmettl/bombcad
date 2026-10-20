@@ -28,6 +28,8 @@ struct CompanionPlacementTests {
     }
 
     private func run(_ model: SimulationModel) async throws -> SavedSimulationRun {
+        // However long a loaded Mac takes the companions to catch up after the run.
+        model.catchUpLimits = .unbounded
         while !model.experimentIsReady {
             try #require(model.errorMessage == nil)
             try await Task.sleep(for: .milliseconds(5))
@@ -92,7 +94,7 @@ struct AutomaticCompanionPlacementTests {
         document.thermal = thermal
         let model = SimulationModel(document: document, playbackSpeed: .unlimited)
         model.costStore = store
-        model.costCatchUpTimeout = nil
+        model.catchUpLimits = .unbounded
         return model
     }
 

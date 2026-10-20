@@ -337,6 +337,20 @@ minutes at load averages of 50–140, so a deadline failed for load rather than 
 that never gets there is failed as hung after ten minutes (`hangLimit`). Paced playback is
 checked on a clock the test drives, not the wall's.
 
+The app's own deadlines take nil in the tests, keeping the app's values otherwise: a connection's
+steps and a worker's greeting (`NearbyWorkers.Limits.none`, `SweepWorkerClient.helloTimeout`),
+the probes that place companions by cost (`probeTimeout`), the end of a run waiting for its
+companions' last frames (`SimulationModel.catchUpLimits`), an ensemble worker's answer
+(`answerLimit`) and the IFC converter (`IFCImporter.conversionLimit`). On 19 and 20 October
+2026 a test process on the loaded Studio stalled for about a minute, and tests failed for a 20-fold
+margin on a one-second limit, a 30 s probe, a three-minute limit on the network tests and a
+consumer that never caught up. A test of a deadline itself gives its own and checks only that it
+never comes early, or runs its timer by hand. `Scripts/check-test-deadlines.py` (in `ci-test`)
+reports any new wall-clock bound in Tests/: an upper bound on elapsed time, a deadline, a time
+limit shorter than the target's hang limit, a sleep of a second or more, or a wait that gives up
+after a count of sleeps; the few deliberate ones are listed in
+`Scripts/test-deadlines-allow.txt`, each with its reason.
+
 The core tests have no deadlines, sleeps or timings of their own (their elapsed times are
 simulated), but the solvers wait on the GPU synchronously. On Swift Testing's few cooperative
 threads those waits starved the rest: with the GPU busy, even trivial tests reported only near

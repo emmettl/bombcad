@@ -27,6 +27,20 @@ enum NearbyWorkers {
     /// How long the other Mac's user has to check a pairing code.
     static let checkLimit = Duration.seconds(300)
 
+    /// The deadlines a connection's steps have, and its worker's greeting: the app's (`.app`), or
+    /// none (`.none`, nil each), as the tests ask, so that a loaded Mac cannot fail them; a step
+    /// that stalls is then their hang limit's to catch. A test of the deadlines themselves passes
+    /// its own to each step (`within:`).
+    struct Limits: Equatable, Sendable {
+        var connect: Duration? = NearbyWorkers.connectLimit
+        var message: Duration? = NearbyWorkers.messageLimit
+        var check: Duration? = NearbyWorkers.checkLimit
+        var hello: Duration? = SweepWorkerClient.helloLimit
+
+        static let app = Limits()
+        static let none = Limits(connect: nil, message: nil, check: nil, hello: nil)
+    }
+
     /// Finds the sharing Mac `id` offering `service`, waiting up to a time: by Bonjour, or in tests
     /// the address a server in the same process listens on.
     typealias Resolve =
@@ -185,7 +199,7 @@ enum NearbyWorkers {
     @MainActor
     static func connect(
         host: String, gate: RemoteGate? = nil, store: PairingStore = NearbyWorkers.store,
-        discovery: Duration = .seconds(10), resolve: Resolve = NearbyBrowser.find
+        discovery: Duration = .seconds(10), resolve: Resolve = NearbyBrowser.find, limits: Limits = .app
     ) async throws -> SweepWorkerClient {
         let name = name(of: host)
         guard let pairing = store.pairing(named: name) else {
@@ -200,7 +214,7 @@ enum NearbyWorkers {
         let parameters = sessionParameters(keys: [(store.me.id.uuidString, pairing.key)])
         if let link = found.bestInterface { parameters.requiredInterface = link }
         let connection = NWConnection(to: found.endpoint, using: parameters)
-        let channel = ConnectionChannel(connection, peer: name)
+        let channel = ConnectionChannel(connection, peer: name, limits: limits)
         do {
             try await channel.start()
             try await channel.sendFrame(JSONEncoder().encode(SessionRequest(gate: gate)))
@@ -225,6 +239,7 @@ enum NearbyWorkers {
             try? toWorker.fileHandleForWriting.close()
             connection.cancel()
         }
+        client.helloTimeout = limits.hello
         do {
             _ = try await client.start()
         } catch {
@@ -239,14 +254,14 @@ enum NearbyWorkers {
     @MainActor
     static func pair(
         with id: UUID, store: PairingStore = NearbyWorkers.store, discovery: Duration = .seconds(10),
-        resolve: Resolve = NearbyBrowser.find,
+        resolve: Resolve = NearbyBrowser.find, limits: Limits = .app,
         confirm: @escaping @Sendable (NearbyPairing.Peer, String) async -> Bool
     ) async throws -> NearbyPairing.Pairing {
         let found = try await resolve(id, pairingService, discovery)
         let parameters = pairingParameters()
         if let link = found.bestInterface { parameters.requiredInterface = link }
         let connection = NWConnection(to: found.endpoint, using: parameters)
-        let channel = ConnectionChannel(connection, peer: found.name)
+        let channel = ConnectionChannel(connection, peer: found.name, limits: limits)
         defer { connection.cancel() }
         try await channel.start()
         let pairing = try await NearbyPairing.pair(over: channel, me: store.me, confirm: confirm)
@@ -378,35 +393,47 @@ final class NearbyBrowser {
 // MARK: - Connections
 
 /// A connection as length-prefixed frames, for pairing and a session's first exchange. Each step
-/// has a deadline (`NearbyWorkers.connectLimit` and the rest): a Mac that stops answering, or a
-/// handshake that stalls, drops the connection with `NearbyError.timedOut` rather than waiting for
-/// ever, as Network.framework would.
+/// has a deadline (`limits`, the app's `NearbyWorkers.connectLimit` and the rest): a Mac that stops
+/// answering, or a handshake that stalls, drops the connection with `NearbyError.timedOut` rather
+/// than waiting for ever, as Network.framework would.
 final class ConnectionChannel: PairingChannel, @unchecked Sendable {
     let connection: NWConnection
     /// The other Mac as messages name it.
     let peer: String
+    /// Each step's deadline, unless the step is given its own.
+    let limits: NearbyWorkers.Limits
     private let queue = DispatchQueue(label: "dev.bombcad.nearby.connection")
+    /// Sets a step's timer going, to run once its limit has passed: on the channel's queue, or, in
+    /// a test, kept to be run by hand, so that it runs after the step however slow the Mac.
+    var arm: (_ limit: Duration, _ timer: DispatchWorkItem) -> Void
 
-    init(_ connection: NWConnection, peer: String = "The other Mac") {
+    init(_ connection: NWConnection, peer: String = "The other Mac", limits: NearbyWorkers.Limits = .app) {
         self.connection = connection
         self.peer = peer
+        self.limits = limits
+        arm = { [queue] limit, timer in
+            let (seconds, attoseconds) = limit.components
+            queue.asyncAfter(
+                deadline: .now()
+                    + .nanoseconds(Int(seconds) * 1_000_000_000 + Int(attoseconds / 1_000_000_000)),
+                execute: timer)
+        }
     }
 
     /// `body`'s result, unless it takes longer than `limit`: then the connection is cancelled,
-    /// which ends whatever `body` waits on, and the error is `NearbyError.timedOut(reason)`.
+    /// which ends whatever `body` waits on, and the error is `NearbyError.timedOut(reason)`. With
+    /// no limit, however long `body` takes.
     func within<T>(
-        _ limit: Duration, _ reason: @autoclosure () -> String, _ body: () async throws -> T
+        _ limit: Duration?, _ reason: @autoclosure () -> String, _ body: () async throws -> T
     ) async throws -> T {
+        guard let limit else { return try await body() }
         // The first of the timer and `body` to finish claims it.
         let once = OnceFlag()
         let connection = connection
         let timer = DispatchWorkItem {
             if once.claim() { connection.cancel() }
         }
-        let (seconds, attoseconds) = limit.components
-        queue.asyncAfter(
-            deadline: .now() + .nanoseconds(Int(seconds) * 1_000_000_000 + Int(attoseconds / 1_000_000_000)),
-            execute: timer)
+        arm(limit, timer)
         let value: T
         do {
             value = try await body()
@@ -426,8 +453,11 @@ final class ConnectionChannel: PairingChannel, @unchecked Sendable {
     }
 
     /// Starts the connection and waits until it is ready, TLS handshake and all, or fails.
-    func start(within limit: Duration = NearbyWorkers.connectLimit) async throws {
-        try await within(limit, "\(peer) did not finish connecting within \(Self.describe(limit)).") {
+    func start() async throws { try await start(within: limits.connect) }
+
+    func start(within limit: Duration?) async throws {
+        try await within(limit, "\(peer) did not finish connecting within \(Self.describe(limit ?? .zero)).")
+        {
             try await open()
         }
     }
@@ -457,11 +487,13 @@ final class ConnectionChannel: PairingChannel, @unchecked Sendable {
         }
     }
 
-    func sendFrame(_ data: Data, within limit: Duration = NearbyWorkers.messageLimit) async throws {
+    func sendFrame(_ data: Data) async throws { try await sendFrame(data, within: limits.message) }
+
+    func sendFrame(_ data: Data, within limit: Duration?) async throws {
         var count = UInt32(data.count).bigEndian
         let frame = Data(bytes: &count, count: 4) + data
         let connection = connection
-        try await within(limit, "\(peer) stopped taking messages for \(Self.describe(limit)).") {
+        try await within(limit, "\(peer) stopped taking messages for \(Self.describe(limit ?? .zero)).") {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 connection.send(
                     content: frame,
@@ -472,9 +504,12 @@ final class ConnectionChannel: PairingChannel, @unchecked Sendable {
         }
     }
 
-    /// The next frame, waiting up to `limit` for it.
-    func receiveFrame(within limit: Duration = NearbyWorkers.messageLimit) async throws -> Data {
-        try await within(limit, "\(peer) stopped answering for \(Self.describe(limit)).") {
+    /// The next frame, waiting up to the channel's limit for it.
+    func receiveFrame() async throws -> Data { try await receiveFrame(within: limits.message) }
+
+    /// The next frame, waiting up to `limit` for it (nil: however long it takes).
+    func receiveFrame(within limit: Duration?) async throws -> Data {
+        try await within(limit, "\(peer) stopped answering for \(Self.describe(limit ?? .zero)).") {
             let header = try await receive(exactly: 4)
             let count = Int(header.withUnsafeBytes { $0.loadUnaligned(as: UInt32.self).bigEndian })
             guard count <= 1 << 20 else {
@@ -509,12 +544,13 @@ final class ConnectionChannel: PairingChannel, @unchecked Sendable {
     }
 
     func receiveAfterCheck() async throws -> NearbyPairing.Message {
-        let limit = NearbyWorkers.checkLimit
+        let limit = limits.check
         do {
             return try JSONDecoder().decode(
                 NearbyPairing.Message.self, from: try await receiveFrame(within: limit))
         } catch NearbyError.timedOut {
-            throw NearbyError.timedOut("The code was not checked on \(peer) within \(Self.describe(limit)).")
+            throw NearbyError.timedOut(
+                "The code was not checked on \(peer) within \(Self.describe(limit ?? .zero)).")
         }
     }
 }
@@ -594,6 +630,8 @@ final class NearbyServer {
     var log: (String) -> Void = { _ in }
     /// Told when a Mac pairs, for a list on screen.
     var paired: (NearbyPairing.Peer) -> Void = { _ in }
+    /// The deadlines of the connections it answers, and of its listeners getting ready.
+    var limits = NearbyWorkers.Limits.app
 
     init(
         store: PairingStore = NearbyWorkers.store, name: String? = nil,
@@ -633,17 +671,20 @@ final class NearbyServer {
         sessionListener = nil
     }
 
-    /// The port `service` listens on, once it is ready, waiting up to `limit`. It looks at the
-    /// listener's state rather than taking over its handler: a handler set while the listener is
-    /// becoming ready can miss the change, and the wait had no end.
-    func port(of service: String, within limit: Duration = NearbyWorkers.connectLimit) async throws
-        -> NWEndpoint.Port
-    {
+    /// The port `service` listens on, once it is ready, waiting up to the connect limit.
+    func port(of service: String) async throws -> NWEndpoint.Port {
+        try await port(of: service, within: limits.connect)
+    }
+
+    /// The port `service` listens on, once it is ready, waiting up to `limit` (nil: however long it
+    /// takes). It looks at the listener's state rather than taking over its handler: a handler set
+    /// while the listener is becoming ready can miss the change, and the wait had no end.
+    func port(of service: String, within limit: Duration?) async throws -> NWEndpoint.Port {
         guard let listener = service == NearbyWorkers.pairingService ? pairingListener : sessionListener
         else {
             throw NearbyError.closed
         }
-        let deadline = ContinuousClock.now + limit
+        let start = ContinuousClock.now
         while true {
             switch listener.state {
             case .ready: if let port = listener.port { return port }
@@ -651,7 +692,7 @@ final class NearbyServer {
             case .cancelled: throw NearbyError.closed
             default: break
             }
-            guard ContinuousClock.now < deadline else {
+            if let limit, start.duration(to: .now) >= limit {
                 throw NearbyError.timedOut(
                     "This Mac's \(service) service was not listening within \(ConnectionChannel.describe(limit))."
                 )
@@ -689,7 +730,7 @@ final class NearbyServer {
     }
 
     private func answerPairing(_ connection: NWConnection) {
-        let channel = ConnectionChannel(connection)
+        let channel = ConnectionChannel(connection, limits: limits)
         Task { @MainActor in
             defer { connection.cancel() }
             do {
@@ -709,7 +750,7 @@ final class NearbyServer {
     }
 
     private func serveSession(_ connection: NWConnection) {
-        let channel = ConnectionChannel(connection)
+        let channel = ConnectionChannel(connection, limits: limits)
         Task { @MainActor in
             do {
                 try await channel.start()

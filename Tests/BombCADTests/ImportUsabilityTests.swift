@@ -7,6 +7,9 @@ import simd
 
 @MainActor @Suite("Import usability", .serialized, .hangLimit)
 struct ImportUsabilityTests {
+    /// However long a loaded Mac takes the converter: the app gives it two minutes.
+    init() { IFCImporter.conversionLimit.value = nil }
+
     private func cube(_ name: String = "Block", x: Float = 0, width: Float = 1, offset: Int = 0) -> String {
         let points: [SIMD3<Float>] = [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(1, 1, 0), SIMD3(0, 1, 0), SIMD3(0, 0, 1), SIMD3(1, 0, 1),

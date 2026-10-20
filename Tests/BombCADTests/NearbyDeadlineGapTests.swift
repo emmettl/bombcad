@@ -45,8 +45,9 @@ private final class SilentMac: @unchecked Sendable {
     }
 }
 
-/// The reason `body` gave up for, when it failed with `NearbyError.timedOut`, and how long it took;
-/// any other outcome is recorded as an issue and gives no reason.
+/// The reason `body` gave up for, when it failed with `NearbyError.timedOut`, and how long it took
+/// (which only a deadline's never coming early bounds: a loaded Mac can take any time longer); any
+/// other outcome is recorded as an issue and gives no reason.
 private func timedOut(_ body: () async throws -> Void) async -> (reason: String?, took: Duration) {
     let start = ContinuousClock.now
     do {
@@ -71,10 +72,11 @@ private func timedOut(_ body: () async throws -> Void) async -> (reason: String?
 /// error names the Mac, that a stalled send runs out too, that a step finished in time leaves no
 /// timer behind to drop the connection later, that an error before the deadline is passed on as it
 /// is, and that the pairing waits on the code check through the step that has the long deadline.
-/// Each shortens the deadline through the `within:` argument the steps take, so each takes
-/// seconds; the five-minute check on a real connection has no such argument (see the end of the
-/// file).
-@Suite("Nearby connection deadlines not otherwise reached")
+/// Each shortens the deadline through the `within:` argument the steps take, or the channel's
+/// `limits`, so each takes seconds. None bounds how long a step takes past its deadline, nor needs
+/// a step to finish within one: under a full parallel run a whole test process can stall for a
+/// minute; a deadline that never comes is the hang limit's to catch.
+@Suite("Nearby connection deadlines not otherwise reached", .hangLimit)
 struct NearbyDeadlineGapTests {
     /// The limits as the app ships them, and as its messages say them. `stalls` passes its own
     /// limit of one second to every step, so nothing else looks at these values; a slip to
@@ -91,13 +93,19 @@ struct NearbyDeadlineGapTests {
         #expect(ConnectionChannel.describe(NearbyWorkers.messageLimit) == minute)
         let check = ConnectionChannel.describe(NearbyWorkers.checkLimit)
         #expect(check.contains("5") && !check.contains("300"))
+        // A channel takes these unless given others (as the tests give `.none`).
+        #expect(
+            NearbyWorkers.Limits.app
+                == .init(
+                    connect: .seconds(60), message: .seconds(60), check: .seconds(300), hello: .seconds(60)))
+        #expect(NearbyWorkers.Limits.none == .init(connect: nil, message: nil, check: nil, hello: nil))
     }
 
     /// A TLS handshake the other Mac never answers runs out with `NearbyError.timedOut` naming the
     /// Mac the channel was made for, and the connection is cancelled rather than left open.
     /// `stalls` reaches this step but checks only the error's case, not its name nor the
     /// connection's state.
-    @Test("A handshake that stalls fails naming the Mac, and the connection is dropped", .networkLimit)
+    @Test("A handshake that stalls fails naming the Mac, and the connection is dropped")
     func handshakeNamesTheMac() async throws {
         let silent = try await SilentMac()
         defer { silent.stop() }
@@ -111,9 +119,9 @@ struct NearbyDeadlineGapTests {
         let (reason, took) = await timedOut { try await channel.start(within: limit) }
         let said = try #require(reason)
         #expect(said.contains("Silent Studio") && said.contains("connecting"))
-        // Measured 1.07 s on the Studio on 19 October 2026; twenty times the limit allowed, as
-        // `stalls` allows, for a loaded machine.
-        #expect(took >= limit && took < limit * 20)
+        // Never before the limit (1.07 s on the Studio on 19 October 2026, but a loaded Mac can
+        // take any time longer).
+        #expect(took >= limit)
         // The channel's own wait ends on the connection's cancellation, so it is cancelled by now.
         if case .cancelled = channel.connection.state {
         } else {
@@ -124,32 +132,35 @@ struct NearbyDeadlineGapTests {
     /// A connection that opens and then hears nothing runs out on the next frame, naming the Mac
     /// and saying it stopped answering, not that it did not connect. `stalls` reaches this step
     /// with the default name and checks only the error's case.
-    @Test("A Mac that stops answering mid-exchange fails naming it", .networkLimit)
+    @Test("A Mac that stops answering mid-exchange fails naming it")
     func silenceNamesTheMac() async throws {
         let silent = try await SilentMac()
         defer { silent.stop() }
+        // Connecting has no deadline: only the receive's is under test.
         let channel = ConnectionChannel(
-            NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Quiet Mini")
+            NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Quiet Mini",
+            limits: .none)
         defer { channel.connection.cancel() }
         try await channel.start()
         let limit = Duration.seconds(1)
         let (reason, took) = await timedOut { _ = try await channel.receiveFrame(within: limit) }
         let said = try #require(reason)
         #expect(said.contains("Quiet Mini") && said.contains("stopped answering"))
-        // Measured 1.06 s; twenty times the limit allowed, as `stalls` allows.
-        #expect(took >= limit && took < limit * 20)
+        // Never before the limit (measured 1.06 s).
+        #expect(took >= limit)
     }
 
     /// A send the other Mac never takes in, once the socket buffers on both sides are full, runs
     /// out with `NearbyError.timedOut` naming the Mac and saying it stopped taking messages. No
     /// other test sends to a Mac that does not read, so `sendFrame`'s deadline is reached nowhere
     /// else.
-    @Test("A Mac that stops taking messages fails naming it", .networkLimit)
+    @Test("A Mac that stops taking messages fails naming it")
     func stalledSendNamesTheMac() async throws {
         let silent = try await SilentMac()
         defer { silent.stop() }
         let channel = ConnectionChannel(
-            NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Full Studio")
+            NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Full Studio",
+            limits: .none)
         defer { channel.connection.cancel() }
         try await channel.start()
         // 64 MB is far more than loopback's send and receive buffers together hold (a few MB on
@@ -161,27 +172,33 @@ struct NearbyDeadlineGapTests {
         let (reason, took) = await timedOut { try await channel.sendFrame(frame, within: limit) }
         let said = try #require(reason)
         #expect(said.contains("Full Studio") && said.contains("stopped taking messages"))
-        // Measured 1.06 s; twenty times the limit allowed, as `stalls` allows.
-        #expect(took >= limit && took < limit * 20)
+        // Never before the limit (measured 1.06 s).
+        #expect(took >= limit)
     }
 
     /// Each step's timer is cancelled when the step finishes in time (`within`'s `timer.cancel()`).
     /// Were it not, the connect timer would fire later and cancel a connection already in use: the
     /// next step would then fail with the connection's own error rather than a time-out, or a
-    /// session would drop mid-run. No other test waits past a finished step's limit.
-    @Test("A step finished in time leaves no timer behind to drop the connection later", .networkLimit)
+    /// session would drop mid-run. No other test runs a finished step's timer. The timer is kept
+    /// rather than set going, and run by hand once the step is done, as its limit passing would:
+    /// on a loaded Mac a step can take longer than any limit short enough to wait out (one took past
+    /// 300 ms over loopback on the CI mini, 19 October 2026).
+    @Test("A step finished in time leaves no timer behind to drop the connection later")
     func finishedStepLeavesNoTimer() async throws {
         let silent = try await SilentMac()
         defer { silent.stop() }
         let channel = ConnectionChannel(
             NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Studio")
         defer { channel.connection.cancel() }
-        // A plain TCP connection over loopback opens in milliseconds, but on the loaded CI mini
-        // (19 October 2026) one took past 300 ms; 5 s leaves room for that, and 6 s more is well
-        // past the limit (the test takes about 7 s).
-        let connectLimit = Duration.seconds(5)
-        try await channel.start(within: connectLimit)
-        try await Task.sleep(for: .seconds(6))
+        let real = channel.arm
+        let timers = Locked<[DispatchWorkItem]>([])
+        channel.arm = { _, timer in timers.update { $0.append(timer) } }
+        try await channel.start(within: .seconds(5))
+        channel.arm = real
+        // The limit passes, after the step.
+        let connectTimer = try #require(timers.value.first)
+        #expect(timers.value.count == 1 && connectTimer.isCancelled)
+        connectTimer.perform()
         if case .ready = channel.connection.state {
         } else {
             Issue.record("The connection was \(channel.connection.state) after its connect limit passed.")
@@ -197,17 +214,20 @@ struct NearbyDeadlineGapTests {
     /// larger than a megabyte. The other Nearby tests fail before any deadline only through the
     /// pairing and session logic, which none checks for its error's case, and none sends a frame
     /// too large.
-    @Test("An error before the deadline is passed on as it is, not as a time-out", .networkLimit)
+    @Test("An error before the deadline is passed on as it is, not as a time-out")
     func earlyErrorIsNotATimeOut() async throws {
         var count = UInt32(2 << 20).bigEndian
         let silent = try await SilentMac(saying: Data(bytes: &count, count: 4))
         defer { silent.stop() }
         let channel = ConnectionChannel(
-            NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Studio")
+            NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Studio",
+            limits: .none)
         defer { channel.connection.cancel() }
         try await channel.start()
-        let limit = Duration.seconds(10)
-        let start = ContinuousClock.now
+        // The header arrives over loopback in milliseconds (measured 0.6 ms); an hour, so that no
+        // stall of a loaded Mac lets the deadline come first. The error being `refused`, not
+        // `timedOut`, is what shows it came before the deadline.
+        let limit = Duration.seconds(3600)
         do {
             _ = try await channel.receiveFrame(within: limit)
             Issue.record("A frame too large was taken.")
@@ -216,9 +236,6 @@ struct NearbyDeadlineGapTests {
         } catch {
             Issue.record("Failed otherwise: \(error)")
         }
-        // The header arrives over loopback in milliseconds (measured 0.6 ms), so well before half
-        // the limit.
-        #expect(ContinuousClock.now - start < limit / 2)
         // The timer was cancelled with the step: the connection is not dropped at the limit.
         if case .cancelled = channel.connection.state {
             Issue.record("The connection was cancelled although no deadline passed.")
@@ -258,42 +275,25 @@ struct NearbyDeadlineGapTests {
         }
     }
 
-    // The five-minute check on a real connection cannot be shortened from a test:
-    // `ConnectionChannel.receiveAfterCheck()` (Sources/BombCAD/NearbyWorkers.swift, near line 509)
-    // reads `NearbyWorkers.checkLimit`, a `static let`, and takes no limit, because the
-    // `PairingChannel` requirement has no argument. So its rewording of a time-out ("The code was
-    // not checked on <Mac> within 5 minutes.") is reached by no test.
-    //
-    // Needs seam: an overload that takes the limit, which the requirement calls:
-    //
-    //     func receiveAfterCheck() async throws -> NearbyPairing.Message {
-    //         try await receiveAfterCheck(within: NearbyWorkers.checkLimit)
-    //     }
-    //
-    //     func receiveAfterCheck(within limit: Duration) async throws -> NearbyPairing.Message {
-    //         ... the present body, with `limit` in place of the constant ...
-    //     }
-    //
-    // and then, in this suite:
-    //
-    //     /// A code never checked on the other Mac runs out with its own message, naming the Mac
-    //     /// and the check rather than a silent link.
-    //     @Test("A code not checked in time says so, naming the Mac", .networkLimit)
-    //     func checkNamesTheMac() async throws {
-    //         let silent = try await SilentMac()
-    //         defer { silent.stop() }
-    //         let channel = ConnectionChannel(
-    //             NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()),
-    //             peer: "Studio")
-    //         defer { channel.connection.cancel() }
-    //         try await channel.start()
-    //         let limit = Duration.seconds(1)
-    //         let (reason, took) = await timedOut { _ = try await channel.receiveAfterCheck(within: limit) }
-    //         let said = try #require(reason)
-    //         #expect(said.contains("Studio") && said.contains("code was not checked"))
-    //         // Unverified tolerance: twenty times the limit, as `stalls` allows.
-    //         #expect(took >= limit && took < limit * 20)
-    //     }
+    /// A code never checked on the other Mac runs out with its own message, naming the Mac and the
+    /// check rather than a silent link: the five-minute check on a real connection, shortened
+    /// through the channel's `limits` (the `PairingChannel` requirement takes no limit).
+    @Test("A code not checked in time says so, naming the Mac")
+    func checkNamesTheMac() async throws {
+        let silent = try await SilentMac()
+        defer { silent.stop() }
+        let limit = Duration.seconds(1)
+        let channel = ConnectionChannel(
+            NWConnection(to: silent.endpoint, using: NearbyWorkers.pairingParameters()), peer: "Studio",
+            limits: .init(connect: nil, message: nil, check: limit, hello: nil))
+        defer { channel.connection.cancel() }
+        try await channel.start()
+        let (reason, took) = await timedOut { _ = try await channel.receiveAfterCheck() }
+        let said = try #require(reason)
+        #expect(said.contains("Studio") && said.contains("code was not checked"))
+        // Never before the limit.
+        #expect(took >= limit)
+    }
 }
 
 /// Two ends of a pairing exchange in one process, as `NearbyPairingTests`' queue channel, but with
