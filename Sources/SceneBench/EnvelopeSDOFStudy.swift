@@ -7,7 +7,7 @@ import simd
 /// building free to respond (stage 3a's records), with the cost of each and what not venting
 /// leaves out.
 ///
-///     scenebench envelope-sdof <reference directory> [--edges=fixed|simple] [--glass=large|small|large-at-45]
+///     scenebench envelope-sdof <reference directory> [--edges=fixed|simple] [--glass=large|small|large-at-45] [--arching]
 ///         [--out=<file.json>]
 ///
 /// `--glass`: Moore's large-deflection panes breaking by glass's static fatigue (the default),
@@ -70,9 +70,24 @@ enum EnvelopeSDOFStudy {
         var components: [Row]
     }
 
-    static func system(for component: Component, edges: EnvelopePanel.Edges, glass: String = "large")
+    static func system(
+        for component: Component, edges: EnvelopePanel.Edges, glass: String = "large", arching: Bool = false
+    )
         -> SDOFSystem?
     {
+        // `--arching`: a brick wall arches across its width between the building's corners
+        // (`EnvelopePanel.arching`, as `EnvelopeConstruction.masonryArching` judges it).
+        if arching, component.material == "masonry", component.kind == "wall", component.axis != 2,
+            let system = system(for: component, edges: edges, glass: glass)
+        {
+            let horizontal = component.axis == 0 ? 1 : 0
+            let width = Double(component.region[1][horizontal] - component.region[0][horizontal])
+            var masonry = StructureMaterial.masonry
+            masonry.steel = nil
+            return EnvelopePanel.arching(
+                system, thickness: 0.215, material: masonry,
+                span: min(width, EnvelopeDamageAssessment.largestSpan))
+        }
         let a = Double(component.shortSpanM)
         let b = Double(component.longSpanM)
         switch component.material {
@@ -130,6 +145,7 @@ enum EnvelopeSDOFStudy {
         }
         let edges: EnvelopePanel.Edges = option("edges") == "simple" ? .simplySupported : .fixed
         let glass = option("glass") ?? "large"
+        let arching = arguments.contains("--arching")
         let folder = URL(fileURLWithPath: directory)
         let names = try FileManager.default.contentsOfDirectory(atPath: directory)
             .filter { $0.hasSuffix(".json") && !$0.hasSuffix("-envelope.json") }
@@ -149,7 +165,7 @@ enum EnvelopeSDOFStudy {
             var sdofTime = 0.0
             var openings: [UUID: [(area: Double, opens: Double, outer: [Double])]] = [:]
             for component in detailed.components {
-                guard let system = system(for: component, edges: edges, glass: glass),
+                guard let system = system(for: component, edges: edges, glass: glass, arching: arching),
                     let load = loads[component.id]
                 else {
                     continue

@@ -4,7 +4,7 @@ import Metal
 import simd
 
 // `blastbench envelope-walls [--cases alsubaei-half,alsubaei-canopied,alsubaei-block25,alsubaei-block125,
-//   keys-WR1A,keys-WR1B,keys-WR2C] [--time 0.25] [--out <dir>]`: freestanding walls as envelopes, judged
+//   keys-WR1A,keys-WR1B,keys-WR2C] [--time 0.25] [--out <dir>] [--from <dir>] [--arching]`: freestanding walls as envelopes, judged
 // one way as cantilevers from their foot (`EnvelopePanel`'s cantilever systems) on the loads the
 // recorder takes on them, against what Alsubaei's and Keys's walls did. Each wall is put in its
 // test's scene (PerimeterWallTests's and MasonryDebrisTests's geometry and charge) as an envelope,
@@ -225,10 +225,14 @@ func runEnvelopeWalls(device: MTLDevice) throws {
                         "  %@: %.1f × %.1f m, freestanding %@, peak net %.0f kPa, positive impulse %.0f Pa s",
                     load.id.split(separator: "/").dropFirst().joined(separator: "/"), load.spans.long,
                     load.height, load.isFreestanding ? "yes" : "no", peak / 1000, impulse))
-            if let app = EnvelopeDamageAssessment.assess(load, construction: wallCase.construction) {
+            // `--arching`: the app's assessment with masonry arching between returns
+            // (`EnvelopeConstruction.masonryArching`).
+            var construction = wallCase.construction
+            if flag("arching") { construction.masonryArching = true }
+            if let app = EnvelopeDamageAssessment.assess(load, construction: construction) {
                 print(
                     String(
-                        format: "    the app's assessment (%@): %.2f°, %@%@", wallCase.construction.detail,
+                        format: "    the app's assessment (%@): %.2f°, %@%@", construction.detail,
                         app.rotationDeg.upperBound, app.levels.upperBound.label,
                         app.failedAtS.map { String(format: ", fallen at %.2f s", $0) } ?? ""))
                 // What it throws, landed, mass-weighted by distance from its face towards the

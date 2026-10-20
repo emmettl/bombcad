@@ -307,6 +307,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case ventedGlazing
     /// Glass judged new or tested, stronger than E1300's weathered glass (`GlassCondition`).
     case newGlass
+    /// Unreinforced masonry walls arch between their returns (`EnvelopeConstruction.masonryArching`).
+    case masonryArching
     /// Gauges beside a wall read the pressure at it (`SolverConfiguration.gaugesReadWallPressure`).
     case wallReadGauges
     // The structure.
@@ -414,6 +416,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
                     || ([construction.glazing] + (construction.sideGlazing.map { Array($0.values) } ?? []))
                         .contains { $0?.condition == .newOrTested }
             }
+        case .masonryArching:
+            return (inputs.scenario.envelopeConstructions ?? []).contains { $0.masonryArching == true }
         case .wallReadGauges: return config.gaugesReadWallPressure
         // Refined air keeps the staircase (`BlastSolver.setUpStructureCut`).
         case .structureCutCells:
@@ -534,7 +538,7 @@ public enum StandingTable {
             return airEntry(for: option)
         case .deflagration, .congestion, .ventPanels:
             return deflagrationEntry(for: option)
-        case .importedEnvelopes, .mapBuildings, .newGlass, .ventedGlazing:
+        case .importedEnvelopes, .mapBuildings, .newGlass, .masonryArching, .ventedGlazing:
             return envelopeEntry(for: option)
         case .shellElements, .shellSectionShear, .noSecondCracks, .noBareBars, .removesFragments,
             .noCrackSlip, .bondSlip, .discreteBars, .nonlocalCracking, .nonDefaultRateWindow,

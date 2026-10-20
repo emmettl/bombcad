@@ -131,6 +131,30 @@ public struct EnvelopeComponentLoad: Sendable {
         return (min(width, height), max(width, height))
     }
 
+    /// The span an upright wall arches across between its returns, m, where both its upright
+    /// edges are held (`EnvelopeConstruction.masonryArching`): its width; also a wall's whose
+    /// edges are not known (taken as held on them). Nil for a roof, slab or pane, a freestanding
+    /// wall, one with an upright edge free, and a block's façade strip (a map building's): its
+    /// sides' holding is the panel's assumption, its openings unknown, and arched it took nearly
+    /// every one of Beirut's 0.5 m stone walls that fail off failing (emmettl/bombcad-work#57).
+    public var archingSpan: Double? {
+        guard kind == .wall, axis != 2, !isFreestanding else { return nil }
+        let width = Double(region.size[axis == 0 ? 1 : 0])
+        guard let edges = supportEdges, edges.count == 4 else { return width }
+        return edges[0] && edges[1] ? width : nil
+    }
+
+    /// This load as arching judges it (`EnvelopeConstruction.masonryArching`): a wall on its foot
+    /// with its top free but both its upright edges held (a storey of a wall no floor holds,
+    /// between its returns) spans across between them, one way, rather than standing free.
+    /// Unchanged otherwise.
+    public var heldAcross: EnvelopeComponentLoad {
+        guard isFreestanding, let edges = supportEdges, edges[0], edges[1] else { return self }
+        var load = self
+        load.supportEdges = [true, true, false, false]
+        return load
+    }
+
     /// The region's two in-plane sizes, shorter first, m.
     public var spans: (short: Double, long: Double) {
         let sizes = (0..<3).filter { $0 != axis }.map { Double(region.size[$0]) }.sorted()
@@ -742,6 +766,7 @@ public enum EnvelopeDamageAssessment {
     )
         -> EnvelopeComponentDamage?
     {
+        let load = Self.arches(construction) ? load.heldAcross : load
         let spans = load.panelSpans
         let a = min(spans.short, largestSpan)
         let b = min(spans.long, largestSpan)
@@ -859,6 +884,9 @@ public enum EnvelopeDamageAssessment {
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry),
                 height: load.panelHeight
             )
+            if !isRoof {
+                system = Self.arched(system, load, construction: construction, thickness: thickness)
+            }
             // A liner spans the shorter way, as a membrane between the supports it is lapped onto.
             if let liner = construction.wallLiner, !isRoof { system = system.lined(liner, span: a) }
             let response = system.response(pressures: pressures, step: load.binS)
@@ -1008,6 +1036,9 @@ public enum EnvelopeDamageAssessment {
                 axialLoad: isRoof || !load.spansVertically
                     ? 0 : overburden(load, buildingTop, thickness: thickness, material: masonry)
             )
+            if !isRoof {
+                system = Self.arched(system, load, construction: construction, thickness: thickness)
+            }
             if let liner = construction.wallLiner, !isRoof { system = system.lined(liner, span: span) }
             let response = system.response(pressures: pressures, step: load.binS)
             // Cracked once past the backbone's first point, lined or not.
@@ -1101,6 +1132,26 @@ public enum EnvelopeDamageAssessment {
 
     /// The weight per metre of a wall's own masonry above it, to the building's top, N/m: what a
     /// wall of a building of several storeys carries at least (its floors' loads are not known).
+    /// Whether `construction`'s walls arch between their returns: unreinforced masonry with
+    /// `masonryArching` set.
+    static func arches(_ construction: EnvelopeConstruction) -> Bool {
+        construction.masonryArching == true && construction.walls == .unreinforcedMasonry
+    }
+
+    /// An unreinforced masonry wall's `system` with arching between its returns, when its
+    /// construction asks for it (`EnvelopeConstruction.masonryArching`) and both its upright edges
+    /// are held (`EnvelopeComponentLoad.archingSpan`, no further than `largestSpan`); else as it is.
+    static func arched(
+        _ system: SDOFSystem, _ load: EnvelopeComponentLoad, construction: EnvelopeConstruction,
+        thickness: Double
+    ) -> SDOFSystem {
+        guard construction.masonryArching == true, let span = load.archingSpan else { return system }
+        var masonry = StructureMaterial.masonry
+        masonry.steel = nil
+        return EnvelopePanel.arching(
+            system, thickness: thickness, material: masonry, span: min(span, largestSpan))
+    }
+
     static func overburden(
         _ load: EnvelopeComponentLoad, _ buildingTop: Double?, thickness: Double, material: StructureMaterial
     ) -> Double {

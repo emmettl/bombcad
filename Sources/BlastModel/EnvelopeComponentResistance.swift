@@ -142,6 +142,61 @@ public enum EnvelopePanel {
             backbone: [SIMD2(resistance / k, resistance), SIMD2(thickness, 0)], span: a)
     }
 
+    /// Points along the arch's resistance that `arching` lays its backbone on.
+    static let archingPoints = 16
+
+    /// `system`, an unreinforced masonry wall `thickness` thick, held against horizontal thrust at
+    /// both ends of `span` (returns: cross walls, party walls, the building's corners), with the
+    /// resistance of arching between them where that is larger. Three hinges, at the ends and the
+    /// middle, each pressing a thrust block of 0.85 f_m half the thickness deep, resist
+    /// q(x) = 1.7 f_m (t − x)² / L² at a deflection x of the middle between rigid abutments,
+    /// falling to nothing at the thickness (after McDowell, McKee and Sevin, "Arching action theory
+    /// of masonry walls", Journal of the Structural Division 82, 1956). The thrust grows only as
+    /// the blocks shorten, so the arch takes hold as the wall deflects: from the wall's cracking
+    /// (its own backbone's first point) the resistance rises straight to the curve at
+    /// x_p = (0.85 f_m / E) L² / (2 t), where struts half the thickness deep have shortened by the
+    /// masonry's strain at that stress (no further than half the thickness), and follows it down.
+    /// The thrust needs the abutments not to give; a terrace's neighbours, pushed the same way,
+    /// balance it at each party wall. `material`'s strength and modulus, without a dynamic
+    /// increase.
+    public static func arching(
+        _ system: SDOFSystem, thickness t: Double, material: StructureMaterial, span: Double
+    ) -> SDOFSystem {
+        guard span > 0, t > 0, let first = system.backbone.first, let last = system.backbone.last,
+            last.y == 0, last.x > first.x, first.x < t
+        else { return system }
+        let strength = Double(material.compressiveStrength)
+        let q0 = 1.7 * strength * t * t / (span * span)
+        guard q0 > first.y else { return system }
+        func curve(_ x: Double) -> Double { x >= t ? 0 : q0 * (1 - x / t) * (1 - x / t) }
+        let peakAt = max(
+            min(0.85 * strength / Double(material.youngsModulus) * span * span / (2 * t), t / 2),
+            first.x)
+        // The arch: rising from the wall's cracking to the curve at its peak, then down it.
+        func arch(_ x: Double) -> Double {
+            guard x < peakAt else { return curve(x) }
+            return first.y + (curve(peakAt) - first.y) * (x - first.x) / (peakAt - first.x)
+        }
+        // The wall's own resistance at x: its backbone, linear between its points.
+        func own(_ x: Double) -> Double {
+            if x <= first.x { return first.y * x / first.x }
+            for (p, q) in zip(system.backbone, system.backbone.dropFirst()) where x <= q.x {
+                return p.y + (q.y - p.y) * (x - p.x) / (q.x - p.x)
+            }
+            return last.y
+        }
+        let end = max(t, last.x)
+        let rising = peakAt > first.x ? 4 : 0
+        var points: [Double] = (0..<rising).map {
+            first.x + (peakAt - first.x) * Double($0 + 1) / Double(rising)
+        }
+        let falling = Self.archingPoints - rising
+        points += (1..<falling).map { peakAt + (end - peakAt) * Double($0) / Double(falling) }
+        var result = system
+        result.backbone = [first] + points.map { SIMD2($0, max(own($0), arch($0))) } + [SIMD2(end, 0)]
+        return result
+    }
+
     /// A glass pane, elastic on small-deflection plate theory until the largest bending stress
     /// reaches its breaking strength, when it loses all resistance (`SDOFResponse.lostResistanceAt`
     /// is when it breaks). Membrane stiffening, which lowers the stress once the deflection

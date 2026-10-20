@@ -133,6 +133,16 @@ struct EnvelopeConstructionEditor: View {
                         edit { $0.wallLiner?.thickness = max(value, 0.5) / 1000 }
                     }
                 }
+                Toggle(
+                    "Arching between returns",
+                    isOn: Binding(
+                        get: { construction.masonryArching == true },
+                        set: { on in edit { $0.masonryArching = on ? true : nil } })
+                )
+                .help(
+                    "Walls held at both upright edges (cross walls, party walls, corners) resist by arching "
+                        + "across their width once cracked, the ends taken as not giving. Off: no arching (the default)."
+                )
             }
             Picker(
                 "Glass",

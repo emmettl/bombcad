@@ -38,6 +38,18 @@ extension StandingTable {
                     + "glass fall below GEER's beyond 2 to 2.5 km: glass weathers towards E1300's in service, so a plan "
                     + "that relies on new glass holds only while it is new.",
                 document: "glass-strength.md")
+        case .masonryArching:
+            return Entry(
+                title: "Masonry arching between returns", affects: [.envelopeDamage], limit: .illustrative,
+                note:
+                    "Unreinforced masonry walls held at both upright edges (not map buildings' façades) resist "
+                    + "by arching across their width once cracked (after McDowell, McKee and Sevin, 1956), the "
+                    + "abutments taken as not giving. On the terraced row the envelope's solid one-brick fronts "
+                    + "then stand from 16.9 m under 96 kg, as the detailed shells' do against Gilbert's wartime "
+                    + "surveys, where without it they fall to 26 m; the damage references' brick walls come "
+                    + "within 0.79–1.30 of the detailed rotations. No arching wall has been compared under a "
+                    + "blast on its own.",
+                document: "building-envelopes.md#arching-between-returns")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -79,6 +91,7 @@ extension StandingTable {
         "EnvelopeConstruction.film": .input,
         "EnvelopeConstruction.wallLiner": .input,
         "EnvelopeConstruction.glassToughened": .input,
+        "EnvelopeConstruction.masonryArching": .option([.masonryArching]),
         "EnvelopeConstruction.glassCondition": .option([.newGlass]),
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,

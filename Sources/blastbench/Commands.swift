@@ -89,6 +89,7 @@ let commands: [String: @Sendable () throws -> Void] = [
     "langdon": { try runLangdon(device: device) },
     "adblast": { try runAdblast(device: device) },
     "envelope-walls": { try runEnvelopeWalls(device: device) },
+    "envelope-terrace": { try runEnvelopeTerrace() },
     "envelope-debris": { try runEnvelopeDebris(device: device) },
     "envelope-regrade": { try runEnvelopeRegrade(device: device) },
     "nian": { try runNian(device: device) },

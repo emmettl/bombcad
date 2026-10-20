@@ -3179,6 +3179,12 @@ Mac Studio.
   14 m. It agrees on cavity walls (both fail). Arching between returns in the envelope's law
   would bring the two together; that changes envelope damage for every masonry wall between
   cross walls, so it is left as a proposal for the user.
+- **Arching in the envelope, as an option** (20 October 2026, emmettl/bombcad-work#57,
+  [arching between returns](building-envelopes.md#arching-between-returns)): with it on, the
+  envelope's solid fronts fall to 13.9 m and stand, cracked, from 16.9 m under 96 kg (from 20 m
+  under 120 kg; the upper storey from 13.9 m under 72 kg), against the shells' 34% of the front
+  down at 13.9 m and 14% at 16.9 m. The cavity leaf still falls to 23 m, as the shells' does. It
+  is off by default.
 
 ## Slabs under contact charges
 

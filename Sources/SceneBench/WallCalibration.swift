@@ -2,7 +2,7 @@ import BlastCore
 import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
-/// [--draws 100] [--inside 0.85] [--walls stone] [--bands 400,700,…] [--out calibration.json]`: how well the walls' and roofs' chances
+/// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each
 /// building's worst wall and worst roof in each run, judged on the run's histories at the
@@ -21,9 +21,12 @@ enum WallCalibration {
         // `--walls stone`: every building's walls and roof taken as 0.5 m stone, as surrogate-judge
         // compares them (the map gives Beirut's all as concrete).
         let stone = value("walls") == "stone"
+        // `--arching`: masonry walls arch between their returns (`EnvelopeConstruction.masonryArching`).
+        let arching = args.contains("--arching")
         func construction(_ scene: Scenario, _ id: UUID) -> EnvelopeConstruction {
-            guard stone else { return scene.envelopeConstruction(for: id) }
             var c = scene.envelopeConstruction(for: id)
+            if arching { c.masonryArching = true }
+            guard stone else { return c }
             c.walls = .unreinforcedMasonry
             c.wallThicknessM = 0.5
             return c
@@ -80,10 +83,11 @@ enum WallCalibration {
                     binS: reference.others!.strips[strip.saved].binS)
             }
             worst.append(levels)
+            let fallen = levels.values.filter { $0.wall >= EnvelopeDamageLevel.failed.rawValue }.count
             print(
                 String(
-                    format: "%.0f t: %d buildings judged on the run's histories", run.mass / 1000,
-                    levels.count))
+                    format: "%.0f t: %d buildings judged on the run's histories, %d with a wall failed",
+                    run.mass / 1000, levels.count, fallen))
         }
 
         // The chances, on the first run's layout, drawn over the runs' yields (all, or all but one).

@@ -67,6 +67,11 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// supports (`WallLiner`); nil for none (left out of the JSON). Freestanding walls are judged
     /// without it.
     public var wallLiner: WallLiner?
+    /// Unreinforced masonry walls arch between their returns (`EnvelopePanel.arching`): a wall held
+    /// at both its upright edges resists by arching across its width once cracked, where that is
+    /// the stronger (not a map building's façade strips, `EnvelopeComponentLoad.archingSpan`). Nil
+    /// or false for no arching, the default (left out of the JSON).
+    public var masonryArching: Bool?
     /// The monolithic glass is thermally toughened, breaking at four times annealed glass's
     /// strength (`EnvelopePanel.filmedGlass`); nil or false for annealed (left out of the JSON).
     public var glassToughened: Bool?

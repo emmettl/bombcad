@@ -528,7 +528,8 @@ load–mass factors through yield. `EnvelopePanel` builds the systems:
   dynamic strengths (UFC Table 4-1: 1.17 and 1.19), the stiffness of a clamped or simply supported
   plate (Timoshenko) on the mean of the gross and cracked sections, elastic–perfectly plastic.
 - **Unreinforced masonry**: elastic until the largest moment reaches f_t t²/6, then rocking with
-  the resistance falling to nothing at a deflection of its thickness; no arching. A wall with
+  the resistance falling to nothing at a deflection of its thickness; no arching unless the
+  construction asks for it ([arching between returns](#arching-between-returns)). A wall with
   storeys above it carries the weight of its own masonry above (its floors' loads are not known)
   and rocks against it, 8 P (t − x) / h² over its height h, as SBEDS treats a wall held by its
   axial load; it takes the larger of the two. For 0.5 m masonry a storey tall and 6 m wide at the foot of
@@ -1276,6 +1277,54 @@ What this says:
   Their tests are in paywalled journals and DTIC reports that could not be read.
 
 The standing is illustrative: one lined wall.
+
+## Arching between returns
+
+An option, off by default: a construction's unreinforced masonry walls arch between their returns
+(`EnvelopeConstruction.masonryArching`, "Arching between returns" in the construction editor),
+emmettl/bombcad-work#57, 20 October 2026. It was built because the detailed shells of the
+[terraced row](validation.md#solid-one-brick-walls-20-october-2026) arch between their party
+walls and keep solid one-brick fronts standing, where the envelope's masonry, which does not arch,
+graded them fallen to 26 m.
+
+**The law** (`EnvelopePanel.arching`): three hinges, at the returns and the middle, each pressing a
+thrust block of 0.85 f_m half the thickness deep, resist q(x) = 1.7 f_m (t − x)² / L² at a
+deflection x of the middle between rigid abutments, falling to nothing at the thickness (after
+McDowell, McKee and Sevin, *Journal of the Structural Division* 82, 1956). The thrust grows only
+as the blocks shorten. So from the wall's own cracking the resistance rises straight to the curve
+at x_p = (0.85 f_m / E) L² / (2 t), where struts half the thickness deep have shortened by the
+masonry's strain at that stress (at most half the thickness), and then follows it down. The wall
+takes the larger of this and its own backbone. With the model's masonry (8 MPa, 6 GPa) a 215 mm
+wall 5 m between returns peaks at 13 kPa, 66 mm in; 6 m wide, at 5.5 kPa, 95 mm in. The arch
+needs abutments that do not give: a terrace's neighbours balance its thrust at each party wall,
+and a building's corners and cross walls are taken to.
+
+**Where it applies:**
+- A wall held at both upright edges (`EnvelopeComponentLoad.archingSpan`): across its width, no
+  more than 6 m (`largestSpan`).
+- A storey of a wall that no floor holds, on its foot and between its returns, which the envelope
+  would otherwise judge as a freestanding cantilever: spanning across between the returns instead
+  (`heldAcross`).
+- **Not** a block's façade strips (map buildings): their sides' holding is only the panel's
+  assumption and their openings are unknown, and arched (as first built) they took nearly all of
+  Beirut's failing stone walls away (below). Nor walls standing free with free sides, walls with
+  an upright edge free, roofs, slabs or other constructions. Their results are the same, bit for bit, whether it is on or off
+  (`MasonryArchingTests`). Wall failure in the air's venting (`EnvelopeWallFailure`) judges the
+  same way.
+
+**Judged (20 October 2026), against the option off:**
+
+| Comparison | Off | On |
+|---|---|---|
+| Terraced row's solid 215 mm front against the shells, 96 kg (`blastbench envelope-terrace`) | fallen at every distance to 23 m (and to 26 m) | fallen to 13.9 m; cracked and standing from 16.9 m (20 m for 120 kg, 13.9 m upper storey for 72 kg). The shells: 65% of the front down at 10.8 m, 34% at 13.9 m, 14% at 16.9 m and 5% at 23 m |
+| Terraced row's cavity leaf (102.5 mm), alone or sharing the load | fallen to 23 m | fallen to 23 m, as the shells' |
+| The damage references' brick walls, SDOF over detailed rotation (14 past 0.1°, `scenebench envelope-sdof --arching`) | median 1.10 (0.82–2.54) | median 1.06 (0.79–1.30): the 50 kg facing wall from 2.54 to 1.30 |
+| Keys's freestanding brick walls and Alsubaei's walls (`blastbench envelope-walls --from … --arching`) | as [above](#freestanding-walls) | identical: freestanding, so not arched |
+| Beirut's buildings as 0.5 m stone, the walls' chances and #19's band test (`scenebench wall-calibrate --walls stone --bands … --arching`) | heavy or worse (cracked) as before | the same: arching acts after cracking, and the map's façade strips do not arch. Arched as first built, façades included, the counts were the same too, but the buildings with a wall fallen within 1.32 km went from 20 and 65 to 1 and 2 of 2,053 at 0.5 and 0.7 kt (510 to 11 at 1.5 kt), where GEER found 7 of 13 sandstone houses at 0.5–0.75 km partly collapsed and the envelope already finds too few ([Beirut](validation.md#a-district-beirut-2020)) |
+
+**Its standing** is illustrative ("Masonry arching between returns"): the detailed shells
+arch as the theory says, but no arching wall has been compared under a blast on its own. Whether
+to make it the default is the user's decision; the numbers above are the case for and against.
 
 ## Damage for envelope buildings: built
 

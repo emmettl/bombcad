@@ -34,6 +34,7 @@ public struct EnvelopeWallFailure: Sendable {
         -> EnvelopeWallFailure?
     {
         guard load.kind == .wall || load.kind == .roof || load.kind == .slab else { return nil }
+        let load = EnvelopeDamageAssessment.arches(construction) ? load.heldAcross : load
         let spans = load.spans
         let a = min(spans.short, EnvelopeDamageAssessment.largestSpan)
         let b = min(spans.long, EnvelopeDamageAssessment.largestSpan)
@@ -123,8 +124,10 @@ public struct EnvelopeWallFailure: Sendable {
                 return EnvelopeWallFailure(
                     systems: [
                         fallen(
-                            EnvelopePanel.unreinforcedMasonryOneWay(
-                                thickness: thickness, material: masonry, span: span, edges: .fixed))
+                            EnvelopeDamageAssessment.arched(
+                                EnvelopePanel.unreinforcedMasonryOneWay(
+                                    thickness: thickness, material: masonry, span: span, edges: .fixed),
+                                load, construction: construction, thickness: thickness))
                     ], cantilever: false)
             case .profiledSteelSheeting:
                 return EnvelopeWallFailure(systems: sheeted(roof: isRoof), cantilever: false)
@@ -147,7 +150,10 @@ public struct EnvelopeWallFailure: Sendable {
             return EnvelopeWallFailure(
                 systems: [
                     fallen(
-                        EnvelopePanel.unreinforcedMasonry(thickness: thickness, material: masonry, a: a, b: b)
+                        EnvelopeDamageAssessment.arched(
+                            EnvelopePanel.unreinforcedMasonry(
+                                thickness: thickness, material: masonry, a: a, b: b),
+                            load, construction: construction, thickness: thickness)
                     )
                 ],
                 cantilever: false)
