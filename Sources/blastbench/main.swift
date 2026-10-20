@@ -75,6 +75,8 @@ import simd
 //                       [--mapped [--early-voxels n] [--early-samples s]] [--hot-air|--grey-air] [--frame-detail]
 //                       [--budget out.csv]   (the fireball's energy budget each frame: heat released by
 //                        temperature and mixture, the luminous gas, what the gas lost to radiation)
+//                       [--burn-mixing C]   (afterburning limited by the sub-grid mixing, an eddy-break-up
+//                        rate; also on validate, gas, gauging and the scene benches)
 //   blastbench radial-profile [--mass 453600] [--reach 2] [--times 0.5,1,1.25,2,5] [--every 4] [--dump prefix] [--jwl]
 //                      (the mapped start's one-dimensional burst through its products' edge and shock)
 //   blastbench shell-sphere [--profile file.csv [--mass kg]] [--voxel 0.5,0.25]
@@ -303,6 +305,7 @@ func applyChosenAir(_ configuration: inout SolverConfiguration) {
     configuration.afterburning = burning
     configuration.airModel = chosenGas()
     configuration.openFaces = chosenFaces()
+    configuration.afterburnMixing = chosenBurnMixing()
     // `--wall-read`: gauges beside a wall read the pressure at the wall (`gaugesReadWallPressure`).
     if flag("wall-read") { configuration.gaugesReadWallPressure = true }
 }
@@ -1148,6 +1151,14 @@ func chosenBurnLimit() -> AfterburnLimit? {
     if let value = option("ignition").flatMap({ Float($0) }) { limit.ignitionTemperature = value }
     if let value = option("limit-flame").flatMap({ Float($0) }) { limit.limitFlameTemperature = value }
     return limit
+}
+
+/// With `--burn-mixing C`, afterburning limited by the sub-grid mixing as well as its fitted time, an
+/// eddy-break-up rate of coefficient C (`MixedAfterburning`); the solver turns sub-grid mixing on with
+/// it (Smagorinsky's, or `--mixing`'s).
+func chosenBurnMixing() -> MixedAfterburning? {
+    guard let text = option("burn-mixing") else { return nil }
+    return MixedAfterburning(coefficient: Float(text) ?? MixedAfterburning().coefficient)
 }
 
 func makeAirSolver(_ scenario: Scenario, cellSize: Float) throws -> BlastSolver {
@@ -4713,6 +4724,10 @@ func runDialPack() throws {
     configuration.gravity = chosenGravity()
     configuration.mixing = chosenMixing()
     configuration.afterburnLimit = chosenBurnLimit()
+    configuration.afterburnMixing = chosenBurnMixing()
+    if configuration.afterburnMixing != nil, configuration.mixing == nil {
+        configuration.mixing = SubgridMixing()
+    }
     // `--mapped`: the mapped start, its fireball before the grid's clock from the one-dimensional solution.
     if flag("mapped") { configuration.mappedCharge = true }
     let solver = try BlastSolver(
@@ -4759,7 +4774,10 @@ func runDialPack() throws {
             (configuration.radiativeCooling == nil ? "" : ", the gas cooling")
                 + (configuration.gravity == nil ? "" : ", with gravity")
                 + (configuration.mixing == nil ? "" : ", sub-grid mixing")
-                + (configuration.afterburnLimit == nil ? "" : ", afterburning's extinction limit")))
+                + (configuration.afterburnLimit == nil ? "" : ", afterburning's extinction limit")
+                + (configuration.afterburnMixing.map {
+                    String(format: ", afterburning limited by the mixing (C %.3g)", $0.coefficient)
+                } ?? "")))
     var lines = [
         "time_s,diameter_m,temperature_K,hottest_K,centre_m,radiated_W,gas_lost_J,"
             + models.flatMap { model in ranges.map { "\(model.name)_\(Int($0))_W_m2" } }.joined(

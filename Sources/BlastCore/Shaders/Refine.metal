@@ -1081,7 +1081,8 @@ static inline void fineSweepCell(int3 local, int3 tile, uint patch, const device
         }
         float2 species = max(own - lambda * (outflow - inflow), 0.0f);
         if (u.finalSweep != 0) {
-            float fuel = afterburntHere(species, rho, momentum, energy, dt, u);
+            float nu = burnMixing ? fineEddyViscosity(fine, r * scale, coarseDims, viscosity) : 0.0f;
+            float fuel = afterburntHere(species, rho, momentum, energy, dt, nu, u.dx / float(r), u);
             species.x -= fuel;
             species.y -= fuel * u.oxygenPerFuel;
             energy += fuel * u.afterburnEnergy;

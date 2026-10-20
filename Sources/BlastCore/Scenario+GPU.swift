@@ -128,6 +128,10 @@ extension BlastSolver {
         for body in bodies { body.solids?.groundStiffness = configuration.groundStiffness ?? 0 }
 
         try loadDeflagration(scenario)
+        // Mixing-limited afterburning takes its turbulence from the sub-grid mixing.
+        if configuration.afterburning, configuration.afterburnMixing != nil, configuration.mixing == nil {
+            configuration.mixing = SubgridMixing()
+        }
         fill(
             uniform: Primitive(density: scenario.atmosphere.density, pressure: scenario.atmosphere.pressure))
         // A charge inside a block, the ground or a structure releases nothing, on uniform cells and

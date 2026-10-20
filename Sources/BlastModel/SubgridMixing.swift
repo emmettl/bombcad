@@ -54,3 +54,27 @@ public struct AfterburnLimit: Sendable, Hashable, Codable {
         self.limitFlameTemperature = limitFlameTemperature
     }
 }
+
+/// Afterburning limited by the sub-grid turbulence's mixing, an eddy-break-up rate (Spalding 1971;
+/// Magnussen and Hjertager 1977): the products burn at min(fuel, oxygen / s) × min(1/τ, C √k / Δ),
+/// τ the burning time fitted to the blast's impulse (`SolverConfiguration.afterburnTime`), k the
+/// sub-grid kinetic energy from the eddy viscosity of the air's sub-grid mixing as a one-equation
+/// model has it, k = (ν_t / (C_k Δ))², C_k = 0.094 (as a deflagration's flame turbulence takes it),
+/// and Δ the cell. Where the turbulence is strong, early on, the fitted time governs; as it decays
+/// the burning slows to the rate the eddies mix oxygen in (see `afterburntHere` in Solver.metal and
+/// docs/thermal-radiation.md, emmettl/bombcad-work#22). Needs sub-grid mixing, which is turned on
+/// (Smagorinsky's) if it is not already. Off by default (nil in `SolverConfiguration`). Judged on
+/// 20 October 2026 and not adopted: the eddy viscosity is nothing in the expanding fireball, so the
+/// limit slows the early burning most, and wherever it lowers Dial Pack's radiated share it costs the
+/// open blast's impulse 6% to 20%.
+public struct MixedAfterburning: Sendable, Hashable, Codable {
+    /// The eddy-break-up coefficient C on √k / Δ.
+    public var coefficient: Float = 1
+
+    public init(coefficient: Float = 1) {
+        self.coefficient = coefficient
+    }
+
+    /// The rate's factor on ν_t / Δ²: C / C_k.
+    public var ratePerViscosity: Float { coefficient / FlameTurbulence.energyCoefficient }
+}

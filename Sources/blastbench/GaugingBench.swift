@@ -20,6 +20,7 @@ func runGauging(device: MTLDevice, cooling: RadiativeCooling?) throws {
     var configuration = SolverConfiguration.recommended
     if flag("balloon-start") { configuration.mappedCharge = false }
     configuration.radiativeCooling = cooling
+    configuration.afterburnMixing = chosenBurnMixing()
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
     var volume = ThermalSpec()

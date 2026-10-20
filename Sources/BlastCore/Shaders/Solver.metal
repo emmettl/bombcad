@@ -122,6 +122,9 @@ struct SolverUniforms {
     uint refineLevel;
     uint sweepAxes;
     uint gaugeWalls;  // 1: a gauge beside a wall reads the pressure at the wall (`gaugesReadWallPressure`)
+    // Mixing-limited afterburning (see `afterburnRateHere`): C / C_k, the burning rate's factor on
+    // the eddy viscosity over the cell's area.
+    float burnMixingRate;
 };
 
 // Whether the air carries species, for afterburning or a deflagration.
@@ -222,6 +225,10 @@ constant bool airMixing = is_function_constant_defined(airMixingConstant) && air
 // Afterburning's extinction limit, when a kernel is compiled for it (see `afterburntHere`).
 constant bool burnLimitConstant [[function_constant(7)]];
 constant bool burnLimit = is_function_constant_defined(burnLimitConstant) && burnLimitConstant;
+// Mixing-limited afterburning, when a kernel is compiled for it (see `afterburnRateHere`); it reads
+// sub-grid mixing's eddy viscosity, so it takes effect only with that compiled in too.
+constant bool burnMixingConstant [[function_constant(16)]];
+constant bool burnMixing = is_function_constant_defined(burnMixingConstant) && burnMixingConstant && airMixing;
 
 // Cut cells for the terrain's ground surface, as an option (see TerrainCutCells.swift): the cells
 // the surface crosses keep the share of their volume above it (alpha) and of each face open to the
@@ -1306,9 +1313,34 @@ static inline float2 minmodPair(float2 a, float2 b) {
     return select(select(b, a, fabs(a) < fabs(b)), float2(0.0f), a * b <= 0.0f);
 }
 
-// Fuel burnt over `dt` in a cell holding `species`, as far as its oxygen allows (see `sweepCell`).
-static inline float burnt(float2 species, float dt, constant SolverUniforms &u) {
-    return min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-dt * u.afterburnRate));
+// Fuel burnt over `dt` in a cell holding `species`, as far as its oxygen allows, at `rate` (see
+// `sweepCell`).
+static inline float burnt(float2 species, float dt, float rate, constant SolverUniforms &u) {
+    return min(species.x, species.y / u.oxygenPerFuel) * (1.0f - exp(-dt * rate));
+}
+
+// The rate at which a cell's mixed products burn: 1 / the fitted burning time, or with mixing-limited
+// afterburning compiled in, an eddy-break-up rate (Spalding; Magnussen and Hjertager) where that is
+// slower: C sqrt(k) / dx, the sub-grid turbulence's kinetic energy k = (nu / (C_k dx))^2 from the
+// cell's eddy viscosity `nu` (scaled to the cell, `dx`, on refined levels), as a one-equation model
+// and a deflagration's flame turbulence take it; `burnMixingRate` is C / C_k. Where the eddies are
+// strong the fitted time governs; as they decay the products burn only as fast as oxygen is mixed
+// in. A viscosity that is not finite and positive (the sigma model's can round a hair below zero)
+// counts as no turbulence.
+static inline float afterburnRateHere(float nu, float dx, constant SolverUniforms &u) {
+    if (!burnMixing) {
+        return u.afterburnRate;
+    }
+    float viscosity = as_type<uint>(nu) < 0x7F800000u ? nu : 0.0f;
+    return min(u.afterburnRate, u.burnMixingRate * viscosity / (dx * dx));
+}
+
+// A refined cell's eddy viscosity, `fine` in its level's cells, `levels` of them along a coarse
+// cell's edge: its coarse cell's scaled to its own size as an inertial range's is,
+// (dx_fine / dx_coarse)^(4/3), as sub-grid mixing's fluxes take it in `fineSweepCell`.
+static inline float fineEddyViscosity(int3 fine, int levels, int3 coarseDims, const device float *viscosity) {
+    int3 at = clamp(fine / levels, int3(0), coarseDims - 1);
+    return pow(1.0f / float(levels), 4.0f / 3.0f) * viscosity[at.x + coarseDims.x * (at.y + coarseDims.y * at.z)];
 }
 
 // Fuel burnt over `dt` in a cell of density `rho`, momentum `momentum` and energy `energy`
@@ -1319,10 +1351,13 @@ static inline float burnt(float2 species, float dt, constant SolverUniforms &u) 
 // it to `limitFlameTemperature`, the flame temperature mixtures at their flammability limits
 // reach (about 1,500 K, Zabetakis), which makes a lean, cold mixture too dilute and a rich one too
 // short of oxygen to burn, and widens the limits as the mixture warms, as real limits do.
-static inline float afterburntHere(float2 species, float rho, float3 momentum, float energy, float dt,
-                                   constant SolverUniforms &u) {
+// With mixing-limited afterburning compiled in, at `afterburnRateHere`'s rate for the cell's eddy
+// viscosity `nu` and size `dx`.
+static inline float afterburntHere(float2 species, float rho, float3 momentum, float energy, float dt, float nu,
+                                   float dx, constant SolverUniforms &u) {
+    float rate = afterburnRateHere(nu, dx, u);
     if (!burnLimit) {
-        return burnt(species, dt, u);
+        return burnt(species, dt, rate, u);
     }
     float density = max(rho, u.densityFloor);
     float internal = energy - 0.5f * dot(momentum, momentum) / density;
@@ -1335,7 +1370,7 @@ static inline float afterburntHere(float2 species, float rho, float3 momentum, f
     float g = gasGamma(density, pressure, u.airModel, u.gamma);
     float heat = density * airGasConstant / (g - 1.0f);
     float flame = temperature + min(species.x, species.y / u.oxygenPerFuel) * u.afterburnEnergy / heat;
-    return flame >= u.limitFlameTemperature ? burnt(species, dt, u) : 0.0f;
+    return flame >= u.limitFlameTemperature ? burnt(species, dt, rate, u) : 0.0f;
 }
 
 static inline void storeFlux(device float *registers, uint slot, Flux f, uint axis, float dt) {

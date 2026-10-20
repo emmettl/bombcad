@@ -124,6 +124,13 @@ extension ShaderLibrary {
         return constants
     }
 
+    /// `constants` with mixing-limited afterburning compiled in.
+    static func withBurnMixing(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+        var on = true
+        constants.setConstantValue(&on, type: .bool, index: burnMixingConstant)
+        return constants
+    }
+
     /// `constants` with sub-grid mixing compiled in.
     static func withMixing(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
         var on = true

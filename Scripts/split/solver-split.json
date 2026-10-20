@@ -422,6 +422,8 @@
    "airMixing",
    "burnLimitConstant",
    "burnLimit",
+   "burnMixingConstant",
+   "burnMixing",
    "cutCellsConstant",
    "cutCells",
    "structureCutConstant",
@@ -508,6 +510,8 @@
    "speciesFlux",
    "minmodPair",
    "burnt",
+   "afterburnRateHere",
+   "fineEddyViscosity",
    "afterburntHere",
    "storeFlux"
   ],

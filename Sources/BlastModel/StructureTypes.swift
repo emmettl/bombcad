@@ -2146,6 +2146,10 @@ package enum ShaderLibrary {
     /// a kernel (`burnLimitConstant` in Solver.metal).
     package static let burnLimitConstant = 7
 
+    /// Index of the optional function constant that compiles mixing-limited afterburning into a
+    /// kernel (`burnMixingConstant` in Solver.metal).
+    package static let burnMixingConstant = 16
+
     /// Index of the optional function constant that compiles the terrain's cut cells into a kernel
     /// (`cutCellsConstant` in Solver.metal).
     package static let cutCellsConstant = 13

@@ -841,6 +841,9 @@ extension BlastSolver {
             uniforms.ignitionTemperature = limit.ignitionTemperature
             uniforms.limitFlameTemperature = limit.limitFlameTemperature
         }
+        if let burning = configuration.afterburnMixing {
+            uniforms.burnMixingRate = burning.ratePerViscosity
+        }
         if let mixing = configuration.mixing {
             uniforms.mixingCoefficient = mixing.coefficient
             uniforms.mixingPrandtl = mixing.prandtl
@@ -861,12 +864,13 @@ extension BlastSolver {
         let gravity = configuration.gravity != nil
         let mixing = configuration.mixing != nil
         let limit = configuration.afterburnLimit != nil
+        let burnMixing = configuration.afterburnMixing != nil && mixing
         let cut = terrainCut != nil
         let porous = congestionBuffer != nil
         let structureCutOn = structureCut != nil
         let key =
             16 * Int(model.rawValue) + (gravity ? 1 : 0) + (mixing ? 2 : 0) + (limit ? 4 : 0) + (cut ? 8 : 0)
-            + (porous ? 1024 : 0) + (structureCutOn ? 2048 : 0)
+            + (porous ? 1024 : 0) + (structureCutOn ? 2048 : 0) + (burnMixing ? 4096 : 0)
         if let kernels = cellKernelsByModel[key] { return kernels }
         var constants = MTLFunctionConstantValues()
         var value = model.rawValue
@@ -874,6 +878,7 @@ extension BlastSolver {
         if gravity { constants = ShaderLibrary.withGravity(constants) }
         if mixing { constants = ShaderLibrary.withMixing(constants) }
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
+        if burnMixing { constants = ShaderLibrary.withBurnMixing(constants) }
         if cut { constants = ShaderLibrary.withCutCells(constants) }
         if porous { constants = ShaderLibrary.withPorousAir(constants) }
         if structureCutOn { constants = ShaderLibrary.withStructureCut(constants) }

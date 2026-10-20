@@ -450,7 +450,8 @@ static inline void sweepCell(int3 cell, device Cell *src, device Cell *dst, cons
             coarseSpeciesFlux[speciesRegister + 1] = through.y;
         }
         if (u.finalSweep != 0 && u.afterburnEnergy > 0.0f) {
-            float fuel = afterburntHere(species, rho, momentum, energy, control.dt, u);
+            float nu = burnMixing ? viscosity[index] : 0.0f;
+            float fuel = afterburntHere(species, rho, momentum, energy, control.dt, nu, u.dx, u);
             species.x -= fuel;
             species.y -= fuel * u.oxygenPerFuel;
             energy += fuel * u.afterburnEnergy;

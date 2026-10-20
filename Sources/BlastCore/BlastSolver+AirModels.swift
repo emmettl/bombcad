@@ -114,6 +114,7 @@ extension BlastSolver {
             level.parentGravityTable = gravityTable(scale: level.parentScale)
             level.viscosity = mixingViscosity()
             level.burnLimit = configuration.afterburnLimit != nil
+            level.burnMixing = configuration.afterburnMixing != nil && level.viscosity != nil
         }
     }
 
@@ -167,6 +168,15 @@ extension BlastSolver {
         guard hasSpecies else { return try body(nil) }
         let pointer = speciesBuffers[current].contents().bindMemory(
             to: SIMD2<Float>.self, capacity: grid.cellCount)
+        return try body(UnsafeBufferPointer(start: pointer, count: grid.cellCount))
+    }
+
+    /// Calls `body` with every coarse cell's eddy viscosity (m²/s) as the last step's sub-grid mixing
+    /// worked it out, or nil without sub-grid mixing.
+    public func readEddyViscosity<R>(_ body: (UnsafeBufferPointer<Float>?) throws -> R) rethrows -> R {
+        precondition(!batchInFlight, "Cannot read state while a batch is in flight")
+        guard let viscosity = mixingViscosity() else { return try body(nil) }
+        let pointer = viscosity.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
         return try body(UnsafeBufferPointer(start: pointer, count: grid.cellCount))
     }
 

@@ -75,6 +75,8 @@ final class AirRefinement {
     var viscosity: MTLBuffer?
     /// Whether afterburning has its extinction limit.
     var burnLimit = false
+    /// Whether afterburning is limited by the sub-grid mixing (`MixedAfterburning`).
+    var burnMixing = false
     private var combinedBodyOccupancy: MTLBuffer?
     private var bodyComposePipeline: MTLComputePipelineState?
     private var bodyPublishPipeline: MTLComputePipelineState?
@@ -1137,9 +1139,12 @@ final class AirRefinement {
         let gravity = gravityTable != nil
         let mixing = viscosity != nil && name == "refineSweep"
         let limit = burnLimit && name == "refineSweep"
+        let burnMixed = burnMixing && mixing
         let cut = cutTerrain
         guard gravity || mixing || limit || cut else { return base }
-        let key = "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing) \(limit) \(cut)"
+        let key =
+            "\(name) \(model.map { "\($0.rawValue)" } ?? "-") \(gravity) \(mixing) \(limit) \(cut)"
+            + (burnMixed ? " burnMixing" : "")
         if let pipeline = gravityPipelines[key] { return pipeline }
         var constants = MTLFunctionConstantValues()
         if var value = model?.rawValue {
@@ -1148,6 +1153,7 @@ final class AirRefinement {
         if gravity { constants = ShaderLibrary.withGravity(constants) }
         if mixing { constants = ShaderLibrary.withMixing(constants) }
         if limit { constants = ShaderLibrary.withBurnLimit(constants) }
+        if burnMixed { constants = ShaderLibrary.withBurnMixing(constants) }
         if cut { constants = ShaderLibrary.withCutCells(constants) }
         guard let pipeline = try? ShaderLibrary.pipeline(name, in: library, constants: constants) else {
             return base

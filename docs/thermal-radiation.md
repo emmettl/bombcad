@@ -812,6 +812,84 @@ temperature comes right and the share by 6 s is still above 10%, the remaining f
 optics: the soot is a fixed 0.185 of unburnt products, the 54 t left at 6 s still keeps the
 fireball black, and soot that burns out with its gas would not.
 
+### Mixing-limited afterburning (20 October 2026)
+
+Stage 2 of emmettl/bombcad-work#22 is an option, off by default: `SolverConfiguration.afterburnMixing`
+(`MixedAfterburning`; `--burn-mixing C` in `blastbench`, on `dialpack`, `validate`, `gas`,
+`gauging` and the scene benches). The products burn at an eddy-break-up rate (Spalding; Magnussen
+and Hjertager), min(fuel, oxygen / s) × min(1/τ, C √k / Δ). Here τ is the burning time fitted to
+the blast's impulse, and k = (ν_t / (C_k Δ))² is the sub-grid kinetic energy from [sub-grid
+mixing's](air-blast-model.md#sub-grid-mixing) eddy viscosity, with C_k = 0.094, as a
+deflagration's flame turbulence takes it. Refined cells take their coarse cell's ν_t scaled as the
+mixing scales it. The rate is in `afterburnRateHere` (Solver.metal), which the final sweep and the
+fine sweep both call, compiled in by function constant 16. The option turns sub-grid mixing on.
+The budget (above) takes each cell's own rate, and its heat released still matches the products
+burnt to within 0.1%. With the option off, the recommended `blastbench digest` is bit-identical.
+
+The idea was that early on the turbulence is strong and the fitted τ governs, keeping the blast's
+impulse, and that late the burning slows as the turbulence decays. **It does the opposite.** Below,
+Dial Pack on today's air with gravity and mixing (as in stage 1), with the share of the report's
+blast yield radiated by 3 s (4 m cells) and by 6 s (8 m cells) reckoned from the 1,700 m
+instrument, as the measured share is. In brackets is the share measured round the fireball. The
+temperatures are the luminous gas's mean on 8 m cells. Heat and radiated are the heat released in
+the luminous gas and what the gas radiates, from 3 to 6 s, in 10¹¹ W:
+
+| C | By 3 s (4 m) | By 6 s (8 m) | 1, 2, 3, 6 s | Heat; radiated, 3–6 s | Unburnt at 6 s |
+|---|---|---|---|---|---|
+| Measured | 3.2% | 5.1% | about 1,900, –, 1,600, – K | | |
+| Off (today) | 5.7% (6.2) | 22.3% (20.1) | 1,907, 2,066, 2,096, 2,035 K | 1.32; 0.96 | 58 t |
+| 0.3 | | 2.3% (2.3) | 1,577, 1,524, 1,538, 1,526 K | 0.13; 0.20 | |
+| 0.5 | 0.1% (0.1) | 8.6% (8.1) | 1,519, 1,579, 1,600, 1,645 K | 0.77; 0.42 | 272 t |
+| 0.7 | | 11.7% (10.8) | 1,558, 1,621, 1,660, 1,741 K | 1.25; 0.56 | |
+| 1 | 1.7% (2.0) | 14.6% (13.3) | 1,599, 1,678, 1,733, 1,837 K | 1.72; 0.70 | 186 t |
+| 3 | 4.8% (5.3) | 21.3% (19.3) | 1,706, 1,864, 1,944, 2,006 K | 2.18; 0.98 | 88 t |
+| 10 | 6.0% (6.3) | 24.3% (21.1) | 1,841, 2,023, 2,068, 2,029 K | 1.45; 1.01 | |
+
+The share of the fitted burning that the limit allows, on 8 m cells:
+
+| C | 10 ms | 50 ms | 0.2 s | 0.5 s | 1 s | 2 s | 3 s | 6 s |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 0.00 | 0.25 | 0.12 | 0.13 | 0.11 | 0.10 | 0.13 | 0.24 |
+| 3 | 0.00 | 0.48 | 0.27 | 0.29 | 0.24 | 0.24 | 0.33 | 0.55 |
+| 10 | 0.00 | 0.73 | 0.40 | 0.60 | 0.52 | 0.59 | 0.73 | 0.92 |
+
+The limit binds hardest in the first tens of milliseconds, where the fitted τ was meant to govern.
+The early fireball is a radial expansion, compression without rotation, and Ducros's sensor sets
+its eddy viscosity to nothing. The limit binds least late, when the rising fireball's shear stirs
+the gas. Slowing the burning only puts it off: at C = 1 the products release more heat after 1 s
+than with the fitted time (116% of the charge's energy against 83%), and the luminous gas reheats
+from 1,600 K at 1 s to 1,840 K at 6 s. On 4 m cells at C = 1, no gas is luminous at 1 s. A small C
+does lower the share, to 8.6% by 6 s at C = 0.5, but it does so by leaving three-fifths of the
+products unburnt. Even then, from 2 s on, the luminous gas still releases more heat than it
+radiates, and at 1 s it is 400 K below the report.
+
+**The blast pays for it.** Here is Kingery–Bulmash's 100 kg surface burst on 0.25 m cells
+(`blastbench validate --dx 0.25`), with the open incident impulse at 0.75 to 6 m/kg^⅓ against
+today's:
+
+| | Incident impulse against today's | Peaks against today's |
+|---|---|---|
+| Sub-grid mixing alone | −0.3% to −9.1% | −0.9% to −37% |
+| C = 1 | −16% to −20% | −5.6% to −38% |
+| C = 10 | −11% to −18% | |
+| C = 100 | −6% to −12% (−3% to −6% against mixing alone) | −2.8% to −37% |
+
+**What sub-grid mixing costs.** On its own, mixing moves the open blast by under 0.1% against the
+balloon start. But the [mapped start](air-blast-model.md#a-finely-resolved-start) falls back to the
+balloon when mixing is on, because the one-dimensional solution has no mixing. So turning it on
+costs the recommended air its mapped start: close-in peaks fall 20% to 37%, and impulse 2% to 9%.
+The run is about a quarter longer a step (4.3 s against 3.4 s for this validate on the balloon,
+timed on a busy Studio). It also holds a float a cell for the eddy viscosity.
+
+**Stopped, by the plan's rule.** Wherever the option lowers the share, it moves the open impulse by
+far more than 3%, and its temperature does not come right. So the rooms, Clough and Church's
+guards were not run, and stage 3 is not started. The cause is the turbulence measure, not the
+form of the rate: the existing eddy viscosity is zero in the expanding fireball and largest in the
+late rising one. A rate keyed to the products' own interface, such as a mixture fraction's
+gradient or a k_sgs without the shock sensor, might behave as the plan meant; that would be a
+new stage, and it needs the user's say. Runs and scripts (`judge.py`, `governs.py`, `kbsum.py`) are
+in `/Volumes/StudioData/bombcad/fireball-ebu/`.
+
 ## Output
 
 - **The summary** printed gives the largest fireball, its temperature and how long it was

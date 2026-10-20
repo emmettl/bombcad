@@ -284,6 +284,10 @@ public struct SolverConfiguration: Sendable, Hashable {
     /// With afterburning, an extinction limit: the products burn only where the mixture can keep a
     /// flame going (see `AfterburnLimit`); nil, the default, for wherever they meet oxygen.
     public var afterburnLimit: AfterburnLimit?
+    /// With afterburning, the burning limited by the sub-grid turbulence's mixing as well as by its
+    /// fitted time (see `MixedAfterburning`), which turns sub-grid mixing on; nil, the default, for
+    /// the fitted time alone.
+    public var afterburnMixing: MixedAfterburning?
     /// The terrain's ground surface as cut cells rather than whole ones (see `TerrainCutGeometry`):
     /// slopes are slopes, not staircases. On by default; false for the staircase. Read when a scene
     /// is loaded (see `cutsTerrain(of:)`).
@@ -440,6 +444,9 @@ package struct SolverUniforms {
     package var refineLevel: UInt32 = 0
     package var sweepAxes: UInt32 = 0
     package var gaugeWalls: UInt32 = 0
+    /// Mixing-limited afterburning's C / C_k, the burning rate's factor on ν_t / Δ² (see
+    /// `MixedAfterburning`); 0 when off.
+    package var burnMixingRate: Float = 0
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
     package init(
@@ -510,7 +517,8 @@ package struct SolverUniforms {
         ownSteps: UInt32 = 0,
         refineLevel: UInt32 = 0,
         sweepAxes: UInt32 = 0,
-        gaugeWalls: UInt32 = 0
+        gaugeWalls: UInt32 = 0,
+        burnMixingRate: Float = 0
     ) {
         self.nx = nx
         self.ny = ny
@@ -580,6 +588,7 @@ package struct SolverUniforms {
         self.refineLevel = refineLevel
         self.sweepAxes = sweepAxes
         self.gaugeWalls = gaugeWalls
+        self.burnMixingRate = burnMixingRate
     }
 }
 

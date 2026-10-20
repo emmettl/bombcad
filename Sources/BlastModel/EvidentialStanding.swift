@@ -286,6 +286,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case gravity
     case subgridMixing
     case afterburnLimit
+    case mixedAfterburning
     case shockRefinement
     case twoLevelRefinement
     case adaptiveSubsteps
@@ -381,6 +382,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .gravity: return config.gravity != nil
         case .subgridMixing: return config.mixing != nil
         case .afterburnLimit: return config.afterburning && config.afterburnLimit != nil
+        case .mixedAfterburning: return config.afterburning && config.afterburnMixing != nil
         case .shockRefinement: return config.refinement > 1 && config.refinementLevels == 1
         case .twoLevelRefinement: return config.refinement > 1 && config.refinementLevels > 1
         case .adaptiveSubsteps: return config.refinement > 1 && config.refinementOwnSteps
@@ -564,6 +566,13 @@ public enum StandingTable {
                     + "unchanged but the open incident impulse falls by 8 to 9%, to 86–91% of Kingery-Bulmash's, and "
                     + "Dial Pack's fireball is no cooler.",
                 document: "air-blast-model.md#an-extinction-limit-for-afterburning")
+        case .mixedAfterburning:
+            return Entry(
+                title: "Mixing-limited afterburning", affects: air + [.thermal, .cloud], limit: nil,
+                note:
+                    "Products burn no faster than the sub-grid turbulence mixes oxygen in (an eddy-break-up "
+                    + "rate), with sub-grid mixing on; judged on Dial Pack's fireball only (emmettl/bombcad-work#22).",
+                document: "thermal-radiation.md#mixing-limited-afterburning-20-october-2026")
         case .shockRefinement:
             return Entry(
                 title: "Shock refinement", affects: air + structure + [.envelopeExposure], limit: nil,
@@ -1211,6 +1220,7 @@ public enum StandingTable {
         "SolverConfiguration.mixing": .option([.subgridMixing]),
         "SolverConfiguration.periodicSides": .numerical,
         "SolverConfiguration.afterburnLimit": .option([.afterburnLimit]),
+        "SolverConfiguration.afterburnMixing": .option([.mixedAfterburning]),
         "SolverConfiguration.terrainCutCells": .option([.terrainStaircase]),
         "SolverConfiguration.groundStiffness": .option([.softGround]),
         "SolverConfiguration.ground": .option([.groundCoupling]),

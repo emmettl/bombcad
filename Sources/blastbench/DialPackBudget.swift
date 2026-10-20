@@ -9,7 +9,10 @@ import simd
 ///   products releases, r the burning rate, x and y the products' and oxygen's densities, s the
 ///   oxygen a kilogram of products takes), as the final sweep burns it over a step (to r dt, under
 ///   a thousandth here), binned by the cell's temperature and its mixture: lean, near
-///   stoichiometric or rich by its equivalence ratio s x / y (below 0.7, to 1.4, above);
+///   stoichiometric or rich by its equivalence ratio s x / y (below 0.7, to 1.4, above); with
+///   mixing-limited afterburning, r is each cell's, the lesser of the fitted rate and the eddy
+///   viscosity's (C / C_k) ν / Δ² as the last step's sub-grid mixing worked it out
+///   (emmettl/bombcad-work#22, stage 2), and the heat the fitted rate alone would release beside it;
 /// - the luminous gas (at least `luminousTemperature`): its mass, mean and T⁴-mean temperature,
 ///   its unburnt products, volume, heat above the ambient air's at its density, and mean absorption
 ///   coefficient, the grey gas's and its soot's, as the volume and the cooling take them;
@@ -36,9 +39,13 @@ struct DialPackBudget {
         var massT4 = 0.0
         var volumeAbsorption = 0.0
         var fuel = 0.0
+        /// Heat the fitted rate alone would release, W (with mixing-limited afterburning, more than
+        /// the rates' sum where the mixing limits it).
+        var fitted = 0.0
 
         mutating func add(_ other: Reading) {
             for n in rates.indices { rates[n] += other.rates[n] }
+            fitted += other.fitted
             luminousMass += other.luminousMass
             luminousHeat += other.luminousHeat
             luminousFuel += other.luminousFuel
@@ -54,6 +61,8 @@ struct DialPackBudget {
     let absorption: Float
     let sootYield: Float
     let burnRate: Double
+    /// With mixing-limited afterburning, the rate's factor on ν / Δ² (`MixedAfterburning`).
+    let burnMixingRate: Double?
     let burnEnergy: Double
     let oxygenPerFuel: Float
     let ambientTemperature: Float
@@ -72,6 +81,7 @@ struct DialPackBudget {
         sootYield = spec.sootYield
         // As the solver's uniforms take it (BlastSolver+Stepping, `afterburnRate`).
         burnRate = 1 / max(Double(configuration.afterburnTime) * Double(cbrt(max(chargeMass, 1e-3))), 1e-9)
+        burnMixingRate = configuration.afterburnMixing.map { Double($0.ratePerViscosity) }
         burnEnergy = Double(configuration.afterburnEnergy)
         // As `BlastSolver.oxygenPerFuel`: C7H5N3O6 + 5.25 O2 -> 7 CO2 + 2.5 H2O + 1.5 N2.
         oxygenPerFuel = 5.25 * 32 / 227.13
@@ -81,7 +91,7 @@ struct DialPackBudget {
             ([
                 "time_s", "gas_lost_J", "fuel_kg", "released_J", "release_W", "luminous_kg", "luminous_K",
                 "luminous_T4_K", "luminous_fuel_kg", "luminous_m3", "luminous_heat_J",
-                "luminous_absorption_per_m",
+                "luminous_absorption_per_m", "release_fitted_W",
             ] + bins).joined(separator: ",")
         ]
     }
@@ -102,50 +112,61 @@ struct DialPackBudget {
         let gasConstant = AirModel.gasConstant
         // The volume's soot: 1817 f T a metre, f = yield x / 1,800 kg/m³.
         let soot = ThermalMedium.sootAbsorption * sootYield / ThermalMedium.sootDensity
+        let area = Double(grid.cellSize) * Double(grid.cellSize)
         var planes = [Reading](repeating: Reading(), count: grid.nz)
         solver.withState { cells in
             solver.readSpecies { species in
                 guard let species else { return }
-                planes.withUnsafeMutableBufferPointer { planes in
-                    concurrently(iterations: grid.nz) { k in
-                        var sums = Reading()
-                        for j in 0..<grid.ny {
-                            for i in 0..<grid.nx where !solver.isSolid(i, j, k) {
-                                let index = grid.index(i, j, k)
-                                let air = solver.primitive(of: cells[index])
-                                guard air.density > 0, air.pressure > 0, air.pressure.isFinite else {
-                                    continue
+                solver.readEddyViscosity { viscosity in
+                    planes.withUnsafeMutableBufferPointer { planes in
+                        concurrently(iterations: grid.nz) { k in
+                            var sums = Reading()
+                            for j in 0..<grid.ny {
+                                for i in 0..<grid.nx where !solver.isSolid(i, j, k) {
+                                    let index = grid.index(i, j, k)
+                                    let air = solver.primitive(of: cells[index])
+                                    guard air.density > 0, air.pressure > 0, air.pressure.isFinite else {
+                                        continue
+                                    }
+                                    let temperature = air.pressure / (air.density * gasConstant)
+                                    let here = species[index]
+                                    sums.fuel += Double(here.x) * volume
+                                    let fuel = min(here.x, here.y / oxygenPerFuel)
+                                    if fuel > 0 {
+                                        let bin = Self.bin(
+                                            temperature: temperature, species: here,
+                                            oxygenPerFuel: oxygenPerFuel)
+                                        var rate = burnRate
+                                        if let burnMixingRate, let viscosity {
+                                            let nu = Double(viscosity[index])
+                                            rate = min(
+                                                rate, burnMixingRate * (nu.isFinite ? max(nu, 0) : 0) / area)
+                                        }
+                                        sums.rates[bin] += burnEnergy * rate * Double(fuel) * volume
+                                        sums.fitted += burnEnergy * burnRate * Double(fuel) * volume
+                                    }
+                                    guard temperature >= luminousTemperature else { continue }
+                                    let mass = Double(air.density) * volume
+                                    let t = Double(temperature)
+                                    sums.luminousMass += mass
+                                    sums.massTemperature += mass * t
+                                    sums.massT4 += mass * t * t * t * t
+                                    sums.luminousFuel += Double(here.x) * volume
+                                    sums.luminousVolume += volume
+                                    let thermal =
+                                        cells[index].energy - 0.5 * air.density
+                                        * simd_length_squared(air.velocity)
+                                    let cold = airModel.internalEnergy(
+                                        density: air.density,
+                                        pressure: air.density * gasConstant * ambientTemperature,
+                                        gamma: gamma)
+                                    sums.luminousHeat += Double(thermal - cold) * volume
+                                    sums.volumeAbsorption +=
+                                        Double(absorption + soot * here.x * temperature) * volume
                                 }
-                                let temperature = air.pressure / (air.density * gasConstant)
-                                let here = species[index]
-                                sums.fuel += Double(here.x) * volume
-                                let fuel = min(here.x, here.y / oxygenPerFuel)
-                                if fuel > 0 {
-                                    let bin = Self.bin(
-                                        temperature: temperature, species: here, oxygenPerFuel: oxygenPerFuel)
-                                    sums.rates[bin] += burnEnergy * burnRate * Double(fuel) * volume
-                                }
-                                guard temperature >= luminousTemperature else { continue }
-                                let mass = Double(air.density) * volume
-                                let t = Double(temperature)
-                                sums.luminousMass += mass
-                                sums.massTemperature += mass * t
-                                sums.massT4 += mass * t * t * t * t
-                                sums.luminousFuel += Double(here.x) * volume
-                                sums.luminousVolume += volume
-                                let thermal =
-                                    cells[index].energy - 0.5 * air.density
-                                    * simd_length_squared(air.velocity)
-                                let cold = airModel.internalEnergy(
-                                    density: air.density,
-                                    pressure: air.density * gasConstant * ambientTemperature,
-                                    gamma: gamma)
-                                sums.luminousHeat += Double(thermal - cold) * volume
-                                sums.volumeAbsorption +=
-                                    Double(absorption + soot * here.x * temperature) * volume
                             }
+                            planes[k] = sums
                         }
-                        planes[k] = sums
                     }
                 }
             }
@@ -174,7 +195,7 @@ struct DialPackBudget {
             reading.luminousMass,
             reading.massTemperature / mass, pow(reading.massT4 / mass, 0.25), reading.luminousFuel,
             reading.luminousVolume, reading.luminousHeat,
-            reading.volumeAbsorption / max(reading.luminousVolume, 1e-30),
+            reading.volumeAbsorption / max(reading.luminousVolume, 1e-30), reading.fitted,
         ]
         lines.append(
             ([String(format: "%.5f", time)] + (values + released).map { String(format: "%.5g", $0) }).joined(
