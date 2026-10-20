@@ -360,10 +360,13 @@ final class RunTimelineRecorder {
         while nextTime <= solver.time + 1e-12 { nextTime += interval }
         // Each frame's size is known once written; the manifest takes it at the end.
         pending.append((path, frame.time, step))
-        // Past half the budget with half the run or more to go: record half as often.
-        let written = writer.bytesWritten + setupBytes
-        if frames >= 8,
-            Double(written) / Double(frames) * Double(remainingFrames(at: solver.time)) + Double(written)
+        // Past the budget at this rate, the frames recorded and those to come each the size of those
+        // written so far: record half as often. The writer may lag behind on a busy Mac, so the
+        // frames still to be written count at that size too, not as nothing.
+        let (written, count) = writer.progress
+        if frames >= 8, count > 0,
+            Double(written) / Double(count) * Double(frames + remainingFrames(at: solver.time))
+                + Double(setupBytes)
                 > Double(framesBudget)
         {
             interval *= 2
@@ -447,6 +450,8 @@ private final class TimelineWriter: @unchecked Sendable {
     private var total = 0
 
     var bytesWritten: Int { lock.withLock { total } }
+    /// The bytes written so far and the frames they are.
+    var progress: (bytes: Int, frames: Int) { lock.withLock { (total, sizes.count) } }
 
     func write(_ frame: TimelineFrame, to url: URL) {
         queue.async { [self] in
