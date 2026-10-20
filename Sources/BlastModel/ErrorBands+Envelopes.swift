@@ -48,7 +48,6 @@ extension ValidationTables {
 extension StandingScene {
     /// `bands(for:)`'s case .envelopeExposure.
     func envelopeExposureBands(bands: inout [ErrorBand], unbanded: inout [String]) {
-        let mass = Double(inputs.scenario.charge.mass)
         if let distance = structureDistance, airComparable == nil {
             let cell = Double(fineCell) / cbrt(Double(max(inputs.scenario.charge.mass, 1e-6)))
             if let read = ValidationTables.read(
