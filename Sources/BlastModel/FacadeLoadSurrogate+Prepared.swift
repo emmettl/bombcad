@@ -16,11 +16,23 @@ extension FacadeLoadSurrogate {
         let mixes: [GlazingMix?]
         /// How long laying it out took, s.
         public let seconds: Double
-        /// The SDOF responses and the panes' responses met so far by previews, kept between them:
-        /// exact. A full look keeps its own only while it lasts (on Beirut they would hold several
-        /// GB).
+        /// The SDOF responses and the panes' responses met so far by previews, kept between them.
+        /// A full look keeps its own only while it lasts (on Beirut they would hold several GB).
+        /// The panes' are a coarser table than a full look's (`previewQuantum`,
+        /// `previewStrengthSteps`), so that a charge moved a few metres finds most of them
+        /// already worked out.
         public let memo = SDOFResponseMemo()
-        public let glassResponses = GlassResponses()
+        public var glassResponses = GlassResponses(
+            quantum: Prepared.previewQuantum, strengthSteps: Prepared.previewStrengthSteps)
+
+        /// A preview's pulses rounded to 10% of their peak and impulse (a full look's, 3%), and a
+        /// cracked pane's strength to a fifth of a unit of its log (a full look's, a twentieth):
+        /// far finer than the surrogate's scatter (0.2–0.3 in the log) and the strength's (0.25).
+        /// On Beirut (0.5 kt, 10 draws) the glass agrees with the full look as closely as the
+        /// finer table's (some broken within 0.1 on 92.8% of sides against 92.9%), its frames a
+        /// half to two-thirds of the time (emmettl/bombcad-work#34; docs/surrogate-first-look.md).
+        public static let previewQuantum = 0.10
+        public static let previewStrengthSteps = 5.0
 
         public init(scene: Scenario, cellSize: Float) {
             let start = ContinuousClock.now

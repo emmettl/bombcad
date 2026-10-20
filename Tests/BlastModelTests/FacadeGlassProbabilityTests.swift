@@ -48,6 +48,34 @@ struct FacadeGlassProbabilityTests {
     }
 
     @Test(
+        "A preview's coarser pane table judges a pulse as its rounded pulse is judged, near the fine table's")
+    func previewTable() {
+        let fine = FacadeLoadSurrogate.GlassTable(binS: 0.7e-3)
+        let coarse = FacadeLoadSurrogate.GlassTable(
+            binS: 0.7e-3, quantum: FacadeLoadSurrogate.Prepared.previewQuantum,
+            strengthSteps: FacadeLoadSurrogate.Prepared.previewStrengthSteps)
+        #expect(fine.step == FacadeLoadSurrogate.GlassTable.step && fine.strengthSteps == 20)
+        let step = log(1 + FacadeLoadSurrogate.Prepared.previewQuantum)
+        for (peak, impulse) in [(800.0, 20.0), (4_000, 60), (20_000, 200)] {
+            let prediction = FacadeLoadSurrogate.Prediction(
+                peakPa: peak, impulsePaS: impulse, riseShare: 0.3, arrivalS: 0)
+            // As GlazingMix judges the pulse rounded to the preview's steps.
+            let pressures = FacadeLoadSurrogate.pulse(
+                peak: exp((log(peak) / step).rounded() * step),
+                impulse: exp((log(impulse) / step).rounded() * step),
+                riseShare: 0.3, binS: 0.7e-3)
+            let direct = GlazingMix.apartments.breakage(netPa: pressures, binS: 0.7e-3, areaM2: 30)
+            let tabled = coarse.breakage(.apartments, prediction: prediction, areaM2: 30, strength: 1)
+            #expect(abs(direct.broken - tabled.broken) < 1e-9)
+            // And near the fine table's: loads rounded by at most 5%.
+            let finer = fine.breakage(.apartments, prediction: prediction, areaM2: 30, strength: 1)
+            #expect(
+                abs(finer.fraction - tabled.fraction) < 0.15,
+                "\(peak) Pa: \(finer.fraction) against \(tabled.fraction)")
+        }
+    }
+
+    @Test(
         "A pane thrown past 3 m is one that broke: the chance never exceeds breaking's, and the pulse decides it as a history would"
     )
     func thrown() {

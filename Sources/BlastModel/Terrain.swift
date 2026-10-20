@@ -71,7 +71,8 @@ public struct Terrain: Sendable, Hashable, Codable {
     public func height(at p: SIMD2<Float>) -> Float {
         let last = SIMD2(Float(columns - 1), Float(rows - 1))
         let position = simd_clamp((p - origin) / spacing, .zero, last)
-        let low = simd_min(SIMD2<Int>(position.rounded(.down)), SIMD2(columns - 2, rows - 2))
+        let floor = position.rounded(.down)
+        let low = simd_min(SIMD2(Int(floor.x), Int(floor.y)), SIMD2(columns - 2, rows - 2))
         let f = position - SIMD2<Float>(low)
         let base = low.x + columns * low.y
         let h00 = heights[base]
@@ -91,7 +92,8 @@ public struct Terrain: Sendable, Hashable, Codable {
         let last = SIMD2(Float(columns - 1), Float(rows - 1))
         let raw = (p - origin) / spacing
         let position = simd_clamp(raw, .zero, last)
-        let low = simd_min(SIMD2<Int>(position.rounded(.down)), SIMD2(columns - 2, rows - 2))
+        let floor = position.rounded(.down)
+        let low = simd_min(SIMD2(Int(floor.x), Int(floor.y)), SIMD2(columns - 2, rows - 2))
         let f = position - SIMD2<Float>(low)
         let base = low.x + columns * low.y
         let h00 = heights[base]
@@ -112,7 +114,8 @@ public struct Terrain: Sendable, Hashable, Codable {
         let last = SIMD2(Double(columns - 1), Double(rows - 1))
         let raw = (p - SIMD2<Double>(origin)) / s
         let position = simd_clamp(raw, .zero, last)
-        let low = simd_min(SIMD2<Int>(position.rounded(.down)), SIMD2(columns - 2, rows - 2))
+        let floor = position.rounded(.down)
+        let low = simd_min(SIMD2(Int(floor.x), Int(floor.y)), SIMD2(columns - 2, rows - 2))
         let f = position - SIMD2<Double>(low)
         let base = low.x + columns * low.y
         let h00 = Double(heights[base])

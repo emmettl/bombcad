@@ -152,7 +152,10 @@ public enum FacadeLoadSurrogate {
         }
 
         func cellIndex(_ p: SIMD2<Float>) -> SIMD2<Int>? {
-            let c = SIMD2<Int>(((p - origin) / cell).rounded(.down))
+            // Each lane converted on its own: SIMD2<Int>(_:) of a float vector takes the generic,
+            // slow conversion, a fifth of a drag frame once.
+            let f = ((p - origin) / cell).rounded(.down)
+            let c = SIMD2(Int(f.x), Int(f.y))
             guard c.x >= 0, c.y >= 0, c.x < columns, c.y < rows else { return nil }
             return c
         }

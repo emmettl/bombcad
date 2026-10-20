@@ -392,9 +392,13 @@ extension FacadeLoadSurrogate {
         let binS: Double
         let table: GlassTable
 
-        public init(binS: Double = 0.7e-3) {
+        /// With `quantum`, pulses rounded to that share of their peak and impulse instead of
+        /// `FacadeLoadSurrogate.quantum`, and with `strengthSteps`, a cracked pane's strength to
+        /// that many steps a unit of its log instead of 20: coarser for a preview, so that a charge
+        /// moved a few metres finds most of its panes' responses already worked out.
+        public init(binS: Double = 0.7e-3, quantum: Double? = nil, strengthSteps: Double? = nil) {
             self.binS = binS
-            table = GlassTable(binS: binS)
+            table = GlassTable(binS: binS, quantum: quantum, strengthSteps: strengthSteps)
         }
     }
 
@@ -462,7 +466,16 @@ extension FacadeLoadSurrogate {
         private let shards = (0..<GlassTable.shardCount).map { _ in Shard() }
         let binS: Double
 
-        init(binS: Double) { self.binS = binS }
+        /// The log steps a pulse's peak and impulse are rounded to, and a unit of a cracked pane's
+        /// log strength is cut into.
+        let step: Double
+        let strengthSteps: Double
+
+        init(binS: Double, quantum: Double? = nil, strengthSteps: Double? = nil) {
+            self.binS = binS
+            step = quantum.map { log(1 + $0) } ?? Self.step
+            self.strengthSteps = strengthSteps ?? 20
+        }
 
         static let step = log(1 + FacadeLoadSurrogate.quantum)
 
@@ -474,21 +487,24 @@ extension FacadeLoadSurrogate {
             let binS: Double
             private var made: [Double]?
 
-            init(_ prediction: Prediction, binS: Double) {
+            let step: Double
+
+            init(_ prediction: Prediction, binS: Double, step: Double = GlassTable.step) {
+                self.step = step
                 peak =
                     prediction.peakPa > 0
-                    ? Int32((log(prediction.peakPa) / GlassTable.step).rounded()) : Int32.min
+                    ? Int32((log(prediction.peakPa) / step).rounded()) : Int32.min
                 impulse =
                     prediction.impulsePaS > 0
-                    ? Int32((log(prediction.impulsePaS) / GlassTable.step).rounded()) : Int32.min
+                    ? Int32((log(prediction.impulsePaS) / step).rounded()) : Int32.min
                 rise = Int8((prediction.riseShare * 20).rounded())
                 self.binS = binS
             }
 
             mutating func pressures() -> [Double] {
                 if let made { return made }
-                let p = peak == .min ? 0 : exp(Double(peak) * GlassTable.step)
-                let i = impulse == .min ? 0 : exp(Double(impulse) * GlassTable.step)
+                let p = peak == .min ? 0 : exp(Double(peak) * step)
+                let i = impulse == .min ? 0 : exp(Double(impulse) * step)
                 let load = FacadeLoadSurrogate.pulse(
                     peak: p, impulse: i, riseShare: Double(rise) / 20, binS: binS)
                 made = load
@@ -508,7 +524,7 @@ extension FacadeLoadSurrogate {
             _ mix: GlazingMix, prediction: Prediction, areaM2: Double, strength: Double,
             worseThan: GlazingHazard.Condition = .threeB
         ) -> GlassOutcome {
-            var pulse = Pulse(prediction, binS: binS)
+            var pulse = Pulse(prediction, binS: binS, step: step)
             return GlassOutcome(
                 mix.judged(
                     areaM2: areaM2, strength: strength, worseThan: worseThan,
@@ -524,10 +540,11 @@ extension FacadeLoadSurrogate {
                         }
                     },
                     thrown: { pane, broke in
-                        let step = Int16(max(min((log(broke) * 20).rounded(), 32_000), -32_000))
+                        let step = Int16(max(min((log(broke) * strengthSteps).rounded(), 32_000), -32_000))
                         let rank = lookup(pulse.key(pane, glass: mix.glass, strength: step)) {
                             let condition = mix.condition(
-                                pane, strength: exp(Double(step) / 20), pressures: pulse.pressures(),
+                                pane, strength: exp(Double(step) / strengthSteps),
+                                pressures: pulse.pressures(),
                                 binS: binS)
                             return (
                                 false, Double(GlazingHazard.Condition.allCases.firstIndex(of: condition)!)

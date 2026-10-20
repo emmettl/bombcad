@@ -60,6 +60,13 @@ enum DragTime {
         // The preview: each move's cost, and at each move its agreement with the full estimate's
         // chances (`--reference-draws`, 40 unless given) and damage.
         let previewDraws = value("preview-draws").flatMap(Int.init) ?? 20
+        // `--preview-quantum 0.03 --preview-strength-steps 20`: the previews' pane table as a full
+        // look's, not the app's preview's (`Prepared.previewQuantum`, `previewStrengthSteps`).
+        let previewQuantum = value("preview-quantum").flatMap(Double.init)
+        let previewStrengthSteps = value("preview-strength-steps").flatMap(Double.init)
+        let previewResponses = FacadeLoadSurrogate.GlassResponses(
+            quantum: previewQuantum ?? FacadeLoadSurrogate.Prepared.previewQuantum,
+            strengthSteps: previewStrengthSteps ?? FacadeLoadSurrogate.Prepared.previewStrengthSteps)
         let referenceDraws = value("reference-draws").flatMap(Int.init) ?? 40
         func stats(_ pairs: [(Double, Double)]) -> String {
             guard !pairs.isEmpty else { return "none" }
@@ -85,7 +92,7 @@ enum DragTime {
             let (damage, damageS, _) = FacadeLoadSurrogate.damage(preview, constructions: constructions)
             clock = .now
             let (glass, _) = FacadeLoadSurrogate.glassProbabilities(
-                sides: sides, mass: mass, cellSize: dx, uncertainty: uncertainty)
+                sides: sides, mass: mass, cellSize: dx, uncertainty: uncertainty, responses: previewResponses)
             let glassS = seconds(clock)
             let (structure, structureS) = FacadeLoadSurrogate.structureProbabilities(
                 preview, mass: mass, cellSize: dx, constructions: constructions, uncertainty: uncertainty)
@@ -163,7 +170,8 @@ enum DragTime {
             var uncertainty = FacadeLoadSurrogate.Uncertainty(
                 yieldLogSD: log(1.5) / 1.645, samples: previewDraws)
             uncertainty.stratified = true
-            let dragged = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: dx)
+            var dragged = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: dx)
+            dragged.glassResponses = previewResponses
             // `--parts damage|glass|structure`: what the view shows while dragging; all without.
             let parts: FacadeLoadSurrogate.Prepared.Parts =
                 switch value("parts") {

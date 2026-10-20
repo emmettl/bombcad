@@ -355,6 +355,50 @@ charge where it was and 60 m east):
 - What would: a pane table interpolated rather than looked up per rounded pulse (as the charge
   inference's `BreakTable` is), or the draws on the GPU.
 
+**Faster frames (21 October 2026).** A profile of a glass drag on Beirut found where a later frame
+went:
+- **About two-fifths in SDOF integrations.** As the charge moves, most strips' rounded pulses
+  change, so their pane responses are missing from the table frame after frame. The thrown panes'
+  conditions miss most, keyed as they are by the strength each draw cracks at.
+- **A fifth in one conversion.** `SIMD2<Int>` of a float vector takes Swift's generic, slow path,
+  in the raster's cell index and the terrain's height: most of the sight lines' time.
+- **A sixth in waiting on the table's locks,** much of the rest in hashing.
+
+Two changes, chosen by those numbers (neither the GPU nor a new interpolated table was needed):
+- **The conversion lane by lane** (`Raster.cellIndex`, `Terrain.height(at:)`): the same integers,
+  the sight lines 0.38–0.40 s to 0.16–0.24 s a frame.
+- **A coarser pane table for previews** (`Prepared.previewQuantum`, `previewStrengthSteps`):
+  - pulses rounded to 10% of their peak and impulse, against a full estimate's 3%;
+  - a cracked pane's strength rounded to a fifth of a unit of its log, against a twentieth.
+
+  Both are far finer than the surrogate's scatter (0.2–0.3 in the log) and the strength's (0.25).
+  A charge moved a few metres then finds most of its panes' responses already worked out. A full
+  estimate keeps its own, finer table.
+
+**Still as right.** Against the full estimate, as above (0.5 kt, 10 preview draws, 100 full ones,
+the charge where it was and 60 m east):
+
+| Pane table | Some broken within 0.1 | Blown out within 0.1 | Blown out bias | Damage colour the same |
+|---|---|---|---|---|
+| A full estimate's (3%, a twentieth) | 0.929 | 0.881 | +0.009 | 0.997 |
+| 6%, a tenth | 0.928 | 0.881–0.882 | +0.009 | 0.997 |
+| **The preview's (10%, a fifth)** | **0.928** | **0.880–0.882** | **+0.006** | **0.997** |
+
+Two runs of the same build differ in the third decimal. Each building's strength draws are keyed
+by its place among the scene's objects sorted by their identifiers, which are new each time a
+scene is built. So these figures agree within their own noise.
+
+**Faster** (Beirut, 21 frames 5 m apart; the Studio shared, load 2–14):
+
+| Colouring | First frame | Later frames, median (range) | Before (load 18–34) |
+|---|---|---|---|
+| Glass's chances (10 draws) | 1.8 s | **0.43 s** (0.43–0.48) | 1.2–1.7 s |
+| Damage | 1.5 s | **0.69 s** (0.62–0.76) | 1.5–1.7 s (0.9 at load 5–18) |
+| Walls' and roofs' chances (20 draws) | 0.7 s | **0.53 s** (0.51–0.57) | 0.8–1.4 s |
+
+At a load of 112 the glass's later frames took 0.31–0.44 s and the whole frame at most 0.70 s. So
+every colouring now meets the second's bar, loaded or not.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
