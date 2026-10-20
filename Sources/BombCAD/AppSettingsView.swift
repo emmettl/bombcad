@@ -10,6 +10,8 @@ struct AppSettingsView: View {
     @AppStorage(AppPreferences.Key.recordsTimelines) private var recordsTimelines = true
     @AppStorage(AppPreferences.Key.timelineBudgetMB) private var timelineBudgetMB =
         RunTimelineRecorder.defaultBudgetBytes >> 20
+    @AppStorage(AppPreferences.Key.checkpointBudgetMB) private var checkpointBudgetMB =
+        RunTimelineRecorder.defaultCheckpointBudgetBytes >> 20
     @State private var newHost = ""
     @State private var addError: String?
     /// Each host's last test result, and the hosts being tested.
@@ -63,11 +65,18 @@ struct AppSettingsView: View {
                         ForEach([64, 128, 256, 512, 1024], id: \.self) { Text("\($0) MB").tag($0) }
                     }
                     .disabled(!recordsTimelines)
+                    Picker("Space for saved states", selection: $checkpointBudgetMB) {
+                        Text("Only those saved by hand").tag(0)
+                        ForEach([256, 512, 1024, 2048, 4096], id: \.self) {
+                            Text($0 < 1024 ? "\($0) MB" : "\($0 / 1024) GB").tag($0)
+                        }
+                    }
+                    .disabled(!recordsTimelines)
                 } header: {
                     Text("Replay")
                 } footer: {
                     Text(
-                        "A run records what the view draws, about 240 frames, so that it can be replayed and scrubbed without running again, and a kept run keeps its recording in the project. Past its space, a run records less often rather than stopping."
+                        "A run records what the view draws, about 240 frames, so that it can be replayed and scrubbed without running again, and a kept run keeps its recording in the project. Past its space, a run records less often rather than stopping. A run also saves its full state every eighth of the way, while those fit their space, and wherever you choose Simulation ▸ Save State Here; replaying it, Continue runs on from the state saved at that time or just before."
                     )
                 }
 

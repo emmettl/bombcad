@@ -32,10 +32,12 @@ public struct RunTimelineManifest: Codable, Equatable, Sendable {
         /// For frames: the last frame's time and how many.
         public var endTime: Double?
         public var count: Int?
+        /// For checkpoints: saved by hand ("Save State Here"), so never thinned out.
+        public var pinned: Bool?
 
         public init(
             kind: Kind, time: Double, step: Int, path: String, bytes: Int, endTime: Double? = nil,
-            count: Int? = nil
+            count: Int? = nil, pinned: Bool? = nil
         ) {
             self.kind = kind
             self.time = time
@@ -44,6 +46,7 @@ public struct RunTimelineManifest: Codable, Equatable, Sendable {
             self.bytes = bytes
             self.endTime = endTime
             self.count = count
+            self.pinned = pinned
         }
     }
 
@@ -83,11 +86,20 @@ public struct RunTimelineManifest: Codable, Equatable, Sendable {
     public func entries(_ kind: Entry.Kind) -> [Entry] { entries.filter { $0.kind == kind } }
 
     /// The checkpoints to drop when over budget, so that what remains still spans the run: every
-    /// other one, keeping the first and the last.
+    /// other one, keeping the first and the last, and any saved by hand.
     public var checkpointsToThin: [Entry] {
         let checkpoints = entries(.checkpoint)
         guard checkpoints.count > 2 else { return [] }
         return checkpoints.indices.dropFirst().dropLast().filter { $0 % 2 == 1 }.map { checkpoints[$0] }
+            .filter { $0.pinned != true }
+    }
+
+    /// The bytes the checkpoints take.
+    public var checkpointBytes: Int { entries(.checkpoint).reduce(0) { $0 + $1.bytes } }
+
+    /// The latest checkpoint at or before `time`, which a run carried on from there would start at.
+    public func checkpoint(atOrBefore time: Double) -> Entry? {
+        entries(.checkpoint).last { $0.time <= time + 1e-9 }
     }
 
     /// Whether `data` is a manifest this version reads.

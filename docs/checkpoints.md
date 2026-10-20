@@ -8,8 +8,10 @@ timelines, where any moment can be run again in full detail from the nearest che
 first tier, display frames, is described with the app's timeline).
 
 **Stage 1: the air, its refinement and its clocks. Stage 2: structures, envelopes' recorders and
-venting, exposure planes, deflagrations and congestion.** Stage 3 is to add the app's "Save state
-here" and "Continue from saved state".
+venting, exposure planes, deflagrations and congestion. Stage 3: the app** saves a recorded run's
+state every eighth of the way and at Simulation ▸ Save State Here, and continues a replayed run
+from the state saved at the time shown or just before ([using the
+app](using-the-app.md#continuing-a-run-from-a-saved-state)).
 
 ```bash
 blastbench snapshot --preset street --dx 0.25 --time 0.03 --checkpoint-at 0.01 --checkpoint-out street-10ms
@@ -115,10 +117,15 @@ A folder holding `checkpoint.json` and one file a part. The header gives:
 Each part's file holds its bytes LZFSE-compressed in chunks of 16 MB, on the CPU's cores. A
 chunk compression does not shrink is stored as it is.
 
-In the app's project package, a kept run's checkpoints are to live beside its timeline's frames,
-under `runs/<run id>/checkpoints/step-000128/`, with one manifest and one size budget shared
-with the frames. When the budget runs short, every other checkpoint is thinned out, keeping the
-first and the last.
+In the app, a run's checkpoints lie beside its timeline's frames, in
+`checkpoints/step-000128/` of its recording, listed in its `run.json` (`RunTimelineManifest`,
+entries of kind `checkpoint`, `pinned` for those saved by hand), and Keep Run keeps them in the
+project package under `runs/<run id>/`. The manifest's budget is the frames' space and the
+checkpoints' (Settings ▸ Replay) together. When the checkpoints pass theirs, every other one is
+thinned out, keeping the first, the last and those saved by hand; a new one that still does not
+fit is removed and the run saves no more by itself. `RunTimelineTests` runs a wall on the coarse grid for 0.2 s, saves by hand
+when paused at 30%, replays, continues from the state at or before 70% and runs on: it ends with
+the same digest as the run straight through.
 
 ## Checked
 

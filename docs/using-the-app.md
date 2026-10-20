@@ -140,8 +140,35 @@ again ends a replay.
   about 70 frames, each captured in 33 ms, 0.2% of its run; the made-up district's, on 25 million
   cells, take 9 ms and a few kilobytes each, and its 3 s run records 9.
 
-Continuing a run from a moment of its timeline, at full detail or with a change, needs the
-solver's checkpoints, which are being built.
+### Continuing a run from a saved state
+
+A recorded run also saves its full state, the solver's own ([checkpoints](checkpoints.md)), so
+that it can be continued from there at full detail, the same to the bit as it ran:
+- **Saved along the way:** every eighth of the run, while those fit their space (Settings ▸
+  Replay, "Space for saved states", 512 MB a run by default); past it every other one is dropped,
+  keeping the first and the last. A state is saved between batches, at a 64-step boundary, so at
+  the first one after its time. A new state that does not fit, with none left to drop, is removed
+  and the run saves no more by itself: the office tower's take about 300 MB each, so 512 MB holds
+  its first; a street's take about 20 MB.
+- **Saved by hand:** Simulation ▸ Save State Here (⌥⌘S) saves at the next boundary; a paused run
+  runs on to it, a few steps, and pauses again. These are never dropped.
+- **Continued:** replaying, the slider marks the saved states (those saved by hand in the accent
+  colour), and **Continue from …** (or Simulation ▸ Continue from Saved State) takes back the
+  state saved at the time shown or just before it and leaves the run paused there; Run carries
+  it on, recording again from there. The structure's deflections up to that time are kept when it
+  is the last run; a kept run's start with none.
+- **Kept with the run:** the states lie in the recording's `checkpoints/` folder, so Keep Run
+  keeps them in the project with its frames.
+
+Not yet:
+- **A different scene or settings:** the state is taken back only into the run's own scene and
+  settings, "Stop after" among them. A kept run whose scene has since been edited cannot be
+  continued; the message says why.
+- **Fragments, ground points and thermal receivers:** what they compute alongside the run is not
+  saved, so a run with them neither saves nor continues.
+- **Delayed charges:** a run saves states only until its first delayed charge fires.
+- **Saving takes the main thread** for a moment (about 0.2 s for a million cells, 2.6 s for the
+  office tower), so the view pauses while it saves.
 
 ## Large scenes and the advisor
 

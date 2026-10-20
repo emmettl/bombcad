@@ -241,6 +241,8 @@ final class RunTimelineRecorder {
     /// Frames recorded over a run by default, and the budget a run's timeline keeps within.
     nonisolated static let defaultFrames = 240
     nonisolated static let defaultBudgetBytes = 256 << 20
+    /// The space a run's checkpoints keep within by default, beside its frames'.
+    nonisolated static let defaultCheckpointBudgetBytes = 512 << 20
 
     let folder: URL
     /// The air's field is recorded every `stride` cells, at most about half a million texels (4 MB).
@@ -266,10 +268,16 @@ final class RunTimelineRecorder {
         return max(1, Int(cbrt(cells / Double(texels)).rounded(.up)))
     }
 
+    /// The frames' share of the budget, and the checkpoints'.
+    let framesBudget: Int
+    let checkpointBudget: Int
+
     init(
         solver: BlastSolver, fingerprint: String, duration: Double, frames: Int = defaultFrames,
-        budgetBytes: Int = defaultBudgetBytes
+        budgetBytes: Int = defaultBudgetBytes, checkpointBudgetBytes: Int = 0
     ) throws {
+        framesBudget = budgetBytes
+        checkpointBudget = checkpointBudgetBytes
         folder = Self.stagingRoot.appending(path: UUID().uuidString.lowercased(), directoryHint: .isDirectory)
         try FileManager.default.createDirectory(
             at: folder.appending(path: "frames"), withIntermediateDirectories: true)
@@ -277,7 +285,8 @@ final class RunTimelineRecorder {
         stride = Self.stride(for: SIMD3(grid.nx, grid.ny, grid.nz))
         interval = max(duration / Double(max(frames, 1)), 1e-6)
         manifest = RunTimelineManifest(
-            sceneFingerprint: fingerprint, settingsFingerprint: fingerprint, budgetBytes: budgetBytes)
+            sceneFingerprint: fingerprint, settingsFingerprint: fingerprint,
+            budgetBytes: budgetBytes + checkpointBudgetBytes)
         let setup = try TimelineCodec.compress(
             SceneViewCodec.encode(ViewSetup(solver: solver, fieldStride: stride)))
         try setup.write(to: folder.appending(path: "frames/setup.lzfse"))
@@ -317,7 +326,7 @@ final class RunTimelineRecorder {
         let written = writer.bytesWritten + setupBytes
         if frames >= 8,
             Double(written) / Double(frames) * Double(remainingFrames(at: solver.time)) + Double(written)
-                > Double(manifest.budgetBytes)
+                > Double(framesBudget)
         {
             interval *= 2
         }
@@ -352,6 +361,35 @@ final class RunTimelineRecorder {
 
     /// The bytes the timeline takes so far: its setup and every frame written.
     var bytes: Int { setupBytes + writer.bytesWritten }
+
+    /// The checkpoints saved so far, in time order.
+    var checkpoints: [RunTimelineManifest.Entry] { manifest.entries(.checkpoint) }
+
+    /// Where the checkpoint at `step` goes, relative to the folder.
+    static func checkpointPath(step: Int) -> String { String(format: "checkpoints/step-%06d", step) }
+
+    /// Lists a checkpoint saved into the folder at `entry.path`. Past the checkpoints' budget,
+    /// every other one is removed, keeping the first and the last and those saved by hand; the
+    /// entries removed (an unpinned checkpoint that alone passes the budget among them).
+    @discardableResult
+    func addCheckpoint(_ entry: RunTimelineManifest.Entry) -> [RunTimelineManifest.Entry] {
+        guard !finished else { return [] }
+        manifest.add(entry)
+        var removed: [RunTimelineManifest.Entry] = []
+        while manifest.checkpointBytes > checkpointBudget {
+            var thin = manifest.checkpointsToThin
+            if thin.isEmpty, entry.pinned != true, manifest.entries(.checkpoint).contains(entry) {
+                thin = [entry]
+            }
+            guard !thin.isEmpty else { break }
+            for old in thin {
+                manifest.remove(path: old.path)
+                try? FileManager.default.removeItem(at: folder.appending(path: old.path))
+            }
+            removed += thin
+        }
+        return removed
+    }
 
     func discard() {
         finished = true

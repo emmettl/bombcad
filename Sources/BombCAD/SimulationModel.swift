@@ -541,6 +541,18 @@ final class SimulationModel {
     @ObservationIgnored private(set) var timelineCost:
         (frames: Int, seconds: Double, bytes: Int, wall: Double)?
     @ObservationIgnored private var timelineStarted = ContinuousClock.now
+    /// A state to save at the next 64-step boundary (Save State Here), and whether the run pauses
+    /// once it is saved; the time of the run's next automatic one (seven along a run, while they
+    /// fit their space in Settings ▸ Replay).
+    @ObservationIgnored private var saveRequested = false
+    @ObservationIgnored private var pauseAfterSave = false
+    @ObservationIgnored private var nextAutomaticCheckpoint = Double.infinity
+    /// The states the run under way has saved, to continue from (`RunTimelineManifest`'s checkpoints).
+    private(set) var savedStates: [RunTimelineManifest.Entry] = []
+    /// The time the run under way was continued from a saved state, if it was.
+    private(set) var continuedFrom: Double?
+    /// Saved states the run takes, automatically: one every `duration / automaticCheckpoints`.
+    static let automaticCheckpoints = 8
     let chargeInference = ChargeInferenceModel()
     /// Asked of the views that own them from the menus, and cleared there: choosing a model to
     /// import, naming the run to keep, and saving the results as CSV.
@@ -2266,9 +2278,15 @@ final class SimulationModel {
         do {
             let recorder = try RunTimelineRecorder(
                 solver: solver, fingerprint: SavedSimulationRun.fingerprint(scenario, settings: inputs),
-                duration: duration, budgetBytes: preferences.timelineBudgetMB << 20)
+                duration: duration, budgetBytes: preferences.timelineBudgetMB << 20,
+                checkpointBudgetBytes: preferences.checkpointBudgetMB << 20)
             recorder.endTime = duration
             timelineRecorder = recorder
+            savedStates = []
+            let spacing = duration / Double(Self.automaticCheckpoints)
+            nextAutomaticCheckpoint =
+                preferences.checkpointBudgetMB > 0 && spacing > 0
+                ? (floor(solver.time / spacing + 1e-6) + 1) * spacing : .infinity
             timelineStarted = .now
             recordTimeline(solver)
         } catch {
@@ -2293,15 +2311,26 @@ final class SimulationModel {
                 recorder.frames, recorder.captureSeconds, recorder.bytes,
                 Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
             )
+            // A run continued from the last one's saved state leaves that run's recording behind:
+            // gone now, unless it was kept.
+            if let self, let old = self.recentTimeline, old != folder, !self.runFolders.values.contains(old) {
+                try? FileManager.default.removeItem(at: old)
+            }
             self?.recentTimeline = folder
         }
     }
 
-    /// Forgets the run under way's recording, and the last run's unless it was kept.
-    private func discardTimeline() {
+    /// Forgets the run under way's recording, and the last run's unless it was kept (or
+    /// `keepingRecent`, to continue from it).
+    private func discardTimeline(keepingRecent: Bool = false) {
         stopReplay()
         timelineRecorder?.discard()
         timelineRecorder = nil
+        savedStates = []
+        saveRequested = false
+        pauseAfterSave = false
+        nextAutomaticCheckpoint = .infinity
+        guard !keepingRecent else { return }
         if let recent = recentTimeline, !runFolders.values.contains(recent) {
             try? FileManager.default.removeItem(at: recent)
         }
@@ -2359,6 +2388,136 @@ final class SimulationModel {
         showOpenedVentPanels(solver)
         applyEnvelopeDamageColours()
         sceneVersion += 1
+    }
+
+    // MARK: - Saved states
+
+    /// Why the run under way cannot save its state, or nil if it can: states are saved into its
+    /// recording, and the fragments, ground shock and thermal paint fed alongside are not saved.
+    var saveStateUnavailable: String? {
+        if timelineRecorder == nil { return "Only a recorded run saves its state (Settings ▸ Replay)." }
+        if fragments != nil || groundShock != nil || thermal != nil {
+            return "A run with fragments, ground shaking or the thermal paint cannot save its state yet."
+        }
+        if solver?.firings.isEmpty == false {
+            return "A run whose delayed charges have begun to fire cannot save its state yet."
+        }
+        return nil
+    }
+
+    /// The solver's state digest (`BlastSolver.stateDigest`), to check a continued run against.
+    var solverStateDigest: UInt64? { solver?.stateDigest() }
+
+    /// Whether Save State Here can be chosen now.
+    var canSaveState: Bool {
+        saveStateUnavailable == nil && !saveRequested && !rebuildPending && stepCount > 0
+            && time < duration - 1e-9
+    }
+
+    /// Saves the run's state at the next 64-step boundary, into its recording, to continue from
+    /// later; a paused run runs on to it and pauses again.
+    func saveStateHere() {
+        guard canSaveState, let solver else { return }
+        saveRequested = true
+        if !isRunning, !batchInFlight, solver.stepCount.isMultiple(of: BlastSolver.checkpointInterval) {
+            saveCheckpointIfDue(solver)
+        } else if !isRunning {
+            pauseAfterSave = true
+            run()
+        }
+    }
+
+    private func checkpointDue(_ solver: BlastSolver) -> Bool {
+        timelineRecorder != nil && (saveRequested || solver.time >= nextAutomaticCheckpoint - 1e-12)
+    }
+
+    /// Saves the state if one is due and the run stands on a 64-step boundary between batches.
+    private func saveCheckpointIfDue(_ solver: BlastSolver) {
+        guard checkpointDue(solver), !batchInFlight,
+            solver.stepCount.isMultiple(of: BlastSolver.checkpointInterval), let recorder = timelineRecorder
+        else { return }
+        let pinned = saveRequested
+        saveRequested = false
+        if solver.time >= nextAutomaticCheckpoint - 1e-12 {
+            let spacing = duration / Double(Self.automaticCheckpoints)
+            nextAutomaticCheckpoint = (floor(solver.time / spacing + 1e-6) + 1) * spacing
+        }
+        defer {
+            if pinned, pauseAfterSave {
+                pauseAfterSave = false
+                isRunning = false
+                publishProgress()
+            }
+        }
+        if let reason = saveStateUnavailable {
+            nextAutomaticCheckpoint = .infinity
+            if pinned { errorMessage = reason }
+            return
+        }
+        let path = RunTimelineRecorder.checkpointPath(step: solver.stepCount)
+        do {
+            let header = try solver.saveCheckpoint(to: recorder.folder.appending(path: path), scene: scenario)
+            let entry = RunTimelineManifest.Entry(
+                kind: .checkpoint, time: header.time, step: header.stepCount, path: path,
+                bytes: header.storedBytes, pinned: pinned ? true : nil)
+            // One automatic state alone past their space: no more this run.
+            if recorder.addCheckpoint(entry).contains(entry) { nextAutomaticCheckpoint = .infinity }
+            savedStates = recorder.checkpoints
+        } catch {
+            nextAutomaticCheckpoint = .infinity
+            if pinned { errorMessage = "The run's state could not be saved: \(error)" }
+        }
+    }
+
+    /// The saved state a replay at its time would continue from: the latest at or before it.
+    func checkpointToContinue(_ playback: TimelinePlayback) -> RunTimelineManifest.Entry? {
+        playback.player.manifest.checkpoint(atOrBefore: playback.time)
+    }
+
+    /// Carries the run being replayed on from its latest saved state at or before the time shown:
+    /// the solver takes the state back, the same to the bit as the run had it, and runs on from
+    /// there. The scene and settings must be the run's.
+    func continueFromReplay() {
+        guard let playback, let entry = checkpointToContinue(playback) else { return }
+        let folder = playback.player.folder
+        continueRun(from: folder.appending(path: entry.path), sameRun: folder == recentTimeline)
+    }
+
+    /// Takes back the state saved in `checkpoint`; `sameRun` keeps the run's records (the
+    /// structure's deflections) up to its time, as the last run's are still at hand.
+    func continueRun(from checkpoint: URL, sameRun: Bool) {
+        guard !isRunning, !batchInFlight, !rebuildPending, !sweep.isActive else { return }
+        if fragmentSpec != nil || groundShockSpec != nil || thermalSpec != nil {
+            errorMessage =
+                "A run with fragments, ground points or thermal receivers cannot be continued from a saved state yet."
+            return
+        }
+        let records = sameRun ? (structureRecord, bodyRecords) : ([], [:])
+        stopReplay()
+        rebuild(keepingRecentTimeline: true)
+        guard let solver else { return }
+        do {
+            try solver.restoreCheckpoint(from: checkpoint, scene: scenario)
+        } catch {
+            rebuild(keepingRecentTimeline: true)
+            errorMessage =
+                "This run cannot be continued from its saved state (the scene or settings may have changed since): \(error)"
+            return
+        }
+        let now = solver.time
+        structureRecord = records.0.filter { $0.time <= now + 1e-9 }
+        bodyRecords = records.1.mapValues { $0.filter { $0.time <= now + 1e-9 } }
+        structureHistory = structureRecord
+        bodyHistories = bodyRecords
+        structureSummary = solver.bodySummary()
+        lastSampleTime = now
+        nextStructureSampleTime = (floor(now / sampleInterval + 1e-6) + 1) * sampleInterval
+        continuedFrom = now
+        solver.refreshVisualization()
+        restoreLiveView()
+        publishProgress()
+        publishTraces()
+        startTimeline(solver)
     }
 
     // MARK: - Ground shock
@@ -2878,10 +3037,11 @@ final class SimulationModel {
         solver.mappedStartLatest = duration / 2
     }
 
-    private func rebuild() {
+    private func rebuild(keepingRecentTimeline: Bool = false) {
         isLoadingInputs = true
         defer { isLoadingInputs = false }
-        discardTimeline()
+        discardTimeline(keepingRecent: keepingRecentTimeline)
+        continuedFrom = nil
         stopFragments()
         stopGroundShock()
         envelopeExposure = []
@@ -3095,6 +3255,11 @@ final class SimulationModel {
         if thermal != nil, timeStep > 0 {
             steps = min(steps, max(1, Int(((nextFireballTime - solver.time) / timeStep).rounded(.up))))
         }
+        // A state to save: to the next 64-step boundary, where it is saved between batches.
+        if checkpointDue(solver) {
+            let interval = BlastSolver.checkpointInterval
+            steps = min(steps, interval - solver.stepCount % interval)
+        }
         prepareBatch?(solver, limit)
         guard
             let commandBuffer = solver.encodeBatch(steps: steps, timeLimit: limit, updateVisualization: true)
@@ -3124,6 +3289,7 @@ final class SimulationModel {
         sendGroundShockFrame(solver, last: finished)
         sendFireball(solver)
         recordTimeline(solver)
+        saveCheckpointIfDue(solver)
 
         let now = ContinuousClock.now
         let wall = (now - lastBatchCompletion).seconds
@@ -3185,6 +3351,8 @@ final class SimulationModel {
 
     private func finish() {
         isRunning = false
+        saveRequested = false
+        pauseAfterSave = false
         finishTimeline()
         firingNotes = (solver?.firings ?? []).map { firing in
             let how =

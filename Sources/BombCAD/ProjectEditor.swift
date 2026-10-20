@@ -103,6 +103,12 @@ struct SimulationCommands: Commands {
                 .keyboardShortcut("0")
                 .disabled(model == nil)
             Divider()
+            Button("Save State Here") { model?.saveStateHere() }
+                .keyboardShortcut("s", modifiers: [.command, .option])
+                .disabled(model?.canSaveState != true)
+            Button("Continue from Saved State") { model?.continueFromReplay() }
+                .disabled(model?.playback.flatMap { model?.checkpointToContinue($0) } == nil)
+            Divider()
             Button("Keep Run…") { model?.requestsKeptRun = true }
                 .keyboardShortcut("k")
                 .disabled(model == nil || model?.sweep.isActive == true || model?.canKeepRun != true)

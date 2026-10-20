@@ -185,4 +185,52 @@ struct RunTimelineTests {
         #expect(FileManager.default.fileExists(atPath: recent.path))
         try? FileManager.default.removeItem(at: recent)
     }
+
+    @Test("A run continued from a state it saved ends as it did, to the bit; a state saved by hand is kept")
+    func aRunContinuesFromItsSavedState() async throws {
+        let kept = try SavedRunTests().fixture()
+        var document = ProjectDocument(scenario: kept.scenario)
+        document.runSettings = kept.settings
+        // About 440 steps: several 64-step boundaries to save at.
+        document.runSettings?.duration = 0.2
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.recordsTimelines = true
+        func settle() async throws {
+            while model.isRunning || model.hasPendingGPUWork {
+                try #require(model.errorMessage == nil)
+                try await Task.sleep(for: .milliseconds(5))
+            }
+        }
+        while !model.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        model.run()
+        while model.time < 0.3 * model.duration { try await Task.sleep(for: .milliseconds(2)) }
+        model.toggleRun()
+        try await settle()
+        // Saved by hand: the paused run runs on to the next 64-step boundary and pauses there.
+        #expect(model.canSaveState)
+        model.saveStateHere()
+        try await settle()
+        let pinned = try #require(model.savedStates.first { $0.pinned == true })
+        #expect(pinned.step % BlastSolver.checkpointInterval == 0)
+        model.run()
+        try await settle()
+        while model.recentTimeline == nil { try await Task.sleep(for: .milliseconds(5)) }
+        let straight = try #require(model.solverStateDigest)
+        let endTime = model.time
+
+        model.replay(nil)
+        let playback = try #require(model.playback)
+        let checkpoints = playback.player.manifest.entries(.checkpoint)
+        #expect(checkpoints.count >= 3 && checkpoints.contains(pinned))
+        playback.seek(to: 0.7 * endTime)
+        let entry = try #require(model.checkpointToContinue(playback))
+        #expect(entry.time <= playback.time && entry.time > pinned.time)
+        model.continueFromReplay()
+        #expect(model.playback == nil && model.continuedFrom == entry.time && model.time == entry.time)
+        model.run()
+        try await settle()
+        #expect(model.time == endTime)
+        #expect(model.solverStateDigest == straight)
+        if let recent = model.recentTimeline { try? FileManager.default.removeItem(at: recent) }
+    }
 }

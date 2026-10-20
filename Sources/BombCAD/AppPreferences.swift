@@ -22,6 +22,9 @@ struct AppPreferences: Equatable, Sendable {
         /// Whether runs record their timeline to replay, and each run's budget for it, in MB.
         static let recordsTimelines = "timeline.records"
         static let timelineBudgetMB = "timeline.budgetMB"
+        /// Each run's space for the saved states it can be continued from, in MB (0: only those
+        /// saved by hand).
+        static let checkpointBudgetMB = "timeline.checkpointBudgetMB"
     }
 
     /// Notes the GPU memory `host` lets the air take.
@@ -48,6 +51,7 @@ struct AppPreferences: Equatable, Sendable {
     var sweepUsesRemote = false
     var recordsTimelines = true
     var timelineBudgetMB = RunTimelineRecorder.defaultBudgetBytes >> 20
+    var checkpointBudgetMB = RunTimelineRecorder.defaultCheckpointBudgetBytes >> 20
 
     /// The hosts sweeps should share cases with: none unless sharing is on.
     var sweepRemoteHosts: [String] { sweepUsesRemote ? sweepHosts : [] }
@@ -94,6 +98,9 @@ struct AppPreferences: Equatable, Sendable {
         if let budget = store.object(forKey: Key.timelineBudgetMB) as? Int, budget >= 16 {
             preferences.timelineBudgetMB = budget
         }
+        if let budget = store.object(forKey: Key.checkpointBudgetMB) as? Int, budget >= 0 {
+            preferences.checkpointBudgetMB = budget
+        }
         return preferences
     }
 
@@ -106,5 +113,6 @@ struct AppPreferences: Equatable, Sendable {
         store.set(sweepUsesRemote, forKey: Key.sweepUsesRemote)
         store.set(recordsTimelines, forKey: Key.recordsTimelines)
         store.set(timelineBudgetMB, forKey: Key.timelineBudgetMB)
+        store.set(checkpointBudgetMB, forKey: Key.checkpointBudgetMB)
     }
 }
