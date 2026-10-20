@@ -1071,6 +1071,82 @@ stage-1 estimate of 6–8 times for the element kernel alone. The time step is u
 **Not shown here.** The force's jump at the switch in explicit dynamics: the bending modes match
 there and the twist modes do not. Stage 3 judges the option on the case matrix.
 
+### An element that bends in its cracked concrete: stage 3 (20 October 2026)
+
+Stage 3 of emmettl/bombcad-work#20 judged the option on the hourglass table's cases. **It stopped
+under the plan's rule: the guard G3 failed twice.** The gates were declared in the plan before
+running:
+- **G2:** OA1 ≤ 120% on 12 elements and within ±10% on 24; Janney within ±8% on 6, 12 and 24.
+- **G3:** Saatci's heavy drops within ±15%; SS0a-1 losing no more elements than today; Ando's mean
+  error ≤ 25%; Hrynyk's first impacts not softened by more than 10%; Wu's S4 under a contact charge
+  not torn up.
+- **G4:** the contest slab inside 79–119% on 4–16 elements; the chamber and Chiquito no worse.
+
+Today's figures were rerun on the same commit, on the same Mac as each option run (Hrynyk's on
+the CI mini, the rest on the Studio).
+
+**Two forms were tried.**
+1. Stage 2 as pushed. An element's removal and the state it shows went by its most cracked point,
+   and its tensile rate factor froze when any point first cracked.
+2. The element's own decisions go by its centre, as today's element's do. The law also runs on the
+   centre's strain and the element's own history, which decide its removal and what its state
+   shows; that stress is not used. Each point freezes its own tensile factor at its own first
+   crack. That changes the pool's record to 96 bytes. The second form is the option as it now
+   stands.
+
+| Gate | Measured | Today | Form 1 | Form 2 |
+|---|---|---|---|---|
+| G2 OA1, 12 / 24 through | 332 kN | 438 / 342 kN (132 / 103%) | 422 / 365 kN (127 / 110%) | 422 / 366 kN (127 / 110%) |
+| G2 Janney, 6 / 12 / 24 through | 41.5 kN m, failing at 42 mm | 102 / 101 / 100%, failing at 43 / 44 mm / holding | 95 / 95 / 96%, failing at 9 / 25 mm / holding | 95 / 96 / 96%, failing at 13 / 26 mm / holding |
+| G3 Saatci SS1b-1 / SS2b-1 / SS3b-1 | 39.5 / 37.9 / 35.3 mm | 39.3 / 37.6 / 33.5 mm | **48.1** / 40.7 / 35.0 mm | **47.6** / 40.9 / 34.7 mm |
+| G3 SS0a-1, elements removed | whole (9.3 mm) | 193 (16.8 mm) | **742** (21.6 mm) | **621** (22.1 mm) |
+| G3 Hrynyk's first impacts, TH2 / TH6 / TH7 (8 through) | | 16.7 / 20.3 / 15.1 mm | 18.2 / **22.5** / **17.5** mm (+9 / +11 / +15%) | not run (stopped) |
+
+Both forms fail G3 on SS1b-1 (+22% and +20%) and on SS0a-1's elements. The first also fails on two
+of Hrynyk's three slabs. G2 fails on OA1 on 12 elements in both, which moves only from 438 to
+422 kN. Janney's moment holds within the gate, but the beam fails far earlier than the test (at
+9–26 mm, against 42). Today, without the stabilisation, the other light drops also go further:
+SS1a-1 14.7 against 13.5 mm, and SS2a-1 13.4 against 12.3 (12.1 and 10.0 measured). Ando, Wu's S4,
+the slab, the chamber, Chiquito and the informative cases were not run after the stop.
+
+**Why, as far as it was traced.**
+- With the concrete a hundred times as strong in tension, SS1b-1 cracks nowhere. Its elements
+  still switch, being squeezed past a tenth of their strain at peak, and the beam goes 13.7 mm
+  against today's 13.8. So the switched element itself is sound in the explicit dynamics.
+- The extra travel under the real drop is the cracked concrete's own. Today's struck beams were
+  held by hourglass control as stiff as uncracked concrete; with that gone, the cracked points
+  carry less. That is what the secant hourglass option showed in `validation.md#hourglass-control`,
+  now with an element whose bending is right against section analysis.
+- Under impact about 90% of a beam's elements switch.
+- Removal judged at the worst point (form 1) removed more and broke Janney's beam at 9 mm. Judged
+  at the centre (form 2) it removes fewer but still far more than today: the cracked elements
+  deform further before anything is removed.
+- OA1's excess on 12 elements is therefore not the hourglass control's. It is the cracked
+  concrete's shear: stress locking in smeared cracks, which an element formulation does not
+  change.
+
+**Cost.** Against today's runs on the same Mac, with 70–90% of elements switched:
+
+| Run | Wall time |
+|---|---|
+| OA1, 12 / 24 through | ×4.3 / ×3.8 |
+| Janney, 24 through | ×4.7 |
+| Saatci's beams | ×1.4–2.2 a beam |
+| Hrynyk's first impacts on the CI mini | ×8 |
+
+The unloaded slab (stage 2) gives ×3.6 a structural substep with every element switched, and the
+second form adds a ninth evaluation of the law.
+
+**The product: a lower standing, not a default.** By the plan's stop rule, the agreement of the
+beams struck by a falling weight (Saatci's and Ando's) leans on the stabilisation. Their standing
+is lowered from moderate on one mesh to low, in [validation](validation.md#hourglass-control),
+its Summary and the app's standing. The option stays off, as the second form, for anyone who
+wants an element whose bending is right in cracked concrete (a slab under a slow load, a section
+check), accepting that struck members then go too far.
+
+A retry of embedded cracks on this element (the plan's stage 4) is not proposed: it was to follow
+only if G2–G4 passed.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger

@@ -124,9 +124,10 @@ extension StandingTable {
                 limit: .approximation,
                 note:
                     "Cracked concrete elements work at eight points with an assumed strain and no hourglass "
-                    + "control; being judged on the case matrix.",
+                    + "control. Right against section analysis, but it sends a struck beam 20% further than its "
+                    + "test and leaves a shear beam 27% strong on 12 elements, so it is not a default.",
                 document:
-                    "concrete-model.md#an-element-that-bends-in-its-cracked-concrete-stage-2-20-october-2026")
+                    "concrete-model.md#an-element-that-bends-in-its-cracked-concrete-stage-3-20-october-2026")
         case .perfectMembers:
             return Entry(
                 title: "Steel members perfectly straight", affects: structure, limit: .approximation,
@@ -491,14 +492,17 @@ extension StandingScene {
                     "Beams struck by a falling weight",
                     "Either way on 16 elements, with stirrups: 12–23% high under light drops, −5% to −1% under "
                         + "heavy; on 24 (earlier defaults), +17% to +28% and −1% to +17%; struck about twice as hard as measured, the "
-                        + "reactions up to 40% low; the rate laws were chosen on these tests",
-                    "validation.md#beams-struck-by-a-falling-weight"),
+                        + "reactions up to 40% low; the rate laws were chosen on these tests. The agreement leans on "
+                        + "the elements' hourglass control: an element without it sends the heavy drop 20% further "
+                        + "and the light one breaks up (low)",
+                    "validation.md#hourglass-control"),
                 StandingEvidence(
                     "Beams without stirrups struck at rising speeds (Ando)",
                     "Within the 2 mm reading at 1 m/s and 15% at 3 m/s, 22% on average beyond on 16 elements. "
                         + "Once broken, at 5–6 m/s, they follow the strain-rate window's length steeply and not "
                         + "monotonically: windows of 90 to 105 µs give A24-5 30–44 mm, B48-5 65–85 and B36-5 44–55, "
-                        + "where rounding moves them 2 mm at most; a broken beam is as uncertain as that choice",
+                        + "where rounding moves them 2 mm at most; a broken beam is as uncertain as that choice. Like "
+                        + "Saatci's, their agreement leans on the elements' hourglass control (low)",
                     "validation.md#convergence-on-todays-defaults"),
                 StandingEvidence(
                     "Blind: Hrynyk's slabs struck repeatedly by a falling weight (defaults frozen at 1c85774, "
@@ -518,7 +522,7 @@ extension StandingScene {
             parts.append(
                 "reinforced concrete errs mostly on the unsafe side, towards too little damage: too strong in "
                     + "shear, too stiff in a full-scale chamber and close in. In bending one slab reads either way, "
-                    + "4–15% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%; it "
+                    + "4–15% high under the contest's load and 12–21% low under its lower shot, not converged, and its beams struck on 16 elements come within 12–23%, leaning on the elements' hourglass control; it "
                     + "springs back too far. Blind, open-air slabs that collapsed were left standing, the rest "
                     + "reading a tenth to a quarter of meters that likely include the supports' movement; blind "
                     + "in the contest's rig, high-strength slabs read 0.77–1.06 where they held and one broke "

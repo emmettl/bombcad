@@ -49,9 +49,9 @@ public final class StructureSolver {
     /// Bytes per element of `crackedElementBuffer` (`CrackedElement` in Structure.metal), and per
     /// Gauss point of `crackedPointBuffer` (`CrackedPoint`).
     static let crackedElementStride = 16
-    static let crackedPointStride = 92
+    static let crackedPointStride = 96
     /// The most memory the pool of switched elements' points takes (`assumedStrainCracking`): an
-    /// element's eight points take 736 bytes, so this holds about 1.4 million.
+    /// element's eight points take 768 bytes, so this holds about 1.4 million.
     static let crackedPoolLimit = 1 << 30
 
     public let device: MTLDevice

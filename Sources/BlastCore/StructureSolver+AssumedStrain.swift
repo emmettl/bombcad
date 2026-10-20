@@ -106,6 +106,7 @@ extension StructureSolver {
         (168, 80, 4),  // secondOpening
         (172, 84, 4),  // secondHistory
         (192, 88, 4),  // compactionStart
+        (108, 92, 4),  // crackingFactor
     ]
 
     /// Switches the elements `shouldSwitch` picks to their eight points now, as the kernel does the

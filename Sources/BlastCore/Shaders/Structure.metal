@@ -987,8 +987,9 @@ static inline float smearedBar(float green, thread float &plastic, device BarHis
 // the centre's, its strain the assumed strain of Belytschko and Bindeman (1993): the mean gradient's,
 // plus each hourglass mode's gradient in the element's corotational frame, the shear that varies
 // along a displacement's own direction (the parasitic shear of a bending fibre) left out. Its bars
-// are strained at their own place in it, and it has no hourglass control. Compiled in only when
-// chosen, so that without it the element kernel is unchanged.
+// are strained at their own place in it, and it has no hourglass control. Its removal and the state
+// it shows go by its centre, as today's element's do. Compiled in only when chosen, so that without
+// it the element kernel is unchanged.
 constant bool crackedHexConstant [[function_constant(26)]];
 constant bool crackedHex = is_function_constant_defined(crackedHexConstant) && crackedHexConstant;
 
@@ -1019,8 +1020,9 @@ struct CrackedPoint {
     float secondOpening;
     float secondHistory;
     float compactionStart;
+    float crackingFactor;  // the point's tensile rate factor, frozen when it first cracked
 };
-static_assert(sizeof(CrackedPoint) == 92, "CrackedPoint must match StructureSolver.crackedPointStride");
+static_assert(sizeof(CrackedPoint) == 96, "CrackedPoint must match StructureSolver.crackedPointStride");
 
 static inline void loadCrackedPoint(thread ElementState &state, const device CrackedPoint &point) {
     state.crackStrain = point.crackStrain;
@@ -1034,6 +1036,7 @@ static inline void loadCrackedPoint(thread ElementState &state, const device Cra
     state.secondOpening = point.secondOpening;
     state.secondHistory = point.secondHistory;
     state.compactionStart = point.compactionStart;
+    state.crackingFactor = point.crackingFactor;
 }
 
 static inline void storeCrackedPoint(device CrackedPoint &point, thread const ElementState &state) {
@@ -1048,6 +1051,7 @@ static inline void storeCrackedPoint(device CrackedPoint &point, thread const El
     point.secondOpening = state.secondOpening;
     point.secondHistory = state.secondHistory;
     point.compactionStart = state.compactionStart;
+    point.crackingFactor = state.crackingFactor;
 }
 
 // The element's corotational frame: the columns of its deformation gradient at the centre,
@@ -2266,40 +2270,75 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             barRateOut[compact] = float4(axisRate, 0.0f);
         }
         device CrackedPoint *points = crackedPoints + 8u * crackedSlot;
-        // The tensile factor freezes when any point first cracks.
-        float worst = 0.0f;
-        for (uint point = 0; point < 8; ++point) {
-            float3 opened = float3(points[point].crackStrain);
-            worst = max(worst, max(opened.x, max(opened.y, opened.z)));
-        }
+        // The element's own decisions go by its centre, as today's element's do: the law runs there
+        // too, on the centre's strain and the history the element's state keeps, and decides its
+        // removal and what its state shows; its stress is not used. Its tensile factor freezes when
+        // the centre first cracks, and each point's when that point first cracks.
+        float3 history = float3(state.crackStrain);
+        float worst = max(history.x, max(history.y, history.z));
+        float unfrozen = tensionIncrease(state.strainRate, m);
         float tensionFactor = state.crackingFactor;
         if (tensionFactor <= 0.0f) {
-            tensionFactor = tensionIncrease(state.strainRate, m);
+            tensionFactor = unfrozen;
             if (worst > m.crackOnset * tensionFactor) {
                 state.crackingFactor = tensionFactor;
             }
         }
         float compressionFactor = compressionIncrease(state.strainRate, m);
-        float onset = m.crackOnset * tensionFactor;
+        float3x3 centreFrame;
+        bool centreFramed;
+        bool centreTurning;
+        float onset;
+        float crack;
+        float crushed;
+        bool pulverised;
+        bool fragmented = false;
+        {
+            float3x3 strain;
+            float3 normalStrain;
+            concreteAxes(state, latticeStrain, joints, u, centreFrame, centreFramed, centreTurning, strain,
+                         normalStrain);
+            float centrePower[workChannels];
+            for (uint c = 0; c < workChannels; ++c) {
+                centrePower[c] = 0.0f;
+            }
+            ConcreteLawResult centre = concreteLaw(state, centreFrame, centreFramed, centreTurning, strain,
+                                                   normalStrain, strainRate, tensionFactor, compressionFactor, dt,
+                                                   volume, referenceVolume, false, joints, tid, compact, own, m, u,
+                                                   steel, flags, cellElement, materialIndex, crackOut, crackBefore,
+                                                   centrePower);
+            history = centre.history;
+            onset = centre.onset;
+            crack = centre.crack;
+            crushed = centre.crushed;
+            pulverised = centre.pulverised;
+            if (u.removesFragments != 0) {
+                int open = 0;
+                for (int j = 0; j < 3; ++j) {
+                    open += history[j] * u.h >= u.fragmentOpening ? 1 : 0;
+                }
+                fragmented = crack >= u.fragmentStrain && open >= 2;
+            }
+        }
         crackedFrame = crackedRotation(deformation);
         float3 local[4];
         crackedAmplitudes(local, crackedSums, crackedFrame);
         float scale = 2.0f / u.h;
         float weight = 0.125f * referenceVolume;
-        float crack = 0.0f;
-        float crushed = 0.0f;
-        bool pulverised = false;
-        bool fragmented = false;
-        uint widest = 0;
-        float widestCrack = -1.0f;
-        float3 crushMost = float3(0.0f);
-        float compactionMost = 0.0f;
         for (uint point = 0; point < 8; ++point) {
             float3 at = cornerSign(point) * 0.57735027f;
             float3x3 h = crackedGradient(gradient, crackedFrame, local, at, scale);
             float3x3 f = float3x3(1.0f) + h;
             ElementState pointState = state;
             loadCrackedPoint(pointState, points[point]);
+            float pointFactor = pointState.crackingFactor;
+            if (pointFactor <= 0.0f) {
+                pointFactor = unfrozen;
+                float3 opened = float3(pointState.crackStrain);
+                if (max(opened.x, max(opened.y, opened.z)) > m.crackOnset * pointFactor) {
+                    pointState.crackingFactor = pointFactor;
+                }
+            }
             float3x3 frame;
             bool framed;
             bool turning;
@@ -2313,7 +2352,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
             float3x3 pointRate = workTraced ? transpose(f) * stretching * f : float3x3(0.0f);
             ConcreteLawResult law = concreteLaw(pointState, frame, framed, turning, strain, normalStrain, pointRate,
-                                                tensionFactor, compressionFactor, dt, referenceVolume * determinant(f),
+                                                pointFactor, compressionFactor, dt, referenceVolume * determinant(f),
                                                 referenceVolume, false, joints, tid, compact, own, m, u, steel, flags,
                                                 cellElement, materialIndex, crackOut, crackBefore, pointPower);
             storeCrackedPoint(points[point], pointState);
@@ -2326,22 +2365,6 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float3x3 stress = f * law.material;
             crackedStress += weight * stress;
             crackedModeForces(crackedModes, transpose(crackedFrame) * stress, at, weight * scale);
-            if (law.crack > widestCrack) {
-                widestCrack = law.crack;
-                widest = point;
-            }
-            crack = max(crack, law.crack);
-            crushed = max(crushed, law.crushed);
-            pulverised = pulverised || law.pulverised;
-            crushMost = max(crushMost, float3(pointState.crushStrain));
-            compactionMost = max(compactionMost, pointState.compaction);
-            if (u.removesFragments != 0) {
-                int open = 0;
-                for (int j = 0; j < 3; ++j) {
-                    open += law.history[j] * u.h >= u.fragmentOpening ? 1 : 0;
-                }
-                fragmented = fragmented || (law.crack >= u.fragmentStrain && open >= 2);
-            }
             if (workTraced) {
                 for (uint c = 0; c < workChannels; ++c) {
                     power[c] += 0.125f * pointPower[c];
@@ -2422,18 +2445,10 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         bool anySteel = intact.x + intact.y + intact.z > 0.0f || inclinedIntact;
 
-        // A crack at any point wide enough to be a gap, that no intact bars bridge.
-        bool torn = false;
-        for (uint point = 0; point < 8 && !torn; ++point) {
-            ElementState pointState = state;
-            loadCrackedPoint(pointState, points[point]);
-            float4 stored = float4(pointState.crackFrame);
-            bool framed = any(stored != 0.0f);
-            float3x3 frame = framed ? rotationOf(normalize(stored)) : float3x3(1.0f);
-            torn = crackTorn(pointState, float3(pointState.crackStrain), frame, framed, framed && signbit(stored.w),
-                             onset, intact, inclinedIntact, inclined, joints, tid, own, m, u, steel, flags, cellElement,
-                             materialIndex, plasticBefore);
-        }
+        // A crack at the centre wide enough to be a gap, that no intact bars bridge, as for today's
+        // element.
+        bool torn = crackTorn(state, history, centreFrame, centreFramed, centreTurning, onset, intact, inclinedIntact,
+                              inclined, joints, tid, own, m, u, steel, flags, cellElement, materialIndex, plasticBefore);
 
         // The mean Cauchy stress, for what reads it: sigma = P F^T / J at the centre.
         float3x3 cauchy = crackedStress * transpose(deformation) * (1.0f / volume);
@@ -2454,12 +2469,6 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         }
         capacity = 0.0f;  // no hourglass control
         state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
-        // What the element's state shows (and keeps, should it turn bare): its most cracked point's
-        // history, and the most any point has crushed and compacted.
-        loadCrackedPoint(state, points[widest]);
-        state.crushStrain = crushMost;
-        state.compaction = compactionMost;
-        state.plasticStrain = max(crushMost.x, max(crushMost.y, crushMost.z));
     } else {
         // Green-Lagrange strain from the displacement gradient H = du/dX, in the lattice axes.
         float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
