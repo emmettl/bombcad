@@ -69,9 +69,11 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
 
         /// Whether it has torn or pulled out at deflection `x`, moving at `v` (inward positive).
         public func isLost(at x: Double, velocity v: Double = 0) -> Bool {
-            if abs(x) / span >= tearRatio { return true }
+            if x.magnitude / span >= tearRatio { return true }
             if releasesOnRebound == true, v < 0 { return true }
-            if let edgeCapacity, tension * min(abs(x) / plateauDeflection, 1) > edgeCapacity { return true }
+            if let edgeCapacity, tension * smaller(x.magnitude / plateauDeflection, 1) > edgeCapacity {
+                return true
+            }
             return false
         }
     }
@@ -103,12 +105,19 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
 
         /// The same on the (deflection, stress) points `stress`.
         static func stress(_ stress: [SIMD2<Double>], at x: Double) -> Double {
-            let x = abs(x)
+            let x = x.magnitude
             guard x > stress[0].x else { return stress[0].y * x / stress[0].x }
-            for (a, b) in zip(stress, stress.dropFirst()) where x <= b.x {
-                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+            // By index, as `SDOFSystem.envelope`.
+            var i = 1
+            while i < stress.count {
+                let b = stress[i]
+                if x <= b.x {
+                    let a = stress[i - 1]
+                    return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+                }
+                i += 1
             }
-            return stress.last!.y
+            return stress[stress.count - 1].y
         }
     }
 
@@ -169,10 +178,20 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
     /// The backbone's resistance at deflection `x` ≥ 0.
     func envelope(_ x: Double) -> Double {
         if x <= backbone[0].x { return stiffness * x }
-        for (a, b) in zip(backbone, backbone.dropFirst()) where x <= b.x {
-            return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+        // By index, not over `zip(backbone, backbone.dropFirst())`: unspecialised in a debug build,
+        // the zip's iterators looked up generic metadata on every call, and `integrate` calls this
+        // up to three times a step, for tens of thousands of steps a response (a district's
+        // judgement took a minute in debug tests).
+        var i = 1
+        while i < backbone.count {
+            let b = backbone[i]
+            if x <= b.x {
+                let a = backbone[i - 1]
+                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+            }
+            i += 1
         }
-        return backbone.last!.y
+        return backbone[backbone.count - 1].y
     }
 
     /// The response to a net pressure held at `pressures[i]` over [i·step, (i+1)·step) and then
@@ -217,7 +236,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
             period: period)
         func loadMass() -> Double {
             guard yielded else { return loadMassElastic }
-            if let span, atan(max(abs(x), response.peakDeflection) / (span / 2)) <= 2 * .pi / 180 {
+            if let span, atan(larger(x.magnitude, response.peakDeflection) / (span / 2)) <= 2 * .pi / 180 {
                 return 0.5 * (loadMassElastic + loadMassPlastic)
             }
             return loadMassPlastic
@@ -232,6 +251,11 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         let strength = brittle?.strength ?? 0
         let referenceDuration = brittle?.referenceDuration ?? 0
         let fatigueExponent = brittle?.fatigueExponent
+        // And the backbone's ends. Below, `larger`, `smaller` and `magnitude` stand for `max`, `min`
+        // and `abs`: the same results, but concrete, where the generic ones, unspecialised in a
+        // debug build, cost a metadata lookup (and the three-argument `max` an array) each call.
+        let yieldDeflection = backbone[0].x
+        let last = backbone[backbone.count - 1]
         func resistance(at x: Double) -> Double {
             if isBrittle {
                 // Elastic on the backbone both ways until it breaks; a cracked laminated pane on
@@ -243,18 +267,18 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
             var r = k * (x - permanent)
             // Inward, the backbone at the furthest inward deflection yet (so unloading and
             // reloading follow the elastic line back to it); outward, the rebound resistance.
-            let reached = max(x, response.peakDeflection, backbone[0].x)
+            let reached = larger(larger(x, response.peakDeflection), yieldDeflection)
             let upper = envelope(reached)
-            let outward = max(-x, -response.reboundDeflection, backbone[0].x)
-            let lower = -reboundFactor * min(envelope(outward), envelope(reached))
+            let outward = larger(larger(-x, -response.reboundDeflection), yieldDeflection)
+            let lower = -reboundFactor * smaller(envelope(outward), envelope(reached))
             if r > upper {
                 r = upper
                 permanent = x - r / k
-                yielded = yielded || x > backbone[0].x
+                yielded = yielded || x > yieldDeflection
             } else if r < lower {
                 r = lower
                 permanent = x - r / k
-                yielded = yielded || -x > backbone[0].x
+                yielded = yielded || -x > yieldDeflection
             }
             return r
         }
@@ -280,7 +304,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.reboundDeflection = x
                 response.reboundTime = time
             }
-            if let watch, response.passedAt == nil, abs(x) >= watch {
+            if let watch, response.passedAt == nil, x.magnitude >= watch {
                 response.passedAt = time
                 response.velocityPassing = v
             }
@@ -288,11 +312,11 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 broken = true
                 response.lostResistanceAt = time
                 response.velocityAtLoss = v
-                response.deflectionAtLoss = abs(x)
+                response.deflectionAtLoss = x.magnitude
             }
             if isBrittle, !broken, !cracked {
                 let sigma = Brittle.stress(brittleStress, at: x)
-                response.peakStress = max(response.peakStress ?? 0, sigma)
+                response.peakStress = larger(response.peakStress ?? 0, sigma)
                 if let n = fatigueExponent {
                     fatigue += h * pow(sigma / strength, n)
                     broken = fatigue >= referenceDuration
@@ -305,20 +329,20 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                     cracked = true
                     response.crackedAt = time
                     response.stressAtBreak = sigma
-                    response.deflectionAtBreak = abs(x)
+                    response.deflectionAtBreak = x.magnitude
                 } else if broken {
                     response.lostResistanceAt = time
                     response.velocityAtLoss = v
                     response.stressAtBreak = sigma
-                    response.deflectionAtBreak = abs(x)
+                    response.deflectionAtBreak = x.magnitude
                 }
             }
-            if !cracked, response.lostResistanceAt == nil, backbone.last!.y == 0, abs(x) >= backbone.last!.x {
+            if !cracked, response.lostResistanceAt == nil, last.y == 0, x.magnitude >= last.x {
                 response.lostResistanceAt = time
                 response.velocityAtLoss = v
                 if isBrittle {
                     broken = true
-                    response.deflectionAtBreak = abs(x)
+                    response.deflectionAtBreak = x.magnitude
                 }
             }
         }
@@ -453,3 +477,9 @@ public struct SDOFResponse: Codable, Hashable, Sendable {
         atan(max(peakDeflection, 0) / (span / 2)) * 180 / .pi
     }
 }
+
+/// `Swift.max(x, y)` and `Swift.min(x, y)` on Doubles, to the bit (NaNs and signed zeros alike):
+/// concrete, for `SDOFSystem.integrate`'s steps, where the generic ones are not specialised in a
+/// debug build.
+@inline(__always) private func larger(_ x: Double, _ y: Double) -> Double { y >= x ? y : x }
+@inline(__always) private func smaller(_ x: Double, _ y: Double) -> Double { y < x ? y : x }
