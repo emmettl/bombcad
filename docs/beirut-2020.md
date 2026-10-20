@@ -65,7 +65,10 @@ BombCAD run beirut.json --resolution 4 --ground saturated --duration 8 --envelop
 ```
 
 `scenebench district-compare` (the same inputs, `--observers` Rigby's CSV) runs the event and
-sets it against the surveys below; `scenebench district` times it at several sizes.
+sets it against the surveys below; `scenebench district` times it at several sizes. Both start
+from the [mapped one-dimensional solution](air-blast-model.md#a-finely-resolved-start) since 20
+October 2026 (`--balloon-start` for the balloon they were first run on): at 0.5 kt the broken
+glass moved 0.15% and every band 0.01 or less ([the record](validation.md#off-the-balloon-on-20-october)).
 
 ## Cost
 

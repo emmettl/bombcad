@@ -562,8 +562,8 @@ receiver samples, and the picture; the shells are marched on the CPU's cores, as
 knows only voxels: 0.1 s a frame for 3,600 receivers round Dial Pack's fireball at 1.25 ms, where
 its voxels take 0.2 s on the GPU (`blastbench shell-sphere --time-ground 2`).
 
-Against Dial Pack (`blastbench dialpack --mapped`, the charge on the ground so that it can be
-mapped, 4 m cells, to 0.5 s), the intensity toward 1,700 m in cal/sr/s × 10⁷, the 18 October
+Against Dial Pack (`blastbench dialpack`, on the mapped start by default since 20 October 2026,
+`--balloon-start` for the balloon one radius up; the charge on the ground so that it can be mapped, 4 m cells, to 0.5 s), the intensity toward 1,700 m in cal/sr/s × 10⁷, the 18 October
 frames, and since 19 October with the soot within the products, hot air absorbing and the
 shells marched; and exact rays through the same one-dimensional solution, on its own 0.15 m
 cells (`blastbench radial-profile --reach 2.5 --dump`):

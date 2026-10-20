@@ -119,7 +119,9 @@ picture above) the east bay goes the same way, but by 4 s the west bays' lowest 
 crushed too and the whole block has sunk on them, with 26,689 elements failed. After failure a
 run is one draw among roundings of its arithmetic ([fast math and the
 build](performance.md#fast-math-and-the-build)), so whether the west bays stand is not settled
-by either run. It is the mechanism of Ronan Point's corner, the floors of one bay falling once the wall at their end is gone, set off from
+by either run. On the mapped start (the default since 20 October 2026; `--balloon-start` for
+the balloon) the east bay goes the same way, the flank walls' peaks 2% higher and 4% lower, with
+23,481 elements failed by 4 s against 25,489 on the balloon from the same build. It is the mechanism of Ronan Point's corner, the floors of one bay falling once the wall at their end is gone, set off from
 below rather than from the eighteenth floor.
 
 | Charge at 8 m | What happens |

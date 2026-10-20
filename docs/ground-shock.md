@@ -458,6 +458,9 @@ Kingery–Bulmash's Friedlander pulse, with the curves' peak, impulse, duration 
   estimate: at 0.5 m the soil's unloading has worn little off a pulse about 5–12 m long in it. The
   air model's peaks are 90% and 93% of Kingery–Bulmash's on 0.25 m cells (83% and 86% on 0.5 m,
   the velocities likewise), its impulses within 6%, which changes nothing in the conclusion.
+  These are the balloon start's; on the mapped start, the default since 20 October 2026, they
+  move by 1% or less on 0.25 m cells and 5% or less on 0.5 m
+  ([the record](validation.md#off-the-balloon-on-20-october)).
 - **Against the soil's unknown stiffness.** Fed Kingery–Bulmash, the column unloading at twice
   its loading speed gives 0.35 m/s at 21 m if the soil loads at 300 m/s, 0.12 at 1,000 m/s
   and 0.066 at 1,800 m/s. At 42 m it gives 0.090, 0.029 and 0.016. Even the stiffest is five to

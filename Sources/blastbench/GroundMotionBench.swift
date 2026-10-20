@@ -174,6 +174,11 @@ func runGroundMotion(device: MTLDevice) throws {
                 (flag("balloon-start")
                     ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended)
             configureRefinement(&configuration)
+            // The mapped start laid no farther than 0.8 of the way to the nearest station, as it stops
+            // short of a structure: the soil there reads the ground frame by frame, and within the
+            // mapped radius the front would have passed before its first frame.
+            configuration.mappedChargeCells = min(
+                configuration.mappedChargeCells, 0.8 * (ranges.min() ?? 21) / dx)
             configuration.gravity = chosenGravity()
             applyChosenAir(&configuration)
             let solver = try BlastSolver(
@@ -191,7 +196,9 @@ func runGroundMotion(device: MTLDevice) throws {
                     solver.grid.nz, Double(solver.grid.cellCount) / 1e6,
                     configuration.afterburning ? ", afterburning" : ""))
             let started = ContinuousClock.now
-            var next = 0.0
+            // From the solver's own start: the mapped start begins its clock when the grid takes the
+            // wave over from the one-dimensional solution, not at zero.
+            var next = solver.time
             var frames = 0
             var consumed = 0.0
             while true {

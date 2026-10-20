@@ -70,6 +70,13 @@ The domains are 3.3 km square and 0.83 km high. The times are this Mac's (an M4 
 nothing else running, the mean of two runs that agreed within 5%; the runs first timed here, on a
 Mac loaded with other work, took 4 to 7 times as long.
 
+On today's recommended air (afterburning, hot air, far-field faces), 8 m cells, the bench's default
+(20 October 2026): on the balloon start the peaks along the mirrored side are 64%, 72%, 77%,
+75%, 72%, 69%, 67% and 70% at Z = 1, 2, 5, 10, 14, 20, 28 and 40, and the impulse 97–117%; on
+the mapped start, now the default, 126%, 109%, 76%, 76%, 73%, 69%, 69% and 70%, the impulse
+85–112%. Within the mapped radius (to Z = 3) the peaks are the one-dimensional solution's;
+beyond it the grid carries the wave as before.
+
 Positive impulse is 82–90% of Kingery–Bulmash's beyond Z = 2 on every grid (76–101% at Z = 1),
 as in the open-air record without afterburning. Along the mirrored side, on the uniform grids and
 with afterburning:

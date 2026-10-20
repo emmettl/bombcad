@@ -3059,8 +3059,10 @@ the same runs:
 
 On the mapped start since 19 October 2026, at 0.1 s with the default brick, the middle house reads
 A (87%), B (47%), B (38%), B (26%), Cb (5%), Ca (1.1%) and Ca (0.3%) from 4.7 to 23 m: within a
-point of the balloon's column above at every distance. The 0.3 s and 50 mm columns are still the
-balloon's; a 0.3 s run takes about an hour.
+point of the balloon's column above at every distance. On 20 October the 0.3 s and 50 mm columns
+followed at 7.8, 13.9 and 20 m: A (89%), B (48%), B (33%) at 0.3 s with the default brick; B (35%),
+Cb (13%), Ca (0%) at 0.1 s and B (70%), B (27%), Cb (24%) at 0.3 s with 50 mm. Each is within 2
+points of the table and at the same level.
 
 What the roof moves:
 - **At 0.1 s:** the same category or one worse, from 13.9 m out. With bricks kept to 50 mm the
@@ -4174,7 +4176,8 @@ also fed Kingery–Bulmash's Friedlander pulse.
   0.186–0.187 m/s vertical and 0.124 horizontal at 21 m (16–21 and 2.1–2.3 times the measured),
   0.058–0.070 and 0.042–0.044 at 42 m (48–88 and 10–11 times). Each falls about 3 times from
   21 to 42 m, as R^(−1.5); the measurements fall 10 to 14 times. Without the direct source the
-  yielding half-space gives the same at 21 m, where the elastic one gave 7.8 m/s: yielding takes
+  yielding half-space gives the same at 21 m, where the elastic one gave 7.8 m/s (on the balloon
+start: the mapped start streams it no ground within its radius): yielding takes
   over the source's role, but does not close the gap.
 - The measured horizontal accelerations were three to eight times the vertical. At 21 m the air's
   front ran at 582 m/s, between the fitted soil speed and √2 times it, and at 42 m at 412 m/s,
@@ -4655,11 +4658,7 @@ balloon by construction.
 | Hupfauf's slabs (`ContactSlabTest`) | by construction | concrete |
 | Rooms | by construction | concrete |
 | Envelope damage, venting, openings (`scenebench`), and their tests | pinned | envelopes |
-| Districts and Beirut (`scenebench district`, `district-compare`) | pinned | districts |
-| The panel block (`blastbench panelblock`; its runs take over an hour) | pinned | large panels |
 | Buildings, settling (`blastbench buildings`, `settle`) | pinned | structures |
-| Terrain, landscape, ground motion (`blastbench terrain`, `landscape`, `groundmotion`) | pinned | terrain, ground shock |
-| Dial Pack (`blastbench dialpack`) | pinned | thermal |
 | Mendonça's blind runs (`blastbench mendonca` without `--recommended`) | their frozen air | blind tests (frozen) |
 | `blastbench digest --recommended`, `aircost`, the air benches on `makeAirSolver` | pinned | numerics |
 | The run-cost and standing tests on `recommended` | pinned | numerics |
@@ -4673,7 +4672,10 @@ four charges each mapped since the start became one per charge) and the validati
 Each was rerun on the mapped start ([on the mapped start](#on-the-mapped-start)), and each takes
 `--balloon-start` for the balloon. On 19 October 2026 the short ones followed
 ([below](#off-the-balloon-on-19-october)): the envelope walls, slabs, Nian and the façade, the
-anchorage wall, Tyndall's CLT, the hub's roof glass and the terraced houses at 0.1 s.
+anchorage wall, Tyndall's CLT, the hub's roof glass and the terraced houses at 0.1 s. On 20
+October the long ones ([below](#off-the-balloon-on-20-october)): Beirut and the districts,
+terrain, the landscape, ground motion, Dial Pack, the panel block and the houses' 0.3 s and 50 mm
+columns.
 
 ##### Off the balloon on 19 October
 
@@ -4689,11 +4691,42 @@ under `bombcad/balloon-rerun`:
 | The anchorage wall (`anchorage --air`) | 10 m: clamped 27, starter bars 28 mm; rocking bases 226–282 mm | 28, 29 mm; 241–307 mm | 1–4% held at the base, up to 9% rocking |
 | Tyndall's CLT (`tyndall`, tests 1–3) | first storey 18, 31, 151–159 mm | 17, 31, 192 mm | tests 1–2 unchanged; test 3, where the front breaks, 1.5–1.6 → 1.9 of measured (42–65 elements removed, as much between runs as between starts) |
 | The hub's roof glass (`hubroof`) | toughened: 6 elements fall; laminated: 53 cracked and held | 6; 55 | the laminated roof 2 panes more cracked, none lost |
-| Terraced houses (`house`, 0.1 s, the default brick) | A 87%, B 47%, B 38%, B 27%, Cb 5%, Ca 1%, Ca 0.4% | A 87%, B 47%, B 38%, B 26%, Cb 5%, Ca 1.1%, Ca 0.3% | within a point; the 0.3 s and 50 mm columns still the balloon's |
+| Terraced houses (`house`, 0.1 s, the default brick) | A 87%, B 47%, B 38%, B 27%, Cb 5%, Ca 1%, Ca 0.4% | A 87%, B 47%, B 38%, B 26%, Cb 5%, Ca 1.1%, Ca 0.3% | within a point; the 0.3 s and 50 mm columns [since](#off-the-balloon-on-20-october) |
 
 No standing or band changed: the bands these feed (the freestanding walls' outcomes, Keys's
 debris, the slabs' levels) keep their outcomes, and Tyndall has none; its evidence now quotes 1.9
 times on test 3.
+
+##### Off the balloon on 20 October
+
+The long harnesses, the same way (outputs under `bombcad/balloon-long`):
+
+| Harness | Balloon | Mapped | Moved |
+|---|---|---|---|
+| Beirut, 0.5 kt (`district-compare`, 4 m cells, 8 s; 20 and 16 min) | 3,157,758 m² of glass broken | 3,162,609 m² | +0.15%; every band within 0.01; one building a level apart; 10 of the 293 stone buildings fall in both (8 when the record was made: the build, not the start) |
+| Terrain (`terrain --study wedge, shield, hill`) | | | the wedge identical (no charge); the ridge's ratios within 0.04; the hill's peaks 1–3% |
+| The landscape (`landscape`, 8 m cells) | peaks at Z 1 and 2 64% and 72% of Kingery–Bulmash, beyond Z 4 69–77%; impulse 97–117% | 126%, 109%; 69–77%; 85–112% | within the mapped radius the one-dimensional solution's peaks ([large scenes](large-scenes.md)); beyond it unchanged |
+| Ground motion (`groundmotion`, Xia's 1 t) | 0.25 m: 228 kPa at 21 m; columns 0.239, half-space 0.185 m/s | 230 kPa; 0.240, 0.186 | within 1%; on 0.5 m cells within 5% once the start stops short of the stations (below) |
+| Dial Pack (`dialpack`) | recorded both ways in [thermal radiation](thermal-radiation.md) (`--mapped` until now) | | the default is now the mapped start, the charge on the ground |
+| The panel block's street charge (`panelblock --case street`; 74 and 57 min) | flank walls 2,735 and 944 kPa; 25,489 elements failed at 4 s | 2,783 and 902 kPa; 23,481 | peaks +2% and −4%; the east bay falls the same way; failures within the spread between builds (24,891 and 26,689 recorded) |
+| Terraced houses (`house`, 0.3 s at 7.8, 13.9 and 20 m, the default brick and bricks kept to a 50 mm crack, `--erosion 0.05`) | [the pitched roof's table](#terraced-houses-against-wartime-bomb-damage) | A 89%, B 48%, B 33%; 50 mm B 70%, B 27%, Cb 24% | within 2 points, every level the same |
+
+- **Ground motion: a setup error, fixed.** On 0.5 m cells the mapped start reached 64 cells, 32
+  m, past the 21 m station, so the soil there took its first frame after the front had passed
+  (0.068 m/s against 0.220). The harness now lays the mapped start no farther than 0.8 of the
+  way to the nearest station, as it stops short of a structure; 0.25 m cells were already
+  short of it (16 m). The elastic half-space without the direct source, which takes the ground
+  near the charge, reads 0.19 m/s at 21 m on the mapped start against 7.8 m/s on the balloon:
+  the ground within the mapped radius is never streamed to it. That variant is quoted from the
+  balloon (`--balloon-start`); the gap, which the app's ground points and gauges share, is a
+  separate task.
+- The harnesses' frame clock in `groundmotion` now starts at the solver's own time (the mapped
+  start's clock begins at its hand-over, not at zero); before, the run stopped at once.
+- `scenebench district`, a timing benchmark, was unpinned without a rerun.
+
+No standing or band changed: Beirut's glass and structure levels, the panel block's collapse
+and the houses' levels keep their outcomes, and the landscape's and ground motion's figures are
+not banded.
 
 #### Several charges (18 October)
 
