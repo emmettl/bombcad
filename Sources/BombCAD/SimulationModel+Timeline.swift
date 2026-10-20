@@ -43,12 +43,13 @@ extension SimulationModel {
     func finishTimeline() {
         guard let recorder = timelineRecorder, let solver else { return }
         recordTimeline(solver, last: true)
+        solver.viewFieldCapture = nil
         timelineRecorder = nil
         let wall = ContinuousClock.now - timelineStarted
         Task { [weak self] in
             let folder = await recorder.finish()
             self?.timelineCost = (
-                recorder.frames, recorder.captureSeconds, recorder.bytes,
+                recorder.frames, recorder.captureSeconds, recorder.cappedSeconds, recorder.bytes,
                 Double(wall.components.seconds) + Double(wall.components.attoseconds) * 1e-18
             )
             // A run continued from the last one's saved state leaves that run's recording behind:
@@ -66,6 +67,7 @@ extension SimulationModel {
         stopReplay()
         timelineRecorder?.discard()
         timelineRecorder = nil
+        solver?.viewFieldCapture = nil
         savedStates = []
         saveRequested = false
         pauseAfterSave = false

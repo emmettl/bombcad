@@ -385,7 +385,8 @@ final class SimulationModel {
     var playback: TimelinePlayback?
     /// What recording the last run cost: its frames, the main thread's seconds capturing them, and
     /// the bytes kept; and the run's wall-clock seconds.
-    @ObservationIgnored var timelineCost: (frames: Int, seconds: Double, bytes: Int, wall: Double)?
+    @ObservationIgnored var timelineCost:
+        (frames: Int, seconds: Double, afterFirst: Double, bytes: Int, wall: Double)?
     @ObservationIgnored var timelineStarted = ContinuousClock.now
     /// A state to save at the next 64-step boundary (Save State Here), and whether the run pauses
     /// once it is saved; the time of the run's next automatic one (seven along a run, while they

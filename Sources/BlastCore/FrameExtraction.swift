@@ -18,6 +18,12 @@ final class FrameExtractor {
     /// batch cut out, as `encoded` and `ready` are for the rest.
     private var encodedView: Int?
     private var readyView: (time: Double, steps: Int, stride: Int)?
+    /// A recorder's view field (`ViewFieldCapture`), in a buffer of its own, so that it and a
+    /// request's at another stride can stand together: the stride and the clock from which the
+    /// batch in flight cuts it out, and what the last completed batch cut out.
+    private var captureBuffer: MTLBuffer?
+    private var encodedCapture: (stride: Int, fromTicks: UInt64)?
+    private var readyCapture: (time: Double, steps: Int, stride: Int)?
     private var airBuffer: MTLBuffer?
     private var cellsBuffer: MTLBuffer?
     private var blocksBuffer: MTLBuffer?
@@ -41,41 +47,73 @@ final class FrameExtractor {
         (SIMD3(grid.nx, grid.ny, grid.nz) &+ (stride - 1)) / stride
     }
 
+    /// When the view field's kernel writes: at the end of a batch that reached its time limit,
+    /// whatever the batch, or once the run's clock has reached a tick (`ViewFieldCapture`).
+    enum ViewFieldWrite {
+        case atLimit
+        case always
+        case from(ticks: UInt64)
+    }
+
     /// Encodes the view field's kernel after the visualisation has been brought up to date in the
-    /// same encoder; with `always`, it writes whether or not the batch reached its time limit.
+    /// same encoder, writing as `write` says: into the request's buffer, or with `capture` the
+    /// recorder's.
     func encodeViewField(
         _ encoder: MTLComputeCommandEncoder, stride: Int, grid: Grid, field: MTLTexture, control: MTLBuffer,
-        always: Bool
+        write: ViewFieldWrite, capture: Bool = false
     ) {
         let size = Self.viewFieldSize(grid, stride: stride)
         let bytes = 8 * size.x * size.y * size.z
-        if (viewBuffer?.length ?? 0) < bytes {
-            viewBuffer = device.makeBuffer(length: bytes, options: .storageModeShared)
+        func sized(_ buffer: inout MTLBuffer?) -> MTLBuffer? {
+            if (buffer?.length ?? 0) < bytes {
+                buffer = device.makeBuffer(length: bytes, options: .storageModeShared)
+            }
+            return buffer
         }
-        guard let viewBuffer else { return }
-        var layout = SIMD4<UInt32>(UInt32(stride), always ? 1 : 0, 0, 0)
+        guard let target = capture ? sized(&captureBuffer) : sized(&viewBuffer) else { return }
+        var layout: SIMD4<UInt32> =
+            switch write {
+            case .atLimit: SIMD4(UInt32(stride), 0, 0, 0)
+            case .always: SIMD4(UInt32(stride), 1, 0, 0)
+            case .from(let ticks):
+                SIMD4(
+                    UInt32(stride), 2, UInt32(truncatingIfNeeded: ticks),
+                    UInt32(truncatingIfNeeded: ticks >> 32))
+            }
         encoder.setComputePipelineState(viewPipeline)
         encoder.setBuffer(control, offset: 0, index: 0)
-        encoder.setBuffer(viewBuffer, offset: 0, index: 1)
+        encoder.setBuffer(target, offset: 0, index: 1)
         encoder.setBytes(&layout, length: MemoryLayout<SIMD4<UInt32>>.stride, index: 2)
         encoder.setTexture(field, index: 0)
         encoder.dispatchThreads(
             MTLSize(width: size.x, height: size.y, depth: size.z),
             threadsPerThreadgroup: Self.threadgroup(viewPipeline, depth: true))
-        if !always { encodedView = stride }
+        switch (write, capture) {
+        case (.atLimit, false): encodedView = stride
+        case (.from(let ticks), true): encodedCapture = (stride, ticks)
+        default: break
+        }
     }
 
-    /// The view field as written last, `size` texels, eight bytes each.
+    /// The view field as written last into the request's buffer, `size` texels, eight bytes each.
     func viewFieldData(_ size: SIMD3<Int>) -> Data? {
         guard let viewBuffer else { return nil }
         return Data(bytes: viewBuffer.contents(), count: 8 * size.x * size.y * size.z)
     }
 
-    /// The view field cut out at `stride` at `time` and `steps`, if it is ready.
+    /// The view field cut out at `stride` at `time` and `steps`, if it is ready: a request's, or a
+    /// recorder's.
     func viewField(stride: Int, grid: Grid, time: Double, steps: Int) -> Data? {
-        guard let readyView, readyView.time == time, readyView.steps == steps, readyView.stride == stride
-        else { return nil }
-        return viewFieldData(Self.viewFieldSize(grid, stride: stride))
+        let size = Self.viewFieldSize(grid, stride: stride)
+        if let readyView, readyView.time == time, readyView.steps == steps, readyView.stride == stride {
+            return viewFieldData(size)
+        }
+        if let readyCapture, readyCapture.time == time, readyCapture.steps == steps,
+            readyCapture.stride == stride, let captureBuffer
+        {
+            return Data(bytes: captureBuffer.contents(), count: 8 * size.x * size.y * size.z)
+        }
+        return nil
     }
 
     /// Encodes the request's kernels at the end of a batch, after its last step.
@@ -86,6 +124,8 @@ final class FrameExtractor {
         ready = nil
         readyView = nil
         encodedView = nil
+        readyCapture = nil
+        encodedCapture = nil
         var uniforms = uniforms
         var air: AirSlice.Layout?
         if let slice = request.airSlice {
@@ -167,23 +207,27 @@ final class FrameExtractor {
         encoded = air == nil && luminous == nil ? nil : (air, luminous, cells)
     }
 
-    /// The batch in flight has finished, at `time` after `steps` steps; what it cut out is kept
-    /// if it reached its time limit.
-    func complete(reachedLimit: Bool, time: Double, steps: Int) {
+    /// The batch in flight has finished, at `time` after `steps` steps, its clock at `clock`
+    /// ticks; what it cut out is kept if it reached its time limit, and a recorder's field if the
+    /// clock reached its tick, as the kernel judged it.
+    func complete(reachedLimit: Bool, time: Double, steps: Int, clock: UInt64) {
         if reachedLimit, let encoded {
             ready = (time, steps, encoded.air, encoded.luminous, encoded.cells)
         } else {
             ready = nil
         }
         readyView = reachedLimit ? encodedView.map { (time, steps, $0) } : nil
+        readyCapture = encodedCapture.flatMap { clock >= $0.fromTicks ? (time, steps, $0.stride) : nil }
         encoded = nil
         encodedView = nil
+        encodedCapture = nil
     }
 
     /// The state has been changed by other means: nothing cut out is current.
     func invalidate() {
         ready = nil
         readyView = nil
+        readyCapture = nil
     }
 
     /// The samples cut out for `layout` at `time` and `steps`, if they are ready.

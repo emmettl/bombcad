@@ -26,11 +26,14 @@ struct RunTimelineCostStudyTests {
         defer { try? FileManager.default.removeItem(at: recent) }
         // On a Mac doing nothing else, recording must not slow a run by more than a few per cent.
         #expect(cost.seconds / cost.wall < 0.05, "\(name): \(cost.seconds) s of \(cost.wall) s")
+        let grid = try #require(model.solver).grid
         return String(
             format:
-                "%@: %.3f s simulated in %.0f s; %d frames, %.2f MB each (%.0f MB in all), captured in %.1f ms each, %.2f%% of the run",
-            name, model.time, cost.wall, cost.frames, Double(cost.bytes) / Double(max(cost.frames, 1)) / 1e6,
-            Double(cost.bytes) / 1e6, 1000 * cost.seconds / Double(max(cost.frames, 1)),
+                "%@ (%.1f M cells): %.3f s simulated in %.0f s; %d frames, %.2f MB each (%.0f MB in all), captured in %.2f ms each on the main thread, %.2f ms after the first, %.2f%% of the run",
+            name, Double(grid.cellCount) / 1e6, model.time, cost.wall, cost.frames,
+            Double(cost.bytes) / Double(max(cost.frames, 1)) / 1e6, Double(cost.bytes) / 1e6,
+            1000 * cost.seconds / Double(max(cost.frames, 1)),
+            1000 * cost.afterFirst / Double(max(cost.frames - 1, 1)),
             100 * cost.seconds / cost.wall)
     }
 

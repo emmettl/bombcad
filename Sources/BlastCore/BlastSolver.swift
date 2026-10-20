@@ -308,6 +308,10 @@ public final class BlastSolver {
     /// `fireball(luminousTemperature:)` to return then instead of reading the state on the CPU
     /// while the GPU waits. Set it before encoding a batch that may end on a frame.
     public var frameRequest = FrameRequest()
+    /// A timeline recorder's view field, cut out at the end of each batch that passes its next
+    /// frame's time, so that `viewField(stride:)` then waits for nothing; nil while none records.
+    /// It changes nothing in the run.
+    public var viewFieldCapture: ViewFieldCapture?
     /// Built the first time a request is made.
     var frameExtractor: FrameExtractor?
     /// nil once the mask has been edited by hand.

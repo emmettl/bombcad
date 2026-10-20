@@ -198,4 +198,51 @@ struct FrameExtractionTests {
                 stride: 3, grid: asked.grid, time: asked.time, steps: asked.stepCount)
                 != nil)
     }
+
+    @Test("A recorder's view field is cut out by the batch that passes its frame's time, and changes nothing")
+    func capturedViewField() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        func run(capturing: Bool) throws -> (BlastSolver, [Data]) {
+            let scenario = Scenario(
+                name: "Frame", domainSize: SIMD3(8, 8, 8),
+                boxes: [Box(min: SIMD3(5, 2, 0), max: SIMD3(6, 6, 3))],
+                charge: Charge(mass: 1, position: SIMD3(3, 4, 1)))
+            let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.125)
+            // Frames every 0.3 ms, never on a batch's end: batches of three steps, no time limit.
+            var frames: [Data] = []
+            var next = 0.0003
+            while solver.time < 0.002 {
+                if capturing { solver.viewFieldCapture = ViewFieldCapture(stride: 3, from: next) }
+                solver.advance(steps: 3)
+                guard solver.time >= next - 1e-12 else {
+                    if capturing {
+                        #expect(
+                            solver.frameExtractor?.viewField(
+                                stride: 3, grid: solver.grid, time: solver.time, steps: solver.stepCount)
+                                == nil)
+                    }
+                    continue
+                }
+                if capturing {
+                    let cut = solver.frameExtractor?.viewField(
+                        stride: 3, grid: solver.grid, time: solver.time, steps: solver.stepCount)
+                    try frames.append(#require(cut))
+                } else {
+                    frames.append(try solver.viewField(stride: 3))
+                }
+                while next <= solver.time + 1e-12 { next += 0.0003 }
+            }
+            return (solver, frames)
+        }
+        let (captured, cut) = try run(capturing: true)
+        let (plain, worked) = try run(capturing: false)
+        #expect(cut.count >= 6 && cut == worked)
+        #expect(captured.stepCount == plain.stepCount && captured.time == plain.time)
+        #expect(captured.withState { Array($0) } == plain.withState { Array($0) })
+        // A change made by other means: nothing cut out stands.
+        captured.mutateState { _ in }
+        #expect(
+            captured.frameExtractor?.viewField(
+                stride: 3, grid: captured.grid, time: captured.time, steps: captured.stepCount) == nil)
+    }
 }

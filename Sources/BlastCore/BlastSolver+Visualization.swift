@@ -9,8 +9,8 @@ extension BlastSolver {
     /// The visualisation field every `stride`-th cell along each axis (`viewFieldSize`), each texel
     /// its block's extremes, as `rgba16Float` texels, eight bytes each, x fastest: for a view of
     /// the run drawn elsewhere. Cut out at the end of the batch that ended now if `frameRequest`
-    /// asked for it, so the GPU need not be waited for again; otherwise worked out now, blocking
-    /// until done. Call it only while no batch is in flight.
+    /// or `viewFieldCapture` asked for it, so the GPU need not be waited for again; otherwise
+    /// worked out now, blocking until done. Call it only while no batch is in flight.
     public func viewField(stride: Int) throws -> Data {
         precondition(!batchInFlight, "Cannot read the view field while a batch is in flight")
         precondition(stride >= 1)
@@ -24,7 +24,7 @@ extension BlastSolver {
         encodeVisualization(encoder)
         frameExtractor.encodeViewField(
             encoder, stride: stride, grid: grid, field: visualizationTexture, control: controlBuffer,
-            always: true)
+            write: .always)
         encoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()

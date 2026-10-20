@@ -533,21 +533,37 @@ extension BlastSolver {
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
         }
-        if !frameRequest.isEmpty, frameExtractor == nil {
+        if !frameRequest.isEmpty || viewFieldCapture != nil, frameExtractor == nil {
             frameExtractor = try? FrameExtractor(library: library)
         }
         frameExtractor?.encode(
             encoder, request: frameRequest, grid: grid, state: stateBuffers[current], mask: maskBuffer,
             species: currentSpecies, hasSpecies: speciesHoldDetonationProducts, control: controlBuffer,
             uniforms: makeUniforms())
-        if updateVisualization || frameRequest.viewField != nil {
+        // A recorder's field, on the batches that may pass its frame's time: those whose steps, half
+        // as long again as the last, would reach it (and every one before a step is known). On the
+        // others its kernel's threads would only return, and their dispatch alone costs about 2%
+        // of a 3 ms batch on 25 million cells. A batch it misses leaves the field to be worked out
+        // when the frame reads it, as without a recorder.
+        let capture = viewFieldCapture.flatMap { capture in
+            lastFluidStep <= 0 || capture.from <= time + 1.5 * Double(steps) * Double(lastFluidStep)
+                ? capture : nil
+        }
+        if updateVisualization || frameRequest.viewField != nil || capture != nil {
             encodeVisualization(encoder)
         }
         // After the visualisation, which it is cut down from, in the same encoder.
         if let stride = frameRequest.viewField {
             frameExtractor?.encodeViewField(
                 encoder, stride: stride, grid: grid, field: visualizationTexture, control: controlBuffer,
-                always: false)
+                write: .atLimit)
+        }
+        // Its threads return at once unless the batch's clock has reached the frame's time.
+        if let capture {
+            frameExtractor?.encodeViewField(
+                encoder, stride: capture.stride, grid: grid, field: visualizationTexture,
+                control: controlBuffer,
+                write: .from(ticks: capture.fromTicks), capture: true)
         }
         encoder.endEncoding()
         return commandBuffer
@@ -617,7 +633,8 @@ extension BlastSolver {
                 control.activeSteps > 0
                 ? Double(control.tileSweeps) / (Double(control.activeSteps) * tiles) : 0
         }
-        frameExtractor?.complete(reachedLimit: control.stopped == 2, time: time, steps: stepCount)
+        frameExtractor?.complete(
+            reachedLimit: control.stopped == 2, time: time, steps: stepCount, clock: control.clock)
         // Bodies that came close stopped the batch; from the next, they meet in contact.
         var contactStarted = false
         if bodyEnvelopesOverlap, configuration.interBodyContact, !bodiesInContact, !couplingCapacityExceeded {

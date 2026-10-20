@@ -171,7 +171,7 @@ kernel void extractLuminousCells(
 // texels, x fastest, for a view of the run drawn elsewhere. Each texel keeps its block's extremes
 // rather than their mean, so a front one cell thick still shows: the largest peak, impulse and
 // shock indicator, and the overpressure of the largest magnitude, its sign kept. With `layout.y`
-// set it writes whatever the batch reached, for a field read between batches.
+// 1 it writes whatever the batch reached, for a field read between batches.
 kernel void extractViewField(
     device const StepControl &control [[buffer(0)]],
     device half4 *values [[buffer(1)]],
@@ -179,7 +179,14 @@ kernel void extractViewField(
     texture3d<float, access::read> field [[texture(0)]],
     uint3 id [[thread_position_in_grid]])
 {
+    // layout.y: 0 writes only at the end of a batch that reached its time limit, 1 always, 2 once
+    // the run's clock has reached the tick in layout.z (low word) and layout.w (high word), a
+    // recorder's next frame (`ViewFieldCapture`).
     if (layout.y == 0 && control.stopped != 2) {
+        return;
+    }
+    if (layout.y == 2
+        && (ulong(control.clockLow) | (ulong(control.clockHigh) << 32)) < (ulong(layout.z) | (ulong(layout.w) << 32))) {
         return;
     }
     uint stride = layout.x;

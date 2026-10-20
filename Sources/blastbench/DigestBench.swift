@@ -42,7 +42,33 @@ func runDigest() throws {
         }
         let solver = try BlastSolver(
             device: device, scenario: scenario, cellSize: cellSize, configuration: configuration)
-        let result = solver.advance(steps: steps)
+        // `--batch N` takes the steps N at a time, as the app's batches do; with `--record`, a
+        // timeline recorder's view field is cut out at the end of each batch that passes its next
+        // frame, every `--frame-interval` seconds (0.05 ms by default), and read: which must change
+        // nothing.
+        var result = BatchResult(steps: 0, elapsed: 0, lastTimeStep: 0, isStable: true)
+        var frames = 0
+        if let batch = option("batch").flatMap({ Int($0) }) {
+            let interval = option("frame-interval").flatMap { Double($0) } ?? 5e-5
+            var next = interval
+            while result.steps < steps {
+                if flag("record") { solver.viewFieldCapture = ViewFieldCapture(stride: 2, from: next) }
+                let part = solver.advance(steps: min(batch, steps - result.steps))
+                result.steps += part.steps
+                result.isStable = result.isStable && part.isStable
+                result.refinedTiles = part.refinedTiles
+                result.finerRefinedTiles = part.finerRefinedTiles
+                if part.steps == 0 || !part.isStable { break }
+                guard solver.time >= next - 1e-12 else { continue }
+                if flag("record") {
+                    _ = try solver.viewField(stride: 2)
+                    frames += 1
+                }
+                while next <= solver.time + 1e-12 { next += interval }
+            }
+        } else {
+            result = solver.advance(steps: steps)
+        }
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         solver.withState { cells in
             for cell in cells {
@@ -72,7 +98,8 @@ func runDigest() throws {
                 // A run that broke (a NaN in the air) hashes whatever the NaN left, which need not
                 // be the same twice.
                 + (result.isStable ? "" : ", unstable")
-                + (solver.refinementPoolGrewLate ? ", a pool grew too late" : ""))
+                + (solver.refinementPoolGrewLate ? ", a pool grew too late" : "")
+                + (frames > 0 ? ", \(frames) frames recorded" : ""))
     }
     // The structure on its own, in solids and in shells: a wall struck hard enough to fail, over
     // more than one 2,000-substep run of `advance`, so that its contact joins in.

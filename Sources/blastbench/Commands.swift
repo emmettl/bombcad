@@ -7,6 +7,7 @@ import Foundation
 /// command's code is in its own file (`SlabBench.swift` for `slab`, and so on).
 let commands: [String: @Sendable () throws -> Void] = [
     "digest": { try runDigest() },
+    "capture-cost": { try runCaptureCost() },
     "checkpoint-check": { try runCheckpointCheck(device: device) },
     "profile": { try runProfile() },
     "aircost": { try runAirCost() },

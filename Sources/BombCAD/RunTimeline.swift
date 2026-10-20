@@ -250,9 +250,10 @@ final class RunTimelineRecorder {
     private(set) var interval: Double
     private(set) var nextTime = 0.0
     private(set) var frames = 0
-    /// Main-thread seconds spent capturing frames, and bytes written.
+    /// Main-thread seconds spent capturing frames, and those after the first (which also builds
+    /// what cuts the field out), and bytes written.
     private(set) var captureSeconds = 0.0
-    private var cappedSeconds = 0.0
+    private(set) var cappedSeconds = 0.0
     private(set) var setupBytes = 0
     private var manifest: RunTimelineManifest
     private let writer = TimelineWriter()
@@ -301,22 +302,32 @@ final class RunTimelineRecorder {
     ) {
         guard !finished, solver.time >= nextTime - 1e-12 || force else { return }
         let start = ContinuousClock.now
+        // The next frame's field is cut out by the batch that passes its time, while the GPU is
+        // there anyway; set here, between batches, for the next.
+        defer { solver.viewFieldCapture = finished ? nil : ViewFieldCapture(stride: stride, from: nextTime) }
         if !force, frames > 0, cappedSeconds >= maximumShare * (start - started).seconds {
             while nextTime <= solver.time + 1e-12 { nextTime += interval }
             return
         }
-        guard let field = try? solver.viewField(stride: stride) else { return }
+        let step = solver.stepCount
+        // The last frame forced at the moment of the one before it takes its place, with its field.
+        let again = frames > 0 && last?.step == step && pending.last?.time == solver.time
+        guard let field = again ? last?.field : try? solver.viewField(stride: stride) else { return }
         let frame = TimelineFrame(
             view: ViewFrame(solver: solver, field: field), fragments: fragments, freestanding: freestanding)
+        if again {
+            frames -= 1
+            pending.removeLast()
+        }
         let path = String(format: "frames/f-%06d.lzfse", frames)
-        let step = solver.stepCount
+        last = (step, field)
         writer.write(frame, to: folder.appending(path: path))
         let took = (ContinuousClock.now - start).seconds
         captureSeconds += took
-        // The first frame, before any batch, also builds what cuts out the field: once a run, it is
-        // left out of the cap. Each frame waits for the GPU to cut out its field (about 10 ms for
-        // 25 million cells), since a batch cuts it out only when it ends on its time limit, and
-        // landing batches on frames would change the run.
+        // The first frame, before any batch, also builds what cuts out the field, and waits for the
+        // GPU to cut it out: once a run, it is left out of the cap. The others read the field the
+        // batch that passed their time cut out (`ViewFieldCapture`), waiting for nothing; a frame
+        // forced off its time, the last, may wait (about 10 ms for 25 million cells).
         if frames > 0 { cappedSeconds += took }
         frames += 1
         while nextTime <= solver.time + 1e-12 { nextTime += interval }
@@ -333,6 +344,8 @@ final class RunTimelineRecorder {
     }
 
     private var pending: [(path: String, time: Double, step: Int)] = []
+    /// The last frame's step and field.
+    private var last: (step: Int, field: Data)?
 
     private func remainingFrames(at time: Double) -> Int {
         max(0, Int(((endTime - time) / interval).rounded(.up)))
@@ -413,8 +426,10 @@ private final class TimelineWriter: @unchecked Sendable {
                 (try? data.write(to: url)) != nil
             else { return }
             lock.withLock {
-                sizes[url.pathComponents.suffix(2).joined(separator: "/")] = data.count
-                total += data.count
+                // A frame written again in place of another counts once.
+                let path = url.pathComponents.suffix(2).joined(separator: "/")
+                total += data.count - (sizes[path] ?? 0)
+                sizes[path] = data.count
             }
         }
     }
