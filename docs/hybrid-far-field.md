@@ -82,6 +82,24 @@ the share broken at 1.75–2 km to 0.40, 0.96 and 1.00, at 2–2.5 km to 0.10, 0
 and at 2–2.5 km at 0.5 kt, and further at 2.5–3 km at the larger yields. Carrying it to twice the
 hand-over lands between the two (`--trend-reach`).
 
+Fading the match back to the surrogate's own loads past the reach instead of holding it
+(`--trend-damping d`: the match's logarithm falls by e each d of log distance) was judged the same
+way on 20 October, rerunning the hold on the same build. Over 1–2.5 km, the mean error in the
+share of sides with some glass broken, against the full run, at 0.2, 0.5 and 1.1 kt:
+
+| Past 1.5× the hand-over | 0.2 kt | 0.5 kt | 1.1 kt | Blown out, 1.1 kt |
+|---|---|---|---|---|
+| Held (the app's) | 0.103 | 0.013 | 0.012 | 0.043 |
+| Faded, d = 0.7 | 0.090 | 0.021 | 0.013 | 0.026 |
+| Faded, d = 0.35 | 0.080 | 0.029 | 0.013 | 0.023 |
+
+Fading helps at the small yield, where the surrogate's own form is the better one, and with the
+blown-out share at the large one. It does worse at 0.5 kt, and beyond 2.5 km it raises the share
+broken above the full run's at the larger yields (0.41–0.44 against 0.18 at 0.5 kt; 0.96 against
+0.65 at 1.1 kt), where the held match already ran over. No fading length gains overall, so the app
+holds the match (`FarFieldSet.trendDamping` nil). The results are in
+/Volumes/StudioData/bombcad/hybrid-damp (`compare.py`).
+
 Beyond about 2.2 km the full run's own side faces lie near the buildings
 ([Beirut](beirut-2020.md#what-the-model-can-and-cannot-represent)), so its far bands are the less
 sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over to 2.5 km, and up to
@@ -144,7 +162,9 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
 
 - **A hand-over chosen by the run**, where the shock has weakened past a threshold, rather than
   given.
-- **The trend damped** toward the surrogate's own form far out, which held better at 0.2 kt. The
-  reach held at 1.5 times the hand-over is a first, cheap form of it.
+- **The far edge at the small yield.** Neither holding the trend nor fading it to the surrogate's
+  own form (above) closes the 0.2 kt shortfall at 1.75–2.5 km without overshooting the larger
+  yields beyond 2.5 km. A trend fitted per yield from the near run's own spread, or a refit of the
+  surrogate's distance terms at low scaled distances, is the next thing to try.
 - **Far buildings in the app's other views.** They are painted in the viewport and the map, but
   picking, the inspector and the damage table's per-component rows hold only the near buildings.
