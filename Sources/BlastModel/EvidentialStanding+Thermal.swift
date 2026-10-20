@@ -184,15 +184,22 @@ extension StandingScene {
         return result(
             .cloud, .illustrative,
             "Either way: its top within 4% on average of 22 TNT clouds Church measured, for their first two "
-                + "minutes, a geometric spread of 21% shot by shot, not a bound; it falls behind them later. It "
-                + "needs afterburning, whose burning time was fitted to the open blast, and the entrainment "
-                + "coefficient's plausible range moves the tops −9% to +13%.",
+                + "minutes, a geometric spread of 21% shot by shot, not a bound. In one lapse rate it falls behind "
+                + "them later; in each shot's measured temperature and wind it follows them to five minutes within "
+                + "12% on average, though 27–55% shot by shot, so at night give the cloud a sounding. It needs "
+                + "afterburning, whose burning time was fitted to the open blast, and the entrainment coefficient's "
+                + "plausible range moves the tops −9% to +13%.",
             evidence: [
                 StandingEvidence(
                     "Church's 22 detonations of 54 to 1,270 kg of TNT",
                     "Cloud top within 4% on average, 21% shot "
                         + "by shot, from half a minute to two minutes",
-                    "fireball-rise.md#against-churchs-measured-clouds")
+                    "fireball-rise.md#against-churchs-measured-clouds"),
+                StandingEvidence(
+                    "The same, in Church's measured profiles",
+                    "Cloud top 0.88–0.98 of his from three to five minutes, 27–55% shot by shot; his repeated "
+                        + "shots themselves spread 36–92%",
+                    "fireball-rise.md#in-churchs-own-air-20-october-2026"),
             ], assumptions: assumptions, documents: ["fireball-rise.md#limitations"])
     }
 }

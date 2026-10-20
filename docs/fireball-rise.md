@@ -13,7 +13,10 @@ numbers from the air model's final state, and nothing passed back.
 coefficients from laboratory thermals, started from whatever the gas model leaves; its cloud's top
 agrees with the tops Church measured over 22 detonations of 54 to 1,270 kg of TNT, from half a
 minute to two minutes after each, to 4% on average and 21% shot by shot, as closely as his own
-fit, but falls behind them later, as the real clouds go on growing (below). Once it stops rising,
+fit. In one lapse rate it falls behind them later, as the real clouds go on growing; in each
+shot's measured temperature and wind it follows them to five minutes within 12% on average,
+though not shot by shot ([below](#in-churchs-own-air-20-october-2026)), so at night it wants a
+sounding. Once it stops rising,
 it spreads as a gravity current and grows as a Pasquill–Gifford puff; no open measurements of a
 high-explosive cloud's width have been found to check that against, and its top after it stops
 falls further behind Church's than the rising thermal's did. Use it to see roughly how high and
@@ -582,6 +585,63 @@ model from 1.04 to 0.97 times Church's tops, both within his data's scatter, and
 bring back their later growth. Liolios also quotes Church for the cloud's radius,
 R = 4.7 W^0.375 m; the report gives only tops, so where that comes from is left open.
 
+### In Church's own air (20 October 2026)
+
+**The baseline on today's air.** The nine hand-overs were remade on 20 October 2026 on the air
+as it now runs by default: afterburning and hot air, far-field faces, the mapped start and the
+gas losing what it radiates. They carry 4 to 9% less buoyancy than the stored ones, the heat
+radiated in the first few tenths of a second, and the tops at ½ to 5 minutes are 1.03, 1.04,
+1.02, 0.93, 0.82 and 0.68 times Church's (spreads 1.21, 1.18, 1.21, 1.27, 1.52, 1.36): the
+two-minute agreement stands (1.04 before), and so does the fall behind later. These hand-overs
+are on StudioData (`bombcad/issue26/c0/`); the stored ones in the sample are unchanged.
+
+**In his measured profiles.** Church's appendix gives each shot's temperature to 600 m (300 m
+for the preliminary shots) and its wind from 9 m up, plotted; they are now transcribed
+([Samples/Church1969](../Samples/Church1969/README.md), `church-1969-profiles.json`), and
+`compare-church-cloud.py --measured-air` follows each shot through its own profile and wind in
+place of one lapse rate to 600 m and one wind. With the same hand-overs:
+
+| After the detonation | ½ min | 1 min | 2 min | 3 min | 4 min | 5 min |
+|---|---|---|---|---|---|---|
+| One lapse rate and one wind (as above) | 1.03 (1.21) | 1.04 (1.18) | 1.02 (1.21) | 0.93 (1.27) | 0.82 (1.52) | 0.68 (1.36) |
+| Church's profiles and winds | 1.03 (1.21) | 1.02 (1.18) | 1.02 (1.21) | 0.98 (1.27) | 0.88 (1.55) | 0.88 (1.34) |
+| The same, the 17 shots profiled to 600 m | 1.00 (1.15) | 1.00 (1.16) | 1.00 (1.21) | 1.00 (1.27) | 0.98 (1.55) | 0.97 (1.20) |
+| Church's profiles, the thermal going on once it stops | 1.03 (1.21) | 1.02 (1.18) | 1.02 (1.21) | 1.00 (1.25) | 0.92 (1.51) | 0.95 (1.31) |
+
+**Most of the late shortfall was the air.** On the stable nights the profiles are not one lapse
+rate: an inversion of 1.5 to 4 K over the lowest 35 to 360 m, and above it, on most nights, air
+cooling at 6 to 9 K/km, near the dry adiabat's 9.8 and far less stable than the mean to 600 m
+says. A cloud that has risen through the inversion goes on rising above it, as Church's did:
+shot 8's top at five minutes is 651 m against his 680 m (384 m in one lapse rate), Clean Slate
+3's at four 601 m against 510 m. Where the air above stays stable, nearly isothermal over Clean
+Slate 2 and Double Tracks, the clouds stop, as his hardly grew.
+On the 17 shots profiled to 600 m the tops are within 3% of his on average from half a minute
+to five. What remains low is the preliminary shots P7 and P8, 1,400 and 2,800 lb, whose clouds
+rose to 560 to 830 m through air profiled only to 300 m: above it the lapse rate here is the
+one that gives Church's stability, and their tops at five minutes are half his. The air above
+600 m does not matter: carrying the profiles' top 100 m on instead of the standard atmosphere's
+6.5 K/km changes no ratio in the second decimal.
+
+**The judge, set beforehand:** the mean at 3 to 5 minutes at least 0.85, the spread within
+Church's 15 to 20%, and the two-minute tops kept at 1.04 ± 0.08.
+
+- **The mean: met,** 0.98, 0.88 and 0.88 on all 22 shots (0.69 before at five minutes).
+- **The two-minute tops: met,** 1.02.
+- **The spread: not met.** It is 1.27 at three minutes, 1.55 at four (9 shots) and 1.34 at five,
+  against Church's stated 15 to 20%. His own repeats show why no model of these shots could
+  meet it: shots 1 to 3, 140 lb each on one afternoon in air of nearly one stability
+  (S −0.40 to −0.49), rose to 397, 220 and 339 m at two minutes and 553, 270 and 343 m at
+  three, a spread of 1.36 and 1.44 between them, and 1.92 at four. On the nights alone, with
+  full profiles, the model's spread is 1.24 at three minutes and 1.21 at five.
+
+So the fall behind after two minutes was mostly the one lapse rate standing in for layered night
+air, not a missing hot core. The two-part thermal planned for the case that the profiles did
+not mend the mean (an unmixed core rising on) was not built: the mean is mended, and the spread
+that remains is as large between Church's repeated shots as between the model and them. Whether
+to build it anyway, fitted on half the shots and judged on the other half, is the user's call.
+The standing keeps its band to two minutes; to five minutes, in a measured sounding, the tops
+are within 12% on average, which the standing now says: at night, give the cloud a sounding.
+
 ## A measured sounding
 
 Over Las Vegas on 15 June 2024 ([Samples/Soundings](../Samples/Soundings/README.md)), at 04:09
@@ -641,9 +701,10 @@ and which ADMS describes otherwise.
 ## Limitations
 
 - Illustrative, as above: compared with one set of measured clouds, Church's, from charges of
-  54 to 1,270 kg on dry ground in Nevada, in air whose temperature profiles are taken as one
-  lapse rate to 600 m; their tops after the first two or three minutes, which go on growing as
-  turbulence spreads them, the model does not follow.
+  54 to 1,270 kg on dry ground in Nevada. In one lapse rate to 600 m it falls behind their tops
+  after two or three minutes; in each shot's own measured profile it follows them to five
+  minutes within 12% on average, but 27 to 55% shot by shot, as much as his repeated shots
+  differ among themselves.
 - One sphere, well mixed: real clouds form a vortex ring with a hot core, carry dust and smoke,
   and spread into a cap; the integral model knows only their averages.
 - The spread once it stops is three textbook pieces put side by side, not a model fitted or
@@ -707,10 +768,11 @@ and which ADMS describes otherwise.
 
 ## Future work
 
-- The growth of Church's tops after two minutes, which neither the rising thermal nor the spread
-  follows: Church's appendix's temperature and wind profiles, transcribed, would replace the one
-  lapse rate here and show whether the air above the night's inversion lets the cloud go on
-  rising; a cloud that is not well mixed, its hot core rising on, is the other candidate.
+- The spread of Church's tops shot by shot after two minutes, 27 to 55% even in their own measured
+  air: a cloud that is not well mixed, its hot core rising on (a two-part thermal), fitted on half
+  his shots and judged on the other half, is the candidate left; his repeated shots differ by as
+  much, so it may not gain. The preliminary shots' air above 300 m, which his appendix does not
+  give.
 - Measured widths of spreading explosion clouds, to check the spread against: Roller Coaster's
   and the large high-explosive tests' cloud photographs, if any are open.
 - The spread's gravity current with drag and the puff's growth with wind shear, a mixing height
