@@ -134,6 +134,18 @@ struct EnvelopeConstructionEditor: View {
                     }
                 }
             }
+            Picker(
+                "Glass",
+                selection: Binding(
+                    get: { construction.glassCondition ?? .asDesigned },
+                    set: { condition in edit { $0.setGlassCondition(condition) } })
+            ) {
+                ForEach(GlassCondition.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            .help(
+                "As designed: E1300's strength, for glass weathered in service (the default). New or tested: "
+                    + "1.55 times it, the least of Osnes et al.'s tested panes; it holds only while the glass is new."
+            )
             if construction.laminate == nil {
                 Toggle(
                     "Toughened glass",

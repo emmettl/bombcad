@@ -58,6 +58,12 @@ public struct GlazingMix: Codable, Hashable, Sendable {
     public var glazedFraction: Float
     /// Its panes' glass; nil for annealed.
     public var glass: Glass?
+    /// How its glass stands against E1300's strength: nil as designed (left out of the JSON), or
+    /// new or tested (`GlassCondition`), which multiplies every pane's strength.
+    public var condition: GlassCondition?
+
+    /// The factor its condition puts on its panes' strength.
+    var conditionFactor: Double { condition?.strengthFactor ?? 1 }
 
     public init(name: String, panes: [Pane], glazedFraction: Float) {
         self.name = name
@@ -150,7 +156,7 @@ public struct GlazingMix: Codable, Hashable, Sendable {
         netPa pressures: [Double], binS: Double, areaM2: Double, worseThan: GlazingHazard.Condition?,
         strength: Double = 1
     ) -> GlazingBreakage {
-        guard glass == nil, worseThan == nil, strength == 1 else {
+        guard glass == nil, worseThan == nil, strength == 1, conditionFactor == 1 else {
             let peak = pressures.map(abs).max() ?? 0
             return judged(
                 areaM2: areaM2, strength: strength, worseThan: worseThan,
@@ -190,7 +196,7 @@ public struct GlazingMix: Codable, Hashable, Sendable {
     ) -> GlazingBreakage {
         var result = GlazingBreakage()
         if worseThan != nil { result.logNoneWorse = 0 }
-        let factor = strength * (glass?.strengthFactor ?? 1)
+        let factor = strength * (glass?.strengthFactor ?? 1) * conditionFactor
         for pane in panes where pane.areaM2 > 0 && pane.share > 0 {
             let count = Double(glazedFraction * pane.share) * areaM2 / Double(pane.areaM2)
             guard count > 0 else { continue }
@@ -244,6 +250,19 @@ public struct GlazingMix: Codable, Hashable, Sendable {
     public func with(_ glass: Glass?) -> GlazingMix {
         var mix = self
         mix.glass = glass
+        return mix
+    }
+
+    /// What a mix's name gains when its glass is new or tested.
+    static let newGlassSuffix = ", new or tested glass"
+
+    /// The same mix with its glass in `condition`, named for it (so that what is cached by a mix's
+    /// name keeps the two apart).
+    public func with(condition: GlassCondition) -> GlazingMix {
+        var mix = self
+        mix.condition = condition == .asDesigned ? nil : condition
+        if mix.name.hasSuffix(Self.newGlassSuffix) { mix.name.removeLast(Self.newGlassSuffix.count) }
+        if condition == .newOrTested { mix.name += Self.newGlassSuffix }
         return mix
     }
 

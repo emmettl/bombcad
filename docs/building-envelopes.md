@@ -1149,7 +1149,9 @@ glass impacts could use it once its edge tearing is better founded.
 
 A construction can put security (anti-shatter) film on its monolithic panes
 (`EnvelopeConstruction.film`, `SecurityFilm`), and its glass can be toughened
-(`EnvelopeConstruction.glassToughened`). Both are set in the app's construction editor. The
+(`EnvelopeConstruction.glassToughened`). Both are set in the app's construction editor, as is
+whether the glass is as designed (weathered, E1300's strength, the default) or new or tested,
+1.55 times as strong (`EnvelopeConstruction.glassCondition`; [glass strength](glass-strength.md)). The
 film is polyester, 4–14 mil (0.1–0.36 mm), bonded to the pane's inner face. It is the retrofit
 the [protective design](protective-design.md) prototype found cheapest.
 

@@ -511,7 +511,9 @@ are shipped):
   security film (7 mil, wet glazed, unless `film` says: the [film](building-envelopes.md#security-film)
   holds the cracked pane until it tears or its anchorage lets go), toughened (the panes' strength
   times E1300's factor of 4), laminated (each pane `LaminatedGlass.facade` unless `laminate` says:
-  held cracked, or torn and thrown, by its interlayer), or infill (no glass). Each is a glass type
+  held cracked, or torn and thrown, by its interlayer), infill (no glass), or re-glazed with new
+  annealed glass in the same panes (`reglazed`: 1.55 times E1300's strength while it is new,
+  [glass strength](glass-strength.md#the-option-new-or-tested-glass)). Each is a glass type
   on the side's `GlazingMix`, so a plan's glazing is an `EnvelopeConstruction` (a mix per side,
   `sideGlazing`) that `EnvelopeDamageAssessment` judges as it judges any building; a map façade's
   own mix, with no glass type, is judged as before, bit for bit. Walls are not searched: the

@@ -35,6 +35,9 @@ public enum ProtectionModel {
             case filmed
             /// The windows filled in: no glass.
             case infill
+            /// Re-glazed with new annealed glass in the same panes (`GlassCondition.newOrTested`,
+            /// E1300's strength times 1.55); new glass weathers in service towards E1300's.
+            case reglazed
         }
         public var name: String
         public var kind: Kind
@@ -64,6 +67,7 @@ public enum ProtectionModel {
                 var filled = mix
                 filled.glazedFraction = 0
                 return filled
+            case .reglazed: return mix.with(nil).with(condition: .newOrTested)
             }
         }
     }

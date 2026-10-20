@@ -305,6 +305,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case importedEnvelopes
     case mapBuildings
     case ventedGlazing
+    /// Glass judged new or tested, stronger than E1300's weathered glass (`GlassCondition`).
+    case newGlass
     /// Gauges beside a wall read the pressure at it (`SolverConfiguration.gaugesReadWallPressure`).
     case wallReadGauges
     // The structure.
@@ -404,6 +406,12 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .mapBuildings: return !inputs.scenario.envelopeSources(.map).isEmpty
         case .ventedGlazing:
             return inputs.ventsGlazing && inputs.scenario.hasEnvelopePanes
+        case .newGlass:
+            return (inputs.scenario.envelopeConstructions ?? []).contains { construction in
+                construction.glassCondition == .newOrTested
+                    || ([construction.glazing] + (construction.sideGlazing.map { Array($0.values) } ?? []))
+                        .contains { $0?.condition == .newOrTested }
+            }
         case .wallReadGauges: return config.gaugesReadWallPressure
         // Refined air keeps the staircase (`BlastSolver.setUpStructureCut`).
         case .structureCutCells:
@@ -711,6 +719,18 @@ public enum StandingTable {
                     + "cells and 119–143% on 0.02 m, as the read counts the cell's speed towards the wall as gas "
                     + "brought to rest. The reflected bands were derived from the cell's mean, so they do not apply.",
                 document: "air-blast-model.md#reflected-peaks-at-a-wall")
+        case .newGlass:
+            return Entry(
+                title: "New or tested glass", affects: [.envelopeDamage], limit: .approximation,
+                note:
+                    "Glass judged 1.55 times E1300's strength, as new or tested glass rather than glass weathered "
+                    + "in service: the least of Osnes et al.'s fifteen laminated panes' glass, 1.55 to 1.85 times "
+                    + "E1300's median, at which their panes crack or hold as measured in 14 of 15, the miss "
+                    + "cracking a pane that held. From 1.58 one that cracked (C-02) holds, the unsafe side. At 1.55 "
+                    + "E1300's own load resistance is exceeded (1.0 to 1.3 of it), and Beirut's sides with broken "
+                    + "glass fall below GEER's beyond 2 to 2.5 km: glass weathers towards E1300's in service, so a plan "
+                    + "that relies on new glass holds only while it is new.",
+                document: "glass-strength.md")
         case .ventedGlazing:
             return Entry(
                 title: "Glazing vented in the air", affects: [.envelopeExposure, .envelopeDamage],
@@ -1108,6 +1128,7 @@ public enum StandingTable {
         "EnvelopeConstruction.film": .input,
         "EnvelopeConstruction.wallLiner": .input,
         "EnvelopeConstruction.glassToughened": .input,
+        "EnvelopeConstruction.glassCondition": .option([.newGlass]),
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.sideGlazing": .input,

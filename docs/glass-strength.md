@@ -1,6 +1,7 @@
 # Glass strength: the evidence for a decision
 
-**For the user to decide; nothing here changes a default.** Two lines of work pointed towards
+**Decided 20 October 2026: today's E1300 strength stays the default, and new or tested glass is a
+construction's option** ([below](#the-option-new-or-tested-glass)). Two lines of work pointed towards
 stronger glass than today's:
 - the [calibration](calibration.md) favoured glass 1.2–1.6 times as strong;
 - the model breaks more glass at Beirut than GEER's survey saw ([glass by
@@ -95,3 +96,42 @@ documentation's costs):
 - **The data that would settle it** are panes held beside panes broken near the threshold, of
   known age (Beauchamp and Matalucci; Johns and Clubley). The calibration ranks them first
   ([calibration](calibration.md#the-answers), [data wanted](data-wanted.md#to-fetch)).
+
+## The option: new or tested glass
+
+The user's decision: keep E1300's strength as the default, and offer new or tested glazing as an
+option (emmettl/bombcad-work#49).
+
+**The factor, 1.55.** It is the least of Osnes et al.'s (2019) measured new glass, 1.55 to 1.85
+times E1300's median.
+- **Osnes's panes.** At 1.55 their fifteen panes crack or hold as measured in 14 of 15. The miss
+  cracks a pane that held: the safe side. From 1.58 a pane that cracked (C-02) holds, so the
+  factor stops short of it. "About 1.6" in the note above means this.
+- **E1300.** At 1.55 E1300's own load resistance is exceeded (1.00–1.32 of it), as it should be
+  for glass stronger than the standard's.
+- **Monk and Clubley's panes** break at 0.94–1.24 of the measured times.
+
+**What it is.** `GlassCondition`: `.asDesigned`, weathered, E1300's (the default, written as
+nothing in a project); or `.newOrTested`, every pane's strength times 1.55.
+- **Where it is set.** On an envelope's construction (`EnvelopeConstruction.glassCondition`, set
+  with `setGlassCondition`), which gives its windows' mixes (`GlazingMix.condition`) the same. A
+  mix with new glass is named for it, so that what is kept by a mix's name keeps the two apart.
+- **Where it applies:**
+  - envelope damage's panes (annealed, toughened, filmed and laminated alike);
+  - the façade mixes' glass, and so the quick estimate's and the glass chances';
+  - charge inference from the scene's glass;
+  - protective design, both the scene as built and a plan's change.
+- **In the app**, the construction editor's **Glass** picker: as designed, or new or tested.
+- **In protective design**, re-glazing a side with new annealed glass in the same panes is a
+  change of its own (`reglazed`), with the user's cost. The app offers it, not allowed until
+  ticked.
+
+**Its standing** (`ModelOption.newGlass`, an approximation): new or tested glass, from Osnes's
+panes, 1.55–1.85 times E1300's. The note warns:
+- from 1.58 one of Osnes's panes that cracked (C-02) holds;
+- at 1.55 Beirut's sides with broken glass fall below GEER's beyond 2 to 2.5 km;
+- glass weathers towards E1300's in service, so a plan that relies on new glass holds only while
+  it is new.
+
+**At the default nothing changes.** On this branch's build, the 2 t protective plans and Beirut's
+façade-surrogate judgement came out byte for byte as before. The air solver is untouched.

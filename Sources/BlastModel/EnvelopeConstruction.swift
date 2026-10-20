@@ -70,6 +70,10 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// The monolithic glass is thermally toughened, breaking at four times annealed glass's
     /// strength (`EnvelopePanel.filmedGlass`); nil or false for annealed (left out of the JSON).
     public var glassToughened: Bool?
+    /// How every pane's glass stands against E1300's strength (`GlassCondition`): nil as designed,
+    /// weathered (left out of the JSON); set with `setGlassCondition`, which gives its windows'
+    /// mixes the same.
+    public var glassCondition: GlassCondition?
     /// The pane a façade strip is taken to hold (a block's storey strip, as map buildings have),
     /// width and height, m: nil for `assumedFacadePane`, zero for none.
     public var facadePaneM: SIMD2<Float>?
@@ -97,6 +101,7 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
         guard let mix = sideGlazing?[Self.sideKey(axis: axis, outward: outward)] else { return self }
         var side = self
         if mix.glazedFraction <= 0 { side.facadePaneM = .zero }
+        side.glassCondition = mix.condition ?? glassCondition
         if let glass = mix.glass {
             side.laminate = glass.laminate
             side.film = glass.laminate == nil ? glass.film : nil
@@ -170,21 +175,37 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// judges it: annealed or toughened on Moore's large-deflection plate, filmed
     /// (`EnvelopePanel.filmedGlass`), or laminated (`EnvelopePanel.laminatedGlass`).
     public func pane(a: Double, b: Double) -> SDOFSystem {
+        // New or tested glass: E1300's strength times its condition's factor (as designed, nil: E1300's).
+        let condition = glassCondition?.strengthFactor ?? 1
+        let annealed = condition == 1 ? nil : condition * GlassStrength.sixtySecond(area: a * b)
         if let laminate {
-            return EnvelopePanel.laminatedGlass(laminate, a: a, b: b)
+            return EnvelopePanel.laminatedGlass(laminate, a: a, b: b, sixtySecondStrength: annealed)
         }
         let toughened = glassToughened == true
         if let film {
             return EnvelopePanel.filmedGlass(
-                film, thickness: Double(glassThicknessM), toughened: toughened, a: a, b: b)
+                film, thickness: Double(glassThicknessM), toughened: toughened, a: a, b: b,
+                sixtySecondStrength: annealed)
         }
         return EnvelopePanel.largeDeflectionGlass(
             thickness: Double(glassThicknessM), material: toughened ? .toughenedGlass : .annealedGlass, a: a,
-            b: b, sixtySecondStrength: toughened ? 4 * GlassStrength.sixtySecond(area: a * b) : nil)
+            b: b,
+            sixtySecondStrength: toughened
+                ? 4 * condition * GlassStrength.sixtySecond(area: a * b) : annealed)
     }
 
-    /// Plain annealed panes, which the damage path builds once for each size.
-    public var hasPlainGlass: Bool { laminate == nil && film == nil && glassToughened != true }
+    /// Every pane's glass, and its windows' mixes (the building's and each side's), in `condition`.
+    public mutating func setGlassCondition(_ condition: GlassCondition) {
+        glassCondition = condition == .asDesigned ? nil : condition
+        glazing = glazing?.with(condition: condition)
+        sideGlazing = sideGlazing?.mapValues { $0.with(condition: condition) }
+    }
+
+    /// Plain annealed panes as designed, which the damage path builds once for each size.
+    public var hasPlainGlass: Bool {
+        laminate == nil && film == nil && glassToughened != true
+            && (glassCondition ?? .asDesigned) == .asDesigned
+    }
 
     /// The panes' glass holds together once cracked, laminated or filmed: held in the frame, or
     /// gone from it whole.

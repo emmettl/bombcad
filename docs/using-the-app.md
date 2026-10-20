@@ -119,7 +119,8 @@ In **Edit layout**, the **Exposure-only buildings** section sets each envelope's
 reinforced concrete, unreinforced masonry or reinforced blockwork. Under **Construction** it sets
 the wall's thickness, its bars each way and whether in both faces, their cover and yield, the
 concrete's or masonry's strength, whether blockwork is fully grouted, and a freestanding wall's
-cap. These are read from IFC material layers or OpenStreetMap's `building:material` where those
+cap. Its **Glass** is as designed (weathered, E1300's strength, the default) or new or tested,
+1.55 times as strong ([glass strength](glass-strength.md#the-option-new-or-tested-glass)). These are read from IFC material layers or OpenStreetMap's `building:material` where those
 give them, and otherwise assumed.
 
 ## Replaying a run
@@ -322,8 +323,9 @@ a glazing mix (a district from a map, or constructions given glazing).
 - **Target**: the worst GSA condition allowed (2, 3a, 3b or 4) and the largest chance accepted of
   passing it, per side. **Draws** of the loads' scatter and the glass's strength make each side's
   chance; 32 by default, fewer for a quick look.
-- **Changes allowed**: security film (7 mil, wet glazed), toughened glass, laminated glass, or
-  filling the window in, each with your cost per square metre of glass. The costs shown are only
+- **Changes allowed**: security film (7 mil, wet glazed), toughened glass, laminated glass,
+  filling the window in, or re-glazing with new glass (not allowed until ticked: new glass is
+  stronger only while new), each with your cost per square metre of glass. The costs shown are only
   their usual order; none are shipped.
 - **Stand-off lines**: the scene's, each with your cost for putting it up. A plan that takes one
   stops each charge on the side the line guards a metre outside it.

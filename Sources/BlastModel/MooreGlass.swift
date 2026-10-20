@@ -82,6 +82,32 @@ public enum GlassStrength {
     }
 }
 
+/// How a pane's glass stands against E1300's flaw model (`GlassStrength`): as designed, glass
+/// weathered in service, which E1300's strength describes (the default); or new or tested glass,
+/// stronger by `strengthFactor` (docs/glass-strength.md).
+public enum GlassCondition: String, Codable, Hashable, Sendable, CaseIterable {
+    case asDesigned
+    case newOrTested
+
+    /// The factor on E1300's strength. New or tested glass: 1.55, the least of Osnes et al.'s
+    /// (2019) fifteen laminated panes' glass, 1.55 to 1.85 times E1300's median, at which their
+    /// panes crack or hold as measured in 14 of 15, the one miss cracking a pane that held (the safe
+    /// side). From 1.58 one that cracked (C-02) holds.
+    public var strengthFactor: Double {
+        switch self {
+        case .asDesigned: 1
+        case .newOrTested: 1.55
+        }
+    }
+
+    public var label: String {
+        switch self {
+        case .asDesigned: "As designed (weathered, E1300)"
+        case .newOrTested: "New or tested (×1.55)"
+        }
+    }
+}
+
 extension EnvelopePanel {
     /// A glass pane on Moore's large-deflection plate (`MooreGlassCurves`): simply supported, its
     /// resistance stiffening with deflection, elastic both ways, breaking when its largest

@@ -514,7 +514,8 @@ enum SurrogateBench {
             let sides = Dictionary(grouping: members, by: { sideOf[$0] })
             guard !sides.isEmpty else { continue }
             var counts = (0.0, 0.0, 0.0, 0.0)
-            for (_, list) in sides {
+            // In the sides' order, so that two runs sum alike (a dictionary's order is its process's).
+            for (_, list) in sides.sorted(by: { $0.key.lexicographicallyPrecedes($1.key) }) {
                 let run = list.reduce(GlazingBreakage()) { $0 + all[$1].run.glass }
                 let surrogate = list.reduce(GlazingBreakage()) { $0 + all[$1].surrogate.glass }
                 counts.0 += run.anyBroken

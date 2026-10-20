@@ -28,6 +28,8 @@ final class ProtectionPlannerModel {
         Change(kind: .toughened, name: "Toughened glass", allowed: true, costPerM2: 4),
         Change(kind: .laminated, name: "Laminated glass", allowed: true, costPerM2: 5),
         Change(kind: .infill, name: "Fill the window in", allowed: true, costPerM2: 6),
+        // New glass is stronger only while new (docs/glass-strength.md): offered, not taken unasked.
+        Change(kind: .reglazed, name: "Re-glaze with new glass", allowed: false, costPerM2: 3),
     ]
     /// Draws of the load's scatter and the glass's strength for each side's chance.
     var draws = 32
