@@ -156,6 +156,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Validation](docs/validation.md)            | Every comparison with measurements and theory, with a summary   |
 | [Validation review](docs/validation-review.md) | An independent review of the record's claims, ranked by severity |
 | [Reference calculations](docs/reference-calculations.md) | Independent Python implementations of the published methods, and the comparison script |
+| [Open benchmark](docs/open-benchmark.md) | Ten cases with cited measurements in a format any blast code can run, a scorer, and BombCAD's entry |
 | [Blind tests](docs/blind-tests.md) | The protocol and register of tests predicted on frozen defaults before their measurements are unsealed |
 | [Standing of results](docs/standing.md)     | Each result's evidential standing, derived from the scene and carried with runs and exports |
 | [Performance](docs/performance.md)          | Benchmarks and where the time goes                              |

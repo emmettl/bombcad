@@ -85,6 +85,7 @@ ci-test:
 	python3 Scripts/reference/test-compare.py
 	python3 Scripts/protective/test-protective.py
 	python3 Scripts/test-analytic-oracles.py
+	python3 -I Scripts/open-benchmark/test_score.py
 	python3 Scripts/check-doc-links.py
 	python3 Scripts/check-shader-mirrors.py
 

@@ -1,0 +1,197 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "wang2022-aluminised-close-in",
+  "title": "Wang et al. 2022: an aluminised 10 kg charge's reflected load at 1.2 m",
+  "category": "reflected",
+  "summary": "A bare 10 kg sphere of TNT, RDX and aluminium, which the paper gives as 10 kg of TNT, 0.7 m above the ground and 1.2 m from an upright steel plate (0.56 m/kg^(1/3)). The reflected peak, arrival and impulse at three gauges in the plate: a close-in load where the stated TNT equivalence is itself under test.",
+  "reference_kind": "measurement",
+  "sources": [
+    {
+      "id": "wang-2022",
+      "authors": [
+        "W. Wang",
+        "et al."
+      ],
+      "year": 2022,
+      "title": "Blast resistance of reinforced concrete slabs based on residual load-bearing capacity",
+      "venue": "Materials 15(18), 6449",
+      "doi": "10.3390/ma15186449",
+      "licence": "CC BY 4.0",
+      "redistribution": "values-included",
+      "used_for": "The charge, the target's placing and the three pressure gauges' peak, arrival and impulse (text, Tables 1-5, Figure 1)"
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "Transcribed from an open-access paper (CC BY 4.0), with citation."
+  },
+  "coordinates": "Ground at z = 0; the charge's centre at (0, 0, 0.7); x towards the plate, y across it, z up; metres.",
+  "geometry": {
+    "ground": {
+      "kind": "not-stated",
+      "z_m": 0,
+      "description": "The ground's surface is not described; taken as flat."
+    },
+    "obstacles": [
+      {
+        "id": "plate",
+        "shape": "box",
+        "min_m": [
+          1.2,
+          -0.25,
+          0.1
+        ],
+        "max_m": [
+          1.3,
+          0.25,
+          1.3
+        ],
+        "behaviour": "rigid",
+        "material": "steel",
+        "description": "A steel plate carrying the gauges, placed as the paper's slabs were (1.2 m long and 0.5 m wide, upright, their centre 0.7 m above the ground; the long side taken vertical, as a gauge 0.3 m up implies). The plate's own size, thickness and frame are not stated."
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "10kg",
+      "description": "One shot",
+      "charges": [
+        {
+          "explosive": "TNT/RDX (4:6 by mass) with aluminium",
+          "mass_kg": 10.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "the paper's stated equivalent, 10 kg of TNT; what it was matched to is not stated",
+            "source": "wang-2022"
+          },
+          "tnt_equivalent_mass_kg": 10.0,
+          "shape": "bare sphere",
+          "centre_m": [
+            0,
+            0,
+            0.7
+          ],
+          "height_of_burst_m": 0.7,
+          "initiation": "central",
+          "note": "mass_kg is the stated TNT equivalent; the charge's own mass is not given separately."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "P1",
+          "position_m": [
+            1.2,
+            0.0,
+            0.7
+          ],
+          "mount": "face-flush",
+          "on": "plate",
+          "description": "Facing the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 32320.0,
+              "source": "wang-2022"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 0.36,
+              "source": "wang-2022"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 3350.0,
+              "source": "wang-2022"
+            }
+          ]
+        },
+        {
+          "id": "P2",
+          "position_m": [
+            1.2,
+            0.16,
+            0.7
+          ],
+          "mount": "face-flush",
+          "on": "plate",
+          "description": "0.16 m across from P1",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 26470.0,
+              "source": "wang-2022"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 0.363,
+              "source": "wang-2022"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 3020.0,
+              "source": "wang-2022"
+            }
+          ]
+        },
+        {
+          "id": "P3",
+          "position_m": [
+            1.2,
+            0.0,
+            1.0
+          ],
+          "mount": "face-flush",
+          "on": "plate",
+          "description": "0.3 m up from P1",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 23580.0,
+              "source": "wang-2022"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 0.38,
+              "source": "wang-2022"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 2930.0,
+              "source": "wang-2022"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.25,
+    "factor_by_quantity": {
+      "arrival_time": 1.15
+    },
+    "note": "No measurement uncertainty stated; one shot."
+  },
+  "notes": [
+    "The aluminium's contribution beyond its stated TNT equivalent is part of what this case tests: a code that takes the charge as 10 kg of TNT should say so.",
+    "The paper's slabs' displacements are not included: their supports are not described well enough to be modelled independently."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "Fixtures/TwoFaceSlabs/Wang2022.json",
+      "docs/validation.md (Slabs with steel in both faces)"
+    ],
+    "transcribed": "2026-10-20"
+  }
+}

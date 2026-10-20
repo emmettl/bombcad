@@ -1,0 +1,917 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "alsubaei2015-anfo-columns",
+  "title": "Alsubaei 2015: ANFO in the open, peaks on pipe columns 8-13 m away",
+  "category": "free-field",
+  "summary": "Field shots of 2.4 to 15 kg of ANFO, 0.5 m up over a rigid slab, with no wall: the peak pressure recorded by gauges facing the charge on narrow steel pipe columns 8.2 to 12.85 m away, four gauges up each from 0.75 to 5.25 m. A real explosive with a stated TNT equivalence, and the gauges' own scatter.",
+  "reference_kind": "measurement",
+  "sources": [
+    {
+      "id": "alsubaei-2015",
+      "authors": [
+        "F. C. F. Alsubaei"
+      ],
+      "year": 2015,
+      "title": "Performance of protective perimeter walls subjected to explosions in reducing the blast resultants on buildings",
+      "venue": "Master's thesis, Western University",
+      "url": "https://hdl.handle.net/20.500.14721/35930",
+      "licence": "No terms stated by the repository",
+      "redistribution": "values-included",
+      "used_for": "Tables 4.3-4.5, 4.9-4.11 (chapters 4 and 5) and 6.3-6.10 (chapter 6): peak pressures on the columns with no wall",
+      "note": "Only numbers are transcribed (measured facts), from the thesis's tables; no text or figures are copied."
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "Measured peaks transcribed from the thesis's tables, cited; the repository states no terms, so nothing else is taken."
+  },
+  "coordinates": "Origin on the ground below the charge; x towards the columns, z up; metres.",
+  "geometry": {
+    "ground": {
+      "kind": "rigid-plane",
+      "z_m": 0,
+      "description": "A reinforced concrete slab in front of the wall's position, a 20 mm steel plate under the charge; the thesis calls it fully reflective."
+    },
+    "structure": {
+      "kind": "pipe columns",
+      "description": "Galvanised steel pipe columns 6 m tall on concrete foundations, standing for a building ('non-responding'). Their diameter, and whether they stand in one line, are not stated. With no wall, nothing else stood between charge and columns."
+    }
+  },
+  "runs": [
+    {
+      "id": "ch45-2.44kg",
+      "description": "2.44 kg of ANFO, no wall (chapter 4 and 5); columns at the distances below",
+      "charges": [
+        {
+          "explosive": "ANFO",
+          "mass_kg": 2.44,
+          "tnt_equivalence": {
+            "factor": 0.82,
+            "basis": "pressure and impulse alike, as the thesis gives it",
+            "source": "alsubaei-2015, Table 4.1"
+          },
+          "tnt_equivalent_mass_kg": 2.0008,
+          "shape": "cube (ANFO in a non-fragmenting wooden box, bulk density 850 kg/m^3)",
+          "centre_m": [
+            0,
+            0,
+            0.5
+          ],
+          "height_of_burst_m": 0.5,
+          "initiation": "at the top of the charge, a 10-20 g PETN booster",
+          "note": "The thesis gives the height of burst as 0.5 m, taken here as the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "c8.2-P1",
+          "position_m": [
+            8.2,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 35.1,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P2",
+          "position_m": [
+            8.2,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 30.34,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P3",
+          "position_m": [
+            8.2,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 27.72,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P4",
+          "position_m": [
+            8.2,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 37.03,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P1",
+          "position_m": [
+            11.85,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 28.68,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P2",
+          "position_m": [
+            11.85,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 30.75,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P3",
+          "position_m": [
+            11.85,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 16.82,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P4",
+          "position_m": [
+            11.85,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 26.34,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch45-6.46kg",
+      "description": "6.46 kg of ANFO, no wall (chapter 4 and 5); columns at the distances below",
+      "charges": [
+        {
+          "explosive": "ANFO",
+          "mass_kg": 6.46,
+          "tnt_equivalence": {
+            "factor": 0.82,
+            "basis": "pressure and impulse alike, as the thesis gives it",
+            "source": "alsubaei-2015, Table 4.1"
+          },
+          "tnt_equivalent_mass_kg": 5.2972,
+          "shape": "cube (ANFO in a non-fragmenting wooden box, bulk density 850 kg/m^3)",
+          "centre_m": [
+            0,
+            0,
+            0.5
+          ],
+          "height_of_burst_m": 0.5,
+          "initiation": "at the top of the charge, a 10-20 g PETN booster",
+          "note": "The thesis gives the height of burst as 0.5 m, taken here as the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "c8.2-P1",
+          "position_m": [
+            8.2,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 69.02,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P2",
+          "position_m": [
+            8.2,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 67.85,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P3",
+          "position_m": [
+            8.2,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 63.85,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P4",
+          "position_m": [
+            8.2,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 69.64,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P1",
+          "position_m": [
+            11.85,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 49.64,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P2",
+          "position_m": [
+            11.85,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 53.92,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P3",
+          "position_m": [
+            11.85,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 36.48,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P4",
+          "position_m": [
+            11.85,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 46.4,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch45-14kg",
+      "description": "14 kg of ANFO, no wall (chapter 4 and 5); columns at the distances below",
+      "charges": [
+        {
+          "explosive": "ANFO",
+          "mass_kg": 14.0,
+          "tnt_equivalence": {
+            "factor": 0.82,
+            "basis": "pressure and impulse alike, as the thesis gives it",
+            "source": "alsubaei-2015, Table 4.1"
+          },
+          "tnt_equivalent_mass_kg": 11.48,
+          "shape": "cube (ANFO in a non-fragmenting wooden box, bulk density 850 kg/m^3)",
+          "centre_m": [
+            0,
+            0,
+            0.5
+          ],
+          "height_of_burst_m": 0.5,
+          "initiation": "at the top of the charge, a 10-20 g PETN booster",
+          "note": "The thesis gives the height of burst as 0.5 m, taken here as the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "c8.2-P1",
+          "position_m": [
+            8.2,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 148.86,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P2",
+          "position_m": [
+            8.2,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 131.21,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P3",
+          "position_m": [
+            8.2,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 120.04,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c8.2-P4",
+          "position_m": [
+            8.2,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 8.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 124.11,
+              "source": "alsubaei-2015, Tables 4.3-4.5"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P1",
+          "position_m": [
+            11.85,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 82.19,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P2",
+          "position_m": [
+            11.85,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 83.43,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P3",
+          "position_m": [
+            11.85,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 65.92,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        },
+        {
+          "id": "c11.85-P4",
+          "position_m": [
+            11.85,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 11.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 89.64,
+              "source": "alsubaei-2015, Tables 4.9-4.11"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch6-7.248kg",
+      "description": "7.248 kg of ANFO, no wall (chapter 6); columns at the distances below",
+      "charges": [
+        {
+          "explosive": "ANFO",
+          "mass_kg": 7.248,
+          "tnt_equivalence": {
+            "factor": 0.82,
+            "basis": "pressure and impulse alike, as the thesis gives it",
+            "source": "alsubaei-2015, Table 4.1"
+          },
+          "tnt_equivalent_mass_kg": 5.9434,
+          "shape": "cube (ANFO in a non-fragmenting wooden box, bulk density 850 kg/m^3)",
+          "centre_m": [
+            0,
+            0,
+            0.5
+          ],
+          "height_of_burst_m": 0.5,
+          "initiation": "at the top of the charge, a 10-20 g PETN booster",
+          "note": "The thesis gives the height of burst as 0.5 m, taken here as the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "c9.2-P1",
+          "position_m": [
+            9.2,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 76.6,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c9.2-P2",
+          "position_m": [
+            9.2,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 71.4,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c9.2-P3",
+          "position_m": [
+            9.2,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 71.0,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c9.2-P4",
+          "position_m": [
+            9.2,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 73.2,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P1",
+          "position_m": [
+            12.85,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 53.2,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P2",
+          "position_m": [
+            12.85,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 51.2,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P3",
+          "position_m": [
+            12.85,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 42.8,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P4",
+          "position_m": [
+            12.85,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 58.0,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch6-15.05kg",
+      "description": "15.05 kg of ANFO, no wall (chapter 6); columns at the distances below",
+      "charges": [
+        {
+          "explosive": "ANFO",
+          "mass_kg": 15.05,
+          "tnt_equivalence": {
+            "factor": 0.82,
+            "basis": "pressure and impulse alike, as the thesis gives it",
+            "source": "alsubaei-2015, Table 4.1"
+          },
+          "tnt_equivalent_mass_kg": 12.341,
+          "shape": "cube (ANFO in a non-fragmenting wooden box, bulk density 850 kg/m^3)",
+          "centre_m": [
+            0,
+            0,
+            0.5
+          ],
+          "height_of_burst_m": 0.5,
+          "initiation": "at the top of the charge, a 10-20 g PETN booster",
+          "note": "The thesis gives the height of burst as 0.5 m, taken here as the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "c9.2-P1",
+          "position_m": [
+            9.2,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 140.8,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c9.2-P2",
+          "position_m": [
+            9.2,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 130.8,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c9.2-P3",
+          "position_m": [
+            9.2,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 125.4,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c9.2-P4",
+          "position_m": [
+            9.2,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 9.2 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 130.8,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P1",
+          "position_m": [
+            12.85,
+            0,
+            0.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P1, 0.75 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 82.3,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P2",
+          "position_m": [
+            12.85,
+            0,
+            2.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P2, 2.25 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 78.0,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P3",
+          "position_m": [
+            12.85,
+            0,
+            3.75
+          ],
+          "mount": "column-face",
+          "description": "Gauge P3, 3.75 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 72.6,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        },
+        {
+          "id": "c12.85-P4",
+          "position_m": [
+            12.85,
+            0,
+            5.25
+          ],
+          "mount": "column-face",
+          "description": "Gauge P4, 5.25 m up a steel pipe column 12.85 m from the charge, facing it",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 89.2,
+              "source": "alsubaei-2015, Tables 6.3-6.10"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.25,
+    "note": "No measurement uncertainty is stated; the factor stands for it and for the narrow columns' reading."
+  },
+  "notes": [
+    "The gauges sit on narrow pipes, so the reflection clears within about a millisecond: the peaks can be compared, the impulses cannot (they are a quarter to a half of a building face's) and are left out.",
+    "The measured peaks fall less with height than a wall's would, as a narrow pipe's do. Some gauges read low or high shot after shot (P3 at 11.85 m low; P4 at 12.85 m high).",
+    "At 8.2 m the measurements are themselves low: 6.46 kg at 8.2 m read 64-70 kPa where 7.25 kg at 9.2 m, a larger scaled distance, read 71-77.",
+    "The charge masses are of ANFO; the TNT equivalent is 0.82 of each, as the thesis states for pressure and impulse alike.",
+    "Chapter 6's shots were fired with the charge 3 m in front of the wall's position, chapters 4 and 5's 2 m: with no wall, only the distances to the columns matter."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "Fixtures/Alsubaei2015/walls.json",
+      "docs/validation.md (Perimeter walls under field blasts)"
+    ],
+    "transcribed": "2026-10-20"
+  }
+}

@@ -1,0 +1,464 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "kb-surface-burst-free-field",
+  "title": "Kingery-Bulmash: 100 kg TNT surface burst, incident wave over open ground",
+  "category": "free-field",
+  "summary": "A 100 kg hemisphere of TNT on rigid ground. The incident (side-on) peak overpressure, positive impulse and arrival time at ground level from 0.75 to 6 m/kg^(1/3), against Kingery and Bulmash's fit for a hemispherical surface burst, the design-practice standard behind ConWep and UFC 3-340-02.",
+  "reference_kind": "empirical-fit",
+  "sources": [
+    {
+      "id": "kingery-bulmash-1984",
+      "authors": [
+        "C. N. Kingery",
+        "G. Bulmash"
+      ],
+      "year": 1984,
+      "title": "Airblast parameters from TNT spherical air burst and hemispherical surface burst",
+      "venue": "US Army Ballistic Research Laboratory, Technical Report ARBRL-TR-02555",
+      "identifier": "ARBRL-TR-02555",
+      "licence": "US Government work",
+      "redistribution": "values-included",
+      "used_for": "The fitted curves themselves",
+      "note": "The values in this case are the fit evaluated at each scaled distance, not copied from the report's tables."
+    },
+    {
+      "id": "swisdak-1994",
+      "authors": [
+        "M. M. Swisdak"
+      ],
+      "year": 1994,
+      "title": "Simplified Kingery airblast calculations",
+      "venue": "Naval Surface Warfare Center",
+      "identifier": "NSWC, 1994",
+      "licence": "US Government work",
+      "redistribution": "values-included",
+      "used_for": "The simplified polynomials evaluated here (within 1% of Kingery and Bulmash on average), and Chart 2's scatter of the tests behind the hemispherical burst",
+      "note": "The scatter is Kingery's (BRL Report 1344, 1966) as Swisdak tabulates it: two-thirds of the points of four Canadian TNT shots of 5 to 500 t lie within the stated fraction of the fit."
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "The values are a published fit evaluated at these distances (US Government work); nothing is copied from the reports' text or figures."
+  },
+  "coordinates": "Origin at the charge's centre on the ground; x along the gauge line, z up; metres.",
+  "environment": {
+    "ambient_pressure_kPa": 101.325,
+    "ambient_temperature_C": null,
+    "note": "Sea-level air, to which the fit is normalised."
+  },
+  "geometry": {
+    "ground": {
+      "kind": "rigid-plane",
+      "z_m": 0,
+      "description": "Flat, rigid, unbounded ground."
+    },
+    "note": "Nothing else in the domain. The gauges are far enough apart and the open boundaries should be far enough away (several stand-offs) not to return reflections inside a gauge's positive phase."
+  },
+  "runs": [
+    {
+      "id": "100kg",
+      "description": "One shot; every gauge on one radial line.",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "gauges": [
+        {
+          "id": "Z0.75",
+          "position_m": [
+            3.481,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 3.481 m, Z = 0.75 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 2411,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 890,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 1.3,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        },
+        {
+          "id": "Z1",
+          "position_m": [
+            4.642,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 4.642 m, Z = 1 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 1354,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 1097,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 2.2,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        },
+        {
+          "id": "Z1.5",
+          "position_m": [
+            6.962,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 6.962 m, Z = 1.5 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 551,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 824,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 4.6,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        },
+        {
+          "id": "Z2",
+          "position_m": [
+            9.283,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 9.283 m, Z = 2 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 284,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 625,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 7.9,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        },
+        {
+          "id": "Z3",
+          "position_m": [
+            13.925,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 13.925 m, Z = 3 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 116,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 430,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 16.5,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        },
+        {
+          "id": "Z4",
+          "position_m": [
+            18.566,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 18.566 m, Z = 4 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 65,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 336,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 26.9,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        },
+        {
+          "id": "Z5",
+          "position_m": [
+            23.208,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 23.208 m, Z = 5 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 43,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 275,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 38.3,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        },
+        {
+          "id": "Z6",
+          "position_m": [
+            27.85,
+            0,
+            0
+          ],
+          "mount": "ground-flush",
+          "description": "On the ground at 27.85 m, Z = 6 m/kg^(1/3)",
+          "measured": [
+            {
+              "quantity": "peak_incident_overpressure",
+              "unit": "kPa",
+              "value": 32,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.064,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "incident_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 233,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.067,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "arrival_time",
+              "unit": "ms",
+              "value": 50.2,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.018,
+                "note": "Kingery 1966 via Swisdak 1994, Chart 2"
+              },
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.2,
+    "factor_by_quantity": {
+      "arrival_time": 1.1
+    },
+    "note": "A prediction passes if it lies within the reference's one-sd band widened by the factor either way: 1.2 for the peak and impulse, 1.1 for the arrival."
+  },
+  "notes": [
+    "Kingery-Bulmash is a fit to many tests, not a single measurement. The uncertainty given is the scatter of the tests behind the hemispherical-burst fit about it, roughly one standard deviation pooled over all distances.",
+    "The fit's incident impulse does not fall steadily below about 1 m/kg^(1/3) (890 kPa ms at 0.75 against 1,097 at 1), where it rests on few tests; that gauge is the least sure.",
+    "Peak pressures need fine cells: a captured shock smeared over a few cells reads low."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "docs/validation.md (Blast loads against empirical references: Kingery-Bulmash)"
+    ],
+    "transcribed": "2026-10-20",
+    "note": "Reference values as the record tabulates them: Swisdak's polynomials, checked in this repository against Swisdak's own table and IATG 01.80's worked examples."
+  }
+}

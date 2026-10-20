@@ -1,0 +1,663 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "osnes2019-laminated-panes",
+  "title": "Osnes et al. 2019: laminated panes in a shock tube, cracked or held",
+  "category": "glazing",
+  "summary": "Fifteen laminated panes (3.8 mm annealed glass, 1.52 mm PVB, 3.8 mm annealed glass) clamped over 0.3 x 0.3 m in SIMLab's shock tube under fitted Friedlander pulses of 168 to 259 kPa: whether both plies cracked, and how far the centre went. Eight held and seven cracked, C-01 holding and C-02 cracking on nearly the same load. No air is needed: the load is given.",
+  "reference_kind": "measurement",
+  "sources": [
+    {
+      "id": "osnes-2019",
+      "authors": [
+        "K. Osnes",
+        "J. K. Holmen",
+        "O. S. Hopperstad",
+        "T. Børvik"
+      ],
+      "year": 2019,
+      "title": "Fracture and fragmentation of blast-loaded laminated glass",
+      "venue": "International Journal of Impact Engineering 132 (2019) 103334",
+      "identifier": "IJIE 132 (2019) 103334",
+      "licence": "CC BY 4.0",
+      "redistribution": "values-included",
+      "used_for": "Table 2: each shot's Friedlander fit of the reflected pressure, whether both plies cracked, and the largest deflection"
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "Transcribed from an open-access paper (CC BY 4.0), with citation."
+  },
+  "coordinates": "Origin at the pane's centre; x and y in its plane, z towards the load; metres.",
+  "geometry": {
+    "ground": {
+      "kind": "none",
+      "description": "A shock tube; no ground."
+    },
+    "structure": {
+      "kind": "laminated glass pane",
+      "description": "0.3 x 0.3 m exposed, clamped between neoprene strips at its edges; 3.8 mm annealed float glass / 1.52 mm PVB / 3.8 mm annealed float glass. The glass's strength was not measured."
+    }
+  },
+  "runs": [
+    {
+      "id": "A-01",
+      "description": "Shot A-01",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 167.8,
+        "duration_ms": 18.89,
+        "decay_b": 1.18,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 3.74,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "A-02",
+      "description": "Shot A-02",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 168.7,
+        "duration_ms": 18.78,
+        "decay_b": 1.15,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 3.55,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "A-03",
+      "description": "Shot A-03",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 169.7,
+        "duration_ms": 19.37,
+        "decay_b": 1.18,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 3.56,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "A-04",
+      "description": "Shot A-04",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 172.4,
+        "duration_ms": 18.87,
+        "decay_b": 1.21,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 5.79,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "B-01",
+      "description": "Shot B-01",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 204.3,
+        "duration_ms": 19.6,
+        "decay_b": 1.39,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 4.25,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "B-02",
+      "description": "Shot B-02",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 205.5,
+        "duration_ms": 19.65,
+        "decay_b": 1.29,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 4.59,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "B-03",
+      "description": "Shot B-03",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 206.3,
+        "duration_ms": 20.01,
+        "decay_b": 1.35,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 4.38,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C-01",
+      "description": "Shot C-01",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 215.2,
+        "duration_ms": 20.62,
+        "decay_b": 1.42,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": false,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 4.54,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C-02",
+      "description": "Shot C-02",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 215.6,
+        "duration_ms": 20.78,
+        "decay_b": 1.51,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": true,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 69.67,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D-01",
+      "description": "Shot D-01",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 231.7,
+        "duration_ms": 21.4,
+        "decay_b": 1.63,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": true,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 93.8,
+              "source": "osnes-2019, Table 2",
+              "note": "The centre's target was lost after this reading."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D-02",
+      "description": "Shot D-02",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 237.4,
+        "duration_ms": 20.23,
+        "decay_b": 1.44,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": true,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 95.41,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D-03",
+      "description": "Shot D-03",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 237.7,
+        "duration_ms": 21.09,
+        "decay_b": 1.48,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": true,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 121.61,
+              "source": "osnes-2019, Table 2",
+              "note": "The centre's target was lost after this reading."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D-04",
+      "description": "Shot D-04",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 238.9,
+        "duration_ms": 21.4,
+        "decay_b": 1.52,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": true,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 92.53,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E-01",
+      "description": "Shot E-01",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 254.2,
+        "duration_ms": 23.1,
+        "decay_b": 2.21,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": true,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 99.18,
+              "source": "osnes-2019, Table 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "E-02",
+      "description": "Shot E-02",
+      "load": {
+        "kind": "friedlander",
+        "applied_to": "the pane's exposed face, uniformly",
+        "peak_kPa": 258.9,
+        "duration_ms": 24.2,
+        "decay_b": 1.98,
+        "description": "p(t) = peak (1 - t/duration) exp(-b t/duration) for 0 <= t <= duration, reflected pressure as the authors fitted it"
+      },
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "on-structure",
+          "on": "pane",
+          "description": "The pane's centre",
+          "measured": [
+            {
+              "quantity": "cracked",
+              "unit": "boolean",
+              "value": true,
+              "source": "osnes-2019, Table 2",
+              "note": "Whether both plies cracked."
+            },
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 111.61,
+              "source": "osnes-2019, Table 2",
+              "note": "The centre's target was lost after this reading."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.5,
+    "note": "Cracked or held must match exactly; deflections within a factor of 1.5. The held panes' deflections are a few millimetres, the cracked panes' 70-122 mm."
+  },
+  "notes": [
+    "New glass in the tests was stronger than ASTM E1300's flaw model allows for weathered glass in service; a code's glass strength decides which panes crack, and should be stated.",
+    "None of the cracked panes tore."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "Sources/BlastModel/LaminatedShellTest.swift (LaminatedGlassMeasurements.osnes)",
+      "docs/building-envelopes.md (Laminated glass)"
+    ],
+    "transcribed": "2026-10-20"
+  }
+}

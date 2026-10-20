@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/emmettl/bombcad/Benchmarks/open/schema/results.schema.json",
+  "title": "Open blast benchmark results",
+  "description": "One code's predictions for some or all of the cases: a value (or a range, or a ratio to the case's value) per run, gauge and quantity. Format version 1; see docs/open-benchmark.md.",
+  "type": "object",
+  "required": ["format", "format_version", "code", "prepared", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {"const": "open-blast-benchmark-results"},
+    "format_version": {"const": 1},
+    "code": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "commit": {"type": "string"},
+        "url": {"type": "string"}
+      }
+    },
+    "prepared": {"type": "string", "description": "ISO date the file was written."},
+    "notes": {"type": "array", "items": {"type": "string"}},
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case", "configuration", "predictions"],
+        "additionalProperties": false,
+        "properties": {
+          "case": {"type": "string"},
+          "configuration": {"type": "string", "description": "How the code was set up for this case, in its own terms."},
+          "recorded_in": {"type": "string"},
+          "recorded_commit": {"type": "string"},
+          "notes": {"type": "array", "items": {"type": "string"}},
+          "predictions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["run", "gauge", "quantity"],
+              "additionalProperties": false,
+              "properties": {
+                "run": {"type": "string"},
+                "gauge": {"type": "string"},
+                "quantity": {"type": "string"},
+                "unit": {"type": "string"},
+                "value": {"type": ["number", "boolean"]},
+                "range": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+                "ratio": {"type": "number", "description": "Predicted over the case's value, where the code recorded only that ratio."},
+                "note": {"type": "string"}
+              },
+              "oneOf": [{"required": ["value"]}, {"required": ["range"]}, {"required": ["ratio"]}]
+            }
+          }
+        }
+      }
+    }
+  }
+}

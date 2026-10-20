@@ -1,0 +1,312 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "ufc-closed-room-gas-pressure",
+  "title": "UFC 3-340-02: quasi-static gas pressure of TNT in a closed room",
+  "category": "confined",
+  "summary": "TNT fired at the centre of a closed, rigid 6 m cube (216 m^3), 0.25 to 4 kg/m^3: the steady gas pressure left once the shocks die down, against UFC 3-340-02's design curve (Figure 2-152). At light charges most of it comes from the products burning in the room's oxygen.",
+  "reference_kind": "design-curve",
+  "sources": [
+    {
+      "id": "ufc-3-340-02",
+      "authors": [
+        "US Department of Defense"
+      ],
+      "year": 2008,
+      "title": "Structures to Resist the Effects of Accidental Explosions (UFC 3-340-02)",
+      "venue": "Unified Facilities Criteria, 5 December 2008",
+      "identifier": "UFC 3-340-02",
+      "licence": "US Government work, approved for public release",
+      "redistribution": "values-included",
+      "used_for": "Figure 2-152, the peak gas pressure in a closed chamber against the charge per volume, read off the chart by hand"
+    },
+    {
+      "id": "oswald-2018",
+      "authors": [
+        "C. Oswald"
+      ],
+      "year": 2018,
+      "title": "An improved method to calculate the gas pressure history from partially confined detonations",
+      "venue": "NDIA (for the DoD Explosives Safety Board)",
+      "identifier": "NDIA 2018",
+      "licence": "Cited only",
+      "redistribution": "cited-only",
+      "used_for": "The scatter: gauge-to-gauge coefficient of variation 5-20% (12% on average) in over 100 confined tests, and a Figure 2-152-based method within 1.7% on average of nearly closed rooms' peaks, standard deviation 11%"
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "Points read off a public US Government design chart; Oswald 2018 is cited for the scatter only."
+  },
+  "coordinates": "Origin at one inside corner of the room; z up; metres.",
+  "geometry": {
+    "ground": {
+      "kind": "rigid-plane",
+      "z_m": 0,
+      "description": "The room's floor."
+    },
+    "obstacles": [
+      {
+        "id": "room",
+        "shape": "box",
+        "min_m": [
+          0,
+          0,
+          0
+        ],
+        "max_m": [
+          6,
+          6,
+          6
+        ],
+        "behaviour": "rigid",
+        "description": "The inside of a closed room with rigid, adiabatic walls; no vent. The air inside starts at ambient."
+      }
+    ],
+    "note": "Only the room's inside matters."
+  },
+  "environment": {
+    "ambient_pressure_kPa": 101.325,
+    "ambient_temperature_C": null,
+    "note": "Not stated by the chart; sea-level air assumed."
+  },
+  "runs": [
+    {
+      "id": "0.25kg-m3",
+      "description": "54 kg of TNT at the room's centre, 0.25 kg/m^3",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 54.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 54.0,
+          "shape": "sphere",
+          "centre_m": [
+            3,
+            3,
+            3
+          ],
+          "height_of_burst_m": 3.0,
+          "note": "The design curve depends only on the charge per volume; a bare sphere at the centre is this case's choice."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null,
+          "mount": "room-average",
+          "description": "The room's pressure once the shocks have reverberated away, before any heat is lost to the walls in a real chamber",
+          "measured": [
+            {
+              "quantity": "quasi_static_gas_pressure",
+              "unit": "kPa",
+              "value": 880,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.11,
+                "note": "oswald-2018: a Figure 2-152-based method against nearly closed rooms' measured peaks"
+              },
+              "source": "ufc-3-340-02, Figure 2-152"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "0.5kg-m3",
+      "description": "108 kg of TNT at the room's centre, 0.5 kg/m^3",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 108.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 108.0,
+          "shape": "sphere",
+          "centre_m": [
+            3,
+            3,
+            3
+          ],
+          "height_of_burst_m": 3.0,
+          "note": "The design curve depends only on the charge per volume; a bare sphere at the centre is this case's choice."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null,
+          "mount": "room-average",
+          "description": "The room's pressure once the shocks have reverberated away, before any heat is lost to the walls in a real chamber",
+          "measured": [
+            {
+              "quantity": "quasi_static_gas_pressure",
+              "unit": "kPa",
+              "value": 1480,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.11,
+                "note": "oswald-2018: a Figure 2-152-based method against nearly closed rooms' measured peaks"
+              },
+              "source": "ufc-3-340-02, Figure 2-152"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1kg-m3",
+      "description": "216 kg of TNT at the room's centre, 1 kg/m^3",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 216.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 216.0,
+          "shape": "sphere",
+          "centre_m": [
+            3,
+            3,
+            3
+          ],
+          "height_of_burst_m": 3.0,
+          "note": "The design curve depends only on the charge per volume; a bare sphere at the centre is this case's choice."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null,
+          "mount": "room-average",
+          "description": "The room's pressure once the shocks have reverberated away, before any heat is lost to the walls in a real chamber",
+          "measured": [
+            {
+              "quantity": "quasi_static_gas_pressure",
+              "unit": "kPa",
+              "value": 2160,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.11,
+                "note": "oswald-2018: a Figure 2-152-based method against nearly closed rooms' measured peaks"
+              },
+              "source": "ufc-3-340-02, Figure 2-152"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2kg-m3",
+      "description": "432 kg of TNT at the room's centre, 2 kg/m^3",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 432.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 432.0,
+          "shape": "sphere",
+          "centre_m": [
+            3,
+            3,
+            3
+          ],
+          "height_of_burst_m": 3.0,
+          "note": "The design curve depends only on the charge per volume; a bare sphere at the centre is this case's choice."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null,
+          "mount": "room-average",
+          "description": "The room's pressure once the shocks have reverberated away, before any heat is lost to the walls in a real chamber",
+          "measured": [
+            {
+              "quantity": "quasi_static_gas_pressure",
+              "unit": "kPa",
+              "value": 3500,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.11,
+                "note": "oswald-2018: a Figure 2-152-based method against nearly closed rooms' measured peaks"
+              },
+              "source": "ufc-3-340-02, Figure 2-152"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4kg-m3",
+      "description": "864 kg of TNT at the room's centre, 4 kg/m^3",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 864.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 864.0,
+          "shape": "sphere",
+          "centre_m": [
+            3,
+            3,
+            3
+          ],
+          "height_of_burst_m": 3.0,
+          "note": "The design curve depends only on the charge per volume; a bare sphere at the centre is this case's choice."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null,
+          "mount": "room-average",
+          "description": "The room's pressure once the shocks have reverberated away, before any heat is lost to the walls in a real chamber",
+          "measured": [
+            {
+              "quantity": "quasi_static_gas_pressure",
+              "unit": "kPa",
+              "value": 5880,
+              "uncertainty": {
+                "kind": "sd",
+                "relative": 0.11,
+                "note": "oswald-2018: a Figure 2-152-based method against nearly closed rooms' measured peaks"
+              },
+              "source": "ufc-3-340-02, Figure 2-152"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.15,
+    "note": "The band is Oswald's standard deviation (11%) widened by 1.15."
+  },
+  "notes": [
+    "The case does not prescribe when to read the pressure: report it once the shock reverberations have decayed (in a 6 m room, tens of milliseconds) and say when, and whether the products burn (afterburning) and lose heat.",
+    "UFC 3-340-02 calls Figure 2-152 a curve fitted to tests of partly vented chambers with A/V^(2/3) up to 0.022 and gives no scatter; the tests themselves are not in hand.",
+    "Heavy charges (2-4 kg/m^3) have too little oxygen to burn all their products, so the curve flattens."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "docs/validation.md (Gas pressure in a closed room)"
+    ],
+    "transcribed": "2026-10-20",
+    "note": "The curve's points as the record gives them, read off the chart by hand."
+  }
+}

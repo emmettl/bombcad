@@ -1,0 +1,612 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "kb-surface-burst-reflected",
+  "title": "Kingery-Bulmash: 100 kg TNT surface burst, normally reflected on a rigid wall",
+  "category": "reflected",
+  "summary": "The same 100 kg surface burst against a rigid wall placed square-on at each stand-off in turn, from 0.75 to 6 m/kg^(1/3): the normally reflected peak overpressure and positive impulse at the wall's foot, against Kingery and Bulmash's reflected curves.",
+  "reference_kind": "empirical-fit",
+  "sources": [
+    {
+      "id": "kingery-bulmash-1984",
+      "authors": [
+        "C. N. Kingery",
+        "G. Bulmash"
+      ],
+      "year": 1984,
+      "title": "Airblast parameters from TNT spherical air burst and hemispherical surface burst",
+      "venue": "US Army Ballistic Research Laboratory, Technical Report ARBRL-TR-02555",
+      "identifier": "ARBRL-TR-02555",
+      "licence": "US Government work",
+      "redistribution": "values-included",
+      "used_for": "The fitted curves themselves",
+      "note": "The values in this case are the fit evaluated at each scaled distance, not copied from the report's tables."
+    },
+    {
+      "id": "swisdak-1994",
+      "authors": [
+        "M. M. Swisdak"
+      ],
+      "year": 1994,
+      "title": "Simplified Kingery airblast calculations",
+      "venue": "Naval Surface Warfare Center",
+      "identifier": "NSWC, 1994",
+      "licence": "US Government work",
+      "redistribution": "values-included",
+      "used_for": "The simplified polynomials evaluated here (within 1% of Kingery and Bulmash on average), and Chart 2's scatter of the tests behind the hemispherical burst",
+      "note": "The scatter is Kingery's (BRL Report 1344, 1966) as Swisdak tabulates it: two-thirds of the points of four Canadian TNT shots of 5 to 500 t lie within the stated fraction of the fit."
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "The values are a published fit evaluated at these distances (US Government work)."
+  },
+  "coordinates": "Origin at the charge's centre on the ground; x towards the wall, z up; metres.",
+  "environment": {
+    "ambient_pressure_kPa": 101.325,
+    "ambient_temperature_C": null,
+    "note": "Sea-level air, to which the fit is normalised."
+  },
+  "geometry": {
+    "ground": {
+      "kind": "rigid-plane",
+      "z_m": 0,
+      "description": "Flat, rigid ground."
+    },
+    "note": "Each run adds its own wall."
+  },
+  "runs": [
+    {
+      "id": "Z0.75",
+      "description": "The wall's face at 3.481 m from the charge (Z = 0.75 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            3.481,
+            -1000,
+            0
+          ],
+          "max_m": [
+            4.481,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            3.481,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 16763,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 6102,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z1",
+      "description": "The wall's face at 4.642 m from the charge (Z = 1 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            4.642,
+            -1000,
+            0
+          ],
+          "max_m": [
+            5.642,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            4.642,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 8152,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 4107,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z1.5",
+      "description": "The wall's face at 6.962 m from the charge (Z = 1.5 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            6.962,
+            -1000,
+            0
+          ],
+          "max_m": [
+            7.962,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            6.962,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 2511,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 2417,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z2",
+      "description": "The wall's face at 9.283 m from the charge (Z = 2 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            9.283,
+            -1000,
+            0
+          ],
+          "max_m": [
+            10.283,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            9.283,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 1058,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 1689,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z3",
+      "description": "The wall's face at 13.925 m from the charge (Z = 3 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            13.925,
+            -1000,
+            0
+          ],
+          "max_m": [
+            14.925,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            13.925,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 331,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 1041,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z4",
+      "description": "The wall's face at 18.566 m from the charge (Z = 4 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            18.566,
+            -1000,
+            0
+          ],
+          "max_m": [
+            19.566,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            18.566,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 163,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 748,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z5",
+      "description": "The wall's face at 23.208 m from the charge (Z = 5 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            23.208,
+            -1000,
+            0
+          ],
+          "max_m": [
+            24.208,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            23.208,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 101,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 583,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Z6",
+      "description": "The wall's face at 27.85 m from the charge (Z = 6 m/kg^(1/3)).",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 100.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 100.0,
+          "shape": "hemisphere on the ground",
+          "centre_m": [
+            0,
+            0,
+            0
+          ],
+          "height_of_burst_m": 0.0
+        }
+      ],
+      "obstacles": [
+        {
+          "id": "wall",
+          "shape": "box",
+          "min_m": [
+            27.85,
+            -1000,
+            0
+          ],
+          "max_m": [
+            28.85,
+            1000,
+            1000
+          ],
+          "behaviour": "rigid",
+          "description": "A rigid plane wall facing the charge square-on, wide and tall enough that no clearing wave from its edges reaches the gauge in its positive phase."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "wall-foot",
+          "position_m": [
+            27.85,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "wall",
+          "description": "In the wall's face at the ground, on the line from the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 71,
+              "source": "swisdak-1994"
+            },
+            {
+              "quantity": "reflected_positive_impulse",
+              "unit": "kPa*ms",
+              "value": 477,
+              "source": "swisdak-1994"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.2,
+    "note": "No measured scatter: Kingery and Bulmash calculated the reflected curves rather than fitting them to reflected measurements (Swisdak's Chart 3), so the band is the factor alone."
+  },
+  "notes": [
+    "Kingery-Bulmash is a fit to many tests, not a single measurement. The incident curves' uncertainty is the scatter of the tests behind the hemispherical-burst fit about it, roughly one standard deviation pooled over all distances. The reflected curves carry none of their own.",
+    "Later reflected tests (Rigby et al. 2014; Farrimond et al. 2024, both PE4 hemispheres at 3 to 12 m/kg^(1/3)) found repeats within about 6-8% of their means and close agreement with the curves, taking PE4 at 1.2-1.24 of TNT.",
+    "Close in, the reflected peak is the hardest quantity to resolve on a grid."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "docs/validation.md (Blast loads against empirical references: Kingery-Bulmash)"
+    ],
+    "transcribed": "2026-10-20"
+  }
+}

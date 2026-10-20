@@ -1,0 +1,295 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "yao2023-slab-top-pressure",
+  "title": "Yao et al. 2023: close-in pressures on a 4 x 5 m slab's top face",
+  "category": "reflected",
+  "summary": "0.5 and 1 kg of TNT hung 0.8 to 1 m over the centre of a 4 x 5 m, 150 mm reinforced concrete slab (0.8 to 1.26 m/kg^(1/3)): the peak pressure on its top face under the charge and 1 m out. The slab barely moved (under a millimetre), so the load is the test here.",
+  "reference_kind": "measurement",
+  "sources": [
+    {
+      "id": "yao-2023",
+      "authors": [
+        "J. Yao",
+        "S. Li",
+        "P. Zhang",
+        "S. Deng",
+        "G. Zhou"
+      ],
+      "year": 2023,
+      "title": "Dynamic response and damage characteristics of large reinforced concrete slabs under explosion",
+      "venue": "Applied Sciences 13, 12552",
+      "doi": "10.3390/app132312552",
+      "licence": "CC BY 4.0",
+      "redistribution": "values-included",
+      "used_for": "The slab, the tests and the top-face peak pressures read off Figure 6b"
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "Transcribed and read from an open-access paper (CC BY 4.0), with citation."
+  },
+  "coordinates": "Origin at the centre of the slab's top face; x and y in its plane (y along the 5 m side), z up; metres.",
+  "geometry": {
+    "ground": {
+      "kind": "not-stated",
+      "description": "The slab's height above the ground is not given."
+    },
+    "obstacles": [
+      {
+        "id": "slab",
+        "shape": "box",
+        "min_m": [
+          -2.0,
+          -2.5,
+          -0.15
+        ],
+        "max_m": [
+          2.0,
+          2.5,
+          0.0
+        ],
+        "behaviour": "rigid",
+        "material": "reinforced concrete, C35 (cubes 37.2 MPa), two mats of 10 mm bars at 85 mm",
+        "description": "Simply supported on its two long sides on L-shaped concrete supports (150 mm bearing). Treated as rigid for the load: T1-T3 left no visible damage and moved under 1 mm."
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "T1",
+      "description": "0.5 kg of TNT hung 1 m over the slab's centre (1.26 m/kg^(1/3))",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 0.5,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 0.5,
+          "shape": "not stated",
+          "centre_m": [
+            0,
+            0,
+            1.0
+          ],
+          "height_of_burst_m": null,
+          "note": "Hung above the slab's top face; the distance is taken to the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "slab",
+          "description": "Top face, under the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 1700,
+              "uncertainty": {
+                "kind": "reading",
+                "value": 100,
+                "note": "read by eye off the figure, about +/-0.1 MPa"
+              },
+              "source": "yao-2023, Fig. 6b"
+            }
+          ]
+        },
+        {
+          "id": "1m-out",
+          "position_m": [
+            1.0,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "slab",
+          "description": "Top face, 1 m from the centre (the direction, in the paper's Figure 3, matters little this far inside the slab)",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 500,
+              "uncertainty": {
+                "kind": "reading",
+                "value": 100,
+                "note": "read by eye off the figure, about +/-0.1 MPa"
+              },
+              "source": "yao-2023, Fig. 6b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "description": "1 kg of TNT hung 1 m over the slab's centre (1.00 m/kg^(1/3))",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 1.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 1.0,
+          "shape": "not stated",
+          "centre_m": [
+            0,
+            0,
+            1.0
+          ],
+          "height_of_burst_m": null,
+          "note": "Hung above the slab's top face; the distance is taken to the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "slab",
+          "description": "Top face, under the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 4200,
+              "uncertainty": {
+                "kind": "reading",
+                "value": 100,
+                "note": "read by eye off the figure, about +/-0.1 MPa"
+              },
+              "source": "yao-2023, Fig. 6b"
+            }
+          ]
+        },
+        {
+          "id": "1m-out",
+          "position_m": [
+            1.0,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "slab",
+          "description": "Top face, 1 m from the centre (the direction, in the paper's Figure 3, matters little this far inside the slab)",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 1250,
+              "uncertainty": {
+                "kind": "reading",
+                "value": 100,
+                "note": "read by eye off the figure, about +/-0.1 MPa"
+              },
+              "source": "yao-2023, Fig. 6b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "description": "1 kg of TNT hung 0.8 m over the slab's centre (0.80 m/kg^(1/3))",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 1.0,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 1.0,
+          "shape": "not stated",
+          "centre_m": [
+            0,
+            0,
+            0.8
+          ],
+          "height_of_burst_m": null,
+          "note": "Hung above the slab's top face; the distance is taken to the charge's centre."
+        }
+      ],
+      "gauges": [
+        {
+          "id": "centre",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "slab",
+          "description": "Top face, under the charge",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 8600,
+              "uncertainty": {
+                "kind": "reading",
+                "value": 100,
+                "note": "read by eye off the figure, about +/-0.1 MPa"
+              },
+              "source": "yao-2023, Fig. 6b"
+            }
+          ]
+        },
+        {
+          "id": "1m-out",
+          "position_m": [
+            1.0,
+            0,
+            0
+          ],
+          "mount": "face-flush",
+          "on": "slab",
+          "description": "Top face, 1 m from the centre (the direction, in the paper's Figure 3, matters little this far inside the slab)",
+          "measured": [
+            {
+              "quantity": "peak_reflected_overpressure",
+              "unit": "kPa",
+              "value": 1900,
+              "uncertainty": {
+                "kind": "reading",
+                "value": 100,
+                "note": "read by eye off the figure, about +/-0.1 MPa"
+              },
+              "source": "yao-2023, Fig. 6b"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.25,
+    "note": "The band is the figure's reading error widened by the factor."
+  },
+  "notes": [
+    "The paper also reports underside displacements and accelerations. They are left out: the reported displacements (0.35-0.86 mm, taken at the wave's arrival) are not comparable with a slab's whole swing, and the displacement record's own meaning is unclear.",
+    "A fourth test, 20 kg at 1 m on a second slab, damaged it (a 1.02 x 0.76 m top crater); it has no measured pressure or deflection and is left out."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "Fixtures/Yao2023/yao2023.json",
+      "docs/validation.md (Yao's large slabs)"
+    ],
+    "transcribed": "2026-10-20"
+  }
+}

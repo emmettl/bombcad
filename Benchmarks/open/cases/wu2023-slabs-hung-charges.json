@@ -1,0 +1,495 @@
+{
+  "format": "open-blast-benchmark-case",
+  "format_version": 1,
+  "id": "wu2023-slabs-hung-charges",
+  "title": "Wu et al. 2023: 2 m slabs bent by charges hung above them",
+  "category": "structural-response",
+  "summary": "Eight 2 x 2 m, 100 mm reinforced concrete slabs spanning one way, the same steel in one layer near the underside or split between both faces, under 0.2 to 1.6 kg of TNT hung 0.25 to 0.5 m above (all at 0.43 m/kg^(1/3)). The underside's peak and residual displacement 300 mm from the centre. The charge loads the slab through the air: a coupled case.",
+  "reference_kind": "measurement",
+  "sources": [
+    {
+      "id": "wu-2023",
+      "authors": [
+        "Y. Wu",
+        "et al."
+      ],
+      "year": 2023,
+      "title": "A research investigation into the impact of reinforcement distribution and blast distance on the blast resilience of reinforced concrete slabs",
+      "venue": "Materials 16(11), 4068",
+      "doi": "10.3390/ma16114068",
+      "licence": "CC BY 4.0",
+      "redistribution": "values-included",
+      "used_for": "The slabs, materials and charges (Tables 1-6, Figure 1) and the measured displacements (Table 10)"
+    }
+  ],
+  "redistribution": {
+    "values_included": true,
+    "note": "Transcribed from an open-access paper (CC BY 4.0), with citation; nothing digitised from plots."
+  },
+  "coordinates": "Origin at the centre of the slab's top face; x along the span (supported edges at x = +/-1 m), z up; metres.",
+  "geometry": {
+    "ground": {
+      "kind": "not-stated",
+      "description": "The slab stood on a steel frame; its height above the ground is not given."
+    },
+    "structure": {
+      "kind": "reinforced concrete slab",
+      "description": "2.0 x 2.0 x 0.1 m, spanning one way on a steel frame, held down by two bolted clamps a side; the bearing width and the clamps' stiffness are not given.",
+      "concrete": "150 mm cubes 45.8, 48.2, 47.4, 46.8, 46.4 and 47.6 MPa (mean 47.0)",
+      "steel": "HRB400E: E 200 GPa, yield 455 MPa, tensile 587.5 MPa, elongation 21%",
+      "reinforcement_ratio_percent": 0.45
+    }
+  },
+  "runs": [
+    {
+      "id": "S5",
+      "description": "Slab S5: one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside; 0.2 kg of TNT hung 0.25 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 0.2,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 0.2,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.25
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 3.99,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 0.7,
+              "source": "wu-2023, Table 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D5",
+      "description": "Slab D5: two layers of 8 mm bars at 200 mm both ways, 20 mm from each face; 0.2 kg of TNT hung 0.25 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 0.2,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 0.2,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.25
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "two layers of 8 mm bars at 200 mm both ways, 20 mm from each face"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 4.1,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 1.97,
+              "source": "wu-2023, Table 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S6",
+      "description": "Slab S6: one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside; 0.4 kg of TNT hung 0.32 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 0.4,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 0.4,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.32
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 8.24,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 1.99,
+              "source": "wu-2023, Table 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D6",
+      "description": "Slab D6: two layers of 8 mm bars at 200 mm both ways, 20 mm from each face; 0.4 kg of TNT hung 0.32 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 0.4,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 0.4,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.32
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "two layers of 8 mm bars at 200 mm both ways, 20 mm from each face"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 10.1,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 4.06,
+              "source": "wu-2023, Table 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S7",
+      "description": "Slab S7: one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside; 0.8 kg of TNT hung 0.4 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 0.8,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 0.8,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.4
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 13.19,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 4.25,
+              "source": "wu-2023, Table 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D7",
+      "description": "Slab D7: two layers of 8 mm bars at 200 mm both ways, 20 mm from each face; 0.8 kg of TNT hung 0.4 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 0.8,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 0.8,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.4
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "two layers of 8 mm bars at 200 mm both ways, 20 mm from each face"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 11.98,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 4.36,
+              "source": "wu-2023, Table 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S8",
+      "description": "Slab S8: one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside; 1.6 kg of TNT hung 0.5 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 1.6,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 1.6,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.5
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "one layer of 8 mm bars at 100 mm both ways, 20 mm from the underside"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 17.99,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 5.61,
+              "source": "wu-2023, Table 10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "D8",
+      "description": "Slab D8: two layers of 8 mm bars at 200 mm both ways, 20 mm from each face; 1.6 kg of TNT hung 0.5 m above the top face's centre",
+      "charges": [
+        {
+          "explosive": "TNT",
+          "mass_kg": 1.6,
+          "tnt_equivalence": {
+            "factor": 1.0,
+            "basis": "TNT itself"
+          },
+          "tnt_equivalent_mass_kg": 1.6,
+          "shape": "stacked 200 g TNT blocks (100 x 50 x 25 mm each)",
+          "centre_m": [
+            0,
+            0,
+            0.5
+          ],
+          "height_of_burst_m": null,
+          "note": "The paper's blast distance; whether to the charge's centre or its lower face is not stated."
+        }
+      ],
+      "structure": {
+        "reinforcement": "two layers of 8 mm bars at 200 mm both ways, 20 mm from each face"
+      },
+      "gauges": [
+        {
+          "id": "DH5G107",
+          "position_m": [
+            0.3,
+            0,
+            -0.1
+          ],
+          "mount": "on-structure",
+          "on": "slab",
+          "description": "Displacement of the underside 300 mm from its centre (the direction from the centre is not stated)",
+          "measured": [
+            {
+              "quantity": "peak_displacement",
+              "unit": "mm",
+              "value": 13.91,
+              "source": "wu-2023, Table 10",
+              "note": "Downward, away from the charge."
+            },
+            {
+              "quantity": "residual_displacement",
+              "unit": "mm",
+              "value": 6.95,
+              "source": "wu-2023, Table 10",
+              "note": "D8's residual is 6.95 mm in Table 10 and 6.93 mm in the text."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scoring": {
+    "rule": "within-factor",
+    "factor": 1.5,
+    "note": "One shot a slab, supports not fully described; no measurement uncertainty stated."
+  },
+  "notes": [
+    "The records swing upward 2-18 mm past where they started over some 60 ms, much more slowly than the slab's own period: something in the rig moved. Only the peak and the residual are given, and the residual carries that doubt.",
+    "The undersides of S6, S7 and D6 spalled over about 0.1 m^2, 4 cm deep.",
+    "The paper's contact shots (S1-S4, D1-D4), which holed every slab, are not included."
+  ],
+  "provenance": {
+    "transcribed_from": [
+      "Fixtures/TwoFaceSlabs/Wu2023.json",
+      "docs/validation.md (Slabs with steel in both faces)"
+    ],
+    "transcribed": "2026-10-20"
+  }
+}
