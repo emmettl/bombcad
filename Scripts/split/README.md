@@ -111,8 +111,20 @@ point at, round after round until it builds (`--state` keeps the rounds' result 
 19 October 2026 it took 792 of 1,724 back to internal: the other 932 are used from BlastCore, the
 app, the benches or their tests. `test-narrow-access.py` tests its reading of the errors.
 
+`narrow_access.py private` did the same for the 158 `private` declarations the solver split
+widened (its `split` log's `widened` lines) and put none back: each is used, or set, from another
+of the `BlastSolver+*.swift` files, which Swift's `private` cannot reach. They stay internal, as
+the split left them. On 20 October each was still named in two files or more.
+
+Since then (20 October), what is still `package` was checked again: in BlastModel, the 5
+declarations added after the narrowing are all used from BlastCore or the benches; of the rest,
+only 11 have a name no other module mentions, all types that a `package` signature names. In
+BlastCore, the 4 `package` members are `ShellSolver`'s witnesses for BlastModel's
+`TerracedRowShells`, and must be as wide as the protocol.
+
 `@_exported import BlastModel` (BlastCore/BlastModelExports.swift) stays: explicit imports would
-add `import BlastModel` to about 216 files in five targets and two test targets, and a dependency
-to each in Package.swift, for no change in what builds or how it runs, at the cost of a rebase
-for every session with a branch open. Worth revisiting if BlastModel and BlastCore are ever
-versioned apart, or when the package adopts Swift 6's internal imports by default.
+add `import BlastModel` to about 290 files (counted 20 October) in six targets and two test
+targets, and a dependency to each in Package.swift, for no change in what builds or how it runs,
+at the cost of a rebase for every session with a branch open. Worth revisiting if BlastModel and
+BlastCore are ever versioned apart, or when the package adopts Swift 6's internal imports by
+default.
