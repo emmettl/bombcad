@@ -230,8 +230,10 @@ change to the record fails the test until the table follows.
 ## The table and keeping it current
 
 The content is one reviewed table in code, `StandingTable` in
-`Sources/BlastModel/EvidentialStanding.swift`. When the validation record or the limitations table
-changes, change the table with it.
+`Sources/BlastModel/EvidentialStanding.swift`. Each area's options, fields and results sit in its
+extension file beside it (`EvidentialStanding+Air.swift`, `+Structures`, `+Envelopes`, and so on),
+and its bands and figures in `ErrorBands+Air.swift` and the like. When the validation record or the
+limitations table changes, change the table with it.
 
 **Its identity is derived, not numbered** (`StandingFingerprint`, since 18 October 2026). It is a
 hash of every option's entry, the fields' roles, the figures, scatters, spreads and roundings the
