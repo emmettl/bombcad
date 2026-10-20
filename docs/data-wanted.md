@@ -34,6 +34,13 @@ allowance of 200 searches ran out first.
 | Its companion: concrete breaking up under internal blast, DDESB 2010 | [DTIC ADA532261](https://apps.dtic.mil/sti/pdfs/ADA532261.pdf) | DTIC, HTTP 403 | `data/Kasun2010/` | How concrete walls break up and are thrown under an internal charge | S. C. Fan, Q. J. Yu and Y. Yang (NTU) with H. S. Lim and K. W. Kang (DSTA), *Study of debris throw and dispersion after break-up of reinforced concrete structure under internal explosion*, 33 pp. Probably a numerical study (the group modelled the break-up by node splitting in an earlier paper), not a test: lower than thought |
 | Annealed and tempered glass under blast waves, EMRTC, Socorro | [OSTI 658184](https://www.osti.gov/biblio/658184) | osti.gov refuses the connection | `envelope-damage/sources/` | Panes that held beside panes that broke, over a range of overpressure and impulse: the breaking threshold, which Monk and Clubley's tests, all broken, cannot give ([3h](data-survey.md#3h-window-glass-breaking-under-a-blast)) | E. K. Beauchamp and R. V. Matalucci, *Dynamics of window glass fracture in explosions*, SAND98-0598, May 1998, doi:[10.2172/658184](https://doi.org/10.2172/658184); three experiments at EMRTC. Also listed by [Sandia](https://www.sandia.gov/research/publications/details/dynamics-of-window-glass-fracture-in-explosions-1998-05-01/). Whether OSTI holds the full text was not shown. For the threshold, Johns's Southampton thesis and the Johns and Clubley manuscripts are open (under the paywalled table below) |
 
+The [calibration](calibration.md#the-answers) of 20 October ranks two of these documents by how
+much they would narrow the model's parameters, each by pinning a regime's own error:
+- **Beauchamp and Matalucci's annealed panes.** Panes that held beside panes that broke would
+  narrow the glass's flaw constant most: its posterior about 68% narrower.
+- **Kingery's BRL 1344 (below).** Its data by distance, with their scatter, would narrow the
+  afterburning time about 48%.
+
 **Then**, when convenient:
 
 | Document | Link | Blocked here by | Save to `/Volumes/StudioData/bombcad/…` | Unlocks | Found from the cloud, 18 October |

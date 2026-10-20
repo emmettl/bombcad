@@ -62,6 +62,40 @@ struct HeadlessEnsembleTests {
             })
     }
 
+    @Test("--design runs each case at each point, its own inputs at their middle, and prints each run")
+    func design() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "design-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appending(path: "design.json")
+        try Data(#"[{"ft": 1, "afterburnTime": 0.01}, {"ft": 0.7, "afterburnTime": 0.02}]"#.utf8).write(
+            to: file)
+        let options = try HeadlessEnsemble.Options.parse(["janney,glass-e1300", "--design", file.path])
+        #expect(options.design?.count == 2)
+        for bad in [
+            ["janney", "--design", file.path, "--samples", "4"],
+            ["janney", "--design", file.path, "--seed", "2"],
+            ["janney", "--design", file.path, "--rounding-ensemble"],
+            ["janney", "--design", folder.appending(path: "none.json").path],
+        ] {
+            #expect(throws: (any Error).self, "\(bad)") { try HeadlessEnsemble.Options.parse(bad) }
+        }
+        var lines: [String] = []
+        let report = try await HeadlessEnsemble.run(
+            options, log: { lines.append($0) },
+            runHere: { sample in
+                EnsembleOutcome(
+                    outputs: ["moment": 40 * (sample.values["ft"] ?? 0)], seconds: 1, device: "test")
+            })
+        let janney = try #require(report.cases.first { $0.id == "janney" })
+        #expect(janney.samples.map { $0.values["ft"] } == [1, 0.7])
+        // The case's own inputs stay at their middle: its concrete's stated strength.
+        #expect(janney.samples.allSatisfy { $0.values["fc"] == 36.2e6 })
+        #expect(lines.filter { $0.hasPrefix("DESIGN ") }.count == 4)
+        #expect(
+            lines.contains { $0.hasPrefix("MEASURED ") && $0.contains("\"janney\"") && $0.contains("41.5") })
+    }
+
     @Test("An ensemble shared with a worker gives the same samples and results as here alone")
     func shared() async throws {
         var options = try HeadlessEnsemble.Options.parse(["kb-curve", "--samples", "12", "--seed", "4"])

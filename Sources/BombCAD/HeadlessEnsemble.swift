@@ -10,7 +10,7 @@ enum HeadlessEnsemble {
     static let usage = """
         Usage: BombCAD ensemble <case>[,<case>…] [--samples <n>] [--seed <n>] [--worker <ssh host>]…
                                 [--local-workers <n>] [--no-default-workers] [--ratio <times slower>]
-                                [--out <folder>] [--rounding-ensemble]
+                                [--out <folder>] [--rounding-ensemble] [--design <file.json>]
                BombCAD ensemble --list
 
         Samples each case's uncertain inputs by a Latin hypercube, seeded so that the same seed
@@ -27,6 +27,10 @@ enum HeadlessEnsemble {
         with the kernels' default rounding, once without fused multiply-adds and once with relaxed
         math, and prints each output's lowest to highest with the default's value: results after
         failure spread by about that between any two builds whose arithmetic rounds differently.
+        --design runs each case once at each point of a JSON list of values (such as
+        [{"afterburnTime": 0.01, "ft": 1, "glassK": 1}]), its own inputs at their middle values,
+        and prints each run's outputs as a line "DESIGN {json}": the runs a calibration's
+        emulators are fitted to (docs/calibration.md).
         --list names the cases and their inputs.
         """
 
@@ -72,6 +76,9 @@ enum HeadlessEnsemble {
         var out: URL?
         /// Each case's middle run with each of the kernels' roundings, in place of the samples.
         var roundingEnsemble = false
+        /// Points whose values each case runs at, its own inputs at their middle values, in place of
+        /// the samples.
+        var design: [[String: Double]]?
 
         static func parse(_ arguments: [String]) throws -> Options {
             var options = Options()
@@ -119,6 +126,15 @@ enum HeadlessEnsemble {
                         throw ProjectFileError.invalid("--seed takes a whole number.")
                     }
                     options.seed = seed
+                case "design":
+                    let data = try Data(contentsOf: URL(filePath: value))
+                    guard let points = try? JSONDecoder().decode([[String: Double]].self, from: data),
+                        !points.isEmpty
+                    else {
+                        throw ProjectFileError.invalid(
+                            "--design takes a JSON list of points, each its values.")
+                    }
+                    options.design = points
                 case "local-workers":
                     guard let count = Int(value), (0...8).contains(count) else {
                         throw ProjectFileError.invalid("--local-workers takes a count from 0 to 8.")
@@ -145,6 +161,12 @@ enum HeadlessEnsemble {
                 }
             }
             guard positional.count == 1 else { throw ProjectFileError.invalid("Name the cases to run.") }
+            if options.design != nil,
+                options.roundingEnsemble || seen.contains("samples") || seen.contains("seed")
+            {
+                throw ProjectFileError.invalid(
+                    "--design runs its own points; leave out --samples, --seed and --rounding-ensemble.")
+            }
             if options.roundingEnsemble, seen.contains("samples") || seen.contains("seed") {
                 throw ProjectFileError.invalid(
                     "--rounding-ensemble runs each case's middle inputs; leave out --samples and --seed.")
@@ -201,9 +223,10 @@ enum HeadlessEnsemble {
         let done = progress?.done ?? []
         for (caseIndex, id) in options.cases.enumerated() {
             let samples =
-                options.roundingEnsemble
-                ? try ValidationEnsemble.roundingSamples(case: id)
-                : try ValidationEnsemble.samples(case: id, count: options.samples, seed: options.seed)
+                try options.design.map { try ValidationEnsemble.designSamples(case: id, points: $0) }
+                ?? (options.roundingEnsemble
+                    ? try ValidationEnsemble.roundingSamples(case: id)
+                    : try ValidationEnsemble.samples(case: id, count: options.samples, seed: options.seed))
             var item = Report.Case(
                 id: id, samples: samples, outcomes: Array(repeating: nil, count: samples.count),
                 places: Array(repeating: nil, count: samples.count))
@@ -216,6 +239,23 @@ enum HeadlessEnsemble {
                 }
             }
             report.cases.append(item)
+        }
+        // What each case's outputs are compared with, for the calibration's script.
+        if options.design != nil {
+            for id in options.cases {
+                guard let info = ValidationEnsemble.cases.first(where: { $0.id == id }) else { continue }
+                var measured: [String: [Double]] = [:]
+                for output in info.outputs {
+                    if let value = output.measured {
+                        measured[output.key] = [value] + (output.measuredVariation.map { [$0] } ?? [])
+                    }
+                }
+                if let data = try? JSONEncoder().encode([id: measured]),
+                    let text = String(data: data, encoding: .utf8)
+                {
+                    log("MEASURED " + text)
+                }
+            }
         }
         let costs = jobs.map { ValidationEnsemble.estimatedSeconds(case: report.cases[$0.caseIndex].id) }
         var schedule = SweepSchedule(
@@ -238,6 +278,13 @@ enum HeadlessEnsemble {
             shared.report.cases[caseIndex].places[sample.index] = outcome == nil ? nil : place
             if let outcome {
                 progress?.append(Progress.Entry(sample: sample, outcome: outcome, place: place))
+                if options.design != nil,
+                    let data = try? JSONEncoder().encode(
+                        Progress.Entry(sample: sample, outcome: outcome, place: place)),
+                    let text = String(data: data, encoding: .utf8)
+                {
+                    log("DESIGN " + text)
+                }
             }
             shared.remaining[caseIndex, default: 0] -= 1
             if shared.remaining[caseIndex] == 0 {

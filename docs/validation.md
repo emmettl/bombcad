@@ -5684,6 +5684,11 @@ Reading this table:
 The samples and results are kept as JSON (`--out`), each result as it arrives, so an ensemble
 cut short carries on from where it was.
 
+Run over the model's own parameters instead of a specimen's inputs (`--design`), the same machinery
+calibrates three of them, the afterburning time, the concrete's tension and the glass's flaw
+constant, against 21 comparisons at once, with a discrepancy for each regime: see
+[Calibration](calibration.md).
+
 **The spread from rounding.** `--rounding-ensemble` runs each case's middle inputs three times
 instead: with the kernels' default rounding, without fused multiply-adds and with relaxed math.
 It prints each output's lowest to highest, with each rounding's value and the default's marked:

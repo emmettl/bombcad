@@ -39,7 +39,10 @@ extension ValidationEnsemble {
             ], estimatedSeconds: 12)
     }
 
-    public static let cases: [EnsembleCase] = [
+    /// Every case: the validation's own, then the calibration's.
+    public static let cases: [EnsembleCase] = validationCases + calibrationCases
+
+    static let validationCases: [EnsembleCase] = [
         EnsembleCase(
             id: "contest-slab",
             title: "Contest slab (2013 blast blind simulation contest), 8 elements through",
@@ -219,6 +222,16 @@ extension ValidationEnsemble {
             }
     }
 
+    /// `case` run at each of `points`, its own inputs at their middle values and each point's
+    /// values over them (a calibration's design: `afterburnTime`, `ft`, `glassK`).
+    public static func designSamples(case id: String, points: [[String: Double]]) throws -> [EnsembleSample] {
+        let middle = try samples(case: id, count: 0, seed: 0)[0]
+        return points.enumerated().map { number, point in
+            EnsembleSample(
+                caseID: id, index: number, values: middle.values.merging(point) { _, chosen in chosen })
+        }
+    }
+
     /// `case`'s run with every input at its middle value, once with each of the kernels'
     /// roundings, the default first: the spread a different rounding gives, which is where results
     /// after failure are one draw among several.
@@ -341,7 +354,25 @@ extension ValidationEnsemble {
             ]
         case "kb-wall":
             return try wall(
-                mass: 100 * Float(value("mass")), standoff: Float(value("standoff")), device: device)
+                mass: 100 * Float(value("mass")), standoff: Float(value("standoff")),
+                afterburnTime: values["afterburnTime"].map { Float($0) }, device: device)
+        case "kb-open":
+            return try openBurst(afterburnTime: values["afterburnTime"].map { Float($0) }, device: device)
+        case "kb-reflected":
+            var outputs: [String: Double] = [:]
+            for z in calibrationDistances {
+                let wall = try autoreleasepool {
+                    try Self.wall(
+                        mass: 100, standoff: Float(z * cbrt(100.0)),
+                        afterburnTime: values["afterburnTime"].map { Float($0) }, device: device)
+                }
+                outputs["r\(Int(z))"] = wall["impulse"]
+            }
+            return outputs
+        case "glass-monk":
+            return try monkBreakTimes(flawFactor: value("glassK"))
+        case "glass-e1300":
+            return e1300Resistances(flawFactor: value("glassK"))
         default:
             throw EnsembleError("No validation case \(sample.caseID).")
         }
@@ -350,15 +381,19 @@ extension ValidationEnsemble {
     /// A hemispherical surface burst of `mass` kg on rigid ground, `standoff` metres from a rigid
     /// wall, as `blastbench validate` runs its reflected cases: the reflected peak overpressure
     /// (kPa) and impulse (Pa s) at the wall's foot.
-    static func wall(mass: Float, standoff: Float, device: MTLDevice) throws -> [String: Double] {
+    static func wall(
+        mass: Float, standoff: Float, afterburnTime: Float? = nil, device: MTLDevice
+    ) throws -> [String: Double] {
         var wall = ScenarioPreset.openGround.scenario
         wall.charge.mass = mass
         wall.reflectiveFaces = [.zMin, .xMax]
         wall.charge.position = SIMD3(64 - standoff, 32, 0)
         wall.gauges = [Gauge("Wall", at: SIMD3(63.99, 32, 0.05))]
         // The air every run ships with (`SolverConfiguration.recommended`), the mapped start with it.
+        var configuration = SolverConfiguration.recommended
+        if let afterburnTime { configuration.afterburnTime = afterburnTime }
         let solver = try BlastSolver(
-            device: device, scenario: wall, cellSize: wallCell, configuration: .recommended)
+            device: device, scenario: wall, cellSize: wallCell, configuration: configuration)
         solver.advance(until: 0.1)
         let cell = solver.nearestFluidCell(to: wall.gauges[0].position)
         return [
@@ -367,5 +402,175 @@ extension ValidationEnsemble {
                 / 1000,
             "impulse": Double(solver.impulse(cell.i, cell.j, cell.k)),
         ]
+    }
+}
+
+// MARK: - Calibration's cases (docs/calibration.md)
+
+extension ValidationEnsemble {
+    /// The scaled distances, m/kg^(1/3), of the calibration's open-air comparisons.
+    static let calibrationDistances: [Double] = [1, 2, 4]
+
+    /// Cases for calibrating the model's own parameters (`afterburnTime`, `ft`, `glassK` in a
+    /// sample's values) rather than a specimen's inputs: none of their own inputs is uncertain.
+    static let calibrationCases: [EnsembleCase] = {
+        let points = calibrationDistances.compactMap { KingeryBulmash.point(at: $0) }
+        let monk = (try? monkFixture()).map { fixture in
+            fixture.panes.map { pane in
+                EnsembleOutput(
+                    key: "t" + pane.aspect.replacingOccurrences(of: ":", with: "-"),
+                    name: "break time, aspect \(pane.aspect)", unit: "ms",
+                    measured: pane.breakTime[0],
+                    measuredVariation: fixture.breakTimes[pane.aspect].flatMap { scatter($0) })
+            }
+        }
+        return [
+            EnsembleCase(
+                id: "kb-open",
+                title:
+                    "100 kg surface burst on rigid ground, 0.25 m cells: incident impulse against Kingery–Bulmash",
+                inputs: [],
+                outputs: zip(calibrationDistances, points).map { z, point in
+                    EnsembleOutput(
+                        key: "i\(Int(z))", name: "incident impulse at Z = \(Int(z))", unit: "Pa s",
+                        measured: point.incidentImpulse(mass: 100))
+                }, estimatedSeconds: 30),
+            EnsembleCase(
+                id: "kb-reflected",
+                title:
+                    "100 kg on a rigid wall at Z = 1, 2, 4, 0.25 m cells: reflected impulse against Kingery–Bulmash",
+                inputs: [],
+                outputs: zip(calibrationDistances, points).map { z, point in
+                    EnsembleOutput(
+                        key: "r\(Int(z))", name: "reflected impulse at Z = \(Int(z))", unit: "Pa s",
+                        measured: point.reflectedImpulse(mass: 100))
+                }, estimatedSeconds: 20),
+            EnsembleCase(
+                id: "glass-monk",
+                title:
+                    "Monk and Clubley's 4 mm annealed panes at Shoeburyness: break times (large deflection)",
+                inputs: [], outputs: monk ?? [], estimatedSeconds: 1),
+            EnsembleCase(
+                id: "glass-e1300",
+                title: "ASTM E1300's load resistance of four annealed panes (Soules, Morse and Norville)",
+                inputs: [],
+                outputs: e1300Panes.map { pane in
+                    EnsembleOutput(
+                        key: "lr" + pane.name, name: "load resistance, pane \(pane.name)", unit: "kPa",
+                        measured: pane.load)
+                }, estimatedSeconds: 1),
+        ]
+    }()
+
+    /// The surface burst of `blastbench validate`, 100 kg on 0.25 m cells with the recommended
+    /// air: each distance's incident positive impulse (Pa s) 5 cm above the ground.
+    static func openBurst(afterburnTime: Float?, device: MTLDevice) throws -> [String: Double] {
+        var scenario = ScenarioPreset.openGround.scenario
+        scenario.charge.mass = 100
+        scenario.charge.position = SIMD3(32, 32, 0)
+        let points = calibrationDistances.compactMap { KingeryBulmash.point(at: $0) }
+        scenario.gauges = points.map { point in
+            Gauge("Z = \(point.scaledDistance)", at: SIMD3(32 + Float(point.range(mass: 100)), 32, 0.05))
+        }
+        var configuration = SolverConfiguration.recommended
+        if let afterburnTime { configuration.afterburnTime = afterburnTime }
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: wallCell, configuration: configuration)
+        solver.advance(until: 0.1)
+        var outputs: [String: Double] = [:]
+        for (z, gauge) in zip(calibrationDistances, scenario.gauges) {
+            let cell = solver.nearestFluidCell(to: gauge.position)
+            outputs["i\(Int(z))"] = Double(solver.impulse(cell.i, cell.j, cell.k))
+        }
+        return outputs
+    }
+
+    /// Monk and Clubley's panes (`Fixtures/MonkClubley/windows.json`), as `GlassMeasurementTests`
+    /// reads them.
+    struct MonkFixture: Decodable {
+        struct Pane: Decodable {
+            var aspect: String
+            var opening: [Double]
+            var breakTime: [Double]
+            enum CodingKeys: String, CodingKey {
+                case aspect
+                case opening = "opening_m"
+                case breakTime = "breakTime_ms"
+            }
+        }
+        struct Reflected: Decodable { var allTrials: [[Double]] }
+        var panes: [Pane]
+        var reflectedPressure: Reflected
+        var breakTimes: [String: [Double]]
+        enum CodingKeys: String, CodingKey {
+            case panes, reflectedPressure
+            case breakTimes = "breakTimes_ms"
+        }
+    }
+
+    static func monkFixture() throws -> MonkFixture {
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/MonkClubley/windows.json")
+        return try JSONDecoder().decode(MonkFixture.self, from: Data(contentsOf: url))
+    }
+
+    /// Each aspect ratio's break time (ms) on the median of the trials' reflected pressure, the
+    /// app's large-deflection pane with its 60 s strength times `flawFactor`^(−1/7): the flaw
+    /// constant, or the share of the pane at its largest stress, times `flawFactor`.
+    static func monkBreakTimes(flawFactor: Double) throws -> [String: Double] {
+        let fixture = try monkFixture()
+        let step = 1e-5
+        let points = [[0.0, 0.0]] + fixture.reflectedPressure.allTrials.map { [$0[0], $0[1]] }
+        let load = (0..<2000).map { n -> Double in
+            let ms = Double(n) * step * 1000
+            guard let i = points.firstIndex(where: { $0[0] >= ms }) else { return points.last![1] * 1000 }
+            if i == 0 { return 0 }
+            let (a, b) = (points[i - 1], points[i])
+            return (a[1] + (ms - a[0]) / (b[0] - a[0]) * (b[1] - a[1])) * 1000
+        }
+        var outputs: [String: Double] = [:]
+        for pane in fixture.panes {
+            let (a, b) = (pane.opening[0], pane.opening[1])
+            let glass = EnvelopePanel.largeDeflectionGlass(
+                thickness: 0.004, material: .annealedGlass, a: a, b: b,
+                sixtySecondStrength: GlassStrength.sixtySecond(area: a * b)
+                    * pow(flawFactor, -1 / GlassStrength.weibullModulus))
+            let response = glass.response(pressures: load, step: step)
+            outputs["t" + pane.aspect.replacingOccurrences(of: ":", with: "-")] =
+                response.lostResistanceAt.map { $0 * 1000 } ?? .nan
+        }
+        return outputs
+    }
+
+    /// Four of the eight panes `GlassMeasurementTests.e1300` takes from Soules, Morse and Norville
+    /// (the largest, a square, a strip and a long one): long and short side, thickness (m), E1300's
+    /// load resistance (kPa).
+    static let e1300Panes: [(name: String, a: Double, b: Double, t: Double, load: Double)] = [
+        ("A", 1.930, 0.965, 0.00556, 2.0), ("D", 1.676, 1.676, 0.00457, 1.4),
+        ("T", 1.829, 0.254, 0.00556, 21.3), ("CC", 3.048, 2.286, 0.01191, 2.0),
+    ]
+
+    /// Each pane's load (kPa) breaking 8 in 1,000 held for 3 s on Moore's plate, with the whole
+    /// pane at its largest stress and the flaw constant times `flawFactor`.
+    static func e1300Resistances(flawFactor: Double) -> [String: Double] {
+        let modulus = 71.7e9 / (12 * (1 - 0.22 * 0.22))
+        var outputs: [String: Double] = [:]
+        for c in e1300Panes {
+            func stress(_ q: Double) -> Double {
+                let r = MooreGlassCurves.response(load: q * pow(c.b / c.t, 4) / modulus, aspect: c.a / c.b)
+                return r.stress * modulus * pow(c.t / c.b, 2)
+            }
+            let breaking =
+                GlassStrength.sixtySecond(area: c.a * c.b, probability: 0.008)
+                * pow(flawFactor, -1 / GlassStrength.weibullModulus)
+                / pow(3 / 60, 1 / GlassStrength.fatigueExponent)
+            var (low, high) = (1.0, 1e7)
+            for _ in 0..<100 {
+                let mid = (low * high).squareRoot()
+                if stress(mid) < breaking { low = mid } else { high = mid }
+            }
+            outputs["lr" + c.name] = low / 1000
+        }
+        return outputs
     }
 }
