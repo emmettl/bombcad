@@ -148,6 +148,110 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
   trend to 1.5 times the hand-over and holds it from there (`FarFieldSet.trendReachDefault`; see
   below).
 
+## Channelling down a street (20 October 2026)
+
+Does a street lined with buildings carry the blast further than open ground, so that the far field
+needs a term for it? This was [emmettl/bombcad-work#13]'s question.
+
+**Against Beirut's full runs.** At 0.5 and 1.1 kt, over 1–1.5 and 1.5–2.5 km, a street-canyon
+feature fitted to the residuals of the full 4 m runs against the surrogate took a coefficient of
+only +0.01–0.02 on log peak. With the canyon and open-run features together, the peak scatter fell
+from 0.217 to 0.209, and the impulse scatter did not change. The only structure in the residuals was
+line of sight: a clear view −0.15, an enclosed one +0.1. That is the surrogate's own term list,
+owned by emmettl/bombcad-work#4. But 4 m cells cannot resolve 10–20 m streets, so a fine test followed.
+
+**The fine canyon** (`blastbench canyon`):
+
+- **Charge:** 1 t of TNT on rigid ground.
+- **Street:** a straight radial street 10 or 20 m wide, from 60 to 260 m out, between continuous
+  walls 15 m tall and 20 m deep.
+- **Gauges:** in the air cell beside the wall, 1.5 m up and at half the walls' height, and on the
+  centreline. They stand at Z 8–24 (80–240 m), and each is set against a gauge at the same point
+  on the same grid with the buildings taken away.
+- **Domain:** a quarter of the burst. The street's centreline and the charge's other side are
+  mirrors, and the open faces are 1.5 √(R W^(1/3)) from the gauges.
+
+Each run took under a minute, so the cells went down to 0.5 m.
+
+Wall gauge 1.5 m up, canyon over open ground, peak / positive impulse:
+
+| Cells | Street | Z 8 | Z 10 | Z 12 | Z 14 | Z 16 | Z 20 | Z 24 |
+|---|---|---|---|---|---|---|---|---|
+| 4 m | 10 m (8 m as laid) | 1.38 / 1.34 | 1.39 / 1.23 | 1.31 / 1.11 | 1.18 / 0.98 | 1.05 / 0.88 | 0.83 / 0.79 | 0.69 / 0.84 |
+| 1 m | 10 m | 1.27 / 1.35 | 1.39 / 1.23 | 1.41 / 1.08 | 1.37 / 0.94 | 1.29 / 0.82 | 1.09 / 0.64 | 0.90 / 0.88 |
+| 0.5 m | 10 m | 1.22 / 1.35 | 1.37 / 1.22 | 1.44 / 1.03 | 1.44 / 0.93 | 1.40 / 0.83 | 1.25 / 0.65 | 1.07 / 0.85 |
+| 4 m | 20 m (16 m as laid) | 1.29 / 1.30 | 1.34 / 1.26 | 1.32 / 1.18 | 1.25 / 1.10 | 1.17 / 1.01 | 1.00 / 0.87 | 0.86 / 0.79 |
+| 1 m | 20 m | 1.24 / 1.29 | 1.29 / 1.24 | 1.38 / 1.18 | 1.39 / 1.08 | 1.36 / 1.01 | 1.26 / 0.88 | 1.14 / 0.81 |
+| 0.5 m | 20 m | 1.27 / 1.29 | 1.27 / 1.24 | 1.37 / 1.17 | 1.44 / 1.01 | 1.42 / 0.95 | 1.36 / 0.83 | 1.25 / 0.72 |
+
+- **It exceeds 1.2×.**
+  - **Peak:** 1.2–1.45 times open ground's along most of the street on fine cells; the mean log
+    ratio is +0.27 (10 m) and +0.29 (20 m) on 0.5 m cells.
+  - **Impulse:** 1.2–1.35 times in the first 20–40 m of the street. It falls to 0.65–0.85 at its
+    far end. There the pulse arrives early, sharp and short (5–6 ms ahead of open ground at Z 20).
+    The higher pressure in the street vents over the roofs within about 40 ms, against open
+    ground's 85 ms.
+  - Mid-height gauges read up to 0.1 lower in peak than the 1.5 m ones. The centreline reads the
+    same as the wall: across the street the pulse is plane.
+- **Width over distance hardly matters.** Over w/R of 0.04–0.25, the 10 m and 20 m streets agree
+  to within about 0.1. The gain is set by the distance along the street:
+  - the peak's rises over the first 40–80 m and then falls;
+  - the impulse's falls from the street's mouth.
+- **Height matters most.** The same streets with walls 7.5 m and 30 m tall, on 0.5 m cells, peak /
+  impulse:
+  - **7.5 m:** 0.76–1.23 / 0.94–1.12, the mean log ratio −0.01 to +0.09. Within 1.2× throughout.
+  - **30 m:** 1.22–2.04 / 1.28–1.78, the mean log ratio +0.43 to +0.48 in peak and +0.40 to
+    +0.46 in impulse. It still grows at the street's far end.
+- **The 4 m cells lose the gain with distance.** On 4 m cells the 10 m street is 8 m wide as laid,
+  one cell either side of the centreline. Its peak ratio falls from 1.38 to 0.69 along the street,
+  against 1.22–1.44 to 1.07 on 0.5 m cells. The impulse ratios stay within 0.15 of the fine
+  ones. On open ground at 1 t, 4 m cells are 0.4 m/kg^(1/3) and read 0.36–0.40 of
+  Kingery–Bulmash's peak; 0.5 m cells read 0.79–0.88. The impulse comes within 4–9% on every grid.
+
+**What it means for the far field.** The air scales with the cube root of the charge, so this test
+at 1 t is a 500 t burst with 80–160 m avenues between walls 120 m tall. The governing group is the
+walls' height over W^(1/3), which sets them against the positive phase's length (that too scales
+with W^(1/3)):
+
+| H / W^(1/3) | Example | Peak (mean log) | Impulse (mean log) |
+|---|---|---|---|
+| 3 | 30 m walls, 1 t | 1.22–2.04 (+0.43 to +0.48) | 1.28–1.78 (+0.40 to +0.46) |
+| 1.5 | 15 m walls, 1 t | 1.07–1.45 (+0.27 to +0.29) | 0.65–1.35 (−0.05 to +0.01) |
+| 0.75 | 7.5 m walls, 1 t | 0.76–1.23 (−0.01 to +0.09) | 0.94–1.12 (−0.01 to +0.01) |
+| 0.25 | 20 m walls at 500 t (Beirut) | 0.95–1.04 (−0.02) | 0.99–1.00 (0.00) |
+
+The last row was run at 1 t scaled: walls 2.5 m tall and 5 m deep, streets 2.5 and 5 m wide. On
+0.5 m cells, that is 4 m cells at 500 t in both shock and street.
+
+The hybrid hands over at 12 m/kg^(1/3). It is used only when the whole district cannot run in an
+hour: mostly for hundreds of tonnes and more, since a smaller charge's district of interest runs
+whole. There, ordinary city blocks are at H/W^(1/3) of 0.2–0.4, and at 0.25 the street came within
+0.95–1.04 of open ground. That agrees with Beirut's residuals. Channelling does
+matter, by 1.2–2 times, for small charges in deep streets (H/W^(1/3) ≥ 1, as for 1 t between
+15–30 m buildings). The near run carries those charges in the air.
+
+**Proposed term, not built.** A canyon term for the surrogate, should a far field ever carry a charge
+of a few tonnes. emmettl/bombcad-work#4 owns the surrogate's term list.
+
+- **Feature:** for a façade whose line of sight to the charge runs down a street, the street's
+  wall height h = H/W^(1/3) and the scaled distance along it, ℓ = L/W^(1/3).
+- **Form:** ln(p_canyon/p_open) ≈ 0.5 [1 − exp(−(h − 0.6))] for h > 0.6, and nil below. This
+  fits the mean log peaks above to within 0.08. It needs a shape in ℓ: the peak's rises over
+  ℓ 2–8, and the impulse's falls from +0.3 at the mouth to −0.2 to −0.4 by ℓ 14 when h = 1.5. It also
+  needs the 30 m case's growth to its far end.
+- **Fit on:** this bench, for more heights, lengths and angles to the charge. A street not radial
+  to the charge (the usual case) was not run.
+
+At kiloton yields it is a correction of 0.01 or less, below the far field's scatter (σ 0.2).
+
+The results are in /Volumes/StudioData/bombcad/canyon:
+
+- `canyon-m1000-dx4.00_2.00_1.00_0.50.csv`: 15 m walls on 4, 2, 1 and 0.5 m cells;
+- `h7`, `h30` and `kt-scaled`: the other heights;
+- `hist`: histories on 4 and 0.5 m cells.
+
+[emmettl/bombcad-work#13]: https://github.com/emmettl/bombcad-work/issues/13
+
 ## Limitations
 
 - **The hand-over must lie where the near run's façades are loaded in full.** At 1 km on Beirut

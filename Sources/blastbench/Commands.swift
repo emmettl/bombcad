@@ -69,6 +69,7 @@ let commands: [String: @Sendable () throws -> Void] = [
     "heating": { try runHeating() },
     "terrain": { try runTerrain(device: device) },
     "landscape": { try runLandscape(device: device) },
+    "canyon": { try runCanyon(device: device) },
     "groundmotion": {
         if flag("calibrate") { try runGroundMotionCalibration() } else { try runGroundMotion(device: device) }
     },

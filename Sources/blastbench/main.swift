@@ -98,6 +98,7 @@ import Metal
 //                            gas-room preset as a layout for `BombCAD run`)
 //   blastbench terrain --study wedge|shield|hill ...   (the terrain's checks; see TerrainBench.swift)
 //   blastbench landscape [--mass 500000] [--dx 8] ...   (large surface bursts; see LandscapeBench.swift)
+//   blastbench canyon [--widths 10,20] [--dx 4,1] [--estimate]   (a radial street against open ground; see CanyonBench.swift)
 //   blastbench advise --calibrate [--time]   (the cost-against-fidelity advisor; see AdvisorBench.swift)
 //   blastbench hrynyk [--slabs TH2,TH6,TH7] [--layers 16] [--impacts 4] [--ensemble 16]   (blind test 1; see HrynykBench.swift)
 //   blastbench contact-profile [--cases solid,shell,debris,terraced] [--steps 2000]
