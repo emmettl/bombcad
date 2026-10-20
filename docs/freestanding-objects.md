@@ -128,6 +128,35 @@ shell would remove the first; gravity in the air (the fireball's buoyant rise) a
 that holds the whole fireball would address the second. Until then, results after the blast
 should be read as indicative.
 
+### Which outcomes the whole-cell outline flips (20 October 2026)
+
+Whole-cell outlines leave a moving solid good to a cell (roadmap limitation 6). Before building
+fractional outlines, the question was which outcomes a user sees they actually change:
+
+- **Compute Motion without a structure, on flat ground: none.** The motion run picks 0.05 m cells
+  at up to four objects (0.2 m air, patches ×4) and 0.075 m beyond (0.15 m, ×2), on a crop that
+  starts at whole multiples of 0.6 m from the ground (`FreestandingMotion.defaultResolution`,
+  `cropped`). So the saloon's 0.15 m gap lies on cell faces, three or two cells high. There every
+  refined grid overturns the 10 kg car within 0.35–0.43 s. The late flow's disagreement in sign
+  was the copying faces', and no outcome turns on it now (above).
+- **Beside a deformable structure: the car's outcome.** The motion run then takes uniform 0.1 m
+  cells (0.15 m beyond four objects), without patches. On 0.1 m cells the shell's underside lies
+  on a row of cell centres, which count as inside it, so the gap is 0.1 m. That is the table's
+  0.1 m row, which rocks back from 44.5° where every grid that resolves the gap overturns.
+  Nothing warns of it.
+- **On a slope, or with the clearance changed:** the gap no longer lies on cell faces, at any
+  cell. It is not measured, but it is the same mechanism.
+- **Structures' walls: within their bands.** A staircase wall's impulse steps by up to 6% as it
+  crosses a cell, and a gauge before it by 13%
+  ([structural model](structural-model.md#coupling-to-the-air)). That is inside the structural
+  standing's bands, where failures already flip with mesh and step
+  ([convergence](validation.md#convergence-on-todays-defaults)). A stand-off swept in steps
+  smaller than a cell shows it as stairs in the load.
+
+So a fractional shell would change what a user sees for cars beside structures and on slopes,
+and on flat open ground not at all. Choosing the motion run's cells so that the gap lies on cell
+faces beside structures too would mend the first of these without it.
+
 ## Several objects
 
 `RigidBodyWorld` steps several boxes and cars together with the ground, static blocks and each
