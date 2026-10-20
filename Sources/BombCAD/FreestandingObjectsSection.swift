@@ -26,7 +26,9 @@ final class FreestandingMotionState {
         func set() { lock.withLock { stopped = true } }
     }
 
-    func compute(_ scenario: Scenario) {
+    /// With `cellSize`, uniform cells of that size (`FreestandingMotion.finerCells`) instead of the
+    /// motion run's own.
+    func compute(_ scenario: Scenario, cellSize: Float? = nil) {
         cancel()
         let flag = StopFlag()
         stop = flag
@@ -41,7 +43,8 @@ final class FreestandingMotionState {
                 }
                 return Result {
                     try FreestandingMotion.compute(
-                        device: device, scenario: scenario, duration: duration,
+                        device: device, scenario: scenario, duration: duration, cellSize: cellSize,
+                        refinement: cellSize == nil ? nil : 1,
                         progress: { time in Task { @MainActor in self?.progress = time } },
                         shouldContinue: { !flag.isStopped })
                 }
@@ -203,7 +206,7 @@ struct FreestandingObjectsSection: View {
             Text("Freestanding objects (experimental)")
         } footer: {
             Text(
-                "Rigid boxes and simplified cars (locked wheels, rigid suspension) that slide, tip and strike each other and the blocks. They do not take part in the ordinary run. Motion puts every object in the air, on 0.05 m cells around each (0.075 m beyond four objects), so they shield and reflect onto each other, and moves them through the air's load and contact; one nearing the edge of the air leaves it."
+                "Rigid boxes and simplified cars (locked wheels, rigid suspension) that slide, tip and strike each other and the blocks. They do not take part in the ordinary run. Motion puts every object in the air, on 0.05 m cells around each (0.075 m beyond four objects; beside a deformable structure uniform 0.1 m, or 0.15 m), so they shield and reflect onto each other, and moves them through the air's load and contact; one nearing the edge of the air leaves it."
             )
         }
     }
@@ -230,6 +233,46 @@ struct FreestandingObjectsSection: View {
         }
         if let error = state.errorMessage {
             Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+        }
+        // A car whose gap to the ground the motion's cells do not lie along: by the result's
+        // cells once computed for this layout, else by those it would take.
+        let computed = state.motion.flatMap { $0.scenario == model.settings.scenario ? $0 : nil }
+        ForEach(
+            FreestandingMotion.unresolvedGaps(
+                scenario: model.settings.scenario, cellSize: computed.map { Float($0.cellSize) },
+                refinement: computed?.refinement), id: \.self
+        ) { gap in
+            Label(
+                String(
+                    format:
+                        "%@'s %.2f m gap to the ground lies between the %.3g m cells' faces (%@): whether it overturns may differ on finer cells.",
+                    gap.name, gap.gap, gap.cell, gap.reason),
+                systemImage: "exclamationmark.triangle"
+            )
+            .font(.caption).foregroundStyle(.orange)
+        }
+        // Beside a structure: the finer uniform cells that would resolve the gaps, and their cost.
+        if (computed?.cellSize ?? .infinity) > 0.08, state.progress == nil,
+            let finer = FreestandingMotion.finerCells(scenario: model.settings.scenario)
+        {
+            if finer.fits {
+                Button(
+                    String(
+                        format: "Compute on %.3g m Cells (%.1f million, about %.0f× the time)",
+                        finer.cellSize,
+                        Double(finer.cells) / 1e6, finer.time)
+                ) { state.compute(model.settings.scenario, cellSize: finer.cellSize) }
+                .help("Uniform cells on whose faces each car's gap to the ground lies.")
+            } else {
+                Text(
+                    String(
+                        format:
+                            "%.3g m cells would resolve it, but the objects, the charge and the structure span %.1f million of them, over the %.0f million allowed: place them closer together.",
+                        finer.cellSize, Double(finer.cells) / 1e6,
+                        Double(FreestandingMotion.maximumCells) / 1e6)
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            }
         }
         if let result = state.motion {
             let current = result.scenario == model.settings.scenario

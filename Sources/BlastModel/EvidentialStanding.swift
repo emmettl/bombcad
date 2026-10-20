@@ -2696,7 +2696,16 @@ struct StandingScene {
     }
 
     func freestandingMotion() -> ResultStanding {
-        result(
+        // A car's gap to the ground off the motion run's cell faces: taken a cell narrower or
+        // wider, which can turn its overturning (freestanding-objects.md).
+        let gaps = FreestandingMotion.unresolvedGaps(scenario: inputs.scenario).map { gap in
+            String(
+                format:
+                    "%@'s %.2f m gap to the ground lies between the faces of the motion run's %.3g m cells (%@): "
+                    + "whether it overturns may differ on finer cells.",
+                gap.name, gap.gap, gap.cell, gap.reason)
+        }
+        return result(
             .freestandingMotion, .verified,
             "Checked against statics, contact mechanics and theory; nothing compared with a blast test.",
             evidence: [
@@ -2711,7 +2720,14 @@ struct StandingScene {
                     + "cells.",
                 "The air's load after about 0.4 s, with an object steeply tilted, is not converged.",
                 "Furniture is solid boxes.",
-            ], documents: ["freestanding-objects.md#limitations-and-future-work"])
+            ], resolution: gaps,
+            documents: [
+                "freestanding-objects.md#limitations-and-future-work"
+            ]
+                + (gaps.isEmpty
+                    ? []
+                    : ["freestanding-objects.md#which-outcomes-the-whole-cell-outline-flips-20-october-2026"])
+        )
     }
 
     func thermal() -> ResultStanding {

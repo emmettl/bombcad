@@ -657,6 +657,42 @@ do {
         }
         exit(0)
     }
+    if arguments.contains("--car-beside-structure") {
+        // --car-beside-structure [--duration=1.0] [--cells=0.1,0.075]: a saloon 3 m to the side of
+        // the blast wall preset's charge, where the app places a new car, moved through the air
+        // beside the deformable wall on uniform cells of each size (the motion run takes 0.1 m).
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw ExperimentalRigidBoxSimulation.Failure.unsupportedConfiguration
+        }
+        func option(_ name: String) -> String? {
+            arguments.first(where: { $0.hasPrefix("--\(name)=") }).map {
+                String($0.dropFirst(name.count + 3))
+            }
+        }
+        var scenario = ScenarioPreset.blastWall.scenario
+        let charge = scenario.charge.position
+        scenario.rigidCars = [try .saloon(position: SIMD3(Double(charge.x), Double(charge.y) + 3, 0))]
+        let duration = option("duration").flatMap(Double.init) ?? 1.0
+        let cells = (option("cells") ?? "0.1,0.075").split(separator: ",").compactMap { Float($0) }
+        for cell in cells {
+            let gaps = FreestandingMotion.unresolvedGaps(scenario: scenario, cellSize: cell, refinement: 1)
+            let started = Date.timeIntervalSinceReferenceDate
+            let r = try FreestandingMotion.compute(
+                device: device, scenario: scenario, duration: duration, frameInterval: 0.01, cellSize: cell,
+                refinement: 1)
+            let car = r.objects[0]
+            print(
+                String(
+                    format:
+                        "%.3g m cells (gap %@), %d cells: %.2f s in %d steps, %.0f s (air %.0f, coupling %.0f, motion %.1f); moved %.2f m, peak tilt %.1f°%@%@",
+                    cell, gaps.isEmpty ? "on faces" : "off faces", r.cells, r.duration, r.steps,
+                    Date.timeIntervalSinceReferenceDate - started, r.timings.air, r.timings.coupling,
+                    r.timings.mechanics, simd_length(car.displacement), car.peakTilt,
+                    car.overturned ? ", overturned" : "", r.failure.map { "; stopped: \($0)" } ?? ""))
+            fflush(stdout)
+        }
+        exit(0)
+    }
     if let populated = arguments.first(where: { $0.hasPrefix("--populated") }) {
         // --populated[=carPark,furnishedRoom,crowdedPen] --duration=0.2 [--free-only] [--cases=0.15x2]
         guard let device = MTLCreateSystemDefaultDevice() else {

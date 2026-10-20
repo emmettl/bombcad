@@ -141,6 +141,88 @@ public struct FreestandingMotion: Codable, Sendable {
         return objects <= 4 ? (0.1, 1) : (0.15, 1)
     }
 
+    /// A car whose gap to the ground the motion run's cells do not lie along (`unresolvedGaps`).
+    public struct UnresolvedGap: Sendable, Hashable {
+        public var name: String
+        /// The shell's clearance over its tyre contacts, and the cells at the objects, m.
+        public var gap: Double
+        public var cell: Double
+        /// Why: "tilted", "on a slope" or "between cell faces".
+        public var reason: String
+    }
+
+    /// The cars whose gap to the ground does not lie on the faces of the cells the motion run
+    /// gives the objects (`defaultResolution`, on a crop whose floor is the scene's): beside a
+    /// structure, whose uniform 0.1 m cells put a 0.15 m underside on a row of cell centres; on a
+    /// slope; tilted; or with a clearance the cells do not divide. The air counts a cell solid
+    /// where its centre lies in the shell, so such a gap is taken as up to a cell narrower or wider
+    /// than it is, and whether the car overturns may differ on finer cells (freestanding-objects.md,
+    /// "Which outcomes the whole-cell outline flips").
+    public static func unresolvedGaps(scenario: Scenario, cellSize: Float? = nil, refinement: Int? = nil)
+        -> [UnresolvedGap]
+    {
+        let cars = scenario.rigidCars ?? []
+        guard !cars.isEmpty else { return [] }
+        let count = (scenario.rigidObjects?.count ?? 0) + cars.count
+        let resolution = defaultResolution(objects: count, structure: !scenario.structuralObjects.isEmpty)
+        let cell =
+            Double(cellSize ?? resolution.cellSize) / Double(max(refinement ?? resolution.refinement, 1))
+        func onFace(_ z: Double) -> Bool { abs(z / cell - (z / cell).rounded()) < 1e-3 }
+        let terrain = scenario.terrain.flatMap { $0.isFlat ? nil : $0 }
+        return cars.compactMap { car -> UnresolvedGap? in
+            let pose = simd_quatd(vector: car.orientation)
+            let contacts = car.tyreContacts.map { car.position + pose.act($0) }
+            let grounds = contacts.map { point -> Double in
+                terrain.map { Double($0.height(at: SIMD2<Float>(Float(point.x), Float(point.y)))) } ?? point.z
+            }
+            let reason: String
+            if pose.act(SIMD3<Double>(0, 0, 1)).z < 1 - 1e-6 {
+                reason = "tilted"
+            } else if (grounds.max() ?? 0) - (grounds.min() ?? 0) > 1e-3 {
+                reason = "on a slope"
+            } else if !onFace(car.position.z) || !onFace(car.position.z + car.groundClearance)
+                || car.groundClearance < cell * (1 - 1e-3)
+            {
+                reason = "between cell faces"
+            } else {
+                return nil
+            }
+            return UnresolvedGap(name: car.name, gap: car.groundClearance, cell: cell, reason: reason)
+        }
+    }
+
+    /// Uniform cells beside a structure that would put every car's gap on cell faces
+    /// (`unresolvedGaps`), the coarsest that does: their size, how many the crop needs, whether
+    /// that fits `maximumCells`, and the time against the motion run's own cells, the fourth power
+    /// of their ratio (cells by its cube, steps by itself). Nil where the gaps are resolved
+    /// already, or no structure stands beside the objects (the open run's patches resolve them).
+    public static func finerCells(scenario: Scenario) -> (
+        cellSize: Float, cells: Int, fits: Bool, time: Double
+    )? {
+        let structure = !scenario.structuralObjects.isEmpty
+        guard structure, !unresolvedGaps(scenario: scenario).isEmpty else { return nil }
+        let count = (scenario.rigidObjects?.count ?? 0) + (scenario.rigidCars?.count ?? 0)
+        let own = defaultResolution(objects: count, structure: true).cellSize
+        // Both divide the crop's 0.6 m step and a 0.15 m clearance.
+        for cell: Float in [0.075, 0.05]
+        where cell < own && unresolvedGaps(scenario: scenario, cellSize: cell, refinement: 1).isEmpty {
+            let time = Double(pow(own / cell, 4))
+            do {
+                let (scene, _) = try cropped(scenario, cellSize: Double(cell))
+                let cells = Int(
+                    (Double(scene.domainSize.x) / Double(cell)).rounded()
+                        * (Double(scene.domainSize.y) / Double(cell)).rounded()
+                        * (Double(scene.domainSize.z) / Double(cell)).rounded())
+                return (cell, cells, true, time)
+            } catch Failure.tooLarge(let cells, _) {
+                return (cell, cells, false, time)
+            } catch {
+                return nil
+            }
+        }
+        return nil
+    }
+
     /// The scene cropped to the objects, the charge and any deformable structures with `margin`
     /// metres around them (and above), shifted so the crop starts at the origin; blocks inside it
     /// are kept, clipped. The shift keeps each structure on its own element lattice, so that it
