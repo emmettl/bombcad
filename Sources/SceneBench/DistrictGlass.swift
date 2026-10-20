@@ -24,6 +24,9 @@ enum DistrictGlass {
         /// The strip's box, m (saved since 19 October 2026; nil in older files).
         var low: SIMD3<Float>?
         var high: SIMD3<Float>?
+        /// The component's kind (`EnvelopeComponent.Kind`) in components.json, the walls' and roofs'
+        /// file beside the façades' (saved since 20 October 2026); nil in strips.json, all façades.
+        var kind: String?
     }
 
     struct Index: Codable {
@@ -56,27 +59,32 @@ enum DistrictGlass {
         let buildings = objects.map {
             Building(distanceM: distance($0.id), heightM: height($0.id), mix: mix($0.id))
         }
-        var strips: [Strip] = []
-        var values: [Float] = []
-        for load in loads where load.kind == .facade {
-            guard let building = order[load.owner] else { continue }
-            let net = load.netPa
-            let spans = load.spans
-            strips.append(
-                Strip(
-                    building: building, axis: load.axis, outward: load.outward,
-                    areaM2: spans.short * spans.long,
-                    binS: load.binS, first: values.count, count: net.count, low: load.region.min,
-                    high: load.region.max))
-            values += net.map { Float($0) }
+        // The façades in strips.json and net.f16, as ever; the walls, slabs and roofs beside them in
+        // components.json and components.f16, each with its kind, for judging the structure.
+        for (facades, name) in [(true, "strips"), (false, "components")] {
+            var strips: [Strip] = []
+            var values: [Float] = []
+            for load in loads where (load.kind == .facade) == facades && load.kind != .pane {
+                guard let building = order[load.owner] else { continue }
+                let net = load.netPa
+                let spans = load.spans
+                strips.append(
+                    Strip(
+                        building: building, axis: load.axis, outward: load.outward,
+                        areaM2: spans.short * spans.long,
+                        binS: load.binS, first: values.count, count: net.count, low: load.region.min,
+                        high: load.region.max, kind: facades ? nil : load.kind.rawValue))
+                values += net.map { Float($0) }
+            }
+            let largest = values.reduce(0) { max($0, abs($1)) }
+            var scale: Float = 1
+            while largest / scale > 65_504 { scale *= 2 }
+            let stored = values.map { Float16(min(max($0 / scale, -65_504), 65_504)) }
+            try JSONEncoder().encode(Index(buildings: buildings, strips: strips, scalePa: scale)).write(
+                to: folder.appending(path: "\(name).json"))
+            try stored.withUnsafeBufferPointer { Data(buffer: $0) }.write(
+                to: folder.appending(path: facades ? "net.f16" : "components.f16"))
         }
-        let largest = values.reduce(0) { max($0, abs($1)) }
-        var scale: Float = 1
-        while largest / scale > 65_504 { scale *= 2 }
-        let stored = values.map { Float16(min(max($0 / scale, -65_504), 65_504)) }
-        try JSONEncoder().encode(Index(buildings: buildings, strips: strips, scalePa: scale)).write(
-            to: folder.appending(path: "strips.json"))
-        try stored.withUnsafeBufferPointer { Data(buffer: $0) }.write(to: folder.appending(path: "net.f16"))
     }
 
     /// Each building's façade sides' glass under `mix` (nil: the mix each was given), and its distance.

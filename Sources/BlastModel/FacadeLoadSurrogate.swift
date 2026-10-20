@@ -357,6 +357,16 @@ public enum FacadeLoadSurrogate {
         /// It lies outside the scaled distances the terms were fitted over
         /// (`Coefficients.scaledRange`), where they are held at the range's end: extrapolated.
         public var outsideFit = false
+
+        public init(
+            peakPa: Double, impulsePaS: Double, riseShare: Double, arrivalS: Double, outsideFit: Bool = false
+        ) {
+            self.peakPa = peakPa
+            self.impulsePaS = impulsePaS
+            self.riseShare = riseShare
+            self.arrivalS = arrivalS
+            self.outsideFit = outsideFit
+        }
     }
 
     /// Kingery–Bulmash's base for `features`: (peak Pa, impulse Pa s, arrival s), the incident

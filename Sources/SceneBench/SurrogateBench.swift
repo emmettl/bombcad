@@ -38,6 +38,11 @@ enum SurrogateBench {
         var strips: [(saved: Int, object: Int, component: EnvelopeComponent)]
         var cellSize: Float
         var radius: Float
+        /// The walls', slabs' and roofs' saved loads (components.json, beside the façades' since 20
+        /// October 2026), matched as the strips are; empty for older runs.
+        var others: DistrictGlass.Index?
+        var otherValues: [Float16] = []
+        var otherStrips: [(saved: Int, object: Int, component: EnvelopeComponent)] = []
 
         init(_ args: [String]) throws {
             guard let path = SurrogateBench.value(args, "loads") else {
@@ -140,6 +145,57 @@ enum SurrogateBench {
             print(
                 "\(objects.count) buildings, \(index.buildings.count) saved with \(index.strips.count) strips; "
                     + "\(strips.count) strips matched")
+
+            // The walls, slabs and roofs, by their boxes and kinds.
+            let partsFile = folder.appending(path: "components.json")
+            guard FileManager.default.fileExists(atPath: partsFile.path()) else { return }
+            let parts = try JSONDecoder().decode(DistrictGlass.Index.self, from: Data(contentsOf: partsFile))
+            others = parts
+            otherValues = try Data(contentsOf: folder.appending(path: "components.f16")).withUnsafeBytes {
+                Array($0.bindMemory(to: Float16.self))
+            }
+            let partsOf = Dictionary(grouping: parts.strips.indices, by: { parts.strips[$0].building })
+            var found = [[(Int, Int, EnvelopeComponent)]](repeating: [], count: parts.buildings.count)
+            found.withUnsafeMutableBufferPointer { out in
+                SurrogateBench.concurrentlyEach(parts.buildings.count) { b in
+                    guard b < objectOf.count, objectOf[b] >= 0, let envelope = objects[objectOf[b]].envelope
+                    else { return }
+                    let n = objectOf[b]
+                    let byBox = Dictionary(
+                        envelope.components(owner: objects[n].id, cellSize: dx).filter {
+                            $0.kind != .facade && $0.kind != .pane
+                        }.map {
+                            (
+                                SurrogateBench.key($0.region, $0.axis, $0.outward) + [
+                                    Self.kindCode($0.kind.rawValue)
+                                ], $0
+                            )
+                        },
+                        uniquingKeysWith: { a, _ in a })
+                    out[b] = (partsOf[b] ?? []).compactMap { s in
+                        let strip = parts.strips[s]
+                        guard let low = strip.low, let high = strip.high,
+                            let kind = strip.kind.flatMap(EnvelopeComponent.Kind.init(rawValue:))
+                        else { return nil }
+                        return byBox[
+                            SurrogateBench.key(Box(min: low, max: high), strip.axis, strip.outward)
+                                + [Self.kindCode(kind.rawValue)]
+                        ].map { (s, n, $0) }
+                    }
+                }
+            }
+            otherStrips = found.flatMap { $0 }.map { (saved: $0.0, object: $0.1, component: $0.2) }
+            print("\(parts.strips.count) walls, slabs and roofs saved; \(otherStrips.count) matched")
+        }
+
+        static func kindCode(_ kind: String) -> Int32 { ["wall": 1, "slab": 2, "roof": 3][kind] ?? 0 }
+
+        /// A saved wall's, slab's or roof's net pressures, Pa per bin.
+        func otherNet(_ saved: Int) -> [Double] {
+            guard let others else { return [] }
+            let strip = others.strips[saved]
+            let scale = Double(others.scalePa ?? 1)
+            return otherValues[strip.first..<(strip.first + strip.count)].map { Double($0) * scale }
         }
 
         /// A saved strip's net pressures, Pa per bin.
@@ -325,6 +381,19 @@ enum SurrogateBench {
         var concrete = Agreement(states: EnvelopeDamageLevel.allCases.count)
         var stone = Agreement(states: EnvelopeDamageLevel.allCases.count)
         var glass = Agreement(states: 3)
+        /// The run against a triangle made of its own peak, first impulse and rise (the oracle):
+        /// what the surrogate's pulse shape alone loses, whatever its loads.
+        var oracleConcrete = Agreement(states: EnvelopeDamageLevel.allCases.count)
+        var oracleStone = Agreement(states: EnvelopeDamageLevel.allCases.count)
+    }
+
+    /// The triangle the surrogate's pulse would be with the run's own peak, first impulse and rise.
+    static func oracle(_ net: [Double], binS: Double) -> FacadeLoadSurrogate.Prediction {
+        let peak = net.max() ?? 0
+        let impulse = firstImpulse(net, binS: binS)
+        let duration = peak > 0 ? 2 * impulse / peak : 0
+        let rise = duration > 0 ? min(max(riseTime(net, binS: binS) / duration, 0), 1) : 0
+        return FacadeLoadSurrogate.Prediction(peakPa: peak, impulsePaS: impulse, riseShare: rise, arrivalS: 0)
     }
 
     struct Judged: Codable {
@@ -339,6 +408,17 @@ enum SurrogateBench {
         var damageS: Double
         var runWallS: Double?
         var bands: [Band]
+        /// The roofs (and the walls saved apart from the façades), by kind: the run against the
+        /// surrogate and against its own triangle, with the surrogate's peak ratio (median, log sd).
+        var parts: [String: PartsJudged]?
+    }
+
+    struct PartsJudged: Codable {
+        var count = 0
+        var peakRatio = 0.0
+        var peakLogSD = 0.0
+        var surrogate = Agreement(states: EnvelopeDamageLevel.allCases.count)
+        var oracle = Agreement(states: EnvelopeDamageLevel.allCases.count)
     }
 
     struct Band: Codable {
@@ -389,6 +469,7 @@ enum SurrogateBench {
         struct Outcome {
             var run: (concrete: Int, stone: Int, glass: GlazingBreakage, peak: Double, impulse: Double)
             var surrogate: (concrete: Int, stone: Int, glass: GlazingBreakage, peak: Double, impulse: Double)
+            var oracle: (concrete: Int, stone: Int)
             var crossed: Int
             var distance: Double
         }
@@ -436,9 +517,13 @@ enum SurrogateBench {
                         f, mass: mass, cellSize: Double(reference.cellSize), coefficients: coefficients),
                     binS: strip.binS)
                 predicted.supportEdges = nil
+                var triangle = FacadeLoadSurrogate.load(
+                    component, Self.oracle(recorded.netPa, binS: strip.binS), binS: strip.binS)
+                triangle.supportEdges = nil
+                let oracle = judged(triangle)
                 out[m] = Outcome(
-                    run: judged(recorded), surrogate: judged(predicted), crossed: f.buildingsCrossed,
-                    distance: f.distanceM)
+                    run: judged(recorded), surrogate: judged(predicted), oracle: (oracle.0, oracle.1),
+                    crossed: f.buildingsCrossed, distance: f.distanceM)
             }
         }
         print(
@@ -477,6 +562,8 @@ enum SurrogateBench {
             for m in members {
                 g.concrete.add(all[m].run.concrete, all[m].surrogate.concrete)
                 g.stone.add(all[m].run.stone, all[m].surrogate.stone)
+                g.oracleConcrete.add(all[m].run.concrete, all[m].oracle.concrete)
+                g.oracleStone.add(all[m].run.stone, all[m].oracle.stone)
             }
             // Glass by building side, as GEER judged it.
             let sides = Dictionary(grouping: members, by: { sideOf[$0] })
@@ -489,6 +576,8 @@ enum SurrogateBench {
             g.concrete.finish()
             g.stone.finish()
             g.glass.finish()
+            g.oracleConcrete.finish()
+            g.oracleStone.finish()
             groups.append(g)
         }
         let indices = Array(all.indices)
@@ -553,8 +642,16 @@ enum SurrogateBench {
                     g.concrete.damaged, g.concrete.damagedExact, g.concrete.damagedWithinOne, g.stone.damaged,
                     g.stone.damagedExact, g.stone.damagedWithinOne, g.glass.damaged, g.glass.damagedExact,
                     g.glass.damagedWithinOne))
+            print(
+                String(
+                    format:
+                        "The run's own triangle (oracle), where either calls it damaged: concrete %d, %.2f / %.2f; stone %d, %.2f / %.2f",
+                    g.oracleConcrete.damaged, g.oracleConcrete.damagedExact,
+                    g.oracleConcrete.damagedWithinOne,
+                    g.oracleStone.damaged, g.oracleStone.damagedExact, g.oracleStone.damagedWithinOne))
             for (title, a, labels) in [
                 ("Concrete", g.concrete, names), ("Stone", g.stone, names),
+                ("Concrete, oracle", g.oracleConcrete, names), ("Stone, oracle", g.oracleStone, names),
                 ("Glass", g.glass, ["W0", "W1-2", "W3"]),
             ] {
                 print("\(title) (rows the run, columns the surrogate; \(labels.joined(separator: ", "))):")
@@ -570,10 +667,88 @@ enum SurrogateBench {
                     b.runSidesAny,
                     b.surrogateSidesAny, b.geer, b.runSidesBlown, b.surrogateSidesBlown, b.geerBlown))
         }
+        // The roofs and the walls saved apart from the façades, each by its own construction.
+        var parts: [String: PartsJudged] = [:]
+        if !reference.otherStrips.isEmpty {
+            let keptParts = reference.otherStrips.indices.filter {
+                reference.inside(
+                    FacadeLoadSurrogate.outerFace(reference.otherStrips[$0].component).centre, share: share)
+            }
+            var judgedParts = [(kind: String, run: Int, surrogate: Int, oracle: Int, ratio: Double)?](
+                repeating: nil, count: keptParts.count)
+            judgedParts.withUnsafeMutableBufferPointer { out in
+                concurrentlyEach(keptParts.count) { m in
+                    let (s, n, component) = reference.otherStrips[keptParts[m]]
+                    guard let parts = reference.others else { return }
+                    let strip = parts.strips[s]
+                    let id = objects[n].id
+                    let construction = scene.envelopeConstruction(for: id)
+                    let kind = EnvelopeComponentLoad.Kind(rawValue: component.kind.rawValue) ?? .wall
+                    let net = reference.otherNet(s)
+                    func level(_ load: EnvelopeComponentLoad) -> Int {
+                        EnvelopeDamageAssessment.assess(
+                            load, construction: construction, buildingTop: tops[n], buildingBase: bases[n]
+                        )?.levels.upperBound.rawValue ?? 0
+                    }
+                    let recorded = EnvelopeComponentLoad(
+                        id: component.id, owner: id, kind: kind, region: component.region,
+                        axis: component.axis,
+                        binS: strip.binS, outerPa: net, innerPa: Array(repeating: 0, count: net.count),
+                        supportEdges: component.supportEdges, outward: component.outward)
+                    let f = FacadeLoadSurrogate.features(
+                        component, owner: n, charge: charge, raster: reference.raster)
+                    let prediction = FacadeLoadSurrogate.predict(
+                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: coefficients)
+                    var predicted = FacadeLoadSurrogate.load(component, prediction, binS: strip.binS)
+                    predicted.kind = kind
+                    var triangle = FacadeLoadSurrogate.load(
+                        component, Self.oracle(net, binS: strip.binS), binS: strip.binS)
+                    triangle.kind = kind
+                    let peak = net.max() ?? 0
+                    out[m] = (
+                        component.kind.rawValue, level(recorded), level(predicted), level(triangle),
+                        peak > 0 && prediction.peakPa > 0 ? log(prediction.peakPa / peak) : .nan
+                    )
+                }
+            }
+            for (kind, list) in Dictionary(grouping: judgedParts.compactMap { $0 }, by: \.kind) {
+                var p = PartsJudged()
+                p.count = list.count
+                let logs = list.map(\.ratio).filter(\.isFinite).sorted()
+                if !logs.isEmpty {
+                    let mean = logs.reduce(0, +) / Double(logs.count)
+                    p.peakRatio = exp(logs[logs.count / 2])
+                    p.peakLogSD = (logs.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(logs.count))
+                        .squareRoot()
+                }
+                for j in list {
+                    p.surrogate.add(j.run, j.surrogate)
+                    p.oracle.add(j.run, j.oracle)
+                }
+                p.surrogate.finish()
+                p.oracle.finish()
+                parts[kind] = p
+                print(
+                    String(
+                        format:
+                            "%@s: %d, surrogate's peak %.2f (%.2f) of the run's; where either calls it damaged, surrogate %d, %.2f / %.2f, oracle %d, %.2f / %.2f",
+                        kind.capitalized as NSString, p.count, p.peakRatio, p.peakLogSD, p.surrogate.damaged,
+                        p.surrogate.damagedExact, p.surrogate.damagedWithinOne, p.oracle.damaged,
+                        p.oracle.damagedExact, p.oracle.damagedWithinOne))
+                for (title, a) in [("surrogate", p.surrogate), ("oracle", p.oracle)] {
+                    print(
+                        "  \(kind.capitalized), \(title) (rows the run, columns \(title); \(names.joined(separator: ", "))):"
+                    )
+                    for row in a.confusion { print("    " + row.map { String(format: "%7d", $0) }.joined()) }
+                }
+            }
+        }
+
         let result = Judged(
             massKg: mass, strips: kept.count, inside: Double(share), groups: groups,
             components: estimate.loads.count, loadsS: estimate.seconds, damageS: damageS,
-            runWallS: value(args, "run-wall").flatMap(Double.init), bands: bands)
+            runWallS: value(args, "run-wall").flatMap(Double.init), bands: bands,
+            parts: parts.isEmpty ? nil : parts)
         if let out = value(args, "out") {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
