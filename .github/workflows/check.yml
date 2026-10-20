@@ -2,21 +2,19 @@
 # need. Only pushes to main and manual runs trigger it: the repository is public, and a
 # self-hosted runner must never run code from other people's pull requests.
 #
-# A push to main runs the light check (`make check-light`: lint, script tests, build, the core
-# tests and the release-build smoke runs, 15 to 20 minutes), a backstop to the full check every
-# session runs before pushing. The full check runs by hand (suite `all`) and every night (see
-# nightly.yml). See docs/continuous-integration.md.
+# Since 20 October 2026 a push to main runs nothing here: the check each session runs before it
+# pushes is the gate, Linux CI runs on every push, and the full check runs every night (see
+# nightly.yml), so the mini stays free for remote checks and sweeps. The light check (`make
+# check-light`) and the full check (suite `all`) run by hand. See docs/continuous-integration.md.
 name: Check
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       suite:
         description: Full application checks, adiabatic benchmark or wall adoption comparison
         type: choice
-        options: [all, adiabatic, wall-adoption, packet-adoption, euler-adoption, qr-reconstruction-adoption, qr-coupled-adoption, qr-application-adoption]
+        options: [all, light, adiabatic, wall-adoption, packet-adoption, euler-adoption, qr-reconstruction-adoption, qr-coupled-adoption, qr-application-adoption]
         default: all
 
 # Let a run finish: several sessions push to main, often faster than a run takes, and cancelling
@@ -34,7 +32,7 @@ permissions:
 
 jobs:
   light:
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'light'
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 30
     steps:
@@ -67,7 +65,7 @@ jobs:
           retention-days: 14
 
   check:
-    if: github.event_name == 'workflow_dispatch' && (inputs.suite != 'adiabatic' && inputs.suite != 'wall-adoption' && inputs.suite != 'packet-adoption' && inputs.suite != 'euler-adoption' && inputs.suite != 'qr-reconstruction-adoption' && inputs.suite != 'qr-coupled-adoption')
+    if: github.event_name == 'workflow_dispatch' && (inputs.suite != 'light' && inputs.suite != 'adiabatic' && inputs.suite != 'wall-adoption' && inputs.suite != 'packet-adoption' && inputs.suite != 'euler-adoption' && inputs.suite != 'qr-reconstruction-adoption' && inputs.suite != 'qr-coupled-adoption')
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 60
     steps:

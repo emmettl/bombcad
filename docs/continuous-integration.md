@@ -10,7 +10,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 
 | Workflow | When | What |
 |---|---|---|
-| [Check](../.github/workflows/check.yml), light | Every push to `main` | `make check-light`: lint, script tests and the documents' links, a build without warnings, the core tests and the release-build smoke runs, 15 to 20 minutes on the mini, most of it building the tests |
+| [Check](../.github/workflows/check.yml), light | By hand (suite `light`); no longer on each push since 20 October 2026 | `make check-light`: lint, script tests and the documents' links, a build without warnings, the core tests and the release-build smoke runs, 15 to 20 minutes on the mini, most of it building the tests |
 | [Check](../.github/workflows/check.yml), full | By hand (suite `all`) | Lint, script tests, build, application and core tests, the packaged app's signature |
 | [Nightly](../.github/workflows/nightly.yml) | 19:00 UTC by GitHub's schedule and 19:20 UTC from the mini, whichever comes first; or by hand | The full check on `main`'s head, with what failed and the suspect commits; then `Scripts/nightly.py`: the benchmarks and the validation suite, compared with earlier nights |
 | [Linux BlastModel](../.github/workflows/linux-blastmodel.yml) | Every push to `main` and every pull request, on GitHub's hosted Ubuntu runner | Once the BlastModel split has landed (see [`Scripts/split/`](../Scripts/split/)): builds BlastModel, the model without Metal, and runs `BlastModelTests` on Linux, about 12 minutes; before that it does nothing. The Mac mini stays the reference |
@@ -18,7 +18,7 @@ reached as `scrimply-ci-tb`. The runner is `mac-mini-bombcad`, installed in
 **The gate is the full check before pushing.** Every session runs `make check` (or
 `make check-anywhere`, see [below](#checks-on-the-mini-instead-of-this-mac)) before it pushes, so
 CI repeating it after every push was mostly duplicate work that kept the mini busy an hour each
-time. Since 11 October a push runs only the light check, a backstop for what a pre-push check
+time. Since 20 October a push runs no check on the mini at all (the pre-push check is the gate, Linux CI runs on each push, the full check runs nightly), which frees the mini for remote checks and sweeps. From 11 October to then a push ran only the light check, a backstop for what a pre-push check
 cannot catch (a merge of two green branches, a file left out of a commit), and the nightly runs
 the whole suite on `main`'s head. When the nightly's full check fails, its summary lists the
 failing tests and errors, and the commits since the last green full check, newest first, as
