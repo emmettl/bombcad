@@ -15,9 +15,10 @@ This page covers:
   plan;
 - what is not done yet.
 
-**Standing: none yet.** Nothing here has trained on a PC, and no model is used by the app. The
-code was tested on the Studio and the CI mini (below). The first real run waits for the PCs to be
-reachable, and the full set of training runs waits for the user's go-ahead for its GPU time.
+**Standing: judged, not used.** The field model has trained on the 200 runs and been judged against
+the façade load surrogate at held-out runs' ground-floor façades
+([below](#the-field-model-against-the-façade-surrogate-20-october-2026)). No model is used by the
+app.
 
 ## Setting up a PC (the user)
 
@@ -352,15 +353,208 @@ measurement replaces these figures.
   tested by carrying on a 12-epoch U-Net run to 20 epochs. `--estimate` ran on the Studio. Nothing
   has run on CUDA yet.
 
+## The field model against the façade surrogate (20 October 2026)
+
+Judged at held-out runs' ground-floor façades (emmettl/bombcad-work#33, #47), with
+`Scripts/ml/judge_field.py`. In short: on peak overpressure the field model beats the surrogate
+at Beirut's façades 50–700 m from the charge in every split, even having never seen Beirut. On
+impulse it predicts a different quantity from the one the surrogate and the damage use, so it
+cannot replace the surrogate there yet.
+
+### Where the two meet
+
+The two predict different things:
+
+- **The field model** gives the peak overpressure and positive impulse 2 m over the ground, on
+  the run's plan cells.
+- **The surrogate** gives each façade strip's load: a storey of one block's side, its peak and
+  its first positive phase's impulse.
+
+On 4 m cells the air 2 m over the ground is the first layer of cells, the layer the recorder
+reads a ground-floor strip from. So each ground-floor strip (its storey spanning 2 m over the
+ground) is matched to the air cells beside its face, along its width, in the run's mask:
+
+- the truth is the run's own field there, the mean over those cells;
+- the field model's value is the mean of its predictions over the same cells;
+- the surrogate's is its strip's, from `scenebench field-surrogate`. That command lays the run's
+  district out again from its own arguments and calls `FacadeLoadSurrogate.estimate`; it runs
+  nothing.
+
+Strips beyond 0.85 of the half side are left out, as `surrogate-judge` leaves them out. The
+judgement is the same as the surrogate's: the median of predicted over run, then the standard
+deviation of the log.
+
+**Checked against the recorder.** Four held-out runs were run again with
+`district-compare --save-loads --export-field`, at the dataset run's top (`--height`). Their
+fields came out bit-identical to the dataset's, and they also give the recorder's own strips:
+beirut-p2-4, beirut-p4-3, made-mixed-s6-1 and made-perimeter-s6-4, 65,934 ground-floor strips.
+Against those strips:
+
+- **Peak: the same quantity.** The run's field in front of a strip gives the strip's peak at
+  1.00, log-SD 0.05.
+- **Impulse: not the same.** The field's impulse is every positive phase. The strip's, and the
+  surrogate's, is the first. The field's is 1.34 times the strip's (log-SD 0.11): 1.23 in sight
+  of the charge, 1.33–1.36 behind buildings.
+
+So peaks are judged fairly against the field, everywhere. Impulses are judged fairly only against
+the recorder, and against the field the surrogate reads about 1/1.34 low.
+
+### The three models
+
+| Model | Trained on | Held out |
+|---|---|---|
+| Round 1, `field-unet-main-1` (bombcad-pc, 60 epochs) | 154 runs | 39, by run |
+| Round 2, `field-unet-main-2` (bombcad-pc, 300 epochs) | 160 runs | 40, by run |
+| `field-unet-studio-layouts` (Studio, MPS, float32, 60 epochs) | 125 runs | 75: all 50 of Beirut and each made-up style's sixth layout |
+
+Rounds 1 and 2 hold out runs, not layouts: a held-out run's buildings were in training at other
+yields or charge points, and Beirut's map at nine other points. The Studio model is the strict
+test: it never saw Beirut. Its best held-out loss was 0.028, against Kingery–Bulmash's 0.098 (the
+rounds by run: 0.019 and 0.0115).
+
+### Beirut's façades 50–700 m, the first look's own ground
+
+Against the run's field. The surrogate's and Kingery–Bulmash's numbers differ by row only
+because each split holds out different runs.
+
+| Split | Strips | Field model, peak | Impulse | Surrogate, peak | Impulse | KB incident, peak | Impulse |
+|---|---|---|---|---|---|---|---|
+| Round 1 (by run) | 113,677 | 0.97 / 0.23 | 0.98 / 0.15 | 1.11 / 0.46 | 0.72 / 0.35 | 1.29 / 0.42 | 0.75 / 0.27 |
+| Round 2 (by run) | 130,957 | 0.99 / 0.17 | 0.99 / 0.13 | 1.10 / 0.45 | 0.73 / 0.34 | 1.25 / 0.43 | 0.77 / 0.27 |
+| Beirut never seen | 598,743 | 1.07 / 0.28 | 1.21 / 0.18 | 1.08 / 0.44 | 0.72 / 0.32 | 1.25 / 0.42 | 0.74 / 0.25 |
+
+By distance, with Beirut never seen:
+
+| Distance | Strips | Field model, peak | Impulse | Surrogate, peak | Impulse | KB incident, peak | Impulse |
+|---|---|---|---|---|---|---|---|
+| 50–100 m | 10,013 | 1.25 / 0.66 | 1.19 / 0.36 | 2.09 / 0.94 | 1.09 / 0.63 | 3.40 / 0.90 | 0.83 / 0.51 |
+| 100–200 m | 39,619 | 1.26 / 0.42 | 1.23 / 0.26 | 1.52 / 0.62 | 0.96 / 0.44 | 1.93 / 0.60 | 0.79 / 0.37 |
+| 200–350 m | 91,761 | 1.14 / 0.30 | 1.25 / 0.19 | 1.33 / 0.46 | 0.83 / 0.36 | 1.50 / 0.41 | 0.77 / 0.26 |
+| 350–500 m | 151,517 | 1.07 / 0.25 | 1.22 / 0.17 | 1.10 / 0.39 | 0.72 / 0.29 | 1.27 / 0.34 | 0.75 / 0.22 |
+| 500–700 m | 305,833 | 1.04 / 0.22 | 1.20 / 0.16 | 0.99 / 0.33 | 0.68 / 0.24 | 1.15 / 0.31 | 0.73 / 0.21 |
+
+By the strip's sight of the charge, with Beirut never seen. "Street" is a street the line from
+the charge runs down (the surrogate's canyon terms); "facing away" is a negative cosine:
+
+| Sight | Strips | Field model, peak | Impulse | Surrogate, peak | Impulse | KB incident, peak | Impulse |
+|---|---|---|---|---|---|---|---|
+| In sight, facing | 4,835 | 1.07 / 0.39 | 1.11 / 0.24 | 0.97 / 0.60 | 0.88 / 0.48 | 0.81 / 0.56 | 0.71 / 0.45 |
+| Shielded, 1–3 crossed | 21,418 | 1.06 / 0.40 | 1.13 / 0.22 | 1.15 / 0.67 | 0.89 / 0.47 | 1.01 / 0.60 | 0.74 / 0.28 |
+| Shielded, 4 or more | 156,192 | 1.08 / 0.25 | 1.21 / 0.16 | 1.24 / 0.43 | 0.81 / 0.33 | 1.17 / 0.36 | 0.73 / 0.22 |
+| Street | 118,185 | 1.11 / 0.29 | 1.21 / 0.19 | 1.19 / 0.46 | 0.76 / 0.35 | 1.17 / 0.40 | 0.71 / 0.24 |
+| Facing away | 298,113 | 1.06 / 0.27 | 1.22 / 0.18 | 0.97 / 0.37 | 0.67 / 0.24 | 1.35 / 0.41 | 0.77 / 0.25 |
+
+### Against the recorder's strips
+
+These are the two Beirut runs' 23,394 ground-floor strips at 50–700 m. The truth is the
+recorder's peak and first-phase impulse, the surrogate's own quantities:
+
+| | Peak | Impulse |
+|---|---|---|
+| The run's field at the strip | 1.00 / 0.05 | 1.32 / 0.12 |
+| Round 2 (both runs held out) | 1.00 / 0.14 | 1.32 / 0.12 |
+| Beirut never seen | 1.02 / 0.26 | 1.69 / 0.18 |
+| Surrogate | 1.05 / 0.38 | 0.96 / 0.26 |
+| Kingery–Bulmash incident | 1.31 / 0.37 | 0.99 / 0.18 |
+| Kingery–Bulmash raised by the facing (the surrogate's base) | 1.59 / 0.43 | 1.12 / 0.29 |
+
+Over all four runs (65,934 strips):
+
+- Beirut never seen: 0.99 / 0.22 in peak, 1.55 / 0.18 in impulse;
+- the surrogate: 0.99 / 0.35 and 0.95 / 0.22;
+- Kingery–Bulmash incident: 1.16 / 0.38 and 1.02 / 0.17.
+
+### By scaled distance and by layout, with Beirut never seen
+
+All 75 held-out runs, 1,661,822 strips, against the run's field:
+
+| Z, m/kg^(1/3) | Strips | Field model, peak | Impulse | Surrogate, peak | Impulse | KB incident, peak | Impulse |
+|---|---|---|---|---|---|---|---|
+| 0–3 | 74,362 | 1.20 / 0.49 | 1.17 / 0.30 | 1.55 / 0.73 | 1.00 / 0.51 | 1.89 / 0.76 | 0.86 / 0.47 |
+| 3–5 | 131,117 | 1.09 / 0.28 | 1.18 / 0.18 | 1.34 / 0.42 | 0.84 / 0.33 | 1.24 / 0.40 | 0.83 / 0.23 |
+| 5–7 | 202,686 | 1.04 / 0.23 | 1.16 / 0.16 | 0.99 / 0.35 | 0.73 / 0.25 | 1.07 / 0.34 | 0.82 / 0.20 |
+| 7–10 | 416,791 | 1.02 / 0.21 | 1.13 / 0.15 | 0.89 / 0.30 | 0.73 / 0.19 | 1.01 / 0.30 | 0.80 / 0.18 |
+| 10–14 | 457,667 | 1.02 / 0.19 | 1.11 / 0.15 | 0.93 / 0.28 | 0.70 / 0.19 | 1.06 / 0.28 | 0.75 / 0.18 |
+| 14–20 | 284,765 | 1.02 / 0.19 | 1.11 / 0.17 | 0.97 / 0.28 | 0.63 / 0.20 | 1.20 / 0.28 | 0.66 / 0.20 |
+| 20–28 | 90,375 | 0.98 / 0.19 | 1.03 / 0.18 | 0.96 / 0.27 | 0.54 / 0.22 | 1.34 / 0.26 | 0.60 / 0.21 |
+| 28–40 | 4,059 | 0.91 / 0.25 | 0.92 / 0.21 | 0.87 / 0.37 | 0.50 / 0.28 | 1.38 / 0.35 | 0.59 / 0.28 |
+
+| Layout | Strips | Field model, peak | Impulse | Surrogate, peak | Impulse | KB incident, peak | Impulse |
+|---|---|---|---|---|---|---|---|
+| Beirut | 1,446,015 | 1.04 / 0.24 | 1.15 / 0.17 | 0.97 / 0.38 | 0.69 / 0.27 | 1.12 / 0.37 | 0.75 / 0.22 |
+| Grid | 89,723 | 0.99 / 0.12 | 0.99 / 0.08 | 0.90 / 0.25 | 0.92 / 0.18 | 1.02 / 0.22 | 0.97 / 0.12 |
+| Industrial | 7,375 | 0.97 / 0.09 | 0.98 / 0.05 | 0.94 / 0.16 | 0.78 / 0.17 | 1.08 / 0.27 | 0.93 / 0.11 |
+| Mixed | 55,326 | 0.97 / 0.17 | 0.98 / 0.10 | 0.93 / 0.28 | 0.68 / 0.20 | 1.05 / 0.33 | 0.76 / 0.18 |
+| Perimeter | 50,686 | 0.98 / 0.17 | 1.04 / 0.14 | 0.95 / 0.35 | 0.66 / 0.26 | 1.06 / 0.41 | 0.70 / 0.25 |
+| Towers | 12,697 | 0.98 / 0.18 | 1.03 / 0.12 | 1.11 / 0.28 | 0.57 / 0.21 | 1.23 / 0.39 | 0.67 / 0.21 |
+
+The rounds by run, over all their held-out strips:
+
+- round 1 (497,686 strips): 0.97 / 0.18 in peak and 0.99 / 0.13 in impulse;
+- round 2 (544,677): 0.98 / 0.13 and 1.01 / 0.11;
+- on the same strips, the surrogate gave 0.94 / 0.37 and 0.72–0.73 / 0.28–0.29.
+
+### What it says
+
+- **Peak: the field model wins where it matters.** Never having seen Beirut, it scatters by
+  0.22–0.30 at Beirut's façades 200–700 m, where the surrogate scatters by 0.33–0.46. Its median
+  is 1.04–1.14, against the surrogate's 0.99–1.33. Close in, at 50–200 m, both run high:
+  1.25 / 0.42–0.66 against 1.52–2.09 / 0.62–0.94. Behind buildings and down streets it holds
+  0.25–0.29 where the surrogate gives 0.43–0.46. Trained with Beirut's map, at other points and
+  yields (round 2), it scatters by 0.17 against the field and 0.14 against the recorder.
+- **Impulse: not yet comparable as a product.** Its scatter is lower than the surrogate's, both
+  against the recorder (0.18 against 0.26, Beirut never seen) and against the field (0.18 against
+  0.32). But it learned all the positive phases, 1.3 times the first phase the SDOF and the glass
+  take. Never having seen Beirut, it also runs 1.2 times high there.
+- **The surrogate on these runs is no better than Kingery–Bulmash's incident values.** Against
+  the recorder it scatters by 0.35–0.38 in peak (Kingery–Bulmash 0.37–0.38) and 0.22–0.26 in
+  impulse (0.17–0.18). It runs 1.3–2.1 times high within 350 m. Its terms were fitted to
+  district-compare runs on the balloon start, and these runs are on the mapped start; that
+  difference may be most of its close-in excess. This is for its next refit to check; nothing was
+  changed.
+- **Limits of this judgement:**
+  - only ground-floor strips: the field model knows nothing above 2 m;
+  - only 4 m runs, with their artefacts, as the truth for both;
+  - Beirut's 50 runs share one map, so "never seen" means no Beirut run at all, not a new city.
+
+### Gotcha: float16 on MPS does not train
+
+The first Studio run used train_field.py's default for MPS, float16 autocast with no gradient
+scaler. Its training loss stayed at 0.046–0.053 for 46 epochs. In float32 (`--amp off`) the same
+run fell to 0.015. On MPS, use `--amp off` until the trainer scales float16's gradients there.
+The default is unchanged.
+
+### What it would take
+
+- **A first-phase impulse target.** field-export would write the first positive phase's impulse
+  per cell, by the recorder's rule (from the start until the overpressure first falls below
+  nothing after reaching half its peak), beside the all-phases impulse. That needs a per-cell
+  accumulator and flag in the solver, kept only when asked. Then the runs would be exported again
+  and the model retrained.
+- **Storeys above the ground floor.** These need fields at more heights (`--above`), or a façade
+  head trained on `--save-loads` strips.
+- **The decision.** A round on a PC with Beirut and whole layouts held out, then judging glass by
+  building side through the SDOF, as `surrogate-judge` does: the product test, more than the
+  load ratios.
+
+The judgements, the strips and the four recorder runs are in
+`/Volumes/StudioData/bombcad/ml/judge/`. The Studio model is in `field-unet-studio-layouts/`.
+
+```bash
+python -I Scripts/ml/judge_field.py --data /Volumes/StudioData/bombcad/ml/datasets/main \
+    --model unet2=/Volumes/StudioData/bombcad/ml/field-unet-main-2/out/best.pt --out judged.json
+```
+
 ## Not done yet
 
 - **The PCs' set-up**, by the user (above), then a first `--estimate` on each card to replace the
   estimated times.
 - **The full run list.** It waits for the user's go-ahead for about 5 GPU hours on the Studio
   (or about 15 on the mini).
-- **A first real training and its judgement.** Hold out whole layouts (`--split-by layout`) and
-  Beirut, compare with the [façade load surrogate](surrogate-first-look.md) by band, and decide
-  whether the field model helps the first look and the [hybrid far field](hybrid-far-field.md).
+- **A first-phase impulse target**, and a round trained with Beirut and whole layouts held out on
+  a PC, before deciding whether the field model helps the first look and the
+  [hybrid far field](hybrid-far-field.md)
+  ([below](#the-field-model-against-the-façade-surrogate-20-october-2026)).
 - **Other learned models** on the same runner, as they come:
   - emulators for the uncertainty work;
   - walls and roofs;

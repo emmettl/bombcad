@@ -56,37 +56,46 @@ INPUTS = ["height", "footprint", "ground", "logScaledDistance", "logKingeryBulma
 
 # MARK: - Data
 
-def load_runs(folder):
+def load_runs(folder, only=None):
     """[{id, layout, x (C, H, W) float32 features before standardising, y (2, H, W) log targets,
-    kb (2, H, W) log Kingery–Bulmash, mask (H, W), z (H, W) scaled distance}] of a dataset."""
+    kb (2, H, W) log Kingery–Bulmash, mask (H, W), z (H, W) scaled distance}] of a dataset (the
+    runs named in `only`, if given)."""
     root = os.path.join(folder, "runs")
     runs = []
     for name in sorted(os.listdir(root)):
-        path = os.path.join(root, name)
-        try:
-            with open(os.path.join(path, "meta.json")) as handle:
-                meta = json.load(handle)
-        except (OSError, ValueError):
+        if only is not None and name not in only:
             continue
-        if not meta.get("stable", False):
-            continue
-        raw = np.load(os.path.join(path, "inputs.npy"))
-        targets = np.load(os.path.join(path, "targets.npy"))
-        mask = np.load(os.path.join(path, "mask.npy")) > 0
-        names = [c["name"] for c in meta["inputs"]]
-        channel = {n: raw[names.index(n)] for n in names}
-        height = channel["height"]
-        kb = np.stack([np.log(np.maximum(channel["kingeryBulmashPeak"], 1.0)),
-                       np.log(np.maximum(channel["kingeryBulmashImpulse"], 1e-6))])
-        x = np.stack([height, (height > 0).astype(np.float32), channel["ground"], channel["logScaledDistance"],
-                      kb[0], kb[1]]).astype(np.float32)
-        # Peaks under 10 Pa and impulses under 1 mPa s are noise, not targets.
-        mask &= (targets[0] > 10) & (targets[1] > 1e-3)
-        y = np.log(np.maximum(targets, 1e-6)).astype(np.float32)
-        runs.append({"id": meta["id"], "layout": meta.get("layout") or meta["id"], "x": x, "y": y,
-                     "kb": kb.astype(np.float32), "mask": mask, "z": np.exp(channel["logScaledDistance"]),
-                     "meta": meta})
+        run = load_run(os.path.join(root, name))
+        if run:
+            runs.append(run)
     return runs
+
+
+def load_run(path):
+    """One run of a dataset (as `load_runs`), or None if it is unfinished or was unstable."""
+    try:
+        with open(os.path.join(path, "meta.json")) as handle:
+            meta = json.load(handle)
+    except (OSError, ValueError):
+        return None
+    if not meta.get("stable", False):
+        return None
+    raw = np.load(os.path.join(path, "inputs.npy"))
+    targets = np.load(os.path.join(path, "targets.npy"))
+    mask = np.load(os.path.join(path, "mask.npy")) > 0
+    names = [c["name"] for c in meta["inputs"]]
+    channel = {n: raw[names.index(n)] for n in names}
+    height = channel["height"]
+    kb = np.stack([np.log(np.maximum(channel["kingeryBulmashPeak"], 1.0)),
+                   np.log(np.maximum(channel["kingeryBulmashImpulse"], 1e-6))])
+    x = np.stack([height, (height > 0).astype(np.float32), channel["ground"], channel["logScaledDistance"],
+                  kb[0], kb[1]]).astype(np.float32)
+    # Peaks under 10 Pa and impulses under 1 mPa s are noise, not targets.
+    mask &= (targets[0] > 10) & (targets[1] > 1e-3)
+    y = np.log(np.maximum(targets, 1e-6)).astype(np.float32)
+    return {"id": meta["id"], "layout": meta.get("layout") or meta["id"], "x": x, "y": y,
+            "kb": kb.astype(np.float32), "mask": mask, "z": np.exp(channel["logScaledDistance"]),
+            "meta": meta}
 
 
 def split(runs, holdout, holdout_runs, by, seed):
