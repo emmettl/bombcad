@@ -87,6 +87,31 @@ struct DeflagrationTests {
         #expect(abs(speed / expected - 1) < 0.1, "\(speed) m/s, expected \(expected)")
     }
 
+    @Test(
+        "The stall's options, an initial u' and the young flame's correction, each burn a young ball faster")
+    func stallOptions() throws {
+        func burnt(_ change: (inout FlameAcceleration) -> Void) throws -> Double {
+            var scenario = Scenario(
+                name: "Ball", domainSize: SIMD3(repeating: 1), boxes: [],
+                charge: Charge(mass: 0, position: .zero))
+            scenario.reflectiveFaces = .all
+            var flame = FlameAcceleration(instability: nil)
+            change(&flame)
+            scenario.deflagration = Deflagration(
+                gas: .methane, region: Box(min: .zero, max: SIMD3(repeating: 1)),
+                ignition: SIMD3(repeating: 0.5), acceleration: flame)
+            let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.05)
+            solver.advance(until: 0.05)
+            return try #require(solver.deflagrationState()).burntFraction
+        }
+        let plain = try burnt { _ in }
+        let floored = try burnt { $0.initialTurbulence = 0.1 }
+        let young = try burnt { $0.youngFlame = 0.75 }
+        #expect(plain > 0, "nothing burnt")
+        #expect(floored > 1.2 * plain, "\(floored) against \(plain)")
+        #expect(young > 1.2 * plain, "\(young) against \(plain)")
+    }
+
     @Test("A deflagration takes the species from afterburning and keeps the air awake")
     func deflagrationSetUp() throws {
         var scenario = Scenario(

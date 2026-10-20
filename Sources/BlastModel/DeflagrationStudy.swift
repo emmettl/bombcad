@@ -203,6 +203,13 @@ public struct VentedRoomStudy: Sendable {
     public var clearanceAbove: Float = 2
     /// Gravity in the air (`SolverConfiguration.gravity`), for the burnt gas's buoyancy; nil for none.
     public var gravity: AirGravity?
+    /// How far apart the points `Result.arrivals` follows are, m: half a metre, as Bauwens et al.'s
+    /// thermocouples were; finer to follow a young flame (a quarter of a metre traced the stall).
+    public var arrivalSpacing: Float = 0.5
+    /// Air round the room's back and sides, beyond its vent wall and above its roof (m): cropped,
+    /// a finer grid's run is cheaper. 2, 5 and `clearanceAbove` by default.
+    public var margin: Float = 2
+    public var outside: Float = 5
 
     public init() {}
 
@@ -225,7 +232,8 @@ public struct VentedRoomStudy: Sendable {
         public var cellSize: Float
         public var steps: Int
         /// When the flame reached each point on the line through the ignition point along the vent's
-        /// axis, 1.4 m above the floor (where Bauwens et al.'s thermocouples were), every half metre:
+        /// axis, 1.4 m above the floor (where Bauwens et al.'s thermocouples were), every half metre
+        /// (`arrivalSpacing`):
         /// the distance from the ignition point, positive towards the vent, and the time, s, at
         /// which the share of the cloud's gas still unburnt there first fell below a half. Points the
         /// flame never reached are left out.
@@ -277,7 +285,7 @@ public struct VentedRoomStudy: Sendable {
     /// The points `Result.arrivals` follows: their distances from the ignition point and positions.
     package func arrivalProbes(_ scenario: Scenario) -> [(distance: Double, point: SIMD3<Float>)] {
         let ignition = scenario.deflagration?.ignition ?? .zero
-        let spacing: Float = 0.5
+        let spacing = max(arrivalSpacing, 0.01)
         var probes: [(Double, SIMD3<Float>)] = []
         let first = Int((-ignition.x / spacing).rounded(.up))
         let last = Int(((scenario.domainSize.x - ignition.x) / spacing).rounded(.down))
@@ -296,8 +304,6 @@ public struct VentedRoomStudy: Sendable {
         // domain can flow back in through it (the faces copy the cell inside them), and burnt gas
         // drawn back in has pressurised a whole domain whose room stood against its face.
         let t = wallThickness
-        let margin: Float = 2
-        let outside: Float = 5
         let opening =
             ventOpening.map { simd_min($0, SIMD2(room.y, room.z)) } ?? SIMD2(repeating: ventArea.squareRoot())
         let size = SIMD3(

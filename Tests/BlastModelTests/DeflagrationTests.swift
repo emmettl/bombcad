@@ -21,6 +21,26 @@ struct DeflagrationTests {
         #expect(share > 0.5 && share < 1, "\(share)")
     }
 
+    @Test("The stall's options are off by default, left out of saves, and the arrivals keep their half metre")
+    func stallOptionsOff() throws {
+        let flame = FlameAcceleration()
+        #expect(flame.initialTurbulence == nil && flame.youngFlame == nil)
+        let json = String(decoding: try JSONEncoder().encode(flame), as: UTF8.self)
+        #expect(!json.contains("initialTurbulence") && !json.contains("youngFlame"))
+        var traced = flame
+        traced.initialTurbulence = 0.1
+        traced.youngFlame = 0.75
+        #expect(
+            try JSONDecoder().decode(FlameAcceleration.self, from: JSONEncoder().encode(traced)) == traced)
+        var study = VentedRoomStudy()
+        let scenario = study.scenario()
+        let half = study.arrivalProbes(scenario).map(\.distance)
+        #expect(half.contains(-0.5) && half.contains(0.5) && !half.contains(0.25))
+        study.arrivalSpacing = 0.25
+        let quarter = study.arrivalProbes(scenario).map(\.distance)
+        #expect(quarter.contains(-0.25) && quarter.contains(-0.75) && quarter.count > 2 * half.count - 2)
+    }
+
     @Test("Burning velocities follow Gülder's fit and vanish outside the flammable range")
     func burningVelocities() {
         let methane = FlammableGas.methane

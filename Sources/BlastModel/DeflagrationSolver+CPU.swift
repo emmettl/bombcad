@@ -47,6 +47,10 @@ package struct DeflagrationUniforms {
     var speedTableCount: UInt32 = 0
     var speedPhi: SpeedTable = DeflagrationUniforms.emptyTable
     var speedValue: SpeedTable = DeflagrationUniforms.emptyTable
+    /// The least u′ the sub-grid turbulence's wrinkling takes, m/s (`FlameAcceleration.initialTurbulence`).
+    package var turbulenceFloor: Float = 0
+    /// c in the young flame's area correction (`FlameAcceleration.youngFlame`).
+    package var youngFlame: Float = 0
 
     package typealias SpeedTable = (
         Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float, Float,
@@ -112,7 +116,9 @@ package struct DeflagrationUniforms {
         marksteinNumber: Float = 0,
         speedTableCount: UInt32 = 0,
         speedPhi: SpeedTable = DeflagrationUniforms.emptyTable,
-        speedValue: SpeedTable = DeflagrationUniforms.emptyTable
+        speedValue: SpeedTable = DeflagrationUniforms.emptyTable,
+        turbulenceFloor: Float = 0,
+        youngFlame: Float = 0
     ) {
         self.nx = nx
         self.ny = ny
@@ -156,6 +162,8 @@ package struct DeflagrationUniforms {
         self.speedTableCount = speedTableCount
         self.speedPhi = speedPhi
         self.speedValue = speedValue
+        self.turbulenceFloor = turbulenceFloor
+        self.youngFlame = youngFlame
     }
 }
 

@@ -64,6 +64,8 @@ struct DeflagrationUniforms {
     uint speedTableCount;          // a tabulated burning velocity: points (phi, m/s); 0 for Gulder's
     float speedPhi[16];
     float speedValue[16];
+    float turbulenceFloor;         // the least u' the sub-grid turbulence's wrinkling takes, m/s; 0: none
+    float youngFlame;              // c in the young flame's area correction (1 + c dx / r)^2; 0: none
 };
 
 static inline float laminarBurningSpeed(float fraction, constant DeflagrationUniforms &d) {
@@ -220,6 +222,11 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         // and are taken as no turbulence.
         float turbulent = eddyViscosity[index] * d.velocityPerViscosity;
         turbulent = as_type<uint>(turbulent) < 0x7F800000u ? turbulent : 0.0f;
+        if (d.turbulenceFloor > 0.0f) {
+            // The mixture's own turbulence before it was lit (an option, off by default): u' no
+            // less than that anywhere in the cloud.
+            turbulent = max(turbulent, d.turbulenceFloor);
+        }
         float thickness = d.kinematicViscosity / (compression * laminar);
         float wrinkling =
             d.turbulenceScale * sqrt(turbulent / laminar) * pow(dx / thickness, 1.0f / 6.0f);
@@ -280,6 +287,14 @@ kernel void advanceFlame(const device Cell *state [[buffer(0)]],
         speed /= congestion[index].x;
     }
 
+    if (d.youngFlame > 0.0f) {
+        // The young flame's area (an option, off by default): a front a few cells thick burns over
+        // (1 - 0.9 dx / r)^2 of a thin sphere's area at radius r, so the burning is scaled by
+        // (1 + c dx / r)^2, r the distance from the ignition point, at least a cell.
+        float radius = max(length(centreOfCell - ignition), dx);
+        float correction = 1.0f + d.youngFlame * dx / radius;
+        speed *= correction * correction;
+    }
     if (d.externalFactor != 1.0f) {
         // The external explosion (Molkov and Makarov 2004): outside the cloud's region the vented
         // mixture burns in the vortex it rolls up into, faster than isotropic turbulence gives.

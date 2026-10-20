@@ -144,6 +144,8 @@ final class DeflagrationStage {
             u.wrinklingPower = growth?.power ?? Self.wrinklingPower
             u.wrinklingLimit = growth?.limit ?? Self.wrinklingLimit
             u.externalFactor = max(acceleration.externalFactor ?? 1, 0)
+            u.turbulenceFloor = max(acceleration.initialTurbulence ?? 0, 0)
+            u.youngFlame = max(acceleration.youngFlame ?? 0, 0)
             u.regionMinX = deflagration.region.min.x
             u.regionMinY = deflagration.region.min.y
             u.regionMinZ = deflagration.region.min.z

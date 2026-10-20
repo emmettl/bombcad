@@ -1139,6 +1139,8 @@ public enum StandingTable {
         "FlameAcceleration.externalFactor": .option([.deflagration]),
         "FlameAcceleration.turbulence": .option([.deflagration]),
         "FlameAcceleration.thermodiffusive": .option([.deflagration]),
+        "FlameAcceleration.initialTurbulence": .option([.deflagration]),
+        "FlameAcceleration.youngFlame": .option([.deflagration]),
         "FlameTurbulence.scale": .option([.deflagration]),
         "VentPanel.box": .input,
         "VentPanel.releasePressure": .input,

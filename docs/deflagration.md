@@ -15,7 +15,8 @@ sub-grid model of FM Global's own LES of these rooms, and by the flow round obst
 does resolve, and by its own cellular instability from the onset radius measured in that chamber.
 - Lit at the back wall of FM Global's chamber, the peak pressure is 0.9–1.8 times the tests'.
 - Lit in the middle, it is 0.4–0.6 times theirs: the half of the flame facing the back wall
-  stalls, and the acoustically driven peaks are not reproduced.
+  stalls while the vent draws the gas behind it towards the vent, and the acoustically driven peaks
+  are not reproduced.
 - Every result is below the venting correlations of EN 14994 and NFPA 68, which are conservative
   for this room (the tests measured a tenth to a quarter of them).
 
@@ -514,8 +515,8 @@ speeds are those of the far-field runs; the copying faces' were within 2% inside
   the vent (96 m/s against 45 in test 4).
 - **Lit in the middle it is low**, 0.41–0.58 of the measured peaks, where their LES came within
   a third. Its flame speeds inside the room are within a fifth of the measured ones, but the back of
-  the flame still stalls between 0.5 and 1 m from the ignition point (see the trace above), before
-  running at the tests' speed beyond. Their measured maxima for tests 2 and 5 are the acoustically
+  the flame still stalls between 0.5 and 1 m from the ignition point (see [the stall's
+  trace](#the-centre-lit-stall-traced-20-october-2026)), before running at the tests' speed beyond. Their measured maxima for tests 2 and 5 are the acoustically
   driven second peaks, which the model does not reproduce.
 - **The measured mechanisms are partly there.** Bauwens et al. trace the first large peak to a
   Helmholtz oscillation, amplified by the Taylor instability of the flame as the burnt gas is
@@ -523,6 +524,70 @@ speeds are those of the far-field runs; the copying faces' were within 2% inside
   between the room's acoustics and the burning. The model resolves the oscillation and the external
   burning only as far as its grid and flame allow; the Taylor instability's wrinkling below the grid
   it does not have, as their LES did not.
+
+### The centre-lit stall, traced (20 October 2026)
+
+Why the back half of a flame lit in the middle stalls, one factor at a time against today's flame
+and far-field faces. Tests 1 and 5 are lit in the middle, test 4 at the back wall as a control, and
+test 6 is run for the stop rule. The cells are 0.1 m. The flame's arrival is taken every quarter
+metre along the vent's axis, and every 50 ms the run prints the back front's position and the
+gas's velocity just beyond it (`blastbench deflagration vented --speeds --arrival-spacing 0.25
+--back-front`). The runs are in `/Volumes/StudioData/bombcad/deflagration/stall-matrix/`. Peaks are
+given over the measured ones; the closed sphere is the 48-cell one [above](#a-closed-sphere),
+`vessel --accelerated --cells 48`.
+
+| | Test 1 | Test 5 | Test 4 | Test 6 | Test 1, back speed over 0.25–0.5 / 0.5–0.75 / 0.75–1 / 1–1.25 / 1.25–1.5 m, m/s | Test 1's flame at 1 m | Sphere's half rise |
+|---|---|---|---|---|---|---|---|
+| Today's flame | 0.54 | 0.41 | 0.96 | 1.78 | −1.9 / −0.4 / −0.2 / −2.0 / −3.4 | 0.43 s | 217 ms |
+| (a) the vent covered by a 0.3 kPa panel | 0.56 | 0.43 | 0.96 | | −2.0 / −0.2 / −7.6 / −1.9 / −22.6 | 0.43 s | |
+| (b) u′ at least 0.1 m/s, the tests' initial turbulence | 0.84 | 0.92 | 1.02 | 1.92 | −4.3 / −2.7 / −2.4 / −0.3 / −5.3 | 0.21 s | 166 ms |
+| (c) the young flame's area, (1 + 0.75 Δ/r)² | 0.85 | 0.79 | 1.08 | 2.06 | −2.9 / −1.6 / −0.2 / −1.1 / −3.1 | 0.26 s | 186 ms |
+| (d) 0.05 m cells | 0.75 | | | | −1.6 / −1.1 / −0.3 / −0.9 / −4.1 | 0.40 s | |
+| Measured | 2.17 kPa | 7.23 | 4.79 | 7.94 | −2.6 to −3.6 | about 0.26 s | 253 ms (thin flame) |
+
+A speed far above its neighbours, such as the panel's −22.6 m/s, is the front reaching a probe round
+the side after standing. On 0.1 m cells the vent side's quarter-metre speeds alternate high and low,
+as the probes fall on cells' centres and faces in turn; on 0.05 m cells they are smooth.
+
+- **The stall is the vent's draw.** Lit in the middle, the back front first runs at about 1.4 m/s,
+  pushing the gas ahead of it back at 0.5 m/s. Once the vent-side flame is within a metre or so of
+  the vent (0.5 s in test 1), the gas just beyond the back front turns towards the vent. It flows at
+  0.7–2.3 m/s for over a second (2.2 m/s at most in test 5), faster than the front burns into it.
+  The front stands 0.6–0.8 m from the ignition point from 0.5 to 1.9 s, and is carried back towards
+  it, to 0.33 m at 1.6 s. Then the draw dies away and the front runs at the tests' speed.
+- **(a) The panel changes nothing.** It opened at 0.17–0.20 s, as the tests' sheet went at
+  0.2–0.3 s, long before the burnt gas reached the vent. The draw starts when the burnt gas vents,
+  not when the cover goes. The peaks rose 3–4%.
+- **(c) brings the young flame to 1 m on time, and it still stalls.** Its flame reached 1 m at
+  0.26 s, as the tests' did, so a late young flame is not the stall by itself. The back front got
+  to 0.78 m before a draw of up to 1.9 m/s stopped it at 0.75–1 m. Tests 1 and 5 rose to 0.85 and
+  0.79, but test 6 went to 2.06 and the closed sphere half-rose 17% sooner than today's flame.
+- **(b) moves the stall 0.4 m out.**
+  - *What it is:* u′ of 0.1 m/s in Bradley's correlation wrinkles the front by Ξ_t ≈ 1.9 everywhere
+    on 0.1 m cells, more on coarser ones, since it goes as (Δ/δ)^(1/6). Bauwens et al. measured 1.2
+    times the laminar flame at 0.3 m, turbulence and instability together.
+  - *The back front:* it ran at 2.4–4.3 m/s to 1 m, then stood at 1–1.25 m (−0.3 m/s) under a draw of
+    up to 3.3 m/s, and was carried back to 0.65 m.
+  - *The peaks:* 0.84, 0.92 and 1.02 of tests 1, 5 and 4, and 1.92 of test 6. The closed sphere
+    half-rose 31% sooner than today's flame, 34% ahead of the thin-flame model.
+  - With the panel as well, every number was within 2% of (b) alone.
+- **(d) 0.05 m cells stall as well.** Test 1 came to 0.75 of its peak (0.54 on 0.1 m cells), with
+  the vent side's speeds within a fifth of the measured ones to 2 m. The back front stood between
+  0.5 and 1.25 m (−1.1, −0.3 and −0.9 m/s). The draw reached 4.7 m/s and carried the front back to
+  the ignition point at 1.4 s. The run took 13 minutes on the Studio, uncropped.
+- **The external explosion** (Molkov and Makarov's factor of 2, already an option) took test 1 to
+  1.17 and left the stall as it was (−0.1 m/s at 0.5–0.75 m).
+
+**The plan's stop rule is met, and nothing is adopted.** The rule: stop if no factor lifts the back
+speed above 1 m/s over 0.5–1 m without test 6 going past 2.0 or the closed sphere running more than
+5% fast. Only (b) lifts it there, with the sphere 31% fast and a stall 0.4 m further out. Whatever
+holds the tests' back flame at −3 m/s against the draw is none of these factors. Either their draw
+behind the flame is weaker than the model's, or their back flame burns far faster: 4–6 m/s relative
+to the gas against the model's draw, ten to fifteen times the laminar burning velocity. The
+Helmholtz oscillation and the Taylor instability Bauwens et al. name are candidates; neither is
+traced here.
+(b) and (c) stay as options, off by default: `FlameAcceleration.initialTurbulence` and `youngFlame`,
+`--initial-turbulence` and `--young-flame` in `blastbench deflagration vented` and `vessel`.
 
 ### Hydrogen and town gas
 
@@ -688,7 +753,9 @@ ICHS 2011), tabulated; HySEA's containers with obstacles, vent panels and strati
    - The Taylor instability and the external vortex's extra wrinkling are not modelled; the
      latter is an option (Molkov and Makarov's factor of 2).
    - Lit in the middle of FM Global's chamber the peaks are 0.4–0.6 of the tests', and the
-     flame stalls towards the back wall; lit at a back wall, 0.9–1.8 of them.
+     flame stalls towards the back wall, held by the vent's draw for about a second (none of the
+     vent's cover, the tests' initial turbulence, the young flame's area or finer cells cures it);
+     lit at a back wall, 0.9–1.8 of them.
 2. **A young flame is slow**: until it is about seventeen cells in radius, a front four cells thick
    burns over too small an area (55–83% of it from three to ten cells). On 0.1 m cells that is most
    of a room. The tests' initial turbulence (u′ ≈ 0.1 m/s) is not carried.
@@ -725,8 +792,9 @@ ICHS 2011), tabulated; HySEA's containers with obstacles, vent panels and strati
 - Congestion below the grid with the pitch's effect, sharing the obstacles between what the grid
   resolves and what it models ([what was tried](congestion-model.md#merge)), so that an open vapour
   cloud explosion is predicted rather than fitted.
-- Find why a flame lit in the middle of a vented room stalls towards the back wall, where the tests
-  and their LES ran at 3 m/s.
+- What holds the back of a flame lit in the middle of a vented room at the tests' 3 m/s against the
+  vent's draw: the stall's cause is the draw (see [the trace](#the-centre-lit-stall-traced-20-october-2026)),
+  and none of the vent's cover, the initial turbulence or the young flame's area overcomes it.
 - A young flame that burns at its speed from the start: a sub-grid ignition kernel, carried until
   the resolved front is many cells across, in place of the area lost to the front's thickness.
 - A thinner front, or one tracked across the cell, for K_G and the last unburnt layer.

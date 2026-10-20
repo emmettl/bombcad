@@ -328,6 +328,16 @@ public struct FlameAcceleration: Sendable, Hashable, Codable {
     /// (`FlammableGas.lewisNumber`), as Bauwens, Chao and Dorofeev (ICHS 2011) took 0.9/Le for lean
     /// hydrogen's vented flames. nil for none, as in files saved before 17 October 2026.
     public var thermodiffusive: ThermodiffusiveResponse? = .inverseLewis
+    /// The mixture's own turbulence before it is lit, u′ (m/s): the least sub-grid velocity the
+    /// sub-grid turbulence's wrinkling takes anywhere in the flame, as a quiescent test chamber's
+    /// residual turbulence (about 0.1 m/s in Bauwens et al. 2008). Only with `turbulence`. nil for
+    /// none, the default: an option for tracing the centre-lit stall (docs/deflagration.md).
+    public var initialTurbulence: Float?
+    /// The young flame's area correction: the burning scaled by (1 + c Δ/r)², r the distance from
+    /// the ignition point (at least a cell), for the area a front a few cells thick loses on a small
+    /// flame, about (1 − 0.9 Δ/r)² (docs/deflagration.md, grid convergence). c is this value (0.75
+    /// was tried); nil for none, the default.
+    public var youngFlame: Float?
 
     public init(
         factor: Float = 1, instability: FlameInstability? = .measured,

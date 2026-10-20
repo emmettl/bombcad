@@ -47,6 +47,13 @@ private func runClosedVessel(device: MTLDevice, gas: FlammableGas, concentration
             if let scale = option("turbulence").flatMap({ Float($0) }) {
                 study.acceleration.turbulence = scale > 0 ? FlameTurbulence(scale: scale) : nil
             }
+            // The stall trace's options, as in `vented`.
+            if let floor = option("initial-turbulence").flatMap({ Float($0) }), floor > 0 {
+                study.acceleration.initialTurbulence = floor
+            }
+            if let c = option("young-flame").flatMap({ Float($0) }), c > 0 {
+                study.acceleration.youngFlame = c
+            }
             if flag("mixing") {
                 study.mixing = option("mixing-model") == "smagorinsky" ? SubgridMixing() : .sigma
             }
@@ -309,6 +316,16 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
             base.obstacles = frame
         }
     }
+    // The stall's trace (docs/deflagration.md): arrivals every `--arrival-spacing` m, the tests'
+    // initial turbulence as a floor on u' (`--initial-turbulence 0.1` m/s), the young flame's area
+    // correction (`--young-flame 0.75`), and a cropped domain (`--margin`, `--outside` m).
+    if let spacing = option("arrival-spacing").flatMap({ Float($0) }) { base.arrivalSpacing = spacing }
+    if let floor = option("initial-turbulence").flatMap({ Float($0) }) {
+        base.acceleration.initialTurbulence = floor > 0 ? floor : nil
+    }
+    if let c = option("young-flame").flatMap({ Float($0) }) { base.acceleration.youngFlame = c > 0 ? c : nil }
+    if let margin = option("margin").flatMap({ Float($0) }) { base.margin = margin }
+    if let outside = option("outside").flatMap({ Float($0) }) { base.outside = outside }
     if flag("gravity") { base.gravity = AirGravity() }
     if let clearance = option("clearance").flatMap({ Float($0) }) { base.clearanceAbove = clearance }
     let a = base.acceleration
@@ -317,7 +334,9 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
             + " × \(format(Double(base.room.z), 1)) m room, lit at the \(base.ignition == .centre ? "middle" : "back wall"),"
             + " vent release \(format(Double(base.releasePressure) / 1000, 1)) kPa; flame: factor \(a.factor),"
             + " cellular \(a.instability.flatMap { $0.radius(gas: gas, fraction: base.concentration ?? gas.stoichiometricFraction) }.map { "from \(format(Double($0), 3)) m" } ?? "off"),"
-            + " sub-grid turbulence \(a.turbulence.map { "a = \($0.scale)" } ?? "off")")
+            + " sub-grid turbulence \(a.turbulence.map { "a = \($0.scale)" } ?? "off")"
+            + (a.initialTurbulence.map { ", u' at least \($0) m/s" } ?? "")
+            + (a.youngFlame.map { ", young flame (1 + \($0) dx/r)^2" } ?? ""))
     print(
         pad("A_v m2", 8) + pad("dx m", 7) + pad("P_red kPa", 11) + pad("raw", 8) + pad("at ms", 8)
             + pad("vent ms", 9) + pad("burnt", 8) + pad("Molkov", 8) + pad("Bartk.", 8) + pad("NFPA 68", 9)
@@ -352,6 +371,9 @@ private func runVented(device: MTLDevice, gas: FlammableGas, concentration: Floa
             }
             var monitor: ((BlastSolver) -> Void)?
             if flag("front") { monitor = { solver in frontStatistics(solver) } }
+            if flag("back-front") {
+                monitor = { solver in backFront(solver, ignition: study.scenario().deflagration!.ignition) }
+            }
             let r = try study.run(device: device, progress: progress, inspect: inspect, monitor: monitor)
             let c = r.correlations
             print(
@@ -421,6 +443,41 @@ private func frontStatistics(_ solver: BlastSolver) {
             + " \(count) front cells, u' mean \(format(sum / Double(count), 3))"
             + " max \(format(largest, 2)), wrinkled \(format(100 * Double(wrinkled) / Double(count), 0))%,"
             + " |u| mean \(format(speed / Double(count), 2))"
+    }
+    print(line)
+}
+
+/// Along the line through the ignition point along x, each side's front (where the unburnt share
+/// crosses a half, from the ignition point) and the gas's velocity along x in the first cell beyond it
+/// that is nine tenths unburnt: the flow the front burns into. On the back side a positive velocity
+/// is unburnt gas drawn towards the vent, through the flame.
+private func backFront(_ solver: BlastSolver, ignition: SIMD3<Float>) {
+    let grid = solver.grid
+    let cell = grid.cell(containing: ignition)
+    guard let share = solver.unburntShare() else { return }
+    let dx = Double(grid.cellSize)
+    var line = "  t \(format(solver.time * 1000, 0)) ms:"
+    for (name, side) in [("back", -1), ("vent", 1)] {
+        var i = cell.i
+        var previous = Double(share[grid.index(i, cell.j, cell.k)])
+        var front: Double?
+        var ahead: (Double, Double)?
+        while i + side >= 0, i + side < grid.nx, !solver.isSolid(i + side, cell.j, cell.k) {
+            i += side
+            let b = Double(share[grid.index(i, cell.j, cell.k)])
+            let x = Double(grid.cellCentre(i, cell.j, cell.k).x - ignition.x)
+            if front == nil, b >= 0.5, previous < 0.5 {
+                front = x - Double(side) * dx * (b - 0.5) / max(b - previous, 1e-6)
+            }
+            if front != nil, b >= 0.9 {
+                ahead = (x, Double(solver.primitive(i, cell.j, cell.k).velocity.x))
+                break
+            }
+            previous = b
+        }
+        line +=
+            "  \(name) front \(front.map { format($0, 2) } ?? "-") m, u ahead "
+            + (ahead.map { "\(format($0.1, 2)) m/s at \(format($0.0, 2)) m" } ?? "-")
     }
     print(line)
 }
