@@ -91,6 +91,14 @@ fixed costs barely shrink:
 
 The fill follows the blocks newly placed, which a corridor renews as the shock crosses it.
 
+That was `--profile`'s reading, which puts each stage in an encoder of its own and so weighs on
+small ones. On a quiet Studio, by the step buffers' GPU time, refinement with no blocks at all
+costs 0.08 s, and the fill was the one stage that did not follow the blocks: it asked every rigid
+block whether it held each fine cell, some thousands of boxes a thread, which a corridor's two or
+three new patches a step left as its largest stage. Since 20 October each block asks only the
+boxes near it, bit for bit the same ([performance](performance.md#where-a-refined-runs-gpu-time-goes)):
+the corridor takes 2.0 GPU s against 2.5–2.7 before, and refining everywhere 7.8 against 8.6–8.9.
+
 ## A 150 m block
 
 1 t in a square 19 m across among 217–223 buildings, radius 150 m, top 200 m, run to 0.4 s. The
@@ -133,18 +141,22 @@ of the four buildings at once:
 
 (Their glass breaks on every side in all three.) Each building takes refining everywhere's answer,
 where the coarse cells get two of the three wrong. The refined GPU time, from `--profile`'s stages,
-beyond the coarse cells' 3.0 s:
+beyond the coarse cells', measured again on a quiet Studio after the fill's fix (step buffers' GPU
+time, the least of two rounds; coarse cells alone 1.04 s, refining everywhere 7.82 s):
 
-| Refined toward | Block-steps of refining everywhere | Refined GPU s | Of everywhere's 21.5 |
+| Refined toward | Block-steps of refining everywhere | GPU s | Refined time, of everywhere's |
 |---|---|---|---|
-| One building (700 m) | 20% | 9.6 | 0.45 |
-| Three buildings | 35% | 8.3 | 0.39 |
+| The 60 m corridor (631 m) | 2.5% | 2.01 | 0.14 |
+| One building (700 m) | 10% | 2.75 | 0.25 |
+| Three buildings | 17% | 3.69 | 0.39 |
 
-The two are within the Studio's noise of each other: the fixed costs, not the blocks, set a few
-corridors' time. The advisor prices a confinement as its share of the refined work plus 0.29 of
-the rest (`RunCost.confinedRefinementFixedShare`), which gives 0.31 for the 60 m corridor above,
-0.43 for one building and 0.54 for three; making the fixed costs follow the blocks held ([Horizons](roadmap.md#horizons))
-would bring all three down.
+The advisor prices a confinement as its share of the refined work plus 0.15 of the rest
+(`RunCost.confinedRefinementFixedShare`, fitted to these three), which puts their whole runs at
+2.2, 2.7 and 3.1 s, within −17% to +10%. More corridors keep more of the cost than their blocks,
+their edges against coarse cells being longer; a corridor's sweeps and ghosts cost about two and
+three times as much a block-step as refining everywhere's, as its dispatches are too small to fill
+the GPU. Fusing passes to cut their number might save 0.3 s of the 60 m corridor's 2.0, under the
+quarter that would pay for the work, and is not built.
 
 ## Limitations
 
@@ -166,5 +178,5 @@ would bring all three down.
 - **Show the doubt.** The coarse first pass with its loads rescaled takes 1–3 s for Beirut's
   1 km box. Shown as an overlay, it tells the user which buildings' outcomes the cells could
   flip, before choosing what to refine.
-- **Make the fixed costs scale.** If ghosts, fill and cut cells followed the blocks held, a
-  corridor would cost nearer its block-steps' share.
+- **Make the fixed costs scale:** the fill now does (above). Fewer, fused passes would save little
+  more and are not built.

@@ -60,13 +60,13 @@ public struct RunCostEstimate: Sendable, Equatable {
 
 public enum RunCost {
     /// What refinement confined to corridors (`SolverConfiguration.refinementConfinedTo`) keeps of
-    /// its fixed costs in the air it leaves coarse, as a share of the fine work refining it would
-    /// add: its ghosts, fill and cut cells shrink by about half where its sweeps follow the blocks
-    /// it holds. On Beirut's 1 km box (docs/refinement-steering.md) the refined GPU time against
-    /// refining everywhere was 0.31 for a corridor holding 2.4% of the block-steps, 0.45 at 20%
-    /// (one building) and 0.39 at 35% (three); the share plus 0.29 of the rest gives 0.31, 0.43
-    /// and 0.54. Refinement whose fixed costs follow its blocks would lower it.
-    public static let confinedRefinementFixedShare = 0.29
+    /// its cost in the air it leaves coarse, as a share of the fine work refining it would add: its
+    /// corridors' edges against coarse cells, and dispatches too small to fill the GPU. Fitted on
+    /// Beirut's 1 km box on a quiet Studio, 20 October 2026, after the fill's fix
+    /// (docs/refinement-steering.md): the refined GPU time against refining everywhere was 0.14 for
+    /// a corridor holding 2.5% of the block-steps, 0.25 at 10% (one building) and 0.39 at 17%
+    /// (three); with 0.15, the whole runs come within −17% to +10%.
+    public static let confinedRefinementFixedShare = 0.15
 
     /// Coarse cell-updates a second, each three directional sweeps: 2.1 to 2.6 billion on the
     /// street when every cell is swept (docs/performance.md, "Air solver"), 1.8 billion with the
