@@ -158,6 +158,52 @@ three times as much a block-step as refining everywhere's, as its dispatches are
 the GPU. Fusing passes to cut their number might save 0.3 s of the 60 m corridor's 2.0, under the
 quarter that would pay for the work, and is not built.
 
+## Which buildings the cells could flip
+
+After a run, the envelope section's "Colour by" offers "Could finer cells change it"
+(`EnvelopeDoubt`). Each building's loads are judged again at the two ends of a band, and the
+building is coloured by what comes out:
+- **Settled:** the same at both ends as in the run.
+- **In doubt:** the two ends disagree.
+- **Likely different:** both ends agree, and not with the run.
+
+What is compared is whether any of its panes break and its walls' and roofs' worst level. It
+costs two more judgements of loads the run already has, and no air (`scenebench district-compare
+--doubt` does the same headless).
+
+**The band is a convergence band, not the validation's.** The validation's reflected peaks were
+compared on flat ground and within 6 m/kg^(1/3), so the standing gives a district with terrain no
+band at all, and most of a district's buildings lie farther out (Beirut's at 5–13 m/kg^(1/3)).
+Its question is also another: how far from measured, not whether finer cells would differ. So
+the band is how far each building side's façade peak on these cells has fallen from its peak on
+cells half as large, 10th to 90th percentile, by the cells' size scaled by the charge
+(`EnvelopeDoubt.convergence`):
+
+| Cells, m/kg^(1/3) | Where | These over the finer cells' peaks | Loads judged at |
+|---|---|---|---|
+| 0.4 | 150 m block, 1 t, 4 m against 2 m | 0.46–0.97 | ×1.03–2.17 |
+| 0.2 | the same, 2 m against 1 m | 0.52–1.17 | ×0.85–1.92 |
+| 0.1 | Beirut's 1 km box, 500 t, 8 m against 4 m | 0.63–0.99 | ×1.01–1.59 |
+
+Between them it is interpolated in the logarithm of the cell, and beyond them it takes the
+nearest. Refined air counts as its finest cells, where the façades read.
+
+**Against the finer runs**, counting a building changed where either outcome differs:
+
+| Run, against cells half as large | Buildings | Changed | Flagged | Of the changed, flagged | Of the flagged, changed |
+|---|---|---|---|---|---|
+| Beirut 16 m against 8 m (its band from the block) | 140 | 7 | 29 | 7 | 24% |
+| Beirut 8 m against 4 m | 1,133 | 87 | 246 | 83 | 34% |
+| Block 4 m against 2 m | 216 | 37 | 77 | 36 | 47% |
+| Block 2 m against 1 m | 223 | 116 | 64 | 42 | 66% |
+
+In three of the four it finds 95–100% of the buildings finer cells change, while flagging a fifth
+to a third of them. Between 2 m and 1 m on the block it misses two thirds. There, half the
+buildings change, and 35 of them break less glass on the finer cells, where the band's lower end
+(×0.85) does not reach. On 1 m cells the façades are cut into different strips and panes, and a
+change of the outline itself is not one scaling the loads can foresee. The table rests on two
+scenes, and the band is the same for every building, near or far.
+
 ## Limitations
 
 - **The decisions judged are the bench's.** Each side's glass is judged at the median strength,
@@ -175,8 +221,7 @@ quarter that would pay for the work, and is not built.
 ## What it could become
 
 - **Refine toward chosen buildings:** built ([above](#refining-toward-chosen-buildings)).
-- **Show the doubt.** The coarse first pass with its loads rescaled takes 1–3 s for Beirut's
-  1 km box. Shown as an overlay, it tells the user which buildings' outcomes the cells could
-  flip, before choosing what to refine.
+- **Show the doubt:** built ([above](#which-buildings-the-cells-could-flip)). The next step is a
+  wider convergence table: more scenes, and bands by distance as well as by cell.
 - **Make the fixed costs scale:** the fill now does (above). Fewer, fused passes would save little
   more and are not built.
