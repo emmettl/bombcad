@@ -30,6 +30,8 @@ public struct FarFieldSet: Codable, Sendable, Equatable {
     /// How far beyond the hand-over the near run's trend with distance is carried, as a multiple of
     /// it (`HybridFarField.trendReach`); nil all the way.
     public var trendReach: Double?
+    /// How the match fades past the reach (`HybridFarField.trendDamping`); nil holds it.
+    public var trendDamping: Double?
 
     public init(
         handoverM: Float, buildings: [Building], constructions: [EnvelopeConstruction], terrain: Terrain?,
@@ -60,7 +62,8 @@ public struct FarFieldSet: Codable, Sendable, Equatable {
 
     public func validate() throws {
         guard handoverM.isFinite, handoverM > 0, Set(buildings.map(\.id)).count == buildings.count,
-            trendReach.map({ $0.isFinite && $0 >= 1 }) ?? true, blockCount <= Scenario.maximumRigidBoxes
+            trendReach.map({ $0.isFinite && $0 >= 1 }) ?? true,
+            trendDamping.map({ $0.isFinite && $0 > 0 }) ?? true, blockCount <= Scenario.maximumRigidBoxes
         else { throw SceneObjectError.invalidOwnership }
     }
 

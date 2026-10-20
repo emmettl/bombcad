@@ -127,6 +127,7 @@ struct SidebarView: View {
 
             GroundShockSection(model: model)
             EnvelopeExposureSection(model: model)
+            InspectedEnvelopeSection(model: model)
             EnvelopeDamageSection(model: model)
             FarFieldSection(model: model)
 

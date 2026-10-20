@@ -146,6 +146,8 @@ enum HybridBench {
             })
         // `--trend-reach r`: the trend carried to r times the hand-over, held from there.
         far.trendReach = value("trend-reach").flatMap(Double.init)
+        // `--trend-damping d`: past the reach, the match fades by e each d of log distance.
+        far.trendDamping = value("trend-damping").flatMap(Double.init)
         print(
             String(
                 format:

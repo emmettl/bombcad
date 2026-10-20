@@ -23,6 +23,9 @@ public struct HybridFarField: Codable, Sendable, Equatable {
     /// How far beyond the hand-over the trend is carried, as a multiple of it, the ratio held
     /// from there on; nil carries it all the way.
     public var trendReach: Double?
+    /// Beyond `trendReach`, how quickly the match fades back to the surrogate's own loads: its
+    /// logarithm falls by e for each `trendDamping` of log distance past the reach; nil holds it.
+    public var trendDamping: Double?
     /// The mean logarithm of distance over the hand-over at which the seeds were taken (they lie
     /// just inside it): the trend is carried from there, so that it meets them where they were
     /// measured; nil for the hand-over itself.
@@ -116,9 +119,17 @@ public struct HybridFarField: Codable, Sendable, Equatable {
     {
         let reach = trendReach.map { $0 * handoverM } ?? .infinity
         let x = log(min(max(distanceM, 1), reach) / handoverM) - (seedLogDistance ?? 0)
+        var peakFactor = peak * exp(peakSlope * x)
+        var impulseFactor = impulse * exp(impulseSlope * x)
+        // Faded past the reach toward the surrogate's own loads.
+        if let damping = trendDamping, damping > 0, distanceM > reach {
+            let k = exp(-log(distanceM / reach) / damping)
+            peakFactor = pow(peakFactor, k)
+            impulseFactor = pow(impulseFactor, k)
+        }
         var p = prediction
-        p.peakPa *= peak * exp(peakSlope * x)
-        p.impulsePaS *= impulse * exp(impulseSlope * x)
+        p.peakPa *= peakFactor
+        p.impulsePaS *= impulseFactor
         p.arrivalS *= arrival
         return p
     }
@@ -223,6 +234,7 @@ extension HybridFarField {
             handoverM: handover, seedFromM: seedFromM, trendFromM: trendFromM, samples: samples,
             arrivals: arrivals)
         farField.trendReach = set.trendReach
+        farField.trendDamping = set.trendDamping
         // The buildings to judge: the far ones, and the near ones beyond the hand-over.
         let farIDs = Set(set.buildings.map(\.id))
         var judged = farIDs

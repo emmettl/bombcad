@@ -111,7 +111,7 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
   would have taken 5 m cells, so it handed over at 950 m on uniform 3 m cells. The run and the
   judgement of the 7,245 far buildings took 8 minutes, the judgement 91 s of it, matched at the
   hand-over at peak ×1.06 and impulse ×1.27 (`HybridDistrictImageTests`). On uniform 4 m cells
-  given by hand, the same near run went unstable after 2 minutes; that is under investigation.
+  given by hand it took 3 minutes, matched at ×1.12 and ×1.21.
 
   File ▸ New District with **Near field and far field** on (the default when the
   radius reaches 1.25 times the hand-over). The sheet hands over at 12 m/kg^(1/3), rounded to 50 m,

@@ -24,7 +24,7 @@ run `python3 Scripts/prepare-ifc-converter.py` first to enable IFC import.
 ## The view and the sidebar
 
 In the view: drag or two-finger scroll to orbit, shift-drag or right-drag to pan, pinch or mouse
-wheel to zoom (out to three times the domain's longest side). Space runs and pauses, ⌘R resets.
+wheel to zoom (out to three times the domain's longest side, or the district's with far buildings). Space runs and pauses, ⌘R resets.
 
 Structures are drawn in their materials' colours: concrete warm grey, steel blue-grey, profiled
 sheeting light metallic, glass tinted and see-through, timber warm brown, brick red-brown, blockwork
@@ -32,6 +32,12 @@ buff; exposure-only buildings by their walls' construction, plain blocks neutral
 Damage shades every material alike, from amber through orange to dark red as an element nears
 failure, and failed elements fall as dark grey rubble. The colours are chosen so that damage and
 rubble stand apart from every material to people with each common colour deficiency.
+
+Once buildings have been judged (a run's envelope damage, a quick estimate, or a district's far
+field), click one in the view to outline it and see it under **Selected building** in the sidebar.
+It shows the building's damage, what it is built of, and its sides' glass chances, and says which
+judgement it is: the run's for a building in the air, the quick estimate's, or the far field's
+estimate for one beyond the air.
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);

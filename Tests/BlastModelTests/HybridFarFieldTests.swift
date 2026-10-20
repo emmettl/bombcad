@@ -58,4 +58,21 @@ struct HybridFarFieldTests {
         let data = try? JSONEncoder().encode(trending)
         #expect(data.flatMap { try? JSONDecoder().decode(HybridFarField.self, from: $0) } == trending)
     }
+
+    @Test("Damped past its reach, the match fades back to the surrogate's own loads; undamped, it is held")
+    func damped() {
+        var far = HybridFarField(handoverM: 1000, peak: 1.2, impulse: 1.3, peakSlope: -0.4, trendReach: 1.5)
+        let held = far.apply(Self.prediction(1_000, 50), distanceM: 3_000)
+        let atReach = far.apply(Self.prediction(1_000, 50), distanceM: 1_500)
+        #expect(held.peakPa == atReach.peakPa && held.impulsePaS == atReach.impulsePaS)
+        far.trendDamping = 0.5
+        // At the reach as before; one damping length past it, the log of the match down by e.
+        #expect(far.apply(Self.prediction(1_000, 50), distanceM: 1_500).peakPa == atReach.peakPa)
+        let beyond = far.apply(Self.prediction(1_000, 50), distanceM: 1_500 * exp(0.5))
+        #expect(abs(log(beyond.peakPa / 1_000) - log(atReach.peakPa / 1_000) / M_E) < 1e-9)
+        #expect(abs(log(beyond.impulsePaS / 50) - log(1.3) / M_E) < 1e-9)
+        // Far out, the surrogate's own.
+        let farOut = far.apply(Self.prediction(1_000, 50), distanceM: 1e6)
+        #expect(abs(farOut.peakPa - 1_000) < 1 && abs(farOut.impulsePaS - 50) < 0.1)
+    }
 }

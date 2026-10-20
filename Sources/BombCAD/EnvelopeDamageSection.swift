@@ -465,3 +465,66 @@ struct FarFieldSection: View {
         }
     }
 }
+
+/// The envelope building clicked in the view (`SimulationModel.inspectedEnvelope`): its judgement and
+/// its sides' glass chances, the run's for a building in the air, the far field's estimate for one
+/// beyond it.
+struct InspectedEnvelopeSection: View {
+    @Bindable var model: SimulationModel
+
+    var body: some View {
+        if let building = model.inspectedEnvelopeBuilding, let id = model.inspectedEnvelope {
+            Section("Selected building") {
+                HStack {
+                    Text(building.name).font(.headline)
+                    Spacer()
+                    Button("Clear") { model.inspectedEnvelope = nil }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Clear the selected building")
+                }
+                let damage = (building.far ? model.farFieldDamage : model.envelopeDamage).first {
+                    $0.id == id
+                }
+                let sides = (building.far ? model.farFieldGlass : model.envelopeGlassChances).filter {
+                    $0.owner == id
+                }
+                Text(
+                    building.far
+                        ? "Beyond the air: judged after the run on the far field carried from it, an estimate."
+                        : model.envelopeDamageIsEstimate
+                            ? "In the scene: the quick estimate's judgement, not a run's."
+                            : "In the air: the run's judgement."
+                )
+                .font(.caption).foregroundStyle(
+                    building.far || model.envelopeDamageIsEstimate ? .orange : .secondary
+                )
+                .fixedSize(horizontal: false, vertical: true)
+                if let damage {
+                    HStack {
+                        Circle().fill(EnvelopeDamageSection.colour(EnvelopeDamageSection.code(damage)))
+                            .overlay(Circle().stroke(.secondary.opacity(0.5)))
+                            .frame(width: 9, height: 9)
+                        Text(
+                            EnvelopeDamageSection.summary(damage).prefix(1).uppercased()
+                                + EnvelopeDamageSection.summary(damage).dropFirst()
+                        )
+                        .font(.caption).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text(damage.construction.detail).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Not judged: no face of it meets the air.").font(.caption).foregroundStyle(
+                        .secondary)
+                }
+                if !sides.isEmpty {
+                    Text(
+                        "Glass chances (breaks, blown out, thrown past 3 m, openings blown out): "
+                            + EnvelopeDamageSection.chances(sides)
+                    )
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .monospacedDigit()
+        }
+    }
+}

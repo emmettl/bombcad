@@ -1587,13 +1587,48 @@ final class SimulationModel {
 
     /// The farthest the view zooms out (`zoomLimits`): three times the domain's longest side, and
     /// no less than SceneView's own 600 m.
-    var farthestZoom: Float { max(3 * max(domainSize.x, domainSize.y, domainSize.z), 600) }
+    var farthestZoom: Float { max(3 * max(domainSize.x, domainSize.y, domainSize.z, farFieldSpan), 600) }
+    /// The width of the square about the domain's centre that holds the far set's buildings, m.
+    private var farFieldSpan: Float {
+        let centre = SIMD2(settings.scenario.domainSize.x, settings.scenario.domainSize.y) / 2
+        var reach: Float = 0
+        for building in farFieldSet?.buildings ?? [] {
+            for block in building.envelope.blocks {
+                reach = max(
+                    reach, abs(block.min.x - centre.x), abs(block.max.x - centre.x),
+                    abs(block.min.y - centre.y),
+                    abs(block.max.y - centre.y))
+            }
+        }
+        return 2 * reach
+    }
 
     // MARK: - Editing the layout
 
-    /// The box picked out for editing, if it still exists.
+    /// The envelope building clicked in the view, the scene's or the far set's, whose judgement the
+    /// sidebar shows (`InspectedEnvelopeSection`); nil for none.
+    var inspectedEnvelope: UUID?
+
+    /// The inspected building's blocks, its name, and whether it lies beyond the air.
+    var inspectedEnvelopeBuilding: (name: String, blocks: [Box], far: Bool)? {
+        guard let id = inspectedEnvelope else { return nil }
+        if let object = settings.scenario.object(id: id), let envelope = object.envelope {
+            return (object.name, envelope.blocks, false)
+        }
+        if let building = farFieldSet?.buildings.first(where: { $0.id == id }) {
+            return (building.name, building.envelope.blocks, true)
+        }
+        return nil
+    }
+
+    /// The box picked out for editing, if it still exists; else the inspected building's bounds.
     var highlightedBox: Box? {
         let scenario = settings.scenario
+        if selection == nil, let blocks = inspectedEnvelopeBuilding?.blocks, let first = blocks.first {
+            return blocks.dropFirst().reduce(first) {
+                Box(min: simd_min($0.min, $1.min), max: simd_max($0.max, $1.max))
+            }
+        }
         switch selection {
         case .block(let id): return scenario.object(id: id)?.fixedBox
         case .solid(let reference):
@@ -2082,14 +2117,17 @@ final class SimulationModel {
     func click(ndc: SIMD2<Float>, aspectRatio: Float) {
         guard !sweep.isActive else { return }
         if !isPlacingCharge {
-            guard time == 0, !isRunning, !isPreparingImports else { return }
+            guard !isRunning, !isPreparingImports else { return }
             let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
-            if let id = ScenePicking.importedModel(
-                in: settings.scenario, origin: ray.origin, direction: ray.direction)
+            if time == 0,
+                let id = ScenePicking.importedModel(
+                    in: settings.scenario, origin: ray.origin, direction: ray.direction)
             {
                 inspectImport(id: id)
-            } else if let id = ScenePicking.building(
-                in: settings.scenario, origin: ray.origin, direction: ray.direction)
+                return
+            } else if time == 0,
+                let id = ScenePicking.building(
+                    in: settings.scenario, origin: ray.origin, direction: ray.direction)
             {
                 // A building picked, for the refinement to go toward (`toggleRefineToward`).
                 selection = .building(id)
@@ -2098,6 +2136,12 @@ final class SimulationModel {
             } else if case .building = selection {
                 selection = nil
             }
+            // A building judged, near or far: its damage in the sidebar.
+            inspectedEnvelope =
+                envelopeDamage.isEmpty && farFieldDamage.isEmpty
+                ? nil
+                : ScenePicking.envelope(
+                    in: settings.scenario, far: farFieldSet, origin: ray.origin, direction: ray.direction)
             return
         }
         guard isPlacingCharge, let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else {
@@ -3057,6 +3101,7 @@ final class SimulationModel {
         envelopeDamage = []
         envelopeDamageIsEstimate = false
         farFieldDamage = []
+        inspectedEnvelope = nil
         farFieldGlass = []
         farField = nil
         farFieldStatus = ""
@@ -3106,6 +3151,7 @@ final class SimulationModel {
         envelopeDamage = []
         envelopeDamageIsEstimate = false
         farFieldDamage = []
+        inspectedEnvelope = nil
         farFieldGlass = []
         farField = nil
         farFieldStatus = ""

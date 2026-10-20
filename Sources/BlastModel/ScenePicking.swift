@@ -10,6 +10,28 @@ public enum ScenePicking {
             origin: origin, direction: direction,
             parallelTolerance: Float(1e-8).nextDown)?.lowerBound
     }
+    /// The envelope building a ray from `origin` along `direction` meets first: the scene's, or one of
+    /// its far set's (`FarFieldSet`) beyond the air; the scene's other blocks hide what lies behind
+    /// them. Nil if it meets none first.
+    public static func envelope(
+        in scenario: Scenario, far: FarFieldSet? = nil, origin: SIMD3<Float>, direction: SIMD3<Float>
+    ) -> UUID? {
+        var closest = Float.infinity
+        var selected: UUID?
+        func visit(_ boxes: [Box], id: UUID?) {
+            for box in boxes {
+                if let hit = distance(to: box, origin: origin, direction: direction), hit < closest {
+                    closest = hit
+                    selected = id
+                }
+            }
+        }
+        visit(scenario.boxes, id: nil)
+        for object in scenario.envelopeObjects { visit(object.envelope!.blocks, id: object.id) }
+        for building in far?.buildings ?? [] { visit(building.envelope.blocks, id: building.id) }
+        return selected
+    }
+
     public static func importedModel(in scenario: Scenario, origin: SIMD3<Float>, direction: SIMD3<Float>)
         -> UUID?
     {
