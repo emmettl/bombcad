@@ -402,7 +402,8 @@ Kuilen's Hashin-type criteria (HERON 58, 2013):
 - **Meshing:** a piece of timber is meshed as shells and beams whatever its "Elements" choice,
   as profiled sheeting is.
 - **Sample:** the "Terraced houses, brick and timber" sample is a 1930s row of three with timber
-  floors and roof (below).
+  floors and roof (below); "Terraced houses, pre-1919 solid brick" is the same row with solid
+  one-brick walls.
 
 **Grades** (`TimberProperties.strengthClass`, `crossLaminatedPanel`, `StructureMaterial.timber(_:)`):
 
@@ -447,6 +448,12 @@ houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m sto
 25 kg in the street 10 m in front.
 - **Walls:** cavity walls of two 102.5 mm brick leaves 50 mm apart, at the front, back and
   gables, the leaves bonded round the corners, with one-brick party walls.
+  - **Solid walls** (`terracedRow(walls: .solidOneBrick)`, `blastbench house --walls solid`):
+    the front, back and gables one brick (215 mm) thick instead, without a cavity or ties, the
+    party walls bonded into them. These are the walls of terraces built before 1919: about 7 of
+    the 11.3 million dwellings in England and Wales in 1939 (Bowley, *Britain's Housing
+    Shortage*, 1944), and most of the houses in the wartime surveys
+    ([validation](validation.md#terraced-houses-against-wartime-bomb-damage)).
 - **Wall ties** (`cavityWallTies`), smeared over each cavity wall as a [joint between
   parts](structural-model.md#base-connections), the inner leaf's nodes tied to the outer's:
   - 2.47 ties per m², one per 900 mm across and 450 mm up (PD 6697, Approved Document A; LABC
@@ -500,8 +507,7 @@ houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m sto
 - **Sources:** the University of the West of England's Construction Web ("Evolution of building
   elements": 1930s cavity walls of brick both ways, 200 × 50 mm joists at 300–400 mm, cut roofs
   on the party walls) and the English Housing Survey's *Floor space in English homes* (2018).
-  The storey height is assumed. Pre-1919 terraces, a third of them, have solid one-brick walls
-  instead.
+  The storey height is assumed. Pre-1919 terraces have solid one-brick walls instead (above).
 
 ![The terraced row 100 ms after 25 kg in the street, 10 m in front: its 40° roof, gables and open windows, coloured by damage](terraced-row.png)
 

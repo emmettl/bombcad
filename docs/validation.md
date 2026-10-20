@@ -3084,7 +3084,9 @@ What the roof moves:
   category above the median beyond 13.9 m.
 - **What follows, by 0.3 s:** the cracked front walls, held only at their ends by the party walls,
   go over: 49–100% of the middle house's front at 13.9–16.9 m. The houses then read one or two
-  categories worse than surveyed beyond 11 m, either way. The surveyed houses mostly stood. A
+  categories worse than surveyed beyond 11 m, either way. The surveyed houses mostly stood, and
+  mostly had solid walls: with them the row is within a category of the survey at every distance
+  ([below](#solid-one-brick-walls-20-october-2026)). A
   cracked leaf with the floors and roof bearing on it, or arching between stiff ends, would
   rock and settle back; the model's cracked leaves have no such resistance. Seating the roof on
   the front and back walls as rafters' feet (unstrapped, as the joists) changed nothing.
@@ -3108,6 +3110,75 @@ What the roof moves:
 - **Limits of the comparison:** the bombs burst at or below the ground, some in craters, and the
   surveys measured to the house, not its front wall; the effective charges are uncertain by about
   25%; the houses were of many kinds, the model one row of one.
+
+### Solid one-brick walls (20 October 2026)
+
+The row above has the cavity walls built from the 1930s. Most of the surveyed houses had solid
+walls one brick thick: England and Wales had about 11.3 million dwellings in 1939, some 4 million
+of them built between the wars (Bowley, *Britain's Housing Shortage*, 1944), so about two thirds
+were older than 1919 and solid-walled. Cavity walls were not yet universal between the wars, and
+the bombed inner-city terraces were older than the average house. The mix was declared before
+any run: **two thirds solid, one third cavity**. So the median surveyed house is a solid-walled
+one, and the solid row's grade is the one to judge (emmettl/bombcad-work#5).
+
+**The energy, before the runs.** The blast's impulse on the front, 0.98 kPa s at 13.9 m and 0.57
+at 23 m (Kingery–Bulmash, reflected, averaged over the middle house's front), is over in 10–17
+ms, against 50 ms and more for a wall to rock or arch, so the front takes in I² / (2 K_LM m),
+K_LM 0.66. A wall stands where its mechanism can take in that much before it falls:
+
+| Mechanism (96 kg; 72 / 120 kg for the charge's ±25%) | Cavity, both leaves (390 kg/m²) | Solid 215 mm (408 kg/m²) |
+|---|---|---|
+| Rocking with a free top (the row's: the joists span between the party walls and stop short of the front) | 4 J/m²: falls at any range | 19 J/m²: falls at any range |
+| Rocking held at each floor, 8 P (t − x) / h² (SBEDS), joists bearing on the front | 105 J/m²: stands beyond 53 m | 461 J/m²: beyond 26 m (22 / 30) |
+| Arching between the party walls through the bands between the storeys' openings | 165 J/m²: beyond 43 m | 759 J/m²: beyond 21 m (17 / 24) |
+| Arching between the party walls over the whole front, openings left out | 426 J/m²: beyond 27 m | 1970 J/m²: beyond 13 m (11 / 15) |
+
+Arching here is three hinges on the model's 8 MPa brickwork, q = 1.7 f (t − x)² / L² over the
+4.8 m between party walls; a terrace's neighbours balance its thrust at each party wall. Tied
+cavity leaves cannot act as one section (the ties buckle at about 1.4 kPa), so they arch as two
+102.5 mm leaves. No mechanism holds a cavity wall inside 27 m; a solid front, arching around its
+openings, should stand from somewhere between 13 and 21 m.
+
+**The runs** (`blastbench house --walls solid`, otherwise as above: 96 kg 0.3 m up, recommended
+air of 0.5 m on the mapped start, the pitched roof), the middle house:
+
+| Distance (m) | Surveyed median | Cavity, 3 mm, 0.3 s | Solid, 3 mm, 0.1 s | Solid, 3 mm, 0.3 s | Solid, 50 mm, 0.1 s | Solid, 50 mm, 0.3 s |
+|---|---|---|---|---|---|---|
+| 4.7 | A | A (98%) | B (46%) | A (84%) | – | – |
+| 7.8 | B | A (89%) | Cb (25%) | B (40%) | – | – |
+| 10.8 | B, near C | B (49%) | Cb (4%) | B (33%) | Ca (0.2%) | Cb (13%) |
+| 13.9 | C | B (48%) | Cb (2%) | Cb (18%) | Ca (0%) | Cb (1%) |
+| 16.9 | below C | B (46%) | Ca (0.9%) | Cb (7%) | Ca (0.5%) | Cb (0.5%) |
+| 20.0 | below C | B (35%) | Ca (0.9%) | Cb (3%) | D (0%) | Cb (0.5%) |
+| 23.0 | below C | Cb (16%) | D (0.8%) | Cb (2%) | D (0%) | Ca (0.5%) |
+
+The percentages are the external brickwork destroyed; the cavity column is the pitched roof's
+above (rerun at 16.9 m on this build: B (46%), the same). Each run takes about 2½ minutes on the
+Mac Studio.
+
+**What it shows:**
+- **Within a category of the median at every distance by 0.3 s,** with the default 3 mm brick
+  and the load unchanged: A, B and B to 10.8 m, as surveyed, and C (Cb) at 13.9 m; at 16.9–23 m
+  Cb, one above the survey's "below C". This meets the plan's test (13.9–23 m within one).
+- **The solid front stands:** 34% of it down at 13.9 m, 14% at 16.9 m, 7% at 20 m and 5% at
+  23 m, against 96% of the cavity front at 16.9 m. That is what the arching predicts, between
+  its two bounds. The shells arch as the theory says, so the cracked masonry in `Shell.metal` was
+  left alone (the plan's stage 3 was only for shells that fall short).
+- **What keeps it Cb beyond 16.9 m** is the roof: a third to two fifths of the rafters come off
+  their seats on the front wall's top (Cb by the grading's rule from a quarter), and 2–3% of the
+  brickwork (Cb from 2%).
+- **At 0.1 s** the solid row reads the surveyed category or one below at every distance with the
+  default 3 mm, which the cavity row needed bricks kept to 50 mm for.
+- **The cavity row is unchanged:** its fronts still go over by 0.3 s, as the energy says any
+  102.5 mm leaf must. No survey separates the cavity houses, so whether they fared better than
+  the model's is untested; the third of the stock they were would not move the median.
+- **The envelope model disagrees on solid walls.** Its unreinforced masonry
+  (`EnvelopePanel.unreinforcedMasonry`, no arching) gives a 215 mm storey panel 4.2 kPa (its
+  cracking moment) falling to nothing at the thickness, about 450 J/m², so it would grade the
+  solid fronts fallen out to 26 m (22–30 m for ±25%), where the shells keep them standing from
+  14 m. It agrees on cavity walls (both fail). Arching between returns in the envelope's law
+  would bring the two together; that changes envelope damage for every masonry wall between
+  cross walls, so it is left as a proposal for the user.
 
 ## Slabs under contact charges
 

@@ -595,14 +595,14 @@ extension StandingScene {
             evidence.append(
                 StandingEvidence(
                     "Terraced brick houses graded against wartime bomb damage (Gilbert, 1994)",
-                    "From 96 kg, a tenth of a second in, the houses' damage categories fall a category above "
-                        + "the surveyed median beyond 14 m (within one with bricks kept to a 50 mm crack); by "
-                        + "0.3 s their unrestrained front walls have gone over, one or two categories worse "
-                        + "than surveyed beyond 11 m",
+                    "From 96 kg, with the solid one-brick walls most of the surveyed houses had, within a "
+                        + "category of the surveyed median at every distance to 23 m by 0.3 s (one above beyond "
+                        + "14 m), the fronts standing by arching between the party walls; the 1930s cavity row's "
+                        + "front leaves go over by 0.3 s, one or two categories worse than surveyed beyond 11 m",
                     "validation.md#terraced-houses-against-wartime-bomb-damage"))
             parts.append(
-                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces; brick "
-                    + "houses too damaged at the longer ranges of wartime bombs")
+                "masonry's joints verified; brick walls under blasts fall as one column, not in pieces; "
+                    + "cavity-walled brick houses too damaged at the longer ranges of wartime bombs")
         }
         if classes.contains(.glass) {
             level = max(level, .approximation)
@@ -836,8 +836,9 @@ extension StandingScene {
         result(
             .collapse, .illustrative,
             "Not compared where it agreed: collapse has been compared once for slabs, blind, and missed (both "
-                + "slabs that collapsed left standing), and for brick houses against wartime surveys, right at "
-                + "0.1 s but toppling their front walls after (one or two categories too severe). Steel "
+                + "slabs that collapsed left standing), and for brick houses against wartime surveys, within a "
+                + "category by 0.3 s with solid walls but toppling cavity walls' fronts (one or two categories "
+                + "too severe). Steel "
                 + "connections' fracture comes from slow column-removal tests, and no frame, large-panel block "
                 + "or storey has been compared falling. The local damage's standing does not carry over to it.",
             evidence: [
@@ -848,8 +849,9 @@ extension StandingScene {
                     "validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge"),
                 StandingEvidence(
                     "Terraced brick houses against the Second World War's bomb surveys (Gilbert, Jarrett)",
-                    "At 0.1 s the surveyed category or the one below to 23 m (bricks kept to 50 mm); by 0.3 s the "
-                        + "cracked front walls go over, one or two categories too severe beyond 11 m: the safe side",
+                    "Solid one-brick walls, as most surveyed houses had: within a category to 23 m by 0.3 s, the "
+                        + "fronts standing. Cavity walls: by 0.3 s the cracked front leaves go over, one or two "
+                        + "categories too severe beyond 11 m: the safe side",
                     "validation.md#terraced-houses-against-wartime-bomb-damage"),
                 StandingEvidence(
                     "Beirut, 2020: 0.5 m stone carrying the masonry above it",

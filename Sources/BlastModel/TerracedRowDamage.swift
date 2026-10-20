@@ -68,15 +68,33 @@ public struct TerracedRowDamage: Sendable {
 
     public var houses: [House]
 
-    /// Solids, in the order `terracedRow` builds them: the eight leaves of the external walls,
-    /// the two party walls, two plates (floor and roof, or ceiling under a pitched roof) per
-    /// house; then a pitched roof's two slopes and two purlins; then the covering, one piece or
-    /// one a slope.
-    static let externalLeaves = 0..<8
-    static let frontLeaves = 0..<2
-    static let partyWalls = 8..<10
+    /// Solids, in the order `terracedRow` builds them: the leaves of the external walls (eight
+    /// of cavity walls, two to a wall, front first; four of solid walls), the two party walls,
+    /// two plates (floor and roof, or ceiling under a pitched roof) per house; then a pitched
+    /// roof's two slopes and two purlins; then the covering, one piece or one a slope. Supports:
+    /// the cavity walls' ties (four, none for solid walls), then the plates' seats, two a plate,
+    /// then a pitched roof's rafters' seats.
+    struct Layout {
+        var externalLeaves: Range<Int>
+        var frontLeaves: Range<Int>
+        var partyWalls: Range<Int>
+        var plates: Range<Int>
+        /// The first plate's first seat among the supports.
+        var firstSeat: Int
+
+        init(_ model: StructureModel) {
+            // The walls are the solids before the first timber one, the floor's plate.
+            let firstPlate =
+                model.solids.indices.first { model.material(of: $0).model == .timber } ?? 10
+            partyWalls = (firstPlate - 2)..<firstPlate
+            externalLeaves = 0..<partyWalls.lowerBound
+            frontLeaves = 0..<(externalLeaves.count / 4)
+            plates = firstPlate..<(firstPlate + 3 * TerracedRowDamage.platesPerHouse)
+            firstSeat =
+                model.supports.indices.filter { model.anchorage(ofSupport: $0)?.closingGap != nil }.count
+        }
+    }
     static let platesPerHouse = 2
-    static let plates = partyWalls.upperBound..<(partyWalls.upperBound + 3 * platesPerHouse)
 
     /// The supports, by index, that seat the row's roof covering on its roof.
     public static func coveringSeats(of model: StructureModel) -> Set<Int> {
@@ -99,7 +117,8 @@ public struct TerracedRowDamage: Sendable {
     package init(reading shells: some TerracedRowShells, rest: [SIMD3<Float>]) {
         let model = shells.model
         let mesh = shells.rowMesh
-        let party = Self.partyWalls.map { 0.5 * (model.solids[$0].min.y + model.solids[$0].max.y) }
+        let layout = Layout(model)
+        let party = layout.partyWalls.map { 0.5 * (model.solids[$0].min.y + model.solids[$0].max.y) }
         let edges = [-Float.infinity] + party + [Float.infinity]
         func house(_ y: Float) -> Int { (0..<3).first { y >= edges[$0] && y < edges[$0 + 1] } ?? 0 }
         var moved = [SIMD3<Float>](repeating: .zero, count: rest.count)
@@ -120,9 +139,9 @@ public struct TerracedRowDamage: Sendable {
             let shift = corners.reduce(SIMD3<Float>.zero) { $0 + moved[$1] } / 4
             let h = house(centre.y)
             let removed = shells.flag(e) != .active
-            if Self.externalLeaves.contains(element.solid) {
+            if layout.externalLeaves.contains(element.solid) {
                 walls[h].total += 1
-                let front = Self.frontLeaves.contains(element.solid)
+                let front = layout.frontLeaves.contains(element.solid)
                 if front { fronts[h].total += 1 }
                 if removed || simd_length(shift) > element.thickness {
                     walls[h].destroyed += 1
@@ -136,15 +155,15 @@ public struct TerracedRowDamage: Sendable {
             } else if slopes.contains(element.solid) {
                 slopeDrop[h].sum += removed ? 1 : -shift.z
                 slopeDrop[h].count += 1
-            } else if Self.plates.contains(element.solid) {
-                let plate = element.solid - Self.partyWalls.upperBound
+            } else if layout.plates.contains(element.solid) {
+                let plate = element.solid - layout.plates.lowerBound
                 let level = plate % Self.platesPerHouse
                 // A removed element counts as fallen a metre.
                 plateDrop[plate / Self.platesPerHouse][level].sum += removed ? 1 : -shift.z
                 plateDrop[plate / Self.platesPerHouse][level].count += 1
             }
         }
-        // Seats: after the four walls' ties, two per plate in the plates' order.
+        // Seats: after the walls' ties (if any), two per plate in the plates' order.
         houses = (0..<3).map { h in
             var result = House()
             let wall = walls[h]
@@ -157,7 +176,9 @@ public struct TerracedRowDamage: Sendable {
                 var pairs = 0
                 var lost = 0
                 for side in 0..<2 {
-                    guard let part = shells.seats(support: 4 + 2 * plate + side) else { continue }
+                    guard let part = shells.seats(support: layout.firstSeat + 2 * plate + side) else {
+                        continue
+                    }
                     pairs += part.pairs
                     lost += part.unseated
                 }
@@ -168,7 +189,7 @@ public struct TerracedRowDamage: Sendable {
             // A pitched roof's rafters: after the plates' seats, four a house (eaves front and
             // back, then the purlins).
             if !slopes.isEmpty {
-                let first = 4 + 2 * 3 * Self.platesPerHouse + 4 * h
+                let first = layout.firstSeat + 2 * 3 * Self.platesPerHouse + 4 * h
                 var pairs = 0
                 var lost = 0
                 for index in first..<(first + 4) {

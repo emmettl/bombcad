@@ -30,6 +30,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case processPlantExplosion
     case portalWarehouse
     case terracedHouses
+    case terracedHousesSolid
     case transportHub
     case hillsideFrame
 
@@ -66,6 +67,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .processPlantExplosion: "Vapour cloud explosion at a process plant"
         case .portalWarehouse: "Portal-frame warehouse, profiled steel cladding"
         case .terracedHouses: "Terraced houses, brick and timber"
+        case .terracedHousesSolid: "Terraced houses, pre-1919 solid brick"
         case .transportHub: "Transport hub, long-span steel and glass roof"
         case .hillsideFrame: "Two-storey frame on a hillside"
         }
@@ -637,6 +639,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             return Self.portalWarehouseScenario(title: title)
         case .terracedHouses:
             return Self.terracedHousesScenario(title: title)
+        case .terracedHousesSolid:
+            return Self.terracedRow(title: title, walls: .solidOneBrick)
         case .transportHub:
             return Self.transportHubScenario(title: title)
         case .hillsideFrame:

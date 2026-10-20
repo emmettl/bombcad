@@ -95,6 +95,20 @@ extension ScenarioPreset {
         return law
     }
 
+    /// The terraced row's external walls (front, back and gables).
+    public enum TerracedWalls: String, CaseIterable, Sendable {
+        /// Two brick leaves, 102.5 mm each, 50 mm apart, tied across the cavity
+        /// (`cavityWallTies`): built from the 1930s.
+        case cavity
+        /// One brick (215 mm, "9-inch") bonded through its thickness, the party walls bonded into
+        /// it: the walls of terraces built before 1919, most of the houses standing in 1939
+        /// (about 7 of 11.3 million in England and Wales; Bowley, Britain's Housing Shortage, 1944).
+        case solidOneBrick
+
+        /// The wall's whole thickness, m.
+        public var thickness: Float { self == .cavity ? 2 * 0.1025 + 0.05 : 0.215 }
+    }
+
     /// Wall ties across a cavity, smeared over the wall at 2.47 a square metre (one per 900 mm
     /// across and 450 mm up, the standard layout, PD 6697 and Approved Document A; LABC Warranty,
     /// "Wall tie replacement in existing buildings", 2020, for ties of the 1930s): each pulls out
@@ -152,8 +166,8 @@ extension ScenarioPreset {
     /// elements" (cavity walls of two brick leaves from the 1930s; 200 x 50 mm joists at 300 to
     /// 400 mm built into the walls; cut roofs carried on the party walls); the English Housing
     /// Survey, "Floor space in English homes" (2018: terraced houses of 80 to 86 m^2). The storey
-    /// height is assumed. Pre-1919 terraces, about a third of them, have solid one-brick walls
-    /// instead.
+    /// height is assumed. Pre-1919 terraces have solid one-brick walls instead
+    /// (`terracedRow(walls: .solidOneBrick)`).
     static func terracedHousesScenario(title: String) -> Scenario {
         terracedRow(title: title)
     }
@@ -162,15 +176,18 @@ extension ScenarioPreset {
     /// `standoff` m in front of the middle house's front wall, `height` m above the ground. The
     /// domain's open faces are `faceClearance` m from the charge and the row, 4 m/kg^(1/3) unless
     /// given (`Scenario.structureFaceClearance`), and never nearer than 6 m in front, 8 m to
-    /// the sides and 7.5 m behind.
+    /// the sides and 7.5 m behind. `walls` builds the external walls as cavity walls (the
+    /// default) or solid one-brick walls without ties (`TerracedWalls`); all else is the same.
     public static func terracedRow(
         title: String, charge: Float = 25, standoff: Float = 10, height: Float = 0.8,
-        covering: RoofCovering? = .plainClayTiles, faceClearance: Float? = nil, pitch: Float? = 40
+        covering: RoofCovering? = .plainClayTiles, faceClearance: Float? = nil, pitch: Float? = 40,
+        walls construction: TerracedWalls = .cavity
     ) -> Scenario {
         let clearance = faceClearance ?? Scenario.structureFaceClearance * cbrt(charge)
-        let leaf: Float = 0.1025
+        let solid = construction == .solidOneBrick
+        let leaf: Float = solid ? 0.215 : 0.1025
         let cavity: Float = 0.05
-        let wall = 2 * leaf + cavity
+        let wall = construction.thickness
         let party: Float = 0.215
         let x0 = (standoff + max(clearance, 6)).rounded(.up)
         let x1 = x0 + 8.5
@@ -190,13 +207,15 @@ extension ScenarioPreset {
         let bearing: Float = 0.1
         let h: Float = 0.125
         // Cavity walls: two leaves each, from `start` to `end` along the wall; the outer leaves
-        // run to the corners, where they meet, the inner ones to the inner corners.
+        // run to the corners, where they meet, the inner ones to the inner corners. A solid wall
+        // is the outer leaf alone, a brick thick.
         func cavityWall(
             along axis: Int, outer: Float, inward: Float, from start: Float, to end: Float, up: Float = top
         )
             -> [Box]
         {
-            [(outer, Float(0)), (outer + inward * (leaf + cavity), leaf + cavity)].map { face, inset in
+            let leaves = [(outer, Float(0)), (outer + inward * (leaf + cavity), leaf + cavity)]
+            return leaves.prefix(solid ? 1 : 2).map { face, inset in
                 let low = min(face, face + inward * leaf)
                 return axis == 0
                     ? Box(min: SIMD3(low, start + inset, 0), max: SIMD3(low + leaf, end - inset, up))
@@ -312,13 +331,15 @@ extension ScenarioPreset {
         structure.elementKind = .shell
         // Ties across each cavity, the whole wall, the inner leaf's nodes tied to the outer's; the
         // gables' up to the ridge.
+        // A solid wall has no cavity and no ties.
         let ties = Self.cavityWallTies(cavity: cavity)
-        for (region, inward) in [
+        let tied: [(Box, SIMD3<Float>)] = [
             (Box(min: SIMD3(x0, ys[0], 0), max: SIMD3(x0 + wall, ys[3], top)), SIMD3<Float>(1, 0, 0)),
             (Box(min: SIMD3(x1 - wall, ys[0], 0), max: SIMD3(x1, ys[3], top)), SIMD3<Float>(-1, 0, 0)),
             (Box(min: SIMD3(x0, ys[0], 0), max: SIMD3(x1, ys[0] + wall, ridge)), SIMD3<Float>(0, 1, 0)),
             (Box(min: SIMD3(x0, ys[3] - wall, 0), max: SIMD3(x1, ys[3], ridge)), SIMD3<Float>(0, -1, 0)),
-        ] {
+        ]
+        for (region, inward) in solid ? [] : tied {
             var law = ties
             law.jointNormal = inward
             // The leaves alone: a gable's region, up to the ridge, holds the slope's and the tiles'

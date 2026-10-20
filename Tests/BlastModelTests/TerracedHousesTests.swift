@@ -63,10 +63,40 @@ struct TerracedHousesTests {
             let roof = top + (ridge - top) * (1 - abs(centre.x - x0 - half) / half)
             #expect(centre.z <= roof + 1e-3, "\(centre)")
         }
+        let layout = TerracedRowDamage.Layout(model)
+        #expect(layout.externalLeaves == 0..<8 && layout.frontLeaves == 0..<2 && layout.partyWalls == 8..<10)
+        #expect(layout.firstSeat == 4)
         let standing = SceneStanding(
             // Pinned to the balloon until rerun on the mapped start (validation.md, "Still on the balloon start").
             StandingInputs(scenario: scenario, cellSize: 0.25, configuration: .recommended.balloonStart))
         #expect(
             standing.results.contains { result in result.evidence.contains { $0.check.contains("timber") } })
+    }
+
+    @Test(
+        "The solid-walled row has one brick-thick plane at the front, joined to the party walls, and no ties")
+    func solidWalls() throws {
+        let scenario = ScenarioPreset.terracedRow(
+            title: "Terraced row", faceClearance: 0, walls: .solidOneBrick)
+        let model = try #require(scenario.structure)
+        let mesh = try ShellMesh(model: model)
+        let x0 = model.solids[0].min.x
+        let front = mesh.elements.filter { $0.solid == 0 }
+        #expect(!front.isEmpty && front.allSatisfy { $0.axis == 0 && abs($0.thickness - 0.215) < 1e-4 })
+        let planes = Set(mesh.elements.filter { $0.axis == 0 }.map { mesh.positions[Int($0.nodes[0])].x })
+            .filter { $0 < x0 + 1 }
+        #expect(planes.count == 1, "front planes \(planes.sorted())")
+        // No ties: nothing across a cavity, and the grader's seats start at the first support.
+        #expect(model.supports.indices.allSatisfy { model.anchorage(ofSupport: $0)?.closingGap == nil })
+        let layout = TerracedRowDamage.Layout(model)
+        #expect(layout.externalLeaves == 0..<4 && layout.frontLeaves == 0..<1 && layout.partyWalls == 4..<6)
+        #expect(layout.firstSeat == 0)
+        // The party walls end on the front wall's midsurface and share its nodes: bonded in.
+        let frontNodes = Set(front.flatMap { e in (0..<4).map { e.nodes[$0] } })
+        let partyNodes = Set(
+            mesh.elements.filter { layout.partyWalls.contains($0.solid) }.flatMap { e in
+                (0..<4).map { e.nodes[$0] }
+            })
+        #expect(!frontNodes.intersection(partyNodes).isEmpty)
     }
 }

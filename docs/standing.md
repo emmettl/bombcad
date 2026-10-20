@@ -77,9 +77,11 @@ Since 19 October 2026 a structure's collapse is a result of its own (`ResultKind
 - **What would raise it.** A structural system's collapse may rise to an approximation only when
   a compared collapse case of that system agrees within its band. None does yet:
   - **Slabs:** Mendonça's, blind, the two that collapsed left standing (the unsafe side).
-  - **Brick houses** against the Second World War's bomb surveys: the right category at 0.1 s,
-    but the cracked front walls topple after, one or two categories too severe beyond 11 m (the
-    safe side). Masonry structures are illustrative anyway.
+  - **Brick houses** against the Second World War's bomb surveys: with the solid one-brick walls
+    most surveyed houses had, within a category at every distance by 0.3 s (one above beyond
+    14 m); with 1930s cavity walls the cracked front leaves topple, one or two categories too
+    severe beyond 11 m (the safe side). One row of one kind against a survey of many, and masonry
+    structures are illustrative anyway, so the level stays.
   - **Beirut's 0.5 m stone:** falls in 8 of 293 buildings where 7 of GEER's 13 partly collapsed.
     It is not converged, and was once matched by an error.
   - **Alsubaei's blockwork wall** under 125 kg collapses as the test's did: one wall, not a

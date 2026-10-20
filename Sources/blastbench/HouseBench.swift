@@ -5,7 +5,9 @@ import simd
 
 /// `blastbench house [--mass 25] [--standoff 10] [--height 0.8] [--dx 0.5] [--duration 0.1]
 /// [--every 0.01] [--covering plainClayTiles|concreteInterlockingTiles|welshSlate|none]
-/// [--erosion 0.003] [--clearance m] [--pitch 40|flat] [--settle-only] [--fastest]`: the row of 1930s terraced houses under a charge in front of the middle one.
+/// [--erosion 0.003] [--clearance m] [--pitch 40|flat] [--walls cavity|solid] [--settle-only] [--fastest]`:
+/// the row of 1930s terraced houses under a charge in front of the middle one (`--walls solid`:
+/// with pre-1919 solid one-brick walls instead of cavity walls).
 /// Settles the row, reports its ties and joist seats at rest, then runs the blast and reports
 /// them again with the structure's damage (`--fastest`: and where the five fastest nodes are).
 func runHouse(device: MTLDevice) throws {
@@ -16,10 +18,11 @@ func runHouse(device: MTLDevice) throws {
     let duration = option("duration").flatMap(Double.init) ?? 0.1
     let coveringName = option("covering") ?? "plainClayTiles"
     let covering = ScenarioPreset.RoofCovering(rawValue: coveringName)
+    let walls: ScenarioPreset.TerracedWalls = option("walls") == "solid" ? .solidOneBrick : .cavity
     let preset = ScenarioPreset.terracedRow(
         title: "Terraced row", charge: mass, standoff: standoff, height: height, covering: covering,
         faceClearance: option("clearance").flatMap(Float.init),
-        pitch: option("pitch") == "flat" ? nil : option("pitch").flatMap(Float.init) ?? 40)
+        pitch: option("pitch") == "flat" ? nil : option("pitch").flatMap(Float.init) ?? 40, walls: walls)
     var scenario = preset
     if let opening = option("erosion").flatMap(Float.init) {
         // The brick's removal width, for checking what removal does to the walls.
@@ -91,7 +94,9 @@ func runHouse(device: MTLDevice) throws {
     }
     let size = scenario.domainSize
     print(
-        "\(mass) kg TNT \(standoff) m in front of the middle house, \(height) m up; air \(cell) m; domain "
+        "\(mass) kg TNT \(standoff) m in front of the middle house, \(height) m up; "
+            + (walls == .solidOneBrick ? "solid one-brick walls; " : "")
+            + "air \(cell) m; domain "
             + "\(Int(size.x)) x \(Int(size.y)) x \(Int(size.z)) m"
             + (scenario.tightFacesNote.map { "; " + $0 } ?? ""))
     solver.settleStructures()
