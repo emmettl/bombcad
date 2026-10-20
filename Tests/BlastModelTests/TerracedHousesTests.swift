@@ -99,4 +99,14 @@ struct TerracedHousesTests {
             })
         #expect(!frontNodes.intersection(partyNodes).isEmpty)
     }
+
+    @Test("The app's terraced sample is the solid row, the 1930s cavity row the second")
+    func samples() throws {
+        let solid = try #require(ScenarioPreset.terracedHouses.scenario.structure)
+        let cavity = try #require(ScenarioPreset.terracedHousesCavity.scenario.structure)
+        #expect(TerracedRowDamage.Layout(solid).externalLeaves == 0..<4)
+        #expect(abs(solid.solids[0].size.x - 0.215) < 1e-5)
+        #expect(TerracedRowDamage.Layout(cavity).externalLeaves == 0..<8)
+        #expect(ScenarioPreset.terracedHousesCavity.scenario.tightOpenFaces.isEmpty)
+    }
 }

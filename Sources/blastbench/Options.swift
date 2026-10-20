@@ -40,7 +40,7 @@ func preset(named name: String?) -> ScenarioPreset {
     case "plant": .processPlantExplosion
     case "warehouse": .portalWarehouse
     case "terraced": .terracedHouses
-    case "terraced-solid": .terracedHousesSolid
+    case "terraced-cavity": .terracedHousesCavity
     case "hub": .transportHub
     case "hillside": .hillsideFrame
     default: .streetCanyon

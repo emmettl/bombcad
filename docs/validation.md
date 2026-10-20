@@ -3184,7 +3184,8 @@ Mac Studio.
   envelope's solid fronts fall to 13.9 m and stand, cracked, from 16.9 m under 96 kg (from 20 m
   under 120 kg; the upper storey from 13.9 m under 72 kg), against the shells' 34% of the front
   down at 13.9 m and 14% at 16.9 m. The cavity leaf still falls to 23 m, as the shells' does. It
-  is off by default.
+  stays off by default, the user's decision of 21 October 2026. The app's terraced sample is the
+  solid row since that day, the cavity row a second sample.
 
 ## Slabs under contact charges
 

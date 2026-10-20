@@ -30,7 +30,7 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
     case processPlantExplosion
     case portalWarehouse
     case terracedHouses
-    case terracedHousesSolid
+    case terracedHousesCavity
     case transportHub
     case hillsideFrame
 
@@ -66,8 +66,8 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
         case .largePanelStreet: "Large-panel flats: street charge"
         case .processPlantExplosion: "Vapour cloud explosion at a process plant"
         case .portalWarehouse: "Portal-frame warehouse, profiled steel cladding"
-        case .terracedHouses: "Terraced houses, brick and timber"
-        case .terracedHousesSolid: "Terraced houses, pre-1919 solid brick"
+        case .terracedHouses: "Terraced houses, pre-1919 solid brick"
+        case .terracedHousesCavity: "Terraced houses, 1930s cavity walls"
         case .transportHub: "Transport hub, long-span steel and glass roof"
         case .hillsideFrame: "Two-storey frame on a hillside"
         }
@@ -637,10 +637,12 @@ public enum ScenarioPreset: String, CaseIterable, Identifiable, Sendable {
             return Self.officeTowerScenario(title: title)
         case .portalWarehouse:
             return Self.portalWarehouseScenario(title: title)
+        // The solid one-brick row, as most of the houses in the wartime surveys (the user's choice,
+        // 21 October 2026), and the 1930s cavity row beside it.
         case .terracedHouses:
-            return Self.terracedHousesScenario(title: title)
-        case .terracedHousesSolid:
             return Self.terracedRow(title: title, walls: .solidOneBrick)
+        case .terracedHousesCavity:
+            return Self.terracedHousesScenario(title: title)
         case .transportHub:
             return Self.transportHubScenario(title: title)
         case .hillsideFrame:

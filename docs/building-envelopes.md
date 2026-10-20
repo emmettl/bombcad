@@ -1323,8 +1323,8 @@ and a building's corners and cross walls are taken to.
 | Beirut's buildings as 0.5 m stone, the walls' chances and #19's band test (`scenebench wall-calibrate --walls stone --bands … --arching`) | heavy or worse (cracked) as before | the same: arching acts after cracking, and the map's façade strips do not arch. Arched as first built, façades included, the counts were the same too, but the buildings with a wall fallen within 1.32 km went from 20 and 65 to 1 and 2 of 2,053 at 0.5 and 0.7 kt (510 to 11 at 1.5 kt), where GEER found 7 of 13 sandstone houses at 0.5–0.75 km partly collapsed and the envelope already finds too few ([Beirut](validation.md#a-district-beirut-2020)) |
 
 **Its standing** is illustrative ("Masonry arching between returns"): the detailed shells
-arch as the theory says, but no arching wall has been compared under a blast on its own. Whether
-to make it the default is the user's decision; the numbers above are the case for and against.
+arch as the theory says, but no arching wall has been compared under a blast on its own. **The
+user decided on 21 October 2026 to keep it optional, off by default** (emmettl/bombcad-work#57).
 
 ## Damage for envelope buildings: built
 

@@ -401,9 +401,9 @@ Kuilen's Hashin-type criteria (HERON 58, 2013):
   strengths and dynamic increase factor.
 - **Meshing:** a piece of timber is meshed as shells and beams whatever its "Elements" choice,
   as profiled sheeting is.
-- **Sample:** the "Terraced houses, brick and timber" sample is a 1930s row of three with timber
-  floors and roof (below); "Terraced houses, pre-1919 solid brick" is the same row with solid
-  one-brick walls.
+- **Sample:** the "Terraced houses, pre-1919 solid brick" sample is a row of three with solid
+  one-brick walls and timber floors and roof (below); "Terraced houses, 1930s cavity walls" is the
+  same row with cavity walls.
 
 **Grades** (`TimberProperties.strengthClass`, `crossLaminatedPanel`, `StructureMaterial.timber(_:)`):
 
@@ -443,7 +443,8 @@ Where the numbers come from:
 
 ### The terraced houses
 
-`ScenarioPreset.terracedHouses` (`terracedRow` for other charges): a row of three two-storey
+`ScenarioPreset.terracedHousesCavity` (`terracedRow` for other charges; `terracedHouses`, the
+default sample since 21 October 2026, is the same row with solid walls): a row of three two-storey
 houses as built in the UK from the 1930s, 5 m wide and 8.5 m deep with 2.6 m storeys, under
 25 kg in the street 10 m in front.
 - **Walls:** cavity walls of two 102.5 mm brick leaves 50 mm apart, at the front, back and
