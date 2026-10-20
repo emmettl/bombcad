@@ -53,6 +53,7 @@ import json
 import os
 from pathlib import Path
 import re
+import resource
 import shutil
 import socket
 import subprocess
@@ -686,7 +687,11 @@ def digest_runs(pairs):
             except subprocess.TimeoutExpired as error:
                 status, output = "timed out", (error.stdout or b"").decode(errors="replace")
             failed |= bool(status)
-            results[name] = {"status": status, "output": output, "seconds": round(time.monotonic() - started, 1)}
+            # The largest resident memory of any run so far (macOS counts bytes).
+            peak = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss / 1e9
+            results[name] = {"status": status, "output": output, "seconds": round(time.monotonic() - started, 1),
+                             "peakGB": round(peak, 2)}
+            print(f"  {name}: {results[name]['seconds']} s, peak so far {peak:.2f} GB", flush=True)
         Path(out).write_text(json.dumps(results, indent=1) + "\n")
     return 1 if failed else 0
 
@@ -702,14 +707,32 @@ class DigestCheck:
 
     def __init__(self, base, cache=None, stream=None, in_slot=False):
         self.base, self.cache, self.stream, self.in_slot = base, Path(cache or digest_cache()), stream, in_slot
+        self.process, self.cancelled = None, threading.Event()
 
     def say(self, text):
         print(text, file=self.stream or sys.stdout, flush=True)
 
     def call(self, command, cwd=ROOT):
+        """Runs one step in a process group of its own (so cancel() stops it and its children);
+        its exit status, 1 once cancelled."""
+        if self.cancelled.is_set():
+            return 1
         self.say("+ " + " ".join(str(part) for part in command))
-        return subprocess.run([str(part) for part in command], cwd=cwd, stdout=self.stream,
-                              stderr=subprocess.STDOUT if self.stream else None).returncode
+        self.process = subprocess.Popen([str(part) for part in command], cwd=cwd, stdout=self.stream,
+                                        stderr=subprocess.STDOUT if self.stream else None, start_new_session=True)
+        status = self.process.wait()
+        self.process = None
+        return 1 if self.cancelled.is_set() else status
+
+    def cancel(self):
+        """Stops the step running (this check's own process group) and those after it."""
+        self.cancelled.set()
+        process = self.process
+        if process is not None and process.poll() is None:
+            try:
+                os.killpg(process.pid, 15)
+            except (ProcessLookupError, PermissionError):
+                pass
 
     def build(self, source):
         """blastbench built for release in `source`: its path, or None."""
@@ -979,13 +1002,13 @@ def main():
             return status
     ran = "here"
     beside = None
-    if digests and where == "there":
-        # The steps go to the other Mac: the digests run here meanwhile, their output kept until the
-        # steps are done.
+    if digests:
+        # The digests run beside the build and tests (here or on the other Mac), their output kept
+        # until the steps are done; a failed step stops them.
         log = tempfile.TemporaryFile(mode="w+")
         digests.stream = log
-        beside = {"thread": threading.Thread(target=lambda: beside.update(status=digests.run()), daemon=True),
-                  "log": log, "status": 1}
+        beside = {"log": log, "status": 1}
+        beside["thread"] = threading.Thread(target=lambda: beside.update(status=digests.run()), daemon=True)
         beside["thread"].start()
     if level in ("affected", "covered", "core"):
         # The suites go in the environment here, so that gpu-slot learns one command's memory.
@@ -996,15 +1019,14 @@ def main():
             ["python3", "Scripts/check-affected.py", "check-steps", "--suites", ",".join(suites)],
             settings["laneGB"], wait)
         if beside:
+            if status:
+                print("check-affected: stopping the digests, since the steps failed", flush=True)
+                digests.cancel()
             beside["thread"].join()
             beside["log"].seek(0)
             print(beside["log"].read(), end="", flush=True)
             if beside["status"] and not status:
                 status = beside["status"]
-        if status:
-            return status
-    if digests and not beside:
-        status = digests.run()
         if status:
             return status
     print(f"check-affected: passed ({level}{', build and tests on ' + host if ran == 'there' else ''}"

@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
+import time
 import unittest
 
 SPEC = importlib.util.spec_from_file_location("check_affected",
@@ -408,10 +410,27 @@ class DigestCheckTests(unittest.TestCase):
         self.assertIn("FAILED: the digests differ", log)
         self.assertIn("plain / open, 0.5 m: 22fa821826762824 at the base, 0000821826762824 on this branch", log)
 
+    def test_cancelling_stops_the_running_step_and_the_rest(self):
+        digests = FakeDigestCheck(self.cache)
+        self.addCleanup(digests.stream.close)
+        result = {}
+        thread = threading.Thread(target=lambda: result.update(status=digests.call(["sleep", "30"])))
+        started = time.monotonic()
+        thread.start()
+        while digests.process is None and time.monotonic() - started < 5:
+            time.sleep(0.01)
+        digests.cancel()
+        thread.join(10)
+        self.assertEqual(result.get("status"), 1)
+        self.assertLess(time.monotonic() - started, 10)
+        self.assertEqual(digests.run(), 1)  # nothing more runs once cancelled
+
     def test_old_bases_are_pruned(self):
         for index in range(check.DIGEST_KEEP + 2):
             (self.cache / f"{index:040x}").mkdir()
-        FakeDigestCheck(self.cache).prune()
+        digests = FakeDigestCheck(self.cache)
+        self.addCleanup(digests.stream.close)
+        digests.prune()
         self.assertEqual(len([path for path in self.cache.iterdir() if len(path.name) == 40]), check.DIGEST_KEEP)
 
 
