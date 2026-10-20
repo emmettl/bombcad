@@ -72,7 +72,7 @@ import simd
 //                        (a run saved part way and carried on from it, against the same run straight through)
 //                       [--standing]   (the standing a new document of the preset shows, in place of a run)
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
-//                       [--mapped [--early-voxels n] [--early-samples s]] [--hot-air|--grey-air] [--frame-detail]
+//                       [--balloon-start] [--early-voxels n] [--early-samples s] [--hot-air|--grey-air] [--frame-detail]
 //                       [--budget out.csv]   (the fireball's energy budget each frame: heat released by
 //                        temperature and mixture, the luminous gas, what the gas lost to radiation)
 //                       [--burn-mixing C]   (afterburning limited by the sub-grid mixing, an eddy-break-up
