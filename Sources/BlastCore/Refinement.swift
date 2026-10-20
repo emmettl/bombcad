@@ -186,6 +186,8 @@ final class AirRefinement {
     private lazy var redistributeCutPipeline: MTLComputePipelineState? =
         (try? ShaderLibrary.pipeline(
             "refineRedistributeCut", in: library)).map { withGravity($0, "refineRedistributeCut") }
+    private lazy var capSliversPipeline: MTLComputePipelineState? = try? ShaderLibrary.pipeline(
+        "refineRemaskCapSlivers", in: library)
     private lazy var cutPassUpPipeline: MTLComputePipelineState? =
         (try? ShaderLibrary.pipeline(
             "refineCutPassUp", in: library)).map { withGravity($0, "refineCutPassUp") }
@@ -1463,8 +1465,11 @@ final class AirRefinement {
     /// After the structure's points have been counted into the fine cells (with the coarse
     /// remask): the fine cells' outline follows the structure, a fine cell being solid where
     /// `threshold` of its points are.
+    /// With `capSlivers` (a structure standing on the terrain's cut cells), the fine slivers it
+    /// shuts in become solid (`refineRemaskCapSlivers`).
     func encodeRemask(
-        _ encoder: MTLComputeCommandEncoder, parent: ParentView, threshold: UInt32, uniforms: SolverUniforms
+        _ encoder: MTLComputeCommandEncoder, parent: ParentView, threshold: UInt32, uniforms: SolverUniforms,
+        capSlivers: Bool = false
     ) {
         var encoder = encoder
         stage("remask", &encoder)
@@ -1487,6 +1492,25 @@ final class AirRefinement {
         encoder.dispatchThreadgroups(
             indirectBuffer: arguments, indirectBufferOffset: 72,
             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+        if capSlivers, cutTerrain, let pipeline = capSliversPipeline, let fineCut, let fineDefects,
+            let patchCut
+        {
+            stage("remask", &encoder)
+            encoder.setComputePipelineState(pipeline)
+            bind(encoder, fineMask, 0)
+            encoder.setBuffer(fineCut, offset: 0, index: 1)
+            encoder.setBuffer(fineDefects, offset: 0, index: 2)
+            setUniforms(encoder, &uniforms, index: 3)
+            bind(encoder, patchOfTile, 4)
+            encoder.setBuffer(tileOfPatch, offset: 0, index: 5)
+            encoder.setBuffer(patchList, offset: 0, index: 6)
+            encoder.setBuffer(patchCut, offset: 0, index: 7)
+            set(encoder, parent.mask, 8)
+            set(encoder, parent.patches, 9)
+            encoder.dispatchThreadgroups(
+                indirectBuffer: arguments, indirectBufferOffset: 60,
+                threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+        }
         stage("remask", &encoder)
         encoder.setComputePipelineState(remaskApplyPipeline)
         bind(encoder, fineMask, 0)

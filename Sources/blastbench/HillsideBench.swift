@@ -90,7 +90,8 @@ func runHillside(device: MTLDevice) throws {
     // `--no-structure`: the air over the slope alone; `--staircase`: the terrain as whole cells.
     if flag("no-structure") { scenario.structure = nil }
     var configuration = SolverConfiguration.recommended
-    if flag("staircase") { configuration.terrainCutCells = false }
+    // `--refine 2 [--refine-levels 2]`, `--staircase` and the rest of the refinement's options.
+    configureRefinement(&configuration)
     let solver = try BlastSolver(
         device: device, scenario: scenario, cellSize: cell, configuration: configuration)
     var peak: [Float] = []
@@ -140,6 +141,12 @@ func runHillside(device: MTLDevice) throws {
         )
     }
     report("At rest")
+    print(
+        "Terrain " + (configuration.cutsTerrain(of: scenario, cellSize: cell) ? "cut" : "as a staircase")
+            + (configuration.refinement > 1
+                ? ", air refined by \(configuration.refinement), \(configuration.refinementLevels) level(s)"
+                : ""))
+    let settled = solver.totals()
     peak = []
     let every = option("every").flatMap(Double.init) ?? duration
     var time = 0.0
@@ -147,5 +154,20 @@ func runHillside(device: MTLDevice) throws {
         time = min(time + every, duration)
         let result = solver.advance(until: time)
         report("After \(String(format: "%.1f", time * 1000)) ms\(result.isStable ? "" : " (unstable)")")
+        guard result.isStable else { break }
+    }
+    // The air's mass and energy since it settled (the faces are open: the blast's own outflow
+    // shows too), and each gauge's peak overpressure.
+    let now = solver.totals()
+    print(String(format: "The air's step buffers' GPU time %.2f s", solver.stepGPUSeconds))
+    print(
+        String(
+            format: "Air since settling: mass %+.3e, energy %+.3e (relative)",
+            (now.mass - settled.mass) / settled.mass,
+            (now.energy - settled.energy) / settled.energy))
+    for (gauge, samples) in zip(scenario.gauges, solver.gaugeHistories) {
+        let first = samples.first?.pressure ?? 0
+        let high = (samples.map(\.pressure).max() ?? first) - first
+        print(String(format: "  %@: peak %.1f kPa", gauge.name as NSString, high / 1000))
     }
 }

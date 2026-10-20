@@ -67,27 +67,3 @@ extension ScenarioPreset {
         return scenario
     }
 }
-
-extension Scenario {
-    /// Whether any structure stands on the terrain: a solid's base within half a metre, an element
-    /// or an air cell of `cellSize` (a fine cut cell's top can lie a fine cell over the ground, and
-    /// a structure's base half an element over its cells) of the highest ground under its
-    /// footprint, or below it, where that ground is above the floor (on the floor there are no cut
-    /// cells to shut in).
-    public func structureStandsOnTerrain(cellSize: Float = 0) -> Bool {
-        guard let terrain, !terrain.isFlat else { return false }
-        return structuralObjects.contains { object in
-            guard let model = object.structure else { return false }
-            let margin = max(0.5, model.elementSize, cellSize)
-            return model.solids.contains { box in
-                let corners = [
-                    SIMD2(box.min.x, box.min.y), SIMD2(box.max.x, box.min.y), SIMD2(box.min.x, box.max.y),
-                    SIMD2(box.max.x, box.max.y),
-                    0.5 * (SIMD2(box.min.x, box.min.y) + SIMD2(box.max.x, box.max.y)),
-                ]
-                let highest = corners.map { terrain.height(at: $0) }.max() ?? 0
-                return highest > 0 && box.min.z <= highest + margin
-            }
-        }
-    }
-}

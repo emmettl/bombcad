@@ -1367,6 +1367,75 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
     }
 }
 
+// A structure standing on the terrain's cut cells, at a level's resolution: a fine cut cell less
+// than half air with the cell above it solid in the new outline is shut in between the ground and
+// the structure, as `remaskCapSlivers` finds on the coarse grid. Its column's difference would come
+// to it blocked, as the last cell of air, and what its volume could not hold would be lost
+// (`refineRedistributeCut`). Between `refineRemaskPrepare` and `refineRemaskApply`, it is marked
+// (bit 5), which apply makes rigid and solid, so that it stays so while its patch lives and a
+// rocking footing does not open it; its difference is dropped. Walked down each fine column of a
+// patch with cut cells, so that what it shuts in shuts in the sliver beneath it; across a patch's
+// top it reads the outline above as `refineRemaskPrepare` left it (bits 1 and 2), never another
+// patch's marks, so the order the patches run in changes nothing. Dispatched as the ghosts are
+// (four of their layers to a patch's one), only where a structure stands on cut terrain.
+kernel void refineRemaskCapSlivers(device uchar *fineMask [[buffer(0)]],
+                                   const device float4 *fineCut [[buffer(1)]],
+                                   device float4 *fineDefects [[buffer(2)]],
+                                   constant SolverUniforms &u [[buffer(3)]],
+                                   const device int *patchOfTile [[buffer(4)]],
+                                   const device uint *tileOfPatch [[buffer(5)]],
+                                   const device uint *patchList [[buffer(6)]],
+                                   const device uint *patchCut [[buffer(7)]],
+                                   const device uchar *mask [[buffer(8)]],
+                                   const device int *parentPatches [[buffer(9)]],
+                                   uint gid [[thread_position_in_grid]]) {
+    int r = int(u.refineRatio);
+    int side = patchSize * r;
+    uint perPatch = 4u * uint(side * side);
+    uint position = gid % perPatch;
+    if (position >= uint(side * side)) {
+        return;
+    }
+    uint patch = patchList[gid / perPatch];
+    if (patchCut[patch] == 0u) {
+        return;
+    }
+    int3 tile = tileCoordinates(tileOfPatch[patch], u);
+    int a = int(position) % side;
+    int b = int(position) / side;
+    int3 dims = int3(u.nx, u.ny, u.nz);
+    // Whether the cell above the patch's top, in this column, is solid in the new outline.
+    int3 top = tile * side + int3(a, b, side);
+    bool aboveSolid = false;
+    if (top.z / r < dims.z) {
+        int3 up = tile + int3(0, 0, 1);
+        int holder = up.z < int(u.refineTileNz) ? patchOfTile[tileIndex(up, u)] : -1;
+        if (holder >= 0) {
+            aboveSolid = (fineMask[fineIndex(uint(holder), top, up, u)] & 6) != 0;
+        } else {
+            aboveSolid = parentSolid(mask, parentIndex(top / r, parentPatches, u), u);
+        }
+    }
+    for (int k = side - 1; k >= 0; --k) {
+        int3 f = tile * side + int3(a, b, k);
+        if (any(f / r >= dims)) {
+            aboveSolid = false;
+            continue;
+        }
+        uint index = fineIndex(patch, f, tile, u);
+        uchar m = fineMask[index];
+        bool solid = (m & 6) != 0;
+        float share = fineCut[2 * index].x;
+        if (!solid && aboveSolid && share > 0.0f && share < 0.5f) {
+            fineMask[index] = m | 32;
+            fineDefects[2 * index] = float4(0.0f);
+            fineDefects[2 * index + 1] = float4(0.0f);
+            solid = true;
+        }
+        aboveSolid = solid;
+    }
+}
+
 // After the substeps, with the terrain's cut cells: what each stack of patches passed up out of
 // its top goes to the coarse cell above, a cut cell's difference or straight into a whole one, its
 // r^2 fine columns added in a fixed order. One thread a coarse column of each patch, dispatched as

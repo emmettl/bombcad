@@ -3877,7 +3877,8 @@ kernel void refineRemaskApply(device uchar *fineMask [[buffer(0)]],
     uint cells = side * side * side;
     uint at = patchList[gid / cells] * cells + gid % cells;
     uchar m = fineMask[at];
-    fineMask[at] = (m & 2) | ((m >> 2) & 1);
+    // Bit 5, a sliver `refineRemaskCapSlivers` shut in: rigid and solid from now on.
+    fineMask[at] = (m & 2) | ((m >> 4) & 2) | (((m >> 2) | (m >> 5)) & 1);
     for (uint n = 0; n < 4; ++n) {
         fineOccupancy[4 * at + n] = 0;
     }

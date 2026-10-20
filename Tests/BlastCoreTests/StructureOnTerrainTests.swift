@@ -112,4 +112,43 @@ struct StructureOnTerrainTests {
         let columns = capped.contents().bindMemory(to: UInt32.self, capacity: capped.length / 4)
         #expect((0..<(capped.length / 4)).contains { columns[$0] > 0 })
     }
+
+    @Test(
+        "Refined, a block standing on cut terrain shuts in the fine slivers under it, and the closed air keeps its gas",
+        arguments: [1, 2])
+    func cappedFineSlivers(levels: Int) throws {
+        // As `cappedSlivers`, closed, 1 kg, the air refined once or twice: the fine slivers under the
+        // block's cells must be solid. Left open, each step's difference reached them blocked by
+        // the block and what their volume could not take was lost, ±1.6e-6 of the gas each 5 ms.
+        let domain = SIMD3<Float>(12, 8, 8)
+        let slope = Terrain.sampled(domain: domain, spacing: 0.5) { max(0, $0.x * 0.25) }
+        let block = StructureModel(
+            solids: [Box(min: SIMD3(5.5, 3.5, 1.5), max: SIMD3(6.5, 4.5, 3))], material: material,
+            elementSize: 0.125, fixedBase: true)
+        var scenario = Scenario(
+            name: "Block on a slope", domainSize: domain, boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(2.5, 4, slope.height(at: SIMD2(2.5, 4)) + 1)), gauges: [],
+            structure: block)
+        scenario.terrain = slope
+        scenario.reflectiveFaces = .all
+        var configuration = SolverConfiguration()
+        configuration.refinement = 2
+        configuration.refinementLevels = levels
+        configuration.refinementThreshold = 0.01
+        configuration.refinementMemory = 512 << 20
+        #expect(configuration.cutsTerrain(of: scenario, cellSize: 0.25))
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.25, configuration: configuration)
+        // Placing patches over the slivers the coarse cells count as solid adds the air they hold
+        // (about 4e-5 of the gas here, as on the staircase); after that the gas is kept.
+        #expect(solver.advance(until: 0.005).isStable)
+        let start = solver.totals().mass
+        var last = start
+        for n in 2...6 {
+            #expect(solver.advance(until: 0.005 * Double(n)).isStable)
+            let mass = solver.totals().mass
+            #expect(abs(mass - last) / start < 3e-7, "\(n): \((mass - last) / start)")
+            last = mass
+        }
+    }
 }
