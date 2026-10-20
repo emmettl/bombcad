@@ -275,12 +275,18 @@ enum SurrogateBench {
                         String(format: "%.1f", kb?.reflectedPressure ?? 0),
                         String(format: "%.4f", (kb?.scaledReflectedImpulse ?? 0) * root),
                         String(format: "%.3f", reference.cellSize), String(format: "%.5f", rise),
+                        f.edgeM.isFinite ? String(format: "%.2f", f.edgeM) : "-999",
+                        String(format: "%.2f", f.edgeFromChargeM), String(format: "%.2f", f.edgeToTargetM),
+                        String(format: "%.2f", f.edgeTopM), String(format: "%.2f", f.lastTopM),
+                        String(format: "%.1f", f.canyonM), String(format: "%.2f", f.canyonHeightM),
+                        String(format: "%.1f", f.edgeSideM),
                     ].joined(separator: ",") + "\n"
             }
         }
         let header =
             "building,object,strip,mix,axis,outward,x,y,z,area,distance,cos,crossed,blocked,ridge,rise,height,"
-            + "shadow,front,inside,peak,impulse,pso,iso,pr,ir,cell,risetime\n"
+            + "shadow,front,inside,peak,impulse,pso,iso,pr,ir,cell,risetime,edge,edgefrom,edgeto,edgetop,lasttop,"
+            + "canyon,canyonheight,edgeside\n"
         try (header + rows.joined()).write(to: URL(filePath: out), atomically: true, encoding: .utf8)
         print(
             String(

@@ -3,8 +3,8 @@ import Foundation
 import simd
 
 /// `scenebench glass-calibrate <district-scene's inputs> [--radius 2500] --runs mass:folder,…
-/// [--masses samples.csv] [--geer Facade_damage.shp] [--draws 100] [--inside 0.85] [--out
-/// calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
+/// [--masses samples.csv] [--geer Facade_damage.shp] [--draws 100] [--inside 0.85]
+/// [--coefficients fit.json] [--out calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
 /// docs/glass-probability.md) are calibrated.
 ///
 /// (a) Against the district's own runs at several yields (`district-compare --save-loads`): each
@@ -109,6 +109,14 @@ enum GlassCalibration {
         }
         let draws = value("draws").flatMap(Int.init) ?? 100
         let share = Float(value("inside").flatMap(Double.init) ?? 0.85)
+        // `--coefficients fit.json`: the façades' terms to judge (fit-surrogate.py's JSON), as
+        // surrogate-judge takes them; the fitted ones without it.
+        let coefficients =
+            try value("coefficients").map {
+                try JSONDecoder().decode(
+                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
+            } ?? .fitted
+        print("Coefficients fitted to \(coefficients.fittedTo)")
         var timings: [String: Double] = [:]
 
         // (a) The runs: each side's glass in each, from its strips' recorded histories.
@@ -239,7 +247,8 @@ enum GlassCalibration {
             ] {
                 clock = .now
                 let (p, _) = FacadeLoadSurrogate.glassProbabilities(
-                    sides: sides, mass: yields[0], cellSize: dx, uncertainty: uncertainty)
+                    sides: sides, mass: yields[0], cellSize: dx, uncertainty: uncertainty,
+                    coefficients: coefficients)
                 timings["chances, \(name)"] = seconds(clock)
                 print(
                     String(
@@ -454,6 +463,7 @@ enum GlassCalibration {
                 uncertainty: FacadeLoadSurrogate.Uncertainty(
                     masses: masses, strengthMedian: value("strength-median").flatMap(Double.init) ?? 1,
                     strengthLogSD: value("strength-sd").flatMap(Double.init) ?? 0.25, samples: draws),
+                coefficients: coefficients,
                 keepDraws: true)
             timings["GEER chances"] = seconds(clock)
             print(

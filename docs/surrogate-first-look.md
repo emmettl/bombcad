@@ -24,7 +24,7 @@ Judged against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not f
 25–41 minutes for a full run on the CI mini. On a
   made-up district of 7,235 buildings it takes 2–3 s against the run's 69–105 s on the same Mac.
 - **Does not: walls and roofs.** Against Beirut's near boxes rerun with uncapped loads, of the
-  components either the run or the surrogate calls damaged, 15–47% of the concrete, 33–41% of the
+  components either the run or the surrogate calls damaged, 28–49% of the concrete, 36–45% of the
   stone and, on the roofs' own terms, 29–64% of the roofs take the run's level ([below](#walls-and-roofs-20-october-2026)).
   The few damaged components lie close in, where one wrong factor of 1.3 moves a wall across a
   level. Run the scene for the structure.
@@ -52,12 +52,17 @@ For each envelope component with a face on the air (`FacadeLoadSurrogate`):
    square, the length inside them, height, ridge and ground rise (each over W^(1/3)), and the
    logarithm of the cell's size over W^(1/3) (`FacadeLoadSurrogate.terms`). A run's loads depend
    on its cells (a shock spans several of them), so the surrogate gives the loads of a run on the project's cells, not converged ones.
-4. **Its pulse.** A triangle of that peak and impulse, lasting twice the impulse over the peak,
+   Two more terms carry a street the line runs down, measured on fine runs rather than fitted to the
+   districts ([below](#shielding-streets-and-the-close-in-branch-20-october-2026)).
+4. **Close in**, below Z = 4.6 m/kg^(1/3), a branch takes over from the fitted terms: the base
+   times the ratio fine runs give an open façade, carried to the project's cells by the fitted
+   cell term, and blended into the fitted terms between Z 4.6 and 8.
+5. **Its pulse.** A triangle of that peak and impulse, lasting twice the impulse over the peak,
    rising to its peak over a fitted share of that time (0.2–0.35 on 4 m cells: behind buildings
    the load builds up over tens of milliseconds as the streets fill). On its own training district
    a pulse that rose at once blew out 8,188 of the 11,805 sides the run left partly glazed, and
    53% of sides agreed; with the rise, 85% agree.
-5. **Its damage.** The pulses go into `EnvelopeDamageAssessment` as a run's histories do: the same
+6. **Its damage.** The pulses go into `EnvelopeDamageAssessment` as a run's histories do: the same
    panels, panes, glazing mixes and levels. Peaks and impulses are rounded to 3% so that a
    district's components share pulses, and the SDOF responses are remembered by system and load
    (`SDOFResponseMemo`): over Beirut 4.0 million responses are asked for and 115,000 integrated.
@@ -114,8 +119,10 @@ eight times the run's peak, but that comparison does not stand: the saved loads 
 stored as 16-bit floats, which clipped every peak at 65.5 kPa (fixed in 983409a8, after these
 runs), and every strip there is at that cap. The cap reaches 540 m at 0.5 kt (Z ≈ 7) and 670 m
 at 1.1 kt; in the made-up districts it held the fit's targets down within 555 m at 500 t (2% of
-its strips). The near-field terms and these near bands wait for a refit on loads saved without
-the cap.
+its strips). On the near boxes' uncapped loads (the table is the full runs', capped), the fitted
+terms held close in gave 0.66 of the run's peak at Z 3–5 and 0.78 at Z 5–7; with the close-in
+branch of 20 October those are 1.11 and 0.88
+([below](#shielding-streets-and-the-close-in-branch-20-october-2026)).
 
 Glass by building side, against the run's and GEER's shares (as the
 [Beirut page](beirut-2020.md#glass-as-a-mix-of-panes) compares them), at 0.5 kt:
@@ -173,6 +180,8 @@ either side calls damaged, the share at the run's level, and within one:
 | Concrete walls, oracle | 0.86, 1.00 | 0.76, 1.00 | 0.66, 1.00 |
 | Concrete walls, surrogate | 0.47, 0.60 | 0.35, 0.78 | 0.15, 0.74 |
 | Stone walls, oracle / surrogate | 0.92 / 0.41 | 0.90 / 0.33 | 0.92 / 0.38 |
+| Concrete walls, with the close-in branch (20 October) | 0.49, 0.58 | 0.44, 0.81 | 0.28, 0.83 |
+| Stone walls, with the close-in branch | 0.42 | 0.36 | 0.45 |
 | Roofs, oracle | 0.81, 1.00 | 0.70, 1.00 | 0.55, 1.00 |
 | Roofs, on the façades' terms | 0.42, 1.00 | 0.06, 0.98 | 0.11, 0.91 |
 | Roofs, on their own terms | 0.64, 1.00 | 0.29, 1.00 | 0.37, 0.99 |
@@ -222,6 +231,50 @@ refit), which must bring the far impulses down with them; judged against the gla
 test before they are taken. The refitted terms, the judgements and the calibration are in
 /Volumes/StudioData/bombcad/rise-fix.
 
+### Shielding, streets and the close-in branch (20 October 2026)
+
+Fitted and judged on fine runs at 1 t (emmettl/bombcad-work#4; the numbers in
+[protective design](protective-design.md#shielding-barriers-streets-and-close-in-loads-on-fine-cells-20-october-2026)):
+
+- **The features.** `Raster.sight` now also gives the knife edge in the way (the highest top over
+  the line for its distances), its distances, how far it reaches to the side, and the last
+  building's top; `Raster.canyon` walks a street back from the façade while walls stand on both
+  sides within 25 m. `surrogate-extract` writes them (columns `edge` to `edgeside`).
+- **Streets the line runs down** (two terms, held at the fine canyon runs' values): log peak gains
+  0.68 u e^(−ℓ/8h) and log impulse 1.33 u e^(−ℓ/3h) (1 − e^(−(h − 0.6))), u the log of Z over the
+  mouth's, ℓ and h the street's length and walls' height over W^(1/3). Leaving one run out, 85%
+  of the canyon gauges' peaks come within 1.2× (36% without), 75% of the impulses (49%). At Beirut's
+  yields the terms are a few per cent at most.
+- **The close-in branch**, Z 1.5–4.6, blended into the fitted terms by Z 8: Kingery–Bulmash's
+  base times the open façades' ratio on 0.5 m cells, a quadratic in log Z. Leaving one layout out,
+  peaks scatter by 0.11 about it; on 1 m cells through the cell term the median is +0.01.
+- **Shielding: measured, not adopted.** A knife-edge factor passes on the fine layouts pooled
+  (log-SD 0.232 leaving one layout out), but over-credits barrier walls by 20% and is absent from
+  the district runs (a multiplier of +0.05 when fitted with their terms).
+- **The district terms are unchanged.** A refit of them on the made-up runs with their clipped
+  strips mended moved Beirut's glass by −0.02 and was not kept. Beirut's glass, side by side
+  and by band, is as it was (0.841, 0.754 and 0.813 of sides; every band within 0.005).
+- **The next refit's starting point: the rise share fitted with the load terms.** Fitted on the
+  same four made-up runs, f3065fca's corrected rise share goes in together with the load terms and
+  a bounded (log(1 + crossed))² term (impulse −0.040; the districts' impulse scatter 0.168 → 0.163).
+  - It brings Beirut's far impulses down: at 0.5 kt, Z 28–40, from 1.63 to 1.41 times the run's;
+    at 1.1 kt, Z 20–28, from 1.86 to 1.60.
+  - It takes the glass chances back through their test with the load scatter: blown out Brier
+    0.021, skill 0.80; thrown past 3b, skill 0.71. As landed they are 0.020, 0.81 and 0.72; with
+    the rise alone 0.024, 0.78 and 0.68, failing.
+  - It costs 0.005–0.008 in side agreement at 0.2 and 1.1 kt (0.833 and 0.809, against 0.841 and
+    0.814). The faster rise blows out too many sides at 1–1.25 km at 0.2 kt and at 1.5–1.75 km at
+    1.1 kt.
+
+  So it is held, not landed. Its coefficients are in
+  `/Volumes/StudioData/bombcad/protective/refit/fit-sq.json` (`gate/` holds its judgements) and
+  its term in `terms` at nothing
+  ([protective design](protective-design.md#stage-5-the-refit-and-what-it-changes-for-a-plan)).
+- **Two limitations found.**
+  - Behind a row, the lee walls of a street that does not point at the charge are read up to ×1.6
+    low in peak (×1.7 in impulse).
+  - The close-in branch's impulse moves 17% between 1 m and 0.5 m cells: not converged.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -234,25 +287,35 @@ test before they are taken. The refitted terms, the judgements and the calibrati
   run of its near field with these loads, matched to the run where they meet.
 - **Bench**: `scenebench surrogate-extract` and `surrogate-judge` (Sources/SceneBench/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
-  `bombcad/surrogate`.
+  `bombcad/surrogate`. The fine runs behind the canyon terms, the close-in branch
+  (`Scripts/fit-close-in.py`) and the shielding study are under `bombcad/protective/refit` and
+  `bombcad/canyon` (`blastbench canyon`, `blastbench barrier`).
 
 ## Limitations
 
 - **Fitted to two made-up districts on 4 m cells.** Other cells are reached only through the
   cell term, fitted over 0.05–0.15 of W^(1/3); other building types (thin walls, panes) are
   given the façade strips' terms, roofs their own (`Coefficients.roofs`).
-- **Only between Z = 4.6 and 38.7 m/kg^(1/3)**, the distances it was fitted over (the fit's 2nd
-  to 98th percentiles). Beyond them the terms in log Z are held at the range's end, so that close
-  in the correction cannot fall away as the fitted quadratic would (to a few hundredths of the
-  base at Z = 1), while Kingery–Bulmash's base still follows the distance. Those components are
-  marked as extrapolated: counted in the app's status and in `--surrogate`'s `outsideFit`.
+- **Only between Z = 1.5 and 38.7 m/kg^(1/3).** The fitted terms hold over 4.6–38.7, the
+  distances they were fitted over (the fit's 2nd to 98th percentiles), and the close-in branch over
+  1.5–4.6. Beyond those the terms are held at the range's end, so that the correction cannot fall
+  away as a fitted quadratic would, while Kingery–Bulmash's base still follows the distance. Those
+  components are marked as extrapolated: counted in the app's status and in `--surrogate`'s
+  `outsideFit`. The close-in impulse moves 17% between 1 m and 0.5 m cells: not converged.
 - **It copies the runs, artefacts and all.** On 4 m cells a run's façade peaks are 0.45–0.57 of
   Kingery–Bulmash's reflected ones even in sight of the charge; the surrogate gives those, not the
   reflected peak a finer run would.
 - **Beirut shaped its form.** See above: the terms for terrain were chosen after Beirut's
   residuals were seen, though fitted without it.
-- **No channelling as such.** A street running from the charge is seen only as a line with no
-  building in it; a long canyon's loads are not raised beyond that.
+- **Streets only along the line of sight.** A street the line runs down raises the loads by the
+  fine canyon runs' terms. A street off the charge, behind a row, is seen as a row crossed, though
+  fine runs put its lee walls up to ×1.6 in peak and ×1.7 in impulse over that.
+- **Shielding is the districts'.** A building or barrier in front takes 2–3% off, as the 4 m
+  district runs show. Fine runs take half or more off within a couple of its heights behind it; a
+  factor fitted on them did not hold for the districts or the barriers
+  ([below](#shielding-streets-and-the-close-in-branch-20-october-2026)).
+- **Isolated façades at tonne scale** beyond Z 8 are read 0.6–0.8 of a fine run's: the fitted
+  terms are the districts', where nearly every façade stands behind something.
 - **Single charges on the ground**, as Kingery–Bulmash's surface burst; no deflagrations, no
   charges in or on buildings.
 
@@ -272,5 +335,7 @@ test before they are taken. The refitted terms, the judgements and the calibrati
 - Thin walls and panes, from runs of the presets with detailed envelopes.
 - Chances for walls and roofs, drawn over the scatter as the glass's are, so that counts by band
   can match a run's.
-- A street-canyon term, and a learned model if the linear terms stop improving.
+- Streets off the charge (the lee walls behind a row), and shielding that holds for barriers on
+  fine cells and for districts on 4 m cells at once; a learned model if the linear terms stop
+  improving.
 - Probabilities from the scatter: done for the glass, [glass by chance](glass-probability.md).

@@ -42,13 +42,13 @@ extension ValidationTables {
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "agrees with the run's for 75–84%"),
         Figure(
-            id: "surrogateConcrete", low: 0.15, high: 0.47,
+            id: "surrogateConcrete", low: 0.28, high: 0.49,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "15–47% of the concrete"),
+            quote: "28–49% of the concrete"),
         Figure(
-            id: "surrogateStone", low: 0.33, high: 0.41,
+            id: "surrogateStone", low: 0.36, high: 0.45,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "33–41% of the stone"),
+            quote: "36–45% of the stone"),
         Figure(
             id: "surrogateRoof", low: 0.29, high: 0.64,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",

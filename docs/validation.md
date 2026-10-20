@@ -6165,8 +6165,9 @@ The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), aga
   2 km.
 - **Walls and roofs**, against Beirut's near boxes (to 1,320 m) rerun with uncapped loads on 20
   October: the full runs' loads were capped at 65.5 kPa, which had put the concrete at 0–10%. Of
-  the components either calls damaged, 15–47% of the concrete, 33–41% of the stone and, on the
-  roofs' own terms, 29–64% of the roofs take the run's level. Within one level that is 60–78% of
+  the components either calls damaged, 28–49% of the concrete, 36–45% of the stone and, on the
+  roofs' own terms, 29–64% of the roofs take the run's level (with the close-in branch of
+  20 October; 15–47% and 33–41% before it). Within one level that is 58–83% of
   the concrete and 99–100% of the roofs. A triangle with each component's own peak, impulse and
   rise takes 55–92%, so what is missing is the predicted load, not the pulse's shape. The
   components a run damages are its loads' upper tail, which a single estimate undercounts. Not to
@@ -6175,10 +6176,12 @@ The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), aga
   0.81–1.01 inside Z = 20 m/kg^(1/3), each strip scattered by about ×1.3 (the logarithm's standard
   deviation 0.14–0.26); beyond it, 1.09–1.63 times the run's on the median, over the hills and
   near the run's open faces, and far more scattered.
-- **Outside its fitted range** (Z = 4.6–38.7 m/kg^(1/3)) its terms are held at the range's end and
-  the components marked as extrapolated. Within Z = 3 of Beirut's charge it gives eight times the
-  run's peak, but there the saved loads were capped at 65.5 kPa (16-bit floats, fixed in 983409a8),
-  as within about Z = 7 in the runs it was fitted to: the near field awaits a refit.
+- **Close in**, Z = 1.5–4.6 m/kg^(1/3), a branch from fine runs (open façades at 1 t on 0.5 m
+  cells) has taken over since 20 October 2026. On the near boxes' uncapped loads at 0.5 kt the
+  peaks at Z 3–5 are 1.11 of the run's (0.66 on the fitted terms held), and 0.88 at Z 5–7 (0.78).
+  Beyond Z 1.5–38.7 its terms are held at the range's end and the components marked as
+  extrapolated. Within Z = 3 of Beirut's charge the full runs' saved loads were capped at 65.5 kPa
+  (16-bit floats, fixed in 983409a8), so the full-run comparison there does not stand.
 - **Time:** 22–28 s over Beirut's 724,512 components on the Studio, against 25–41 minutes for a
   full run on the CI mini (25–28 as the Beirut page timed its runs, 27–41 timed again for the
   hybrid comparison).

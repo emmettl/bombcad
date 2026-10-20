@@ -244,6 +244,13 @@ of a few tonnes. emmettl/bombcad-work#4 owns the surrogate's term list.
 
 At kiloton yields it is a correction of 0.01 or less, below the far field's scatter (σ 0.2).
 
+**Built since, in the surrogate** (20 October 2026, emmettl/bombcad-work#4). With mouths at 20 and
+120 m as well as 60 m, the gain follows the street's length against the distance to its mouth more
+than the walls' height alone. In log peak it is 0.68 u e^(−ℓ/8h), u = ln(Z/Z at the mouth), which
+puts 85% of the 146 wall gauges within 1.2× leaving one run out (the form above, 62%; none, 36%). Streets off the
+charge were run too. See [the surrogate](surrogate-first-look.md#shielding-streets-and-the-close-in-branch-20-october-2026)
+and [protective design](protective-design.md#stage-4-streets).
+
 The results are in /Volumes/StudioData/bombcad/canyon:
 
 - `canyon-m1000-dx4.00_2.00_1.00_0.50.csv`: 15 m walls on 4, 2, 1 and 0.5 m cells;

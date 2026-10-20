@@ -141,18 +141,18 @@ struct FacadeLoadSurrogateTests {
             heightM: 1.5, shadowM: 0, frontM: 50)
     }
 
-    @Test("Close in, the fitted terms are held at the fitted range's end, not carried to nothing, and marked")
-    func fittedRange() {
+    @Test("Close in, the branch is held at its own range's end, not carried to nothing, and marked")
+    func fittedRange() throws {
         let mass = 20_000.0
         let root = cbrt(mass)
-        let range = FacadeLoadSurrogate.Coefficients.fitted.scaledRange
+        let close = try #require(FacadeLoadSurrogate.Coefficients.fitted.closeIn)
         func correction(_ z: Double) -> Double {
             let f = Self.facing(z * root)
             let p = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 4)
             return p.peakPa / FacadeLoadSurrogate.base(f, mass: mass).peak
         }
-        // Inside the range, its own; below it, the range's end's.
-        #expect(abs(correction(1) / correction(range.lowerBound) - 1) < 1e-9)
+        // Below the close-in branch's range, its end's (emmettl/bombcad-work#4).
+        #expect(abs(correction(1) / correction(close.heldWithin.lowerBound) - 1) < 1e-9)
         #expect(correction(1) > 0.2)
         #expect(FacadeLoadSurrogate.predict(Self.facing(root), mass: mass, cellSize: 4).outsideFit)
         #expect(!FacadeLoadSurrogate.predict(Self.facing(10 * root), mass: mass, cellSize: 4).outsideFit)

@@ -36,6 +36,28 @@ public enum FacadeLoadSurrogate {
         /// The open air in front of it: how far straight out from its face before another
         /// building or the ground, m, up to `Raster.frontReachM`.
         public var frontM: Double
+        /// The knife edge in the way (emmettl/bombcad-work#4): of the cells along the line that
+        /// hold other buildings or blocks, the one whose top stands highest above the line for its
+        /// distances (the most over √(1/a + 1/b), a and b its distances from the charge and from
+        /// the component): how far that top stands above the line, m, negative where the line
+        /// clears it; −∞ with nothing under the line at all.
+        public var edgeM: Double = -.infinity
+        /// That edge's distances along the line from the charge and to the component, m.
+        public var edgeFromChargeM: Double = 0
+        public var edgeToTargetM: Double = 0
+        /// That edge's top above the ground under it, m.
+        public var edgeTopM: Double = 0
+        /// How far that edge's obstruction reaches to the nearer side of the line, square to it in
+        /// plan, at the line's height (`Raster.edgeSideReachM` at most), m; 0 where the line clears it.
+        public var edgeSideM: Double = 0
+        /// The top of the last building in the way (the one `shadowM` is measured from) above the
+        /// ground under it, m; 0 with none.
+        public var lastTopM: Double = 0
+        /// A street the line runs down: the line's last stretch before the component with walls
+        /// on both sides of it within `Raster.canyonReachM` (`Raster.canyon`), its length, m, and
+        /// the lower side's mean height over it, m; 0 with none.
+        public var canyonM: Double = 0
+        public var canyonHeightM: Double = 0
     }
 
     /// The buildings' blocks on a plan grid, for following a straight line from the charge
@@ -49,6 +71,9 @@ public enum FacadeLoadSurrogate {
         let starts: [Int32]
         /// A block over a cell: its bottom and top and its owner (index in the objects).
         let entries: [(low: Float, high: Float, owner: Int32)]
+        /// Each cell's highest block top, m (−∞ with none), whatever its owner: the walls a
+        /// street runs between.
+        let tops: [Float]
         let terrain: Terrain?
 
         /// The blocks of `objects`' envelopes on cells `cell` m across, each over the cells whose
@@ -123,6 +148,7 @@ public enum FacadeLoadSurrogate {
             starts[lists.count] = Int32(entries.count)
             self.starts = starts
             self.entries = entries
+            tops = lists.map { list in list.reduce(-Float.greatestFiniteMagnitude) { max($0, $1.high) } }
         }
 
         func cellIndex(_ p: SIMD2<Float>) -> SIMD2<Int>? {
@@ -147,10 +173,9 @@ public enum FacadeLoadSurrogate {
         /// `a`'s to `b`'s (a surface burst's wave follows the ground): the other owners' buildings
         /// it passes through (not `excluding`'s), how far inside them, m, how far `b` stands
         /// behind the last of them, m, and how high the ground between rises above the straight
-        /// line from the ground under `a` to that under `b`, m.
-        public func sight(from a: SIMD3<Float>, to b: SIMD3<Float>, excluding: Int) -> (
-            crossed: Int, blockedM: Double, shadowM: Double, ridgeM: Double
-        ) {
+        /// line from the ground under `a` to that under `b`, m; and the knife edge in the way
+        /// (`Features.edgeM`).
+        public func sight(from a: SIMD3<Float>, to b: SIMD3<Float>, excluding: Int) -> Sight {
             let groundA = terrain?.height(at: a) ?? 0
             let groundB = terrain?.height(at: b) ?? 0
             let aboveA = a.z - groundA
@@ -160,11 +185,12 @@ public enum FacadeLoadSurrogate {
             // Steps a third of a cell long: enough to see a wall a cell thick.
             let steps = max(1, Int((simd_length(plan) / (cell / 3)).rounded(.up)))
             let step = length / Double(steps)
-            var crossed = 0
+            var sight = Sight()
             var last: Int32 = -1
-            var blocked = 0.0
             var lastBlocked = -1
             var ridge: Float = 0
+            var edgeScore = -Double.infinity
+            var edgeAt: SIMD3<Float>?
             for s in 0..<steps {
                 let t = (Float(s) + 0.5) / Float(steps)
                 var p = a + t * (b - a)
@@ -174,23 +200,136 @@ public enum FacadeLoadSurrogate {
                 guard let c = cellIndex(SIMD2(p.x, p.y)) else { continue }
                 let n = c.x + columns * c.y
                 var inside: Int32 = -1
+                var top = -Float.greatestFiniteMagnitude
                 for e in Int(starts[n])..<Int(starts[n + 1]) {
                     let entry = entries[e]
-                    if Int(entry.owner) != excluding, p.z >= entry.low, p.z < entry.high {
-                        inside = entry.owner
-                        break
+                    guard Int(entry.owner) != excluding else { continue }
+                    top = max(top, entry.high)
+                    if inside == -1, p.z >= entry.low, p.z < entry.high { inside = entry.owner }
+                }
+                if top > -Float.greatestFiniteMagnitude {
+                    // How far this column's top stands above the line, for its distances.
+                    let from = max(Double(t) * length, 1)
+                    let to = max(Double(1 - t) * length, 1)
+                    let over = Double(top - p.z)
+                    let score = over * (1 / from + 1 / to).squareRoot()
+                    if score > edgeScore {
+                        edgeScore = score
+                        sight.edgeM = over
+                        sight.edgeFromChargeM = from
+                        sight.edgeToTargetM = to
+                        sight.edgeTopM = Double(top - ground)
+                        edgeAt = p
                     }
                 }
                 if inside != -1 {
-                    blocked += step
+                    sight.blockedM += step
                     lastBlocked = s
-                    if inside != last { crossed += 1 }
+                    sight.lastTopM = Double(top - ground)
+                    if inside != last { sight.crossed += 1 }
                 }
                 last = inside
             }
-            let shadow = lastBlocked < 0 ? 0 : Double(steps - 1 - lastBlocked) * step
-            return (crossed, blocked, shadow, Double(ridge))
+            sight.shadowM = lastBlocked < 0 ? 0 : Double(steps - 1 - lastBlocked) * step
+            sight.ridgeM = Double(ridge)
+            // How far the edge's obstruction reaches to the nearer side of the line, square to it in
+            // plan, at the line's height there: round its end the blast need not go over the top.
+            if let at = edgeAt, sight.edgeM > 0, simd_length(plan) > 0 {
+                let side = SIMD2(-plan.y, plan.x) / simd_length(plan)
+                func reach(_ direction: SIMD2<Float>) -> Float {
+                    var d: Float = 0
+                    while d < Self.edgeSideReachM {
+                        let q = SIMD2(at.x, at.y) + (d + 0.5 * cell) * direction
+                        guard let c = cellIndex(q) else { return d }
+                        let n = c.x + columns * c.y
+                        var higher = false
+                        for e in Int(starts[n])..<Int(starts[n + 1]) where Int(entries[e].owner) != excluding
+                        {
+                            if entries[e].high > at.z { higher = true }
+                        }
+                        if !higher { return d }
+                        d += cell
+                    }
+                    return Self.edgeSideReachM
+                }
+                sight.edgeSideM = Double(min(reach(side), reach(-side)))
+            }
+            return sight
         }
+
+        /// The furthest `sight` follows the edge's obstruction to the side, m.
+        public static let edgeSideReachM: Float = 200
+
+        /// What `sight` finds along a line.
+        public struct Sight: Sendable, Equatable {
+            public var crossed = 0
+            public var blockedM = 0.0
+            public var shadowM = 0.0
+            public var ridgeM = 0.0
+            /// `Features.edgeM` and its distances and height.
+            public var edgeM = -Double.infinity
+            public var edgeFromChargeM = 0.0
+            public var edgeToTargetM = 0.0
+            public var edgeTopM = 0.0
+            /// `Features.edgeSideM`.
+            public var edgeSideM = 0.0
+            /// The last building in the way's top above its ground, m.
+            public var lastTopM = 0.0
+        }
+
+        /// A street the line from `a` to `b` runs down: walking back from `b` toward `a` over the
+        /// ground (at a height going evenly from `b`'s above it to `a`'s, as `sight`), while the
+        /// line is in the open, the stretch over which some block at least `canyonWallM` tall stands
+        /// within `canyonReachM` to each side of it, square to it in plan. Its length, m, and the
+        /// lower side's height above its ground, averaged over it, m.
+        public func canyon(from a: SIMD3<Float>, to b: SIMD3<Float>) -> (lengthM: Double, heightM: Double) {
+            let plan = SIMD2(b.x - a.x, b.y - a.y)
+            let planLength = simd_length(plan)
+            guard planLength > 0 else { return (0, 0) }
+            let along = plan / planLength
+            let side = SIMD2(-along.y, along.x)
+            let groundA = terrain?.height(at: a) ?? 0
+            let groundB = terrain?.height(at: b) ?? 0
+            let aboveA = a.z - groundA
+            let aboveB = b.z - groundB
+            let step = max(cell, 1)
+            let reach = Self.canyonReachM
+            // The nearest wall to one side of `p`, its height above its ground, or nil.
+            func wall(_ p: SIMD2<Float>, _ direction: SIMD2<Float>) -> Float? {
+                var d = 0.5 * cell
+                while d <= reach {
+                    let q = p + d * direction
+                    if let c = cellIndex(q) {
+                        let height = tops[c.x + columns * c.y] - (terrain?.height(at: q) ?? 0)
+                        if height >= Self.canyonWallM { return height }
+                    }
+                    d += cell
+                }
+                return nil
+            }
+            var length: Float = 0
+            var heights = 0.0
+            var count = 0
+            while length < min(planLength, Self.canyonLongestM) {
+                let t = 1 - length / planLength
+                let at = SIMD2(a.x, a.y) + t * plan
+                let ground = terrain?.height(at: at) ?? 0
+                if isSolid(SIMD3(at.x, at.y, ground + aboveA + t * (aboveB - aboveA))) { break }
+                guard let left = wall(at, side), let right = wall(at, -side) else { break }
+                heights += Double(min(left, right))
+                count += 1
+                length += step
+            }
+            return count == 0 ? (0, 0) : (Double(length), heights / Double(count))
+        }
+
+        /// How far to each side `canyon` looks for a street's walls, m: streets up to about twice
+        /// as wide (the fine canyon runs' were 10 and 20 m).
+        public static let canyonReachM: Float = 25
+        /// The least height a street's wall is counted at, m: not a kerb or a garden wall.
+        public static let canyonWallM: Float = 2
+        /// The longest stretch `canyon` follows, m.
+        public static let canyonLongestM: Float = 600
 
         /// How far the open air reaches in front of a face: from `p` along `direction` (a unit
         /// vector) to the first building or ground, m, up to `frontReachM`.
@@ -251,11 +390,16 @@ public enum FacadeLoadSurrogate {
         let sight = raster.sight(from: charge, to: target, excluding: owner)
         let ground = raster.terrain?.height(at: centre) ?? 0
         let chargeGround = raster.terrain?.height(at: charge) ?? 0
+        let canyon = raster.canyon(from: charge, to: target)
         return Features(
             distanceM: Double(distance), cosIncidence: cosine, buildingsCrossed: sight.crossed,
             blockedM: sight.blockedM, ridgeM: sight.ridgeM, groundRiseM: Double(ground - chargeGround),
             heightM: Double(centre.z - ground),
-            shadowM: sight.shadowM, frontM: raster.reach(from: target, along: normal))
+            shadowM: sight.shadowM, frontM: raster.reach(from: target, along: normal), edgeM: sight.edgeM,
+            edgeFromChargeM: sight.edgeFromChargeM, edgeToTargetM: sight.edgeToTargetM,
+            edgeTopM: sight.edgeTopM, edgeSideM: sight.edgeSideM, lastTopM: sight.lastTopM,
+            canyonM: canyon.lengthM,
+            canyonHeightM: canyon.heightM)
     }
 
     /// Whether some of `component`'s cells have air beside their outer face (the recorder leaves
@@ -306,10 +450,12 @@ public enum FacadeLoadSurrogate {
         public var scatter: SIMD2<Double>
         /// What it was fitted to.
         public var fittedTo: String
+        /// The close-in branch, below `scaledRange` (none: the terms held at its start there).
+        public var closeIn: CloseIn?
 
         public init(
             peak: [Double], impulse: [Double], rise: [Double], scaledRange: ClosedRange<Double>,
-            scatter: SIMD2<Double>, fittedTo: String
+            scatter: SIMD2<Double>, fittedTo: String, closeIn: CloseIn? = nil
         ) {
             self.peak = peak
             self.impulse = impulse
@@ -317,6 +463,34 @@ public enum FacadeLoadSurrogate {
             self.scaledRange = scaledRange
             self.scatter = scatter
             self.fittedTo = fittedTo
+            self.closeIn = closeIn
+        }
+
+        /// Close in (emmettl/bombcad-work#4, docs/surrogate-first-look.md): Kingery–Bulmash's base
+        /// times the fine runs' ratio to it on open façades. The logarithm of a load over its base
+        /// is a quadratic in log Z (held within `heldWithin`), fitted on cells `referenceCell`
+        /// W^(1/3) across and carried to others by the fitted terms' own cell term; below
+        /// `scaledRange` it replaces the fitted terms (the canyon terms still added), and between
+        /// `scaledRange`'s start and `blendTo` it gives way to them evenly in log Z.
+        public struct CloseIn: Codable, Sendable, Equatable {
+            public var peak: [Double]
+            public var impulse: [Double]
+            public var referenceCell: Double
+            public var heldWithin: ClosedRange<Double>
+            public var blendTo: Double
+            public var fittedTo: String
+
+            public init(
+                peak: [Double], impulse: [Double], referenceCell: Double, heldWithin: ClosedRange<Double>,
+                blendTo: Double, fittedTo: String
+            ) {
+                self.peak = peak
+                self.impulse = impulse
+                self.referenceCell = referenceCell
+                self.heldWithin = heldWithin
+                self.blendTo = blendTo
+                self.fittedTo = fittedTo
+            }
         }
     }
 
@@ -324,8 +498,12 @@ public enum FacadeLoadSurrogate {
     public static let termNames = [
         "1", "facing", "facing away", "log(1 + buildings crossed)", "inside buildings / W^(1/3)",
         "log Z", "height / W^(1/3)", "ridge / W^(1/3)", "ground rise / W^(1/3)", "(log Z)²",
-        "log(cell / W^(1/3))",
+        "log(cell / W^(1/3))", "(log(1 + buildings crossed))²", "canyon, peak", "canyon, impulse",
     ]
+
+    /// The first of the terms measured on the fine runs rather than fitted to the districts (the
+    /// canyon's): the close-in branch keeps them.
+    public static let geometryTerms = 12
 
     /// `features`' terms for a charge of `mass` kg on the air's cells `cellSize` m across (a run's
     /// loads depend on its cells: the surrogate gives the run's, not the converged ones). With
@@ -339,11 +517,32 @@ public enum FacadeLoadSurrogate {
         var scaled = max(f.distanceM / root, 0.2)
         if let scaledRange { scaled = min(max(scaled, scaledRange.lowerBound), scaledRange.upperBound) }
         let z = log(scaled)
+        let canyon = canyonTerms(f, mass: mass)
         return [
             1, max(f.cosIncidence, 0), max(-f.cosIncidence, 0), log(1 + Double(f.buildingsCrossed)),
             f.blockedM / root, z, f.heightM / root, f.ridgeM / root, f.groundRiseM / root, z * z,
-            log(cellSize / root),
+            log(cellSize / root), log(1 + Double(f.buildingsCrossed)) * log(1 + Double(f.buildingsCrossed)),
+            canyon.peak, canyon.impulse,
         ]
+    }
+
+    /// A street the line runs down (emmettl/bombcad-work#4, docs/hybrid-far-field.md's channelling):
+    /// with ℓ the stretch between its walls and h their lower side's height, each over W^(1/3), and u
+    /// the logarithm of the scaled distance over the street mouth's, the fine canyon runs' gain over
+    /// open ground is about 0.68 u e^(−ℓ/8h) in log peak (the street holds the shock in, then lets it
+    /// out over the roofs), and 1.33 u e^(−ℓ/3h) (1 − e^(−(h − 0.6))) in log impulse for walls
+    /// above 0.6 W^(1/3), nothing below. Both distances are taken at Z 2 or more, the nearest mouth
+    /// the runs had (nearer, the street would begin in the fireball).
+    static func canyonTerms(_ f: Features, mass: Double) -> (peak: Double, impulse: Double) {
+        let root = cbrt(mass)
+        guard f.canyonM > 0, f.canyonHeightM > 0 else { return (0, 0) }
+        let scaled = max(f.distanceM / root, 0.2)
+        let l = f.canyonM / root
+        let h = f.canyonHeightM / root
+        let u = log(max(scaled, 2) / max(scaled - l, 2))
+        let peak = u * exp(-l / (8 * h))
+        let impulse = h > 0.6 ? u * exp(-l / (3 * h)) * (1 - exp(-(h - 0.6))) : 0
+        return (peak, impulse)
     }
 
     /// A component's predicted load.
@@ -404,12 +603,36 @@ public enum FacadeLoadSurrogate {
         }
         let (peak, impulse, arrival) = base(f, mass: mass)
         let x = terms(f, mass: mass, cellSize: cellSize, scaledRange: coefficients.scaledRange)
-        let p = zip(coefficients.peak, x).reduce(0) { $0 + $1.0 * $1.1 }
-        let i = zip(coefficients.impulse, x).reduce(0) { $0 + $1.0 * $1.1 }
+        var p = zip(coefficients.peak, x).reduce(0) { $0 + $1.0 * $1.1 }
+        var i = zip(coefficients.impulse, x).reduce(0) { $0 + $1.0 * $1.1 }
         let r = zip(coefficients.rise, x).reduce(0) { $0 + $1.0 * $1.1 }
+        let root = cbrt(mass)
+        let scaled = f.distanceM / root
+        var covered = coefficients.scaledRange
+        if let close = coefficients.closeIn, scaled < close.blendTo, coefficients.peak.count > 10,
+            coefficients.impulse.count > 10
+        {
+            let start = coefficients.scaledRange.lowerBound
+            let z = log(min(max(scaled, close.heldWithin.lowerBound), close.heldWithin.upperBound))
+            let cell = log(cellSize / root) - log(close.referenceCell)
+            // The canyon terms carried over; the fitted ones given way to the branch.
+            func geometry(_ c: [Double]) -> Double {
+                zip(c, x).enumerated().reduce(0) {
+                    $0 + ($1.offset >= geometryTerms ? $1.element.0 * $1.element.1 : 0)
+                }
+            }
+            func branch(_ q: [Double], _ c: [Double]) -> Double {
+                q.enumerated().reduce(0) { $0 + $1.element * pow(z, Double($1.offset)) } + c[10] * cell
+                    + geometry(c)
+            }
+            let w = scaled <= start ? 0 : min(log(scaled / start) / log(close.blendTo / start), 1)
+            p = (1 - w) * branch(close.peak, coefficients.peak) + w * p
+            i = (1 - w) * branch(close.impulse, coefficients.impulse) + w * i
+            covered = min(close.heldWithin.lowerBound, covered.lowerBound)...covered.upperBound
+        }
         return Prediction(
             peakPa: peak * exp(p), impulsePaS: impulse * exp(i), riseShare: min(max(r, 0), 0.9),
-            arrivalS: arrival, outsideFit: !coefficients.scaledRange.contains(f.distanceM / cbrt(mass)))
+            arrivalS: arrival, outsideFit: !covered.contains(scaled))
     }
 
     /// The steps a pulse's peak and impulse are rounded to, as a share of each: far finer than
@@ -549,8 +772,11 @@ extension FacadeLoadSurrogate {
             "Loads: peaks \(near.ratio) of the run's on the median to Z 20 m/kg^(1/3), each scattered by about ×1.3; "
                 + "further out, over hills and near the run's open faces, \(far.ratio) times on the median and far "
                 + "more scattered.",
-            "Outside Z 4.6–38.7 m/kg^(1/3), the distances it was fitted over, its terms are held at the range's "
-                + "end and its loads extrapolated: marked as such.",
+            "Close in, Z 1.5–4.6 m/kg^(1/3), Kingery–Bulmash's base times the open façades' ratio on fine runs; "
+                + "a street the line runs down raises the loads by the fine canyon runs' terms; a building or barrier "
+                + "in front takes only the districts' few per cent off, less than fine runs take close behind it.",
+            "Outside Z 1.5–38.7 m/kg^(1/3) its terms are held at the range's end and its loads extrapolated: "
+                + "marked as such.",
         ]
     }()
 
@@ -574,14 +800,27 @@ extension FacadeLoadSurrogate {
 extension FacadeLoadSurrogate.Coefficients {
     /// Fitted to four runs of two made-up districts on 4 m cells (`Scripts/fit-surrogate.py`;
     /// docs/surrogate-first-look.md): a dense one of 7,235 buildings at 20, 100 and 500 t, and the
-    /// sparse test fixture at 20 t. Beirut held out, to judge it on. The rise share's terms were fitted
-    /// to the ground rise where the rise time was meant; refitted, they follow the runs' rise but
-    /// break more glass than the runs, as the far loads they had offset show. Kept until the next
-    /// refit of the load terms (docs/surrogate-first-look.md, "The rise share's fit").
+    /// sparse test fixture at 20 t. The canyon terms are the fine canyon runs' (1 t on 0.5 m cells)
+    /// and held; the close-in branch is the fine protective layouts' open façades (1 t on 0.5 m cells,
+    /// `Scripts/fit-close-in.py`; emmettl/bombcad-work#4). Beirut held out, to judge it on.
     public static let fitted = FacadeLoadSurrogate.Coefficients(
-        peak: [-3.108, -0.319, -0.165, -0.022, -0.001, 1.609, -0.260, -0.073, 0.023, -0.293, -0.286],
-        impulse: [-0.186, -0.468, -0.161, 0.123, -0.021, 0.571, -0.103, -0.202, -0.008, -0.130, 0.251],
-        rise: [-0.074, -0.027, -0.030, 0.014, 0.038, 0.389, 0.075, -0.444, 0.628, -0.098, -0.105],
+        peak: [
+            -3.108, -0.319, -0.165, -0.022, -0.001, 1.609, -0.260, -0.073, 0.023, -0.293, -0.286, 0.000,
+            0.683,
+            0.000,
+        ],
+        impulse: [
+            -0.186, -0.468, -0.161, 0.123, -0.021, 0.571, -0.103, -0.202, -0.008, -0.130, 0.251, 0.000, 0.000,
+            1.334,
+        ],
+        rise: [
+            -0.074, -0.027, -0.030, 0.014, 0.038, 0.389, 0.075, -0.444, 0.628, -0.098, -0.105, 0.000, 0.000,
+            0.000,
+        ],
         scaledRange: 4.6...38.7, scatter: SIMD2(0.240, 0.168),
-        fittedTo: "made-up districts: dense at 20, 100 and 500 t, sparse at 20 t (4 m cells)")
+        fittedTo: "made-up districts: dense at 20, 100 and 500 t, sparse at 20 t (4 m cells)",
+        closeIn: CloseIn(
+            peak: [-1.574, 1.768, -0.545], impulse: [-0.218, 0.397, -0.226], referenceCell: 0.05,
+            heldWithin: 1.5...8, blendTo: 8,
+            fittedTo: "open façades of the protective layouts L1-L6, 1 t on 0.5 m cells"))
 }

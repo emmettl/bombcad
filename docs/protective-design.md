@@ -30,7 +30,9 @@ BombCAD's runs or anyone's prices.
   57% more. Two further problems make the surrogate's loads unfit as design loads today:
   - it gives a 4 m-cell run's loads, which are 0.45–0.57 of the reflected peak even in sight of
     the charge ([surrogate](surrogate-first-look.md#limitations));
-  - a design threat stands close, at Z under 4.6 m/kg^(1/3), outside its fit.
+  - a design threat stands close, at Z under 4.6 m/kg^(1/3), outside its fit. Since 20 October a
+    close-in branch from fine runs covers Z 1.5–4.6, and the fine runs measure shielding that the
+    surrogate does not carry ([below](#shielding-barriers-streets-and-close-in-loads-on-fine-cells-20-october-2026)).
 - **Does not, yet: what BombCAD can change.** Its envelope constructions have no security film,
   no wall retrofit, no barrier or stand-off as a scene element, and no costs. Its results are not
   yet probabilities (Horizons item 4).
@@ -317,7 +319,7 @@ route ("CCSD: 45 m") gives the user a baseline.
 | Site and constructions | `Scenario`, `EnvelopeConstruction`, `GlazingMix`, `LaminatedGlass`, `SecurityFilm`, `WallLiner`, `EnvelopeConstruction.glassToughened` (stage 3, [below](#changes-as-constructions-stage-3)) | A cost per construction; retrofits other than polyurea on masonry (no open tests) |
 | Threats | `Scenario.charge`; `scenebench infer-charge --samples` | Several charges as one weighted threat; the surrogate takes one charge per estimate |
 | Stand-off and barriers | `Scenario.addBarrier`, `Scenario.standOffLines` and `StandOffLine.stopPoint(for:)`, `FacadeLoadSurrogate.Raster` (envelopes and fixed blocks in the plan) | An edit API that applies a plan to a copy of the scene |
-| Loads | `FacadeLoadSurrogate.estimate` | Converged (not 4 m-cell) loads; terms for close-in Z below 4.6 m/kg^(1/3); shielding by thin barriers (fitted on buildings only); channelling |
+| Loads | `FacadeLoadSurrogate.estimate`; its close-in branch and canyon terms (20 October) | Converged (not 4 m-cell) loads beyond Z 8; the fine runs' shielding by barriers and buildings in front (measured, not adopted: [stage 1](#stage-1-shielding-as-a-factor-stopped)); streets off the charge |
 | Response and limits | `EnvelopeDamageAssessment`, `SDOFResponseMemo`, `GlazingHazard` | A limit multiplier per component (bisection on the memoised responses); levels for retrofitted walls |
 | Chance | `GlazingMix`'s E1300 chance; the surrogate's scatter in `ValidationTables.figures` | Horizons 4's load scatter as a probability per side; correlated scatter between neighbouring sides |
 | Search | — | The search itself (Swift, a few hundred lines; exact enumeration and annealing need no solver) |
@@ -541,12 +543,13 @@ What it still lacks:
 
 - **Barriers that shield.** A barrier is a site-wide change: a wall along x or y, built as
   `Scenario.addBarrier` builds it on the ground, which the surrogate's raster sees as it sees the
-  scene's fixed blocks (crossed, blocked length, shadow). The surrogate was fitted on buildings
-  only, though. A 10 m wall 10 m in front of a façade takes about 2% off its peak, so a barrier
-  rarely earns its cost in a plan. It needs the refit with barrier runs (#64's fine cells), judged
-  against the published barrier tests.
-- **Wall retrofits and close-in loads** (the surrogate's terms are held below Z = 4.6).
-- **Wall retrofits and close-in loads** (the surrogate's terms are held below Z = 4.6).
+  scene's fixed blocks (crossed, blocked length, shadow, and since 20 October the knife edge). The
+  surrogate's shielding is the districts', though: a 10 m wall 10 m in front of a façade takes
+  2–3% off its peak, where fine runs take half or more off within a couple of the wall's heights
+  behind it. A shielding factor fitted on those runs did not pass on the barriers or the districts
+  ([stage 1](#stage-1-shielding-as-a-factor-stopped)), so a barrier still rarely earns its cost in
+  a plan; on the safe side.
+- **Wall retrofits.**
 
 In the app, **Simulation ▸ Protective Design…** runs the same search on the scene's charges and
 glazing changes, colours each side by the chosen plan's residual chance, and writes a plan's
@@ -585,20 +588,208 @@ Built on 19 October 2026: the changes a plan can make, as parts of the scene.
     the search.
   - It is saved with the layout but is not part of the numerical input: the air never sees it.
 
+## Shielding, barriers, streets and close-in loads on fine cells (20 October 2026)
+
+Stage 2 of protective design (emmettl/bombcad-work#4): what a building or a barrier wall in front
+takes off a façade's load, what a street adds, and what a façade close in takes, all measured on
+fine cells, then set against the surrogate. The runs, extracts and scripts are on StudioData under
+`bombcad/protective/refit` (layouts) and `bombcad/canyon/gaps` (streets).
+
+### The runs
+
+- **Layouts** (`make_cases.py`, `make_cases2.py`; made up, not a real place): four arms round a
+  1 t surface charge, each a 12 m target building in the open or behind something, run with
+  `scenebench district-compare --save-loads` on 0.5, 1 and 4 m cells:
+  - L1, open at Z 2, 4, 7 and 10;
+  - L2 and L3, behind one and two blocks 20 m wide (gaps 5–25 m, heights 6–20 m);
+  - L4 and L5, behind barriers 1.2 m thick, 24 m wide and 2–4 m tall, from just in front to
+    34 m in front;
+  - L6, behind 20 m-wide blocks at Z 9–20;
+  - L7, behind rows 80 m wide;
+  - L8, behind barriers and rows 60–80 m wide.
+
+  L1–L5 were run on 19 October without saved loads and run again today; L1's peaks come out 8%
+  above the first runs' (the solver has moved since). The 0.5 m runs took 1–4 minutes each on the
+  Studio.
+- **Features** (`FacadeLoadSurrogate.Raster.sight`, new outputs):
+  - the knife edge: of the cells under the line from the charge, the one whose top stands
+    furthest over the line for its distances a and b from the charge and the façade (the most
+    over √(1/a + 1/b));
+  - how far that obstruction reaches to the side of the line;
+  - the last building's top above its ground.
+
+  From these, v = over √(2 (1/a + 1/b) / λ) with λ = 2 W^(1/3), and ITU-R P.526's knife-edge loss
+  J(v). The departure q is the distance behind the last obstruction over its height.
+
+### Stage 1: shielding as a factor, stopped
+
+Each facing strip's departure from an open façade at the same cell size and Z cancels the cells'
+unconverged peak. There are 120 such strips on 0.5 m cells, scattered by 0.84 in log peak. Each
+candidate was judged leaving one layout out, against the judge's peak log-SD 0.24 and median
+within ±10%:
+
+| Terms | Peak log-SD | Median | By layout (median) |
+|---|---|---|---|
+| J, J e^(−q/3), J log Z | 0.254 | +0.03 | L7 −0.33, L2 +0.15 |
+| the same, never a gain, ×(2/Z)^γ | 0.251–0.258 | +0.01 to +0.05 | L7 −0.35 |
+| + J (1 − e^(−side/2W^(1/3))) | 0.232 | −0.01 | L2–L8 within −0.11 to +0.12 |
+
+- **The width term** failed while L7 was the only wide layout: left out, its median was −1.9.
+  With L8 added, and the side reach a Raster output rather than given by layout, it passes
+  pooled: log-SD 0.232 on 0.5 m cells and 0.237 on 1 m.
+- **But barrier walls are over-credited by it**: on their 40 strips (L4, L5, L8's walls) its
+  median is +0.19, so the walls shield 20% less than it says.
+- **And the district runs show none of it.** One multiplier on the fine factor, fitted with the
+  district terms on the made-up districts' 4 m runs, comes out +0.05 for the peak. Holding it at 1
+  raises those runs' peak scatter from 0.23–0.29 to 0.36–0.43. It also breaks Beirut's glass
+  gate, since nearly every Beirut strip has an edge over its line. On 4 m cells at 1 t the
+  layouts keep about 0.55 of the fine factor, so in dense districts the shadow is lost to the
+  cells and to the neighbours' reflections.
+- **Converged.** The measured factor moves 2% between 1 m and 0.5 m cells (log-SD of the
+  difference 0.08).
+- **Not adopted** (the stop rule: two candidate sets failed on held-out layouts, and the third
+  does not hold for the barriers or the districts). The surrogate keeps its own shielding: a
+  barrier or a building in front takes 2–3% off.
+
+What the fine runs say, as the product answer:
+
+- **Close behind, a lot.** Within one or two obstacle heights behind a block or a wall, at
+  Z 2–5, the façade takes 0.13–0.5 of the open peak (L2's first arm −1.1 to −1.3 in log, L5's
+  4 m wall 5 m in front −2.0 at the lowest storey). A 10 m block 10 m in front takes 0.27–0.33
+  of the peak at Z 3.5, 0.36–0.6 at Z 7–11 if it is 80 m wide, and 0.57–0.9 at Z 11–15 if it is
+  20 m wide. The surrogate takes 2–3%.
+- **Further behind, little.** Ten heights or more behind (L5's 3 m wall 34 m in front, the 2 m
+  wall 39 m in front), nothing. Storeys above the obstacle's top recover first, though not at
+  once: diffraction reaches over the line.
+- So the surrogate under-credits barriers and buildings in front, which is on the safe side for a
+  plan: it buys glazing that a wall close in front would have made unnecessary.
+
+### Stage 2: the close-in branch
+
+Design threats stand close, at Z 2–5, below the fitted terms' range (4.6–38.7). The branch takes
+Kingery–Bulmash's base times the ratio an open façade takes on 0.5 m cells: a quadratic in log Z
+fitted on the open façades of L1–L6, Z 1.5–8 (43 façades, `Scripts/fit-close-in.py`). It is
+carried to the project's cells by the fitted terms' own cell term, and blended into the fitted
+terms between Z 4.6 and 8.
+
+- **Leaving one layout out:** peak log-SD 0.11, median −0.02; impulse 0.10 and +0.03.
+- **On 1 m cells**, through the cell term: the peak's median +0.01 (log-SD 0.13). Fitted on 1 m
+  alone, the peak branch moves 1–3%. The impulse branch moves 17%, so the impulse is **not
+  converged** close in, and is given as the 0.5 m runs give it.
+- **What it changes.** The fitted terms read an isolated façade at tonne scale low: the open
+  façades on 0.5 m cells were ×1.6 the fit's peak and ×1.7 its impulse at Z 4.6–8, ×1.6–1.9 at
+  Z 2.5–4.6. Beirut's near boxes, run with uncapped loads, agree: the fitted terms gave 0.66 of the
+  run's peak at Z 3–5. With the branch that is 1.12. Close in, plans now see loads up to about
+  twice the fitted terms' (the design-relevant direction).
+- **Not fixed:** at Z 8 and beyond, an isolated façade at tonne scale is still under-read by the
+  fitted terms (×0.6–0.8 at Z 7–10 on 0.5 m cells). They are the districts', where nearly every façade
+  stands behind something.
+
+### Stage 3: Xiao et al.'s blast wall
+
+`blastbench barrier` reproduces test 1-1 of Xiao et al. (2023, CC BY): 1.5 kg of TNT 1.2 m up,
+1.44 m in front of a sand-filled wall 2.1 m tall, 5 m wide and 1 m thick. Here the wall and the
+ground are rigid, half the burst is modelled (mirrored on the line through the wall's middle), and
+each gauge is set against the same point on the same grid with the wall taken away. The runs took
+10–120 s on 4, 2.5 and 2 cm cells, and the ratios moved by 0.02 or less between them.
+
+| Gauge behind the wall | Xiao, first / largest peak over free field | BombCAD, 2 cm | Candidate set 3 |
+|---|---|---|---|
+| ground, 3 m | 0.36 / 0.42 | 0.36 | 0.42 |
+| ground, 7 m | 0.81 / 1.19 | 0.65 | 0.96 |
+| 1.2 m up, 3 m | 0.65 / 0.65 | 0.29 | 0.49 |
+| 1.2 m up, 7 m | 0.58 / 0.89 | 0.61 | 0.96 |
+
+- Two gauges of four are within the measured scatter (0.8–1.25 of Xiao's ratio): the ground at
+  3 m, and 1.2 m up at 7 m on its first peak. BombCAD shelters the 1.2 m gauge at 3 m twice as much
+  as the test.
+- **Xiao's free field is not ours.** Our open field at those ranges is 1.4–1.6 times his
+  free-field gauges. Behind the wall our absolute peaks are 0.66–1.43 times his and our impulses
+  0.78–1.14 times. His impulse ratios over his free field exceed 1 (0.90–1.26), so his free-field
+  reference is low against his own gauges behind.
+- Standing: illustrative. One test, with transcribed numbers, a narrow wall with a second peak
+  round its ends, and a free field that does not match.
+
+### Stage 4: streets
+
+`blastbench canyon` (`--offset` new, for a street not pointing at the charge) at 1 t on 0.5 m
+cells:
+
+- **Radial streets**, 10 m wide, walls 7.5, 15 and 30 m tall: mouths at 20, 60 and 120 m.
+- **The 500 t street** at 1 t scale.
+- **Streets 75 and 130 m off the charge** behind a single row: 20–68° off radial along them.
+
+On radial streets the peak's gain over open ground grows with the street's length against the
+distance to its mouth, and falls as the walls let the shock out over the roofs. It is fitted (one
+coefficient each, leaving one run out) as:
+
+- **Peak:** ln gain = 0.68 u e^(−ℓ/8h);
+- **Impulse:** 1.33 u e^(−ℓ/3h) (1 − e^(−(h − 0.6))), for walls above 0.6 W^(1/3).
+
+Here u = ln(Z / Z at the mouth), ℓ is the length in the street and h the walls' height, each over
+W^(1/3). The proposed 0.5 [1 − e^(−(h − 0.6))] puts 62% of the 146 wall gauges within 1.2× and misses
+by up to 1.83×.
+
+| | Within 1.2× of the fine runs | Worst |
+|---|---|---|
+| Peak, no term | 36% | ×2.74 |
+| Peak, the term | 85% | ×1.91 high (7.5 m walls far down a street whose mouth is at Z 2) |
+| Impulse, no term | 49% | |
+| Impulse, the term | 75% | ×1.9 |
+
+- **The terms are in the surrogate** (`Raster.canyon`: walking back from the façade along the
+  line while there are walls on both sides within 25 m). At a tonne in 15–30 m streets the peak
+  rises up to 1.4–2.0 times. At 500 t in 20 m streets it is a few per cent, as Beirut's residuals
+  said.
+- **Streets off the charge** also gain, which the line-of-sight term does not see. Behind a
+  continuous row, over the façade's own base, the far wall takes +0.03 to +0.23 at 30° off radial
+  and −0.4 at 60°; the lee wall +0.15 to +0.48; impulses 1.5–1.9 times open ground's. The surrogate
+  gives these façades the line of sight's treatment (a row crossed: about open), so it reads the
+  lee walls of such streets up to ×1.6 low in peak and ×1.7 in impulse.
+
+### Stage 5: the refit, and what it changes for a plan
+
+The surrogate's coefficients (`FacadeLoadSurrogate.Coefficients.fitted`) keep the district terms
+as they were, add the two canyon terms held at the fine runs' values, and add the close-in branch.
+The rise share's refit with the ground rise read as itself is 5480db20's and lands apart.
+
+A refit of the district terms was tried, on the made-up districts with their clipped strips
+mended from #10's uncapped reruns. It moved the districts' peak scatter by −0.01 to +0.04 and
+Beirut's glass agreement at 0.5 kt by −0.02, so it was not kept: the branch carries the close-in
+loads instead.
+
+- **Beirut's gate** (surrogate-judge glass against the full runs, at 0.2, 0.5 and 1.1 kt): the
+  canyon terms and the branch leave the sides' agreement and the band shares as they were:
+  0.841, 0.754 and 0.813 (0.814 before), every band's shares within 0.005 of before.
+- **The rise share refitted with the load terms** (5480db20's correction, f3065fca) was tried with a
+  bounded buildings-crossed term, (log(1 + crossed))², fitted on the districts (impulse −0.040;
+  their impulse scatter 0.168 → 0.163). It brings Beirut's far impulses down (0.5 kt, Z 28–40:
+  1.63 → 1.41 times the run's; 1.1 kt, Z 20–28: 1.86 → 1.60) and the glass chances back to passing
+  the tenths test with the load scatter (blown out skill 0.80, thrown 3b 0.71, against 0.81 and
+  0.72 as fitted and 0.78 and 0.68 with the rise alone). But sides agree a little less at 0.2 and
+  1.1 kt (0.833 and 0.809), and the bands' largest difference to 2 km grows to 0.16–0.17. So it is
+  held, with its numbers (`bombcad/protective/refit/fit-sq.json`, `gate/`), not landed.
+- **`ProtectionSearchTests`** pass.
+- **For a plan.** A tonne-scale threat in a street now loads the street's façades up to twice as
+  hard, and a side close in is read at the fine runs' ratio, about 1.6–1.9 times the fitted
+  terms' at Z 2.5–4.6. Plans buy more glazing for both. Barriers still count for little in the
+  search (2–3%). The fine runs say a barrier earns its cost only for façades within one or two of
+  its heights behind it; protective design does not yet credit that.
+
 ## Open questions
 
 - **Shielding.**
-  - How much does a building, or a barrier wall a few metres tall, take off the load behind it
-    at design stand-offs? BombCAD's surrogate was fitted at Z of 4.6–38.7 m/kg^(1/3) on 4 m
-    cells, where shielding was weak.
-  - Barriers were not in its training at all.
-  - Fitting this needs runs on fine cells of barriers and building pairs, judged against the
-    published barrier tests where they can be found.
+  - Measured on fine cells (20 October): a lot close behind, little beyond ten heights. The
+    district runs on 4 m cells show none of it, and a single factor over-credits barrier walls
+    by 20% on the median.
+  - Open: shielding for barriers alone, fitted on barrier layouts with more heights and widths
+    and judged on a second open barrier test; or a model of the edge's two paths (over the top,
+    round the ends) instead of linear terms.
 - **Close-in loads.**
-  - Design threats are close: a vehicle at the kerb, Z of 2–5 m/kg^(1/3). On 4 m cells the runs'
-    façade peaks are half the reflected value.
-  - Either the surrogate is refitted on finer runs, or close sides are given Kingery–Bulmash's
-    reflected loads directly, as the prototype does.
+  - Covered to Z 1.5 by the fine runs' branch since 20 October. The impulse there is not
+    converged between 1 m and 0.5 m cells (17%).
+  - Isolated façades at tonne scale beyond Z 8 are still read 0.6–0.8 of a fine run by the
+    district terms.
 - **Costs.** Whose, and how rough? BombCAD should take them from the user, perhaps with a
   relative default ("film 1, laminate 3–5, stand-off per metre") clearly labelled as such.
 - **The target.**
@@ -638,7 +829,8 @@ Built on 19 October 2026: the changes a plan can make, as parts of the scene.
 - Only the search over glazing (film among it), stand-offs and barriers, the glass's chances and
   their confirmation on a run are built in BombCAD (`scenebench protect`; the app's sheet for
   glazing and the scene's stand-off lines). Wall retrofits are not in the search yet, and barriers
-  shield only as much as the surrogate's building terms allow (above).
+  shield only as much as the surrogate's district terms allow (above), well under what fine runs
+  measure close behind them.
 
 ## Sources
 
@@ -669,6 +861,11 @@ Built on 19 October 2026: the changes a plan can make, as parts of the scene.
   *International Journal of Safety and Security Engineering* (2018); K. El-Rayes and colleagues,
   *Journal of Performance of Constructed Facilities* (2020). Abstracts only.
 - FEMA 426, *Reference Manual to Mitigate Potential Terrorist Attacks Against Buildings*, 2003.
+- D. Xiao et al., "Effects of an Explosion-Proof Wall on Shock Wave Parameters and Safe Area
+  Prediction", *Sustainability* 15, 11164 (2023), open access under CC BY 4.0: test 1-1's
+  gauges, transcribed (stage 3 above).
+- ITU-R Recommendation P.526, *Propagation by diffraction*: the single knife-edge loss J(v) used
+  for the shielding candidates.
 - Royal Canadian Mounted Police, *GCPSG-002, Guide to Blast Mitigation* (stand-off and its costs).
 - S. Timoshenko and S. Woinowsky-Krieger, *Theory of Plates and Shells*, 2nd ed., 1959 (plate
   coefficients); J. M. Biggs, *Introduction to Structural Dynamics*, 1964 (the SDOF closed forms).

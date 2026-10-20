@@ -63,6 +63,15 @@ extension ChargeInference {
             var ridge: Float
             var groundRise: Float
             var height: Float
+            var edge: Float
+            var edgeFrom: Float
+            var edgeTo: Float
+            var edgeTop: Float
+            var edgeSide: Float
+            var lastTop: Float
+            var shadow: Float
+            var canyon: Float
+            var canyonHeight: Float
 
             init(_ f: FacadeLoadSurrogate.Features) {
                 distance = Float(f.distanceM)
@@ -72,13 +81,26 @@ extension ChargeInference {
                 ridge = Float(f.ridgeM)
                 groundRise = Float(f.groundRiseM)
                 height = Float(f.heightM)
+                edge = Float(f.edgeM)
+                edgeFrom = Float(f.edgeFromChargeM)
+                edgeTo = Float(f.edgeToTargetM)
+                edgeTop = Float(f.edgeTopM)
+                edgeSide = Float(f.edgeSideM)
+                lastTop = Float(f.lastTopM)
+                shadow = Float(f.shadowM)
+                canyon = Float(f.canyonM)
+                canyonHeight = Float(f.canyonHeightM)
             }
 
             var full: FacadeLoadSurrogate.Features {
                 FacadeLoadSurrogate.Features(
                     distanceM: Double(distance), cosIncidence: Double(cosine), buildingsCrossed: Int(crossed),
                     blockedM: Double(blocked), ridgeM: Double(ridge), groundRiseM: Double(groundRise),
-                    heightM: Double(height), shadowM: 0, frontM: 0)
+                    heightM: Double(height), shadowM: Double(shadow), frontM: 0, edgeM: Double(edge),
+                    edgeFromChargeM: Double(edgeFrom), edgeToTargetM: Double(edgeTo),
+                    edgeTopM: Double(edgeTop),
+                    edgeSideM: Double(edgeSide), lastTopM: Double(lastTop), canyonM: Double(canyon),
+                    canyonHeightM: Double(canyonHeight))
             }
         }
 

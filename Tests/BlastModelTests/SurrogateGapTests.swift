@@ -112,9 +112,10 @@ struct SurrogateGapTests {
     /// is smeared over several cells; the fit makes no promise to recover Kingery–Bulmash, and
     /// docs/surrogate-first-look.md says so ("It copies the runs, artefacts and all": façade peaks
     /// 0.45–0.57 of the reflected ones even in sight of the charge). So the open face's load is
-    /// pinned where the fit puts it, and a refit that moves it shows here. Measured on the Studio
-    /// on 19 October 2026, over Z 5–35: the peak 0.35–0.50 of the reflected peak at 20 t and
-    /// 0.48–0.68 at 500 t, the impulse 0.47–0.60 and 0.36–0.46 of the reflected impulse.
+    /// pinned where the fit puts it, and a refit that moves it shows here. From the coefficients of
+    /// 20 October 2026 (emmettl/bombcad-work#4), over Z 5–35: the peak 0.42–0.58 of the reflected
+    /// peak at 20 t and 0.57–0.79 at 500 t, the impulse 0.47–1.00 and 0.36–0.76 of the reflected
+    /// impulse (the highest at Z 5, where the close-in branch has begun to take over).
     @Test(
         "With the fitted terms, the open face takes the fit's share of Kingery–Bulmash's reflected load",
         arguments: masses)
@@ -128,8 +129,8 @@ struct SurrogateGapTests {
             // Arrival carries no fitted term, so it is recovered whatever the fit.
             #expect(abs(p.arrivalS / kb.arrival(mass: mass) - 1) < 1e-9)
             // The measured shares with a margin of about 10% of each.
-            #expect(peak > 0.31 && peak < 0.75, "Z \(z): peak ×\(peak)")
-            #expect(impulse > 0.32 && impulse < 0.66, "Z \(z): impulse ×\(impulse)")
+            #expect(peak > 0.37 && peak < 0.87, "Z \(z): peak ×\(peak)")
+            #expect(impulse > 0.32 && impulse < 1.10, "Z \(z): impulse ×\(impulse)")
         }
     }
 
