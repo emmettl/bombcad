@@ -9,5 +9,10 @@ runs (refined once and twice, on cut terrain, with gravity, on the recommended a
 million cells) carried on from a checkpoint ended exactly as the same runs straight through. 50
 million cells take 78 MB stored early in a run, saved in 4 s and taken back in 0.6 s. Struck walls in
 solids and shells, glazed buildings with their recorders and vented panes, and a gas-filled room
-carry on to the bit too. A run in which a delayed charge has already fired is refused for now; the
-app's "Continue from here" comes with stage 3.
+carry on to the bit too. In the app, a recorded run saves its state every eighth of the way, within
+Settings ▸ Replay's "Space for saved states" (512 MB a run), and wherever you choose with
+Simulation ▸ Save State Here (⌥⌘S); replaying, the slider marks them and Continue from… carries the
+run on from the one at or before the time shown, the same to the bit as the run straight through
+([continuing a run](../../using-the-app.md#continuing-a-run-from-a-saved-state)). Runs with
+fragments, ground points or thermal receivers, or with a delayed charge already fired, are refused
+with the reason; a saved state is read only by a build whose saved parts keep the same versions.

@@ -10,5 +10,4 @@ times. Against the same two charges run without interruption on cells four times
 delayed 1, 5 or 20 ms reads as the undelayed one does: the delay adds no error of its own
 ([validation](../../validation.md#delayed-charges-19-october)); no open test of delayed charges
 was found to compare with. See [a finely resolved
-start](../../air-blast-model.md#a-finely-resolved-start) for what is approximated. Workers need
-this version (worker protocol 14).
+start](../../air-blast-model.md#a-finely-resolved-start) for what is approximated.

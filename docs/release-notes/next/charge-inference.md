@@ -10,4 +10,6 @@ they claim. *Approximation:* on Beirut it finds 0.50–0.54 kt (90%: 0.36–0.85
 within 32 m from Rigby's 31 observers, and 0.66 kt from Stennett et al.'s six, their own estimates
 by the same curves (0.50 and 0.64 kt). Broken glass can be added from GEER's façade survey, but it
 biases the yield low (the glass model breaks far more than the survey saw), so it is
-*illustrative* and off by default.
+*illustrative* and off by default. GEER's façade directions are read in degrees, and an arrival
+placed before the explosion by a clock offset now makes a charge impossible rather than a
+likelihood that is not a number, which could leave the search on a false, narrow answer.

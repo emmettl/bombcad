@@ -1,6 +1,6 @@
 kind: fixed
 
-**A concrete or masonry shell keeps its own rule through the thickness beside timber.** Any
+**A concrete or masonry shell keeps its own rule through the thickness beside timber.** (Also in 0.5.1.) Any
 timber in a model, a glulam beam or a timber floor, put every shell on the timber's
 Gauss–Lobatto points, so a concrete slab's cracking moved when a timber beam was added beside it.
 Each shell now integrates by its own material's rule ([shell model](../../shell-model.md)): models
