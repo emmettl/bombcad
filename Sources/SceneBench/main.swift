@@ -102,6 +102,10 @@ enum SceneBench {
             try DistrictGlass.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "field-export" {
+            try FieldExport.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "district-compare" {
             try DistrictComparison.run(Array(args.dropFirst()))
             return

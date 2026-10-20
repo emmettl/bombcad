@@ -8,7 +8,7 @@ import simd
 /// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
 /// [--save-loads folder] [--refine 2 --levels 2 --threshold 0.005 --refine-memory GB --hold Pa]
 /// [--ceiling auto|m] [--place-dx m] [--profile] [--steer 0.8,1.5 --steer-reach 12 --steer-by ring|near --steer-on glass|structure] [--corridor x,y,60] [--doubt [--doubt-band 1,1.6]]
-/// [--refine-toward x,y;x,y [--toward-width 1.5]]
+/// [--refine-toward x,y;x,y [--toward-width 1.5]] [--export-field folder [--field-above 2]]
 /// --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
@@ -198,7 +198,9 @@ enum DistrictComparison {
         // Each refined level's blocks summed over the steps of the last event (blocks at each
         // batch's end times its steps): what the refinement cost, apart from the Mac's load.
         var blockSteps: [Int] = []
-        func event(_ configuration: SolverConfiguration) throws -> (
+        // `--export-field folder`: the run's peak fields at `--field-above` metres (2) over the
+        // ground, with the plan's inputs, as `field-export` writes them (FieldExport.swift).
+        func event(_ configuration: SolverConfiguration, exportField: URL? = nil) throws -> (
             Double, Int, Double, [Arrival], [LinePoint], [EnvelopeComponentHistory]
         ) {
             blockSteps = []
@@ -338,6 +340,16 @@ enum DistrictComparison {
                     LinePoint(
                         distanceM: Double(d), peakPa: peak,
                         kingeryBulmashPa: KingeryBulmash.point(at: Double(d) / cbrt(mass))?.incidentPressure))
+            }
+
+            if let exportField {
+                try FieldExport.write(
+                    solver: solver, scene: scene, folder: exportField, id: exportField.lastPathComponent,
+                    layout: nil, buildings: report.placed.count,
+                    above: Float(value("field-above").flatMap(Double.init) ?? 2), edgeCells: 4,
+                    configuration: args.contains("--bare") ? "bare" : "recommended, balloon start",
+                    ground: value("ground"), steps: steps, wallS: wall, stable: solver.time >= until * 0.999,
+                    arguments: args)
             }
 
             // Buildings.
@@ -579,7 +591,8 @@ enum DistrictComparison {
                     low: SIMD3(numbers[0], numbers[1], -1e4), high: SIMD3(numbers[2], numbers[3], 1e4))
             ]
         }
-        let (finalTime, steps, wall, arrivals, linePoints, recorded) = try event(configuration)
+        let (finalTime, steps, wall, arrivals, linePoints, recorded) = try event(
+            configuration, exportField: value("export-field").map { URL(filePath: $0) })
         let loads = recorded.map(EnvelopeComponentLoad.init)
         let (firstJudged, assessed) = judge(loads)
         // The app's own outcome for each building, and with `--doubt` whether the cells could flip

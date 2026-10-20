@@ -1,0 +1,3786 @@
+{
+ "format": "bombcad-field-runs-1",
+ "about": "Training runs for the learned field model (docs/learned-models.md); written by Scripts/ml/field-runs.py plan. Estimates are for the Studio's M4 Max, one run at a time; the CI mini takes about 3-4 times as long.",
+ "cellSizeM": 4.0,
+ "heightAboveGroundM": 2,
+ "costModel": {
+  "nsPerCellStep": 1.0,
+  "stepsPerSecond": 600.0,
+  "bytesPerCell": 73.0,
+  "fixedS": 5.0,
+  "beirutFixedS": 40.0,
+  "beirutExtraGB": 1.0,
+  "calibratedOn": "the six smoke runs on the Studio, 20 Oct 2026: 0.46-0.65 ns a cell-step quiet, 1.0-1.3 with the cold start and other jobs; 573 steps a simulated second on 4 m cells; the solver 73 bytes a cell; Beirut's 12,000 x 12,000 height grid takes 17-40 s to read"
+ },
+ "totals": {
+  "main": {
+   "runs": 200,
+   "gpuHours": 5.15,
+   "longestMinutes": 3.5,
+   "largestMemGB": 7,
+   "datasetGB": 2.29
+  },
+  "smoke": {
+   "runs": 6,
+   "gpuHours": 0.03,
+   "longestMinutes": 0.8,
+   "largestMemGB": 2,
+   "datasetGB": 0.01
+  }
+ },
+ "layouts": {
+  "made-perimeter-s1": {
+   "kind": "made-up",
+   "style": "perimeter",
+   "seed": 1,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-perimeter-s2": {
+   "kind": "made-up",
+   "style": "perimeter",
+   "seed": 2,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-perimeter-s3": {
+   "kind": "made-up",
+   "style": "perimeter",
+   "seed": 3,
+   "terrain": "slope",
+   "extentM": 2600,
+   "reliefM": 70
+  },
+  "made-perimeter-s4": {
+   "kind": "made-up",
+   "style": "perimeter",
+   "seed": 4,
+   "terrain": "hill",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-perimeter-s5": {
+   "kind": "made-up",
+   "style": "perimeter",
+   "seed": 5,
+   "terrain": "valley",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-perimeter-s6": {
+   "kind": "made-up",
+   "style": "perimeter",
+   "seed": 6,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-grid-s1": {
+   "kind": "made-up",
+   "style": "grid",
+   "seed": 1,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-grid-s2": {
+   "kind": "made-up",
+   "style": "grid",
+   "seed": 2,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-grid-s3": {
+   "kind": "made-up",
+   "style": "grid",
+   "seed": 3,
+   "terrain": "slope",
+   "extentM": 2600,
+   "reliefM": 70
+  },
+  "made-grid-s4": {
+   "kind": "made-up",
+   "style": "grid",
+   "seed": 4,
+   "terrain": "hill",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-grid-s5": {
+   "kind": "made-up",
+   "style": "grid",
+   "seed": 5,
+   "terrain": "valley",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-grid-s6": {
+   "kind": "made-up",
+   "style": "grid",
+   "seed": 6,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-towers-s1": {
+   "kind": "made-up",
+   "style": "towers",
+   "seed": 1,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-towers-s2": {
+   "kind": "made-up",
+   "style": "towers",
+   "seed": 2,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-towers-s3": {
+   "kind": "made-up",
+   "style": "towers",
+   "seed": 3,
+   "terrain": "slope",
+   "extentM": 2600,
+   "reliefM": 70
+  },
+  "made-towers-s4": {
+   "kind": "made-up",
+   "style": "towers",
+   "seed": 4,
+   "terrain": "hill",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-towers-s5": {
+   "kind": "made-up",
+   "style": "towers",
+   "seed": 5,
+   "terrain": "valley",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-towers-s6": {
+   "kind": "made-up",
+   "style": "towers",
+   "seed": 6,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-industrial-s1": {
+   "kind": "made-up",
+   "style": "industrial",
+   "seed": 1,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-industrial-s2": {
+   "kind": "made-up",
+   "style": "industrial",
+   "seed": 2,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-industrial-s3": {
+   "kind": "made-up",
+   "style": "industrial",
+   "seed": 3,
+   "terrain": "slope",
+   "extentM": 2600,
+   "reliefM": 70
+  },
+  "made-industrial-s4": {
+   "kind": "made-up",
+   "style": "industrial",
+   "seed": 4,
+   "terrain": "hill",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-industrial-s5": {
+   "kind": "made-up",
+   "style": "industrial",
+   "seed": 5,
+   "terrain": "valley",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-industrial-s6": {
+   "kind": "made-up",
+   "style": "industrial",
+   "seed": 6,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-mixed-s1": {
+   "kind": "made-up",
+   "style": "mixed",
+   "seed": 1,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-mixed-s2": {
+   "kind": "made-up",
+   "style": "mixed",
+   "seed": 2,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "made-mixed-s3": {
+   "kind": "made-up",
+   "style": "mixed",
+   "seed": 3,
+   "terrain": "slope",
+   "extentM": 2600,
+   "reliefM": 70
+  },
+  "made-mixed-s4": {
+   "kind": "made-up",
+   "style": "mixed",
+   "seed": 4,
+   "terrain": "hill",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-mixed-s5": {
+   "kind": "made-up",
+   "style": "mixed",
+   "seed": 5,
+   "terrain": "valley",
+   "extentM": 2600,
+   "reliefM": 60
+  },
+  "made-mixed-s6": {
+   "kind": "made-up",
+   "style": "mixed",
+   "seed": 6,
+   "terrain": "flat",
+   "extentM": 2600,
+   "reliefM": 0
+  },
+  "beirut": {
+   "kind": "beirut",
+   "reliefM": 100,
+   "note": "OSM buildings, Copernicus DEM and GHSL heights, as docs/beirut-2020.md"
+  }
+ },
+ "sets": {
+  "main": [
+   {
+    "id": "made-perimeter-s1-1",
+    "layout": "made-perimeter-s1",
+    "offsetM": [
+     118,
+     36
+    ],
+    "massKg": 200800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15466496,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 47,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s1-2",
+    "layout": "made-perimeter-s1",
+    "offsetM": [
+     22,
+     103
+    ],
+    "massKg": 1304300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 45056000,
+     "untilS": 5.53,
+     "steps": 3318,
+     "seconds": 154,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-perimeter-s1-3",
+    "layout": "made-perimeter-s1",
+    "offsetM": [
+     -3,
+     82
+    ],
+    "massKg": 811000,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38502400,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 134,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-perimeter-s1-4",
+    "layout": "made-perimeter-s1",
+    "offsetM": [
+     -149,
+     -126
+    ],
+    "massKg": 302800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17825792,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 53,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s1-5",
+    "layout": "made-perimeter-s1",
+    "offsetM": [
+     -121,
+     -147
+    ],
+    "massKg": 61800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10485760,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 33,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s2-1",
+    "layout": "made-perimeter-s2",
+    "offsetM": [
+     144,
+     129
+    ],
+    "massKg": 1151300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 43008000,
+     "untilS": 5.55,
+     "steps": 3330,
+     "seconds": 148,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-perimeter-s2-2",
+    "layout": "made-perimeter-s2",
+    "offsetM": [
+     150,
+     4
+    ],
+    "massKg": 189400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15204352,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 46,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s2-3",
+    "layout": "made-perimeter-s2",
+    "offsetM": [
+     -48,
+     17
+    ],
+    "massKg": 52900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 9961472,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 32,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s2-4",
+    "layout": "made-perimeter-s2",
+    "offsetM": [
+     -13,
+     113
+    ],
+    "massKg": 271300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17039360,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 51,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s2-5",
+    "layout": "made-perimeter-s2",
+    "offsetM": [
+     23,
+     -143
+    ],
+    "massKg": 768700,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 37683200,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 132,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-perimeter-s3-1",
+    "layout": "made-perimeter-s3",
+    "offsetM": [
+     117,
+     16
+    ],
+    "massKg": 53500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 9961472,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 32,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s3-2",
+    "layout": "made-perimeter-s3",
+    "offsetM": [
+     -22,
+     91
+    ],
+    "massKg": 867100,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 39321600,
+     "untilS": 5.59,
+     "steps": 3354,
+     "seconds": 137,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-perimeter-s3-3",
+    "layout": "made-perimeter-s3",
+    "offsetM": [
+     113,
+     -31
+    ],
+    "massKg": 198200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15466496,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 47,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s3-4",
+    "layout": "made-perimeter-s3",
+    "offsetM": [
+     103,
+     19
+    ],
+    "massKg": 1408400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 46284800,
+     "untilS": 5.52,
+     "steps": 3311,
+     "seconds": 158,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-perimeter-s3-5",
+    "layout": "made-perimeter-s3",
+    "offsetM": [
+     4,
+     92
+    ],
+    "massKg": 451400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 20185088,
+     "untilS": 4.47,
+     "steps": 2682,
+     "seconds": 59,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-perimeter-s4-1",
+    "layout": "made-perimeter-s4",
+    "offsetM": [
+     7,
+     51
+    ],
+    "massKg": 930400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 40140800,
+     "untilS": 5.58,
+     "steps": 3348,
+     "seconds": 139,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-perimeter-s4-2",
+    "layout": "made-perimeter-s4",
+    "offsetM": [
+     -21,
+     -107
+    ],
+    "massKg": 371200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18874368,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 56,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-perimeter-s4-3",
+    "layout": "made-perimeter-s4",
+    "offsetM": [
+     105,
+     -113
+    ],
+    "massKg": 96000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12058624,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 38,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s4-4",
+    "layout": "made-perimeter-s4",
+    "offsetM": [
+     52,
+     64
+    ],
+    "massKg": 175300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14680064,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 45,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s4-5",
+    "layout": "made-perimeter-s4",
+    "offsetM": [
+     144,
+     -75
+    ],
+    "massKg": 1941300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 51200000,
+     "untilS": 5.47,
+     "steps": 3282,
+     "seconds": 173,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-perimeter-s5-1",
+    "layout": "made-perimeter-s5",
+    "offsetM": [
+     -29,
+     -89
+    ],
+    "massKg": 90500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11796480,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 37,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s5-2",
+    "layout": "made-perimeter-s5",
+    "offsetM": [
+     -147,
+     -105
+    ],
+    "massKg": 193200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15204352,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 46,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s5-3",
+    "layout": "made-perimeter-s5",
+    "offsetM": [
+     138,
+     91
+    ],
+    "massKg": 1833300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 50380800,
+     "untilS": 5.48,
+     "steps": 3288,
+     "seconds": 171,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-perimeter-s5-4",
+    "layout": "made-perimeter-s5",
+    "offsetM": [
+     -42,
+     -90
+    ],
+    "massKg": 433300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 19922944,
+     "untilS": 4.47,
+     "steps": 2682,
+     "seconds": 58,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-perimeter-s5-5",
+    "layout": "made-perimeter-s5",
+    "offsetM": [
+     -10,
+     80
+    ],
+    "massKg": 762300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 37683200,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 132,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-perimeter-s6-1",
+    "layout": "made-perimeter-s6",
+    "offsetM": [
+     -55,
+     125
+    ],
+    "massKg": 193100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15204352,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 46,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s6-2",
+    "layout": "made-perimeter-s6",
+    "offsetM": [
+     57,
+     86
+    ],
+    "massKg": 53800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 9961472,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 32,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s6-3",
+    "layout": "made-perimeter-s6",
+    "offsetM": [
+     -14,
+     140
+    ],
+    "massKg": 319800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18087936,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 54,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-perimeter-s6-4",
+    "layout": "made-perimeter-s6",
+    "offsetM": [
+     103,
+     -6
+    ],
+    "massKg": 1952300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 51200000,
+     "untilS": 5.46,
+     "steps": 3276,
+     "seconds": 173,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-perimeter-s6-5",
+    "layout": "made-perimeter-s6",
+    "offsetM": [
+     -70,
+     0
+    ],
+    "massKg": 479500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 20709376,
+     "untilS": 4.46,
+     "steps": 2676,
+     "seconds": 60,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-grid-s1-1",
+    "layout": "made-grid-s1",
+    "offsetM": [
+     125,
+     -122
+    ],
+    "massKg": 1065400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 42188800,
+     "untilS": 5.56,
+     "steps": 3335,
+     "seconds": 146,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-grid-s1-2",
+    "layout": "made-grid-s1",
+    "offsetM": [
+     14,
+     101
+    ],
+    "massKg": 637900,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 35635200,
+     "untilS": 5.62,
+     "steps": 3372,
+     "seconds": 125,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-grid-s1-3",
+    "layout": "made-grid-s1",
+    "offsetM": [
+     -90,
+     -114
+    ],
+    "massKg": 343000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18350080,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 54,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-grid-s1-4",
+    "layout": "made-grid-s1",
+    "offsetM": [
+     14,
+     -69
+    ],
+    "massKg": 108100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12582912,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 39,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s1-5",
+    "layout": "made-grid-s1",
+    "offsetM": [
+     -43,
+     -148
+    ],
+    "massKg": 87400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11796480,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 37,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s2-1",
+    "layout": "made-grid-s2",
+    "offsetM": [
+     -8,
+     -111
+    ],
+    "massKg": 156400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14155776,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 44,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s2-2",
+    "layout": "made-grid-s2",
+    "offsetM": [
+     58,
+     -63
+    ],
+    "massKg": 77700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11272192,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 36,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s2-3",
+    "layout": "made-grid-s2",
+    "offsetM": [
+     -102,
+     -109
+    ],
+    "massKg": 297600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17563648,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 52,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s2-4",
+    "layout": "made-grid-s2",
+    "offsetM": [
+     26,
+     2
+    ],
+    "massKg": 814500,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38502400,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 134,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-grid-s2-5",
+    "layout": "made-grid-s2",
+    "offsetM": [
+     -105,
+     92
+    ],
+    "massKg": 1275600,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 44646400,
+     "untilS": 5.54,
+     "steps": 3324,
+     "seconds": 153,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-grid-s3-1",
+    "layout": "made-grid-s3",
+    "offsetM": [
+     -135,
+     -46
+    ],
+    "massKg": 421000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 19660800,
+     "untilS": 4.48,
+     "steps": 2688,
+     "seconds": 58,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-grid-s3-2",
+    "layout": "made-grid-s3",
+    "offsetM": [
+     81,
+     -142
+    ],
+    "massKg": 135700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13631488,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 42,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s3-3",
+    "layout": "made-grid-s3",
+    "offsetM": [
+     -52,
+     -59
+    ],
+    "massKg": 1393600,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 45875200,
+     "untilS": 5.52,
+     "steps": 3311,
+     "seconds": 157,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-grid-s3-4",
+    "layout": "made-grid-s3",
+    "offsetM": [
+     -114,
+     135
+    ],
+    "massKg": 63600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10485760,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 33,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s3-5",
+    "layout": "made-grid-s3",
+    "offsetM": [
+     91,
+     -104
+    ],
+    "massKg": 697200,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 36454400,
+     "untilS": 5.61,
+     "steps": 3366,
+     "seconds": 128,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-grid-s4-1",
+    "layout": "made-grid-s4",
+    "offsetM": [
+     -80,
+     63
+    ],
+    "massKg": 70100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11010048,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 35,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s4-2",
+    "layout": "made-grid-s4",
+    "offsetM": [
+     -140,
+     44
+    ],
+    "massKg": 327500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18087936,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 54,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s4-3",
+    "layout": "made-grid-s4",
+    "offsetM": [
+     44,
+     129
+    ],
+    "massKg": 519700,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 33177600,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 117,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-grid-s4-4",
+    "layout": "made-grid-s4",
+    "offsetM": [
+     110,
+     42
+    ],
+    "massKg": 108300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12582912,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 39,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s4-5",
+    "layout": "made-grid-s4",
+    "offsetM": [
+     54,
+     -144
+    ],
+    "massKg": 1366600,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 45465600,
+     "untilS": 5.52,
+     "steps": 3311,
+     "seconds": 156,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-grid-s5-1",
+    "layout": "made-grid-s5",
+    "offsetM": [
+     103,
+     -33
+    ],
+    "massKg": 514800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 33177600,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 117,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-grid-s5-2",
+    "layout": "made-grid-s5",
+    "offsetM": [
+     -26,
+     -126
+    ],
+    "massKg": 68400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10747904,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 34,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s5-3",
+    "layout": "made-grid-s5",
+    "offsetM": [
+     -47,
+     -71
+    ],
+    "massKg": 273800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17039360,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 51,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s5-4",
+    "layout": "made-grid-s5",
+    "offsetM": [
+     84,
+     -25
+    ],
+    "massKg": 150900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14155776,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 44,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s5-5",
+    "layout": "made-grid-s5",
+    "offsetM": [
+     -52,
+     -5
+    ],
+    "massKg": 1350400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 45465600,
+     "untilS": 5.53,
+     "steps": 3318,
+     "seconds": 156,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-grid-s6-1",
+    "layout": "made-grid-s6",
+    "offsetM": [
+     136,
+     114
+    ],
+    "massKg": 124000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13107200,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 41,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s6-2",
+    "layout": "made-grid-s6",
+    "offsetM": [
+     -28,
+     85
+    ],
+    "massKg": 736400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 37273600,
+     "untilS": 5.61,
+     "steps": 3366,
+     "seconds": 130,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-grid-s6-3",
+    "layout": "made-grid-s6",
+    "offsetM": [
+     51,
+     138
+    ],
+    "massKg": 1789800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 49971200,
+     "untilS": 5.48,
+     "steps": 3288,
+     "seconds": 169,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-grid-s6-4",
+    "layout": "made-grid-s6",
+    "offsetM": [
+     -103,
+     19
+    ],
+    "massKg": 283500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17301504,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 52,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-grid-s6-5",
+    "layout": "made-grid-s6",
+    "offsetM": [
+     12,
+     -117
+    ],
+    "massKg": 76300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11272192,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 36,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s1-1",
+    "layout": "made-towers-s1",
+    "offsetM": [
+     51,
+     -110
+    ],
+    "massKg": 75700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11272192,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 36,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s1-2",
+    "layout": "made-towers-s1",
+    "offsetM": [
+     -121,
+     -19
+    ],
+    "massKg": 814000,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38502400,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 134,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-towers-s1-3",
+    "layout": "made-towers-s1",
+    "offsetM": [
+     -132,
+     -43
+    ],
+    "massKg": 1034200,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 41779200,
+     "untilS": 5.57,
+     "steps": 3342,
+     "seconds": 145,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-towers-s1-4",
+    "layout": "made-towers-s1",
+    "offsetM": [
+     44,
+     -118
+    ],
+    "massKg": 189000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15204352,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 46,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s1-5",
+    "layout": "made-towers-s1",
+    "offsetM": [
+     26,
+     -131
+    ],
+    "massKg": 275600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17301504,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 52,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s2-1",
+    "layout": "made-towers-s2",
+    "offsetM": [
+     -27,
+     119
+    ],
+    "massKg": 52400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 9961472,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 32,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s2-2",
+    "layout": "made-towers-s2",
+    "offsetM": [
+     -26,
+     -145
+    ],
+    "massKg": 1696300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 49152000,
+     "untilS": 5.49,
+     "steps": 3294,
+     "seconds": 167,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-towers-s2-3",
+    "layout": "made-towers-s2",
+    "offsetM": [
+     -143,
+     -113
+    ],
+    "massKg": 491000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 20709376,
+     "untilS": 4.46,
+     "steps": 2676,
+     "seconds": 60,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-towers-s2-4",
+    "layout": "made-towers-s2",
+    "offsetM": [
+     23,
+     131
+    ],
+    "massKg": 173400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14680064,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 45,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s2-5",
+    "layout": "made-towers-s2",
+    "offsetM": [
+     84,
+     32
+    ],
+    "massKg": 283200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17301504,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 52,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s3-1",
+    "layout": "made-towers-s3",
+    "offsetM": [
+     28,
+     -22
+    ],
+    "massKg": 716100,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 36864000,
+     "untilS": 5.61,
+     "steps": 3366,
+     "seconds": 129,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-towers-s3-2",
+    "layout": "made-towers-s3",
+    "offsetM": [
+     -114,
+     -38
+    ],
+    "massKg": 360100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18874368,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 56,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-towers-s3-3",
+    "layout": "made-towers-s3",
+    "offsetM": [
+     142,
+     -75
+    ],
+    "massKg": 151400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14155776,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 44,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s3-4",
+    "layout": "made-towers-s3",
+    "offsetM": [
+     95,
+     -133
+    ],
+    "massKg": 62000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10485760,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 33,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s3-5",
+    "layout": "made-towers-s3",
+    "offsetM": [
+     114,
+     -66
+    ],
+    "massKg": 1620900,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 48332800,
+     "untilS": 5.5,
+     "steps": 3300,
+     "seconds": 164,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-towers-s4-1",
+    "layout": "made-towers-s4",
+    "offsetM": [
+     -25,
+     26
+    ],
+    "massKg": 130200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13369344,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 41,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s4-2",
+    "layout": "made-towers-s4",
+    "offsetM": [
+     137,
+     -91
+    ],
+    "massKg": 50800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 9961472,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 32,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s4-3",
+    "layout": "made-towers-s4",
+    "offsetM": [
+     149,
+     -101
+    ],
+    "massKg": 476600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 20709376,
+     "untilS": 4.46,
+     "steps": 2676,
+     "seconds": 60,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-towers-s4-4",
+    "layout": "made-towers-s4",
+    "offsetM": [
+     -139,
+     7
+    ],
+    "massKg": 1047000,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 41779200,
+     "untilS": 5.56,
+     "steps": 3335,
+     "seconds": 144,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-towers-s4-5",
+    "layout": "made-towers-s4",
+    "offsetM": [
+     142,
+     -59
+    ],
+    "massKg": 339700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18350080,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 54,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-towers-s5-1",
+    "layout": "made-towers-s5",
+    "offsetM": [
+     -78,
+     -24
+    ],
+    "massKg": 66400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10747904,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 34,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s5-2",
+    "layout": "made-towers-s5",
+    "offsetM": [
+     -112,
+     13
+    ],
+    "massKg": 257100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 16777216,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 50,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s5-3",
+    "layout": "made-towers-s5",
+    "offsetM": [
+     130,
+     55
+    ],
+    "massKg": 1558100,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 47513600,
+     "untilS": 5.5,
+     "steps": 3300,
+     "seconds": 162,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-towers-s5-4",
+    "layout": "made-towers-s5",
+    "offsetM": [
+     -74,
+     -106
+    ],
+    "massKg": 140100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13631488,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 42,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s5-5",
+    "layout": "made-towers-s5",
+    "offsetM": [
+     -67,
+     -6
+    ],
+    "massKg": 465300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 20447232,
+     "untilS": 4.47,
+     "steps": 2682,
+     "seconds": 60,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-towers-s6-1",
+    "layout": "made-towers-s6",
+    "offsetM": [
+     16,
+     45
+    ],
+    "massKg": 194300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15204352,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 46,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s6-2",
+    "layout": "made-towers-s6",
+    "offsetM": [
+     4,
+     -70
+    ],
+    "massKg": 929400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 40140800,
+     "untilS": 5.58,
+     "steps": 3348,
+     "seconds": 139,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-towers-s6-3",
+    "layout": "made-towers-s6",
+    "offsetM": [
+     76,
+     -55
+    ],
+    "massKg": 79800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11534336,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 36,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-towers-s6-4",
+    "layout": "made-towers-s6",
+    "offsetM": [
+     -147,
+     143
+    ],
+    "massKg": 1553800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 47513600,
+     "untilS": 5.5,
+     "steps": 3300,
+     "seconds": 162,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-towers-s6-5",
+    "layout": "made-towers-s6",
+    "offsetM": [
+     141,
+     54
+    ],
+    "massKg": 309400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17825792,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 53,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s1-1",
+    "layout": "made-industrial-s1",
+    "offsetM": [
+     -80,
+     99
+    ],
+    "massKg": 100900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12320768,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 39,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s1-2",
+    "layout": "made-industrial-s1",
+    "offsetM": [
+     -90,
+     -42
+    ],
+    "massKg": 1232400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 44236800,
+     "untilS": 5.54,
+     "steps": 3324,
+     "seconds": 152,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-industrial-s1-3",
+    "layout": "made-industrial-s1",
+    "offsetM": [
+     15,
+     -8
+    ],
+    "massKg": 349900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18612224,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 55,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-industrial-s1-4",
+    "layout": "made-industrial-s1",
+    "offsetM": [
+     24,
+     -94
+    ],
+    "massKg": 818300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38502400,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 134,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-industrial-s1-5",
+    "layout": "made-industrial-s1",
+    "offsetM": [
+     -104,
+     118
+    ],
+    "massKg": 166200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14417920,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 44,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s2-1",
+    "layout": "made-industrial-s2",
+    "offsetM": [
+     -38,
+     69
+    ],
+    "massKg": 111300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12845056,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 40,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s2-2",
+    "layout": "made-industrial-s2",
+    "offsetM": [
+     72,
+     150
+    ],
+    "massKg": 1058800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 41779200,
+     "untilS": 5.56,
+     "steps": 3335,
+     "seconds": 144,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-industrial-s2-3",
+    "layout": "made-industrial-s2",
+    "offsetM": [
+     -85,
+     105
+    ],
+    "massKg": 50700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 9961472,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 32,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s2-4",
+    "layout": "made-industrial-s2",
+    "offsetM": [
+     22,
+     137
+    ],
+    "massKg": 702800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 36454400,
+     "untilS": 5.61,
+     "steps": 3366,
+     "seconds": 128,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-industrial-s2-5",
+    "layout": "made-industrial-s2",
+    "offsetM": [
+     139,
+     5
+    ],
+    "massKg": 289600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17563648,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 53,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s3-1",
+    "layout": "made-industrial-s3",
+    "offsetM": [
+     -50,
+     -72
+    ],
+    "massKg": 1641900,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 48332800,
+     "untilS": 5.49,
+     "steps": 3294,
+     "seconds": 164,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-industrial-s3-2",
+    "layout": "made-industrial-s3",
+    "offsetM": [
+     28,
+     86
+    ],
+    "massKg": 225500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15990784,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 48,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s3-3",
+    "layout": "made-industrial-s3",
+    "offsetM": [
+     -62,
+     12
+    ],
+    "massKg": 515400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 33177600,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 117,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-industrial-s3-4",
+    "layout": "made-industrial-s3",
+    "offsetM": [
+     142,
+     -93
+    ],
+    "massKg": 65100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10747904,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 34,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s3-5",
+    "layout": "made-industrial-s3",
+    "offsetM": [
+     -147,
+     32
+    ],
+    "massKg": 181400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14942208,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 46,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s4-1",
+    "layout": "made-industrial-s4",
+    "offsetM": [
+     -141,
+     -56
+    ],
+    "massKg": 372500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18874368,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 56,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-industrial-s4-2",
+    "layout": "made-industrial-s4",
+    "offsetM": [
+     -141,
+     -115
+    ],
+    "massKg": 55600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10223616,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 33,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s4-3",
+    "layout": "made-industrial-s4",
+    "offsetM": [
+     61,
+     80
+    ],
+    "massKg": 171100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14680064,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 45,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s4-4",
+    "layout": "made-industrial-s4",
+    "offsetM": [
+     -131,
+     -59
+    ],
+    "massKg": 1779800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 49971200,
+     "untilS": 5.48,
+     "steps": 3288,
+     "seconds": 169,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-industrial-s4-5",
+    "layout": "made-industrial-s4",
+    "offsetM": [
+     30,
+     -76
+    ],
+    "massKg": 677200,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 36044800,
+     "untilS": 5.62,
+     "steps": 3372,
+     "seconds": 127,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-industrial-s5-1",
+    "layout": "made-industrial-s5",
+    "offsetM": [
+     68,
+     -36
+    ],
+    "massKg": 871400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 39321600,
+     "untilS": 5.59,
+     "steps": 3354,
+     "seconds": 137,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-industrial-s5-2",
+    "layout": "made-industrial-s5",
+    "offsetM": [
+     44,
+     -46
+    ],
+    "massKg": 1507600,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 47104000,
+     "untilS": 5.51,
+     "steps": 3306,
+     "seconds": 161,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-industrial-s5-3",
+    "layout": "made-industrial-s5",
+    "offsetM": [
+     -114,
+     6
+    ],
+    "massKg": 204500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15466496,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 47,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s5-4",
+    "layout": "made-industrial-s5",
+    "offsetM": [
+     55,
+     -13
+    ],
+    "massKg": 403000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 19398656,
+     "untilS": 4.48,
+     "steps": 2688,
+     "seconds": 57,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-industrial-s5-5",
+    "layout": "made-industrial-s5",
+    "offsetM": [
+     -125,
+     84
+    ],
+    "massKg": 77000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11272192,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 36,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s6-1",
+    "layout": "made-industrial-s6",
+    "offsetM": [
+     -82,
+     -52
+    ],
+    "massKg": 1667200,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 48742400,
+     "untilS": 5.49,
+     "steps": 3294,
+     "seconds": 166,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-industrial-s6-2",
+    "layout": "made-industrial-s6",
+    "offsetM": [
+     -50,
+     122
+    ],
+    "massKg": 317700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18087936,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 54,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s6-3",
+    "layout": "made-industrial-s6",
+    "offsetM": [
+     107,
+     -29
+    ],
+    "massKg": 178400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14942208,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 46,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-industrial-s6-4",
+    "layout": "made-industrial-s6",
+    "offsetM": [
+     92,
+     -84
+    ],
+    "massKg": 521000,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 33177600,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 117,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-industrial-s6-5",
+    "layout": "made-industrial-s6",
+    "offsetM": [
+     -45,
+     86
+    ],
+    "massKg": 83100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11534336,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 36,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s1-1",
+    "layout": "made-mixed-s1",
+    "offsetM": [
+     20,
+     71
+    ],
+    "massKg": 144800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13893632,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 43,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s1-2",
+    "layout": "made-mixed-s1",
+    "offsetM": [
+     -51,
+     -115
+    ],
+    "massKg": 300600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17563648,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 52,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s1-3",
+    "layout": "made-mixed-s1",
+    "offsetM": [
+     110,
+     -71
+    ],
+    "massKg": 60900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10485760,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 33,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s1-4",
+    "layout": "made-mixed-s1",
+    "offsetM": [
+     -70,
+     -50
+    ],
+    "massKg": 1429800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 46284800,
+     "untilS": 5.52,
+     "steps": 3311,
+     "seconds": 158,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-mixed-s1-5",
+    "layout": "made-mixed-s1",
+    "offsetM": [
+     82,
+     -70
+    ],
+    "massKg": 508400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 32768000,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 116,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-mixed-s2-1",
+    "layout": "made-mixed-s2",
+    "offsetM": [
+     15,
+     -51
+    ],
+    "massKg": 67100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10747904,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 34,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s2-2",
+    "layout": "made-mixed-s2",
+    "offsetM": [
+     -121,
+     80
+    ],
+    "massKg": 141500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13893632,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 43,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s2-3",
+    "layout": "made-mixed-s2",
+    "offsetM": [
+     53,
+     40
+    ],
+    "massKg": 315000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18087936,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 54,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s2-4",
+    "layout": "made-mixed-s2",
+    "offsetM": [
+     79,
+     5
+    ],
+    "massKg": 850500,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38912000,
+     "untilS": 5.59,
+     "steps": 3354,
+     "seconds": 136,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-mixed-s2-5",
+    "layout": "made-mixed-s2",
+    "offsetM": [
+     44,
+     -132
+    ],
+    "massKg": 1308000,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 45056000,
+     "untilS": 5.53,
+     "steps": 3318,
+     "seconds": 154,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-mixed-s3-1",
+    "layout": "made-mixed-s3",
+    "offsetM": [
+     -74,
+     -50
+    ],
+    "massKg": 330300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18350080,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 55,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-mixed-s3-2",
+    "layout": "made-mixed-s3",
+    "offsetM": [
+     -26,
+     83
+    ],
+    "massKg": 1538400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 47513600,
+     "untilS": 5.51,
+     "steps": 3306,
+     "seconds": 162,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-mixed-s3-3",
+    "layout": "made-mixed-s3",
+    "offsetM": [
+     117,
+     -48
+    ],
+    "massKg": 71000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11010048,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 35,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s3-4",
+    "layout": "made-mixed-s3",
+    "offsetM": [
+     -84,
+     -114
+    ],
+    "massKg": 107500,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12582912,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 39,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s3-5",
+    "layout": "made-mixed-s3",
+    "offsetM": [
+     -69,
+     -145
+    ],
+    "massKg": 857400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 39321600,
+     "untilS": 5.59,
+     "steps": 3354,
+     "seconds": 137,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-mixed-s4-1",
+    "layout": "made-mixed-s4",
+    "offsetM": [
+     -39,
+     17
+    ],
+    "massKg": 79200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11272192,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 36,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s4-2",
+    "layout": "made-mixed-s4",
+    "offsetM": [
+     81,
+     145
+    ],
+    "massKg": 1098400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 42598400,
+     "untilS": 5.56,
+     "steps": 3335,
+     "seconds": 147,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-mixed-s4-3",
+    "layout": "made-mixed-s4",
+    "offsetM": [
+     142,
+     133
+    ],
+    "massKg": 245300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 16515072,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 50,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s4-4",
+    "layout": "made-mixed-s4",
+    "offsetM": [
+     52,
+     62
+    ],
+    "massKg": 532500,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 33587200,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 119,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-mixed-s4-5",
+    "layout": "made-mixed-s4",
+    "offsetM": [
+     -25,
+     7
+    ],
+    "massKg": 111300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12845056,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 40,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s5-1",
+    "layout": "made-mixed-s5",
+    "offsetM": [
+     -24,
+     -94
+    ],
+    "massKg": 558500,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 33996800,
+     "untilS": 5.63,
+     "steps": 3378,
+     "seconds": 120,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "made-mixed-s5-2",
+    "layout": "made-mixed-s5",
+    "offsetM": [
+     147,
+     147
+    ],
+    "massKg": 375900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 19136512,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 57,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-mixed-s5-3",
+    "layout": "made-mixed-s5",
+    "offsetM": [
+     47,
+     -48
+    ],
+    "massKg": 97900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12320768,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 39,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s5-4",
+    "layout": "made-mixed-s5",
+    "offsetM": [
+     32,
+     -73
+    ],
+    "massKg": 135100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13631488,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 42,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s5-5",
+    "layout": "made-mixed-s5",
+    "offsetM": [
+     102,
+     -139
+    ],
+    "massKg": 1835000,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 50380800,
+     "untilS": 5.48,
+     "steps": 3288,
+     "seconds": 171,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "made-mixed-s6-1",
+    "layout": "made-mixed-s6",
+    "offsetM": [
+     -74,
+     76
+    ],
+    "massKg": 397200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 19398656,
+     "untilS": 4.48,
+     "steps": 2688,
+     "seconds": 57,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "made-mixed-s6-2",
+    "layout": "made-mixed-s6",
+    "offsetM": [
+     -68,
+     103
+    ],
+    "massKg": 1107400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 42598400,
+     "untilS": 5.56,
+     "steps": 3335,
+     "seconds": 147,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "made-mixed-s6-3",
+    "layout": "made-mixed-s6",
+    "offsetM": [
+     -85,
+     -134
+    ],
+    "massKg": 67200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 10747904,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 34,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s6-4",
+    "layout": "made-mixed-s6",
+    "offsetM": [
+     -131,
+     67
+    ],
+    "massKg": 141600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13893632,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 43,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "made-mixed-s6-5",
+    "layout": "made-mixed-s6",
+    "offsetM": [
+     55,
+     80
+    ],
+    "massKg": 744800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 37273600,
+     "untilS": 5.61,
+     "steps": 3366,
+     "seconds": 130,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "beirut-p0-1",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     0
+    ],
+    "massKg": 196200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15466496,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 87,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p0-2",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     0
+    ],
+    "massKg": 102600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12845056,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 80,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p0-3",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     0
+    ],
+    "massKg": 1484300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 47104000,
+     "untilS": 5.51,
+     "steps": 3306,
+     "seconds": 201,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p0-4",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     0
+    ],
+    "massKg": 656100,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 35635200,
+     "untilS": 5.62,
+     "steps": 3372,
+     "seconds": 165,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "beirut-p0-5",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     0
+    ],
+    "massKg": 356000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18612224,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 95,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "beirut-p1-1",
+    "layout": "beirut",
+    "offsetM": [
+     -600,
+     -400
+    ],
+    "massKg": 800800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38092800,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 173,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "beirut-p1-2",
+    "layout": "beirut",
+    "offsetM": [
+     -600,
+     -400
+    ],
+    "massKg": 1947500,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 51200000,
+     "untilS": 5.46,
+     "steps": 3276,
+     "seconds": 213,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p1-3",
+    "layout": "beirut",
+    "offsetM": [
+     -600,
+     -400
+    ],
+    "massKg": 101600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12845056,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 80,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p1-4",
+    "layout": "beirut",
+    "offsetM": [
+     -600,
+     -400
+    ],
+    "massKg": 154400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14155776,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 84,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p1-5",
+    "layout": "beirut",
+    "offsetM": [
+     -600,
+     -400
+    ],
+    "massKg": 415000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 19660800,
+     "untilS": 4.48,
+     "steps": 2688,
+     "seconds": 98,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "beirut-p2-1",
+    "layout": "beirut",
+    "offsetM": [
+     600,
+     -500
+    ],
+    "massKg": 261200,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 16777216,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 90,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p2-2",
+    "layout": "beirut",
+    "offsetM": [
+     600,
+     -500
+    ],
+    "massKg": 627600,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 35225600,
+     "untilS": 5.62,
+     "steps": 3372,
+     "seconds": 164,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "beirut-p2-3",
+    "layout": "beirut",
+    "offsetM": [
+     600,
+     -500
+    ],
+    "massKg": 1797700,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 49971200,
+     "untilS": 5.48,
+     "steps": 3288,
+     "seconds": 209,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p2-4",
+    "layout": "beirut",
+    "offsetM": [
+     600,
+     -500
+    ],
+    "massKg": 114800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13107200,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 81,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p2-5",
+    "layout": "beirut",
+    "offsetM": [
+     600,
+     -500
+    ],
+    "massKg": 58400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11796480,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 77,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p3-1",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     -900
+    ],
+    "massKg": 1250700,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 44236800,
+     "untilS": 5.54,
+     "steps": 3324,
+     "seconds": 192,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "beirut-p3-2",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     -900
+    ],
+    "massKg": 169000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14680064,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 85,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p3-3",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     -900
+    ],
+    "massKg": 74100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12320768,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 78,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p3-4",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     -900
+    ],
+    "massKg": 781400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38092800,
+     "untilS": 5.6,
+     "steps": 3360,
+     "seconds": 173,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "beirut-p3-5",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     -900
+    ],
+    "massKg": 251400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 16777216,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 90,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p4-1",
+    "layout": "beirut",
+    "offsetM": [
+     -1200,
+     -700
+    ],
+    "massKg": 503800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 32768000,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 156,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "beirut-p4-2",
+    "layout": "beirut",
+    "offsetM": [
+     -1200,
+     -700
+    ],
+    "massKg": 91300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12582912,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 79,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p4-3",
+    "layout": "beirut",
+    "offsetM": [
+     -1200,
+     -700
+    ],
+    "massKg": 355100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18612224,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 95,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "beirut-p4-4",
+    "layout": "beirut",
+    "offsetM": [
+     -1200,
+     -700
+    ],
+    "massKg": 109400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12845056,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 80,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p4-5",
+    "layout": "beirut",
+    "offsetM": [
+     -1200,
+     -700
+    ],
+    "massKg": 1563900,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 47923200,
+     "untilS": 5.5,
+     "steps": 3300,
+     "seconds": 203,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p5-1",
+    "layout": "beirut",
+    "offsetM": [
+     1200,
+     -900
+    ],
+    "massKg": 506800,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 32768000,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 156,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "beirut-p5-2",
+    "layout": "beirut",
+    "offsetM": [
+     1200,
+     -900
+    ],
+    "massKg": 1946300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 51200000,
+     "untilS": 5.47,
+     "steps": 3282,
+     "seconds": 213,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p5-3",
+    "layout": "beirut",
+    "offsetM": [
+     1200,
+     -900
+    ],
+    "massKg": 174300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 14680064,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 85,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p5-4",
+    "layout": "beirut",
+    "offsetM": [
+     1200,
+     -900
+    ],
+    "massKg": 240300,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 16515072,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 90,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p5-5",
+    "layout": "beirut",
+    "offsetM": [
+     1200,
+     -900
+    ],
+    "massKg": 56600,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11796480,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 77,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p6-1",
+    "layout": "beirut",
+    "offsetM": [
+     -300,
+     -1500
+    ],
+    "massKg": 620600,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 35225600,
+     "untilS": 5.62,
+     "steps": 3372,
+     "seconds": 164,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "beirut-p6-2",
+    "layout": "beirut",
+    "offsetM": [
+     -300,
+     -1500
+    ],
+    "massKg": 1514200,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 47104000,
+     "untilS": 5.51,
+     "steps": 3306,
+     "seconds": 201,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p6-3",
+    "layout": "beirut",
+    "offsetM": [
+     -300,
+     -1500
+    ],
+    "massKg": 428700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 19922944,
+     "untilS": 4.47,
+     "steps": 2682,
+     "seconds": 98,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "beirut-p6-4",
+    "layout": "beirut",
+    "offsetM": [
+     -300,
+     -1500
+    ],
+    "massKg": 211900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 15728640,
+     "untilS": 4.53,
+     "steps": 2718,
+     "seconds": 88,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p6-5",
+    "layout": "beirut",
+    "offsetM": [
+     -300,
+     -1500
+    ],
+    "massKg": 62400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11796480,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 77,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p7-1",
+    "layout": "beirut",
+    "offsetM": [
+     500,
+     -1500
+    ],
+    "massKg": 147400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13893632,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 83,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p7-2",
+    "layout": "beirut",
+    "offsetM": [
+     500,
+     -1500
+    ],
+    "massKg": 86800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12582912,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 79,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p7-3",
+    "layout": "beirut",
+    "offsetM": [
+     500,
+     -1500
+    ],
+    "massKg": 512700,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 33177600,
+     "untilS": 5.64,
+     "steps": 3384,
+     "seconds": 157,
+     "memGB": 5
+    }
+   },
+   {
+    "id": "beirut-p7-4",
+    "layout": "beirut",
+    "offsetM": [
+     500,
+     -1500
+    ],
+    "massKg": 277800,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 17301504,
+     "untilS": 4.51,
+     "steps": 2706,
+     "seconds": 92,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p7-5",
+    "layout": "beirut",
+    "offsetM": [
+     500,
+     -1500
+    ],
+    "massKg": 1620500,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 48332800,
+     "untilS": 5.5,
+     "steps": 3300,
+     "seconds": 204,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p8-1",
+    "layout": "beirut",
+    "offsetM": [
+     -1500,
+     -1200
+    ],
+    "massKg": 112100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13107200,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 81,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p8-2",
+    "layout": "beirut",
+    "offsetM": [
+     -1500,
+     -1200
+    ],
+    "massKg": 336900,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18350080,
+     "untilS": 4.5,
+     "steps": 2700,
+     "seconds": 95,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "beirut-p8-3",
+    "layout": "beirut",
+    "offsetM": [
+     -1500,
+     -1200
+    ],
+    "massKg": 1608400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 48332800,
+     "untilS": 5.5,
+     "steps": 3300,
+     "seconds": 204,
+     "memGB": 7
+    }
+   },
+   {
+    "id": "beirut-p8-4",
+    "layout": "beirut",
+    "offsetM": [
+     -1500,
+     -1200
+    ],
+    "massKg": 833400,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 38912000,
+     "untilS": 5.59,
+     "steps": 3354,
+     "seconds": 176,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "beirut-p8-5",
+    "layout": "beirut",
+    "offsetM": [
+     -1500,
+     -1200
+    ],
+    "massKg": 60400,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 11796480,
+     "untilS": 4.52,
+     "steps": 2711,
+     "seconds": 77,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p9-1",
+    "layout": "beirut",
+    "offsetM": [
+     1500,
+     -300
+    ],
+    "massKg": 868300,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 39321600,
+     "untilS": 5.59,
+     "steps": 3354,
+     "seconds": 177,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "beirut-p9-2",
+    "layout": "beirut",
+    "offsetM": [
+     1500,
+     -300
+    ],
+    "massKg": 1022100,
+    "radiusM": 1280,
+    "estimate": {
+     "cells": 41369600,
+     "untilS": 5.57,
+     "steps": 3342,
+     "seconds": 183,
+     "memGB": 6
+    }
+   },
+   {
+    "id": "beirut-p9-3",
+    "layout": "beirut",
+    "offsetM": [
+     1500,
+     -300
+    ],
+    "massKg": 356700,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 18612224,
+     "untilS": 4.49,
+     "steps": 2694,
+     "seconds": 95,
+     "memGB": 4
+    }
+   },
+   {
+    "id": "beirut-p9-4",
+    "layout": "beirut",
+    "offsetM": [
+     1500,
+     -300
+    ],
+    "massKg": 121100,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 13107200,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 81,
+     "memGB": 3
+    }
+   },
+   {
+    "id": "beirut-p9-5",
+    "layout": "beirut",
+    "offsetM": [
+     1500,
+     -300
+    ],
+    "massKg": 93000,
+    "radiusM": 1024,
+    "estimate": {
+     "cells": 12582912,
+     "untilS": 4.54,
+     "steps": 2724,
+     "seconds": 79,
+     "memGB": 3
+    }
+   }
+  ],
+  "smoke": [
+   {
+    "id": "smoke-perimeter-50t",
+    "layout": "made-perimeter-s1",
+    "offsetM": [
+     0,
+     0
+    ],
+    "massKg": 50000,
+    "radiusM": 512,
+    "estimate": {
+     "cells": 2424832,
+     "untilS": 2.24,
+     "steps": 1344,
+     "seconds": 8,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "smoke-grid-30t",
+    "layout": "made-grid-s3",
+    "offsetM": [
+     40,
+     -60
+    ],
+    "massKg": 30000,
+    "radiusM": 512,
+    "estimate": {
+     "cells": 2228224,
+     "untilS": 2.26,
+     "steps": 1355,
+     "seconds": 8,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "smoke-towers-80t",
+    "layout": "made-towers-s4",
+    "offsetM": [
+     -30,
+     20
+    ],
+    "massKg": 80000,
+    "radiusM": 512,
+    "estimate": {
+     "cells": 2883584,
+     "untilS": 2.22,
+     "steps": 1332,
+     "seconds": 9,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "smoke-industrial-20t",
+    "layout": "made-industrial-s2",
+    "offsetM": [
+     60,
+     60
+    ],
+    "massKg": 20000,
+    "radiusM": 512,
+    "estimate": {
+     "cells": 1835008,
+     "untilS": 2.27,
+     "steps": 1362,
+     "seconds": 7,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "smoke-mixed-100t",
+    "layout": "made-mixed-s5",
+    "offsetM": [
+     -50,
+     -40
+    ],
+    "massKg": 100000,
+    "radiusM": 512,
+    "estimate": {
+     "cells": 3080192,
+     "untilS": 2.2,
+     "steps": 1320,
+     "seconds": 9,
+     "memGB": 2
+    }
+   },
+   {
+    "id": "smoke-beirut-50t",
+    "layout": "beirut",
+    "offsetM": [
+     0,
+     -900
+    ],
+    "massKg": 50000,
+    "radiusM": 512,
+    "estimate": {
+     "cells": 2883584,
+     "untilS": 2.24,
+     "steps": 1344,
+     "seconds": 49,
+     "memGB": 2
+    }
+   }
+  ]
+ }
+}
