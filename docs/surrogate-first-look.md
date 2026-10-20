@@ -190,6 +190,38 @@ either side calls damaged, the share at the run's level, and within one:
   estimate, scattered by about ×1.3 either way, puts fewer of them over a level than the run does.
   Counts by band need the scatter drawn, as the glass's chances draw it (Horizons 4).
 
+### The rise share's fit (20 October 2026)
+
+The fit read the ground rise where it meant the rise time. `surrogate-extract` wrote both as
+`rise`, and `fit-surrogate.py` found each column by its first match. The peak's and impulse's
+terms were fitted as meant: replaying the mistake reproduces them, and fitting the rise time
+leaves them bit for bit. The rise share's terms were fitted to the ground rise over the pulse's
+length, clipped to 0–1. The extract now names the column `risetime`, and the fit refuses a file
+that names a column twice.
+
+Refitted to the same four made-up runs on the rise time, the rise share follows Beirut's runs,
+which none of its fits saw:
+
+| Beirut, uncapped near boxes | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| The runs' rise share, mean | 0.37 | 0.35 | 0.33 |
+| As fitted (by the ground rise), mean / rms error | 0.91 / 0.57 | 0.91 / 0.59 | 0.91 / 0.60 |
+| Refitted on the rise time | 0.31 / 0.18 | 0.29 / 0.19 | 0.27 / 0.18 |
+
+But the slow rise the mistake gave every pulse had been offsetting loads the surrogate
+overpredicts deep in the district, where its impulses run 1.26–1.50 times the full runs'. With
+the refitted rise, more glass breaks. The glass chances against the runs fall from a Brier
+score of 0.020 to 0.024 (skill 0.81 to 0.78) for blown out, and from 0.72 to 0.68 skill for glass
+thrown past 3b. Both then fail the report's test, each tenth of chance within 0.1. Sides agreeing
+deep in the district go from 75–84% to 74–83%. Concrete walls take the run's level a little more
+often (17–46% against 15–47%).
+
+So the coefficients the app uses keep the fitted rise share for now, its standing as judged. The
+refitted rise terms go in with the next refit of the load terms (the shielding and near-field
+refit), which must bring the far impulses down with them; judged against the glass chances'
+test before they are taken. The refitted terms, the judgements and the calibration are in
+/Volumes/StudioData/bombcad/rise-fix.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings

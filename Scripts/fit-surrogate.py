@@ -24,6 +24,11 @@ NAMES = ["1", "facing", "facing away", "log(1 + crossed)", "inside buildings / W
 def load(path):
     with open(path) as f:
         head = f.readline().strip().split(",")
+    # Two columns of one name would leave only the last in the dict below: before 20 October 2026
+    # the rise time shared "rise" with the ground rise, and the ground-rise term was fitted on it.
+    repeated = sorted({h for h in head if head.count(h) > 1})
+    if repeated:
+        raise SystemExit(f"{path}: columns named twice: {', '.join(repeated)} (rename one; the rise time is 'risetime')")
     numeric = [h for h in head if h != "mix"]
     data = np.genfromtxt(path, delimiter=",", skip_header=1, usecols=[head.index(h) for h in numeric])
     return {h: data[:, i] for i, h in enumerate(numeric)}
@@ -49,9 +54,7 @@ def prepared(path, mass):
     keep = (d["inside"] > 0) & (d["pso"] > 0) & (d["peak"] > 100) & (d["impulse"] > 0)
     d = {k: v[keep] for k, v in d.items()}
     p, i = base(d)
-    # The rise time; CSVs before 20 October 2026 named it "rise" too, after the ground rise, and
-    # the later column won (so their ground-rise term was fitted on the rise time).
-    share = d.get("risetime", d["rise"]) / (2 * d["impulse"] / d["peak"])
+    share = d["risetime"] / (2 * d["impulse"] / d["peak"])
     return (terms(d, mass), np.log(d["peak"] / p), np.log(d["impulse"] / i), d["distance"] / mass ** (1 / 3),
             np.clip(share, 0, 1))
 

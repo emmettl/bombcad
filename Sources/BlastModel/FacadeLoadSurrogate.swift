@@ -574,7 +574,10 @@ extension FacadeLoadSurrogate {
 extension FacadeLoadSurrogate.Coefficients {
     /// Fitted to four runs of two made-up districts on 4 m cells (`Scripts/fit-surrogate.py`;
     /// docs/surrogate-first-look.md): a dense one of 7,235 buildings at 20, 100 and 500 t, and the
-    /// sparse test fixture at 20 t. Beirut held out, to judge it on.
+    /// sparse test fixture at 20 t. Beirut held out, to judge it on. The rise share's terms were fitted
+    /// to the ground rise where the rise time was meant; refitted, they follow the runs' rise but
+    /// break more glass than the runs, as the far loads they had offset show. Kept until the next
+    /// refit of the load terms (docs/surrogate-first-look.md, "The rise share's fit").
     public static let fitted = FacadeLoadSurrogate.Coefficients(
         peak: [-3.108, -0.319, -0.165, -0.022, -0.001, 1.609, -0.260, -0.073, 0.023, -0.293, -0.286],
         impulse: [-0.186, -0.468, -0.161, 0.123, -0.021, 0.571, -0.103, -0.202, -0.008, -0.130, 0.251],
