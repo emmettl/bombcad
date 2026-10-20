@@ -682,6 +682,21 @@ with a stiff elastic front ahead of a soft crushing branch (a locking or elastic
 loading curve), the future work below. The band past the limit stands on the field speeds it
 was judged on. Outputs: StudioData `bombcad/issue26/g2/measured/`.
 
+### With the ground inside the mapped radius fed (later on 20 October)
+
+The runs above, the measured soil's too (1,455 steps, as capped), stopped the mapped start at
+20.5 m, short of the 84 ft station (`--station-cap --no-early-ground` reproduces them). Rerun
+on the field speeds with the frames before the clock from the one-dimensional
+solution ([above](#before-the-mapped-starts-clock)) it reaches 196.9 m, and the ground's peaks
+there are near Kingery–Bulmash's (140 ft: 577 psi at 14 ms against 599 at 13; the 4 m grid gave
+339 at 10.7). Inside the limit the estimate and the columns are within two at 15 to 17 of 34, and
+their arrivals within 10% at 4 of 24, as fed Kingery–Bulmash (3 to 6): the 18 to 20 above
+were the coarse grid's front, a cell wide and early. Past it the half-space with the direct
+source is unchanged in effect, 16 of 16 within three, a geometric mean of 0.94 (0.47–2.25); fed
+the air alone it fails, 4 of 16 at a mean of 14, the near field now on its elastic ground
+([the outrunning record](ground-shock-outrunning.md#against-prairie-flat-20-october-2026)).
+The measured soil's table has not been rerun this way. Outputs `bombcad/ground-early/prairie/`.
+
 ## Limitations
 
 - Illustrative, as above. Compared with two measurements: Xia et al.'s 1 t surface burst

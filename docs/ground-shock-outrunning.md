@@ -370,8 +370,21 @@ densities assumed.
 **The band.** Since the motion ahead of the blast met its judge, the standing now bands it: with
 the half-space chosen, the peak downward and outward velocity at points labelled outrun carries
 a band of 0.33 to 3 times the measured, Prairie Flat's factor of three, which all 16 records met
-(0.41 to 1.91). It holds 170 to 350 m from 500 t, 0.5 to 3 m down, on two measured layers whose
+(0.47 to 2.25 with the direct source, below). It holds 170 to 350 m from 500 t, 0.5 to 3 m down, on two measured layers whose
 densities were assumed; the motion where the air arrives first stays unbanded.
+
+**Rerun with the ground inside the mapped radius (later on 20 October).** The run above stopped
+the mapped start 0.8 of the way to the nearest station (20.5 m), and the ground within it never
+reached the half-space. With the frames before the clock taken from the one-dimensional
+solution ([ground shock](ground-shock.md#before-the-mapped-starts-clock)) the start reaches 196.9
+m, and the ground's peaks there are the solution's, within a sixth of Kingery–Bulmash's (577 psi
+at 140 ft against 599; the 4 m grid's was 339). Past the outrunning limit the half-space with the
+direct source, the app's, still meets the judge at all 16 records, a geometric mean of 0.94
+(0.47–2.25). Fed the air alone it now fails, 4 of 16, a geometric mean of 14: the near field
+loads the elastic ground, as it did at Xia's (6 to 8 m/s at 21 m); its 1.15 above came from the
+ground it never saw. The band, on the half-space with its direct source, stands.
+`blastbench groundmotion --station-cap --no-early-ground` reproduces the run above to the digit;
+outputs `bombcad/ground-early/prairie/`.
 
 ## Stages
 

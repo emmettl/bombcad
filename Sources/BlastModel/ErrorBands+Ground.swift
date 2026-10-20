@@ -29,7 +29,7 @@ extension StandingScene {
                         "the elastic half-space's peak downward and outward velocity at points labelled "
                         + "outrun, 170 to 350 m from 500 t of TNT, 0.5 to 3 m deep, on two measured layers with "
                         + "their densities assumed; a factor of three, Prairie Flat's judge, which all 16 records "
-                        + "met (0.41–1.91)",
+                        + "met (0.47–2.25, with the direct source)",
                     check: "Prairie Flat's 500 t, past its outrunning limit"))
             unbanded.append(
                 "Inside the outrunning limit, where the air reaches a point first: within a factor of two at under "
