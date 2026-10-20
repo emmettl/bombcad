@@ -349,10 +349,12 @@ enum DistrictComparison {
 
             if let exportField {
                 // `--first-phase`: the first positive phase's impulse as a third target, recorded
-                // as the run went (set up before it, below).
+                // as the run went (set up before the run, above). The id and layout are `--id` and
+                // `--layout`, as field-export takes them, where given.
                 try FieldExport.write(
-                    solver: solver, scene: scene, folder: exportField, id: exportField.lastPathComponent,
-                    layout: nil, buildings: report.placed.count,
+                    solver: solver, scene: scene, folder: exportField,
+                    id: value("id") ?? exportField.lastPathComponent,
+                    layout: value("layout"), buildings: report.placed.count,
                     above: Float(value("field-above").flatMap(Double.init) ?? 2), edgeCells: 4,
                     configuration: args.contains("--bare")
                         ? "bare"

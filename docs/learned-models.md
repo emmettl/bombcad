@@ -603,16 +603,147 @@ first export took (5.3 h measured, partly on the mini):
 python3 -I Scripts/ml/field-runs.py run --set main --first-phase --dataset /Volumes/StudioData/bombcad/ml/datasets/main-first
 ```
 
+### The strict round on the PC
+
+`field-unet-strict-pc` (bombcad-pc, RTX 3080 Ti, bfloat16): the U-Net of round 2 (crop 256,
+batch 16, 300 epochs), holding out all 50 Beirut runs and each made-up style's sixth layout
+(`--holdout-layouts beirut,made-*-s6`, the Studio model's 75 runs to the run). It took 2,378 s, 4 s
+an epoch. Its best held-out loss was **0.0223**, at epoch 91 (the Studio's float32 model: 0.028;
+Kingery–Bulmash alone 0.098); by epoch 300 it had crept back to 0.025 as the training loss kept
+falling, so `best.pt` is epoch 91's.
+
+Judged with `judge_field.py` as above, Beirut never seen, against the run's field (median / log-SD):
+
+| | Strips | PC strict, peak | Impulse | Studio, peak | Impulse | Surrogate, peak | Impulse |
+|---|---|---|---|---|---|---|---|
+| All 75 held-out runs | 1,661,822 | 0.98 / 0.22 | 1.07 / 0.16 | 1.03 / 0.23 | 1.12 / 0.17 | 0.96 / 0.37 | 0.70 / 0.27 |
+| Beirut 50–700 m | 598,743 | **1.00 / 0.26** | 1.12 / 0.18 | 1.07 / 0.28 | 1.21 / 0.18 | 1.08 / 0.44 | 0.72 / 0.32 |
+| Beirut 50–100 m | 10,013 | 1.05 / 0.61 | 0.99 / 0.35 | 1.25 / 0.66 | 1.19 / 0.36 | 2.09 / 0.94 | 1.09 / 0.63 |
+| Beirut 100–200 m | 39,619 | 1.03 / 0.40 | 1.06 / 0.25 | 1.26 / 0.42 | 1.23 / 0.26 | 1.52 / 0.62 | 0.96 / 0.44 |
+| Beirut 200–350 m | 91,761 | 1.01 / 0.28 | 1.12 / 0.18 | 1.14 / 0.30 | 1.25 / 0.19 | 1.33 / 0.46 | 0.83 / 0.36 |
+| Beirut 350–500 m | 151,517 | 1.01 / 0.24 | 1.13 / 0.17 | 1.07 / 0.25 | 1.22 / 0.17 | 1.10 / 0.39 | 0.72 / 0.29 |
+| Beirut 500–700 m | 305,833 | 0.99 / 0.21 | 1.13 / 0.16 | 1.04 / 0.22 | 1.20 / 0.16 | 0.99 / 0.33 | 0.68 / 0.24 |
+| Made-up sixth layouts | 215,807 | 0.97–0.99 / 0.08–0.16 | 0.98–1.02 / 0.05–0.13 | 0.97–0.99 / 0.09–0.18 | 0.98–1.04 / 0.05–0.14 | 0.90–1.11 / 0.16–0.35 | 0.57–0.92 / 0.17–0.26 |
+
+Against the recorder's strips of the four runs (Beirut's two at 50–700 m, 23,394 strips): peak
+1.04 / 0.25 (Studio 1.02 / 0.26, surrogate 1.05 / 0.38); impulse 1.69 / 0.19, the all-phases
+target's excess as before.
+
+So the PC's round is a little better than the Studio's at the same split, mostly close in: it
+takes out the Studio model's 1.25 times excess at 50–200 m, where its scatter is 0.40–0.61 against
+the surrogate's 0.62–0.94.
+### Glass by building side, the product test
+
+All 50 Beirut runs were run again as `district-compare --save-loads --export-field --first-phase`
+at the dataset run's top (2–4 minutes each under gpu-slot, about 2.7 hours in all, 26 GB in
+`compare-first/`). Every one's field came out bit-identical to the dataset's. Over their
+1,469,173 ground-floor strips (with the two made-up layouts), the first-phase target against the
+recorder is 1.00 / 0.02 in every band of Z from 0 to 40 (all phases: 1.28–1.59).
+
+`judge_field.py --peaks-out` then wrote each judged ground-floor strip's peaks, and
+`scenebench field-glass` judged each strip's glass through the SDOF, as `surrogate-judge` does: the
+building's mix, summed over the side's strips, and GEER's three states (none broken, some, blown
+out). Only the ground floor is judged, since the field model knows nothing above 2 m; the run is
+judged on the same strips. The loads:
+
+- **Run**: the recorder's own history: the truth.
+- **Surrogate**: its triangle (`FacadeLoadSurrogate.load`).
+- **PC strict / Studio**: the surrogate's triangle with the field model's peak (the mean over the
+  cells in front of the strip), the surrogate's impulse and rise kept. This is what the app could
+  use now.
+- **Run field's peak**: the same with the run's own field's peak there: the most a better peak
+  alone could give.
+- **Run field's peak and first phase**: with the new target's impulse as well: the most a field
+  model trained on the first phase could give.
+
+50 runs, 0.06–1.95 kt, 584,486 sides. Within one state is 1.000 for every load (with three states
+only none-against-blown-out misses, and there were at most 127 such sides), so the measures are
+the share exactly right, Heidke's skill score on the 3 × 3 table, and the mean error of the share
+of panes broken:
+
+| Load | Exact | Skill | Share broken, mean error |
+|---|---|---|---|
+| Surrogate | 0.916 | 0.62 | 0.043 |
+| PC strict's peak, surrogate's impulse | **0.937** | **0.70** | **0.035** |
+| Studio's peak, surrogate's impulse | 0.938 | 0.70 | 0.034 |
+| Run field's peak, surrogate's impulse | 0.946 | 0.75 | 0.031 |
+| Run field's peak and first phase | 0.946 | 0.76 | 0.031 |
+
+By the building's distance (exact / skill):
+
+| Distance | Sides | Surrogate | PC strict's peak | Run field's peak | Peak and first phase |
+|---|---|---|---|---|---|
+| 0–350 m | 56,076 | 1.000 / – | 1.000 / – | 0.999 / 0.21 | 0.999 / 0.23 |
+| 350–500 m | 60,193 | 0.991 / 0.15 | 0.991 / 0.36 | 0.987 / 0.53 | 0.987 / 0.54 |
+| 500–700 m | 118,343 | 0.930 / 0.47 | 0.952 / 0.64 | 0.956 / 0.71 | 0.956 / 0.71 |
+| 700–1000 m | 232,397 | 0.874 / 0.62 | 0.899 / 0.69 | 0.915 / 0.74 | 0.915 / 0.75 |
+| 1000–1500 m | 117,089 | 0.908 / 0.62 | 0.939 / 0.72 | 0.949 / 0.77 | 0.950 / 0.77 |
+
+By yield (exact / skill):
+
+| Yield | Sides | Surrogate | PC strict's peak | Run field's peak | Peak and first phase |
+|---|---|---|---|---|---|
+| 0.05–0.1 kt | 88,755 | 0.737 / 0.50 | 0.776 / 0.57 | 0.812 / 0.64 | 0.814 / 0.65 |
+| 0.1–0.3 kt | 156,342 | 0.855 / 0.50 | 0.899 / 0.63 | 0.913 / 0.70 | 0.913 / 0.70 |
+| 0.3–0.7 kt | 139,260 | 0.978 / 0.20 | 0.991 / 0.35 | 0.991 / 0.49 | 0.991 / 0.50 |
+| 0.7–2 kt | 200,129 | 0.999 / 0.08 | 0.999 / 0.15 | 0.999 / 0.36 | 0.999 / 0.37 |
+
+Against the run, the surrogate calls 17,009 sides blown out that had only some glass broken and
+27,861 the other way; with the PC model's peak those fall to 14,028 and 19,035. Every triangle,
+the run field's own included, calls about 3,200–3,600 sides unbroken where the run broke a few
+panes: the triangle's single phase misses the later reflections that break them, which no peak
+mends.
+
+Against the recorder's strips over all 50 Beirut runs (1,446,015 strips), the PC model's peak is
+0.98 / 0.23 and the surrogate's 0.98 / 0.38; at 50–700 m, 1.01 / 0.26 against 1.09 / 0.44.
+
+### What the glass says
+
+- **The field model's peak makes the glass answer better.** With it, glass by side is exactly
+  right on 0.937 of the sides against the surrogate's 0.916, with skill 0.70 against 0.62. That
+  is about two thirds of the way to the best a better peak could give (0.946, 0.75), on a city
+  the model never saw. The gain is largest where glass is in doubt: low yields (0.737 → 0.776 at
+  0.05–0.1 kt, 0.855 → 0.899 at 0.1–0.3 kt) and 500–1,500 m.
+- **A first-phase impulse would add nothing to glass.** With the run's own peak, its first-phase
+  impulse gives 0.946 / 0.76 against the surrogate's impulse's 0.946 / 0.75: glass here is
+  decided by the peak. A first-phase model would matter for walls and roofs, whose SDOFs are
+  impulse-sensitive, not for glass. That is a reason to re-export with `--first-phase` before
+  the field model drives structural damage, not before it drives glass.
+- **The PC round and the Studio round agree on glass** (0.937 / 0.70 and 0.938 / 0.70), though
+  the PC model's peaks are better close in. Close in, every side's glass is gone either way.
+- **Limits:** the ground floor only (upper storeys would need the surrogate's terms, or a field
+  model at more heights); one city's 50 runs on one map; 4 m runs as the truth.
+
+The judgements are in `/Volumes/StudioData/bombcad/ml/judge/fp47/` (`judge-all.txt`,
+`glass/summary.json`, `glass-all.txt`); the strict model is in `field-unet-strict-pc/`.
+
+### The recommendation (for the user to decide)
+
+Put the field model's **peak** into the quick estimate's ground-floor façade glass, keeping the
+surrogate's impulse and rise. On Beirut's held-out runs it lifts glass by side from 0.916 to 0.937
+exactly right (skill 0.62 to 0.70). Its peaks within 350 m are within 5% of the run's, where the
+surrogate's run 1.3–2.1 times high. Nothing changes by default until the user says so. What it
+would take, and what it would leave out:
+
+- **the model in the app**: a 7.9 M-parameter U-Net over the district's plan, its inputs from the
+  scene the quick estimate already lays out. On the Studio's CPU, `judge_field.py`'s prediction
+  over a 512² run takes a few seconds; on the GPU it would take less;
+- **storeys above the ground floor** stay on the surrogate unless the model learns more heights;
+- **walls and roofs** stay on the surrogate's impulse until a model is trained on the first
+  phase. That needs the re-export above: about 5 GPU hours, and the user's go-ahead.
+
 ## Not done yet
 
 - **The PCs' set-up**, by the user (above), then a first `--estimate` on each card to replace the
   estimated times.
 - **The full run list.** It waits for the user's go-ahead for about 5 GPU hours on the Studio
   (or about 15 on the mini).
-- **A first-phase impulse target**, and a round trained with Beirut and whole layouts held out on
-  a PC, before deciding whether the field model helps the first look and the
-  [hybrid far field](hybrid-far-field.md)
-  ([below](#the-field-model-against-the-façade-surrogate-20-october-2026)).
+- **The 200 runs exported again with `--first-phase`** (about 5 GPU hours, the user's go-ahead)
+  and a model trained on it, before the field model drives walls and roofs
+  ([above](#the-first-phase-target-and-glass-by-side-20-october-2026)).
+- **The user's decision** on the field model's peak in the quick estimate's ground-floor glass,
+  and then in the [hybrid far field](hybrid-far-field.md)
+  ([above](#the-recommendation-for-the-user-to-decide)).
 - **Other learned models** on the same runner, as they come:
   - emulators for the uncertainty work;
   - walls and roofs;
