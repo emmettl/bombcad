@@ -210,8 +210,15 @@ class Ship:
         self.git("fetch", REMOTE)
 
     def rebase(self, commits):
-        """Rebases onto the upstream; refuses (after aborting) on a conflict or a dropped commit."""
-        subjects = [self.git("log", "-1", "--format=%s", commit).strip() for commit in commits]
+        """Rebases onto the upstream; refuses (after aborting) on a conflict, or on a dropped commit
+        whose change main doesn't already hold (the same patch landed by another session is fine)."""
+        # `git cherry` marks with "-" the commits whose patch main already has.
+        upstreamed = {line.split()[1] for line in self.git("cherry", self.upstream, "HEAD").splitlines()
+                      if line.startswith("- ")}
+        subjects = [self.git("log", "-1", "--format=%s", commit).strip() for commit in commits
+                    if commit not in upstreamed]
+        for commit in sorted(upstreamed & set(commits)):
+            self.out("ship: already on main, so left out: " + self.git("log", "-1", "--format=%h %s", commit).strip())
         completed = subprocess.run(["git", "rebase", self.upstream], cwd=self.root, text=True,
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if completed.returncode:

@@ -198,6 +198,14 @@ class ShipTests(unittest.TestCase):
         self.assertEqual(self.moving("Sources/BlastCore/BlastSolver.swift", "final class BlastSolver { }\n").ship(), 0)
         self.assertEqual(self.counters["check"].runs, 2)
 
+    def test_a_fix_another_session_landed_too_is_left_out(self):
+        self.branch_commit("notes.txt", "fixed\n", "My fix")
+        self.branch_commit()
+        self.assertEqual(self.moving("notes.txt", "fixed\n").ship(), 0)
+        self.assertTrue(any("already on main, so left out" in line and "My fix" in line for line in self.lines))
+        log = git(self.repos.origin, "log", "--format=%s", "main").split("\n")
+        self.assertEqual(log[:2], ["My work", "Another session's work"])
+
     def test_a_conflicting_rebase_is_aborted(self):
         self.branch_commit()
         before = git(self.repos.work, "rev-parse", "HEAD").strip()
