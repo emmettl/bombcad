@@ -336,6 +336,23 @@ Either way it gives the same result. The estimate is cheap, a sample per point p
 column costs more, a column's steps per point per frame, but is still small beside the air's
 step (below), so another Mac gains it little.
 
+### Before the mapped start's clock
+
+On the mapped start (the default since 18 October 2026) the grid's clock begins when the
+one-dimensional solution's shock reaches its radius, up to 64 cells or 6 m/kg^(1/3) from the
+charge ([air-blast model](air-blast-model.md#a-finely-resolved-start)). The ground within that
+radius was never on the grid before then. Since 20 October 2026 the frames from detonation to
+the clock come from the one-dimensional solution instead (`BlastSolver.earlyGroundSlices`): at
+each open bottom cell's centre within the radius, its overpressure then and its peak and positive
+impulse so far, solved again from the start and kept at the frames' times; still air beyond it.
+The app's points (a frame a millisecond), `BombCAD run` (`--frame-interval`) and
+`blastbench groundmotion` (`--no-early-ground` to leave them out) all take them. Before, every
+frame before the clock was the air as it was at the start, so a point inside the radius took its
+first load after the front had passed: on 0.5 m cells under Xia et al.'s 1 t the radius was
+24.6 m, the 21 m station inside it, and its column read 0.068 m/s at 0.5 m against 0.249 with
+the early frames ([below](#against-measured-ground-motion)). The half-space, which takes the
+whole disc round the charge, felt nothing within the radius at all.
+
 As with fragments, a run without a structure stops at each frame and ends a time step there.
 In the street on the medium grid that means 1,608 steps instead of 1,527. Estimating ground
 shock does not change the air: the tests check that a run with it gives the same gauges, to the
@@ -474,8 +491,11 @@ Kingery–Bulmash's Friedlander pulse, with the curves' peak, impulse, duration 
   air model's peaks are 90% and 93% of Kingery–Bulmash's on 0.25 m cells (83% and 86% on 0.5 m,
   the velocities likewise), its impulses within 6%, which changes nothing in the conclusion.
   These are the balloon start's; on the mapped start, the default since 20 October 2026, they
-  move by 1% or less on 0.25 m cells and 5% or less on 0.5 m
-  ([the record](validation.md#off-the-balloon-on-20-october)).
+  move by 1% or less on 0.25 m cells, whose mapped radius (16 m) stops short of 21 m
+  ([the record](validation.md#off-the-balloon-on-20-october)). On 0.5 m cells it reaches 24.6 m,
+  and the 21 m station takes the one-dimensional solution's 267 kPa (105% of Kingery–Bulmash,
+  against the grid's 212 on the balloon): the columns read 0.249, 0.230 and 0.226 m/s, 4–13%
+  above the balloon's and within 5% of Kingery–Bulmash's.
 - **Against the soil's unknown stiffness.** Fed Kingery–Bulmash, the column unloading at twice
   its loading speed gives 0.35 m/s at 21 m if the soil loads at 300 m/s, 0.12 at 1,000 m/s
   and 0.066 at 1,800 m/s. At 42 m it gives 0.090, 0.029 and 0.016. Even the stiffest is five to

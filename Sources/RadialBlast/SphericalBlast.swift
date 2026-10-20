@@ -272,12 +272,28 @@ public struct SphericalBlast: Sendable {
     /// shortened to land on it.
     public var snapshotTimes: [Double] = []
     /// The profile at a moment: per cell its density, internal energy per kilogram and unburnt
-    /// products (kg/m³).
+    /// products (kg/m³), and its overpressure then and its peak overpressure and positive impulse
+    /// so far (Pa, Pa·s), the load on the ground before the grid's clock.
     public struct Snapshot: Sendable {
         public var time: Double
         public var density: [Float]
         public var specificEnergy: [Float]
         public var unburnt: [Float]
+        public var overpressure: [Float]
+        public var peak: [Float]
+        public var impulse: [Float]
+
+        /// Overpressure, peak overpressure and positive impulse so far at `radius`, interpolated
+        /// between cell centres of `cellSize` m, as `extremes(at:)` is.
+        public func load(at radius: Double, cellSize: Double) -> SIMD3<Float> {
+            let x = radius / cellSize - 0.5
+            let i = min(max(Int(x.rounded(.down)), 0), peak.count - 1)
+            let j = min(i + 1, peak.count - 1)
+            let t = Float(min(max(x - Double(i), 0), 1))
+            let a = SIMD3(overpressure[i], peak[i], impulse[i])
+            let b = SIMD3(overpressure[j], peak[j], impulse[j])
+            return a + t * (b - a)
+        }
     }
     public private(set) var snapshots: [Snapshot] = []
 
@@ -560,6 +576,13 @@ public struct SphericalBlast: Sendable {
                 }
             }
             time += dt
+            w = (0..<n).map(primitive)
+            for i in 0..<n {
+                let overpressure = w[i].z - ambientPressure
+                peak[i] = max(peak[i], overpressure)
+                impulse[i] += max(overpressure, 0) * dt
+                if arrival[i] < 0, overpressure > Self.arrivalThreshold { arrival[i] = time }
+            }
             while nextSnapshot < snapshotTimes.count, time >= snapshotTimes[nextSnapshot] {
                 snapshots.append(
                     Snapshot(
@@ -567,15 +590,10 @@ public struct SphericalBlast: Sendable {
                         specificEnergy: (0..<n).map { i in
                             let rho = max(density[i], 1e-9)
                             return Float((energy[i] - 0.5 * momentum[i] * momentum[i] / rho) / rho)
-                        }, unburnt: fuel.map { Float($0) }))
+                        }, unburnt: fuel.map { Float($0) },
+                        overpressure: w.map { Float($0.z - ambientPressure) }, peak: peak.map { Float($0) },
+                        impulse: impulse.map { Float($0) }))
                 nextSnapshot += 1
-            }
-            w = (0..<n).map(primitive)
-            for i in 0..<n {
-                let overpressure = w[i].z - ambientPressure
-                peak[i] = max(peak[i], overpressure)
-                impulse[i] += max(overpressure, 0) * dt
-                if arrival[i] < 0, overpressure > Self.arrivalThreshold { arrival[i] = time }
             }
             for (k, r) in probes.enumerated() {
                 let s = state(at: r)

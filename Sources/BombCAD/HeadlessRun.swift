@@ -1077,8 +1077,9 @@ enum HeadlessRun {
     }
 
     /// The frames `0..<count` that fall before a mapped start's clock: the structure at rest into
-    /// the scene, without volumes; the thermal radiation's fireball from the one-dimensional
-    /// solution (none at detonation); the fragments' and ground shock's air as it is at the start.
+    /// the scene, without volumes; the thermal radiation's fireball and the ground shock's air from
+    /// the one-dimensional solution (no fireball at detonation); the fragments' air as it is at
+    /// the start.
     @MainActor
     static func sendFramesBefore(
         _ count: Int, solver: BlastSolver, interval: Double, scene: USDSceneWriter?, feeds: [Feed],
@@ -1093,9 +1094,16 @@ enum HeadlessRun {
                 }
             }
         }
+        var ground: [Int: [GroundSlice]] = [:]
+        for (n, feed) in feeds.enumerated() {
+            if case .groundShock(let spec, _) = feed.consumer.kind {
+                let region = spec.region(cellSize: solver.grid.cellSize)
+                ground[n] = solver.earlyGroundSlices(low: region.low, high: region.high, at: times)
+            }
+        }
         for k in 0..<count {
             try scene?.append(solver.structureSurface(), volume: nil)
-            for feed in feeds {
+            for (n, feed) in feeds.enumerated() {
                 let start = ContinuousClock.now
                 switch feed.consumer.kind {
                 case .fragments:
@@ -1110,8 +1118,12 @@ enum HeadlessRun {
                                 ?? FireballFrame(
                                     time: times[k], volume: 0, centre: .zero, temperature: 0, hottest: 0)))
                 case .groundShock(let spec, _):
-                    let region = spec.region(cellSize: solver.grid.cellSize)
-                    feed.consumer.send(.ground(solver.groundSlice(low: region.low, high: region.high)))
+                    if let early = ground[n]?.first(where: { abs($0.time - times[k]) < 1e-9 }) {
+                        feed.consumer.send(.ground(early))
+                    } else {
+                        let region = spec.region(cellSize: solver.grid.cellSize)
+                        feed.consumer.send(.ground(solver.groundSlice(low: region.low, high: region.high)))
+                    }
                 }
                 feed.cost += start.duration(to: .now)
             }

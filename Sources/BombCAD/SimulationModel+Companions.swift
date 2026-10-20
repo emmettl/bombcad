@@ -51,9 +51,19 @@ extension SimulationModel {
         let interval = Self.fragmentFrameInterval
         let next = groundShockTime < 0 ? 0 : (floor(groundShockTime / interval + 1e-6) + 1) * interval
         guard last || solver.time >= next - 1e-9 else { return }
+        let first = groundShockTime < 0
         groundShockTime = solver.time
         guard let groundShock, let spec = estimatedGroundSpec else { return }
         let region = spec.region(cellSize: solver.grid.cellSize)
+        if first, solver.stepCount == 0 {
+            // A mapped start's clock begins when its shock reaches the mapped radius: the points
+            // inside it take the air before then from the one-dimensional solution, a millisecond
+            // apart from detonation, or their soil would never feel the front.
+            let times = stride(from: 0, to: solver.time - 1e-9, by: interval).map { $0 }
+            for slice in solver.earlyGroundSlices(low: region.low, high: region.high, at: times) {
+                groundShock.send(.ground(slice))
+            }
+        }
         groundShock.send(.ground(solver.groundSlice(low: region.low, high: region.high)))
     }
 

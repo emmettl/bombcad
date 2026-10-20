@@ -243,7 +243,12 @@ charges, all are solved to one time, the earliest at which any shock reaches its
 others then still within theirs), and each is laid in the cells nearer it than any other charge,
 which its radius keeps it to; alike charges share one solution. Gauges, cells and
 the injury plane (`configureExposurePlane`) the shock has already passed take their histories,
-peaks, impulses and arrivals from the one-dimensional solution. Where it cannot reach three
+peaks, impulses and arrivals from the one-dimensional solution. So does the ground under the
+ground-shock points before the clock (`earlyGroundSlices`, since 20 October 2026): each frame
+from detonation to the start is the solution's overpressure, peak and impulse so far at each
+open bottom cell's centre within the radius, still air beyond it, so a point inside the radius
+feels the front its soil would otherwise never see
+([ground shock](ground-shock.md#before-the-mapped-starts-clock)). Where it cannot reach three
 cells the balloon starts that charge instead, laid as the others are mapped, at their clock
 (the balloon stands for its charge some time after it fired anyway); with dissociating air,
 gravity, sub-grid mixing, radiative cooling or the afterburning limit, every charge.

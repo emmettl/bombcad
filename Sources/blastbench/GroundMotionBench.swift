@@ -208,11 +208,15 @@ func runGroundMotion(device: MTLDevice) throws {
                 (flag("balloon-start")
                     ? SolverConfiguration.recommended.balloonStart : SolverConfiguration.recommended)
             configureRefinement(&configuration)
-            // The mapped start laid no farther than 0.8 of the way to the nearest station, as it stops
-            // short of a structure: the soil there reads the ground frame by frame, and within the
-            // mapped radius the front would have passed before its first frame.
-            configuration.mappedChargeCells = min(
-                configuration.mappedChargeCells, 0.8 * (ranges.min() ?? 21) / dx)
+            // The stations within the mapped radius take the ground before the grid's clock from the
+            // one-dimensional solution (`earlyGroundSlices`), as the app's points do; `--station-cap`
+            // lays the mapped start no farther than 0.8 of the way to the nearest station instead,
+            // as it was run from 20 October 2026 until the early frames; `--no-early-ground` leaves
+            // them out, the soil inside the radius missing the front.
+            if flag("station-cap") {
+                configuration.mappedChargeCells = min(
+                    configuration.mappedChargeCells, 0.8 * (ranges.min() ?? 21) / dx)
+            }
             configuration.gravity = chosenGravity()
             applyChosenAir(&configuration)
             let solver = try BlastSolver(
@@ -235,6 +239,19 @@ func runGroundMotion(device: MTLDevice) throws {
             var next = solver.time
             var frames = 0
             var consumed = 0.0
+            if !flag("no-early-ground") {
+                let times = stride(from: 0, to: solver.time - 1e-9, by: frame).map { $0 }
+                for slice in solver.earlyGroundSlices(low: region.low, high: region.high, at: times) {
+                    for n in consumers.indices { consumers[n].consume(slice) }
+                    frames += 1
+                }
+            }
+            if let radius = solver.mappedRadii.first {
+                print(
+                    String(
+                        format: "  mapped %.1f m out; the grid's clock starts at %.2f ms", radius,
+                        solver.time * 1000))
+            }
             while true {
                 if solver.time >= next - 1e-9 {
                     let clock = ContinuousClock.now

@@ -66,6 +66,66 @@ struct MappedChargeTests {
             frames[0].volume < frames[2].volume, "\(frames.map { ($0.time, $0.radius, $0.temperature) })")
     }
 
+    @Test(
+        "Before the grid's clock the ground inside the mapped radius comes from the one-dimensional solution")
+    func earlyGround() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        let scenario = ScenarioPreset.openGround.scenario
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: .recommended)
+        let radius = try #require(solver.mappedRadii.first)
+        #expect(radius > 16)
+        // Soil columns 10 and 16 m from the charge, both inside the mapped radius.
+        var spec = GroundShockSpec()
+        spec.points = [SIMD2(42, 32), SIMD2(48, 32)]
+        spec.depths = [0, 0.5]
+        spec.model = .column
+        let region = spec.region(cellSize: 0.5)
+        let frame = 2e-4
+        let start = solver.time
+        let times = stride(from: 0, to: start + 0.01, by: frame).map { $0 }
+        let early = solver.earlyGroundSlices(low: region.low, high: region.high, at: times)
+        // Only the times before the clock, detonation's among them, and still air at detonation.
+        #expect(early.map(\.time) == times.filter { $0 < start - 1e-9 })
+        #expect(early.first?.values.allSatisfy { $0 == 0 } == true)
+        var seeded = GroundShockConsumer(spec: spec)
+        var unseeded = GroundShockConsumer(spec: spec)
+        for slice in early { seeded.consume(slice) }
+        let last = try #require(early.last)
+        // The front reaches both points before the clock, its peak and impulse there carried on by
+        // the grid's own fields, laid from the same solution.
+        let atStart = solver.groundSlice(low: region.low, high: region.high)
+        for point in spec.points {
+            let before = try #require(last.sample(point))
+            let after = try #require(atStart.sample(point))
+            #expect(before.peak > 20e3, "\(point)")
+            #expect(abs(before.peak / after.peak - 1) < 0.03, "\(before) then \(after)")
+            #expect(before.impulse <= after.impulse * 1.001 && before.impulse > 0.5 * after.impulse)
+        }
+        var next = start
+        while solver.time < start + 0.005 - 1e-9 {
+            if solver.time >= next - 1e-9 {
+                let slice = solver.groundSlice(low: region.low, high: region.high)
+                seeded.consume(slice)
+                unseeded.consume(slice)
+                next += frame
+            }
+            let result = solver.advance(steps: 32, timeLimit: next)
+            try #require(result.steps > 0 && result.isStable)
+        }
+        // Seeded, the surface moves at about the peak over the soil's impedance (less the column's
+        // window shaves off a short pulse's peak); without the early frames, at the overpressure
+        // left behind the front when the clock starts.
+        let soil = spec.columnProfile.surface
+        for (n, point) in seeded.result(frameInterval: frame).points.enumerated() {
+            let free = point.peakOverpressure / (soil.density * soil.waveSpeed)
+            let with = point.responses[0].verticalVelocity
+            let without = unseeded.result(frameInterval: frame).points[n].responses[0].verticalVelocity
+            #expect(with > 0.7 * free && with < 1.05 * free, "\(with) m/s against \(free)")
+            #expect(without < 0.7 * with, "\(without) m/s unseeded against \(with)")
+        }
+    }
+
     @Test("A charge on a mirror plane, or in a corner of two, is mapped as mirrored by each")
     func mirrorPlanes() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")

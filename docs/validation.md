@@ -4723,6 +4723,26 @@ The long harnesses, the same way (outputs under `bombcad/balloon-long`):
   the ground within the mapped radius is never streamed to it. That variant is quoted from the
   balloon (`--balloon-start`); the gap, which the app's ground points and gauges share, is a
   separate task.
+- **Ground motion: the frames before the clock (later on 20 October).** The ground within the
+  mapped radius now takes its frames before the clock from the one-dimensional solution
+  (`earlyGroundSlices`, [ground shock](ground-shock.md#before-the-mapped-starts-clock)), in the
+  app and the harness alike, and the station cap above is gone (`--station-cap` keeps it; scenario
+  gauges were already seeded). At 21 m (outputs under `bombcad/ground-early`):
+
+  | 21 m, velocity at 0.5 m (m/s) | Columns r = 1, 2, 3 | Half-space | Without the direct source |
+  |---|---|---|---|
+  | 0.5 m, balloon | 0.220, 0.218, 0.216 | 0.186 | 2.51 |
+  | 0.5 m, mapped to 24.6 m, no early frames (the gap) | 0.068, 0.063, 0.063 | 0.052 | 0.052 |
+  | 0.5 m, mapped to 16.8 m, stopped short of the station | 0.211, 0.208, 0.207 | 0.185 | 0.185 |
+  | 0.5 m, mapped to 24.6 m, early frames | 0.249, 0.230, 0.226 | 0.185 | 6.16 |
+  | 0.25 m, mapped to 16 m, no early frames / early frames | 0.240, 0.235, 0.233 both | 0.186 both | 0.186 / 7.63 |
+  | Kingery–Bulmash's pulse | 0.238, 0.226, 0.223 | 0.187 | 0.187 |
+
+  With the early frames the 0.5 m station takes the one-dimensional peak, 267 kPa against the
+  grid's 202 when stopped short, and the columns come within 5% of Kingery–Bulmash's; 42 m, outside
+  every radius, is unchanged. The half-space without the direct source is back to the balloon's
+  7–8 m/s on 0.25 m cells, so it no longer needs quoting from the balloon. The scenes' air and
+  digests are untouched: only what the ground consumers are sent changes.
 - The harnesses' frame clock in `groundmotion` now starts at the solver's own time (the mapped
   start's clock begins at its hand-over, not at zero); before, the run stopped at once.
 - `scenebench district`, a timing benchmark, was unpinned without a rerun.
