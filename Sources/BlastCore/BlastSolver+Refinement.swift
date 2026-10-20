@@ -17,6 +17,12 @@ extension BlastSolver {
         precondition(!batchInFlight, "Cannot read the refinement's pool during a batch")
         return refinementLevels.map { ($0.capacity, $0.maxPatches, $0.poolUse.most, $0.poolUse.ranOut) }
     }
+
+    /// Each refined level's patches placed since the last restart: what its fill did.
+    public var refinedPatchesPlaced: [Int] {
+        refinementLevels.map(\.patchesPlaced)
+    }
+
     /// The patches the second level's pool may grow to (0 without one).
     public var finerRefinementPatchCapacity: Int { finerRefinement?.capacity ?? 0 }
     /// The patches each refined level holds after the last regrid, the first level first.

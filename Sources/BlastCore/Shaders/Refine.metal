@@ -2357,6 +2357,8 @@ kernel void refineArguments(device atomic_int *counters [[buffer(0)]],
     }
     uint patches = uint(atomic_exchange_explicit(&counters[2], 0, memory_order_relaxed));
     uint fresh = uint(atomic_exchange_explicit(&counters[1], 0, memory_order_relaxed));
+    // Patches placed since the reset, for the run's statistics (`AirRefinement.poolUse`).
+    atomic_fetch_add_explicit(&counters[6], int(fresh), memory_order_relaxed);
     uint r = u.refineRatio;
     uint side = uint(patchSize) * r;
     uint across = r / 2u;
@@ -2425,7 +2427,7 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
                        device uchar *seenMask [[buffer(9)]],
                        const device uchar *rigidMask [[buffer(10)]],
                        const device float4 *boxes [[buffer(11)]],
-                       constant uint &boxCount [[buffer(12)]],
+                       const device uint *boxIndex [[buffer(12)]],
                        device uchar *fineMask [[buffer(13)]],
                        device packed_float3 *fineWall [[buffer(14)]],
                        const device float *wallVelocity [[buffer(15)]],
@@ -2482,9 +2484,18 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
     // for `refineFillConserve`, which runs next; the structure's remask clears the mark.)
     bool rigid = false;
     bool byTerrain = false;
+    // The boxes near this patch's block (`AirRefinement.setBoxes`): whether a point lies in any of
+    // them is whether it lies in any box at all.
+    uint boxCount = boxIndex[0];
+    uint blocks = u.refineTileNx * u.refineTileNy * u.refineTileNz;
+    uint block = tileOfPatch[patch];
+    uint firstBox = boxCount > 0 ? boxIndex[1 + block] : 0u;
+    uint endBox = boxCount > 0 ? boxIndex[2 + block] : 0u;
+    const device uint *nearBoxes = boxIndex + 2 + blocks;
     if (boxCount > 0 || terrain.enabled != 0) {
         float3 centre = (float3(fineCoordinates) + 0.5f) * (u.dx / float(r));
-        for (uint n = 0; n < boxCount && !rigid; ++n) {
+        for (uint k = firstBox; k < endBox && !rigid; ++k) {
+            uint n = nearBoxes[k];
             rigid = all(centre >= boxes[2 * n].xyz) && all(centre <= boxes[2 * n + 1].xyz);
         }
         // A vented pane's cells are air once it has broken, whatever block holds them.
@@ -2502,7 +2513,8 @@ kernel void refineFill(device Cell *fine [[buffer(0)]],
         if (!rigid && cutCells && geometry.low.x < 0.5f) {
             float3 above = centre + float3(0.0f, 0.0f, u.dx / float(r));
             bool capped = false;
-            for (uint n = 0; n < boxCount && !capped; ++n) {
+            for (uint k = firstBox; k < endBox && !capped; ++k) {
+                uint n = nearBoxes[k];
                 capped = all(above >= boxes[2 * n].xyz) && all(above <= boxes[2 * n + 1].xyz);
             }
             rigid = capped && !inOpenedPane(above, panes, paneStatus);

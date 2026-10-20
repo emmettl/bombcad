@@ -293,9 +293,10 @@ enum DistrictComparison {
                             + String(format: " %8.2f s  %5.1f%%", seconds, 100 * seconds / max(total, 1e-12)))
                 }
             }
+            let placed = solver.refinedPatchesPlaced
             for (level, pool) in solver.refinementPools.enumerated() {
                 print(
-                    "Refined level \(level + 1): \(pool), \(blockSteps.indices.contains(level) ? blockSteps[level] : 0) block-steps"
+                    "Refined level \(level + 1): \(pool), \(blockSteps.indices.contains(level) ? blockSteps[level] : 0) block-steps, \(placed[level]) placed"
                 )
             }
             if !solver.refinementPools.isEmpty {

@@ -31,6 +31,8 @@ final class AirRefinement {
     let parent: AirRefinement?
     /// The parent's cells along a coarse cell's edge: 1 for the first level.
     let parentScale: Int
+    /// A block's edge, m: `patchSize` of the parent's cells.
+    let blockSize: Float
     /// Where this level's patch list, and its cells, start in the buffers it shares with its
     /// parent, in entries (0 for the first level).
     let patchOffset: Int
@@ -79,7 +81,10 @@ final class AirRefinement {
     /// The rigid blocks, as minimum and maximum corners, for the fine outline; none to take the
     /// coarse cells' rigid mask instead.
     private var boxes: MTLBuffer
-    private var boxCount: UInt32 = 0
+    /// The blocks near each block of this level, so that a new patch's fill looks only at those
+    /// (`refineFill`): their count, then where each block's list starts (one more than the
+    /// blocks), then the lists of indices into `boxes`.
+    private var boxIndex: MTLBuffer
     /// The terrain's heights and grid for the fine outline (`TerrainUniforms` in Refine.metal);
     /// `enabled` 0 without one.
     private var terrainHeights: MTLBuffer
@@ -245,6 +250,7 @@ final class AirRefinement {
         self.species = species
         self.parent = parent
         parentScale = parent.map { $0.parentScale * $0.ratio } ?? 1
+        blockSize = grid.cellSize / Float(parentScale) * Float(Self.patchSize)
         side = Self.patchSize * ratio
         let layout = Self.layout(
             grid: grid, ratio: ratio, parentScale: parentScale, memory: memory, species: species,
@@ -331,6 +337,7 @@ final class AirRefinement {
         pinned = try buffer(maxPatches * 4, "pinned patches")
         fineWall = try buffer(fineCells * 12, "fine wall velocity")
         boxes = try buffer(32, "rigid blocks")
+        boxIndex = try buffer(16, "rigid blocks by block")
         terrainHeights = try buffer(16, "terrain heights")
         self.device = device
         self.library = library
@@ -493,6 +500,8 @@ final class AirRefinement {
         let count = counters.contents().bindMemory(to: Int32.self, capacity: 8)
         return (Int(count[4]), count[5] != 0)
     }
+    /// Patches placed since the last reset, each filled from the air beneath it.
+    var patchesPlaced: Int { Int(counters.contents().bindMemory(to: Int32.self, capacity: 8)[6]) }
 
     /// This level's cells along each axis.
     func cellDims(_ grid: Grid) -> SIMD3<Int> { SIMD3(grid.nx, grid.ny, grid.nz) &* (parentScale * ratio) }
@@ -683,8 +692,8 @@ final class AirRefinement {
 
     /// Sets the rigid blocks whose outline the fine cells follow; nil to follow the coarse cells'.
     func setBoxes(_ list: [Box]?) {
-        let corners = (list ?? []).flatMap { [SIMD4($0.min, 0), SIMD4($0.max, 0)] }
-        boxCount = UInt32(corners.count / 2)
+        let list = list ?? []
+        let corners = list.flatMap { [SIMD4($0.min, 0), SIMD4($0.max, 0)] }
         if corners.count * 16 > boxes.length,
             let bigger = device.makeBuffer(length: corners.count * 16, options: .storageModeShared)
         {
@@ -693,6 +702,43 @@ final class AirRefinement {
         corners.withUnsafeBytes { bytes in
             if let base = bytes.baseAddress {
                 boxes.contents().copyMemory(from: base, byteCount: bytes.count)
+            }
+        }
+        // Each block's list: the boxes overlapping it widened by two of this level's cells, more
+        // than the fine cell above the block's top that the fill also asks about. Whether a point
+        // lies in any box is the same asked of every box or only of these.
+        let tiles = tileDims.x * tileDims.y * tileDims.z
+        var lists = [[UInt32]](repeating: [], count: list.isEmpty ? 0 : tiles)
+        let pad = 2 * blockSize / Float(Self.patchSize * ratio)
+        for (n, box) in list.enumerated() {
+            let low = simd_max(SIMD3<Int>(((box.min - pad) / blockSize).rounded(.down)), .zero)
+            let high = simd_min(SIMD3<Int>(((box.max + pad) / blockSize).rounded(.down)), tileDims &- 1)
+            guard all(low .<= high) else { continue }
+            for z in low.z...high.z {
+                for y in low.y...high.y {
+                    for x in low.x...high.x { lists[x + tileDims.x * (y + tileDims.y * z)].append(UInt32(n)) }
+                }
+            }
+        }
+        var index: [UInt32] = [UInt32(list.count)]
+        if !list.isEmpty {
+            index.reserveCapacity(2 + tiles + lists.reduce(0) { $0 + $1.count })
+            var start: UInt32 = 0
+            for entries in lists {
+                index.append(start)
+                start += UInt32(entries.count)
+            }
+            index.append(start)
+            for entries in lists { index += entries }
+        }
+        if index.count * 4 > boxIndex.length,
+            let bigger = device.makeBuffer(length: index.count * 4, options: .storageModeShared)
+        {
+            boxIndex = bigger
+        }
+        index.withUnsafeBytes { bytes in
+            if let base = bytes.baseAddress {
+                boxIndex.contents().copyMemory(from: base, byteCount: bytes.count)
             }
         }
     }
@@ -867,7 +913,7 @@ final class AirRefinement {
         for n in 0..<maxPatches { stack[n] = UInt32(maxPatches - 1 - n) }
         let count = counters.contents().bindMemory(to: Int32.self, capacity: 8)
         (count[0], count[1], count[2], count[3]) = (Int32(maxPatches), 0, 0, 0)
-        (count[4], count[5]) = (0, 0)
+        (count[4], count[5], count[6]) = (0, 0, 0)
         memset(arguments.contents(), 0, arguments.length)
         memset(wanted.contents(), 0, wanted.length)
         memset(fineFlux.contents(), 0, fineFlux.length)
@@ -1668,8 +1714,7 @@ final class AirRefinement {
         encoder.setBuffer(seenMask, offset: 0, index: 9)
         set(encoder, parent.rigid, 10)
         encoder.setBuffer(boxes, offset: 0, index: 11)
-        var count = boxCount
-        encoder.setBytes(&count, length: 4, index: 12)
+        encoder.setBuffer(boxIndex, offset: 0, index: 12)
         bind(encoder, fineMask, 13)
         encoder.setBuffer(fineWall, offset: 0, index: 14)
         set(encoder, parent.wallVelocity, 15)

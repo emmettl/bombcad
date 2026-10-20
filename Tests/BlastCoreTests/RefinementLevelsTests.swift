@@ -169,6 +169,44 @@ struct RefinementLevelsTests {
         }
     }
 
+    @Test("Patches filled under many blocks take each fine cell's outline from every block, on both levels")
+    func fineOutlineOfManyBlocks() throws {
+        // Blocks off both levels' lattices, small and large, some spanning several blocks of
+        // either level: the fill looks only at the boxes listed for its patch's block, which must
+        // give the outline every box would.
+        var boxes: [Box] = []
+        for n in 0..<40 {
+            let x = 0.37 + Float((n * 7) % 11) * 1.03
+            let y = 0.61 + Float((n * 5) % 9) * 1.27
+            let size = SIMD3<Float>(
+                0.3 + Float(n % 5) * 0.41, 0.35 + Float(n % 3) * 0.9, 0.4 + Float(n % 4) * 0.7)
+            boxes.append(Box(min: SIMD3(x, y, 0), max: SIMD3(x, y, 0) + size))
+        }
+        let scenario = Scenario(
+            name: "Blocks", domainSize: SIMD3(14, 14, 5), boxes: boxes,
+            charge: Charge(mass: 0.5, position: SIMD3(13.5, 13.5, 0.5)))
+        var configuration = twoLevels(threshold: -1)
+        configuration.refinementFinerThreshold = -1
+        configuration.refinementMemory = 512 << 20
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: configuration)
+        _ = solver.advance(steps: 2)
+        let rigid = try #require(solver.rigidBoxes)
+        #expect(rigid.count == boxes.count)
+        for level in solver.refinementLevels {
+            let fine = solver.grid.cellSize / Float(level.parentScale * level.ratio)
+            let held = rigid.map { $0.holdingCells(of: fine) }
+            let outline = level.rigidOutline(solver.grid)
+            #expect(outline.count > 1000)
+            let wrong = outline.filter { cell in
+                let centre = (SIMD3<Float>(cell.cell) + 0.5) * fine
+                return cell.rigid != held.contains { all(centre .>= $0.min) && all(centre .<= $0.max) }
+            }
+            #expect(wrong.isEmpty, "\(wrong.count) of \(outline.count) fine cells")
+            #expect(outline.contains { $0.rigid })
+        }
+    }
+
     @Test("A run in two levels repeats exactly")
     func repeatable() throws {
         let first = try closedBox(twoLevels())
