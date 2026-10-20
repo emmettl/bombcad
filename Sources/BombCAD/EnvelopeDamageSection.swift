@@ -16,23 +16,36 @@ struct EnvelopeDamageSection: View {
                 Toggle("Show damage in the view", isOn: $model.showsEnvelopeDamage)
                     .help("Colour each envelope by its damage instead of the air's pressure.")
                 let chances = !model.envelopeGlassChances.isEmpty || !model.farFieldGlass.isEmpty
-                if !chances || model.envelopeColouring == .damage {
+                let doubt = model.canJudgeEnvelopeDoubt || model.envelopeDoubt != nil
+                // The damage's colours whenever the chosen colouring has nothing to show yet.
+                let colouring = model.envelopeColouring
+                if colouring == .damage || (colouring == .couldFlip ? model.envelopeDoubt == nil : !chances) {
                     Legend()
                 }
-                if chances {
+                if chances || doubt {
                     Picker("Colour by", selection: $model.envelopeColouring) {
-                        ForEach(SimulationModel.EnvelopeColouring.allCases) { Text($0.rawValue).tag($0) }
+                        ForEach(
+                            SimulationModel.EnvelopeColouring.allCases.filter {
+                                $0 == .damage || ($0 == .couldFlip ? doubt : chances)
+                            }
+                        ) { Text($0.rawValue).tag($0) }
                     }
                     .help(
                         "Each building side's chance, from the quick estimate's draws or, beyond the hand-over, the "
-                            + "far field's: the glass only.")
-                    if model.envelopeColouring != .damage { ChanceLegend() }
+                            + "far field's: the glass only. Or whether cells twice as fine could change each "
+                            + "building's outcome.")
+                }
+                if chances, model.envelopeColouring.isChance {
+                    ChanceLegend()
                     Text(
                         "Chances for the glass only, drawn over the yield, each building's glass strength and the "
                             + "estimate's own scatter. Walls and roofs are not given chances: the estimate's are not "
                             + "to be relied on."
                     )
                     .font(.caption).foregroundStyle(.secondary)
+                }
+                if model.envelopeColouring == .couldFlip {
+                    DoubtSummary(model: model)
                 }
                 if model.settings.scenario.envelopeObjects.contains(where: {
                     model.settings.scenario.envelopeConstruction(for: $0.id).glazing != nil
@@ -241,6 +254,49 @@ struct EnvelopeDamageSection: View {
         guard (1...6).contains(code) else { return .gray }
         let c = EnvelopeDamageColour.palette[code - 1]
         return Color(.sRGB, red: Double(c.x), green: Double(c.y), blue: Double(c.z))
+    }
+
+    /// Whether finer cells could change each building's outcome: the colours, the counts and what
+    /// the band rests on.
+    struct DoubtSummary: View {
+        let model: SimulationModel
+
+        var body: some View {
+            HStack(spacing: 10) {
+                ForEach(EnvelopeDoubtColour.palette.indices, id: \.self) { n in
+                    let c = EnvelopeDoubtColour.palette[n]
+                    HStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color(.sRGB, red: Double(c.x), green: Double(c.y), blue: Double(c.z)))
+                            .frame(width: 14, height: 12)
+                        Text(EnvelopeDoubtColour.labels[n]).font(.caption)
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            if let doubt = model.envelopeDoubt {
+                Text(
+                    "\(doubt.count(.inDoubt)) in doubt and \(doubt.count(.likelyDifferent)) likely different on cells "
+                        + "twice as fine, of \(doubt.buildings.count): the buildings to refine toward."
+                )
+                .font(.caption)
+                Text(
+                    String(
+                        format:
+                            "Each building's loads judged again at ×%.2f and ×%.2f, the band within which cells half as "
+                            + "large read district façades' peaks at %.2f m/kg^(1/3) (Beirut and a 150 m block). On those, "
+                            + "it caught 95–100%% of what finer cells changed, flagging a fifth to a third of the buildings; "
+                            + "changes from the façades' own outline on finer cells, it cannot foresee.",
+                        doubt.factors.lowerBound, doubt.factors.upperBound, doubt.scaledCell)
+                )
+                .font(.caption).foregroundStyle(.secondary)
+            } else if model.judgingEnvelopeDoubt {
+                Text("Judging each building at the ends of the band…").font(.caption).foregroundStyle(
+                    .secondary)
+            } else if model.isRunning {
+                Text("Judged once the run stops.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 
     /// The six colours with their meanings, three to a row.

@@ -562,6 +562,8 @@ final class SimulationModel {
 
     private(set) var isRunning = false {
         didSet {
+            // The doubt is judged once a run has stopped, on its last loads.
+            if oldValue, !isRunning, envelopeColouring == .couldFlip { applyEnvelopeDamageColours() }
             guard isRunning != (runActivity != nil) else { return }
             if isRunning {
                 // A run is work the user is waiting for, even with the window behind another app:
@@ -778,8 +780,49 @@ final class SimulationModel {
     /// The debris of the envelope components that failed, thrown and landed, once a run has
     /// stopped (`EnvelopeDebris`); nil where none failed.
     private(set) var envelopeDebris: EnvelopeDebris?
-    /// The loads the damage was last judged on, for the debris.
-    @ObservationIgnored private var envelopeLoads: [EnvelopeComponentLoad] = []
+    /// The loads the damage was last judged on, for the debris and the doubt.
+    @ObservationIgnored private var envelopeLoads: [EnvelopeComponentLoad] = [] {
+        didSet {
+            envelopeDoubt = nil
+            envelopeLoadsGeneration += 1
+        }
+    }
+    @ObservationIgnored private var envelopeLoadsGeneration = 0
+    /// Whether cells twice as fine could change each building's outcome (`EnvelopeDoubt`), worked
+    /// out from the run's loads when the view is coloured by it; nil until then, and once the
+    /// loads change.
+    private(set) var envelopeDoubt: EnvelopeDoubt?
+    private(set) var judgingEnvelopeDoubt = false
+    /// Whether there is a run's damage to judge the doubt of (not the quick estimate's).
+    var canJudgeEnvelopeDoubt: Bool {
+        !envelopeDamage.isEmpty && !envelopeDamageIsEstimate && !isRunning
+    }
+
+    /// Judges the doubt away from the main thread: two more judgements of every building's loads.
+    private func judgeEnvelopeDoubt() {
+        guard envelopeDoubt == nil, !judgingEnvelopeDoubt, canJudgeEnvelopeDoubt else { return }
+        judgingEnvelopeDoubt = true
+        let (loads, scenario, generation) = (envelopeLoads, settings.scenario, envelopeLoadsGeneration)
+        // The cells and air of the run the loads came from, as its standing takes them.
+        let inputs = (completedRunSettings ?? ProjectRunSettings(model: self)).standingInputs(scenario)
+        let (cellSize, configuration) = (inputs.cellSize, inputs.configuration)
+        Task { [weak self] in
+            let doubt = await Task.detached(priority: .userInitiated) {
+                EnvelopeDoubt.assess(
+                    loads: loads, scenario: scenario, cellSize: cellSize, configuration: configuration,
+                    constructions: { scenario.envelopeConstruction(for: $0) })
+            }.value
+            guard let self else { return }
+            self.judgingEnvelopeDoubt = false
+            // Loads judged afresh meanwhile: this doubt is stale, and the next colouring asks again.
+            guard self.envelopeLoadsGeneration == generation else {
+                self.applyEnvelopeDamageColours()
+                return
+            }
+            self.envelopeDoubt = doubt
+            self.applyEnvelopeDamageColours()
+        }
+    }
     private(set) var envelopeDamageStatus = ""
     /// True while `envelopeDamage` is the surrogate's quick estimate rather than a run's
     /// (`quickEstimate`).
@@ -805,7 +848,18 @@ final class SimulationModel {
             renderer?.setEnvelopeDamage([:])
             return
         }
-        if envelopeColouring != .damage, !envelopeGlassChances.isEmpty {
+        if envelopeColouring == .couldFlip {
+            if let envelopeDoubt {
+                renderer?.setEnvelopeDamage(
+                    Dictionary(
+                        uniqueKeysWithValues: envelopeDoubt.buildings.map {
+                            ($0.id, EnvelopeDoubtColour.code($0.verdict))
+                        }))
+                return
+            }
+            judgeEnvelopeDoubt()
+        }
+        if envelopeColouring.isChance, !envelopeGlassChances.isEmpty {
             // Each side by its chance, from the quick estimate's draws.
             renderer?.setEnvelopeDamage(chanceCodes(envelopeGlassChances))
             return
@@ -859,7 +913,7 @@ final class SimulationModel {
         let codes: [UUID: Int] =
             !showsEnvelopeDamage
             ? [:]
-            : envelopeColouring != .damage && !farFieldGlass.isEmpty
+            : envelopeColouring.isChance && !farFieldGlass.isEmpty
                 ? chanceCodes(farFieldGlass)
                 : Dictionary(
                     uniqueKeysWithValues: farFieldDamage.map { ($0.id, EnvelopeDamageColour.code($0)) })
@@ -920,7 +974,11 @@ final class SimulationModel {
         case thrownPast3b = "Chance glass thrown past 3 m (GSA 3b)"
         /// Fitted to Beirut's survey, not physics (`OpeningsFragility`).
         case openingsBlownOut = "Chance openings blown out (fitted to Beirut)"
+        /// Whether cells twice as fine could change each building's outcome (`EnvelopeDoubt`).
+        case couldFlip = "Could finer cells change it"
         var id: Self { self }
+        /// Each building side's glass chance, from the quick estimate or the far field.
+        var isChance: Bool { self != .damage && self != .couldFlip }
     }
 
     var envelopeColouring = EnvelopeColouring.damage {

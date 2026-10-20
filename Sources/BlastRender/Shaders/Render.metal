@@ -406,6 +406,12 @@ fragment SceneOut sceneFragment(VertexOut in [[stage_in]],
                 for (int side = 0; side < 4; ++side) { eighth = max(eighth, (sides >> (3 * side)) & 7); }
             }
             colour = chance[eighth] * light;
+        } else if (code >= 8 && code <= 10) {
+            // Whether finer cells could flip it: settled, in doubt, likely different
+            // (EnvelopeDoubtColour; a test keeps the two the same).
+            const float3 doubt[3] = {
+                float3(0.780f, 0.800f, 0.820f), float3(0.929f, 0.502f, 0.098f), float3(0.533f, 0.200f, 0.600f)};
+            colour = doubt[code - 8] * light;
         } else {
             colour = code >= 1 && code <= 6
                 ? damage[code - 1] * light

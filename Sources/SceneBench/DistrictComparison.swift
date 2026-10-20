@@ -7,7 +7,7 @@ import simd
 /// [--window 0.5] [--budget 2048] [--ground saturated] [--observers rigby.csv] [--pane 1.2,1.5]
 /// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
 /// [--save-loads folder] [--refine 2 --levels 2 --threshold 0.005 --refine-memory GB --hold Pa]
-/// [--ceiling auto|m] [--place-dx m] [--profile] [--steer 0.8,1.5 --steer-reach 12 --steer-by ring|near --steer-on glass|structure] [--corridor x,y,60]
+/// [--ceiling auto|m] [--place-dx m] [--profile] [--steer 0.8,1.5 --steer-reach 12 --steer-by ring|near --steer-on glass|structure] [--corridor x,y,60] [--doubt [--doubt-band 1,1.6]]
 /// [--refine-toward x,y;x,y [--toward-width 1.5]]
 /// --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
@@ -60,6 +60,11 @@ enum DistrictComparison {
         var sides: [Side]
         var concrete: EnvelopeDamageLevel
         var stone: EnvelopeDamageLevel
+        /// As the app judges it: some pane broken, and its walls' and roofs' worst level.
+        var glassBroken: Bool? = nil
+        var level: EnvelopeDamageLevel? = nil
+        /// With `--doubt`, whether finer cells could flip that (`EnvelopeDoubt.Verdict`).
+        var doubt: String? = nil
     }
 
     struct Band: Codable {
@@ -573,7 +578,34 @@ enum DistrictComparison {
         }
         let (finalTime, steps, wall, arrivals, linePoints, recorded) = try event(configuration)
         let loads = recorded.map(EnvelopeComponentLoad.init)
-        let (judged, assessed) = judge(loads)
+        let (firstJudged, assessed) = judge(loads)
+        // The app's own outcome for each building, and with `--doubt` whether the cells could flip
+        // it: its loads judged again at the ends of the band the validation gives its face.
+        var judged = firstJudged
+        let byID = Dictionary(uniqueKeysWithValues: assessed.map { ($0.id, $0) })
+        let doubt =
+            args.contains("--doubt")
+            ? EnvelopeDoubt.assess(
+                loads: loads, scenario: scene, cellSize: dx, configuration: configuration,
+                constructions: { scene.envelopeConstruction(for: $0) },
+                band: value("doubt-band").flatMap { text -> ClosedRange<Double>? in
+                    let f = text.split(separator: ",").compactMap { Double($0) }
+                    return f.count == 2 ? f[0]...f[1] : nil
+                }) : nil
+        let verdicts = Dictionary(uniqueKeysWithValues: (doubt?.buildings ?? []).map { ($0.id, $0.verdict) })
+        for n in judged.indices {
+            judged[n].glassBroken = byID[judged[n].id].map { $0.panesBroken > 0 }
+            judged[n].level = byID[judged[n].id]?.structuralLevels.upperBound
+            judged[n].doubt = verdicts[judged[n].id]?.rawValue
+        }
+        if let doubt {
+            print(
+                String(
+                    format: "Doubt at %.3f m/kg^(1/3), loads ×%.2f–%.2f: ", doubt.scaledCell,
+                    doubt.factors.lowerBound, doubt.factors.upperBound)
+                    + "\(doubt.count(.settled)) settled, \(doubt.count(.inDoubt)) in doubt, "
+                    + "\(doubt.count(.likelyDifferent)) likely different")
+        }
         // The façades' glass by each building's mix, as the app judges it.
         let distances = Dictionary(uniqueKeysWithValues: judged.map { ($0.id, $0.distanceM) })
         DistrictGlass.printBands(

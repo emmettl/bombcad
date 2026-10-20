@@ -196,10 +196,11 @@ struct EnvelopeDamageTests {
             #expect(shader.contains(text), "\(text) not in Render.metal")
         }
         #expect(EnvelopeDamageColour.labels.count == EnvelopeDamageColour.palette.count)
-        for colour in EnvelopeChanceColour.ramp {
+        for colour in EnvelopeChanceColour.ramp + EnvelopeDoubtColour.palette {
             let text = String(format: "float3(%.3ff, %.3ff, %.3ff)", colour.x, colour.y, colour.z)
             #expect(shader.contains(text), "\(text) not in Render.metal")
         }
+        #expect(EnvelopeDoubtColour.labels.count == EnvelopeDoubtColour.palette.count)
     }
 
     @Test("A building's sides' glass chances go to the view as one code and come back by side")
