@@ -750,6 +750,68 @@ order of magnitude: Dial Pack's 7.4% in all, the model's 2.4% to 7% by 1 to 3 s 
 report restates the 1961 shot on its basis of 10⁹ cal a ton as 4.4% and 7.8%, which Tate and
 Pattmann gave as 3.8% and 6.6%.
 
+### Where the late radiation comes from (20 October 2026)
+
+An energy budget, with no change to the model (emmettl/bombcad-work#22, stage 1). `blastbench
+dialpack --budget out.csv` reads the air's state back at every frame, between batches, so the run
+is unchanged (the recommended `blastbench digest` is bit-identical, and the balloon runs repeat
+the figures above). At each frame it finds the heat afterburning is releasing, Q r min(x, y/s) a
+cubic metre, as the final sweep burns it. It bins that heat by the cell's temperature and by its
+mixture: lean, near stoichiometric or rich, by the equivalence ratio s x / y (below 0.7, 0.7 to
+1.4, above 1.4). It also finds the luminous gas (at least 1,500 K): its mass, mean temperature,
+unburnt products and mean absorption. Over the frames this heat adds up to what the products
+burnt, to within 0.1% (1.5% on the balloon at 4 m). The runs used today's recommended air (the
+mapped start and the gas cooling) with gravity and sub-grid mixing: 8 m cells in 800 m to 6 s,
+and 4 m cells in 480 m to 3 s. Each took under 25 s. All shares below are of the report's blast
+yield, 2.09 × 10¹² J.
+
+| After 1 s | 8 m cells, to 6 s | 4 m cells, to 3 s |
+|---|---|---|
+| Radiated (lost by the gas); measured | 21.9%; 3.6% | 5.9%; 1.8% |
+| The excess | 18.3% | 4.1% |
+| Heat released by afterburning, in all | 75% | 39% |
+| … in cells at 1,800 K or more (rich; near; lean) | 33% (17; 5; 10) | 15% (8.5; 2; 5) |
+| … at 1,500 to 1,800 K | 9% | 5% |
+| … below 1,500 K, all of it lean | 34% | 19% |
+| Burning at 1,800 K or more, against the excess | 1.8× | 3.7× |
+
+| 8 m cells | 1 s | 2 s | 3 s | 6 s |
+|---|---|---|---|---|
+| Luminous gas; its mean temperature | 724 t; 1,907 K | 879 t; 2,066 K | 937 t; 2,096 K | 1,013 t; 2,035 K |
+| Its unburnt products; its mean absorption | 156 t; 13/m | 127 t; 9/m | 108 t; 8/m | 54 t; 4/m |
+| Heat released in it | 5.0 × 10¹¹ W | 2.1 × 10¹¹ | 1.3 × 10¹¹ | 1.3 × 10¹¹ |
+| What the gas radiates; measured (4π J) | 5.9 × 10¹⁰ W; 2.4 × 10¹⁰ | 7.4; 1.8 | 7.5; 1.5 | 9.7; 1.0 |
+| Intensity toward 1,700 m; measured, cal/sr/s × 10⁷ | 89; 45 | 108; 34 | 150; 28 | 213; 26, at 5 s |
+
+**Afterburning after the first second is the source.** After 1 s the products release four times
+the excess. The burning in gas already at 1,800 K or more is alone nearly twice it, and more than
+half of that is in fuel-rich cells, where the oxygen the grid mixes in burns as soon as it
+arrives. This is the hot core burning through its volume. From 2 s on, the luminous gas burns
+more than it radiates (1.3 to 2.1 × 10¹¹ against 0.75 to 1.0 × 10¹¹ W). From 3 s it holds its heat
+at 1.5 × 10¹² J and its temperature at 2,050 to 2,100 K, where Dial Pack's fell to 1,600 K by 3 s.
+At 1 s the model's mean temperature is the report's, and it then rises while the report's falls.
+As much heat again is released in lean gas below 1,500 K, three-fifths of it below 800 K. That is
+the diluted gas round the fireball being reheated. An extinction limit (above) stops the burning
+only in such gas, and left the radiated share as it was, so this part does not reach the radiation. The burning
+supplies far more than half the excess, so the optics are not the first cause.
+
+**The optics are a second, smaller factor.** The luminous gas is opaque throughout: 4 to 13 a metre
+across a ball over 200 m wide, with its soot carried by unburnt products, nearly all of which are in
+it. So it radiates as σT⁴ from its surface. At 1 s, at the report's temperature, its intensity
+is already twice the measured one, and that factor of about 2 stays. By 3 s the rest of the 5.4×
+is the temperature, (2,160 / 1,600)⁴ = 3.3 on the T⁴-mean. As a rough split of the 18.3%
+excess, about four-fifths is the burning's heat and a fifth the size and emissivity. At twice the
+measured from 1 s, the share by 6 s would be about 9%, inside the 10.2% pass.
+
+**What stage 2 should therefore be.** It stays aimed at mixing-limited afterburning. The target is
+specifically the oxygen-limited burning in hot, rich cells after the first second, which an
+eddy-break-up rate slows as the turbulence decays. Burning in cold lean gas does not reach the
+radiation. The budget is the check: after 2 s the heat released in the luminous gas should fall
+below what it radiates, and its mean temperature should be near 1,600 K by 3 s. If the
+temperature comes right and the share by 6 s is still above 10%, the remaining factor of 2 is the
+optics: the soot is a fixed 0.185 of unburnt products, the 54 t left at 6 s still keeps the
+fireball black, and soot that burns out with its gas would not.
+
 ## Output
 
 - **The summary** printed gives the largest fireball, its temperature and how long it was

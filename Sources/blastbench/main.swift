@@ -73,6 +73,8 @@ import simd
 //                       [--standing]   (the standing a new document of the preset shows, in place of a run)
 //   blastbench dialpack [--dx 4] [--time 1] [--tons 500] [--domain 480] [--radiate] [--refine 2]
 //                       [--mapped [--early-voxels n] [--early-samples s]] [--hot-air|--grey-air] [--frame-detail]
+//                       [--budget out.csv]   (the fireball's energy budget each frame: heat released by
+//                        temperature and mixture, the luminous gas, what the gas lost to radiation)
 //   blastbench radial-profile [--mass 453600] [--reach 2] [--times 0.5,1,1.25,2,5] [--every 4] [--dump prefix] [--jwl]
 //                      (the mapped start's one-dimensional burst through its products' edge and shock)
 //   blastbench shell-sphere [--profile file.csv [--mass kg]] [--voxel 0.5,0.25]
@@ -4736,6 +4738,12 @@ func runDialPack() throws {
             position: SIMD3(side / 2, side / 2 - range, 1.5), normal: SIMD3(0, 1, 0), surface: "instrument")
     }
     solver.frameRequest = FrameRequest(thermal: volume)
+    // `--budget out.csv`: the fireball's energy budget each frame, read back from the state (DialPackBudget).
+    var budget = option("budget").map { _ in
+        DialPackBudget(
+            configuration: configuration, spec: volume, chargeMass: mass,
+            ambientTemperature: configuration.ambientPressure / (1.225 * AirModel.gasConstant))
+    }
     var frameTimes: [Double] = []
     var t = 0.0005
     while t < duration - 1e-9 {
@@ -4781,6 +4789,7 @@ func runDialPack() throws {
         }
         let frame = oneD[target] ?? solver.fireball(for: volume)
         let now = oneD[target]?.time ?? solver.time
+        if oneD[target] == nil { budget?.record(solver, at: now) }
         var values: [Float] = []
         for model in models { values += model.exposure.irradiance(frame, at: points) }
         let power = models[0].exposure.radiatedPower(frame)
@@ -4848,6 +4857,13 @@ func runDialPack() throws {
                 early.time, early.mass / 1000, early.temperature, Double(early.centre.z), early.riseSpeed,
                 solver.time, late.mass / 1000, Double(late.centre.z), late.riseSpeed, predicted.height,
                 predicted.speed))
+    }
+    if let budget, let path = option("budget") {
+        let summary = budget.summary(
+            charge: charge, endFuel: solver.speciesTotals().fuel, lost: solver.radiatedEnergy)
+        for line in summary { print(line) }
+        try (budget.lines.joined(separator: "\n") + "\n").write(
+            toFile: path, atomically: true, encoding: .utf8)
     }
     print(
         String(
