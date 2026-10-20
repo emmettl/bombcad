@@ -164,7 +164,7 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   settlement together, more heave only the settlement
   ([validation](validation.md#a-footing-shaken-on-dry-sand)). Both want the sand as a continuum.
 - **Done (20 October):** the cap on cut slivers under structures on refined levels, so refined
-  runs of structures on terrain cut it too: a hillside frame's displacement within 2–9% of fine
+  runs of structures on terrain cut it too: a hillside frame's displacement within 6–9% of fine
   uniform cut cells, where the staircase gave 1.6–2.7 times
   ([terrain](terrain.md#cut-cells)).
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
