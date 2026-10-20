@@ -980,6 +980,989 @@ static inline float smearedBar(float green, thread float &plastic, device BarHis
     return stress;
 }
 
+// Concrete elements that bend in their cracked concrete (`StructureModel.assumedStrainCracking`,
+// emmettl/bombcad-work#20): an element is the one-point hexahedron with hourglass control above
+// until any of its eight Gauss points would crack, or be squeezed past a tenth of its strain at
+// peak. From then on it works at those eight points, each with a history of its own started from
+// the centre's, its strain the assumed strain of Belytschko and Bindeman (1993): the mean gradient's,
+// plus each hourglass mode's gradient in the element's corotational frame, the shear that varies
+// along a displacement's own direction (the parasitic shear of a bending fibre) left out. Its bars
+// are strained at their own place in it, and it has no hourglass control. Compiled in only when
+// chosen, so that without it the element kernel is unchanged.
+constant bool crackedHexConstant [[function_constant(26)]];
+constant bool crackedHex = is_function_constant_defined(crackedHexConstant) && crackedHexConstant;
+
+// Each element's entry: the slot of its points' histories in the pool (`crackedNone` until it
+// switches), and where its bars lie, for each lattice axis j the natural coordinates (-1 to 1, or
+// beyond for a band reaching into the next element) of their centroid along axes (j + 1) % 3 and
+// (j + 2) % 3. Entry 0 of the buffer is the pool's header instead: the slots taken (atomic), the
+// slots there are, and a flag set when an element could not switch because the pool was full.
+// Layout matches `StructureSolver.crackedElementStride`.
+struct CrackedElement {
+    uint slot;
+    half barAt[6];
+};
+static_assert(sizeof(CrackedElement) == 16, "CrackedElement must match StructureSolver.crackedElementStride");
+constant uint crackedNone = 0xFFFFFFFFu;
+
+// One Gauss point's concrete history in a switched element: the fields of `ElementState` that the
+// concrete law keeps per point. Layout matches `StructureSolver.crackedPointStride`.
+struct CrackedPoint {
+    packed_float3 crackStrain;
+    packed_float3 crushStrain;
+    packed_float3 confinementGain;
+    packed_float3 crackResidual;
+    packed_float3 jointSlip;
+    packed_half4 crackFrame;
+    packed_half4 secondCrack;
+    float compaction;
+    float secondOpening;
+    float secondHistory;
+    float compactionStart;
+};
+static_assert(sizeof(CrackedPoint) == 92, "CrackedPoint must match StructureSolver.crackedPointStride");
+
+static inline void loadCrackedPoint(thread ElementState &state, const device CrackedPoint &point) {
+    state.crackStrain = point.crackStrain;
+    state.crushStrain = point.crushStrain;
+    state.confinementGain = point.confinementGain;
+    state.crackResidual = point.crackResidual;
+    state.jointSlip = point.jointSlip;
+    state.crackFrame = point.crackFrame;
+    state.secondCrack = point.secondCrack;
+    state.compaction = point.compaction;
+    state.secondOpening = point.secondOpening;
+    state.secondHistory = point.secondHistory;
+    state.compactionStart = point.compactionStart;
+}
+
+static inline void storeCrackedPoint(device CrackedPoint &point, thread const ElementState &state) {
+    point.crackStrain = state.crackStrain;
+    point.crushStrain = state.crushStrain;
+    point.confinementGain = state.confinementGain;
+    point.crackResidual = state.crackResidual;
+    point.jointSlip = state.jointSlip;
+    point.crackFrame = state.crackFrame;
+    point.secondCrack = state.secondCrack;
+    point.compaction = state.compaction;
+    point.secondOpening = state.secondOpening;
+    point.secondHistory = state.secondHistory;
+    point.compactionStart = state.compactionStart;
+}
+
+// The element's corotational frame: the columns of its deformation gradient at the centre,
+// orthonormalised in order (the identity at rest).
+static inline float3x3 crackedRotation(float3x3 deformation) {
+    float3 e0 = normalize(deformation[0]);
+    float3 e1 = normalize(deformation[1] - dot(deformation[1], e0) * e0);
+    return float3x3(e0, e1, cross(e0, e1));
+}
+
+// The four hourglass modes' amplitudes in the corotational frame `rotation`, R^T q, from the sums of
+// h_a u_a over the corners (`crackedSums`, h_a the mode's corner signs eta zeta, xi zeta, xi eta,
+// xi eta zeta, u_a the displacements), q being an eighth of them: on the lattice's cubes these are
+// orthogonal to every linear field.
+static inline void crackedAmplitudes(thread float3 *local, thread const float3 *sums, float3x3 rotation) {
+    for (uint mode = 0; mode < 4; ++mode) {
+        local[mode] = transpose(rotation) * (0.125f * sums[mode]);
+    }
+}
+
+// The assumed strain's displacement gradient du/dX at natural point `at` of an element whose mean
+// gradient is `gradient`, its modes' amplitudes `local` in its corotational frame `rotation`, and
+// `scale` 2 / h. Each mode H (eta zeta, xi zeta, xi eta, xi eta zeta) adds q dH/dX, less the shear
+// terms du_i/dX_k (i != k) whose derivative varies along X_i: those are the parasitic shear of a
+// fibre along i bending. What is left of the third and fourth modes' shear is twist.
+static inline float3x3 crackedGradient(float3x3 gradient, float3x3 rotation, thread const float3 *local, float3 at,
+                                       float scale) {
+    float xi = at.x;
+    float eta = at.y;
+    float zeta = at.z;
+    float g00 = scale * (local[1].x * zeta + local[2].x * eta + local[3].x * eta * zeta);
+    float g11 = scale * (local[0].y * zeta + local[2].y * xi + local[3].y * xi * zeta);
+    float g22 = scale * (local[0].z * eta + local[1].z * xi + local[3].z * xi * eta);
+    // Columns are d/dX_k: (du_x, du_y, du_z) / dX_k.
+    float3x3 modes = float3x3(float3(g00, scale * local[1].y * zeta, scale * local[2].z * eta),
+                              float3(scale * local[0].x * zeta, g11, scale * local[2].z * xi),
+                              float3(scale * local[0].x * eta, scale * local[1].y * xi, g22));
+    return gradient + rotation * modes;
+}
+
+// The modes' generalised forces from a first Piola-Kirchhoff stress `local` (in the corotational
+// frame, R^T P) at natural point `at` with weight `weight` (its volume times 2 / h): the transpose of
+// `crackedGradient`'s filtered terms, so that the forces do the work the stresses do.
+static inline void crackedModeForces(thread float3 *modes, float3x3 local, float3 at, float weight) {
+    float xi = at.x;
+    float eta = at.y;
+    float zeta = at.z;
+    // local[k][i] is P_ik.
+    modes[0] += weight * float3(local[1][0] * zeta + local[2][0] * eta, local[1][1] * zeta, local[2][2] * eta);
+    modes[1] += weight * float3(local[0][0] * zeta, local[0][1] * zeta + local[2][1] * xi, local[2][2] * xi);
+    modes[2] += weight * float3(local[0][0] * eta, local[1][1] * xi, local[0][2] * eta + local[1][2] * xi);
+    modes[3] += weight * float3(local[0][0] * eta * zeta, local[1][1] * xi * zeta, local[2][2] * xi * eta);
+}
+
+// Whether Green-Lagrange strain `strain` would take concrete out of its elastic range: its largest
+// principal strain with the Poisson effect taken out (the law's Rankine criterion) past `onset`, or
+// its smallest past `-squeeze`. Gershgorin's bounds decide most points without the eigenvalues;
+// with `bounds`, they alone decide (true where the strain may leave the range).
+static inline bool crackedLeavesElastic(float3x3 strain, float poisson, float onset, float squeeze,
+                                        bool bounds = false) {
+    float3x3 effective = strain * (1.0f / (1.0f + poisson));
+    float dilation = poisson * (strain[0][0] + strain[1][1] + strain[2][2]) / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
+    float upper = -1e30f;
+    float lower = 1e30f;
+    for (int i = 0; i < 3; ++i) {
+        effective[i][i] += dilation;
+        float off = fabs(effective[(i + 1) % 3][i]) + fabs(effective[(i + 2) % 3][i]);
+        upper = max(upper, effective[i][i] + off);
+        lower = min(lower, effective[i][i] - off);
+    }
+    if (upper <= onset && lower >= -squeeze) {
+        return false;
+    }
+    if (bounds) {
+        return true;
+    }
+    float3 values;
+    float3x3 vectors;
+    symmetricEigen(effective, values, vectors);
+    return max(values.x, max(values.y, values.z)) > onset || min(values.x, min(values.y, values.z)) < -squeeze;
+}
+
+// The axes a concrete point works in and its strain in them: its crack axes once it has cracked
+// (columns of `frame`), the lattice's before, with a second crack's opening taken out. Called by
+// the element kernel for the element's centre, or for each of its eight points once it bends in
+// its cracked concrete (`crackedHex`).
+static inline __attribute__((always_inline)) void concreteAxes(
+    thread const ElementState &state, float3x3 latticeStrain, uint joints, constant StructureUniforms &u,
+    thread float3x3 &frame, thread bool &framed, thread bool &turning, thread float3x3 &strain,
+    thread float3 &normalStrain) {
+    // With oriented cracks the concrete works in its crack axes (columns of `frame`), set
+    // when it first cracks; before that, and without them, in the lattice axes. Axes that
+    // still turn with the principal directions are stored with the sign bit of w set (q and
+    // -q are the same rotation).
+    frame = float3x3(1.0f);
+    framed = false;
+    turning = false;
+    {
+        float4 stored = float4(state.crackFrame);
+        if (any(stored != 0.0f)) {
+            frame = rotationOf(normalize(stored));
+            framed = true;
+            turning = signbit(stored.w);
+        }
+    }
+    // A mortar joint lies on a lattice plane, so an element that holds one cracks across the
+    // lattice axes from the start.
+    if (joints != 0u) {
+        frame = float3x3(1.0f);
+        framed = true;
+        turning = false;
+    }
+    strain = transpose(frame) * latticeStrain * frame;
+    // A second crack's opening is not the concrete's strain (see below).
+    float4 secondCrack = float4(state.secondCrack);
+    if (u.secondCracks != 0 && framed && !turning && secondCrack.w != 0.0f) {
+        float3 normal = normalize(secondCrack.xyz);
+        strain -= state.secondOpening * float3x3(normal * normal.x, normal * normal.y, normal * normal.z);
+    }
+    normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
+}
+
+// What the concrete law gives the element kernel back, beyond the history it keeps in `state`.
+struct ConcreteLawResult {
+    float3x3 material;  // second Piola-Kirchhoff stress in the lattice axes, before the bars
+    float3 history;     // each crack plane's largest tensile strain
+    float3 normalStress;
+    float3 confinement;
+    float3 planeOnset;
+    float3 planeFactor;
+    float3 planeSoftening;
+    float onset;
+    float crack;
+    float crushed;
+    bool pulverised;
+};
+
+// The concrete model at one point (see the header): its cracks, crushing, confinement, interlock,
+// second crack and compaction, from the strain in its axes (`concreteAxes`) and the history in
+// `state`, which it updates. The element kernel calls it for the element's centre, or for each of
+// its eight points once it bends in its cracked concrete (`crackedHex`).
+static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
+    thread ElementState &state, thread float3x3 &frame, thread bool &framed, thread bool &turning,
+    thread float3x3 &strain, thread float3 &normalStrain, float3x3 strainRate, float tensionFactor,
+    float compressionFactor, float dt, float volume, float referenceVolume, bool bare, uint joints, uint3 tid,
+    uint compact, uchar own, constant MaterialParameters &m, constant StructureUniforms &u,
+    const device ElementSteel *steel, device uchar *flags, const device uint *cellElement,
+    const device uchar *materialIndex, device float4 *crackOut, const device float4 *crackBefore,
+    thread float *power) {
+    float3 history = float3(state.crackStrain);
+    float worst = max(history.x, max(history.y, history.z));
+    float onset = m.crackOnset * tensionFactor;
+    // Across a mortar joint the tension law is the bond's: weaker, and softening over its
+    // own fracture energy. The other planes keep the unit's.
+    float3 planeFactor = float3(tensionFactor);
+    float3 planeSoftening = float3(m.crackSoftening);
+    // The length each plane's opening is smeared over, from which its crack width is read.
+    float3 planeBand = float3(m.crackBand);
+    for (int j = 0; j < 3; ++j) {
+        if (((joints >> j) & 1u) != 0u) {
+            planeFactor[j] *= m.jointStrength;
+            planeSoftening[j] = m.jointSoftening;
+        }
+    }
+    float3 planeOnset = m.crackOnset * planeFactor;
+
+    // Equivalent uniaxial strains along the axes: in the linear range these reproduce
+    // isotropic elasticity. The Poisson coupling fades as the concrete cracks, since an open
+    // crack's strain is not elastic strain and must not stretch the directions alongside it.
+    float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
+    if (joints == 0u) {
+        if (worst > onset) {
+            poisson *= tensionEnvelope(worst, tensionFactor, m) / (m.youngsModulus * worst);
+        }
+    } else {
+        float fade = 1.0f;
+        for (int j = 0; j < 3; ++j) {
+            if (history[j] > planeOnset[j]) {
+                fade = min(fade, tensionEnvelopeOver(history[j], planeFactor[j], planeSoftening[j], m)
+                                     / (m.youngsModulus * history[j]));
+            }
+        }
+        poisson *= fade;
+    }
+
+    // Cracks are smeared over the three lattice planes, each with its own history, so that
+    // cracking across one direction leaves the others intact. A diagonal crack (from shear)
+    // is found from the principal values of the strain with the Poisson effect taken out,
+    // which is the elastic stress over E: a Rankine criterion. (Principal values of the
+    // strain itself would count the sideways swelling of squeezed concrete as cracking.)
+    // It is shared between the planes it cuts across, in proportion to the squared direction
+    // cosines.
+    // What a crack has slid by (`crackSlip`) counts in the strain that opens cracks: sliding
+    // along a crack also opens it, and the plane across the slide.
+    float3x3 effective = strain * (1.0f / (1.0f + poisson));
+    float dilation = poisson * (strain[0][0] + strain[1][1] + strain[2][2])
+        / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
+    effective[0][0] += dilation;
+    effective[1][1] += dilation;
+    effective[2][2] += dilation;
+    float3 principal;
+    float3x3 axes;
+    symmetricEigen(effective, principal, axes);
+    bool cracking = max(principal.x, max(principal.y, principal.z)) > onset;
+    if ((!framed && cracking) || turning) {
+        // The crack axes become the principal axes of this strain: at the first crack, and
+        // every step while they still turn. Turning, each axis takes the principal direction
+        // nearest to it, so that each plane's history stays with its own direction.
+        float3x3 aligned = axes;
+        float3 values = principal;
+        if (framed) {
+            bool used[3] = {false, false, false};
+            for (int i = 0; i < 3; ++i) {
+                int best = -1;
+                for (int k = 0; k < 3; ++k) {
+                    if (!used[k] && (best < 0 || fabs(axes[k][i]) > fabs(axes[best][i]))) {
+                        best = k;
+                    }
+                }
+                used[best] = true;
+                aligned[i] = axes[best][i] < 0.0f ? -axes[best] : axes[best];
+                values[i] = principal[best];
+            }
+        }
+        if (determinant(aligned) < 0.0f) {
+            aligned[2] = -aligned[2];
+        }
+        frame = frame * aligned;
+        framed = true;
+        strain = transpose(aligned) * strain * aligned;
+        effective = transpose(aligned) * effective * aligned;
+        normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
+        principal = values;
+        axes = float3x3(1.0f);
+        // They stop turning once a crack has opened, its tension softened through a tenth of
+        // the softening strain, or once the concrete has crushed past its peak: a crushed
+        // axis turning with the stress would carry its crushing to directions that never saw
+        // it. (With fixed cracks, at once.) Left turning through the whole softening, cracks
+        // in a slab held down at its supports followed the stress round in the rebound
+        // until no axis carried tension, and the slab came apart.
+        float3 crushed = float3(state.crushStrain);
+        bool fix = worst > onset + 0.1f * m.crackSoftening
+            || max(crushed.x, max(crushed.y, crushed.z)) > m.crushPeak;
+        float4 q = quaternionOf(frame);
+        q = (q.w < 0.0f) == fix ? -q : q;
+        if (q.w == 0.0f) {
+            q.w = fix ? 0.0f : -0.0f;
+        }
+        state.crackFrame = packed_half4(half4(q));
+    }
+    // Not in an element with a mortar joint: its strain is mostly the joint's opening and
+    // sliding, which says nothing of the stress in the unit beside it; inclined cracking
+    // there is left to the second crack, which goes by the stress.
+    // Bars spread cracking along their length, so a crack across them softens over the crack
+    // spacing; a crack that no bar crosses, such as one splitting a beam along its bars,
+    // gathers in one row of elements and softens over that. A plane counts as crossed in
+    // full once its normal is within 45 degrees of an axis the body has bars on, which
+    // leaves bending and shear cracks as they were, and in part nearer to lying along
+    // the bars.
+    if (u.barAxes != 7u && m.crackSofteningAlone != m.crackSoftening) {
+        for (int i = 0; i < 3; ++i) {
+            if (((joints >> i) & 1u) == 0u) {
+                float3 normal = frame[i] * frame[i];
+                float crossed = ((u.barAxes & 1u) != 0u ? normal.x : 0.0f)
+                    + ((u.barAxes & 2u) != 0u ? normal.y : 0.0f) + ((u.barAxes & 4u) != 0u ? normal.z : 0.0f);
+                planeSoftening[i] = mix(m.crackSofteningAlone, m.crackSoftening, min(2.0f * crossed, 1.0f));
+                planeBand[i] = mix(u.h, m.crackBand, min(2.0f * crossed, 1.0f));
+            }
+        }
+    }
+    for (int i = 0; i < 3 && joints == 0u; ++i) {
+        float3 weight = axes[i] * axes[i];
+        float seen = dot(weight, history);
+        if (principal[i] > seen && principal[i] > onset) {
+            history += (principal[i] - seen) * weight / dot(weight, weight);
+        }
+    }
+
+    float volumetric = normalStrain.x + normalStrain.y + normalStrain.z;
+    float3 uniaxial = ((1.0f - 2.0f * poisson) * normalStrain + poisson * volumetric)
+        / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
+    history = max(history, uniaxial);
+    state.crackStrain = history;
+    if (nonlocalCracking && joints == 0u) {
+        // A crack softens by its inelastic strain averaged over the 2r + 1 elements across its
+        // band, along the lattice axis nearest its normal (as of the previous substep), its
+        // fracture energy spread over that band: the same per crack whether the opening is
+        // spread over the band or gathered in one element, which then softens no faster than
+        // the band would (a nonlocal crack band, after Bazant and Jirasek, 2002).
+        float3 opened = float3(0.0f);
+        int nearest[3];
+        for (int i = 0; i < 3; ++i) {
+            float3 n = abs(frame[i]);
+            nearest[i] = n.x >= n.y && n.x >= n.z ? 0 : (n.y >= n.z ? 1 : 2);
+            opened[nearest[i]] = max(opened[nearest[i]], max(history[i] - planeOnset[i], 0.0f));
+        }
+        crackOut[compact] = float4(opened, 0.0f);
+        int3 dims = int3(u.ex, u.ey, u.ez);
+        int r = int(u.crackReach);
+        for (int i = 0; i < 3; ++i) {
+            float inelastic = max(history[i] - planeOnset[i], 0.0f);
+            if (inelastic <= 0.0f) {
+                continue;
+            }
+            int a = nearest[i];
+            float sum = opened[a];
+            float count = 1.0f;
+            for (int offset = -r; offset <= r; ++offset) {
+                int3 cell = int3(tid);
+                cell[a] += offset;
+                if (offset == 0 || cell[a] < 0 || cell[a] >= dims[a]) {
+                    continue;
+                }
+                int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                uint neighbour = cellElement[other];
+                if (wholeThisPass(flags[other])
+                    && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
+                    sum += crackBefore[neighbour][a];
+                    count += 1.0f;
+                }
+            }
+            // G_f / f_t, from the plane's own band and decay strain, spread over the band.
+            float energy = (planeSoftening[i] + 0.5f * m.crackOnset) * planeBand[i];
+            float decay = max(energy / (count * u.h) - 0.5f * m.crackOnset, 0.5f * m.crackOnset);
+            planeSoftening[i] = decay * inelastic / max(sum / count, 1e-12f);
+        }
+    }
+    float crack = max(history.x, max(history.y, history.z));
+    // A crack keeps a residual opening, and compression develops only once that has closed.
+    float3 stored = float3(state.crackResidual);
+    float3 residual = float3(
+        settledResidualOver(stored.x, history.x, uniaxial.x, planeFactor.x, planeSoftening.x, m),
+        settledResidualOver(stored.y, history.y, uniaxial.y, planeFactor.y, planeSoftening.y, m),
+        settledResidualOver(stored.z, history.z, uniaxial.z, planeFactor.z, planeSoftening.z, m));
+    // A crack that has slid cannot close: its faces ride up on each other's aggregate
+    // (dilatancy), so it keeps at least `crackDilatancy` times its slip open, as of the last
+    // step. Like the residual above, this never rises past the plane's own strain.
+    if (u.crackSlip != 0 && !turning && joints == 0u && m.crackDilatancy > 0.0f) {
+        float3 slid = abs(float3(state.jointSlip));  // xy, yz, zx
+        float3 across = float3(length(float2(slid.x, slid.z)), length(float2(slid.x, slid.y)),
+                               length(float2(slid.y, slid.z)));
+        for (int j = 0; j < 3; ++j) {
+            if (history[j] > planeOnset[j]) {
+                // Below the largest opening reached, which the reloading line runs up to.
+                float held = min(m.crackDilatancy * across[j], min(uniaxial[j], 0.9f * history[j]));
+                residual[j] = max(residual[j], held);
+            }
+        }
+    }
+    state.crackResidual = residual;
+    float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
+    float3 crush = max(float3(state.crushStrain), squeeze);
+    float3 softening = crush;
+    state.crushStrain = crush;
+    state.plasticStrain = max(crush.x, max(crush.y, crush.z));
+
+    // Normal stresses follow the uniaxial curves. An open crack unloads to its residual
+    // strain, after which its faces bear on each other and compression is recovered.
+    //
+    // Concrete squeezed from the sides is stronger: each axis gains 4.1 times the smaller of
+    // the compressive stresses the other two axes supply (Richart, Brandtzaeg and Brown,
+    // 1928), capped at the unconfined strength.
+    float unconfined = m.compressiveStrength * compressionFactor;
+    // The factor follows its target through the same running average as the strain rate:
+    // applied instantly, the coupling between axes would be several times stiffer than the
+    // elastic solid and would outrun the explicit time step.
+    float3 gain = float3(state.confinementGain);
+    float blend = clamp(dt * u.rateFilter, 0.0f, 1.0f);
+    float3 confinement = float3(1.0f);
+    float3 normalStress;
+    float crushed = 0.0f;
+    bool pulverised = false;
+    for (int j = 0; j < 3; ++j) {
+        if (squeeze[j] <= 0.0f) {
+            normalStress[j] = concreteTensionOver(uniaxial[j], history[j], residual[j], planeFactor[j],
+                                                  planeSoftening[j], m);
+            continue;
+        }
+        confinement[j] = 1.0f + gain[j];
+        normalStress[j] = concreteCompression(squeeze[j], crush[j], softening[j], compressionFactor,
+                                              confinement[j], m);
+        float2 limits = crushStrains(compressionFactor, confinement[j], m);
+        float driving = squeeze[j];
+        crushed = max(crushed, clamp((driving - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
+        pulverised = pulverised || driving >= limits.y + m.crushErosion * (limits.y - limits.x);
+    }
+    // The support is the compression the other axes carry, as of this step. Estimated from
+    // their strain as if elastic, it counted an axis crushed and unloaded, carrying nothing
+    // over its permanent shortening, as full support: the face under a close-in charge,
+    // crushed through its depth by the shock, then held 60-80 MPa across the face for
+    // milliseconds with nothing pressing on it, three times its static strength. Every axis's
+    // factor follows its target, so that one in tension does not keep a stale one.
+    float3 lateral = clamp(-normalStress, 0.0f, unconfined);
+    for (int j = 0; j < 3; ++j) {
+        float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
+        gain[j] += blend * (m.confinement * support / unconfined - gain[j]);
+    }
+    state.confinementGain = gain;
+
+    // With `pressedInterlock`, a crack that slides rides up on its aggregate, and where it is
+    // held from opening, its faces press together: by Walraven and Reinhardt's fit (eq. 1b),
+    // sigma = C_sigma(w) delta - f_cc / 20 for a crack w mm open slid by delta mm. Only on open
+    // cracks: one whose faces already bear carries its compression by the law above. The
+    // opening is the plane's present one, from its normal strain alone, and the slide its
+    // two shear strains, each over the plane's band.
+    float cube = m.compressiveStrength / 0.8e6f;
+    float3 openNow = float3(0.01f);  // each cracked plane's present opening, mm
+    if (u.pressedInterlock != 0 && joints == 0u && !turning) {
+        for (int i = 0; i < 3; ++i) {
+            if (history[i] <= planeOnset[i]) {
+                continue;
+            }
+            openNow[i] = max((uniaxial[i] - planeOnset[i]) * planeBand[i] * 1000.0f, 0.01f);
+            if (squeeze[i] > 0.0f) {
+                continue;
+            }
+            float2 slide = 2.0f * float2(strain[(i + 1) % 3][i], strain[i][(i + 2) % 3]);
+            float delta = length(slide) * planeBand[i] * 1000.0f;
+            float2 slopes = walravenSlopes(openNow[i], cube);
+            normalStress[i] -= max(slopes.y * delta - cube / 20.0f, 0.0f) * 1e6f;
+        }
+    }
+
+    // Shear across cracked planes is carried by aggregate interlock, which weakens as the
+    // crack widens (Vecchio and Collins, modified compression field theory), and by the
+    // bars that cross the crack.
+    float3 barRatio = float3(steel[compact].ratio);
+    float3x3 crackRate = workTraced ? transpose(frame) * strainRate * frame : float3x3(0.0f);
+    if (workTraced) {
+        for (int j = 0; j < 3; ++j) {
+            float2 limits = crushStrains(compressionFactor, confinement[j], m);
+            float cracked = (history[j] - planeOnset[j]) * planeBand[j];
+            uint channel = normalStress[j] >= 0.0f
+                ? (cracked >= 1e-4f ? workTensionCracked : cracked > 0.0f ? workTensionHairline : workTensionNormal)
+                : (crush[j] > limits.x ? workCompressionCrushed : workCompressionNormal);
+            power[channel] += normalStress[j] * crackRate[j][j];
+        }
+    }
+    float3 shearStress;  // xy, yz, zx
+    for (int pair = 0; pair < 3; ++pair) {
+        int a = pair;
+        int b = (pair + 1) % 3;
+        float engineering = 2.0f * strain[b][a];
+        // Along a mortar joint the shear is that of the strain less what has slid; so, with
+        // `crackSlip`, across a crack whose axes have stopped turning.
+        bool jointed = (((joints >> a) | (joints >> b)) & 1u) != 0u;
+        bool slides = jointed || (u.crackSlip != 0 && !turning);
+        float slip = slides ? state.jointSlip[pair] : 0.0f;
+        float stress = m.mu * (engineering - slip);
+        float3 opening = history - planeOnset;
+        float opened = max(opening[a], opening[b]);
+        // The cap's parts, for the work trace: interlock, dowel action and kinking.
+        float3 capParts = float3(0.0f);
+        bool capped = false;
+        if (opened > 0.0f) {
+            // Its width as the crack's own: one gathered in a row of elements is as wide as
+            // its opening over that row, not over the crack spacing.
+            float band = opening[a] >= opening[b] ? planeBand[a] : planeBand[b];
+            float width = opened * band;
+            float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
+            // Pressed, a crack carries more: eqs. 1a and 1b together give C_tau / C_sigma more
+            // shear for each unit of stress across it, up to half the concrete's compressive
+            // strength. (The modified compression field theory's v_max, the cap over 0.18,
+            // held the most restrained push-off specimen to 6.3 MPa where it carried 9.9.)
+            if (u.pressedInterlock != 0 && joints == 0u) {
+                int pressedPlane = opening[a] >= opening[b] ? a : b;
+                float pressure = max(-normalStress[pressedPlane], 0.0f);
+                float2 slopes = walravenSlopes(openNow[pressedPlane], cube);
+                interlock = min(interlock + slopes.x / slopes.y * pressure, max(interlock, 0.5f * unconfined));
+            }
+            capParts.x = interlock;
+            // The crack's shear stiffness: a fixed share of the concrete's.
+            float retention = m.shearRetention;
+            // The wider-open of the two planes is the crack that slides; the bars along its
+            // normal cross it.
+            int across = opening[a] >= opening[b] ? a : b;
+            // Bars along lattice axis j cross a crack of unit normal n in proportion to |n_j|;
+            // the most nearly crossing set ruptures if kinked too far.
+            float3 normal = frame[across];
+            float crossing = 0.0f;
+            int crossingAxis = 0;
+            for (int j = 0; j < 3; ++j) {
+                if (fabs(state.steelPlastic[j]) < 1e8f) {
+                    crossing += barRatio[j] * fabs(normal[j]);
+                }
+                if (barRatio[j] * fabs(normal[j]) > barRatio[crossingAxis] * fabs(normal[crossingAxis])) {
+                    crossingAxis = j;
+                }
+            }
+            uint inclinedSet = steel[compact].inclinedAxes;
+            if (inclinedSet != 0u && fabs(state.inclinedPlastic) < 1e8f) {
+                crossing += float(steel[compact].inclined) * fabs(dot(inclinedDirection(inclinedSet), normal));
+            }
+            if (crossing > 0.0f) {
+                // Dowel action: each bar resists 1.3 d^2 sqrt(fc fy) of sliding (Rasmussen,
+                // 1963), which over the bars crossing a unit area is 1.65 rho sqrt(fc fy).
+                float yield = m.steelStress[0];
+                interlock += m.dowelFactor * 1.65f * crossing * sqrt(m.compressiveStrength * yield);
+                capParts.y = interlock - capParts.x;
+                // Kinking: slid by s, a bar debonded over a length L either side of the crack
+                // is stretched to sqrt(1 + (s/L)^2) - 1, and its tension leans along the
+                // slide. Stretched past rupture by it, the bars there have broken.
+                float slide = fabs(engineering) * u.h / max(m.crackBand, u.h);
+                float stretch = sqrt(1.0f + slide * slide) - 1.0f;
+                float elastic = yield / m.steelModulus;
+                float plasticStretch = stretch - elastic;
+                if (plasticStretch > m.steelStrain[m.steelPoints - 1]) {
+                    state.steelPlastic[crossingAxis] = 1e9f;  // ruptured for good
+                } else {
+                    float slope;
+                    float tension = stretch <= elastic ? m.steelModulus * stretch
+                                                       : steelYield(plasticStretch, m, slope);
+                    interlock += crossing * tension * slide / sqrt(1.0f + slide * slide);
+                    capParts.z = interlock - capParts.x - capParts.y;
+                }
+            }
+            float trial = retention * stress;
+            stress = clamp(trial, -interlock, interlock);
+            capped = trial != stress;
+            // A crack slid past what interlock and dowels hold has slid for good: the faces
+            // ride over, grind and jam, and do not spring back. Without this the crack was a
+            // nonlinear spring that returned all the work of sliding, and a beam hinged on a
+            // diagonal crack sprang back past where it started.
+            if (slides && !jointed && trial != stress) {
+                slip += (trial - stress) / (retention * m.mu);
+            }
+        }
+        // A mortar joint slides by Coulomb friction: along it the shear is held to the
+        // joint's cohesion, which is lost with its bond as it opens or slides, plus friction
+        // on whatever presses it shut; an open joint carries none. What the joint cannot
+        // hold, it slides by, for good: taking the shear from the strain alone, capped,
+        // returned the work of sliding and more when the pressure on the joint rose in
+        // between, and a cracked wall shook itself apart. Sliding wears the joint as opening
+        // does, up to the loss of all its cohesion but never to its removal.
+        if (jointed) {
+            float hold = 1e30f;
+            for (int side = 0; side < 2; ++side) {
+                int p = side == 0 ? a : b;
+                if (((joints >> p) & 1u) != 0u) {
+                    float worn = max(history[p] - planeOnset[p], 0.0f);
+                    hold = min(hold, m.jointCohesion * exp(-worn / planeSoftening[p])
+                                         + m.jointFriction * max(-normalStress[p], 0.0f));
+                }
+            }
+            if (fabs(stress) > hold) {
+                float held = clamp(stress, -hold, hold);
+                float moved = (stress - held) / ((opened > 0.0f ? m.shearRetention : 1.0f) * m.mu);
+                slip += moved;
+                stress = held;
+                for (int side = 0; side < 2; ++side) {
+                    int p = side == 0 ? a : b;
+                    if (((joints >> p) & 1u) != 0u) {
+                        float limit = planeOnset[p]
+                            + min(5.0f * planeSoftening[p], 0.5f * (m.erosionStrain - planeOnset[p]));
+                        float worn = max(history[p], planeOnset[p]) + fabs(moved) * m.jointSlipDamage;
+                        history[p] = max(history[p], min(worn, limit));
+                    }
+                }
+            }
+        }
+        if (slides) {
+            state.jointSlip[pair] = slip;
+        } else if (u.crackSlip != 0) {
+            state.jointSlip[pair] = 0.0f;  // turning axes: no slip in axes that move
+        }
+        shearStress[pair] = stress;
+        if (workTraced) {
+            float shearPower = stress * 2.0f * crackRate[b][a];
+            // Pressed shut: compression across the wider-open of the two planes.
+            bool pressed = normalStress[opening[a] >= opening[b] ? a : b] < 0.0f;
+            if (opened <= 0.0f || jointed) {
+                power[workUncrackedShear] += shearPower;
+            } else if (!capped) {
+                power[pressed ? workCrackShearPressed : workCrackShear] += shearPower;
+            } else {
+                float total = max(capParts.x + capParts.y + capParts.z, 1e-30f);
+                power[pressed ? workInterlockPressed : workInterlock] += shearPower * capParts.x / total;
+                power[workDowel] += shearPower * capParts.y / total;
+                power[workKink] += shearPower * capParts.z / total;
+            }
+        }
+    }
+    if (joints != 0u) {
+        state.crackStrain = history;
+    }
+    float3x3 material = float3x3(float3(normalStress.x, shearStress.x, shearStress.z),
+                                 float3(shearStress.x, normalStress.y, shearStress.y),
+                                 float3(shearStress.z, shearStress.y, normalStress.z));
+    // A second crack. Once the crack axes are fixed, tension that turns away from them is
+    // carried across the cracked planes by their shear, which aggregate interlock holds up
+    // to more than the tensile strength: the stress locks, and a cracked element pulled at
+    // 45 degrees to its crack keeps half its tensile strength however far it is stretched.
+    // Where the concrete's principal tension passes its tensile strength more than 30
+    // degrees from every crack axis, a second crack forms across it, fixed from then on. Its
+    // opening is a strain of its own, taken out of the strain the rest of the concrete
+    // sees (above), and set each step so that the concrete's stress across it is what the
+    // crack carries at that opening (the multi-directional fixed crack of de Borst and
+    // Nauta). This step's stress is corrected for the change in opening elastically; the
+    // next step's sees it in full.
+    if (u.secondCracks != 0 && framed && !turning) {
+        float4 second = float4(state.secondCrack);
+        if (second.w == 0.0f) {
+            float3 values;
+            float3x3 directions;
+            symmetricEigen(material, values, directions);
+            int major = values.x >= values.y ? (values.x >= values.z ? 0 : 2) : (values.y >= values.z ? 1 : 2);
+            float3 normal = directions[major];
+            float3 cosines = abs(normal);
+            if (values[major] > m.tensileStrength * tensionFactor
+                && max(cosines.x, max(cosines.y, cosines.z)) < secondCrackCosine) {
+                second = float4(normal, 1.0f);
+                state.secondCrack = packed_half4(half4(second));
+                state.secondOpening = 0.0f;
+                state.secondHistory = 0.0f;
+            }
+        }
+        if (second.w != 0.0f) {
+            float3 normal = normalize(second.xyz);
+            float stiffness = m.lambda + 2.0f * m.mu;
+            float opened = state.secondOpening;
+            float e = secondCrackOpening(dot(normal, material * normal), opened, state.secondHistory, stiffness,
+                                         tensionFactor, m);
+            state.secondOpening = e;
+            state.secondHistory = max(state.secondHistory, e);
+            float3x3 outer = float3x3(normal * normal.x, normal * normal.y, normal * normal.z);
+            material -= (e - opened) * (m.lambda * float3x3(1.0f) + 2.0f * m.mu * outer);
+            crack = max(crack, state.secondHistory + onset);
+        }
+    }
+    if (framed) {
+        material = frame * material * transpose(frame);
+    }
+    // Under very high pressure the pores collapse: the concrete's mean stress is never less
+    // compressive than the compaction curve gives, whatever its strength laws say. Only
+    // where it is confined, squeezed on every axis by at least a fifth of the most (as in
+    // the uniaxial strain of a shock, a quarter): squeezed from one side alone, concrete
+    // dilates as it crushes, which this model does not represent, so its volume change says
+    // nothing about its pores.
+    float mu = referenceVolume / volume - 1.0f;
+    bool confined = max(normalStress.x, max(normalStress.y, normalStress.z))
+        < 0.2f * min(normalStress.x, min(normalStress.y, normalStress.z));
+    // It takes over only where the confined pressure passes the unconfined strength, beyond
+    // which the strength laws above are not meant to go; below that they already describe
+    // concrete squeezed by an ordinary blast (starting at the curve's own crushing
+    // pressure, fc / 3, doubled the deflection of a wall 8 m from 500 kg).
+    float bulk = m.lambda + 2.0f * m.mu / 3.0f;
+    float crushPressure = m.compressiveStrength / 3.0f;
+    float crushStrain = crushPressure / bulk;
+    float crushVolume = crushStrain
+        + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain) / (0.8e9f - crushPressure);
+    if (compactionScale(bulk) < 1.0f) {
+        crushVolume = crushStrain
+            + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain)
+                / (compactionScale(bulk) * (0.8e9f - crushPressure));
+    }
+    // In a material softer than structural concrete, the compaction counts from the volume an
+    // element had when it was confined: what it lost being crushed from fewer sides, past the
+    // curve's onset, says nothing of its pores (as above). Counted from its undeformed volume,
+    // blockwork crushed unconfined to mu = 0.4 that was then pressed from every side jumped
+    // from a few MPa to several GPa in one step and flung its nodes at hundreds of metres a
+    // second. (Structural concrete is left as it was until the concrete cases decide it.)
+    if (!confined && compactionScale(bulk) < 1.0f) {
+        state.compactionStart = mu > crushVolume ? mu : 0.0f;
+    }
+    float pores = mu - state.compactionStart;
+    if (confined && pores > crushVolume) {
+        state.compaction = max(state.compaction, pores);
+    }
+    // While confined, once it has passed that, an element follows the curve.
+    // (Following it afterwards too, once the element was cracking and bending, pressed open
+    // cracks shut and weakened a wall that had been briefly squeezed by the shock.)
+    if (confined && pores > 0.0f && state.compaction > crushVolume) {
+        float compacted = compactionPressure(pores, state.compaction, bulk, m.compressiveStrength);
+        float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
+        if (compacted > pressure) {
+            float shift = pressure - compacted;
+            material[0][0] += shift;
+            material[1][1] += shift;
+            material[2][2] += shift;
+        }
+    }
+
+    // Bare: the concrete is gone, and only the bars below carry.
+    if (bare) {
+        material = float3x3(0.0f);
+    }
+    if (workTraced) {
+        // What the parts above leave of the concrete's work goes to the rest.
+        float concrete = 0.0f;
+        for (int c = 0; c < 3; ++c) {
+            concrete += dot(material[c], strainRate[c]);
+        }
+        if (bare) {
+            for (uint c = 0; c < workChannels; ++c) {
+                power[c] = 0.0f;
+            }
+        }
+        float parts = 0.0f;
+        for (uint c = 0; c < workChannels; ++c) {
+            parts += power[c];
+        }
+        power[workOther] = concrete - parts;
+    }
+    ConcreteLawResult result;
+    result.material = material;
+    result.history = history;
+    result.normalStress = normalStress;
+    result.confinement = confinement;
+    result.planeOnset = planeOnset;
+    result.planeFactor = planeFactor;
+    result.planeSoftening = planeSoftening;
+    result.onset = onset;
+    result.crack = crack;
+    result.crushed = crushed;
+    result.pulverised = pulverised;
+    return result;
+}
+
+// The smeared bars along lattice axis `j` of element `compact`, stretched by `barStrain[j]`: their
+// stress (`stress`, `root` and `yield` as `smearedBar` gives them) and plastic strain, and whether
+// they are intact, or ruptured (their plastic strain then 1e9 for good).
+static inline __attribute__((always_inline)) bool axisBar(
+    int j, float3 barStrain, thread float3 &plastic, thread float &stress, thread float &root, thread float &yield,
+    thread const ElementState &state, float3 axisRate, uint3 tid, uint compact, constant MaterialParameters &m,
+    constant StructureUniforms &u, const device ElementSteel *steel, device uchar *flags,
+    const device uint *cellElement, device BarHistory *bars, const device float4 *plasticBefore,
+    const device float4 *barRateBefore) {
+    float own = plastic[j];
+    // A bar strains at the rate of its debonded length, not of the one element a crack
+    // runs through, whose rate grows as the mesh is refined.
+    float barRate = state.strainRate;
+    if (m.barReach > 0.0f) {
+        int3 dims = int3(u.ex, u.ey, u.ez);
+        int r = int(ceil(m.barReach - 0.5f));
+        float sum = axisRate[j];
+        float weights = 1.0f;
+        for (int offset = -r; offset <= r; ++offset) {
+            int3 cell = int3(tid);
+            cell[j] += offset;
+            if (offset == 0 || cell[j] < 0 || cell[j] >= dims[j]) {
+                continue;
+            }
+            int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+            uint compactOther = cellElement[other];
+            if (carriesBars(flags[other]) && steel[compactOther].ratio[j] > 0.0f) {
+                float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
+                sum += weight * barRateBefore[compactOther][j];
+                weights += weight;
+            }
+        }
+        barRate = sum / weights;
+    }
+    stress = smearedBar(barStrain[j], own, bars[4 * compact + uint(j)], barRate, m, root, yield);
+    plastic[j] = own;
+    // A bar slips in its concrete either side of a crack, so it is strained by the crack's
+    // opening spread over a debonded length, not over the one element the crack happens
+    // to run through. Its stress follows its own strain, but it ruptures when its plastic
+    // strain averaged along its axis over that length (from the previous substep's
+    // neighbours that still carry bars that way) passes the rupture strain.
+    // The window is exactly the debonded length: elements at its ends count in part.
+    float spread = plastic[j];
+    if (m.barReach > 0.0f) {
+        int3 dims = int3(u.ex, u.ey, u.ez);
+        int r = int(ceil(m.barReach - 0.5f));
+        float sum = plastic[j];
+        float weights = 1.0f;
+        for (int offset = -r; offset <= r; ++offset) {
+            int3 cell = int3(tid);
+            cell[j] += offset;
+            if (offset == 0 || cell[j] < 0 || cell[j] >= dims[j]) {
+                continue;
+            }
+            int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+            uchar flag = flags[other];
+            uint compactOther = cellElement[other];
+            float neighbour = carriesBars(flag) ? plasticBefore[compactOther][j] : 0.0f;
+            float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
+            if (carriesBars(flag) && steel[compactOther].ratio[j] > 0.0f
+                && fabs(neighbour) < 1e8f) {
+                sum += weight * neighbour;
+                weights += weight;
+            }
+        }
+        spread = sum / weights;
+    }
+    if (fabs(spread) > m.steelStrain[m.steelPoints - 1]) {
+        plastic[j] = 1e9f;  // ruptured for good
+        return false;
+    }
+    return true;
+}
+
+// The inclined bars of element `compact`, stretched by `inclinedStrain` along them: whether they
+// are intact, adding their yield to `steelCapacity` and their second Piola-Kirchhoff stress to
+// `material`, and their plastic strain in `state` (1e9 once ruptured).
+static inline __attribute__((always_inline)) bool inclinedBars(
+    float inclinedStrain, float inclinedRatio, uint inclinedAxes, float3 inclined, thread ElementState &state,
+    thread float3x3 &material, thread float &steelCapacity, float3x3 strainRate, uint3 tid, uint compact,
+    constant MaterialParameters &m, constant StructureUniforms &u, const device ElementSteel *steel,
+    device uchar *flags, const device uint *cellElement, device BarHistory *bars,
+    const device float4 *plasticBefore, thread float *power) {
+    bool inclinedIntact = false;
+    if (inclinedRatio > 0.0f && inclinedAxes != 0u && fabs(state.inclinedPlastic) < 1e8f) {
+        float root;
+        float yield;
+        float own = state.inclinedPlastic;
+        float stress = smearedBar(inclinedStrain, own, bars[4 * compact + 3u],
+                                  state.strainRate, m, root, yield);
+        float spread = own;
+        if (m.barReach > 0.0f) {
+            float reach = m.barReach * 0.70710678f;
+            int r = int(ceil(reach - 0.5f));
+            int3 step = int3(round(inclined * 1.41421356f));
+            int3 dims = int3(u.ex, u.ey, u.ez);
+            float sum = own;
+            float weights = 1.0f;
+            for (int offset = -r; offset <= r; ++offset) {
+                int3 cell = int3(tid) + offset * step;
+                if (offset == 0 || any(cell < 0) || any(cell >= dims)) {
+                    continue;
+                }
+                int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                uchar flag = flags[other];
+                uint compactOther = cellElement[other];
+                float weight = clamp(reach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
+                if (carriesBars(flag) && steel[compactOther].inclinedAxes == inclinedAxes
+                    && float(steel[compactOther].inclined) > 0.0f && fabs(plasticBefore[compactOther].w) < 1e8f) {
+                    sum += weight * plasticBefore[compactOther].w;
+                    weights += weight;
+                }
+            }
+            spread = sum / weights;
+        }
+        if (fabs(spread) > m.steelStrain[m.steelPoints - 1]) {
+            own = 1e9f;  // ruptured for good
+        } else {
+            inclinedIntact = true;
+            steelCapacity += inclinedRatio * yield;
+            float3x3 outer = float3x3(inclined * inclined.x, inclined * inclined.y, inclined * inclined.z);
+            material += outer * (inclinedRatio * stress / root);
+            if (workTraced) {
+                power[workBars] += inclinedRatio * stress / root * dot(inclined, strainRate * inclined);
+            }
+        }
+        state.inclinedPlastic = own;
+    }
+    return inclinedIntact;
+}
+
+// Whether a crack of a concrete point (its planes' largest openings `history` in `frame`, and a
+// second crack) is wide enough to count as a gap that no intact bars bridge, in the element or
+// along the crack's plane through the section (see the element kernel).
+static inline __attribute__((always_inline)) bool crackTorn(
+    thread const ElementState &state, float3 history, float3x3 frame, bool framed, bool turning, float onset,
+    float3 intact, bool inclinedIntact, float3 inclined, uint joints, uint3 tid, uchar own,
+    constant MaterialParameters &m, constant StructureUniforms &u, const device ElementSteel *steel,
+    device uchar *flags, const device uint *cellElement, const device uchar *materialIndex,
+    const device float4 *plasticBefore) {
+    bool torn = false;
+    float4 second = float4(state.secondCrack);
+    bool hasSecond = u.secondCracks != 0 && framed && !turning && second.w != 0.0f;
+    for (int c = 0; c < (hasSecond ? 4 : 3) && !torn; ++c) {
+        float reached = c < 3 ? history[c] : state.secondHistory + onset;
+        // An open mortar joint is the gap itself, and its element stays to bear on it when
+        // it shuts again, as a wall rocking on the joint does; it goes only once the joint
+        // has opened, or slid, by half an element.
+        bool joint = c < 3 && ((joints >> c) & 1u) != 0u;
+        if (reached < (joint ? max(m.erosionStrain, 0.5f) : m.erosionStrain)) {
+            continue;
+        }
+        // Intact inclined bars across the crack bridge it.
+        float3 crackNormal = c < 3 ? frame[c] : frame * normalize(second.xyz);
+        if (inclinedIntact && fabs(dot(inclined, crackNormal)) >= 0.5f) {
+            continue;
+        }
+        // The lattice axis most nearly across the crack carries the bars that cross it; the
+        // section is searched along the other two.
+        float3 normal = abs(crackNormal);
+        int j = normal.x >= normal.y && normal.x >= normal.z ? 0 : (normal.y >= normal.z ? 1 : 2);
+        if (intact[j] != 0.0f) {
+            continue;
+        }
+        bool bridged = false;
+        int3 dims = int3(u.ex, u.ey, u.ez);
+        for (int side = 1; side < 3 && !bridged; ++side) {
+            int axis = (j + side) % 3;
+            for (int direction = -1; direction <= 1 && !bridged; direction += 2) {
+                int3 cell = int3(tid);
+                for (int step = 0; step < 32; ++step) {
+                    cell[axis] += direction;
+                    if (cell[axis] < 0 || cell[axis] >= dims[axis]) {
+                        break;
+                    }
+                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
+                    uchar flag = flags[other];
+                    if (!carriesBars(flag)) {
+                        break;  // the member's surface
+                    }
+                    uint neighbour = cellElement[other];
+                    if (!singleMaterial && (materialIndex[neighbour] & uchar(15)) != own) {
+                        break;  // another member: masonry is not held by its frame's bars
+                    }
+                    if (float(steel[neighbour].ratio[j]) > 0.0f
+                        && (m.barReach <= 0.0f || fabs(plasticBefore[neighbour][j]) < 1e8f)) {
+                        bridged = true;
+                        break;
+                    }
+                }
+            }
+        }
+        torn = !bridged;
+    }
+    return torn;
+}
+
 kernel void structureElements(device ElementState *states [[buffer(0)]],
                               device ElementForces *forces [[buffer(1)]],
                               device uchar *flags [[buffer(2)]],
@@ -1009,6 +1992,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                               device float4 *barRateOut [[buffer(26)]],
                               const device float4 *barRateBefore [[buffer(27)]],
                               device float *work [[buffer(28)]],
+                              device CrackedElement *crackedElements [[buffer(29)]],
+                              device CrackedPoint *crackedPoints [[buffer(30)]],
                               uint threadIndex [[thread_position_in_grid]]) {
     // Threads run over the list of elements the body started with, not the whole lattice.
     bool active;
@@ -1047,6 +2032,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     // its rate.
     float3 slipChange = float3(0.0f);
     float3 slipChangeRate = float3(0.0f);
+    // With `crackedHex`, the hourglass modes' sums of the displacements (`crackedAmplitudes`).
+    float3 crackedSums[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
     for (uint a = 0; a < 8; ++a) {
         uint3 corner = tid + uint3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
         uint cornerNode = nodeMap[corner.x + nodesX * (corner.y + nodesY * corner.z)];
@@ -1065,6 +2052,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         g0 += displacement * s.x;
         g1 += displacement * s.y;
         g2 += displacement * s.z;
+        if (crackedHex) {
+            crackedSums[0] += s.y * s.z * displacement;
+            crackedSums[1] += s.x * s.z * displacement;
+            crackedSums[2] += s.x * s.y * displacement;
+            crackedSums[3] += s.x * s.y * s.z * displacement;
+        }
     }
 
     // Jacobian of the isoparametric map at the element centre; its columns are dx/dxi_j.
@@ -1139,6 +2132,79 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         power[c] = 0.0f;
     }
 
+    // With `crackedHex`, whether this element works at its eight points (see `CrackedElement`), its
+    // slot in the pool, and, once it does, its first Piola-Kirchhoff stress summed over its points
+    // (times their volumes), its corotational frame and its modes' generalised forces in that frame.
+    bool switched = false;
+    uint crackedSlot = crackedNone;
+    float3x3 crackedStress = float3x3(0.0f);
+    float3x3 crackedFrame = float3x3(1.0f);
+    float3 crackedModes[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
+    if (crackedHex && m.materialModel == 1u && joints == 0u && !bare && !flattened && !nonlocalCracking) {
+        crackedSlot = crackedElements[1u + compact].slot;
+        switched = crackedSlot != crackedNone;
+        if (!switched) {
+            // It switches the first time any of its points would leave the elastic range, judged
+            // by the strain rate and cracks as of the last step.
+            float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
+            float3x3 rotation = crackedRotation(float3x3(1.0f) + gradient);
+            float3 local[4];
+            crackedAmplitudes(local, crackedSums, rotation);
+            float tensionFactor =
+                state.crackingFactor > 0.0f ? state.crackingFactor : tensionIncrease(state.strainRate, m);
+            float onset = m.crackOnset * tensionFactor;
+            float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
+            float worst = max(state.crackStrain[0], max(state.crackStrain[1], state.crackStrain[2]));
+            if (worst > onset) {
+                poisson *= tensionEnvelope(worst, tensionFactor, m) / (m.youngsModulus * worst);
+            }
+            float squeeze = 0.1f * m.crushPeak * compressionIncrease(state.strainRate, m);
+            // Most elements are far from it: the centre's strain, widened by a bound on how far
+            // the modes take any point from it, decides them. At a Gauss point (coordinates g =
+            // 1/sqrt 3) the modes' gradient is at most 2 sqrt 3 (2 / h) g sum |q| = (4 / h) sum |q|
+            // (Frobenius); the strain then moves by at most |dH| (1 + |H|) + |dH|^2 / 2, and its
+            // Poisson-free part by that times 1 / (1 + nu) + sqrt 3 nu / ((1 + nu) (1 - 2 nu)).
+            float reach = 0.0f;
+            for (uint mode = 0; mode < 4; ++mode) {
+                reach += length(local[mode]);
+            }
+            reach *= 4.0f / u.h;
+            float spread = (1.0f / (1.0f + poisson) + 1.7320508f * poisson / ((1.0f + poisson) * (1.0f - 2.0f * poisson)))
+                * (reach * (1.0f + sqrt(dot(gradient[0], gradient[0]) + dot(gradient[1], gradient[1])
+                                       + dot(gradient[2], gradient[2])))
+                   + 0.5f * reach * reach);
+            bool near = crackedLeavesElastic(0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient),
+                                             poisson, onset - spread, squeeze - spread, true);
+            bool leaves = false;
+            for (uint point = 0; point < 8 && near && !leaves; ++point) {
+                float3x3 h = crackedGradient(gradient, rotation, local, cornerSign(point) * 0.57735027f, 2.0f / u.h);
+                leaves = crackedLeavesElastic(0.5f * (h + transpose(h) + transpose(h) * h), poisson, onset, squeeze);
+            }
+            if (leaves) {
+                device atomic_uint *taken = (device atomic_uint *)crackedElements;
+                uint capacity = ((device const uint *)crackedElements)[1];
+                if (atomic_load_explicit(taken, memory_order_relaxed) < capacity) {
+                    uint slot = atomic_fetch_add_explicit(taken, 1u, memory_order_relaxed);
+                    if (slot < capacity) {
+                        // Each point starts from the centre's history; the hourglass control goes.
+                        crackedSlot = slot;
+                        crackedElements[1u + compact].slot = slot;
+                        for (uint point = 0; point < 8; ++point) {
+                            storeCrackedPoint(crackedPoints[8u * slot + point], state);
+                        }
+                        for (uint mode = 0; mode < 4; ++mode) {
+                            state.hourglass[mode] = float3(0.0f);
+                        }
+                        switched = true;
+                    }
+                }
+                if (!switched) {
+                    ((device uint *)crackedElements)[2] = 1u;  // the pool is full
+                }
+            }
+        }
+    }
+
     if (m.materialModel == 0) {
         // Jaumann rotation of the old stress, then the elastic trial increment.
         float3x3 sigma = float3x3(float3(state.stress[0], state.stress[3], state.stress[5]),
@@ -1181,6 +2247,219 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             power[workOther] = (sxx * dxx + syy * dyy + szz * dzz + 2.0f * (sxy * dxy + syz * dyz + szx * dzx))
                 * volume / referenceVolume;
         }
+    } else if (crackedHex && switched) {
+        // An element that bends in its cracked concrete (see `crackedHex`): the concrete law at
+        // each of its eight points, at the assumed strain there, and its bars at their own place.
+        float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
+        float3x3 latticeStrain = 0.5f * (gradient + transpose(gradient) + transpose(gradient) * gradient);
+        float3x3 deformation = float3x3(1.0f) + gradient;
+        float3x3 stretching = float3x3(float3(dxx, dxy, dzx), float3(dxy, dyy, dyz), float3(dzx, dyz, dzz));
+        float3x3 strainRate = workTraced ? transpose(deformation) * stretching * deformation : float3x3(0.0f);
+        // The strain rate and the bars' rates are the centre's, as for any element.
+        float instantaneous = sqrt((2.0f / 3.0f) * (dxx * dxx + dyy * dyy + dzz * dzz
+                                                     + 2.0f * (dxy * dxy + dyz * dyz + dzx * dzx)));
+        state.strainRate += clamp(dt * u.rateFilter, 0.0f, 1.0f) * (instantaneous - state.strainRate);
+        float3 axisRate = float3(0.0f);
+        if (m.barReach > 0.0f) {
+            float3 before = barRateBefore[compact].xyz;
+            axisRate = before + clamp(dt * u.rateFilter, 0.0f, 1.0f) * (abs(float3(dxx, dyy, dzz)) - before);
+            barRateOut[compact] = float4(axisRate, 0.0f);
+        }
+        device CrackedPoint *points = crackedPoints + 8u * crackedSlot;
+        // The tensile factor freezes when any point first cracks.
+        float worst = 0.0f;
+        for (uint point = 0; point < 8; ++point) {
+            float3 opened = float3(points[point].crackStrain);
+            worst = max(worst, max(opened.x, max(opened.y, opened.z)));
+        }
+        float tensionFactor = state.crackingFactor;
+        if (tensionFactor <= 0.0f) {
+            tensionFactor = tensionIncrease(state.strainRate, m);
+            if (worst > m.crackOnset * tensionFactor) {
+                state.crackingFactor = tensionFactor;
+            }
+        }
+        float compressionFactor = compressionIncrease(state.strainRate, m);
+        float onset = m.crackOnset * tensionFactor;
+        crackedFrame = crackedRotation(deformation);
+        float3 local[4];
+        crackedAmplitudes(local, crackedSums, crackedFrame);
+        float scale = 2.0f / u.h;
+        float weight = 0.125f * referenceVolume;
+        float crack = 0.0f;
+        float crushed = 0.0f;
+        bool pulverised = false;
+        bool fragmented = false;
+        uint widest = 0;
+        float widestCrack = -1.0f;
+        float3 crushMost = float3(0.0f);
+        float compactionMost = 0.0f;
+        for (uint point = 0; point < 8; ++point) {
+            float3 at = cornerSign(point) * 0.57735027f;
+            float3x3 h = crackedGradient(gradient, crackedFrame, local, at, scale);
+            float3x3 f = float3x3(1.0f) + h;
+            ElementState pointState = state;
+            loadCrackedPoint(pointState, points[point]);
+            float3x3 frame;
+            bool framed;
+            bool turning;
+            float3x3 strain;
+            float3 normalStrain;
+            concreteAxes(pointState, 0.5f * (h + transpose(h) + transpose(h) * h), joints, u, frame, framed, turning,
+                         strain, normalStrain);
+            float pointPower[workChannels];
+            for (uint c = 0; c < workChannels; ++c) {
+                pointPower[c] = 0.0f;
+            }
+            float3x3 pointRate = workTraced ? transpose(f) * stretching * f : float3x3(0.0f);
+            ConcreteLawResult law = concreteLaw(pointState, frame, framed, turning, strain, normalStrain, pointRate,
+                                                tensionFactor, compressionFactor, dt, referenceVolume * determinant(f),
+                                                referenceVolume, false, joints, tid, compact, own, m, u, steel, flags,
+                                                cellElement, materialIndex, crackOut, crackBefore, pointPower);
+            storeCrackedPoint(points[point], pointState);
+            // Bars kinked past rupture across a crack at any point have broken.
+            for (int j = 0; j < 3; ++j) {
+                if (fabs(pointState.steelPlastic[j]) > 1e8f) {
+                    state.steelPlastic[j] = 1e9f;
+                }
+            }
+            float3x3 stress = f * law.material;
+            crackedStress += weight * stress;
+            crackedModeForces(crackedModes, transpose(crackedFrame) * stress, at, weight * scale);
+            if (law.crack > widestCrack) {
+                widestCrack = law.crack;
+                widest = point;
+            }
+            crack = max(crack, law.crack);
+            crushed = max(crushed, law.crushed);
+            pulverised = pulverised || law.pulverised;
+            crushMost = max(crushMost, float3(pointState.crushStrain));
+            compactionMost = max(compactionMost, pointState.compaction);
+            if (u.removesFragments != 0) {
+                int open = 0;
+                for (int j = 0; j < 3; ++j) {
+                    open += law.history[j] * u.h >= u.fragmentOpening ? 1 : 0;
+                }
+                fragmented = fragmented || (law.crack >= u.fragmentStrain && open >= 2);
+            }
+            if (workTraced) {
+                for (uint c = 0; c < workChannels; ++c) {
+                    power[c] += 0.125f * pointPower[c];
+                }
+            }
+        }
+
+        // The bars along each axis, strained at their centroid in the element (`CrackedElement`).
+        float3 barStrain;
+        float3 barAt[3];
+        float3x3 barDeformation[3];
+        for (int j = 0; j < 3; ++j) {
+            float3 at = float3(0.0f);
+            at[(j + 1) % 3] = float(crackedElements[1u + compact].barAt[2 * j]);
+            at[(j + 2) % 3] = float(crackedElements[1u + compact].barAt[2 * j + 1]);
+            float3x3 h = crackedGradient(gradient, crackedFrame, local, at, scale);
+            barAt[j] = at;
+            barDeformation[j] = float3x3(1.0f) + h;
+            barStrain[j] = (0.5f * (h + transpose(h) + transpose(h) * h))[j][j] + slipChange[j] / u.h;
+        }
+        float3 ratio = float3(steel[compact].ratio);
+        float3 plastic = float3(state.steelPlastic);
+        float3 intact = float3(0.0f);
+        float3 barForce = float3(0.0f);
+        float3 bondLeft = float3(1.0f);
+        float steelCapacity = 0.0f;
+        for (int j = 0; j < 3; ++j) {
+            if (ratio[j] <= 0.0f || fabs(plastic[j]) > 1e8f) {
+                continue;
+            }
+            float root;
+            float yield;
+            float stress;
+            if (!axisBar(j, barStrain, plastic, stress, root, yield, state, axisRate, tid, compact, m, u, steel, flags,
+                         cellElement, bars, plasticBefore, barRateBefore)) {
+                continue;
+            }
+            intact[j] = 1.0f;
+            steelCapacity += ratio[j] * yield;
+            if (!discreteBars) {
+                // The bars' second Piola-Kirchhoff stress along j, pushed by the deformation there.
+                float carried = ratio[j] * stress / root;
+                float3x3 barStress = float3x3(0.0f);
+                barStress[j] = carried * barDeformation[j][j];
+                crackedStress += referenceVolume * barStress;
+                crackedModeForces(crackedModes, transpose(crackedFrame) * barStress, barAt[j], referenceVolume * scale);
+                barForce[j] = carried * u.h * u.h;
+            }
+            if (u.bondSlip != 0 && u.bondYieldRange > 0.0f && plastic[j] > 0.0f) {
+                float a = min(plastic[j] / u.bondYieldRange, 1.0f);
+                bondLeft[j] = 1.0f - 0.85f * (1.0f - exp(-5.0f * pow(a, u.bondYieldExponent)));
+            }
+        }
+        state.steelPlastic = plastic;
+        if (workTraced) {
+            for (int j = 0; j < 3; ++j) {
+                power[workBars] += barForce[j] / (u.h * u.h) * (strainRate[j][j] + slipChangeRate[j] / u.h);
+                power[workBond] -= barForce[j] / (u.h * u.h) * slipChangeRate[j] / u.h;
+            }
+        }
+        if (u.bondSlip != 0) {
+            barForces[2 * compact] = float4(barForce, 0.0f);
+            barForces[2 * compact + 1] = float4(bondLeft, 0.0f);
+        }
+        // Inclined bars, at the centre.
+        float inclinedRatio = float(steel[compact].inclined);
+        uint inclinedAxes = steel[compact].inclinedAxes;
+        float3 inclined = inclinedAxes != 0u ? inclinedDirection(inclinedAxes) : float3(0.0f);
+        float3x3 inclinedStress = float3x3(0.0f);
+        bool inclinedIntact = inclinedBars(dot(inclined, latticeStrain * inclined), inclinedRatio, inclinedAxes, inclined,
+                                           state, inclinedStress, steelCapacity, strainRate, tid, compact, m, u, steel,
+                                           flags, cellElement, bars, plasticBefore, power);
+        if (inclinedIntact) {
+            crackedStress += referenceVolume * (deformation * inclinedStress);
+        }
+        if (m.barReach > 0.0f) {
+            plasticOut[compact] = float4(plastic, state.inclinedPlastic);
+        }
+        bool anySteel = intact.x + intact.y + intact.z > 0.0f || inclinedIntact;
+
+        // A crack at any point wide enough to be a gap, that no intact bars bridge.
+        bool torn = false;
+        for (uint point = 0; point < 8 && !torn; ++point) {
+            ElementState pointState = state;
+            loadCrackedPoint(pointState, points[point]);
+            float4 stored = float4(pointState.crackFrame);
+            bool framed = any(stored != 0.0f);
+            float3x3 frame = framed ? rotationOf(normalize(stored)) : float3x3(1.0f);
+            torn = crackTorn(pointState, float3(pointState.crackStrain), frame, framed, framed && signbit(stored.w),
+                             onset, intact, inclinedIntact, inclined, joints, tid, own, m, u, steel, flags, cellElement,
+                             materialIndex, plasticBefore);
+        }
+
+        // The mean Cauchy stress, for what reads it: sigma = P F^T / J at the centre.
+        float3x3 cauchy = crackedStress * transpose(deformation) * (1.0f / volume);
+        sxx = cauchy[0][0];
+        syy = cauchy[1][1];
+        szz = cauchy[2][2];
+        sxy = cauchy[1][0];
+        syz = cauchy[2][1];
+        szx = cauchy[0][2];
+
+        eroded = eroded || torn || pulverised || fragmented || crack > max(1.0f, 3.0f * m.erosionStrain);
+        bool collapsed = compactionScale(m.lambda + 2.0f * m.mu / 3.0f) < 1.0f
+            && volume < u.minVolumeRatio * referenceVolume;
+        if (eroded && anySteel && u.bareBars != 0 && !collapsed) {
+            flags[element] = elementBaring;
+            failureGate[0] = 1;
+            eroded = false;
+        }
+        capacity = 0.0f;  // no hourglass control
+        state.display = max(crack / (anySteel ? m.steelStrain[m.steelPoints - 1] : m.erosionStrain), crushed);
+        // What the element's state shows (and keeps, should it turn bare): its most cracked point's
+        // history, and the most any point has crushed and compacted.
+        loadCrackedPoint(state, points[widest]);
+        state.crushStrain = crushMost;
+        state.compaction = compactionMost;
+        state.plasticStrain = max(crushMost.x, max(crushMost.y, crushMost.z));
     } else {
         // Green-Lagrange strain from the displacement gradient H = du/dX, in the lattice axes.
         float3x3 gradient = float3x3(g0, g1, g2) * (0.25f / u.h);
@@ -1195,36 +2474,12 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // The bars lie along the lattice axes and are strained along them, and by how far they
         // slip further at one face of the element than at the other.
         float3 barStrain = float3(latticeStrain[0][0], latticeStrain[1][1], latticeStrain[2][2]) + slipChange / u.h;
-        // With oriented cracks the concrete works in its crack axes (columns of `frame`), set
-        // when it first cracks; before that, and without them, in the lattice axes. Axes that
-        // still turn with the principal directions are stored with the sign bit of w set (q and
-        // -q are the same rotation).
-        float3x3 frame = float3x3(1.0f);
-        bool framed = false;
-        bool turning = false;
-        {
-            float4 stored = float4(state.crackFrame);
-            if (any(stored != 0.0f)) {
-                frame = rotationOf(normalize(stored));
-                framed = true;
-                turning = signbit(stored.w);
-            }
-        }
-        // A mortar joint lies on a lattice plane, so an element that holds one cracks across the
-        // lattice axes from the start.
-        if (joints != 0u) {
-            frame = float3x3(1.0f);
-            framed = true;
-            turning = false;
-        }
-        float3x3 strain = transpose(frame) * latticeStrain * frame;
-        // A second crack's opening is not the concrete's strain (see below).
-        float4 secondCrack = float4(state.secondCrack);
-        if (u.secondCracks != 0 && framed && !turning && secondCrack.w != 0.0f) {
-            float3 normal = normalize(secondCrack.xyz);
-            strain -= state.secondOpening * float3x3(normal * normal.x, normal * normal.y, normal * normal.z);
-        }
-        float3 normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
+        float3x3 frame;
+        bool framed;
+        bool turning;
+        float3x3 strain;
+        float3 normalStrain;
+        concreteAxes(state, latticeStrain, joints, u, frame, framed, turning, strain, normalStrain);
 
         // Strength rises with strain rate; a running average keeps element-scale noise out.
         float instantaneous = sqrt((2.0f / 3.0f) * (dxx * dxx + dyy * dyy + dzz * dzz
@@ -1294,558 +2549,21 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
         }
         float compressionFactor = compressionIncrease(state.strainRate, m);
-        float onset = m.crackOnset * tensionFactor;
-        // Across a mortar joint the tension law is the bond's: weaker, and softening over its
-        // own fracture energy. The other planes keep the unit's.
-        float3 planeFactor = float3(tensionFactor);
-        float3 planeSoftening = float3(m.crackSoftening);
-        // The length each plane's opening is smeared over, from which its crack width is read.
-        float3 planeBand = float3(m.crackBand);
-        for (int j = 0; j < 3; ++j) {
-            if (((joints >> j) & 1u) != 0u) {
-                planeFactor[j] *= m.jointStrength;
-                planeSoftening[j] = m.jointSoftening;
-            }
-        }
-        float3 planeOnset = m.crackOnset * planeFactor;
-
-        // Equivalent uniaxial strains along the axes: in the linear range these reproduce
-        // isotropic elasticity. The Poisson coupling fades as the concrete cracks, since an open
-        // crack's strain is not elastic strain and must not stretch the directions alongside it.
-        float poisson = 0.5f * m.lambda / (m.lambda + m.mu);
-        if (joints == 0u) {
-            if (worst > onset) {
-                poisson *= tensionEnvelope(worst, tensionFactor, m) / (m.youngsModulus * worst);
-            }
-        } else {
-            float fade = 1.0f;
-            for (int j = 0; j < 3; ++j) {
-                if (history[j] > planeOnset[j]) {
-                    fade = min(fade, tensionEnvelopeOver(history[j], planeFactor[j], planeSoftening[j], m)
-                                         / (m.youngsModulus * history[j]));
-                }
-            }
-            poisson *= fade;
-        }
-
-        // Cracks are smeared over the three lattice planes, each with its own history, so that
-        // cracking across one direction leaves the others intact. A diagonal crack (from shear)
-        // is found from the principal values of the strain with the Poisson effect taken out,
-        // which is the elastic stress over E: a Rankine criterion. (Principal values of the
-        // strain itself would count the sideways swelling of squeezed concrete as cracking.)
-        // It is shared between the planes it cuts across, in proportion to the squared direction
-        // cosines.
-        // What a crack has slid by (`crackSlip`) counts in the strain that opens cracks: sliding
-        // along a crack also opens it, and the plane across the slide.
-        float3x3 effective = strain * (1.0f / (1.0f + poisson));
-        float dilation = poisson * (strain[0][0] + strain[1][1] + strain[2][2])
-            / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
-        effective[0][0] += dilation;
-        effective[1][1] += dilation;
-        effective[2][2] += dilation;
-        float3 principal;
-        float3x3 axes;
-        symmetricEigen(effective, principal, axes);
-        bool cracking = max(principal.x, max(principal.y, principal.z)) > onset;
-        if ((!framed && cracking) || turning) {
-            // The crack axes become the principal axes of this strain: at the first crack, and
-            // every step while they still turn. Turning, each axis takes the principal direction
-            // nearest to it, so that each plane's history stays with its own direction.
-            float3x3 aligned = axes;
-            float3 values = principal;
-            if (framed) {
-                bool used[3] = {false, false, false};
-                for (int i = 0; i < 3; ++i) {
-                    int best = -1;
-                    for (int k = 0; k < 3; ++k) {
-                        if (!used[k] && (best < 0 || fabs(axes[k][i]) > fabs(axes[best][i]))) {
-                            best = k;
-                        }
-                    }
-                    used[best] = true;
-                    aligned[i] = axes[best][i] < 0.0f ? -axes[best] : axes[best];
-                    values[i] = principal[best];
-                }
-            }
-            if (determinant(aligned) < 0.0f) {
-                aligned[2] = -aligned[2];
-            }
-            frame = frame * aligned;
-            framed = true;
-            strain = transpose(aligned) * strain * aligned;
-            effective = transpose(aligned) * effective * aligned;
-            normalStrain = float3(strain[0][0], strain[1][1], strain[2][2]);
-            principal = values;
-            axes = float3x3(1.0f);
-            // They stop turning once a crack has opened, its tension softened through a tenth of
-            // the softening strain, or once the concrete has crushed past its peak: a crushed
-            // axis turning with the stress would carry its crushing to directions that never saw
-            // it. (With fixed cracks, at once.) Left turning through the whole softening, cracks
-            // in a slab held down at its supports followed the stress round in the rebound
-            // until no axis carried tension, and the slab came apart.
-            float3 crushed = float3(state.crushStrain);
-            bool fix = worst > onset + 0.1f * m.crackSoftening
-                || max(crushed.x, max(crushed.y, crushed.z)) > m.crushPeak;
-            float4 q = quaternionOf(frame);
-            q = (q.w < 0.0f) == fix ? -q : q;
-            if (q.w == 0.0f) {
-                q.w = fix ? 0.0f : -0.0f;
-            }
-            state.crackFrame = packed_half4(half4(q));
-        }
-        // Not in an element with a mortar joint: its strain is mostly the joint's opening and
-        // sliding, which says nothing of the stress in the unit beside it; inclined cracking
-        // there is left to the second crack, which goes by the stress.
-        // Bars spread cracking along their length, so a crack across them softens over the crack
-        // spacing; a crack that no bar crosses, such as one splitting a beam along its bars,
-        // gathers in one row of elements and softens over that. A plane counts as crossed in
-        // full once its normal is within 45 degrees of an axis the body has bars on, which
-        // leaves bending and shear cracks as they were, and in part nearer to lying along
-        // the bars.
-        if (u.barAxes != 7u && m.crackSofteningAlone != m.crackSoftening) {
-            for (int i = 0; i < 3; ++i) {
-                if (((joints >> i) & 1u) == 0u) {
-                    float3 normal = frame[i] * frame[i];
-                    float crossed = ((u.barAxes & 1u) != 0u ? normal.x : 0.0f)
-                        + ((u.barAxes & 2u) != 0u ? normal.y : 0.0f) + ((u.barAxes & 4u) != 0u ? normal.z : 0.0f);
-                    planeSoftening[i] = mix(m.crackSofteningAlone, m.crackSoftening, min(2.0f * crossed, 1.0f));
-                    planeBand[i] = mix(u.h, m.crackBand, min(2.0f * crossed, 1.0f));
-                }
-            }
-        }
-        for (int i = 0; i < 3 && joints == 0u; ++i) {
-            float3 weight = axes[i] * axes[i];
-            float seen = dot(weight, history);
-            if (principal[i] > seen && principal[i] > onset) {
-                history += (principal[i] - seen) * weight / dot(weight, weight);
-            }
-        }
-
-        float volumetric = normalStrain.x + normalStrain.y + normalStrain.z;
-        float3 uniaxial = ((1.0f - 2.0f * poisson) * normalStrain + poisson * volumetric)
-            / ((1.0f + poisson) * (1.0f - 2.0f * poisson));
-        history = max(history, uniaxial);
-        state.crackStrain = history;
-        if (nonlocalCracking && joints == 0u) {
-            // A crack softens by its inelastic strain averaged over the 2r + 1 elements across its
-            // band, along the lattice axis nearest its normal (as of the previous substep), its
-            // fracture energy spread over that band: the same per crack whether the opening is
-            // spread over the band or gathered in one element, which then softens no faster than
-            // the band would (a nonlocal crack band, after Bazant and Jirasek, 2002).
-            float3 opened = float3(0.0f);
-            int nearest[3];
-            for (int i = 0; i < 3; ++i) {
-                float3 n = abs(frame[i]);
-                nearest[i] = n.x >= n.y && n.x >= n.z ? 0 : (n.y >= n.z ? 1 : 2);
-                opened[nearest[i]] = max(opened[nearest[i]], max(history[i] - planeOnset[i], 0.0f));
-            }
-            crackOut[compact] = float4(opened, 0.0f);
-            int3 dims = int3(u.ex, u.ey, u.ez);
-            int r = int(u.crackReach);
-            for (int i = 0; i < 3; ++i) {
-                float inelastic = max(history[i] - planeOnset[i], 0.0f);
-                if (inelastic <= 0.0f) {
-                    continue;
-                }
-                int a = nearest[i];
-                float sum = opened[a];
-                float count = 1.0f;
-                for (int offset = -r; offset <= r; ++offset) {
-                    int3 cell = int3(tid);
-                    cell[a] += offset;
-                    if (offset == 0 || cell[a] < 0 || cell[a] >= dims[a]) {
-                        continue;
-                    }
-                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
-                    uint neighbour = cellElement[other];
-                    if (wholeThisPass(flags[other])
-                        && (singleMaterial || (materialIndex[neighbour] & uchar(15)) == own)) {
-                        sum += crackBefore[neighbour][a];
-                        count += 1.0f;
-                    }
-                }
-                // G_f / f_t, from the plane's own band and decay strain, spread over the band.
-                float energy = (planeSoftening[i] + 0.5f * m.crackOnset) * planeBand[i];
-                float decay = max(energy / (count * u.h) - 0.5f * m.crackOnset, 0.5f * m.crackOnset);
-                planeSoftening[i] = decay * inelastic / max(sum / count, 1e-12f);
-            }
-        }
-        float crack = max(history.x, max(history.y, history.z));
-        // A crack keeps a residual opening, and compression develops only once that has closed.
-        float3 stored = float3(state.crackResidual);
-        float3 residual = float3(
-            settledResidualOver(stored.x, history.x, uniaxial.x, planeFactor.x, planeSoftening.x, m),
-            settledResidualOver(stored.y, history.y, uniaxial.y, planeFactor.y, planeSoftening.y, m),
-            settledResidualOver(stored.z, history.z, uniaxial.z, planeFactor.z, planeSoftening.z, m));
-        // A crack that has slid cannot close: its faces ride up on each other's aggregate
-        // (dilatancy), so it keeps at least `crackDilatancy` times its slip open, as of the last
-        // step. Like the residual above, this never rises past the plane's own strain.
-        if (u.crackSlip != 0 && !turning && joints == 0u && m.crackDilatancy > 0.0f) {
-            float3 slid = abs(float3(state.jointSlip));  // xy, yz, zx
-            float3 across = float3(length(float2(slid.x, slid.z)), length(float2(slid.x, slid.y)),
-                                   length(float2(slid.y, slid.z)));
-            for (int j = 0; j < 3; ++j) {
-                if (history[j] > planeOnset[j]) {
-                    // Below the largest opening reached, which the reloading line runs up to.
-                    float held = min(m.crackDilatancy * across[j], min(uniaxial[j], 0.9f * history[j]));
-                    residual[j] = max(residual[j], held);
-                }
-            }
-        }
-        state.crackResidual = residual;
-        float3 squeeze = residual - uniaxial;  // compressive strain, past any crack's residual
-        float3 crush = max(float3(state.crushStrain), squeeze);
-        float3 softening = crush;
-        state.crushStrain = crush;
-        state.plasticStrain = max(crush.x, max(crush.y, crush.z));
-
-        // Normal stresses follow the uniaxial curves. An open crack unloads to its residual
-        // strain, after which its faces bear on each other and compression is recovered.
-        //
-        // Concrete squeezed from the sides is stronger: each axis gains 4.1 times the smaller of
-        // the compressive stresses the other two axes supply (Richart, Brandtzaeg and Brown,
-        // 1928), capped at the unconfined strength.
-        float unconfined = m.compressiveStrength * compressionFactor;
-        // The factor follows its target through the same running average as the strain rate:
-        // applied instantly, the coupling between axes would be several times stiffer than the
-        // elastic solid and would outrun the explicit time step.
-        float3 gain = float3(state.confinementGain);
-        float blend = clamp(dt * u.rateFilter, 0.0f, 1.0f);
-        float3 confinement = float3(1.0f);
-        float3 normalStress;
-        float crushed = 0.0f;
-        bool pulverised = false;
-        for (int j = 0; j < 3; ++j) {
-            if (squeeze[j] <= 0.0f) {
-                normalStress[j] = concreteTensionOver(uniaxial[j], history[j], residual[j], planeFactor[j],
-                                                      planeSoftening[j], m);
-                continue;
-            }
-            confinement[j] = 1.0f + gain[j];
-            normalStress[j] = concreteCompression(squeeze[j], crush[j], softening[j], compressionFactor,
-                                                  confinement[j], m);
-            float2 limits = crushStrains(compressionFactor, confinement[j], m);
-            float driving = squeeze[j];
-            crushed = max(crushed, clamp((driving - limits.x) / (limits.y - limits.x), 0.0f, 1.0f));
-            pulverised = pulverised || driving >= limits.y + m.crushErosion * (limits.y - limits.x);
-        }
-        // The support is the compression the other axes carry, as of this step. Estimated from
-        // their strain as if elastic, it counted an axis crushed and unloaded, carrying nothing
-        // over its permanent shortening, as full support: the face under a close-in charge,
-        // crushed through its depth by the shock, then held 60-80 MPa across the face for
-        // milliseconds with nothing pressing on it, three times its static strength. Every axis's
-        // factor follows its target, so that one in tension does not keep a stale one.
-        float3 lateral = clamp(-normalStress, 0.0f, unconfined);
-        for (int j = 0; j < 3; ++j) {
-            float support = min(lateral[(j + 1) % 3], lateral[(j + 2) % 3]);
-            gain[j] += blend * (m.confinement * support / unconfined - gain[j]);
-        }
-        state.confinementGain = gain;
-
-        // With `pressedInterlock`, a crack that slides rides up on its aggregate, and where it is
-        // held from opening, its faces press together: by Walraven and Reinhardt's fit (eq. 1b),
-        // sigma = C_sigma(w) delta - f_cc / 20 for a crack w mm open slid by delta mm. Only on open
-        // cracks: one whose faces already bear carries its compression by the law above. The
-        // opening is the plane's present one, from its normal strain alone, and the slide its
-        // two shear strains, each over the plane's band.
-        float cube = m.compressiveStrength / 0.8e6f;
-        float3 openNow = float3(0.01f);  // each cracked plane's present opening, mm
-        if (u.pressedInterlock != 0 && joints == 0u && !turning) {
-            for (int i = 0; i < 3; ++i) {
-                if (history[i] <= planeOnset[i]) {
-                    continue;
-                }
-                openNow[i] = max((uniaxial[i] - planeOnset[i]) * planeBand[i] * 1000.0f, 0.01f);
-                if (squeeze[i] > 0.0f) {
-                    continue;
-                }
-                float2 slide = 2.0f * float2(strain[(i + 1) % 3][i], strain[i][(i + 2) % 3]);
-                float delta = length(slide) * planeBand[i] * 1000.0f;
-                float2 slopes = walravenSlopes(openNow[i], cube);
-                normalStress[i] -= max(slopes.y * delta - cube / 20.0f, 0.0f) * 1e6f;
-            }
-        }
-
-        // Shear across cracked planes is carried by aggregate interlock, which weakens as the
-        // crack widens (Vecchio and Collins, modified compression field theory), and by the
-        // bars that cross the crack.
-        float3 barRatio = float3(steel[compact].ratio);
-        float3x3 crackRate = workTraced ? transpose(frame) * strainRate * frame : float3x3(0.0f);
-        if (workTraced) {
-            for (int j = 0; j < 3; ++j) {
-                float2 limits = crushStrains(compressionFactor, confinement[j], m);
-                float cracked = (history[j] - planeOnset[j]) * planeBand[j];
-                uint channel = normalStress[j] >= 0.0f
-                    ? (cracked >= 1e-4f ? workTensionCracked : cracked > 0.0f ? workTensionHairline : workTensionNormal)
-                    : (crush[j] > limits.x ? workCompressionCrushed : workCompressionNormal);
-                power[channel] += normalStress[j] * crackRate[j][j];
-            }
-        }
-        float3 shearStress;  // xy, yz, zx
-        for (int pair = 0; pair < 3; ++pair) {
-            int a = pair;
-            int b = (pair + 1) % 3;
-            float engineering = 2.0f * strain[b][a];
-            // Along a mortar joint the shear is that of the strain less what has slid; so, with
-            // `crackSlip`, across a crack whose axes have stopped turning.
-            bool jointed = (((joints >> a) | (joints >> b)) & 1u) != 0u;
-            bool slides = jointed || (u.crackSlip != 0 && !turning);
-            float slip = slides ? state.jointSlip[pair] : 0.0f;
-            float stress = m.mu * (engineering - slip);
-            float3 opening = history - planeOnset;
-            float opened = max(opening[a], opening[b]);
-            // The cap's parts, for the work trace: interlock, dowel action and kinking.
-            float3 capParts = float3(0.0f);
-            bool capped = false;
-            if (opened > 0.0f) {
-                // Its width as the crack's own: one gathered in a row of elements is as wide as
-                // its opening over that row, not over the crack spacing.
-                float band = opening[a] >= opening[b] ? planeBand[a] : planeBand[b];
-                float width = opened * band;
-                float interlock = m.interlockStrength * tensionFactor / (0.31f + m.interlockWidthScale * width);
-                // Pressed, a crack carries more: eqs. 1a and 1b together give C_tau / C_sigma more
-                // shear for each unit of stress across it, up to half the concrete's compressive
-                // strength. (The modified compression field theory's v_max, the cap over 0.18,
-                // held the most restrained push-off specimen to 6.3 MPa where it carried 9.9.)
-                if (u.pressedInterlock != 0 && joints == 0u) {
-                    int pressedPlane = opening[a] >= opening[b] ? a : b;
-                    float pressure = max(-normalStress[pressedPlane], 0.0f);
-                    float2 slopes = walravenSlopes(openNow[pressedPlane], cube);
-                    interlock = min(interlock + slopes.x / slopes.y * pressure, max(interlock, 0.5f * unconfined));
-                }
-                capParts.x = interlock;
-                // The crack's shear stiffness: a fixed share of the concrete's.
-                float retention = m.shearRetention;
-                // The wider-open of the two planes is the crack that slides; the bars along its
-                // normal cross it.
-                int across = opening[a] >= opening[b] ? a : b;
-                // Bars along lattice axis j cross a crack of unit normal n in proportion to |n_j|;
-                // the most nearly crossing set ruptures if kinked too far.
-                float3 normal = frame[across];
-                float crossing = 0.0f;
-                int crossingAxis = 0;
-                for (int j = 0; j < 3; ++j) {
-                    if (fabs(state.steelPlastic[j]) < 1e8f) {
-                        crossing += barRatio[j] * fabs(normal[j]);
-                    }
-                    if (barRatio[j] * fabs(normal[j]) > barRatio[crossingAxis] * fabs(normal[crossingAxis])) {
-                        crossingAxis = j;
-                    }
-                }
-                uint inclinedSet = steel[compact].inclinedAxes;
-                if (inclinedSet != 0u && fabs(state.inclinedPlastic) < 1e8f) {
-                    crossing += float(steel[compact].inclined) * fabs(dot(inclinedDirection(inclinedSet), normal));
-                }
-                if (crossing > 0.0f) {
-                    // Dowel action: each bar resists 1.3 d^2 sqrt(fc fy) of sliding (Rasmussen,
-                    // 1963), which over the bars crossing a unit area is 1.65 rho sqrt(fc fy).
-                    float yield = m.steelStress[0];
-                    interlock += m.dowelFactor * 1.65f * crossing * sqrt(m.compressiveStrength * yield);
-                    capParts.y = interlock - capParts.x;
-                    // Kinking: slid by s, a bar debonded over a length L either side of the crack
-                    // is stretched to sqrt(1 + (s/L)^2) - 1, and its tension leans along the
-                    // slide. Stretched past rupture by it, the bars there have broken.
-                    float slide = fabs(engineering) * u.h / max(m.crackBand, u.h);
-                    float stretch = sqrt(1.0f + slide * slide) - 1.0f;
-                    float elastic = yield / m.steelModulus;
-                    float plasticStretch = stretch - elastic;
-                    if (plasticStretch > m.steelStrain[m.steelPoints - 1]) {
-                        state.steelPlastic[crossingAxis] = 1e9f;  // ruptured for good
-                    } else {
-                        float slope;
-                        float tension = stretch <= elastic ? m.steelModulus * stretch
-                                                           : steelYield(plasticStretch, m, slope);
-                        interlock += crossing * tension * slide / sqrt(1.0f + slide * slide);
-                        capParts.z = interlock - capParts.x - capParts.y;
-                    }
-                }
-                float trial = retention * stress;
-                stress = clamp(trial, -interlock, interlock);
-                capped = trial != stress;
-                // A crack slid past what interlock and dowels hold has slid for good: the faces
-                // ride over, grind and jam, and do not spring back. Without this the crack was a
-                // nonlinear spring that returned all the work of sliding, and a beam hinged on a
-                // diagonal crack sprang back past where it started.
-                if (slides && !jointed && trial != stress) {
-                    slip += (trial - stress) / (retention * m.mu);
-                }
-            }
-            // A mortar joint slides by Coulomb friction: along it the shear is held to the
-            // joint's cohesion, which is lost with its bond as it opens or slides, plus friction
-            // on whatever presses it shut; an open joint carries none. What the joint cannot
-            // hold, it slides by, for good: taking the shear from the strain alone, capped,
-            // returned the work of sliding and more when the pressure on the joint rose in
-            // between, and a cracked wall shook itself apart. Sliding wears the joint as opening
-            // does, up to the loss of all its cohesion but never to its removal.
-            if (jointed) {
-                float hold = 1e30f;
-                for (int side = 0; side < 2; ++side) {
-                    int p = side == 0 ? a : b;
-                    if (((joints >> p) & 1u) != 0u) {
-                        float worn = max(history[p] - planeOnset[p], 0.0f);
-                        hold = min(hold, m.jointCohesion * exp(-worn / planeSoftening[p])
-                                             + m.jointFriction * max(-normalStress[p], 0.0f));
-                    }
-                }
-                if (fabs(stress) > hold) {
-                    float held = clamp(stress, -hold, hold);
-                    float moved = (stress - held) / ((opened > 0.0f ? m.shearRetention : 1.0f) * m.mu);
-                    slip += moved;
-                    stress = held;
-                    for (int side = 0; side < 2; ++side) {
-                        int p = side == 0 ? a : b;
-                        if (((joints >> p) & 1u) != 0u) {
-                            float limit = planeOnset[p]
-                                + min(5.0f * planeSoftening[p], 0.5f * (m.erosionStrain - planeOnset[p]));
-                            float worn = max(history[p], planeOnset[p]) + fabs(moved) * m.jointSlipDamage;
-                            history[p] = max(history[p], min(worn, limit));
-                        }
-                    }
-                }
-            }
-            if (slides) {
-                state.jointSlip[pair] = slip;
-            } else if (u.crackSlip != 0) {
-                state.jointSlip[pair] = 0.0f;  // turning axes: no slip in axes that move
-            }
-            shearStress[pair] = stress;
-            if (workTraced) {
-                float shearPower = stress * 2.0f * crackRate[b][a];
-                // Pressed shut: compression across the wider-open of the two planes.
-                bool pressed = normalStress[opening[a] >= opening[b] ? a : b] < 0.0f;
-                if (opened <= 0.0f || jointed) {
-                    power[workUncrackedShear] += shearPower;
-                } else if (!capped) {
-                    power[pressed ? workCrackShearPressed : workCrackShear] += shearPower;
-                } else {
-                    float total = max(capParts.x + capParts.y + capParts.z, 1e-30f);
-                    power[pressed ? workInterlockPressed : workInterlock] += shearPower * capParts.x / total;
-                    power[workDowel] += shearPower * capParts.y / total;
-                    power[workKink] += shearPower * capParts.z / total;
-                }
-            }
-        }
-        if (joints != 0u) {
-            state.crackStrain = history;
-        }
-        float3x3 material = float3x3(float3(normalStress.x, shearStress.x, shearStress.z),
-                                     float3(shearStress.x, normalStress.y, shearStress.y),
-                                     float3(shearStress.z, shearStress.y, normalStress.z));
-        // A second crack. Once the crack axes are fixed, tension that turns away from them is
-        // carried across the cracked planes by their shear, which aggregate interlock holds up
-        // to more than the tensile strength: the stress locks, and a cracked element pulled at
-        // 45 degrees to its crack keeps half its tensile strength however far it is stretched.
-        // Where the concrete's principal tension passes its tensile strength more than 30
-        // degrees from every crack axis, a second crack forms across it, fixed from then on. Its
-        // opening is a strain of its own, taken out of the strain the rest of the concrete
-        // sees (above), and set each step so that the concrete's stress across it is what the
-        // crack carries at that opening (the multi-directional fixed crack of de Borst and
-        // Nauta). This step's stress is corrected for the change in opening elastically; the
-        // next step's sees it in full.
-        if (u.secondCracks != 0 && framed && !turning) {
-            float4 second = float4(state.secondCrack);
-            if (second.w == 0.0f) {
-                float3 values;
-                float3x3 directions;
-                symmetricEigen(material, values, directions);
-                int major = values.x >= values.y ? (values.x >= values.z ? 0 : 2) : (values.y >= values.z ? 1 : 2);
-                float3 normal = directions[major];
-                float3 cosines = abs(normal);
-                if (values[major] > m.tensileStrength * tensionFactor
-                    && max(cosines.x, max(cosines.y, cosines.z)) < secondCrackCosine) {
-                    second = float4(normal, 1.0f);
-                    state.secondCrack = packed_half4(half4(second));
-                    state.secondOpening = 0.0f;
-                    state.secondHistory = 0.0f;
-                }
-            }
-            if (second.w != 0.0f) {
-                float3 normal = normalize(second.xyz);
-                float stiffness = m.lambda + 2.0f * m.mu;
-                float opened = state.secondOpening;
-                float e = secondCrackOpening(dot(normal, material * normal), opened, state.secondHistory, stiffness,
-                                             tensionFactor, m);
-                state.secondOpening = e;
-                state.secondHistory = max(state.secondHistory, e);
-                float3x3 outer = float3x3(normal * normal.x, normal * normal.y, normal * normal.z);
-                material -= (e - opened) * (m.lambda * float3x3(1.0f) + 2.0f * m.mu * outer);
-                crack = max(crack, state.secondHistory + onset);
-            }
-        }
-        if (framed) {
-            material = frame * material * transpose(frame);
-        }
-        // Under very high pressure the pores collapse: the concrete's mean stress is never less
-        // compressive than the compaction curve gives, whatever its strength laws say. Only
-        // where it is confined, squeezed on every axis by at least a fifth of the most (as in
-        // the uniaxial strain of a shock, a quarter): squeezed from one side alone, concrete
-        // dilates as it crushes, which this model does not represent, so its volume change says
-        // nothing about its pores.
-        float mu = referenceVolume / volume - 1.0f;
-        bool confined = max(normalStress.x, max(normalStress.y, normalStress.z))
-            < 0.2f * min(normalStress.x, min(normalStress.y, normalStress.z));
-        // It takes over only where the confined pressure passes the unconfined strength, beyond
-        // which the strength laws above are not meant to go; below that they already describe
-        // concrete squeezed by an ordinary blast (starting at the curve's own crushing
-        // pressure, fc / 3, doubled the deflection of a wall 8 m from 500 kg).
-        float bulk = m.lambda + 2.0f * m.mu / 3.0f;
-        float crushPressure = m.compressiveStrength / 3.0f;
-        float crushStrain = crushPressure / bulk;
-        float crushVolume = crushStrain
-            + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain) / (0.8e9f - crushPressure);
-        if (compactionScale(bulk) < 1.0f) {
-            crushVolume = crushStrain
-                + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain)
-                    / (compactionScale(bulk) * (0.8e9f - crushPressure));
-        }
-        // In a material softer than structural concrete, the compaction counts from the volume an
-        // element had when it was confined: what it lost being crushed from fewer sides, past the
-        // curve's onset, says nothing of its pores (as above). Counted from its undeformed volume,
-        // blockwork crushed unconfined to mu = 0.4 that was then pressed from every side jumped
-        // from a few MPa to several GPa in one step and flung its nodes at hundreds of metres a
-        // second. (Structural concrete is left as it was until the concrete cases decide it.)
-        if (!confined && compactionScale(bulk) < 1.0f) {
-            state.compactionStart = mu > crushVolume ? mu : 0.0f;
-        }
-        float pores = mu - state.compactionStart;
-        if (confined && pores > crushVolume) {
-            state.compaction = max(state.compaction, pores);
-        }
-        // While confined, once it has passed that, an element follows the curve.
-        // (Following it afterwards too, once the element was cracking and bending, pressed open
-        // cracks shut and weakened a wall that had been briefly squeezed by the shock.)
-        if (confined && pores > 0.0f && state.compaction > crushVolume) {
-            float compacted = compactionPressure(pores, state.compaction, bulk, m.compressiveStrength);
-            float pressure = -(material[0][0] + material[1][1] + material[2][2]) / 3.0f;
-            if (compacted > pressure) {
-                float shift = pressure - compacted;
-                material[0][0] += shift;
-                material[1][1] += shift;
-                material[2][2] += shift;
-            }
-        }
-
-        // Bare: the concrete is gone, and only the bars below carry.
-        if (bare) {
-            material = float3x3(0.0f);
-        }
-        if (workTraced) {
-            // What the parts above leave of the concrete's work goes to the rest.
-            float concrete = 0.0f;
-            for (int c = 0; c < 3; ++c) {
-                concrete += dot(material[c], strainRate[c]);
-            }
-            if (bare) {
-                for (uint c = 0; c < workChannels; ++c) {
-                    power[c] = 0.0f;
-                }
-            }
-            float parts = 0.0f;
-            for (uint c = 0; c < workChannels; ++c) {
-                parts += power[c];
-            }
-            power[workOther] = concrete - parts;
-        }
+        ConcreteLawResult law =
+            concreteLaw(state, frame, framed, turning, strain, normalStrain, strainRate, tensionFactor, compressionFactor,
+                        dt, volume, referenceVolume, bare, joints, tid, compact, own, m, u, steel, flags, cellElement,
+                        materialIndex, crackOut, crackBefore, power);
+        float onset = law.onset;
+        float3 planeFactor = law.planeFactor;
+        float3 planeSoftening = law.planeSoftening;
+        float3 planeOnset = law.planeOnset;
+        history = law.history;
+        float3 normalStress = law.normalStress;
+        float3 confinement = law.confinement;
+        float crack = law.crack;
+        float crushed = law.crushed;
+        bool pulverised = law.pulverised;
+        float3x3 material = law.material;
 
         // Smeared reinforcement: bars along the lattice axes, strained with the element. They
         // follow the measured curve while loaded one way, and the cyclic law once reversed.
@@ -1861,66 +2579,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             }
             float root;
             float yield;
-            float own = plastic[j];
-            // A bar strains at the rate of its debonded length, not of the one element a crack
-            // runs through, whose rate grows as the mesh is refined.
-            float barRate = state.strainRate;
-            if (m.barReach > 0.0f) {
-                int3 dims = int3(u.ex, u.ey, u.ez);
-                int r = int(ceil(m.barReach - 0.5f));
-                float sum = axisRate[j];
-                float weights = 1.0f;
-                for (int offset = -r; offset <= r; ++offset) {
-                    int3 cell = int3(tid);
-                    cell[j] += offset;
-                    if (offset == 0 || cell[j] < 0 || cell[j] >= dims[j]) {
-                        continue;
-                    }
-                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
-                    uint compactOther = cellElement[other];
-                    if (carriesBars(flags[other]) && steel[compactOther].ratio[j] > 0.0f) {
-                        float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
-                        sum += weight * barRateBefore[compactOther][j];
-                        weights += weight;
-                    }
-                }
-                barRate = sum / weights;
-            }
-            float stress = smearedBar(barStrain[j], own, bars[4 * compact + uint(j)], barRate, m, root, yield);
-            plastic[j] = own;
-            // A bar slips in its concrete either side of a crack, so it is strained by the crack's
-            // opening spread over a debonded length, not over the one element the crack happens
-            // to run through. Its stress follows its own strain, but it ruptures when its plastic
-            // strain averaged along its axis over that length (from the previous substep's
-            // neighbours that still carry bars that way) passes the rupture strain.
-            // The window is exactly the debonded length: elements at its ends count in part.
-            float spread = plastic[j];
-            if (m.barReach > 0.0f) {
-                int3 dims = int3(u.ex, u.ey, u.ez);
-                int r = int(ceil(m.barReach - 0.5f));
-                float sum = plastic[j];
-                float weights = 1.0f;
-                for (int offset = -r; offset <= r; ++offset) {
-                    int3 cell = int3(tid);
-                    cell[j] += offset;
-                    if (offset == 0 || cell[j] < 0 || cell[j] >= dims[j]) {
-                        continue;
-                    }
-                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
-                    uchar flag = flags[other];
-                    uint compactOther = cellElement[other];
-                    float neighbour = carriesBars(flag) ? plasticBefore[compactOther][j] : 0.0f;
-                    float weight = clamp(m.barReach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
-                    if (carriesBars(flag) && steel[compactOther].ratio[j] > 0.0f
-                        && fabs(neighbour) < 1e8f) {
-                        sum += weight * neighbour;
-                        weights += weight;
-                    }
-                }
-                spread = sum / weights;
-            }
-            if (fabs(spread) > m.steelStrain[m.steelPoints - 1]) {
-                plastic[j] = 1e9f;  // ruptured for good
+            float stress;
+            if (!axisBar(j, barStrain, plastic, stress, root, yield, state, axisRate, tid, compact, m, u, steel, flags,
+                         cellElement, bars, plasticBefore, barRateBefore)) {
                 continue;
             }
             intact[j] = 1.0f;
@@ -1959,51 +2620,9 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         float inclinedRatio = float(steel[compact].inclined);
         uint inclinedAxes = steel[compact].inclinedAxes;
         float3 inclined = inclinedAxes != 0u ? inclinedDirection(inclinedAxes) : float3(0.0f);
-        bool inclinedIntact = false;
-        if (inclinedRatio > 0.0f && inclinedAxes != 0u && fabs(state.inclinedPlastic) < 1e8f) {
-            float root;
-            float yield;
-            float own = state.inclinedPlastic;
-            float stress = smearedBar(dot(inclined, latticeStrain * inclined), own, bars[4 * compact + 3u],
-                                      state.strainRate, m, root, yield);
-            float spread = own;
-            if (m.barReach > 0.0f) {
-                float reach = m.barReach * 0.70710678f;
-                int r = int(ceil(reach - 0.5f));
-                int3 step = int3(round(inclined * 1.41421356f));
-                int3 dims = int3(u.ex, u.ey, u.ez);
-                float sum = own;
-                float weights = 1.0f;
-                for (int offset = -r; offset <= r; ++offset) {
-                    int3 cell = int3(tid) + offset * step;
-                    if (offset == 0 || any(cell < 0) || any(cell >= dims)) {
-                        continue;
-                    }
-                    int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
-                    uchar flag = flags[other];
-                    uint compactOther = cellElement[other];
-                    float weight = clamp(reach + 0.5f - float(abs(offset)), 0.0f, 1.0f);
-                    if (carriesBars(flag) && steel[compactOther].inclinedAxes == inclinedAxes
-                        && float(steel[compactOther].inclined) > 0.0f && fabs(plasticBefore[compactOther].w) < 1e8f) {
-                        sum += weight * plasticBefore[compactOther].w;
-                        weights += weight;
-                    }
-                }
-                spread = sum / weights;
-            }
-            if (fabs(spread) > m.steelStrain[m.steelPoints - 1]) {
-                own = 1e9f;  // ruptured for good
-            } else {
-                inclinedIntact = true;
-                steelCapacity += inclinedRatio * yield;
-                float3x3 outer = float3x3(inclined * inclined.x, inclined * inclined.y, inclined * inclined.z);
-                material += outer * (inclinedRatio * stress / root);
-                if (workTraced) {
-                    power[workBars] += inclinedRatio * stress / root * dot(inclined, strainRate * inclined);
-                }
-            }
-            state.inclinedPlastic = own;
-        }
+        bool inclinedIntact = inclinedBars(dot(inclined, latticeStrain * inclined), inclinedRatio, inclinedAxes, inclined,
+                                           state, material, steelCapacity, strainRate, tid, compact, m, u, steel, flags,
+                                           cellElement, bars, plasticBefore, power);
         if (m.barReach > 0.0f) {
             plasticOut[compact] = float4(plastic, state.inclinedPlastic);
         }
@@ -2016,60 +2635,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // from the element to the member's surface, for an element with intact bars across it
         // (as of the previous substep). The three planes of the crack axes are looked at, and a
         // second crack if there is one.
-        bool torn = false;
-        float4 second = float4(state.secondCrack);
-        bool hasSecond = u.secondCracks != 0 && framed && !turning && second.w != 0.0f;
-        for (int c = 0; c < (hasSecond ? 4 : 3) && !torn; ++c) {
-            float reached = c < 3 ? history[c] : state.secondHistory + onset;
-            // An open mortar joint is the gap itself, and its element stays to bear on it when
-            // it shuts again, as a wall rocking on the joint does; it goes only once the joint
-            // has opened, or slid, by half an element.
-            bool joint = c < 3 && ((joints >> c) & 1u) != 0u;
-            if (reached < (joint ? max(m.erosionStrain, 0.5f) : m.erosionStrain)) {
-                continue;
-            }
-            // Intact inclined bars across the crack bridge it.
-            float3 crackNormal = c < 3 ? frame[c] : frame * normalize(second.xyz);
-            if (inclinedIntact && fabs(dot(inclined, crackNormal)) >= 0.5f) {
-                continue;
-            }
-            // The lattice axis most nearly across the crack carries the bars that cross it; the
-            // section is searched along the other two.
-            float3 normal = abs(crackNormal);
-            int j = normal.x >= normal.y && normal.x >= normal.z ? 0 : (normal.y >= normal.z ? 1 : 2);
-            if (intact[j] != 0.0f) {
-                continue;
-            }
-            bool bridged = false;
-            int3 dims = int3(u.ex, u.ey, u.ez);
-            for (int side = 1; side < 3 && !bridged; ++side) {
-                int axis = (j + side) % 3;
-                for (int direction = -1; direction <= 1 && !bridged; direction += 2) {
-                    int3 cell = int3(tid);
-                    for (int step = 0; step < 32; ++step) {
-                        cell[axis] += direction;
-                        if (cell[axis] < 0 || cell[axis] >= dims[axis]) {
-                            break;
-                        }
-                        int other = cell.x + dims.x * (cell.y + dims.y * cell.z);
-                        uchar flag = flags[other];
-                        if (!carriesBars(flag)) {
-                            break;  // the member's surface
-                        }
-                        uint neighbour = cellElement[other];
-                        if (!singleMaterial && (materialIndex[neighbour] & uchar(15)) != own) {
-                            break;  // another member: masonry is not held by its frame's bars
-                        }
-                        if (float(steel[neighbour].ratio[j]) > 0.0f
-                            && (m.barReach <= 0.0f || fabs(plasticBefore[neighbour][j]) < 1e8f)) {
-                            bridged = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            torn = !bridged;
-        }
+        bool torn = crackTorn(state, history, frame, framed, turning, onset, intact, inclinedIntact, inclined, joints, tid,
+                              own, m, u, steel, flags, cellElement, materialIndex, plasticBefore);
 
         // Push forward to the Cauchy stress: sigma = F S F^T / J.
         float3x3 deformation = float3x3(1.0f) + gradient;
@@ -2183,97 +2750,121 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float3x3 forceStress = float3x3(float3(sxx - viscous, sxy, szx), float3(sxy, syy - viscous, syz),
                                     float3(szx, syz, szz - viscous));
 
-    // Hourglass control: resist the four non-constant-strain modes of the element.
-    float3 modeShape[4];
-    for (uint mode = 0; mode < 4; ++mode) {
-        modeShape[mode] = float3(0.0f);
-    }
-    float gamma[4][8];
-    for (uint a = 0; a < 8; ++a) {
-        float3 s = cornerSign(a);
-        gamma[0][a] = s.y * s.z;
-        gamma[1][a] = s.x * s.z;
-        gamma[2][a] = s.x * s.y;
-        gamma[3][a] = s.x * s.y * s.z;
+    if (crackedHex && switched) {
+        // An element that bends in its cracked concrete: the forces of its points' stresses, from
+        // the mean gradient and the modes' generalised forces, and no hourglass control.
+        float3 modeForce[4];
         for (uint mode = 0; mode < 4; ++mode) {
-            modeShape[mode] += x[a] * gamma[mode][a];
-        }
-    }
-    float3 rate[4];
-    for (uint mode = 0; mode < 4; ++mode) {
-        rate[mode] = float3(0.0f);
-    }
-    for (uint a = 0; a < 8; ++a) {
-        for (uint mode = 0; mode < 4; ++mode) {
-            gamma[mode][a] -= dot(b[a], modeShape[mode]);
-            rate[mode] += v[a] * gamma[mode][a];
-        }
-    }
-    // The hourglass forces act as the element's bending moments, so they are capped at its
-    // fully plastic moment (strength * h^2 / 8 in these units) just as the stress is capped.
-    float limit = 0.125f * capacity * u.h * u.h;
-    bool atCap[4] = {false, false, false, false};
-    // With rubble, a bare element's concrete has left its nodes as particles, and they hold the
-    // bars' mass alone: its hourglass control stiffens them only in proportion, or it would ring
-    // far faster than the step allows.
-    float hourglassStiffness = m.hourglassStiffness;
-    if (rubbleParticles && bare) {
-        float3 ratio = float3(steel[compact].ratio);
-        float share = (ratio.x + ratio.y + ratio.z + float(steel[compact].inclined)) * 7850.0f / m.density;
-        hourglassStiffness *= min(share, 1.0f);
-    }
-    for (uint mode = 0; mode < 4; ++mode) {
-        float3 q = state.hourglass[mode];
-        q += dt * (hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
-        float magnitude = length(q);
-        if (magnitude > limit) {
-            q *= limit / magnitude;
-            atCap[mode] = true;
-        }
-        state.hourglass[mode] = q;
-    }
-    // With `releasesCrushedBareHourglass`, a bare element (its bars alone) crushed below
-    // `minVolumeRatio` of its volume keeps its bars but loses its hourglass control. The modes'
-    // shapes are projected with the element's current shape-function gradients, which grow as one
-    // over its volume: squeezed to an eighth of its height, Hupfauf's SN144 threw its nodes at
-    // 2,000 m/s through capped hourglass forces on those shapes. Its bars, which tie what is left
-    // around a crater, stay.
-    bool hourglassReleased = releasesCrushedBareHourglass && bare && volume < u.minVolumeRatio * referenceVolume;
-    if (releasesCrushedBareHourglass && hourglassReleased) {
-        for (uint mode = 0; mode < 4; ++mode) {
+            modeForce[mode] = crackedFrame * crackedModes[mode];
             state.hourglass[mode] = float3(0.0f);
-            rate[mode] = float3(0.0f);
-            atCap[mode] = false;
         }
-    }
-
-    for (uint a = 0; a < 8; ++a) {
-        float3 f = -volume * (forceStress * b[a]);
-        if (!(releasesCrushedBareHourglass && hourglassReleased)) {
-            for (uint mode = 0; mode < 4; ++mode) {
-                f -= float3(state.hourglass[mode]) * gamma[mode][a];
+        for (uint a = 0; a < 8; ++a) {
+            float3 s = cornerSign(a);
+            float3 f = -(crackedStress * (s * (0.25f / u.h))) + volume * viscous * b[a];
+            f -= 0.125f * (s.y * s.z * modeForce[0] + s.x * s.z * modeForce[1] + s.x * s.y * modeForce[2]
+                           + s.x * s.y * s.z * modeForce[3]);
+            out.force[a] = f;
+        }
+        if (workTraced) {
+            device float *own = work + workChannels * compact;
+            for (uint c = 0; c < workChannels; ++c) {
+                own[c] += power[c] * referenceVolume * dt;
             }
+            own[workViscosity] -= viscous * trace * volume * dt;
         }
-        out.force[a] = f;
-    }
-    if (workTraced) {
-        float hourglassPower = 0.0f;
-        float cappedPower = 0.0f;
+    } else {
+        // Hourglass control: resist the four non-constant-strain modes of the element.
+        float3 modeShape[4];
         for (uint mode = 0; mode < 4; ++mode) {
-            float modePower = dot(float3(state.hourglass[mode]), rate[mode]);
-            if (atCap[mode]) {
-                cappedPower += modePower;
-            } else {
-                hourglassPower += modePower;
+            modeShape[mode] = float3(0.0f);
+        }
+        float gamma[4][8];
+        for (uint a = 0; a < 8; ++a) {
+            float3 s = cornerSign(a);
+            gamma[0][a] = s.y * s.z;
+            gamma[1][a] = s.x * s.z;
+            gamma[2][a] = s.x * s.y;
+            gamma[3][a] = s.x * s.y * s.z;
+            for (uint mode = 0; mode < 4; ++mode) {
+                modeShape[mode] += x[a] * gamma[mode][a];
             }
         }
-        device float *own = work + workChannels * compact;
-        for (uint c = 0; c < workChannels; ++c) {
-            own[c] += power[c] * referenceVolume * dt;
+        float3 rate[4];
+        for (uint mode = 0; mode < 4; ++mode) {
+            rate[mode] = float3(0.0f);
         }
-        own[workHourglass] += hourglassPower * dt;
-        own[workHourglassCapped] += cappedPower * dt;
-        own[workViscosity] -= viscous * trace * volume * dt;
+        for (uint a = 0; a < 8; ++a) {
+            for (uint mode = 0; mode < 4; ++mode) {
+                gamma[mode][a] -= dot(b[a], modeShape[mode]);
+                rate[mode] += v[a] * gamma[mode][a];
+            }
+        }
+        // The hourglass forces act as the element's bending moments, so they are capped at its
+        // fully plastic moment (strength * h^2 / 8 in these units) just as the stress is capped.
+        float limit = 0.125f * capacity * u.h * u.h;
+        bool atCap[4] = {false, false, false, false};
+        // With rubble, a bare element's concrete has left its nodes as particles, and they hold the
+        // bars' mass alone: its hourglass control stiffens them only in proportion, or it would ring
+        // far faster than the step allows.
+        float hourglassStiffness = m.hourglassStiffness;
+        if (rubbleParticles && bare) {
+            float3 ratio = float3(steel[compact].ratio);
+            float share = (ratio.x + ratio.y + ratio.z + float(steel[compact].inclined)) * 7850.0f / m.density;
+            hourglassStiffness *= min(share, 1.0f);
+        }
+        for (uint mode = 0; mode < 4; ++mode) {
+            float3 q = state.hourglass[mode];
+            q += dt * (hourglassStiffness * (hourglassSecant ? hourglassScale * rate[mode] : rate[mode]) + spin * q);
+            float magnitude = length(q);
+            if (magnitude > limit) {
+                q *= limit / magnitude;
+                atCap[mode] = true;
+            }
+            state.hourglass[mode] = q;
+        }
+        // With `releasesCrushedBareHourglass`, a bare element (its bars alone) crushed below
+        // `minVolumeRatio` of its volume keeps its bars but loses its hourglass control. The modes'
+        // shapes are projected with the element's current shape-function gradients, which grow as one
+        // over its volume: squeezed to an eighth of its height, Hupfauf's SN144 threw its nodes at
+        // 2,000 m/s through capped hourglass forces on those shapes. Its bars, which tie what is left
+        // around a crater, stay.
+        bool hourglassReleased = releasesCrushedBareHourglass && bare && volume < u.minVolumeRatio * referenceVolume;
+        if (releasesCrushedBareHourglass && hourglassReleased) {
+            for (uint mode = 0; mode < 4; ++mode) {
+                state.hourglass[mode] = float3(0.0f);
+                rate[mode] = float3(0.0f);
+                atCap[mode] = false;
+            }
+        }
+
+        for (uint a = 0; a < 8; ++a) {
+            float3 f = -volume * (forceStress * b[a]);
+            if (!(releasesCrushedBareHourglass && hourglassReleased)) {
+                for (uint mode = 0; mode < 4; ++mode) {
+                    f -= float3(state.hourglass[mode]) * gamma[mode][a];
+                }
+            }
+            out.force[a] = f;
+        }
+        if (workTraced) {
+            float hourglassPower = 0.0f;
+            float cappedPower = 0.0f;
+            for (uint mode = 0; mode < 4; ++mode) {
+                float modePower = dot(float3(state.hourglass[mode]), rate[mode]);
+                if (atCap[mode]) {
+                    cappedPower += modePower;
+                } else {
+                    hourglassPower += modePower;
+                }
+            }
+            device float *own = work + workChannels * compact;
+            for (uint c = 0; c < workChannels; ++c) {
+                own[c] += power[c] * referenceVolume * dt;
+            }
+            own[workHourglass] += hourglassPower * dt;
+            own[workHourglassCapped] += cappedPower * dt;
+            own[workViscosity] -= viscous * trace * volume * dt;
+        }
     }
 
     // Pressure on faces that border the air or a failed element, on the deformed geometry: the

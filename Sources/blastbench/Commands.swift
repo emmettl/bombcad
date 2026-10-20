@@ -91,4 +91,5 @@ let commands: [String: @Sendable () throws -> Void] = [
     "envelope-regrade": { try runEnvelopeRegrade(device: device) },
     "nian": { try runNian(device: device) },
     "envelope-slabs": { try runEnvelopeSlabs(device: device) },
+    "assumed-strain-cost": { try runAssumedStrainCost(device: device) },
 ]

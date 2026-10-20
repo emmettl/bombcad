@@ -31,6 +31,8 @@ size ElementState = Sources/BlastCore/StructureSolver.swift:stateStride : the so
 size ElementForces = Sources/BlastCore/StructureSolver.swift:forceStride : the solid elements' nodal forces
 size ShellLayerStore = Sources/BlastCore/ShellSolver.swift:layerStride : the shell layers' stored state
 size ShellBar = Sources/BlastCore/ShellSolver.swift:barStride : the shell bars' history
+size CrackedElement = Sources/BlastCore/StructureSolver.swift:crackedElementStride : each element's slot in the assumed-strain pool and its bars' place, written as raw bytes
+size CrackedPoint = Sources/BlastCore/StructureSolver.swift:crackedPointStride : the assumed-strain pool's per-point concrete histories, copied as raw bytes
 
 # Deliberate differences.
 allow copy-members BeamMeshElement=BeamElement : the renderer does not draw the bow, so it keeps `padding0` where the solver has `bowed`; same layout

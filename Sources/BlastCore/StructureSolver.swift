@@ -46,6 +46,13 @@ public final class StructureSolver {
     /// Bytes of state per element (`ElementState` in Structure.metal).
     public static let stateStride = 196 + 4 * BuildProbe.current.statePadding
     static let forceStride = 96
+    /// Bytes per element of `crackedElementBuffer` (`CrackedElement` in Structure.metal), and per
+    /// Gauss point of `crackedPointBuffer` (`CrackedPoint`).
+    static let crackedElementStride = 16
+    static let crackedPointStride = 92
+    /// The most memory the pool of switched elements' points takes (`assumedStrainCracking`): an
+    /// element's eight points take 736 bytes, so this holds about 1.4 million.
+    static let crackedPoolLimit = 1 << 30
 
     public let device: MTLDevice
     public let commandQueue: MTLCommandQueue
@@ -148,6 +155,14 @@ public final class StructureSolver {
     /// Each element's stretching rate along the lattice axes, for bars that take their rate
     /// over their debonded length, even and odd substeps.
     private let barRateBuffers: [MTLBuffer]
+    /// With `StructureModel.assumedStrainCracking`: the pool's header and each element's entry
+    /// (`CrackedElement` in Structure.metal: its slot once it works at its eight points, and where
+    /// its bars lie), and the pool of those points' concrete histories (`CrackedPoint`, eight an
+    /// element). Nil without it, so that a checkpoint saves what it always did.
+    let crackedElementBuffer: MTLBuffer?
+    let crackedPointBuffer: MTLBuffer?
+    /// How many elements the pool can switch.
+    let crackedCapacity: Int
     /// The structure's materials, `model.material` first; each element names one.
     public let materials: [StructureMaterial]
     /// Per material, the most steel any of its elements holds along one direction (the largest
@@ -284,6 +299,12 @@ public final class StructureSolver {
         if crushedBare { constants.setConstantValue(&crushedBare, type: .bool, index: 20) }
         var bareHourglass = model.releasesCrushedBareHourglass
         if bareHourglass { constants.setConstantValue(&bareHourglass, type: .bool, index: 21) }
+        // Without elements that bend in their cracked concrete the constant stays undefined, so the
+        // kernel is as before.
+        var cracked = model.assumedStrainCracking
+        if cracked {
+            constants.setConstantValue(&cracked, type: .bool, index: ShaderLibrary.crackedHexConstant)
+        }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         elementConstants = constants
         elementLibrary = library
@@ -309,6 +330,10 @@ public final class StructureSolver {
             if crushedBare { tracing.setConstantValue(&crushedBare, type: .bool, index: 20) }
             var bareHourglass = bareHourglass
             if bareHourglass { tracing.setConstantValue(&bareHourglass, type: .bool, index: 21) }
+            var cracked = cracked
+            if cracked {
+                tracing.setConstantValue(&cracked, type: .bool, index: ShaderLibrary.crackedHexConstant)
+            }
             return try? ShaderLibrary.pipeline("structureElements", in: library, constants: tracing)
         }
         // Keep the general connection law out of kernels for ordinary clamped/free bodies.
@@ -520,6 +545,58 @@ public final class StructureSolver {
             return result
         }
         densestSteel = densest
+        if model.assumedStrainCracking {
+            let capacity = min(elementCount, Self.crackedPoolLimit / (8 * Self.crackedPointStride))
+            crackedCapacity = capacity
+            let entries = try buffer((1 + elements) * Self.crackedElementStride, "cracked elements")
+            memset(entries.contents(), 0, entries.length)
+            if hasSteel {
+                // Where each element's bars lie, for each axis the centroid of its steel across the
+                // other two: a layer thinner than an element and a half along an axis is a band
+                // centred on its bars, which lie at its middle; a thicker one is spread through it.
+                for (n, index) in active.enumerated()
+                where materials[Int(elementMaterials[n] & 15)].steel != nil {
+                    let (i, j, k) = (Int(index) % ex, (Int(index) / ex) % ey, Int(index) / (ex * ey))
+                    let low = origin + SIMD3(Float(i), Float(j), Float(k)) * h
+                    var moment = [SIMD2<Float>](repeating: .zero, count: 3)
+                    var weight = SIMD3<Float>.zero
+                    for layer in model.reinforcement {
+                        let overlapLow = simd_max(low, layer.region.min)
+                        let overlapHigh = simd_min(low + h, layer.region.max)
+                        let overlap = simd_max(overlapHigh - overlapLow, .zero)
+                        let volume = overlap.x * overlap.y * overlap.z
+                        guard volume > 0 else { continue }
+                        let extent = layer.region.max - layer.region.min
+                        var place = SIMD3<Float>.zero
+                        for t in 0..<3 {
+                            let at =
+                                extent[t] <= 1.5 * h
+                                ? 0.5 * (layer.region.min[t] + layer.region.max[t])
+                                : 0.5 * (overlapLow[t] + overlapHigh[t])
+                            place[t] = min(max(2 * (at - low[t]) / h - 1, -2), 2)
+                        }
+                        for axis in 0..<3 where layer.ratio[axis] > 0 {
+                            let share = layer.ratio[axis] * volume
+                            weight[axis] += share
+                            moment[axis] += share * SIMD2(place[(axis + 1) % 3], place[(axis + 2) % 3])
+                        }
+                    }
+                    let base = entries.contents().advanced(by: (1 + n) * Self.crackedElementStride + 4)
+                    for axis in 0..<3 where weight[axis] > 0 {
+                        let centroid = moment[axis] / weight[axis]
+                        base.advanced(by: 4 * axis).storeBytes(of: Float16(centroid.x), as: Float16.self)
+                        base.advanced(by: 4 * axis + 2).storeBytes(of: Float16(centroid.y), as: Float16.self)
+                    }
+                }
+            }
+            crackedElementBuffer = entries
+            crackedPointBuffer = try buffer(
+                max(capacity, 1) * 8 * Self.crackedPointStride, "cracked elements' points")
+        } else {
+            crackedCapacity = 0
+            crackedElementBuffer = nil
+            crackedPointBuffer = nil
+        }
         instanceBuffer = try indexBuffer(active, "structure instances")
 
         // Only nodes touched by an element need integrating.
@@ -874,6 +951,24 @@ public final class StructureSolver {
     // MARK: - State
 
     /// Restores the undeformed, stress-free, stationary body.
+    /// With `assumedStrainCracking`, what each body's pool held when it went
+    /// (`assumedStrainSummary`), oldest first, for a report at the end of a run of several.
+    public static func assumedStrainTally() -> [AssumedStrainSummary] {
+        tallyLock.lock()
+        defer { tallyLock.unlock() }
+        return tally
+    }
+    private static let tallyLock = NSLock()
+    nonisolated(unsafe) private static var tally: [AssumedStrainSummary] = []
+
+    deinit {
+        if let summary = assumedStrainSummary {
+            Self.tallyLock.lock()
+            Self.tally.append(summary)
+            Self.tallyLock.unlock()
+        }
+    }
+
     public func reset() {
         time = 0
         settledDisplacements = nil
@@ -899,6 +994,7 @@ public final class StructureSolver {
         for buffer in barPlasticBuffers + barRateBuffers + crackBuffers {
             memset(buffer.contents(), 0, buffer.length)
         }
+        resetCrackedPool()
 
         footings?.reset()
         pairs?.reset()
@@ -1539,7 +1635,8 @@ public final class StructureSolver {
             nodeBuffer, flagBuffer, stateBuffer, forceBuffer, steelBuffer, barHistoryBuffer, instanceBuffer,
             nodeListBuffer, nodeMapBuffer, cellElementBuffer, materialIndexBuffer,
             contactHeadBuffer, contactSlotBuffer, contactMovedBuffer, contactForceBuffer,
-        ].reduce(0) { $0 + $1.length }
+        ].reduce(0) { $0 + $1.length } + (crackedElementBuffer?.length ?? 0)
+            + (crackedPointBuffer?.length ?? 0)
     }
 
     /// True once any element has failed since the last reset.
@@ -1748,6 +1845,8 @@ public final class StructureSolver {
             encoder.setBuffer(barRateBuffers[1 - substep % 2], offset: 0, index: 27)
             encoder.setBuffer(
                 tracesWork ? workBuffer ?? placeholderBuffer : placeholderBuffer, offset: 0, index: 28)
+            encoder.setBuffer(crackedElementBuffer ?? placeholderBuffer, offset: 0, index: 29)
+            encoder.setBuffer(crackedPointBuffer ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -2007,6 +2106,7 @@ public final class StructureSolver {
                 commandBuffer.commit()
                 commandBuffer.waitUntilCompleted()
                 gpuSubsteps.measure(commandBuffer, steps: part)
+                gpuSeconds += commandBuffer.gpuEndTime - commandBuffer.gpuStartTime
                 done += part
             }
             time += Double(count) * Double(criticalTimeStep)
@@ -2016,6 +2116,9 @@ public final class StructureSolver {
 
     /// The GPU's time for a substep lately, to size `advance`'s command buffers.
     private var gpuSubsteps = GPUStepRate()
+    /// The GPU time `advance(steps:)` has taken, from its command buffers' start and end on the GPU
+    /// (which other work on the GPU at the same time stretches).
+    public private(set) var gpuSeconds: Double = 0
 
     /// The GPU time each of `advance`'s command buffers aims at, `BlastSolver.commandBufferTarget`
     /// unless set; the substeps are the same whatever it is.

@@ -151,6 +151,8 @@ do {
         exit(2)
     }
     try run()
+    lastStructure = nil
+    printAssumedStrainTally()
 } catch {
     print("Error: \(error)")
     exit(1)

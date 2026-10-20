@@ -118,6 +118,15 @@ extension StandingTable {
                 note: "Halves the hourglass work in the contest slab and leaves the shear beam as it was; "
                     + "not run against the impact tests.",
                 document: "validation.md#hourglass-control")
+        case .assumedStrainCracking:
+            return Entry(
+                title: "Cracked elements that bend in their concrete", affects: structure,
+                limit: .approximation,
+                note:
+                    "Cracked concrete elements work at eight points with an assumed strain and no hourglass "
+                    + "control; being judged on the case matrix.",
+                document:
+                    "concrete-model.md#an-element-that-bends-in-its-cracked-concrete-stage-2-20-october-2026")
         case .perfectMembers:
             return Entry(
                 title: "Steel members perfectly straight", affects: structure, limit: .approximation,
@@ -339,6 +348,7 @@ extension StandingTable {
         "StructureModel.pressedInterlock": .option([.pressedInterlock]),
         "StructureModel.hourglassFollowsCracking": .option([.hourglassSecant]),
         "StructureModel.hourglassCapsSteel": .option([.hourglassWithoutSteel]),
+        "StructureModel.assumedStrainCracking": .option([.assumedStrainCracking]),
         "StructureModel.retiredOptions": .input,
         // The regime picks defaults for the options above (`StructuralRegime`); what it turns on
         // is read through those options, so the regime itself is an input of the scene.

@@ -843,6 +843,14 @@ public struct StructureModel: Sendable, Hashable, Codable {
     /// volume and fling its nodes (Hupfauf's SN144). Off by default; an alternative to
     /// `erodesCrushedBare`, which removes the element and its bars' tie.
     public var releasesCrushedBareHourglass = false
+    /// Whether a concrete element bends in its cracked concrete: it is today's one-point element
+    /// with hourglass control until any of its eight Gauss points would crack, or be squeezed past
+    /// a tenth of its strain at peak, and from then on works at those points, each with the concrete
+    /// law and a history of its own, at Belytschko and Bindeman's assumed strain, its bars strained
+    /// at their own place in it and no hourglass control (docs/concrete-model.md, "An element that
+    /// bends in its cracked concrete"). Solid elements only, not masonry's jointed units nor with
+    /// `crackAveraging`; off by default (emmettl/bombcad-work#20).
+    public var assumedStrainCracking = false
     /// Whether a crack's faces, riding up on their aggregate as it slides, press on whatever holds
     /// it from opening, and pressed, carry more shear: Walraven and Reinhardt's relations between
     /// a crack's opening, slip, shear and the stress across it (HERON 26(1A), 1981, eqs. 1a and
@@ -2161,6 +2169,11 @@ package enum ShaderLibrary {
     /// Index of the optional function constant that compiles structures' cut cells into a kernel
     /// (`structureCutConstant` in Solver.metal).
     package static let structureCutConstant = 15
+
+    /// Index of the optional function constant that compiles concrete elements that bend in their
+    /// cracked concrete into the element kernel (`crackedHexConstant` in Structure.metal,
+    /// `StructureModel.assumedStrainCracking`).
+    package static let crackedHexConstant = 26
 }
 
 // MARK: - Decoding layouts saved by earlier versions
@@ -2222,7 +2235,7 @@ extension StructureModel {
         case pressedInterlock, regimeOverride, loadingOverride, regimeDefaults
         case hourglassFollowsCracking, hourglassCapsSteel, discreteBars, barsAsTrusses, trussDiameter
         case crackAveraging, rubbleParticles, strainRateWindow, tiesTouching, extremeFibreCracking,
-            erodesCrushedBare, releasesCrushedBareHourglass
+            erodesCrushedBare, releasesCrushedBareHourglass, assumedStrainCracking
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -2267,6 +2280,9 @@ extension StructureModel {
         if erodesCrushedBare { try container.encode(erodesCrushedBare, forKey: .erodesCrushedBare) }
         if releasesCrushedBareHourglass {
             try container.encode(releasesCrushedBareHourglass, forKey: .releasesCrushedBareHourglass)
+        }
+        if assumedStrainCracking {
+            try container.encode(assumedStrainCracking, forKey: .assumedStrainCracking)
         }
         try container.encodeIfPresent(bondSlip, forKey: .bondSlip)
         try container.encode(solidElementKind, forKey: .solidElementKind)
@@ -2338,6 +2354,8 @@ extension StructureModel {
         erodesCrushedBare = try container.decodeIfPresent(Bool.self, forKey: .erodesCrushedBare) ?? false
         releasesCrushedBareHourglass =
             try container.decodeIfPresent(Bool.self, forKey: .releasesCrushedBareHourglass) ?? false
+        assumedStrainCracking =
+            try container.decodeIfPresent(Bool.self, forKey: .assumedStrainCracking) ?? false
         bondSlip = try container.decodeIfPresent(BondSlip.self, forKey: .bondSlip)
         solidElementKind = try container.decodeIfPresent([ElementKind?].self, forKey: .solidElementKind) ?? []
         solidSheets = try container.decodeIfPresent([SheetAssignment?].self, forKey: .solidSheets) ?? []

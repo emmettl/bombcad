@@ -327,6 +327,8 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
     case pressedInterlock
     case hourglassSecant
     case hourglassWithoutSteel
+    /// Cracked concrete elements at eight points with an assumed strain (`StructureModel.assumedStrainCracking`).
+    case assumedStrainCracking
     case perfectMembers
     case interfaceBond
     case smearedMasonry
@@ -436,6 +438,7 @@ public enum ModelOption: String, Codable, CaseIterable, Sendable {
         case .pressedInterlock: return any { $0.pressedInterlock }
         case .hourglassSecant: return !concrete.isEmpty && any { $0.hourglassFollowsCracking }
         case .hourglassWithoutSteel: return !concrete.isEmpty && any { !$0.hourglassCapsSteel }
+        case .assumedStrainCracking: return !concrete.isEmpty && any { $0.assumedStrainCracking }
         case .perfectMembers: return any { !$0.memberImperfections && $0.elementKind == .shell }
         case .interfaceBond: return any { $0.interfaceBond != nil }
         case .smearedMasonry: return materials.contains { $0.units != nil } && any { !$0.unitJoints }
@@ -536,7 +539,9 @@ public enum StandingTable {
         case .shellElements, .shellSectionShear, .noSecondCracks, .noBareBars, .removesFragments,
             .noCrackSlip, .bondSlip, .discreteBars, .nonlocalCracking, .nonDefaultRateWindow,
             .rubbleParticles, .extremeFibreCracking, .erodesCrushedBare, .releasesCrushedBareHourglass,
-            .pressedInterlock, .hourglassSecant, .hourglassWithoutSteel, .perfectMembers, .interfaceBond,
+            .pressedInterlock, .hourglassSecant, .hourglassWithoutSteel, .assumedStrainCracking,
+            .perfectMembers,
+            .interfaceBond,
             .smearedMasonry, .profiledSheets, .steelConnections, .pitchedShells, .inclinedBars,
             .baseConnections, .jointsBetweenParts, .footings, .footingsOnSlope, .softGround, .groundCoupling,
             .cyclicSand, .freeBase, .importedStructure, .rateIndependent, .designIncreaseFactors,

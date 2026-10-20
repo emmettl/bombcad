@@ -960,7 +960,114 @@ G1 passes.
   bending modes match there; the twist modes do not.
 - Shear failure, and localisation along a member: the length bent is uniform.
 
-Stage 2, the GPU option behind a new function constant, is proposed on the issue and not built.
+Stage 2, the GPU option, follows.
+
+### An element that bends in its cracked concrete: stage 2 (20 October 2026)
+
+Stage 2 of emmettl/bombcad-work#20: the element of stage 1 in the GPU's element kernel, with
+BombCAD's own concrete law at each point. It is an option, `StructureModel.assumedStrainCracking`
+(`blastbench --assumed-strain`), compiled in by function constant 26, and off by default. Off, the
+kernel is as it was, bit for bit.
+
+**What it does.**
+- A concrete element is today's one-point element with hourglass control until any of its eight
+  Gauss points would crack or be squeezed past a tenth of its strain at peak. The test uses the
+  law's own criterion, the principal strain with the Poisson effect taken out, judged on the strain
+  rate and cracks of the last step. Most elements are decided from their centre's strain, widened by
+  a bound on how far the hourglass modes take any point from it.
+- From then on it works at the eight points, each with a history of its own started from the
+  centre's. Its hourglass control is zeroed.
+- **The strain at a point** is Belytschko and Bindeman's assumed strain, as in stage 1: the mean
+  gradient's, plus each mode's gradient with the parasitic shear left out. It differs from stage 1
+  in two ways:
+  - the modes' amplitudes are taken in a corotational frame, from the centre's deformation
+    gradient by Gram–Schmidt, so that the filter holds when the element turns;
+  - the strain is Green–Lagrange, as the one-point element's is.
+- **The forces** are the transpose of that field: the mean of the points' first Piola–Kirchhoff
+  stresses on the mean gradient, and each mode's generalised force on its corner signs. So the
+  forces do the work the stresses do.
+- **The law at each point is BombCAD's.** It covers crack axes, second cracks, slip, interlock,
+  confinement and compaction. The kernel's concrete law was moved, unchanged, into functions
+  (`concreteAxes` and `concreteLaw` in Structure.metal). The one-point element calls them once, and
+  a switched element calls them at each point. Under a uniform strain the eight points give the
+  centre's forces to within 2 × 10⁻⁵ (checked).
+- **Element-level quantities:** the strain rate and the bars' rates are the centre's. The tensile
+  rate factor freezes when any point first cracks.
+- **The bars along each axis** are strained at their centroid in the element, across the other two
+  axes, with the element's own bar history. Where a layer is thinner than an element and a half,
+  the bars lie at its middle, as `addMat` lays them. So both elements a one-element band overlaps
+  strain their share at the bars' own height. That is the linear field extrapolated up to a natural
+  coordinate of 2, and it needs each element's bar place kept (a `CrackedElement` entry, 16 bytes).
+  Inclined bars stay at the centre.
+- **Exclusions.** A switched element that turns bare goes back to the one-point element, with its
+  hourglass control from zero: bars alone need it. Masonry's jointed units and `crackAveraging`
+  never switch.
+- **Memory.** The points' histories (`CrackedPoint`, 92 bytes, eight an element) are in a pool
+  filled as elements switch, sized for every element up to 1 GiB. An element that finds the pool
+  full stays as it is, and the run says so. The element's own state shows its most cracked point's
+  history, and the most any point has crushed.
+
+**Off is bit-identical** (release builds of 1d36008d and of this stage compared): `blastbench
+digest` and `digest --recommended`, Janney's beam on 12, Hupfauf's SN142 and SN131, Chiquito's P7,
+Saatci's SS0a-1 and SS1b-1, the contest slab on 8 and the chamber.
+- The first extraction was not bit-identical: the chamber lost three fewer elements. Its inclined
+  bars' stress had been added after the function returned instead of inside it, which changed what
+  fast math fused. Adding it in place, as before, made all eight cases identical.
+
+**Gate G1 on the GPU** (`Tests/BlastCoreTests/CrackedHexGPUTests.swift`). The static checks drive
+the GPU's element pass as the element routine of a static solve:
+- each evaluation restores the solver's state as last committed, sets the nodes, runs one substep
+  and reads the elements' forces;
+- Newton's method takes its steps from the CPU reference's tangent, or its elastic stiffness once
+  that stops helping, and iterates until the GPU's residual is below 10⁻⁴ of its largest nodal
+  force (float's floor is about 10⁻⁵);
+- an element that switches holds its switch for the rest of the step, as the CPU solve does.
+
+1. **One element** against the CPU reference, for 24 displacement fields: today's and the switched
+   element agree within 2 × 10⁻³ of the largest force. That is what the compression parabola's
+   curvature leaves at those strains.
+2. **The elastic cantilever** (ten depths, 100 N at the tip, the switched run switched from the
+   start). The table gives the tip deflection over beam theory:
+
+| Through the depth | GPU today's | CPU today's | GPU switched | CPU switched (stage 1) |
+|---|---|---|---|---|
+| 1 | 0.9964 | 0.9964 | 0.9517 | 0.9516 |
+| 2 | 0.9881 | 0.9879 | 0.9839 | 0.9836 |
+| 4 | 0.9958 | 0.9953 | 0.9950 | 0.9943 |
+
+3. **The reinforced section** of stage 1, made of BombCAD's material: 30 MPa, f_t 2.9 MPa, G_f
+   140 N/m, cracks banded over one element, `grade500` bars, no rate, Poisson effect or confinement.
+   It is set against fibre section analysis with BombCAD's uniaxial laws, taken from the kernel's
+   own parameters. The measure is the largest error over curvatures from twice the cracking
+   curvature to 0.06 per metre:
+
+| Through the depth | GPU switched | GPU today's (bars band-smeared) | Stage 1 (CPU, its simplified law): cracked / today's |
+|---|---|---|---|
+| 4 | 2.9% | 13.2% strong | 0.8% / 13.0% |
+| 6 | 0.8% | 7.3% strong | 0.5% / 7.5% |
+| 12 | 4.4% | 2.3% | 0.1% / within 1.8% |
+
+   On 12 through the switched element is within 2–3% up to 0.014 per metre, then 2–4% strong on
+   the plateau after the peak. There the fibres lose moment as the top crushes past its peak, and
+   two points through each element's depth integrate that softening coarsely.
+
+G1 passes on the GPU.
+
+**Cost** (`blastbench assumed-strain-cost`): a reinforced slab of 51,200 elements, 8 through,
+unloaded, median GPU time per structural substep in interleaved rounds:
+
+| Option | Substep |
+|---|---|
+| Off | ×1 |
+| On, no element switched | ×1.12 (the switch test) |
+| On, every element switched | ×3.56 |
+
+So a switched element costs about 3.6 times an element's share of the substep, rather than the
+stage-1 estimate of 6–8 times for the element kernel alone. The time step is unchanged. Memory is
+736 bytes per switched element, against 196 for its `ElementState`.
+
+**Not shown here.** The force's jump at the switch in explicit dynamics: the bending modes match
+there and the twist modes do not. Stage 3 judges the option on the case matrix.
 
 ## Strain-rate effects
 
