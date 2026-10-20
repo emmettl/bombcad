@@ -94,6 +94,30 @@ Against the same sweep on the Mac:
 - **Time:** 111 s on the PC's 16 cores, the release build 137 s on top. The Mac took 261 s,
   shared with other sessions' runs at a load of 60–90.
 
-**Not yet** (emmettl/bombcad-work#48's later stages):
-- teaching `BombCAD sweep` and `BombCAD ensemble` to hand their CPU-only cases to a Linux host;
-- the PC as a lane for `check-affected`'s BlastModel tests.
+## The Linux lane of the pre-push check
+
+When `make check-affected` (and so `make ship`) chooses suites defined in `Tests/BlastModelTests`,
+and bombcad-pc answers with its sweep lock free, those suites run there (`remote-sweep.py test`:
+this worktree sent, the tests built, the suites run on 16 cores). Meanwhile the strict build, the
+other suites and the digests run here or on the mini, as before.
+- **A lane that is not there costs nothing.** The PC is asked first, and if it doesn't answer or
+  its lock is held, every suite runs here.
+- **A lane lost on the way** (the connection dropped, the lock taken meanwhile) has its suites run
+  here after the rest.
+- **A test that fails there fails the check,** as it would here: Linux CI runs the same suites.
+- `BOMBCAD_LINUX_HOST` names another host; set it empty, or pass `--no-linux`, to keep every suite
+  here.
+
+The first `make ship` through it (a86e4618, 21 October) sent 9 of its 16 suites. The PC ran them
+in 35 s, sending and building included, while the Mac's build and other suites took 50 s.
+
+**What it saves** is BlastModel's share of the suites. For a change that runs all 182 of them:
+- the PC takes 192 s, sending and building included (20 s, then 173 s of tests);
+- this Mac takes 279 s for the same suites alone (load about 50);
+- the mini takes 470–680 s.
+
+Off the critical path, while the GPU suites and the digests run, a change to BlastModel's widely
+used code lands up to about ten minutes sooner on the mini.
+
+**Not yet:** teaching `BombCAD sweep` and `BombCAD ensemble` to hand their CPU-only cases to a
+Linux host (emmettl/bombcad-work#48).

@@ -41,6 +41,10 @@ a change to the solvers' core runs its suites and the [digests](#the-digests), n
 | The solvers' core (tier `core`): the solvers' shaders (`Sources/BlastCore/Shaders`), RadialBlast, and BlastSolver and its extensions, SolverTypes, StructureSolver, StructureTypes, ShellSolver, Scenario, MappedStart, Refinement, StructuralBody (with their `+GPU`/`+CPU` halves) | the suites as for `covered` (or `affected` without a map); for a core file the map can't speak for, its names and every suite that ran any of it; for a shader the kernel lookup can't follow, the suites that ran the Swift mirrors of the shader types it touches. Then the six digest sets, bit for bit against the merge base |
 | `Package.swift`/`.resolved`, or `ARGS=--full` | the full `make check`, here or on the mini (below) |
 
+BlastModel's suites among them run on the PC, bombcad-pc, beside the rest when it answers and is
+free: the [Linux lane](linux.md#the-linux-lane-of-the-pre-push-check) (`--no-linux` keeps them
+here).
+
 `--dry-run` prints the tier, the map's commit, what was made of each changed file and the suites,
 each with why it was chosen, and for the core what the digests will build and reuse; `--full`
 forces the full check; `--no-map` chooses by name as without a map; `--base <commit>` compares
