@@ -9,13 +9,17 @@ import sys
 import unittest
 from pathlib import Path
 
-import numpy as np
-
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import model  # noqa: E402
-import search  # noqa: E402
-import scenarios  # noqa: E402
+# The CI Mac's Python has no numpy: skipped there, as the reference scripts' tests are.
+try:
+    import numpy as np
+    import model  # noqa: E402
+    import search  # noqa: E402
+    import scenarios  # noqa: E402
+except ImportError as error:
+    print(f"SKIP: {error}")
+    sys.exit(0)
 
 sdof = model.sdof
 kb = model.kb
