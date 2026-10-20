@@ -40,6 +40,9 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 STUDIO_DATA = Path("/Volumes/StudioData/bombcad")
 FORMAT = 1
+# Maps kept where they are built and where they are fetched to: the nightly writes one a night, and
+# check-affected wants the newest behind a branch's merge base, so three nights' are plenty.
+KEEP_MAPS = 3
 
 
 def default_out():
@@ -710,7 +713,8 @@ def show(options):
 
 
 def fetch(options):
-    """Copies the maps built on the CI Mac (its ~/bombcad-test-impact) here."""
+    """Copies the maps built on the CI Mac (its ~/bombcad-test-impact) here, and keeps the newest
+    --keep-maps of them."""
     try:
         settings = json.loads((Path.home() / ".config/bombcad/remote.json").read_text())
     except (OSError, ValueError):
@@ -721,10 +725,12 @@ def fetch(options):
     command = ["rsync", "-a", "--include=*.json", "--exclude=*", "-e",
                "ssh -o BatchMode=yes -o ConnectTimeout=8", f"{host}:bombcad-test-impact/", f"{options.out}/"]
     try:
-        return subprocess.run(command, timeout=options.timeout, stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL).returncode
+        status = subprocess.run(command, timeout=options.timeout, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL).returncode
     except subprocess.TimeoutExpired:
         return 1
+    prune(options.out, options.keep_maps)
+    return status
 
 
 def prune(directory, keep):
@@ -748,7 +754,7 @@ def main():
     build_parser.add_argument("--no-slot", action="store_true", help="run the suites without gpu-slot")
     build_parser.add_argument("--allow-dirty", action="store_true")
     build_parser.add_argument("--keep", action="store_true", help="keep the raw profiles")
-    build_parser.add_argument("--keep-maps", type=int, default=30, help="maps kept in --out")
+    build_parser.add_argument("--keep-maps", type=int, default=KEEP_MAPS, help="maps kept in --out")
     build_parser.add_argument("--skip-compile", action="store_true", help=argparse.SUPPRESS)
     build_parser.add_argument("--compile-only", action="store_true", help=argparse.SUPPRESS)
     build_parser.add_argument("--compile-seconds", type=float, default=0, help=argparse.SUPPRESS)
@@ -759,6 +765,7 @@ def main():
     fetch_parser = commands.add_parser("fetch", help="copy the CI Mac's maps here")
     fetch_parser.add_argument("--out", type=Path, default=default_out())
     fetch_parser.add_argument("--timeout", type=int, default=60)
+    fetch_parser.add_argument("--keep-maps", type=int, default=KEEP_MAPS, help="maps kept in --out")
     list_parser = commands.add_parser("list", help="the maps kept here")
     list_parser.add_argument("--out", type=Path, default=default_out())
     options = parser.parse_args()

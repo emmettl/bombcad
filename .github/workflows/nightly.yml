@@ -1,5 +1,6 @@
 # Every night on the self-hosted Mac mini: the full check on main's head, which pushes no longer
 # run, reporting what failed and the commits since the last green full check as suspects; then
+# the test-impact map of that commit, which check-affected chooses a push's suites by; then
 # the validation suite and the benchmarks. Results are compared with the previous night's (kept
 # on the runner in ~/bombcad-nightly); the job fails when a result changes, a run is much slower
 # than usual or a command fails. See docs/continuous-integration.md.
@@ -83,9 +84,42 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  nightly:
-    # After the full check, whatever its result, on the same runner.
+  test-impact:
+    # Straight after the full check, whatever its result, on the same runner: the test-impact map
+    # of the commit it tested, which check-affected reads to choose a push's tests by coverage
+    # (Scripts/test-impact.py). Before the validation suite, so the map is out about three hours
+    # sooner. It is kept in ~/bombcad-test-impact here, the last three with its coverage build;
+    # the Studio fetches them from there.
     needs: full-check
+    if: always() && (github.event_name == 'schedule' || inputs.only == '')
+    runs-on: [self-hosted, macOS, ARM64, metal]
+    timeout-minutes: 300
+    steps:
+      - name: Skip if tonight's suite has already started
+        id: guard
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -v-12H +%Y-%m-%dT%H:%M:%SZ)
+          others=$(/opt/homebrew/bin/gh run list -R "$GITHUB_REPOSITORY" -w nightly.yml -L 20 \
+            --json databaseId,createdAt \
+            --jq "[.[] | select(.createdAt >= \"$since\" and .databaseId != $GITHUB_RUN_ID)] | length")
+          echo "Nightly runs started since $since besides this one: $others"
+          if [ "$others" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          # The commit the full check tested.
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build the map
+        if: steps.guard.outputs.skip != 'true'
+        run: python3 Scripts/test-impact.py build --out "$HOME/bombcad-test-impact" --jobs 3 --keep-maps 3
+
+  nightly:
+    # After the full check and the map, whatever their results, on the same runner.
+    needs: [full-check, test-impact]
     if: always()
     runs-on: [self-hosted, macOS, ARM64, metal]
     timeout-minutes: 480
@@ -122,31 +156,3 @@ jobs:
           name: nightly-${{ github.run_number }}
           path: nightly-results/
 
-  test-impact:
-    # Last, whatever came before, on the same runner: the test-impact map of main's head, which
-    # check-affected reads to choose a push's tests by coverage (Scripts/test-impact.py). It is
-    # kept in ~/bombcad-test-impact here, with its coverage build; the Studio fetches it from there.
-    needs: nightly
-    if: always() && (github.event_name == 'schedule' || inputs.only == '')
-    runs-on: [self-hosted, macOS, ARM64, metal]
-    timeout-minutes: 300
-    steps:
-      - name: Skip if tonight's suite has already started
-        id: guard
-        if: github.event_name == 'schedule'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          since=$(date -u -v-12H +%Y-%m-%dT%H:%M:%SZ)
-          others=$(/opt/homebrew/bin/gh run list -R "$GITHUB_REPOSITORY" -w nightly.yml -L 20 \
-            --json databaseId,createdAt \
-            --jq "[.[] | select(.createdAt >= \"$since\" and .databaseId != $GITHUB_RUN_ID)] | length")
-          echo "Nightly runs started since $since besides this one: $others"
-          if [ "$others" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.guard.outputs.skip != 'true'
-        with:
-          persist-credentials: false
-      - name: Build the map
-        if: steps.guard.outputs.skip != 'true'
-        run: python3 Scripts/test-impact.py build --out "$HOME/bombcad-test-impact" --jobs 3

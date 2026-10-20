@@ -3,6 +3,7 @@ maps; and the map's helpers in test-impact.py (line translation, the shader libr
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -21,12 +22,16 @@ class TierTests(unittest.TestCase):
                          "documents")
         self.assertEqual(check.tier([]), "documents")
 
-    def test_core_forces_the_full_check(self):
-        for path in ("Sources/BlastCore/Shaders/Solver.metal", "Package.resolved",
-                     "Sources/BlastCore/BlastSolver.swift", "Sources/BlastRender/Shaders/Render.metal",
-                     "Sources/RadialBlast/SphericalBlast.swift"):
+    def test_the_core_is_its_own_tier_and_the_package_the_full_check(self):
+        for path in ("Sources/BlastCore/Shaders/Solver.metal", "Sources/BlastCore/BlastSolver.swift",
+                     "Sources/BlastCore/BlastSolver+Stepping.swift", "Sources/BlastCore/StructureTypes+GPU.swift",
+                     "Sources/BlastModel/SolverTypes.swift", "Sources/RadialBlast/SphericalBlast.swift"):
             with self.subTest(path=path):
-                self.assertEqual(check.tier(["docs/a.md", path]), "full")
+                self.assertEqual(check.tier(["docs/a.md", path]), "core")
+        for path in ("Package.resolved", "Package.swift"):
+            self.assertEqual(check.tier(["Sources/BlastCore/BlastSolver.swift", path]), "full")
+        # The renderer's shaders run in no digest: their suites, by coverage or name.
+        self.assertEqual(check.tier(["Sources/BlastRender/Shaders/Render.metal"]), "affected")
 
     def test_other_code_is_affected(self):
         self.assertEqual(check.tier(["Sources/BlastCore/Footing.swift", "docs/a.md"]), "affected")
@@ -48,6 +53,11 @@ class SuiteTests(unittest.TestCase):
         (self.tests / "FootingTests.swift").write_text(
             "import Testing\n@Suite(.serialized)\nstruct FootingSlopeTests {\n  let f = Footing()\n}\n")
         (self.tests / "OtherTests.swift").write_text("struct GlassTests {}\nstruct Helper {}\n")
+
+    def test_an_extension_file_goes_by_the_type_it_extends(self):
+        (self.tests / "SolverTests.swift").write_text("struct StepTests { let s = BlastSolver() }\n")
+        suites = check.affected_suites(["Sources/BlastCore/BlastSolver+Stepping.swift"], tests_root=self.tests)
+        self.assertIn("StepTests", suites)
 
     def test_suites_naming_a_changed_type_are_chosen(self):
         suites = check.affected_suites(["Sources/BlastCore/Footing.swift"], tests_root=self.tests)
@@ -170,6 +180,14 @@ class FakeRepository:
     def library(self, shader):
         return {METAL: impact.metal_declarations(SHADER_AT_BASE)}
 
+    def head_declarations(self, shader):
+        return impact.metal_declarations("struct Uniforms { float dt; };\nkernel void fresh(constant Uniforms &u "
+                                         "[[buffer(0)]]) {}\n")
+
+    def mirrors(self):
+        # `Uniforms` is mirrored by a struct in the loader's file.
+        return {"Uniforms": {LOADER}}
+
 
 class CoverageSelectionTests(unittest.TestCase):
     def select(self, touched, **arguments):
@@ -227,11 +245,40 @@ class CoverageSelectionTests(unittest.TestCase):
         selection = self.select({"Package.resolved": {3}})
         self.assertEqual(len(selection.full), 1)
 
+    def test_a_kernel_without_a_swift_literal_goes_by_the_mirrors_of_its_types(self):
+        swift = dict(SWIFT_AT_BASE)
+        swift[SOLVER] = swift[SOLVER].replace('pipeline("other")', "pipeline(name)")
+
+        class Unnamed(FakeRepository):
+            def swift_files(self):
+                return swift
+        selection = check.select_by_map([METAL], made_up_map(), Unnamed({METAL: {18}}))
+        self.assertEqual(selection.full, [])
+        # `other` uses Uniforms, whose Swift mirror is in the loader's file: every suite that ran it.
+        for suite in ("AirTests", "RareTests", "QuickGPUTests"):
+            self.assertIn("mirrors", " ".join(selection.reasons[suite]))
+        self.assertTrue(any("dispatched from no Swift line" in note for note in selection.notes))
+
+    def test_a_new_shader_file_goes_by_its_mirrors_and_a_compiling_suite(self):
+        selection = self.select({"Sources/BlastCore/Shaders/Fresh.metal": None})
+        self.assertEqual(selection.full, [])
+        self.assertIn("RareTests", selection.reasons)  # ran the loader, which mirrors Uniforms
+        self.assertIn("compiles Fresh.metal", selection.reasons["QuickGPUTests"])
+
+    def test_a_stale_shader_goes_by_its_mirrors(self):
+        selection = self.select({METAL: {5}}, ages={METAL: check.MAX_MAP_AGE + 1})
+        self.assertEqual(selection.full, [])
+        self.assertIn("RareTests", selection.reasons)
+        self.assertIn("commits since the map", " ".join(selection.reasons["RareTests"]))
+
     def test_a_stale_map_falls_back_to_the_name_rules(self):
-        # A core file touched by more commits than --max-map-age since the map: the full check.
+        # A core file touched by more commits than --max-map-age since the map: its names, and
+        # every suite that ran any of it; no full check.
         selection = self.select({SOLVER: {10}}, ages={SOLVER: check.MAX_MAP_AGE + 1})
-        self.assertTrue(selection.full)
-        self.assertIn("commits since the map", selection.full[0])
+        self.assertEqual(selection.full, [])
+        self.assertIn("names BlastSolver", selection.reasons["GlassTests"][0])
+        self.assertIn("the whole file", selection.reasons["RareTests"][0])
+        self.assertIn("AirTests", selection.reasons)
         # A file outside the core: the suites that name it.
         footing = "Sources/BlastCore/Footing.swift"
         tests = {"Tests/FootingTests.swift": "struct FootingSlopeTests { let f = Footing() }\n"}
@@ -245,7 +292,8 @@ class CoverageSelectionTests(unittest.TestCase):
 
     def test_a_file_the_map_does_not_know_goes_by_name(self):
         selection = self.select({"Sources/BlastCore/Scenario.swift": {3}})  # core, not in the map
-        self.assertTrue(selection.full)
+        self.assertEqual(selection.full, [])
+        self.assertTrue(any("Scenario.swift: not in the map" in note for note in selection.notes))
         selection = self.select({"Sources/BlastCore/Glass.swift": None})  # new on the branch
         self.assertEqual(selection.full, [])
 
@@ -257,7 +305,129 @@ class CoverageSelectionTests(unittest.TestCase):
         self.assertAlmostEqual(check.estimate(made_up_map(), ["AirTests", "GlassTests"]), 350 / 5855)
 
 
+DIGEST_OUTPUT = """open, 0.5 m: 22fa821826762824 after 80 steps, 0 refined blocks
+street, afterburning, 0.5 m: 10944058e8f5e111 after 80 steps, 0 refined blocks
+wall alone as shells: 2547434e6198f36c after 3000 substeps, 0 elements failed
+"""
+
+
+def digest_results(output=DIGEST_OUTPUT, status=0, **changed):
+    """Every set with `output`, those named in `changed` (by set name, spaces as _) with another."""
+    return {name: {"status": status, "output": changed.get(name.replace(" ", "_"), output), "seconds": 1}
+            for name, _ in check.DIGEST_SETS}
+
+
+class DigestTests(unittest.TestCase):
+    def test_digest_lines_are_parsed_by_case(self):
+        cases = check.parse_digests("gpu-slot: waiting\n" + DIGEST_OUTPUT)
+        self.assertEqual(sorted(cases), ["open, 0.5 m", "street, afterburning, 0.5 m", "wall alone as shells"])
+        self.assertEqual(cases["open, 0.5 m"], ("22fa821826762824", "after 80 steps, 0 refined blocks"))
+
+    def test_identical_digests_pass(self):
+        self.assertEqual(check.compare_digests(digest_results(), digest_results()), ([], []))
+
+    def test_a_changed_hash_names_its_set_and_case(self):
+        moved = DIGEST_OUTPUT.replace("10944058e8f5e111", "10944058e8f5e112")
+        differences, _ = check.compare_digests(digest_results(), digest_results(refined_twice=moved))
+        self.assertEqual(differences, ["refined twice / street, afterburning, 0.5 m: 10944058e8f5e111 at the base, "
+                                       "10944058e8f5e112 on this branch"])
+
+    def test_a_changed_count_is_a_difference_too(self):
+        moved = DIGEST_OUTPUT.replace("0 elements failed", "2 elements failed")
+        differences, _ = check.compare_digests(digest_results(), digest_results(plain=moved))
+        self.assertEqual(len(differences), 1)
+        self.assertIn("0 elements failed → after 3000 substeps, 2 elements failed", differences[0])
+
+    def test_missing_failed_and_new_cases(self):
+        fewer = "\n".join(DIGEST_OUTPUT.splitlines()[:2])
+        differences, _ = check.compare_digests(digest_results(), digest_results(terrain=fewer))
+        self.assertIn("terrain / wall alone as shells: at the base", differences[0])
+        differences, _ = check.compare_digests(digest_results(), digest_results(status=1))
+        self.assertEqual(len(differences), len(check.DIGEST_SETS))
+        more = DIGEST_OUTPUT + "roof, 0.5 m: abc after 80 steps\n"
+        differences, notes = check.compare_digests(digest_results(), digest_results(mapped=more))
+        self.assertEqual(differences, [])
+        self.assertIn("new on this branch", notes[0])
+        differences, _ = check.compare_digests(digest_results(output=""), digest_results())
+        self.assertIn("no digest printed at the base", differences[0])
+
+    def test_a_case_unstable_at_the_base_is_not_compared(self):
+        unstable = DIGEST_OUTPUT.replace("0 refined blocks\n", "0 refined blocks, unstable\n", 1)
+        moved = unstable.replace("22fa821826762824", "1")
+        differences, notes = check.compare_digests(digest_results(plain=unstable), digest_results(plain=moved))
+        self.assertEqual(differences, [])
+        self.assertIn("unstable at the base", notes[0])
+
+
+class FakeDigestCheck(check.DigestCheck):
+    """The digest check with made-up binaries: shell scripts printing DIGEST_OUTPUT, or another
+    hash for `changed` on this branch."""
+
+    def __init__(self, cache, changed=False):
+        super().__init__("b" * 40, cache, stream=open(Path(cache) / "log.txt", "w"), in_slot=True)
+        self.binaries = {}
+        for side in ("base", "head"):
+            script = Path(cache) / f"{side}-blastbench"
+            output = DIGEST_OUTPUT.replace("22fa", "0000") if changed and side == "head" else DIGEST_OUTPUT
+            script.write_text("#!/bin/sh\ncat <<'END'\n" + output + "END\n")
+            script.chmod(0o755)
+            self.binaries[side] = script
+        self.base_runs = 0
+
+    def build(self, source):
+        return self.binaries["head"]
+
+    def base_binary(self):
+        self.base_runs += 1
+        return self.binaries["base"]
+
+
+class DigestCheckTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.cache = Path(self.directory.name)
+
+    def test_the_same_digests_pass_and_the_bases_are_cached(self):
+        digests = FakeDigestCheck(self.cache)
+        self.assertEqual(digests.run(), 0)
+        self.assertTrue(digests.base_digests_path().exists())
+        digests.stream.close()
+        self.assertIn("bit-identical", (self.cache / "log.txt").read_text())
+        again = FakeDigestCheck(self.cache)
+        self.assertEqual(again.run(), 0)
+        again.stream.close()
+        self.assertIn("the base's digests from the cache", (self.cache / "log.txt").read_text())
+
+    def test_a_differing_digest_fails_and_is_named(self):
+        digests = FakeDigestCheck(self.cache, changed=True)
+        self.addCleanup(digests.stream.close)
+        self.assertEqual(digests.run(), 1)
+        digests.stream.flush()
+        log = (self.cache / "log.txt").read_text()
+        self.assertIn("FAILED: the digests differ", log)
+        self.assertIn("plain / open, 0.5 m: 22fa821826762824 at the base, 0000821826762824 on this branch", log)
+
+    def test_old_bases_are_pruned(self):
+        for index in range(check.DIGEST_KEEP + 2):
+            (self.cache / f"{index:040x}").mkdir()
+        FakeDigestCheck(self.cache).prune()
+        self.assertEqual(len([path for path in self.cache.iterdir() if len(path.name) == 40]), check.DIGEST_KEEP)
+
+
 class MapHelperTests(unittest.TestCase):
+    def test_the_newest_three_maps_are_kept(self):
+        self.assertEqual(impact.KEEP_MAPS, 3)
+        with tempfile.TemporaryDirectory() as directory:
+            for index in range(5):
+                path = Path(directory) / f"{index:040x}.json"
+                path.write_text("{}")
+                os.utime(path, (1000 + index, 1000 + index))
+            (Path(directory) / f"{9:040x}-dirty.json").write_text("{}")
+            impact.prune(directory, impact.KEEP_MAPS)
+            self.assertEqual(sorted(path.name[39] for path in impact.map_files(directory)), ["2", "3", "4"])
+            self.assertTrue((Path(directory) / f"{9:040x}-dirty.json").exists())
+
     def test_hunks_and_touched_lines(self):
         diff = "@@ -3,2 +3,1 @@\n-a\n-b\n+c\n@@ -9,0 +9,2 @@\n+d\n+e\n@@ -20 +21 @@\n-f\n+g\n"
         found = impact.hunks(diff)
