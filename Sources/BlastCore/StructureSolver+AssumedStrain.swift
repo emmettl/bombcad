@@ -1,6 +1,7 @@
 import BlastModel
 import Foundation
 import Metal
+import simd
 
 // Concrete elements that bend in their cracked concrete (`StructureModel.assumedStrainCracking`,
 // `crackedHex` in Structure.metal): the pool of their points' histories, what it holds, and a way
@@ -38,6 +39,45 @@ extension StructureSolver {
         let base = entries.contents().advanced(by: (1 + n) * Self.crackedElementStride + 4 + 4 * axis)
         return SIMD2(
             Float(base.load(as: Float16.self)), Float(base.advanced(by: 2).load(as: Float16.self)))
+    }
+
+    /// How far each intact element's deformation is in its hourglass modes rather than its mean
+    /// strain: (4 / h) sum |q| over the modes' amplitudes q against the mean displacement gradient's
+    /// size, the bound `crackedLeavesElastic` widens by. Bending through a beam n elements deep gives
+    /// about 1 / n at the extreme fibre; a mode the element does not resist grows far past 1. Each
+    /// element's share, and whether it is switched to its eight points.
+    public func modeShares() -> [(share: Float, switched: Bool)] {
+        let h = model.elementSize
+        let instances = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
+        let flags = flagBuffer.contents().bindMemory(to: UInt8.self, capacity: ex * ey * ez)
+        var shares: [(share: Float, switched: Bool)] = []
+        mutateNodes { nodes in
+            for n in 0..<elementCount where flags[Int(instances[n])] == ElementFlag.active.rawValue {
+                let (i, j, k) = elementCoordinates(Int(instances[n]))
+                var gradient = simd_float3x3(0)
+                var sums = [SIMD3<Float>](repeating: .zero, count: 4)
+                for a in 0..<8 {
+                    let s = SIMD3<Float>(
+                        a & 1 == 0 ? -1 : 1, (a >> 1) & 1 == 0 ? -1 : 1, (a >> 2) & 1 == 0 ? -1 : 1)
+                    let u = nodes[nodeIndex(i + (a & 1), j + ((a >> 1) & 1), k + ((a >> 2) & 1))].displacement
+                    gradient.columns.0 += u * s.x
+                    gradient.columns.1 += u * s.y
+                    gradient.columns.2 += u * s.z
+                    sums[0] += s.y * s.z * u
+                    sums[1] += s.x * s.z * u
+                    sums[2] += s.x * s.y * u
+                    sums[3] += s.x * s.y * s.z * u
+                }
+                // The mean strain's size (the gradient's symmetric part: a rigid turn is no strain).
+                let strain = (gradient + gradient.transpose) * (0.5 / (4 * h))
+                let size =
+                    (simd_length_squared(strain.columns.0) + simd_length_squared(strain.columns.1)
+                    + simd_length_squared(strain.columns.2)).squareRoot()
+                let reach = sums.reduce(0) { $0 + simd_length($1) } * 0.125 * 4 / h
+                shares.append((reach / max(size, 1e-12), isSwitched(i, j, k)))
+            }
+        }
+        return shares
     }
 
     /// Empties the pool: no element switched, every point's history cleared.

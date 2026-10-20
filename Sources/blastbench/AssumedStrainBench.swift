@@ -17,6 +17,23 @@ func printAssumedStrainTally() {
     }
 }
 
+/// `--mode-share` on `impact`: the distribution of the intact elements' hourglass-mode share of
+/// their deformation (`StructureSolver.modeShares`) at the end of the run, switched elements and the
+/// rest apart.
+func printModeShares(_ solver: StructureSolver) {
+    let shares = solver.modeShares()
+    for switched in [false, true] {
+        let values = shares.filter { $0.switched == switched }.map(\.share).sorted()
+        guard !values.isEmpty else { continue }
+        func quantile(_ q: Double) -> Float { values[min(values.count - 1, Int(q * Double(values.count)))] }
+        print(
+            "    mode share, \(switched ? "switched" : "one-point") elements (\(values.count)): median "
+                + "\(format(Double(quantile(0.5)), 2)), 90% \(format(Double(quantile(0.9)), 2)), 99% "
+                + "\(format(Double(quantile(0.99)), 2)), most \(format(Double(values.last ?? 0), 1)); over 1: "
+                + "\(values.filter { $0 > 1 }.count), over 3: \(values.filter { $0 > 3 }.count)")
+    }
+}
+
 /// `blastbench assumed-strain-cost [--layers 8] [--steps 400] [--rounds 5]`: what an element that
 /// bends in its cracked concrete costs. A reinforced slab 2 m square and 0.2 m deep, unloaded and
 /// without gravity, is stepped with the option off, on with no element switched, and on with every

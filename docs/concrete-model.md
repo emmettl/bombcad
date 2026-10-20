@@ -1014,8 +1014,10 @@ Saatci's SS0a-1 and SS1b-1, the contest slab on 8 and the chamber.
   bars' stress had been added after the function returned instead of inside it, which changed what
   fast math fused. Adding it in place, as before, made all eight cases identical.
 
-**Gate G1 on the GPU** (`Tests/BlastCoreTests/CrackedHexGPUTests.swift`). The static checks drive
-the GPU's element pass as the element routine of a static solve:
+**Gate G1 on the GPU** (`Tests/BlastCoreTests/CrackedHexGPUTests.swift`; the routine suite checks
+one mesh of the cantilever and the section, `CRACKED_HEX_FULL=1` all of them, about half an hour
+of a loaded Studio's GPU). The static checks drive the GPU's element pass as the element routine
+of a static solve:
 - each evaluation restores the solver's state as last committed, sets the nodes, runs one substep
   and reads the elements' forces;
 - Newton's method takes its steps from the CPU reference's tangent, or its elastic stiffness once

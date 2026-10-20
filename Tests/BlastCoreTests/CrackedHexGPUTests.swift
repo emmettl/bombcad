@@ -20,6 +20,12 @@ import simd
 struct CrackedHexGPUTests {
     let device: MTLDevice
 
+    /// The meshes the cantilever and the section are checked on: the whole gate with
+    /// `CRACKED_HEX_FULL=1` (about half an hour of a loaded Studio's GPU), one mesh of each otherwise.
+    static let full = ProcessInfo.processInfo.environment["CRACKED_HEX_FULL"] != nil
+    static let cantileverMeshes = full ? [1, 2, 4] : [2]
+    static let sectionMeshes = full ? [4, 6, 12] : [4]
+
     init() throws {
         device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
     }
@@ -458,7 +464,7 @@ struct CrackedHexGPUTests {
         return work / p / (reference.beamTheory * p / 1e5)
     }
 
-    @Test("The elastic cantilever on the GPU matches the CPU reference", arguments: [1, 2, 4])
+    @Test("The elastic cantilever on the GPU matches the CPU reference", arguments: Self.cantileverMeshes)
     func cantilever(elementsThroughDepth n: Int) throws {
         let today = try cantilever(elementsThroughDepth: n, switched: false)
         let switched = try cantilever(elementsThroughDepth: n, switched: true)
@@ -716,7 +722,7 @@ struct CrackedHexGPUTests {
 
     @Test(
         "A reinforced section's moment–curvature on the GPU matches section analysis with BombCAD's law within 5%",
-        arguments: [4, 6, 12])
+        arguments: Self.sectionMeshes)
     func momentCurvature(elementsThroughDepth n: Int) throws {
         let section = CrackedHex.ReinforcedSection.standard
         let h = Float(section.depth) / Float(n)

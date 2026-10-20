@@ -182,6 +182,8 @@ func runImpact() throws {
         } inspect: { solver in
             // `--map`: the cracks left in the middle row of elements, top row first.
             if flag("map") { for line in solver.crackMap(row: solver.ey / 2) { print(line) } }
+            // `--mode-share`: how far the elements' deformation is in their hourglass modes.
+            if flag("mode-share") { printModeShares(solver) }
         } prepare: {
             prepareTrace($0)
         }
