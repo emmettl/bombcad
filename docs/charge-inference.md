@@ -132,6 +132,61 @@ It biases the result rather than tightening it:
 
 `--glass-curve 0.5` prints the bands at a yield, to see the comparison without the inference.
 
+## Damage on the scene's own buildings
+
+`ChargeInference.SurrogateDamage` weighs the glass seen on a scene's own buildings, side by side,
+with the façade load surrogate as the forward model (roadmap Horizons 5; stages 1 and 2 of the
+plan, 20 October 2026). Where `--glass` loads every façade with Kingery–Bulmash's free field, this
+loads each side as the surrogate does from the place being weighed, with the shielding and facing
+that place gives it.
+
+**How.**
+- **Features.** Each observed side's features (its distance and facing, what stands between it and
+  the charge) are worked out once, for charges on a square grid of places 20 m apart over the
+  search disc. At a place between them, each side's log peak and log impulse at the yield weighed
+  are blended from the four nodes round it.
+- **Breakage.** Each glazing mix's chance that some pane breaks is tabulated per square metre of
+  façade, by the pulse's log peak, log duration and rise: the log chance that none breaks grows
+  with the panes, so one table serves every side's area. The chance is taken over a log-normal
+  factor on the load: the surrogate's scatter by scaled distance, and the glass strength's (0.25).
+- **Likelihood.** Each side is weighed on its own, broken or whole against its chance, held 0.02
+  from 0 and 1 (`damagePerSide`); or by bands of distance, as the glass is.
+- **Cost.** On the made-up district (136–192 sides seen), the features and tables take 1–5 s and
+  an evaluation 0.05–0.1 ms, so a full posterior (48 walkers, 3,000 steps) takes 8–16 s.
+
+**Against charges BombCAD ran** (`scenebench infer-charge-study --forward-damage --dx 4|2`). The
+four charges on the made-up district are run with the recommended air, the glass of every side
+within the run judged as the app judges it (a side counts broken where its chance that some pane
+breaks is over a half). The charge is then inferred from that glass alone, then from the
+arrivals at 40 observers alone (Kingery–Bulmash), then from both:
+
+| Truth | 4 m: glass alone (90%) | 4 m: arrivals alone | 2 m: glass alone (90%) | 2 m: arrivals alone |
+|---|---|---|---|---|
+| 500 kg | 539 kg (456–632) | 982 kg | 686 kg (596–787) | 713 kg |
+| 2,000 kg | 3,018 kg (1,998–4,117) | 3,147 kg | 2,779 kg (1,898–4,051) | 2,588 kg |
+| 5,000 kg | 5,767 kg (3,994–9,908) | 7,848 kg | 13,944 kg (5,469–43,467) | 6,302 kg |
+| 1,000 kg | 1,059 kg (844–1,331) | 1,873 kg | 951 kg (785–1,185) | 1,402 kg |
+
+- **On 4 m cells the glass alone does better than the arrivals.** Its interval holds the truth
+  for all four charges, and its median is within 6–15% for three (51% high for 2 t). The
+  arrivals alone read 1.6–2 times high, as above.
+- **On 2 m cells it holds the truth for two of four.** The finer run breaks more glass than the
+  surrogate's cell term allows for (93 of 192 sides at 500 kg, against 62 on 4 m cells), so the
+  yield reads high. Where nearly every side breaks (164 of 167 at 5 t), the glass only says the
+  charge was large.
+- **Together,** the arrivals' far narrower intervals decide the yield, the glass moving it by 1–20%,
+  towards the truth: no worse than the arrivals alone.
+- **The place** the glass gives is 3–70 m off, against 1–2 m from the arrivals.
+- **A bias shared by the district's sides**, sampled as a parameter of its own
+  (`damageBiasLogSD`, off by default), widens the yield's interval but moves its median up 1.1–2.9
+  times. Given the bias, a larger charge matches the run's fall of broken glass with distance
+  better than the surrogate's own does. That is the surrogate's error, not one the yield can be
+  freed from by a single factor.
+
+So the plan's bar is met on 4 m cells, where the truth falls inside every interval and three
+medians come within 15%, and not on 2 m cells. The next step is a run near the estimate correcting
+the surrogate's loads as it corrects the arrivals (stage 3).
+
 ## Against charges BombCAD ran
 
 ### Synthetic arrivals
@@ -191,7 +246,8 @@ last estimate, until the yield moves under 5% (at most three runs):
   yield; a posterior far from that place should be rerun there (as the forward study does).
 - **Glass is illustrative.** As above: the glass model's breakage and the survey's damage are not
   the same quantity, and no exposure calibrates one to the other.
-- **No app sheet yet.** It runs headless only.
+- **The app's sheet weighs arrivals only.** Simulation ▸ Infer Charge from Arrivals… runs the arrivals'
+  inference; the scene's own glass (`SurrogateDamage`) is headless only so far.
 
 ## Sources
 
