@@ -883,6 +883,85 @@ keep the full envelope after cracking. In this law it is the same as the option 
 
 It stops here: the option stays an option, and neither variant is a default.
 
+### An element that bends in its cracked concrete: stage 1 (20 October 2026)
+
+Stage 1 of emmettl/bombcad-work#20, the one remaining element-level route to the cracked members'
+reliance on hourglass control ([validation](validation.md#hourglass-control)). It is a CPU
+reference only. No shader, option or default changed.
+
+**What it is.** `CrackedHex` in `Sources/BlastModel/CrackedHexReference.swift`, with
+`CrackedHexElement.swift` and `CrackedHexBenches.swift`. It is plain Swift in double precision and
+small strain, written so that it could become a ContinuumKit `SolidMechanics` candidate.
+- The element is today's one-point hex with hourglass control until any of its eight Gauss
+  points would leave the elastic range: it cracks, or it is squeezed past a tenth of the strain at
+  peak.
+- From then on it integrates at the 2 × 2 × 2 points, each carrying its own crack history,
+  started from the centre's. Its hourglass control is off.
+- The strain at each point is an assumed strain after Belytschko and Bindeman (1993):
+  - the mean gradient's constant strain, plus each hourglass mode's strain, mapped by the centre
+    Jacobian in a frame along the element's axes;
+  - the shear terms that vary along a displacement's own direction are left out, since they are
+    the parasitic shear of a bending fibre.
+- Every mode then has energy of its own (checked). The field passes the patch test on distorted
+  elements, and the largest eigenvalue of a cube's stiffness is the same as today's, so the
+  stable step does not change.
+- Its bars are strained at their own height, at two points along them and two across a mat.
+- Belytschko and Bindeman's Poisson term (ASQBI) is left out. An element one deep, bending with
+  ν = 0.2, is therefore about 1/(1 − ν²) stiff.
+- **The law is not BombCAD's.** Each lattice axis carries a crack band with linear softening and
+  Hognestad's compression, unloading on the secant, with ν = 0 and crack shear retention 0.1. The
+  section analysis uses the same law, so the comparison isolates the element.
+
+**Gate G1** (`Tests/BlastModelTests/CrackedHexReferenceTests.swift`):
+1. **The patch test.** A linear field on 3 × 3 × 3 distorted elements is reproduced to rounding
+   by every formulation, elastic and cracked uniformly past its peak.
+2. **An elastic cantilever.** Ten depths long, one element wide, ν = 0.2. The table gives the tip
+   deflection (conjugate to the load) over beam theory with shear:
+
+| Through the depth | Today's (one point, hourglass) | Cracked element, switched | Plain 2 × 2 × 2 |
+|---|---|---|---|
+| 1 | 0.996 | 0.952 | 0.674 |
+| 2 | 0.988 | 0.984 | 0.889 |
+| 4 | 0.995 | 0.994 | 0.968 |
+
+   Elastic, the cracked element never switches, so it is today's element there. Plain full
+   integration locks, as Edgerton's Hex8 study found (below).
+3. **A reinforced section in bending.** The section is 300 mm deep, with 1% steel at 500 MPa
+   45 mm above the tension face, and 30 MPa concrete with G_f = 140 N/m. A length two elements
+   long and one wide is turned at its ends, with no axial force, out to a curvature of 0.06 per
+   metre (the top fibre past 0.0035). The table gives the largest error in moment against fibre
+   section analysis with the same crack band. The measure was declared before running: every
+   curvature from twice the cracking curvature on.
+
+| Through the depth | Today's, bars smeared over a band (as BombCAD places them) | Cracked element | Plain 2 × 2 × 2 |
+|---|---|---|---|
+| 4 | 13.0% strong (+12.8% at 0.010 per metre, +5% on the yield plateau) | 0.8% | 12.7% |
+| 6 | 7.5% strong | 0.5% | 5.6% |
+| 12 | within 1.8%, as far as its static solve converged (0.014 per metre) | 0.1% | 1.2% |
+
+   Today's element on 4 and 6 is the 10–15% excess of limitation 2, from hourglass forces held at
+   an uncracked element's stiffness and capped at the bars' strength. The cracked element removes
+   it on every mesh. Today's element with its bars strained at its centre, unsmeared, is 16.8%
+   strong on 4.
+
+G1 passes.
+
+**From Edgerton (read only).**
+- Its `SteelHex8Bending` study (12 October 2026) rejected fully integrated Hex8 for plates: 9.8 and
+  3.2 times the bending energy on 2 and 4 elements through.
+- Its decomposition puts nearly all of that in parasitic shear (V μ k² h²/24, with h the element's
+  length along the bending), which is what this element's shear filter removes. Edgerton moved to
+  quadratic Hex27 instead.
+- No Edgerton or ContinuumKit code is used. ContinuumKit's `SolidMechanics` has tetrahedra only.
+
+**Not shown here.**
+- BombCAD's own concrete law per point: its crack axes, interlock, rate, confinement and bond.
+- Large rotations and the explicit dynamics, including the jump in force at the switch. The
+  bending modes match there; the twist modes do not.
+- Shear failure, and localisation along a member: the length bent is uniform.
+
+Stage 2, the GPU option behind a new function constant, is proposed on the issue and not built.
+
 ## Strain-rate effects
 
 Blast loads strain materials at 0.1 to 100 per second, and both concrete and steel are stronger
@@ -1623,6 +1702,9 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
   (*Computer Methods in Applied Mechanics and Engineering* 105, 1993), so that the resistance of
   cracked members, the struck beams above all, comes from the concrete and not from hourglass
   control kept as stiff as uncracked concrete (see [Validation](validation.md#hourglass-control)).
+  Its CPU reference passed stage 1 on 20 October 2026 (see
+  [above](#an-element-that-bends-in-its-cracked-concrete-stage-1-20-october-2026)); the GPU option
+  is next.
 - **The rebound**: the slab's hinge springs back about twice as far as the specimen did.
   Elements that represent a strain gradient through their depth (shells, or fully integrated
   solids) would resolve its thin compression zone; friction on closing cracks and bond slip
@@ -1658,6 +1740,17 @@ slab on fine meshes or in walls near a charge, was too weak in compression.
 
 ## Sources
 
+- T. Belytschko and L. P. Bindeman, "Assumed strain stabilization of the eight node hexahedral
+  element", *Computer Methods in Applied Mechanics and Engineering* 105, 1993. The cracked
+  element's assumed strain (stage 1 of emmettl/bombcad-work#20), written from the construction as
+  recalled; the shear filter is this reference's reading of it, and the Poisson term is left out.
+- D. P. Flanagan and T. Belytschko, "A uniform strain hexahedron and quadrilateral with orthogonal
+  hourglass control", *International Journal for Numerical Methods in Engineering* 17, 1981. The
+  mean gradient and the hourglass shape vectors.
+- E. Hognestad, *A Study of Combined Bending and Axial Load in Reinforced Concrete Members*,
+  University of Illinois Engineering Experiment Station Bulletin 399, 1951. The cracked-element
+  reference's compression curve, a parabola to the peak and then a 15% fall by 0.0038; written
+  from memory.
 - CEN, *EN 1996-1-1: Eurocode 6, Design of masonry structures*. The characteristic compressive
   strength of masonry, f_k = K f_b^0.7 f_m^0.3 with K = 0.45 for hollow (group 2) aggregate-
   concrete units, and the short-term modulus 1000 f_k, used for the concrete block. Written
