@@ -229,6 +229,10 @@ judge every wall at its nominal strength, so they check the load's scatter, not 
   one level.
 - **No chance of failure is given.** Before the close-in branch the roofs' read far too high
   (skill −0.48), and the walls' were too few to judge. Concrete's heavy damage is illustrative.
+- **Counts by distance band** come within about 20% of the runs' where damage is well
+  established. At the edge of the damage they are low just inside it and up to three times high
+  just outside it
+  ([the first look](surrogate-first-look.md#walls-and-roofs-20-october-2026)).
 - **The roofs' factor is a calibration, not physics.** It is rejudged whenever the load terms are
   refitted (the judge is scripted:
   /Volumes/StudioData/bombcad/surrogate-walls/calibrate/judge19.sh).

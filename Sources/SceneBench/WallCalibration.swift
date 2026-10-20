@@ -2,7 +2,7 @@ import BlastCore
 import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
-/// [--draws 100] [--inside 0.85] [--walls stone] [--out calibration.json]`: how well the walls' and roofs' chances
+/// [--draws 100] [--inside 0.85] [--walls stone] [--bands 400,700,…] [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each
 /// building's worst wall and worst roof in each run, judged on the run's histories at the
@@ -90,7 +90,8 @@ enum WallCalibration {
         let first = references[0]
         let estimate = FacadeLoadSurrogate.estimate(scene: first.scene, cellSize: first.cellSize)
         let index = Dictionary(uniqueKeysWithValues: first.objects.enumerated().map { ($1.id, $0) })
-        func chances(_ masses: [Double], factor: Double, scale: Double = 1) -> [Int: FacadeLoadSurrogate
+        // With no factor, each building's calibration (`structureCalibration`).
+        func chances(_ masses: [Double], factor: Double?, scale: Double = 1) -> [Int: FacadeLoadSurrogate
             .StructureChance]
         {
             let (drawn, seconds) = FacadeLoadSurrogate.structureProbabilities(
@@ -98,12 +99,13 @@ enum WallCalibration {
                 constructions: { construction(first.scene, $0) },
                 uncertainty: FacadeLoadSurrogate.Uncertainty(masses: masses, samples: draws),
                 strengthScatter: false,
-                loadFactor: (factor, factor), scatterScale: (scale, scale))
+                loadFactor: factor.map { ($0, $0) }, scatterScale: factor == nil ? nil : (scale, scale))
             print(
                 String(
-                    format: "  chances of %d buildings, %d draws, load ×%.2f, scatter ×%.2f, in %.1f s",
+                    format: "  chances of %d buildings, %d draws, load ×%@, scatter ×%@, in %.1f s",
                     drawn.count, draws,
-                    factor, scale, seconds))
+                    factor.map { String(format: "%.2f", $0) } ?? "calibrated",
+                    factor == nil ? "calibrated" : String(format: "%.2f", scale), seconds))
             return Dictionary(uniqueKeysWithValues: drawn.compactMap { c in index[c.owner].map { ($0, c) } })
         }
         // `--factors 1,1.2,...`: each tried on every yield, and each yield's chances from the factor
@@ -216,6 +218,40 @@ enum WallCalibration {
                 show(
                     GlassCalibration.reliability(
                         name + ", held out", predicted: predicted[name]!, observed: observed[name]!))
+            }
+        }
+        // `--bands 400,700,1000,1320`: by distance band, each run's count of buildings whose walls
+        // and roof it damages moderately or worse against the chances' sum at that yield, on the
+        // calibration the app uses (the band test of emmettl/bombcad-work#10).
+        if let bandsText = value("bands") {
+            let edges = bandsText.split(separator: ",").compactMap { Double($0) }
+            var nearest = [Double](repeating: .infinity, count: first.objects.count)
+            for (k, component) in estimate.components.enumerated() {
+                guard let n = index[component.owner] else { continue }
+                nearest[n] = min(nearest[n], estimate.features[k].distanceM)
+            }
+            func band(_ n: Int) -> Int? { edges.firstIndex { nearest[n] < $0 } }
+            print(
+                "By distance band, buildings damaged moderately or worse: the run's count / the chances' sum")
+            for (j, run) in runs.enumerated() {
+                let drawn = chances([run.mass], factor: nil)
+                var counts = [[Double]](repeating: [0, 0, 0, 0], count: edges.count)
+                for n in judged {
+                    guard let b = band(n), let w = worst[j][n], let c = drawn[n] else { continue }
+                    counts[b][0] += w.wall >= moderate ? 1 : 0
+                    counts[b][1] += c.wallsModerate
+                    counts[b][2] += w.roof >= moderate ? 1 : 0
+                    counts[b][3] += c.roofModerate
+                }
+                for (b, edge) in edges.enumerated() {
+                    let c = counts[b]
+                    print(
+                        String(
+                            format:
+                                "  %5.0f t, to %4.0f m: walls %4.0f / %6.1f (%.2f), roofs %4.0f / %6.1f (%.2f)",
+                            run.mass / 1000, edge, c[0], c[1], c[0] > 0 ? c[1] / c[0] : 0, c[2], c[3],
+                            c[2] > 0 ? c[3] / c[2] : 0))
+                }
             }
         }
         print(String(format: "In %.0f s", DistrictBenchmark.seconds(start)))

@@ -199,6 +199,33 @@ either side calls damaged, the share at the run's level, and within one:
   estimate, scattered by about ×1.3 either way, puts fewer of them over a level than the run does.
   Counts by band need the scatter drawn, as the glass's chances draw it (Horizons 4).
 
+**Counts by band, drawn** (the band test, after the close-in branch;
+`scenebench wall-calibrate --bands`). Each building's chances at the run's own yield, as the quick
+estimate gives them ([walls and roofs](glass-probability.md#walls-and-roofs)), summed by distance
+band, against the run's count of buildings it damages moderately or worse:
+
+| Whole box (to 1,320 m) | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| Concrete walls: run / chances' sum | 3 / 2.3 | 24 / 11.5 | 114 / 107.9 |
+| Stone walls (each as 0.5 m stone) | 79 / 47.7 | 449 / 509.1 | 1,125 / 1,273.3 |
+| Roofs | 10 / 11.2 | 123 / 110.3 | 470 / 412.3 |
+
+- **Where damage is well established, the counts come within about 20%.** Stone comes within 0–7%
+  once most of a band is damaged, and roofs within 20% in most bands with 50 or more damaged. At
+  0.5 kt the point estimates had 287 concrete wall components where the run had 511, and 83 roofs
+  where it had 236.
+- **At the edge of the damage they miss both ways.** The chances spread that edge over more
+  distance than the runs, which switch on sharply.
+  - Just inside the edge they are low: concrete at 400–700 m reads 0.33–0.65 of the run at
+    0.5–0.85 kt, and stone 0.36–0.57 at 0.15–0.2 kt.
+  - Just outside they are high: stone at 1,000–1,320 m reads 1.8–2.9 times the run at 0.85–1.1 kt,
+    and concrete at 700–1,000 m 1.7–2.5 times at 1.1–1.5 kt.
+  - The test's allowance is the larger of 20% and the difference between 4 m and 3 m cells
+    ([Beirut](beirut-2020.md), up to +45% for concrete), so the edge bands fail it.
+- **So the walls' chances suit a building's chance and a district's total, not a count by
+  distance near the edge of the damage.** Wall and roof damage keep their "not to be relied on"
+  standing for a building's level.
+
 ### The rise share's fit (20 October 2026)
 
 The fit read the ground rise where it meant the rise time. `surrogate-extract` wrote both as
