@@ -99,6 +99,113 @@ enum GlassCalibration {
 
     static func seconds(_ start: ContinuousClock.Instant) -> Double { DistrictBenchmark.seconds(start) }
 
+    /// GEER's façades (its shapefile, with the .dbf beside it) matched each to the side of a map
+    /// building it lies on (within 25 m) and faces as (within 60°): every building's glazed sides
+    /// with their strips on the air, the matches (the side, GEER's class, the distance from the
+    /// charge, the record) and the records.
+    static func geerFacades(
+        _ path: String, scene: Scenario, objects: [SceneObject], raster: FacadeLoadSurrogate.Raster,
+        cellSize: Float, radius: Float, centre: SIMD2<Double>
+    ) throws -> (
+        sides: [FacadeLoadSurrogate.GlassSideStrips],
+        matches: [(side: Int, observedClass: Int, distance: Double, record: Int)], records: [[String: String]]
+    ) {
+        let charge = scene.charge.position
+        let dx = cellSize
+        struct Placed {
+            var side: FacadeLoadSurrogate.GlassSideStrips
+            var face: Float
+            var span: ClosedRange<Float>
+        }
+        var placed = [[Placed]](repeating: [], count: objects.count)
+        placed.withUnsafeMutableBufferPointer { out in
+            SurrogateBench.concurrentlyEach(objects.count) { n in
+                guard let mix = scene.envelopeConstruction(for: objects[n].id).glazing,
+                    let envelope = objects[n].envelope
+                else { return }
+                let strips = envelope.components(owner: objects[n].id, cellSize: dx)
+                    .filter { $0.kind == .facade && FacadeLoadSurrogate.facesAir($0, raster: raster) }
+                for (key, members) in Dictionary(
+                    grouping: strips, by: { $0.axis * 2 + ($0.outward > 0 ? 1 : 0) })
+                {
+                    let axis = key / 2
+                    let along = 1 - axis
+                    let face = FacadeLoadSurrogate.outerFace(members[0]).centre[axis]
+                    let low = members.map { $0.region.min[along] }.min()!
+                    let high = members.map { $0.region.max[along] }.max()!
+                    out[n].append(
+                        Placed(
+                            side: FacadeLoadSurrogate.GlassSideStrips(
+                                owner: objects[n].id, axis: axis, outward: key % 2 == 1 ? 1 : -1,
+                                mix: mix,
+                                strips: members.map {
+                                    (
+                                        FacadeLoadSurrogate.features(
+                                            $0, owner: n, charge: charge, raster: raster),
+                                        Double($0.spans.x * $0.spans.y)
+                                    )
+                                }), face: face, span: low...high))
+                }
+            }
+        }
+        let all = placed.flatMap { $0 }
+        // GEER's façades in the scene's metres, and the side each lies on.
+        let url = URL(filePath: path)
+        let centres = try ChargeInferenceInputs.readShapeCentres(url)
+        let records = try ChargeInferenceInputs.readDBF(
+            url.deletingPathExtension().appendingPathExtension("dbf"))
+        let metresPerDegree = ElevationGrid.metresPerDegree
+        let corner = SIMD2(
+            centre.x - Double(radius) / (metresPerDegree * cos(centre.y * .pi / 180)),
+            centre.y - Double(radius) / metresPerDegree)
+        let placement = MapBuildingPlacement(origin: corner, resolution: dx)
+        // A grid of the sides by where they lie, 50 m cells.
+        var grid: [SIMD2<Int32>: [Int]] = [:]
+        for (n, p) in all.enumerated() {
+            let axis = p.side.axis
+            for t in stride(from: p.span.lowerBound, through: p.span.upperBound, by: 25) {
+                var point = SIMD2<Float>(repeating: 0)
+                point[axis] = p.face
+                point[1 - axis] = t
+                grid[SIMD2<Int32>((point / 50).rounded(.down)), default: []].append(n)
+            }
+        }
+        var matches: [(side: Int, observedClass: Int, distance: Double, record: Int)] = []
+        for (recordIndex, (centreLL, record)) in zip(centres, records).enumerated() {
+            guard centreLL.x.isFinite,
+                let level = record["Facade_num"].flatMap({ Int($0.trimmingCharacters(in: .whitespaces)) }
+                ),
+                let azimuth = record["Azimuth_N"].flatMap({
+                    Double($0.trimmingCharacters(in: .whitespaces))
+                })
+            else { continue }
+            let at = SIMD2<Float>(placement.position(centreLL))
+            let normal = SIMD2<Float>(Float(sin(azimuth * .pi / 180)), Float(cos(azimuth * .pi / 180)))
+            let cell = SIMD2<Int32>((at / 50).rounded(.down))
+            var best: (Int, Float)?
+            for dj in -1...1 {
+                for di in -1...1 {
+                    for n in grid[cell &+ SIMD2(Int32(di), Int32(dj))] ?? [] {
+                        let p = all[n]
+                        var sideNormal = SIMD2<Float>.zero
+                        sideNormal[p.side.axis] = Float(p.side.outward)
+                        guard simd_dot(sideNormal, normal) > 0.5 else { continue }
+                        let along = min(max(at[1 - p.side.axis], p.span.lowerBound), p.span.upperBound)
+                        var nearest = SIMD2<Float>.zero
+                        nearest[p.side.axis] = p.face
+                        nearest[1 - p.side.axis] = along
+                        let d = simd_distance(nearest, at)
+                        if d < (best?.1 ?? 25) { best = (n, d) }
+                    }
+                }
+            }
+            guard let (n, _) = best else { continue }
+            let toCharge = simd_distance(at, SIMD2(charge.x, charge.y))
+            matches.append((n, level, Double(toCharge), recordIndex))
+        }
+        return (all.map(\.side), matches, records)
+    }
+
     static func run(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
@@ -286,102 +393,11 @@ enum GlassCalibration {
                         line.split(separator: ",").first.flatMap { Double($0) }.map { pow(10, $0) }
                     }
                 } ?? [Double(scene.charge.mass)]
-            // Every map building's sides with their strips, and where each lies.
             clock = .now
-            struct Placed {
-                var side: FacadeLoadSurrogate.GlassSideStrips
-                var face: Float
-                var span: ClosedRange<Float>
-            }
-            var placed = [[Placed]](repeating: [], count: objects.count)
-            placed.withUnsafeMutableBufferPointer { out in
-                SurrogateBench.concurrentlyEach(objects.count) { n in
-                    guard let mix = scene.envelopeConstruction(for: objects[n].id).glazing,
-                        let envelope = objects[n].envelope
-                    else { return }
-                    let strips = envelope.components(owner: objects[n].id, cellSize: dx)
-                        .filter { $0.kind == .facade && FacadeLoadSurrogate.facesAir($0, raster: raster) }
-                    for (key, members) in Dictionary(
-                        grouping: strips, by: { $0.axis * 2 + ($0.outward > 0 ? 1 : 0) })
-                    {
-                        let axis = key / 2
-                        let along = 1 - axis
-                        let face = FacadeLoadSurrogate.outerFace(members[0]).centre[axis]
-                        let low = members.map { $0.region.min[along] }.min()!
-                        let high = members.map { $0.region.max[along] }.max()!
-                        out[n].append(
-                            Placed(
-                                side: FacadeLoadSurrogate.GlassSideStrips(
-                                    owner: objects[n].id, axis: axis, outward: key % 2 == 1 ? 1 : -1,
-                                    mix: mix,
-                                    strips: members.map {
-                                        (
-                                            FacadeLoadSurrogate.features(
-                                                $0, owner: n, charge: charge, raster: raster),
-                                            Double($0.spans.x * $0.spans.y)
-                                        )
-                                    }), face: face, span: low...high))
-                    }
-                }
-            }
-            let all = placed.flatMap { $0 }
-            // GEER's façades in the scene's metres, and the side each lies on.
-            let url = URL(filePath: path)
-            let centres = try ChargeInferenceInputs.readShapeCentres(url)
-            let records = try ChargeInferenceInputs.readDBF(
-                url.deletingPathExtension().appendingPathExtension("dbf"))
+            let (all, matches, records) = try geerFacades(
+                path, scene: scene, objects: objects, raster: raster, cellSize: dx, radius: first.radius,
+                centre: SurrogateBench.centre(args))
             surveyed = records.count
-            let radius = first.radius
-            let metresPerDegree = ElevationGrid.metresPerDegree
-            let centre = SurrogateBench.centre(args)
-            let corner = SIMD2(
-                centre.x - Double(radius) / (metresPerDegree * cos(centre.y * .pi / 180)),
-                centre.y - Double(radius) / metresPerDegree)
-            let placement = MapBuildingPlacement(origin: corner, resolution: dx)
-            // A grid of the sides by where they lie, 50 m cells.
-            var grid: [SIMD2<Int32>: [Int]] = [:]
-            for (n, p) in all.enumerated() {
-                let axis = p.side.axis
-                for t in stride(from: p.span.lowerBound, through: p.span.upperBound, by: 25) {
-                    var point = SIMD2<Float>(repeating: 0)
-                    point[axis] = p.face
-                    point[1 - axis] = t
-                    grid[SIMD2<Int32>((point / 50).rounded(.down)), default: []].append(n)
-                }
-            }
-            var matches: [(side: Int, observedClass: Int, distance: Double, record: Int)] = []
-            for (recordIndex, (centreLL, record)) in zip(centres, records).enumerated() {
-                guard centreLL.x.isFinite,
-                    let level = record["Facade_num"].flatMap({ Int($0.trimmingCharacters(in: .whitespaces)) }
-                    ),
-                    let azimuth = record["Azimuth_N"].flatMap({
-                        Double($0.trimmingCharacters(in: .whitespaces))
-                    })
-                else { continue }
-                let at = SIMD2<Float>(placement.position(centreLL))
-                let normal = SIMD2<Float>(Float(sin(azimuth * .pi / 180)), Float(cos(azimuth * .pi / 180)))
-                let cell = SIMD2<Int32>((at / 50).rounded(.down))
-                var best: (Int, Float)?
-                for dj in -1...1 {
-                    for di in -1...1 {
-                        for n in grid[cell &+ SIMD2(Int32(di), Int32(dj))] ?? [] {
-                            let p = all[n]
-                            var sideNormal = SIMD2<Float>.zero
-                            sideNormal[p.side.axis] = Float(p.side.outward)
-                            guard simd_dot(sideNormal, normal) > 0.5 else { continue }
-                            let along = min(max(at[1 - p.side.axis], p.span.lowerBound), p.span.upperBound)
-                            var nearest = SIMD2<Float>.zero
-                            nearest[p.side.axis] = p.face
-                            nearest[1 - p.side.axis] = along
-                            let d = simd_distance(nearest, at)
-                            if d < (best?.1 ?? 25) { best = (n, d) }
-                        }
-                    }
-                }
-                guard let (n, _) = best else { continue }
-                let toCharge = simd_distance(at, SIMD2(charge.x, charge.y))
-                matches.append((n, level, Double(toCharge), recordIndex))
-            }
             matchedCount = matches.count
             print("GEER: \(matches.count) of \(records.count) façades matched to a side")
             // `--trace file.csv`: each matched façade, what GEER saw, and each run's response of each
@@ -403,7 +419,7 @@ enum GlassCalibration {
                 rowsOut.withUnsafeMutableBufferPointer { out in
                     SurrogateBench.concurrentlyEach(matches.count) { k in
                         let match = matches[k]
-                        let side = all[match.side].side
+                        let side = all[match.side]
                         guard let object = objectOf[side.owner] else { return }
                         let key = SideKey(object: object, axis: side.axis, outward: side.outward)
                         var lines: [String] = []
@@ -445,7 +461,7 @@ enum GlassCalibration {
                 // The matches' GEER records, in order: what each saw.
                 var matchLines = ["match,class,distance,side_axis,side_outward,object,record,damage"]
                 for (k, match) in matches.enumerated() {
-                    let side = all[match.side].side
+                    let side = all[match.side]
                     let damage =
                         records[match.record]["Facade_dam"]?.trimmingCharacters(in: .whitespaces) ?? ""
                     matchLines.append(
@@ -459,7 +475,7 @@ enum GlassCalibration {
             let used = Array(Set(matches.map(\.side))).sorted()
             let index = Dictionary(uniqueKeysWithValues: used.enumerated().map { ($1, $0) })
             let (p, kept) = FacadeLoadSurrogate.glassProbabilities(
-                sides: used.map { all[$0].side }, mass: Double(scene.charge.mass), cellSize: dx,
+                sides: used.map { all[$0] }, mass: Double(scene.charge.mass), cellSize: dx,
                 uncertainty: FacadeLoadSurrogate.Uncertainty(
                     masses: masses, strengthMedian: value("strength-median").flatMap(Double.init) ?? 1,
                     strengthLogSD: value("strength-sd").flatMap(Double.init) ?? 0.25, samples: draws),

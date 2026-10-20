@@ -219,6 +219,52 @@ Each run takes 2–20 s. The truth inside the 90% interval, after the last pass:
 - So stage 3 meets the bar of three of four on 2 m cells, no worse on 4 m, only with the arrivals.
   On the glass alone it does not, and the correction is left to the study, not offered in the app.
 
+### Beirut's surveyed damage (20 October 2026)
+
+Does Beirut's surveyed damage, weighed by the quick estimate as the app gives it, say the yield the
+arrivals say? (`scenebench damage-yield`; stage 4 of emmettl/bombcad-work#18.) The place is held at
+Warehouse 12, which the arrivals put within 25 m. At each of 13 yields from 0.05 to 5 kt, each
+surveyed building or façade takes its chance from 100 draws of the load scatter and the strength
+(no yield scatter). Two surveys are weighed:
+- GEER's façades: the openings blown out (W3), by the openings' fragility
+  ([glass](glass-probability.md)).
+- GEER's buildings (in person and from 360° photographs): stone bearing walls classed D3 or worse
+  against the walls' chance of heavy damage, each taken as 0.5 m stone, and concrete frames and
+  walls classed D2 or worse against the walls' chance of moderate damage
+  ([walls and roofs](glass-probability.md#walls-and-roofs)).
+  - A class that straddles the line, such as D2–D3 for stone, is left out, as are mixed structures.
+  - Each building is matched to the map building its centroid lies in, or the nearest within 15 m.
+    GEER's own distances agree with these to a median of 4 m.
+
+Each survey's likelihood is taken by 250–1,000 m bands of distance (beta-binomial, concentration 30,
+as the glass is weighed above), with the prior flat in log yield:
+
+| Survey | Observed (damaged) | Yield, kt: median (90%) | Overlaps the arrivals' 0.39–0.85 |
+|---|---|---|---|
+| GEER openings W3 | 8,227 façades (1,779) | 0.83 (0.59–1.12) | yes, but circular |
+| GEER stone buildings D3 or worse | 49 (23) | **0.72** (0.53–0.99) | yes |
+| GEER concrete buildings D2 or worse | 91 (42) | 4.6 (3.5–5.0, at the grid's end) | no |
+
+- **Stone calibrates.** Its 90% interval overlaps the arrivals', from damage the model was never
+  fitted to. Weighed building by building, it gives 0.69 kt (0.54–0.88). Two cautions apply:
+  - it rests on 49 buildings, 12 of 12 damaged at 0.5–0.75 km;
+  - GEER chose buildings from calls to a hotline, which leans towards damage and so towards a
+    larger yield.
+- **The openings agree, but by construction.** Their fragility was fitted to GEER's W3 on the 0.5 kt
+  run's loads, so they say only that the quick estimate's loads are near that run's. Weighed façade
+  by façade, they give 0.69–0.70 kt. That interval is far too narrow, because neighbouring façades
+  share an error the Bernoulli takes as independent. The bands are the ones to read.
+- **Concrete does not calibrate.** The quick estimate damages none of GEER's concrete buildings
+  moderately at 0.5 kt (0.3 expected of 42 seen), and reads 3–5 kt. It judges a 0.2 m concrete wall.
+  A Beirut concrete building is a frame with hollow-block infill, and GEER's D2 counts damage to
+  that infill and the partitions ([Beirut](beirut-2020.md#structure-against-the-building-survey-geer-2021)).
+  Concrete damage cannot be used to infer a yield until infill walls are modelled.
+
+So the plan's test for stage 4 is met for stone and the openings and fails for concrete. The
+damage counts here only as a check on the arrivals, not as a way to sharpen them. It is not
+offered in the app: the Infer Charge sheet weighs the glass on the scene's own buildings, not its
+walls.
+
 ### In the app
 
 The Infer Charge sheet weighs a survey of broken glass on the scene's own buildings where it can:
@@ -299,6 +345,9 @@ last estimate, until the yield moves under 5% (at most three runs):
   Arrivals… weighs a survey on the scene's own buildings ([below](#in-the-app)) without a run near
   the estimate. On BombCAD's own runs, the glass alone placed the charge 20–70 m off, and a run there
   did not help it (above).
+- **Walls as a check, and stone only.** Beirut's stone buildings say a yield consistent with the
+  arrivals. Its concrete buildings say 3–5 kt, because the model has no infill walls
+  ([above](#beiruts-surveyed-damage-20-october-2026)).
 
 ## Sources
 

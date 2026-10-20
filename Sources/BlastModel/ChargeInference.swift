@@ -473,7 +473,7 @@ public enum ChargeInference {
 
     /// The beta-binomial's log probability of `k` of `n` at mean share `p`, concentration `kappa`
     /// (without the binomial coefficient, which the parameters do not change).
-    static func logBetaBinomial(k: Int, n: Int, p: Double, kappa: Double) -> Double {
+    public static func logBetaBinomial(k: Int, n: Int, p: Double, kappa: Double) -> Double {
         let p = min(max(p, 1e-6), 1 - 1e-6)
         let a = kappa * p
         let b = kappa * (1 - p)

@@ -78,6 +78,10 @@ enum SceneBench {
             try GlassCalibration.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "damage-yield" {
+            try DamageYield.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "wall-calibrate" {
             try WallCalibration.run(Array(args.dropFirst()))
             return
