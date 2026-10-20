@@ -11,4 +11,7 @@ speed alone never did ([Prairie Flat](../../ground-shock.md#against-prairie-flat
 against Prairie Flat the column and the estimate are within a factor of two at under half the
 gauges inside that limit (too low near the surface), and the half-space carries the motion ahead of
 the blast past it within a factor of two; the standing now bands that motion, with the half-space
-chosen, at 0.33 to 3 times the measured.
+chosen, at 0.33 to 3 times the measured. On the soil measured at Watching Hill
+(`Fixtures/PrairieFlat/soil-profile.json`, which `blastbench groundmotion --profile` reads) the
+column's peaks come within a factor of two at 26 of 34 gauges, but its stress then arrives late:
+one loading stiffness cannot give both.

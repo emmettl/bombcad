@@ -616,8 +616,8 @@ are off by up to a fifth here, within 10% at only 3 to 10 of 24.
 **Verdict: record and stop.** No model passes inside the outrunning limit, the column 13 to 16 of
 34, the half-space at best 21. Standing stays illustrative, unbanded. What this test shows the
 models lack is the soil's own loading curve: a locking, crushable near surface whose stiffness
-under load is far below its arrival speed. That, and the Watching Hill soil's measured properties
-(see [Data wanted](data-wanted.md)), would be the next step on this line, not a softer guess.
+under load is far below its arrival speed. The Watching Hill soil's measured properties, below,
+bear that out.
 
 **Past it, the motion ahead of the blast (G3).** From 560 to 1,150 ft no arrivals were read, and
 the accelerometers' integrals give the peaks; the judge was within a factor of three.
@@ -639,6 +639,48 @@ construction, has none of the motion that comes before the air; its downward pea
 airblast's own, are within three times but low. So stage 4 of [the outrunning
 proposal](ground-shock-outrunning.md), the half-space in three dimensions on the GPU, is
 proposed as a new issue. The outputs are on StudioData, `bombcad/issue26/g2/`.
+
+### On the soil measured at Watching Hill (20 October 2026)
+
+Jackson's report on the range's soils (WES TR S-72-4, 1972) gives what Murrell's does not: the
+boring at the Prairie Flat GZ, the specimens' densities, and uniaxial-strain loading and
+unloading curves for each soil group and loading rate. Transcribed as five layers
+(`Fixtures/PrairieFlat/soil-profile.json`): clay to 7.7 ft at 1,470 kg/m³ loading at 235, 172
+and 117 m/s with depth as the loading rate falls, sand to the water table at 24 ft at 1,536 kg/m³
+and 173 m/s, both unloading at 459–519 m/s, and saturated soil at 1,908 kg/m³ and 1,410 m/s
+below. The report gives no shear speeds, so those stay at a Poisson's ratio of 0.3. The same
+run (`blastbench groundmotion --profile`, 11 minutes), against the same judge:
+
+| Model, fed the air model | Within 2×, of 34 | Ratio: 1.5 ft; 5 ft; 10 ft; 17 ft | Arrivals within 10%, of 24 |
+|---|---|---|---|
+| Column, measured unloading | 26 | 0.48; 0.98; 0.84; 2.29 | 6 |
+| Column, elastic | 20 | | 6 |
+| The manuals' estimate (the top layer) | 21 | | 7 |
+| Half-space, elastic, the air alone | 26 | 0.57; 1.21; 1.53; 4.38 | 8 |
+| Half-space, yielding 30°, the air alone | 26 | 0.43; 0.86; 0.76; 1.99 | 9 |
+
+Fed Kingery–Bulmash the column with its measured unloading is within two at 27 of 34, its
+arrivals at 1 of 24.
+
+- **The peaks now pass:** 26 of 34 within a factor of two for the column, the elastic and the
+  yielding half-space (the judge asked 23), against 13 to 21 on one layer at the arrival speed.
+  The soil's own loading stiffness, a third to two-thirds of its arrival speed, was what the
+  shallow gauges wanted. The 17 ft records stay about twice too high.
+- **The arrivals now fail:** 6 to 9 of 24 within 10%. Below 1.5 ft the stress wave comes 8 to
+  125% late, at the loading speed, where the measured first motion ran at the 387 m/s the
+  refraction surveys also give (1,150 ft/s). A crushable soil sends a small first motion ahead
+  at its elastic speed and its stress behind it at its loading stiffness, and a bilinear soil
+  has one loading stiffness.
+- **The outrunning limit moves out:** on the laboratory's 1,410 m/s below the water table, slower
+  than the field's 1,859 m/s, the ground's wave comes first only from 830 ft. Past 560 ft the
+  yielding half-space is within three times at 15–16 of 16 records, the elastic at 12–14.
+
+**Verdict, final: G2 fails.** No soil of this kind meets both halves of the judge at once: at
+the arrival speed the peaks fail, at the measured loading stiffness the arrivals fail. Standing
+stays illustrative and unbanded inside the outrunning limit. What would meet both is a soil
+with a stiff elastic front ahead of a soft crushing branch (a locking or elastic-plastic
+loading curve), the future work below. The band past the limit stands on the field speeds it
+was judged on. Outputs: StudioData `bombcad/issue26/g2/measured/`.
 
 ## Limitations
 
@@ -692,10 +734,11 @@ proposed as a new issue. The outputs are on StudioData, `bombcad/issue26/g2/`.
   differently, and a check of the bilinear moduli against uniaxial-strain tests on a real soil.
 - The ground points in the app as a grid over an area as well as a line, and the column's depth
   drawn in the view beside them rather than only in a chart.
-- The soil's loading curve, bending up as a crushable, air-filled soil locks: Prairie Flat's
-  near-surface velocities are three to five times what its arrival speed allows. The Watching Hill
-  soil data (on Wikimedia Commons, not yet fetched; [Data wanted](data-wanted.md#to-fetch)) would
-  give that curve measured; Pre-Dice Throw II, still blocked at DTIC, a third test.
+- A loading curve with an elastic front ahead of a soft crushing branch, as an air-filled soil
+  has: on Watching Hill's measured curves the column meets Prairie Flat's peaks but its stress
+  arrives late, on the arrival speed its arrivals meet and its peaks do not
+  ([above](#on-the-soil-measured-at-watching-hill-20-october-2026)). Pre-Dice Throw II, still
+  blocked at DTIC, would be a third test.
 - The motion the ground's own wave carries ahead of the blast where it outruns it, mostly
   horizontal, which dominated Xia et al.'s records: built as an elastic half-space
   ([stages 1 to 3](ground-shock-outrunning.md)), which at Xia's gauges gave its shape but not its

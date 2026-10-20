@@ -60,6 +60,22 @@ func runGroundMotion(device: MTLDevice) throws {
             ? ([layer], .halfSpace(density: saturatedDensity, waveSpeed: saturatedSpeed)) : ([layer], nil)
     }
     let top = waterTable ?? 1
+    // `--profile soil.json`: the soil's measured layers in place of the options above, as a
+    // SoilProfile whose last layer is the soil beneath, going on (Fixtures/PrairieFlat/soil-profile.json).
+    // The columns take it with its unloading (any ratio but 1) or elastic (ratio 1) over an elastic
+    // base of the last layer; the half-space takes the layers as they are, yielding above the last.
+    let measuredSoil = try option("profile").map {
+        try JSONDecoder().decode(SoilProfile.self, from: Data(contentsOf: URL(fileURLWithPath: $0)))
+    }
+    func measuredColumn(_ profile: SoilProfile, elastic: Bool) -> SoilProfile {
+        var layers = profile.layers
+        if elastic { for n in layers.indices { layers[n].unloadingWaveSpeed = nil } }
+        let last = layers[layers.count - 1]
+        layers[layers.count - 1].thickness = max(last.thickness, 2 * (depths.max() ?? 1) + 10)
+        return SoilProfile(
+            layers: layers, base: .halfSpace(density: last.density, waveSpeed: last.waveSpeed), timeStep: step
+        )
+    }
     func spec(_ ratio: Float?, dx: Float) -> GroundShockSpec {
         var spec = GroundShockSpec()
         spec.soil = soil
@@ -68,7 +84,10 @@ func runGroundMotion(device: MTLDevice) throws {
         spec.arrivalThreshold = 500
         // The charge in the corner: where the ground's own wave starts, for each point's regime.
         spec.origin = .zero
-        if let ratio {
+        if let ratio, let measuredSoil {
+            spec.model = .column
+            spec.profile = measuredColumn(measuredSoil, elastic: ratio == 1)
+        } else if let ratio {
             spec.model = .column
             let below = saturated(column: true)
             spec.profile = SoilProfile(
@@ -101,6 +120,16 @@ func runGroundMotion(device: MTLDevice) throws {
                     shearWaveSpeed: speed * shearRatio, frictionAngle: friction,
                     cohesion: friction != nil ? cohesion : nil)
             ] + saturated(column: false).layers, timeStep: step)
+        if let measuredSoil {
+            var layers = measuredSoil.layers
+            for n in layers.indices.dropLast() {
+                if friction == nil { layers[n].unloadingWaveSpeed = nil }
+                layers[n].frictionAngle = friction
+                layers[n].cohesion = friction != nil ? cohesion : nil
+            }
+            layers[layers.count - 1].unloadingWaveSpeed = nil
+            spec.profile = SoilProfile(layers: layers, timeStep: step)
+        }
         spec.halfSpace = HalfSpaceSetup(
             centre: .zero, chargeMass: Float(mass), elasticShare: share, cellSize: halfCell)
         return spec

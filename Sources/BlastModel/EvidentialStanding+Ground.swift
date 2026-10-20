@@ -149,6 +149,11 @@ extension StandingScene {
                         "Vertical within two times at 13–14 of 34 records: 0.15–0.29 of the measured 1.5 ft down, "
                             + "1.0–2.3 at 17 ft; arrivals within 10% at 18–20 of 24",
                         "ground-shock.md#against-prairie-flat"),
+                    StandingEvidence(
+                        "The same on the soil measured at Watching Hill, its loading and unloading curves by layer",
+                        "Vertical within two times at 26 of 34 records (the column unloading as measured), but "
+                            + "arrivals within 10% at only 6 of 24: the stress comes late at the soil's loading stiffness",
+                        "ground-shock.md#on-the-soil-measured-at-watching-hill-20-october-2026"),
                 ],
             assumptions: [
                 "Away from the charge only; no direct-induced shock or crater.",

@@ -15,7 +15,8 @@
   "saturatedSpeed": 1859.3,
   "speedNote": "propagation velocities from the earliest arrivals between 1.5 and 10 ft (upper layer) and at 30 ft (below the water table): 1,270 and 6,100 ft/s, 15% and 11% above Distant Plain 6's",
   "densityNote": "not given; the gauge canisters, about 100 pcf (1,600 kg/m3), are said to match the in-situ soil's density",
-  "notGiven": "no shear speeds, layered densities or strength; the Watching Hill soil reports (Jackson and Windham 1967; WES TR S-72-4) are not in hand"
+  "notGiven": "no shear speeds, layered densities or strength in this report",
+  "measured": "soil-profile.json: the layers' densities and uniaxial loading and unloading stiffnesses from Jackson's Watching Hill report (WES TR S-72-4, 1972), its boring at the Prairie Flat GZ and specimens from it; no shear speeds there either"
  },
  "outrunning": {
   "rangeFt": 560,
