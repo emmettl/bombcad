@@ -36,12 +36,14 @@ enum InferChargeStudy {
                 gridChecks: value("grid-checks").flatMap(Int.init) ?? 0, showMisses: args.contains("--misses")
             )
         }
+        sideLoad = value("side-load") ?? "glass"
         if args.contains("--forward-damage") {
             try forwardDamage(
                 fixture: URL(filePath: value("fixture") ?? "Fixtures/SyntheticDistrict"),
                 cellSize: Float(value("dx").flatMap(Double.init) ?? 4),
                 frame: value("frame").flatMap(Double.init) ?? 1.0 / 120,
-                only: value("charges").map { $0.split(separator: ",").compactMap { Int($0) } })
+                only: value("charges").map { $0.split(separator: ",").compactMap { Int($0) } },
+                passes: value("passes").flatMap(Int.init) ?? 0)
             return
         }
         if args.contains("--damage-probe") {
@@ -386,7 +388,8 @@ enum InferChargeStudy {
     /// at the observers and its glass broken building side by building side; the charge then
     /// inferred from the glass alone (the scene's own surrogate as the forward model,
     /// `ChargeInference.SurrogateDamage`), from the arrivals alone (Kingery–Bulmash), and from both.
-    static func forwardDamage(fixture: URL, cellSize: Float, frame: Double, only: [Int]?) throws {
+    static func forwardDamage(fixture: URL, cellSize: Float, frame: Double, only: [Int]?, passes: Int) throws
+    {
         guard let device = MTLCreateSystemDefaultDevice() else { throw BlastError.allocationFailed("Metal") }
         let buildings = try MapBuilding.read(contentsOf: fixture.appending(path: "district.osm"))
         let heights = try ElevationGrid(contentsOf: fixture.appending(path: "heights.asc"))
@@ -422,7 +425,7 @@ enum InferChargeStudy {
                     let d = hypot(p.x - charge.east, p.y - charge.north)
                     return d >= 40 && d <= Double(district.reach)
                 }.prefix(40))
-            let (times, glass) = try district.run(
+            let (times, glass, _) = try district.run(
                 mass: charge.mass, east: charge.east, north: charge.north, observers: observers)
             var arrivals: [ChargeInference.Arrival] = []
             for (k, p) in observers.enumerated() {
@@ -458,19 +461,112 @@ enum InferChargeStudy {
             print(
                 line("Damage alone", fromDamage, truth: truth)
                     + String(format: " (%.0f s)", DistrictBenchmark.seconds(started)))
+            var both: ChargeInference.Posterior?
             if arrivals.count >= 5 {
                 print(
                     line(
                         "Arrivals alone", ChargeInference.infer(arrivals: arrivals, settings: settings),
                         truth: truth))
+                both = ChargeInference.infer(arrivals: arrivals, damage: damage, settings: settings)
+                print(line("Arrivals and damage", both!, truth: truth))
+            }
+            // Further passes, as `--forward`'s: BombCAD run at the last estimate, its loads on each
+            // side over the surrogate's there taken as the side's correction (and with the arrivals,
+            // their ratios), until the yield moves under 5% (at most `passes` runs). The glass alone
+            // is run at its own estimates, the two together at theirs.
+            func estimate(_ posterior: ChargeInference.Posterior) -> (
+                mass: Float, east: Double, north: Double
+            ) {
+                (
+                    Float(pow(10, posterior.summary("log10MassKg")!.median)),
+                    posterior.summary("east")!.median + reference.x,
+                    posterior.summary("north")!.median + reference.y
+                )
+            }
+            func corrected(_ found: (mass: Float, east: Double, north: Double)) throws -> (
+                damage: ChargeInference.SurrogateDamage, arrivals: [ChargeInference.Arrival]
+            ) {
+                let seen = arrivals.map { SIMD2($0.east + reference.x, $0.north + reference.y) }
+                let (again, _, loads) = try district.run(
+                    mass: found.mass, east: found.east, north: found.north, observers: seen)
+                var run: [Int: (peak: Double, impulse: Double)] = [:]
+                var runGlass: [Int: Double] = [:]
+                let index = Dictionary(
+                    damage.sides.indices.map {
+                        ("\(damage.sides[$0].owner)/\(damage.sides[$0].axis)/\(damage.sides[$0].outward)", $0)
+                    }, uniquingKeysWith: { a, _ in a })
+                let owners = Dictionary(
+                    scene.envelopeObjects.enumerated().map { ($0.element.name, $0.offset) },
+                    uniquingKeysWith: { a, _ in a })
+                for (name, sides) in loads {
+                    guard byName[name] != nil, let owner = owners[name] else { continue }
+                    for side in sides {
+                        if let k = index["\(owner)/\(side.axis)/\(side.outward)"] {
+                            run[k] = (side.peak, side.impulse)
+                            if let logNone = side.logNoneBroken { runGlass[k] = logNone }
+                        }
+                    }
+                }
+                var fixed = damage
+                if InferChargeStudy.sideLoad.hasPrefix("glass") {
+                    fixed.correct(
+                        towardGlass: runGlass, massKg: Double(found.mass), east: found.east - reference.x,
+                        north: found.north - reference.y, common: InferChargeStudy.sideLoad == "glass-common")
+                } else {
+                    fixed.correct(
+                        toward: run, massKg: Double(found.mass), east: found.east - reference.x,
+                        north: found.north - reference.y)
+                }
+                var timed = arrivals
+                for (k, p) in seen.enumerated() {
+                    guard let at = again[k] else { continue }
+                    let kb = ChargeInference.arrival(
+                        massKg: Double(found.mass), range: hypot(p.x - found.east, p.y - found.north))
+                    timed[k].ratios = [(Double(found.mass), at / kb)]
+                }
+                let shifts = (fixed.corrections ?? []).map(\.x).sorted()
                 print(
-                    line(
-                        "Arrivals and damage",
-                        ChargeInference.infer(arrivals: arrivals, damage: damage, settings: settings),
-                        truth: truth))
+                    String(
+                        format:
+                            "      run at %.0f kg (%.0f, %.0f): %d of %d sides loaded, %d telling, peak corrections %.2f (%.2f–%.2f)",
+                        found.mass, found.east - reference.x, found.north - reference.y, run.count,
+                        damage.sides.count, fixed.informativeSides,
+                        exp(shifts.isEmpty ? 0 : shifts[shifts.count / 2]),
+                        exp(shifts.isEmpty ? 0 : shifts[shifts.count / 10]),
+                        exp(shifts.isEmpty ? 0 : shifts[shifts.count * 9 / 10])))
+                return (fixed, timed)
+            }
+            var last = fromDamage
+            for pass in 1...max(passes, 1) where passes > 0 {
+                let started = ContinuousClock.now
+                let next = ChargeInference.infer(
+                    arrivals: [], damage: try corrected(estimate(last)).damage, settings: settings)
+                print(
+                    line("Damage, BombCAD's loads at estimate \(pass)", next, truth: truth)
+                        + String(format: " (%.0f s)", DistrictBenchmark.seconds(started)))
+                let moved = abs(next.summary("log10MassKg")!.median - last.summary("log10MassKg")!.median)
+                last = next
+                if moved < log10(1.05) { break }
+            }
+            if var joint = both, passes > 0 {
+                for pass in 1...passes {
+                    let fixed = try corrected(estimate(joint))
+                    let next = ChargeInference.infer(
+                        arrivals: fixed.arrivals, damage: fixed.damage, settings: settings)
+                    print(line("Both, BombCAD's loads and ratios at estimate \(pass)", next, truth: truth))
+                    let moved = abs(
+                        next.summary("log10MassKg")!.median - joint.summary("log10MassKg")!.median)
+                    joint = next
+                    if moved < log10(1.05) { break }
+                }
             }
         }
     }
+
+    /// `--side-load mean|peak|glass|glass-common`: how a run corrects a side's load: its strips'
+    /// mean load, the most loaded strip's peak, the load whose glass is the run's, or those loads'
+    /// median for every side.
+    nonisolated(unsafe) static var sideLoad = "glass"
 
     static func forward(fixture: URL, cellSize: Float, frame: Double, passes: Int) throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw BlastError.allocationFailed("Metal") }
@@ -579,7 +675,8 @@ extension InferChargeStudy.District {
     /// that some pane breaks is over a half), by its building's name: the run's envelope components recorded and judged as the
     /// app judges them (`EnvelopeDamageAssessment`).
     func run(mass: Float, east: Double, north: Double, observers: [SIMD2<Double>]) throws -> (
-        arrivals: [Double?], glass: [String: [(axis: Int, outward: Int, broken: Bool)]]
+        arrivals: [Double?], glass: [String: [(axis: Int, outward: Int, broken: Bool)]],
+        loads: [String: [(axis: Int, outward: Int, peak: Double, impulse: Double, logNoneBroken: Double?)]]
     ) {
         let metres = ElevationGrid.metresPerDegree
         var layout = DistrictLayout(
@@ -629,12 +726,51 @@ extension InferChargeStudy.District {
             loads: loads, constructions: { scene.envelopeConstruction(for: $0) })
         let names = Dictionary(uniqueKeysWithValues: scene.envelopeObjects.map { ($0.id, $0.name) })
         var glass: [String: [(axis: Int, outward: Int, broken: Bool)]] = [:]
+        var glassLog: [String: [Int: Double]] = [:]
         for building in judged {
             guard let name = names[building.id], let sides = building.facadeGlass else { continue }
+            for side in sides where side.axis < 2 {
+                glassLog[name, default: [:]][side.axis * 2 + (side.outward > 0 ? 1 : 0)] =
+                    side.glass.logNoneBroken
+            }
             glass[name] = sides.filter { $0.axis < 2 }.map {
                 ($0.axis, $0.outward, $0.glass.logNoneBroken < log(0.5))
             }
         }
-        return (arrivals, glass)
+        // Each side's load as the surrogate gives it: its façade strips' peak net loads and first
+        // positive impulses (`SurrogateBench`), their logs averaged by area, or with
+        // `--side-load peak` the peak the most loaded strip's; and its glass as the run judges it.
+        var sides: [String: [Int: (area: Double, logPeak: Double, logImpulse: Double, top: Double)]] = [:]
+        for load in loads where load.kind == .facade && load.axis < 2 {
+            guard let name = names[load.owner] else { continue }
+            let net = load.netPa
+            let peak = net.max() ?? 0
+            let impulse = SurrogateBench.firstImpulse(net, binS: load.binS)
+            guard peak > 0, impulse > 0 else { continue }
+            let spans = load.spans
+            let area = Double(spans.short * spans.long)
+            let key = load.axis * 2 + (load.outward > 0 ? 1 : 0)
+            var side = sides[name, default: [:]][key] ?? (0, 0, 0, 0)
+            side.area += area
+            side.logPeak += area * log(peak)
+            side.logImpulse += area * log(impulse)
+            side.top = max(side.top, peak)
+            sides[name, default: [:]][key] = side
+        }
+        let perSide = Dictionary(
+            uniqueKeysWithValues: sides.map { name, bySide in
+                (
+                    name,
+                    bySide.sorted { $0.key < $1.key }.map { key, side in
+                        (
+                            axis: key / 2, outward: key % 2 == 1 ? 1 : -1,
+                            peak: InferChargeStudy.sideLoad == "peak"
+                                ? side.top : exp(side.logPeak / side.area),
+                            impulse: exp(side.logImpulse / side.area), logNoneBroken: glassLog[name]?[key]
+                        )
+                    }
+                )
+            })
+        return (arrivals, glass, perSide)
     }
 }

@@ -71,6 +71,42 @@ struct ChargeInferenceSheetTests {
         #expect(placement.position.z == 0 && abs(placement.massKg / 5e4 - 1) < 0.25)
     }
 
+    @Test(
+        "The survey is offered on the scene's buildings only where their glass is judged, and needs the scene's corner"
+    )
+    func sceneGlassOffered() async throws {
+        let folder = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "Fixtures/SyntheticDistrict")
+        let east = ElevationGrid.metresPerDegree
+        var layout = DistrictLayout(
+            buildings: try MapBuilding.read(contentsOf: folder.appending(path: "district.osm")),
+            charge: SIMD2(612 / east, 608 / east), mass: 1_000)
+        layout.heights = try ElevationGrid(
+            esriASCII: String(contentsOf: folder.appending(path: "heights.asc"), encoding: .utf8))
+        let (scene, _) = try layout.scene(halfSide: layout.halfSide(radius: 150, cellSize: 4), cellSize: 4)
+        let inference = ChargeInferenceModel()
+        inference.setObservers(Self.observers(), file: "made-up.csv")
+        // A scene without envelope buildings offers nothing.
+        let bare = ScenarioPreset.streetCanyon.scenario
+        await inference.offerSceneGlass(scene: bare, cellSize: 4)
+        #expect(inference.sceneGlass == nil)
+        await inference.offerSceneGlass(scene: scene, cellSize: 4)
+        let found = try #require(inference.sceneGlass)
+        #expect(found.sides.count > 20)
+        inference.chooseGlass(URL(filePath: "/survey.csv"))
+        inference.usesGlass = true
+        inference.usesSceneGlass = true
+        #expect(inference.weighsSceneGlass)
+        #expect(inference.notReady?.contains("corner") == true)
+        inference.cornerLongitude = "35.5"
+        inference.cornerLatitude = "33.9"
+        #expect(inference.notReady == nil)
+        // Withdrawn where the scene no longer has such sides.
+        await inference.offerSceneGlass(scene: bare, cellSize: 4)
+        #expect(!inference.weighsSceneGlass && !inference.usesSceneGlass)
+        #expect(ChargeInference.sceneGlassStanding.contains("circular"))
+    }
+
     @Test func cancellingKeepsNoResult() async throws {
         let inference = ChargeInferenceModel()
         inference.setObservers(Self.observers(), file: "made-up.csv")

@@ -281,6 +281,13 @@ clock offset common to every observer and the burst's height. It is
   `lat,lon,class[,normal_azimuth_deg]`) is off unless chosen and turned on. It is illustrative: on
   Beirut it fits no yield and pulls the result towards a small charge
   ([broken glass](charge-inference.md#broken-glass)), and the standing falls to illustrative with it.
+- **On this scene's buildings** appears under Broken glass when the scene has buildings whose
+  glass the app judges in a run (envelopes with a glazing mix). Turned on, with the scene's corner
+  (0, 0) in longitude and latitude, each surveyed façade is put on the side of a scene building it
+  lies on. Each side is then weighed by the façade load surrogate's load from the charge being
+  weighed, in place of the free field. It is illustrative too, and circular on Beirut, whose
+  survey the glazing mixes' openings curve was fitted to
+  ([in the app](charge-inference.md#in-the-app)).
 - **Infer** samples the posterior on this Mac's processor, with progress, in about a second for
   arrivals alone (half a minute with thousands of façades); Cancel stops it and keeps nothing.
 

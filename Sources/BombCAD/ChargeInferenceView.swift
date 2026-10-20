@@ -11,8 +11,6 @@ struct ChargeInferenceView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusesTemperature: Bool
     @State private var importing: Importing?
-    @State private var cornerLongitude = ""
-    @State private var cornerLatitude = ""
     @State private var placed: String?
 
     private enum Importing: Identifiable {
@@ -62,7 +60,12 @@ struct ChargeInferenceView: View {
             if which == .glass { self.inference.chooseGlass(url) } else { self.inference.loadObservers(url) }
         }
         .defaultFocus($focusesTemperature, true)
-        .task { focusesTemperature = true }
+        .task {
+            focusesTemperature = true
+            await inference.offerSceneGlass(
+                scene: model.settings.scenario,
+                cellSize: model.grid?.cellSize ?? model.settings.resolution.cellSize)
+        }
     }
 
     private func inputs(_ inference: ChargeInferenceModel) -> some View {
@@ -157,6 +160,33 @@ struct ChargeInferenceView: View {
                     Toggle(
                         "Use it (illustrative: it fits no yield, and biases the result)",
                         isOn: $inference.usesGlass)
+                    if let found = inference.sceneGlass {
+                        Toggle(
+                            "On this scene's buildings, their glass judged as a run's (\(found.sides.count) sides)",
+                            isOn: $inference.usesSceneGlass
+                        )
+                        .disabled(!inference.usesGlass)
+                        if inference.weighsSceneGlass {
+                            Text(
+                                "Each surveyed façade is put on the side of a scene building it lies on, and each side's glass weighed by the façade load surrogate's load from the charge being weighed and the building's glazing mix, as the app judges a run's glass. Illustrative; on Beirut circular, as the mixes' openings curve was fitted there."
+                            )
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(
+                                horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            if inference.weighsSceneGlass {
+                GridRow {
+                    Text("Scene's corner")
+                    HStack {
+                        TextField("Longitude", text: $inference.cornerLongitude).frame(width: 110)
+                            .accessibilityLabel("Scene corner longitude")
+                        TextField("Latitude", text: $inference.cornerLatitude).frame(width: 110)
+                            .accessibilityLabel("Scene corner latitude")
+                        Text("of (0, 0), as a map import places buildings").font(.caption).foregroundStyle(
+                            .secondary)
+                    }
                 }
             }
         }
@@ -190,8 +220,8 @@ struct ChargeInferenceView: View {
             )
             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
-                TextField("Corner longitude", text: $cornerLongitude).frame(width: 120)
-                TextField("Corner latitude", text: $cornerLatitude).frame(width: 120)
+                TextField("Corner longitude", text: $inference.cornerLongitude).frame(width: 120)
+                TextField("Corner latitude", text: $inference.cornerLatitude).frame(width: 120)
                 Button("Place Charge at Median") { place() }
                     .disabled(corner == nil || model.stepCount != 0)
             }
@@ -203,12 +233,7 @@ struct ChargeInferenceView: View {
         }
     }
 
-    private var corner: SIMD2<Double>? {
-        guard let lon = Double(cornerLongitude), let lat = Double(cornerLatitude), abs(lat) < 90 else {
-            return nil
-        }
-        return SIMD2(lon, lat)
-    }
+    private var corner: SIMD2<Double>? { inference.corner }
 
     private func place() {
         guard let corner, let (position, mass) = inference.scenePlacement(corner: corner) else { return }
@@ -281,7 +306,7 @@ struct ChargeInferenceResultView: View {
                         format:
                             "The observers lie %.1f%% off the model (90%%: %.1f–%.1f%%); %d arrivals%@, %.1f s",
                         100 * exp(spread.median), 100 * exp(spread.p05), 100 * exp(spread.p95),
-                        result.arrivals.count, result.facades > 0 ? ", \(result.facades) façades" : "",
+                        result.arrivals.count, glassCount,
                         result.seconds)
                 )
                 .font(.caption).foregroundStyle(.secondary)
@@ -295,15 +320,27 @@ struct ChargeInferenceResultView: View {
         }
     }
 
+    /// The glass weighed, as the caption counts it.
+    private var glassCount: String {
+        if let sides = result.sceneSides {
+            return ", \(sides.seen) sides of the scene's buildings surveyed (\(sides.broken) broken)"
+        }
+        return result.facades > 0 ? ", \(result.facades) façades" : ""
+    }
+
     private var standing: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Standing: \((usesGlass ? EvidenceLevel.illustrative : .approximation).title)").font(
                 .headline)
             ForEach(Array(ChargeInference.standing.enumerated()), id: \.offset) { index, line in
-                // The glass's line only when glass was used.
-                if index < ChargeInference.standing.count - 1 || usesGlass {
+                // The glass's line only when glass was used, on the scene's buildings its own.
+                if index < ChargeInference.standing.count - 1 || (usesGlass && result.sceneSides == nil) {
                     Text(line).font(.caption).fixedSize(horizontal: false, vertical: true)
                 }
+            }
+            if result.sceneSides != nil {
+                Text(ChargeInference.sceneGlassStanding).font(.caption).fixedSize(
+                    horizontal: false, vertical: true)
             }
             Text("See docs/validation.md, \"Estimates beside a run\".").font(.caption2).foregroundStyle(
                 .secondary)

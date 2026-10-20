@@ -610,7 +610,8 @@ public enum ChargeInference {
                 likelihood += damage.logLikelihood(
                     massKg: pow(10, theta[0]), east: theta[1], north: theta[2], bandM: settings.glassBandM,
                     kappa: settings.glassConcentration, perSide: settings.damagePerSide,
-                    floor: settings.damageFloor, factor: exp(theta.last ?? 0))
+                    floor: settings.damageFloor,
+                    factor: settings.damageBiasLogSD == nil ? 1 : exp(theta.last ?? 0))
             }
             // Anything that is not a number counts as impossible, so that no search or walker
             // settles on it.
@@ -848,4 +849,10 @@ extension ChargeInference {
             "Broken glass: illustrative. It fits no yield and biases the result rather than tightening it.",
         ]
     }()
+
+    /// The standing of broken glass weighed on the scene's own buildings (`SurrogateDamage`).
+    public static let sceneGlassStanding =
+        "Broken glass on the scene's own buildings: illustrative. On BombCAD's runs of a made-up district it held "
+        + "the true yield in its 90% interval for four charges of four on 4 m cells and two on 2 m, but placed "
+        + "them 3–70 m off. On Beirut it is circular, as the glazing mixes' openings curve was fitted there."
 }

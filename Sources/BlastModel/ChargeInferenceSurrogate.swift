@@ -114,33 +114,16 @@ extension ChargeInference {
             let seen = Dictionary(
                 observed.map { ("\($0.owner)/\($0.axis)/\($0.outward)", $0.damaged) },
                 uniquingKeysWith: { a, _ in a })
-            var all: [Side] = []
-            for (n, object) in objects.enumerated() {
-                guard let envelope = object.envelope,
-                    let mix = scene.envelopeConstruction(for: object.id).glazing
-                else { continue }
-                let strips = envelope.components(owner: object.id, cellSize: cellSize)
-                    .filter { $0.kind == .facade && FacadeLoadSurrogate.facesAir($0, raster: raster) }
-                let bySide = Dictionary(grouping: strips) { $0.axis * 2 + ($0.outward > 0 ? 1 : 0) }
-                for (key, members) in bySide.sorted(by: { $0.key < $1.key }) {
-                    let axis = key / 2
-                    let outward = key % 2 == 1 ? 1 : -1
-                    guard let damaged = seen["\(object.id)/\(axis)/\(outward)"], let first = members.first
-                    else {
-                        continue
-                    }
-                    let region = members.dropFirst().reduce(first.region) {
-                        Box(min: simd_min($0.min, $1.region.min), max: simd_max($0.max, $1.region.max))
-                    }
-                    let area = members.reduce(0.0) { $0 + Double($1.spans.x * $1.spans.y) }
-                    let (centre, _) = FacadeLoadSurrogate.outerFace(
-                        region: region, axis: axis, outward: outward)
-                    all.append(
-                        Side(
-                            owner: n, axis: axis, outward: outward, region: region, mix: mix, areaM2: area,
-                            damaged: damaged, east: Double(centre.x - reference.x),
-                            north: Double(centre.y - reference.y)))
+            let all = Self.judgedSides(scene: scene, cellSize: cellSize, raster: raster).compactMap {
+                side -> Side? in
+                guard let damaged = seen["\(objects[side.owner].id)/\(side.axis)/\(side.outward)"] else {
+                    return nil
                 }
+                var side = side
+                side.damaged = damaged
+                side.east -= Double(reference.x)
+                side.north -= Double(reference.y)
+                return side
             }
             // Evenly through them, where there are more than the likelihood can weigh in time.
             let every = max(1, Int((Double(all.count) / Double(max(maximumSides, 1))).rounded(.up)))
@@ -190,9 +173,102 @@ extension ChargeInference {
             seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
         }
 
-        /// Each side's chance that some pane breaks, from `massKg` at (`east`, `north`), every load
-        /// times `factor` (a bias common to the district's sides).
-        public func chances(massKg: Double, east: Double, north: Double, factor: Double = 1) -> [Double] {
+        /// The building sides of `scene` whose glass the app judges (`EnvelopeDamageAssessment`'s
+        /// façade glass): each envelope building with a glazing mix, its façade strips on the air
+        /// taken side by side. Their `east` and `north` are the side's middle in the scene's metres;
+        /// `damaged` is false.
+        public static func judgedSides(scene: Scenario, cellSize: Float) -> [Side] {
+            judgedSides(
+                scene: scene, cellSize: cellSize,
+                raster: FacadeLoadSurrogate.Raster(
+                    objects: scene.envelopeObjects, blocks: scene.boxes, terrain: scene.terrain,
+                    cell: cellSize))
+        }
+
+        static func judgedSides(scene: Scenario, cellSize: Float, raster: FacadeLoadSurrogate.Raster)
+            -> [Side]
+        {
+            var all: [Side] = []
+            for (n, object) in scene.envelopeObjects.enumerated() {
+                guard let envelope = object.envelope,
+                    let mix = scene.envelopeConstruction(for: object.id).glazing
+                else { continue }
+                let strips = envelope.components(owner: object.id, cellSize: cellSize)
+                    .filter { $0.kind == .facade && FacadeLoadSurrogate.facesAir($0, raster: raster) }
+                let bySide = Dictionary(grouping: strips) { $0.axis * 2 + ($0.outward > 0 ? 1 : 0) }
+                for (key, members) in bySide.sorted(by: { $0.key < $1.key }) {
+                    guard let first = members.first else { continue }
+                    let axis = key / 2
+                    let outward = key % 2 == 1 ? 1 : -1
+                    let region = members.dropFirst().reduce(first.region) {
+                        Box(min: simd_min($0.min, $1.region.min), max: simd_max($0.max, $1.region.max))
+                    }
+                    let area = members.reduce(0.0) { $0 + Double($1.spans.x * $1.spans.y) }
+                    let (centre, _) = FacadeLoadSurrogate.outerFace(
+                        region: region, axis: axis, outward: outward)
+                    all.append(
+                        Side(
+                            owner: n, axis: axis, outward: outward, region: region, mix: mix, areaM2: area,
+                            damaged: false, east: Double(centre.x), north: Double(centre.y)))
+                }
+            }
+            return all
+        }
+
+        /// The judged sides (`judgedSides`) that surveyed façades lie on: each façade, at its place
+        /// in the scene's metres (`east`, `north`) and facing its `normalAzimuth` where known, taken to
+        /// the nearest side whose face, in plan, lies within `withinM` metres of it and which faces
+        /// within 60° of the same way. A side is broken where any façade on it is.
+        public static func observed(
+            facades: [ChargeInference.Facade], sides: [Side], scene: Scenario, withinM: Double = 6
+        ) -> [(owner: UUID, axis: Int, outward: Int, damaged: Bool)] {
+            var damaged: [Int: Bool] = [:]
+            for facade in facades {
+                var best: (index: Int, distance: Double)?
+                for (k, side) in sides.enumerated() {
+                    let normal =
+                        side.axis == 0 ? SIMD2(Double(side.outward), 0) : SIMD2(0, Double(side.outward))
+                    if let azimuth = facade.normalAzimuth,
+                        normal.x * sin(azimuth) + normal.y * cos(azimuth) < 0.5
+                    {
+                        continue
+                    }
+                    // The face's line in plan: across the side's thin axis at its outer face.
+                    let along = 1 - side.axis
+                    let low = Double(side.region.min[along])
+                    let high = Double(side.region.max[along])
+                    let face = Double(
+                        side.outward > 0 ? side.region.max[side.axis] : side.region.min[side.axis])
+                    let p = SIMD2(facade.east, facade.north)
+                    let off = abs(p[side.axis] - face)
+                    let beyond = max(low - p[along], p[along] - high, 0)
+                    let distance = (off * off + beyond * beyond).squareRoot()
+                    if distance <= withinM, distance < best?.distance ?? .infinity { best = (k, distance) }
+                }
+                if let best { damaged[best.index] = (damaged[best.index] ?? false) || facade.damaged }
+            }
+            let objects = scene.envelopeObjects
+            return damaged.keys.sorted().map { k in
+                (
+                    owner: objects[sides[k].owner].id, axis: sides[k].axis, outward: sides[k].outward,
+                    damaged: damaged[k]!
+                )
+            }
+        }
+
+        /// Each side's correction to the surrogate's log peak and log impulse, from a run near the
+        /// charge (`correct(toward:massKg:east:north:)`), applied wherever the charge is weighed, as
+        /// the arrivals' ratios are; nil for none.
+        public var corrections: [SIMD2<Double>]?
+        /// How many sides' own glass set their corrections (`correct(towardGlass:)`).
+        public var informativeSides = 0
+
+        /// Each side's predicted log peak (Pa), log impulse (Pa s) and rise share from `massKg` at
+        /// (`east`, `north`), blended from the grid's four nodes round it, and its distance; nil
+        /// where no node gives it a load. Without the corrections.
+        public func predictions(massKg: Double, east: Double, north: Double) -> [(
+            logPeak: Double, logImpulse: Double, rise: Double, distance: Double
+        )?] {
             let x = (east - origin.x) / spacing
             let y = (north - origin.y) / spacing
             let i = min(max(Int(floor(x)), 0), columns - 2)
@@ -203,16 +279,6 @@ extension ChargeInference {
                 (j * columns + i, (1 - s) * (1 - t)), (j * columns + i + 1, s * (1 - t)),
                 ((j + 1) * columns + i, (1 - s) * t), ((j + 1) * columns + i + 1, s * t),
             ]
-            // Gauss–Hermite over the log of the load's factor.
-            let nodes = [
-                -2.651961356835233, -1.673551628767471, -0.8162878828589647, 0, 0.8162878828589647,
-                1.673551628767471, 2.651961356835233,
-            ]
-            let weights = [
-                9.717812450995192e-4, 0.05451558281912703, 0.4256072526101278, 0.8102646175568073,
-                0.4256072526101278, 0.05451558281912703, 9.717812450995192e-4,
-            ]
-            let root = cbrt(massKg)
             return sides.indices.map { k in
                 var logPeak = 0.0
                 var logImpulse = 0.0
@@ -228,13 +294,106 @@ extension ChargeInference {
                     rise += w * p.riseShare
                     weight += w
                 }
-                guard weight > 0, let table = tables[sides[k].mix.name] else { return 0 }
-                logPeak = logPeak / weight + log(factor)
-                logImpulse = logImpulse / weight + log(factor)
-                rise /= weight
+                guard weight > 0 else { return nil }
+                return (
+                    logPeak / weight, logImpulse / weight, rise / weight,
+                    Double(features[corners[0].0 * sides.count + k].distance)
+                )
+            }
+        }
+
+        /// The corrections that bring the surrogate's loads from `massKg` at (`east`, `north`) to a
+        /// run's there: `run` gives each side's peak net load (Pa) and positive impulse (Pa s) by its
+        /// index in `sides`. A side the run did not load takes the median of the rest; each is held
+        /// within a factor e^1.5 either way.
+        public mutating func correct(
+            toward run: [Int: (peak: Double, impulse: Double)], massKg: Double, east: Double, north: Double
+        ) {
+            let predicted = predictions(massKg: massKg, east: east, north: north)
+            var known: [Int: SIMD2<Double>] = [:]
+            for (k, load) in run {
+                guard k < sides.count, let p = predicted[k], load.peak > 0, load.impulse > 0 else { continue }
+                let change = SIMD2(log(load.peak) - p.logPeak, log(load.impulse) - p.logImpulse)
+                known[k] = simd_clamp(change, SIMD2(repeating: -1.5), SIMD2(repeating: 1.5))
+            }
+            func median(_ values: [Double]) -> Double {
+                let sorted = values.sorted()
+                return sorted.isEmpty ? 0 : sorted[sorted.count / 2]
+            }
+            let fallback = SIMD2(median(known.values.map(\.x)), median(known.values.map(\.y)))
+            corrections = sides.indices.map { known[$0] ?? fallback }
+        }
+
+        /// The corrections that bring the surrogate's glass from `massKg` at (`east`, `north`) to a
+        /// run's there: `run` gives each side's log chance that no pane breaks, as the run judges it,
+        /// by its index in `sides`. Each side's load (peak and impulse alike) takes the factor whose
+        /// chance from its mix, without the scatter, is the run's. Only a side whose chance in the run
+        /// lies between `informative` and its complement tells its load (any load past the one that
+        /// breaks a pane for certain gives the same); the rest, and those the run did not judge, take
+        /// the median of those that do, as all do with `common`. Each is held within a factor e^1.5
+        /// either way.
+        public mutating func correct(
+            towardGlass run: [Int: Double], massKg: Double, east: Double, north: Double,
+            informative: Double = 0.02, common: Bool = false
+        ) {
+            let predicted = predictions(massKg: massKg, east: east, north: north)
+            var known: [Int: Double] = [:]
+            for (k, target) in run {
+                let chance = -expm1(target)
+                guard k < sides.count, chance > informative, chance < 1 - informative, let p = predicted[k],
+                    let table = tables[sides[k].mix.name]
+                else {
+                    continue
+                }
+                let logDuration = log(2.0) + p.logImpulse - p.logPeak
+                func logNone(_ change: Double) -> Double {
+                    sides[k].areaM2
+                        * table.logNoneBrokenPerM2(
+                            logPeak: p.logPeak + change, logDuration: logDuration, rise: p.rise)
+                }
+                // Its chance that none breaks falls as the load grows.
+                var low = -1.5
+                var high = 1.5
+                if logNone(low) <= target {
+                    known[k] = low
+                } else if logNone(high) >= target {
+                    known[k] = high
+                } else {
+                    for _ in 0..<30 {
+                        let middle = (low + high) / 2
+                        if logNone(middle) > target { low = middle } else { high = middle }
+                    }
+                    known[k] = (low + high) / 2
+                }
+            }
+            let sorted = known.values.sorted()
+            let fallback = sorted.isEmpty ? 0 : sorted[sorted.count / 2]
+            corrections = sides.indices.map { SIMD2(repeating: common ? fallback : known[$0] ?? fallback) }
+            informativeSides = known.count
+        }
+
+        /// Each side's chance that some pane breaks, from `massKg` at (`east`, `north`), every load
+        /// times `factor` (a bias common to the district's sides) and corrected (`corrections`).
+        public func chances(massKg: Double, east: Double, north: Double, factor: Double = 1) -> [Double] {
+            // Gauss–Hermite over the log of the load's factor.
+            let nodes = [
+                -2.651961356835233, -1.673551628767471, -0.8162878828589647, 0, 0.8162878828589647,
+                1.673551628767471, 2.651961356835233,
+            ]
+            let weights = [
+                9.717812450995192e-4, 0.05451558281912703, 0.4256072526101278, 0.8102646175568073,
+                0.4256072526101278, 0.05451558281912703, 9.717812450995192e-4,
+            ]
+            let root = cbrt(massKg)
+            let predicted = predictions(massKg: massKg, east: east, north: north)
+            return sides.indices.map { k in
+                guard let p = predicted[k], let table = tables[sides[k].mix.name] else { return 0 }
+                let correction = corrections?[k] ?? .zero
+                let logPeak = p.logPeak + correction.x + log(factor)
+                let logImpulse = p.logImpulse + correction.y + log(factor)
+                let rise = p.rise
                 let logDuration = log(2.0) + logImpulse - logPeak
-                let distance = Double(features[corners[0].0 * sides.count + k].distance)
-                let scaled = distance / root
+                let scaled = p.distance / root
                 let scatter =
                     FacadeLoadSurrogate.Uncertainty.leaveOneOut.first { scaled <= $0.upToZ }?.peak ?? 0.3
                 let sigma = (scatter * scatter + strengthLogSD * strengthLogSD).squareRoot()

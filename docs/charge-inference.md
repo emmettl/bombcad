@@ -184,8 +184,57 @@ arrivals at 40 observers alone (Kingery–Bulmash), then from both:
   freed from by a single factor.
 
 So the plan's bar is met on 4 m cells, where the truth falls inside every interval and three
-medians come within 15%, and not on 2 m cells. The next step is a run near the estimate correcting
-the surrogate's loads as it corrects the arrivals (stage 3).
+medians come within 15%, and not on 2 m cells.
+
+**A run near the estimate** (stage 3, `--forward-damage --passes 3 [--side-load glass|glass-common|mean|peak]`).
+As the arrivals' ratios do, BombCAD is run at the estimate, and the surrogate's load on each
+side corrected toward the run's there (`SurrogateDamage.correct`), the correction applied wherever
+the charge is weighed; then inferred again, at most three times, until the yield moves under 5%.
+The glass alone is run at its own estimates; the arrivals and glass together at theirs, which
+correct both. The correction tried four ways:
+- **glass** (the default): each side's load takes the factor whose chance from its mix is the
+  run's chance there. Only sides whose chance lies within 2–98% say anything (past the load that
+  surely breaks a pane, any load does); the rest take those sides' median.
+- **glass-common**: that median for every side.
+- **mean** and **peak**: the run's strips' mean log load, or the most loaded strip's peak.
+
+Each run takes 2–20 s. The truth inside the 90% interval, after the last pass:
+
+| | 2 m: glass alone | 4 m: glass alone | 2 m: arrivals and glass | 4 m: arrivals and glass |
+|---|---|---|---|---|
+| No run (as above) | 2 of 4 | 4 of 4 | 0 of 4 | 0 of 4 |
+| glass | 1 of 4 | 1 of 4 | **4 of 4** (505–5,033 kg, within 2%) | 3 of 4 (500 kg reads 457) |
+| glass-common | 2 of 4 | 2 of 4 | 4 of 4 | 3 of 4 |
+| glass, every certain side at its limit (e^±1.5) | 3 of 4 | 1 of 4 | 4 of 4 | 3 of 4 |
+| mean (stopped after two charges) | 0 of 2 | – | 2 of 2 | – |
+
+- **The glass alone is not put right by a run at its estimate.** Its place is 20–70 m off.
+  A run there measures the surrogate's error at the wrong place, so its corrections move the yield
+  the wrong way as often as the right. On 4 m cells the 500 kg charge drifts from 539 to 387 kg as
+  each run's correction grows. The mean correction is near 1 (0.9–1.1): the surrogate's mean load
+  on a side is right, and the glass's error is in how loads vary along it and with the place.
+- **Together, the run puts both right**, but the arrivals carry it. With the place from the arrivals
+  (within a metre), every correction gives the truth within 2% on 2 m cells and 1–9% on 4 m cells:
+  just what the arrivals' ratios give alone ([below](#bombcads-arrivals-on-a-made-up-district)).
+- So stage 3 meets the bar of three of four on 2 m cells, no worse on 4 m, only with the arrivals.
+  On the glass alone it does not, and the correction is left to the study, not offered in the app.
+
+### In the app
+
+The Infer Charge sheet weighs a survey of broken glass on the scene's own buildings where it can:
+**On this scene's buildings**, under Broken glass, beside the arrivals. It is offered only when
+the scene has building sides whose glass the app judges in a run (`SurrogateDamage.judgedSides`:
+envelope buildings with a glazing mix and façade strips on the air), and needs the scene's corner
+(0, 0) in longitude and latitude, as a map import places buildings.
+- **Matching.** Each surveyed façade goes to the nearest such side whose face lies within 6 m of
+  it in plan and which faces within 60° of the façade's own way, where known
+  (`SurrogateDamage.observed`). A side counts broken where any façade on it is.
+- **Weighing.** The sides are weighed by the surrogate from the place being searched, with places
+  on a grid no finer than 20 m (a fifteenth of the search radius beyond 300 m), in place of the
+  free-field glass.
+- **Standing.** The result shows how many sides the survey reached and how many broke, and states
+  the standing: illustrative. On Beirut it is circular, as the glazing mixes' openings curve was
+  fitted there (`ChargeInference.sceneGlassStanding`).
 
 ## Against charges BombCAD ran
 
@@ -246,8 +295,10 @@ last estimate, until the yield moves under 5% (at most three runs):
   yield; a posterior far from that place should be rerun there (as the forward study does).
 - **Glass is illustrative.** As above: the glass model's breakage and the survey's damage are not
   the same quantity, and no exposure calibrates one to the other.
-- **The app's sheet weighs arrivals only.** Simulation ▸ Infer Charge from Arrivals… runs the arrivals'
-  inference; the scene's own glass (`SurrogateDamage`) is headless only so far.
+- **The scene's glass in the app is the surrogate's alone.** Simulation ▸ Infer Charge from
+  Arrivals… weighs a survey on the scene's own buildings ([below](#in-the-app)) without a run near
+  the estimate. On BombCAD's own runs, the glass alone placed the charge 20–70 m off, and a run there
+  did not help it (above).
 
 ## Sources
 

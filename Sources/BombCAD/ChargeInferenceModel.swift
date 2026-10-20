@@ -15,6 +15,17 @@ final class ChargeInferenceModel {
     private(set) var glassFile = ""
     private var glassURL: URL?
     var usesGlass = false
+    /// The survey weighed on the scene's own buildings instead (`ChargeInference.SurrogateDamage`):
+    /// each surveyed façade taken to the side of a scene building it lies on, and the side's glass
+    /// judged from the façade load surrogate's load and its glazing mix, as the app judges a run's.
+    /// Offered only where the scene has such sides (`offerSceneGlass`).
+    var usesSceneGlass = false
+    /// The scene's sides whose glass the app judges, its envelopes and its cells, where it has any.
+    private(set) var sceneGlass:
+        (scene: Scenario, sides: [ChargeInference.SurrogateDamage.Side], cellSize: Float)?
+    /// The scene's corner (0, 0), as a map import places buildings: (longitude, latitude).
+    var cornerLongitude = ""
+    var cornerLatitude = ""
     /// The reference point, (longitude, latitude): the observers' centre unless set.
     var referenceLongitude = ""
     var referenceLatitude = ""
@@ -49,6 +60,8 @@ final class ChargeInferenceModel {
         var posterior: ChargeInference.Posterior
         var arrivals: [ChargeInference.Arrival]
         var facades: Int
+        /// With the survey on the scene's buildings: the sides it was matched to and of those broken.
+        var sceneSides: (seen: Int, broken: Int)?
         var projection: ChargeInferenceInputs.LocalProjection
         var settings: ChargeInference.Settings
         var seconds: Double
@@ -112,6 +125,26 @@ final class ChargeInferenceModel {
         glassFile = url.lastPathComponent
     }
 
+    /// Offers the survey on `scene`'s own buildings where it has sides whose glass the app judges on
+    /// cells `cellSize` across; otherwise withdraws it.
+    func offerSceneGlass(scene: Scenario, cellSize: Float) async {
+        let sides = await Task.detached(priority: .userInitiated) {
+            ChargeInference.SurrogateDamage.judgedSides(scene: scene, cellSize: cellSize)
+        }.value
+        sceneGlass = sides.isEmpty ? nil : (scene, sides, cellSize)
+        if sceneGlass == nil { usesSceneGlass = false }
+    }
+
+    var corner: SIMD2<Double>? {
+        guard let lon = Double(cornerLongitude), let lat = Double(cornerLatitude), abs(lat) < 90,
+            abs(lon) <= 180
+        else { return nil }
+        return SIMD2(lon, lat)
+    }
+
+    /// Whether the survey is weighed on the scene's buildings.
+    var weighsSceneGlass: Bool { usesGlass && usesSceneGlass && sceneGlass != nil }
+
     var reference: SIMD2<Double>? {
         guard let lon = Double(referenceLongitude), let lat = Double(referenceLatitude),
             abs(lat) < 90, abs(lon) <= 180
@@ -128,6 +161,10 @@ final class ChargeInferenceModel {
         }
         if !(searchRadius > 0) { return "The search radius must be above zero." }
         if usesGlass && glassURL == nil { return "Choose a survey of broken glass, or leave the glass out." }
+        if weighsSceneGlass && corner == nil {
+            return
+                "Give the longitude and latitude of the scene's corner, to put the survey on its buildings."
+        }
         return nil
     }
 
@@ -152,6 +189,8 @@ final class ChargeInferenceModel {
                 name: row.name, east: place.x, north: place.y, earliest: row.earliest, latest: row.latest)
         }
         let glass = usesGlass ? glassURL : nil
+        let onScene = weighsSceneGlass ? sceneGlass.flatMap { found in corner.map { (found, $0) } } : nil
+        let radius = searchRadius
         let settings = settings
         isRunning = true
         progress = 0
@@ -159,18 +198,28 @@ final class ChargeInferenceModel {
         let (stream, continuation) = AsyncStream.makeStream(
             of: Double.self, bufferingPolicy: .bufferingNewest(1))
         let work = Task.detached(priority: .userInitiated) {
-            () throws -> (ChargeInference.Posterior, Int, Double) in
+            () throws -> (ChargeInference.Posterior, Int, (seen: Int, broken: Int)?, Double) in
             defer { continuation.finish() }
-            let facades =
+            var facades =
                 try glass.map { try ChargeInferenceInputs.readFacades($0, projection: projection) } ?? []
             let started = ContinuousClock.now
-            let posterior = ChargeInference.infer(arrivals: arrivals, facades: facades, settings: settings) {
+            var damage: ChargeInference.SurrogateDamage?
+            var sceneSides: (seen: Int, broken: Int)?
+            if let ((scene, sides, cellSize), corner) = onScene {
+                (damage, sceneSides) = try Self.sceneDamage(
+                    facades: facades, projection: projection, scene: scene, sides: sides, cellSize: cellSize,
+                    corner: corner, radius: radius)
+                facades = []
+            }
+            let posterior = ChargeInference.infer(
+                arrivals: arrivals, facades: facades, damage: damage, settings: settings
+            ) {
                 continuation.yield($0)
                 return !Task.isCancelled
             }
             let took = ContinuousClock.now - started
             return (
-                posterior, facades.count,
+                posterior, sceneSides.map(\.seen) ?? facades.count, sceneSides,
                 Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
             )
         }
@@ -178,10 +227,11 @@ final class ChargeInferenceModel {
             await withTaskCancellationHandler {
                 for await share in stream { progress = share }
                 do {
-                    let (posterior, facades, seconds) = try await work.value
+                    let (posterior, facades, sceneSides, seconds) = try await work.value
                     if !posterior.samples.isEmpty {
                         result = Result(
                             posterior: posterior, arrivals: arrivals, facades: facades,
+                            sceneSides: sceneSides,
                             projection: projection,
                             settings: settings, seconds: seconds)
                     }
@@ -191,6 +241,33 @@ final class ChargeInferenceModel {
                 work.cancel()
             }
         }
+    }
+
+    /// The survey's façades put on the scene's judged sides, and the evidence they give: the scene
+    /// placed by its corner, the inference's reference point in it, its places searched within
+    /// `radius` metres on a grid no finer than 20 m.
+    nonisolated static func sceneDamage(
+        facades: [ChargeInference.Facade], projection: ChargeInferenceInputs.LocalProjection, scene: Scenario,
+        sides: [ChargeInference.SurrogateDamage.Side], cellSize: Float, corner: SIMD2<Double>, radius: Double
+    ) throws -> (ChargeInference.SurrogateDamage, (seen: Int, broken: Int)) {
+        let placement = MapBuildingPlacement(origin: corner, resolution: 1)
+        let onScene = facades.map { facade in
+            var moved = facade
+            let place = placement.position(projection.lonLat(SIMD2(facade.east, facade.north)))
+            moved.east = place.x
+            moved.north = place.y
+            return moved
+        }
+        let observed = ChargeInference.SurrogateDamage.observed(facades: onScene, sides: sides, scene: scene)
+        guard !observed.isEmpty else {
+            throw ChargeInferenceInputs.ReadError(
+                "No surveyed façade lies on a side of the scene's buildings: check the scene's corner.")
+        }
+        let reference = placement.position(projection.centre)
+        let damage = ChargeInference.SurrogateDamage(
+            scene: scene, observed: observed, reference: SIMD2(Float(reference.x), Float(reference.y)),
+            placeRadius: radius, spacing: max(20, radius / 15), cellSize: cellSize)
+        return (damage, (observed.count, observed.filter(\.damaged).count))
     }
 
     func cancel() {
