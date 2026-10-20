@@ -1,6 +1,11 @@
 .PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected ship test-impact release-check release
 
 CONFIGURATION ?= release
+# Tests settle many throwaway structures; on the Studio keep their settle cache on StudioData,
+# not in ~/Library/Caches on the boot disk (it filled its 4 GB budget there in a day).
+ifneq ($(wildcard /Volumes/StudioData/bombcad),)
+export BOMBCAD_SETTLE_CACHE ?= /Volumes/StudioData/bombcad/settle-cache
+endif
 
 build:
 	swift build
