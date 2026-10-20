@@ -334,8 +334,12 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastModel/T
   the terrain cut it too: until then they kept it as a staircase. On "Two-storey frame on a
   hillside" (500 kg, 0.25 m air, 0.1 s after settling) the frame's largest displacement is 147 mm
   refined once and 136 mm refined twice, against 139 and 150 mm on uniform 0.125 and 0.0625 m
-  cut cells; the staircase gave 382 and 235 mm. The cap costs 0.6% of the air's GPU time; the cut
-  cells themselves cost 26% over the refined staircase refined once and 8% twice there.
+  cut cells; the staircase gave 382 and 235 mm. The gauges by the footings (2–8 MPa) are not
+  converged even between the uniform grids, 0.125 and 0.0625 m reading up to 17% apart, so they
+  judge nothing to 5%; the cut cells come at least as close to them as the staircase. The cap
+  costs 0.6% of the air's GPU time; the cut cells themselves cost 26% over the refined staircase
+  refined once and 8% twice there, the cost of cut terrain on a refined slope, which the advisor
+  counts (`RunCost`, through `cutsTerrain(of:)`).
   The two levels can still disagree. A fine sliver whose cell above is air at its own level but
   lies under a block in its parent's cells passes up into a solid cell. That happens where the
   second level's pool is full and the patch above is not placed. What such a column carries up
