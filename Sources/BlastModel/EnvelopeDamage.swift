@@ -657,7 +657,9 @@ public enum EnvelopeDamageAssessment {
                     : sides.keys.sorted().map {
                         FacadeGlass(axis: $0 / 2, outward: $0 % 2 == 1 ? 1 : -1, glass: sides[$0]!)
                     },
-                glass: sides.isEmpty ? nil : sides.values.reduce(GlazingBreakage(), +),
+                // In the sides' order: a dictionary's values come in an order that differs between copies.
+                glass: sides.isEmpty
+                    ? nil : sides.keys.sorted().map { sides[$0]! }.reduce(GlazingBreakage(), +),
                 insidePeakPa: inside.peak,
                 insideImpulsePaS: inside.impulse, vented: vented == nil ? nil : true)
         }

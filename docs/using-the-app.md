@@ -39,6 +39,15 @@ It shows the building's damage, what it is built of, and its sides' glass chance
 judgement it is: the run's for a building in the air, the quick estimate's, or the far field's
 estimate for one beyond the air.
 
+With a quick estimate on screen and **Place Charge** on, drag the charge across the ground and
+the estimate follows it. While you drag, it is a preview: each building side is judged by its
+component nearest the charge, and only the colouring shown is worked out (the damage, the glass's
+chances on 10 draws, or the walls' and roofs' on 20). The sidebar says so and hides the buildings'
+list. When you let go, the scene is loaded again and the full estimate is made where the charge
+stopped. On Beirut's 14,000 buildings a preview takes one to two seconds on a busy Studio (about
+one for the damage on a quieter one), and the full estimate one to two minutes
+([dragging the charge](surrogate-first-look.md#dragging-the-charge-20-october-2026)).
+
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey

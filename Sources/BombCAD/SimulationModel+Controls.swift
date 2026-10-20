@@ -177,6 +177,8 @@ extension SimulationModel {
         }
     }
     func settingsChanged() {
+        // A charge being dragged is loaded once it is let go (`endDrag`).
+        guard !isDraggingCharge else { return }
         guard settings != handledSettings || importsNeedResampling else { return }
         isLoadingInputs = true
         rebuildTask?.cancel()

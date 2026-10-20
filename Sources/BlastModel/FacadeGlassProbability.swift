@@ -99,6 +99,43 @@ extension FacadeLoadSurrogate {
             self.seed = seed
         }
 
+        /// Whether the draws are spread evenly over their distributions rather than drawn: the
+        /// yields at their quantiles (k + ½)/n, and each building's strength and each side's load
+        /// scatter at those quantiles in an order of their own (a Latin hypercube). With few
+        /// draws, as a preview while dragging the charge takes, drawn yields share one error
+        /// across the district, and each side's chance scatters (emmettl/bombcad-work#34).
+        public var stratified = false
+
+        /// The standard normal draw `k` of `draws` in `stream` for `item`: drawn, or with
+        /// `stratified` the quantile (π(k) + ½)/n, π the item's own order of the draws.
+        func normal(_ stream: UInt64, _ k: Int, _ item: UInt64, draws: Int) -> Double {
+            guard stratified else { return Random.normal(seed, stream, UInt64(k), item) }
+            let mine = Random.bits(seed, stream &+ 300, UInt64(k), item)
+            var rank = 0
+            for j in 0..<draws where j != k {
+                let other = Random.bits(seed, stream &+ 300, UInt64(j), item)
+                if other < mine || (other == mine && j < k) { rank += 1 }
+            }
+            return EnsembleDistribution.inverseNormal((Double(rank) + 0.5) / Double(draws))
+        }
+
+        /// The yield of each of `draws` draws about `base` kg.
+        func masses(base: Double, draws: Int) -> [Double] {
+            (0..<draws).map { k -> Double in
+                if !masses.isEmpty {
+                    let u = Random.uniform(seed, 1, UInt64(k), 0)
+                    return masses[min(Int(u * Double(masses.count)), masses.count - 1)]
+                }
+                if stratified {
+                    return base
+                        * exp(
+                            yieldLogSD * EnsembleDistribution.inverseNormal((Double(k) + 0.5) / Double(draws))
+                        )
+                }
+                return base * exp(yieldLogSD * Random.normal(seed, 1, UInt64(k), 1))
+            }
+        }
+
         /// No scatter at all: the first look's own answer, drawn once.
         public static let none = Uncertainty(strengthLogSD: 0, loadScatter: [], samples: 1)
 
@@ -259,24 +296,17 @@ extension FacadeLoadSurrogate {
         sides: [GlassSideStrips], mass base: Double, cellSize: Float,
         uncertainty: Uncertainty = Uncertainty(),
         binS: Double = 0.7e-3, coefficients: Coefficients = .fitted, keepDraws: Bool = false,
-        farField: HybridFarField? = nil
+        farField: HybridFarField? = nil, responses: GlassResponses? = nil
     ) -> (sides: [SideGlass], draws: [[GlassDraw]]?) {
         let draws = max(1, uncertainty.samples)
-        let masses = (0..<draws).map { k -> Double in
-            if !uncertainty.masses.isEmpty {
-                let u = Random.uniform(uncertainty.seed, 1, UInt64(k), 0)
-                return uncertainty.masses[
-                    min(Int(u * Double(uncertainty.masses.count)), uncertainty.masses.count - 1)]
-            }
-            return base * exp(uncertainty.yieldLogSD * Random.normal(uncertainty.seed, 1, UInt64(k), 1))
-        }
+        let masses = uncertainty.masses(base: base, draws: draws)
         // Each building's strength draws by its owner.
         let owners = Dictionary(
             Array(Set(sides.map(\.owner))).sorted { $0.uuidString < $1.uuidString }.enumerated().map {
                 ($1, $0)
             },
             uniquingKeysWith: { a, _ in a })
-        let table = GlassTable(binS: binS)
+        let table = responses.flatMap { $0.binS == binS ? $0.table : nil } ?? GlassTable(binS: binS)
         var results = [SideGlass?](repeating: nil, count: sides.count)
         var outcomes = [[GlassDraw]](
             repeating: [], count: keepDraws ? sides.count : 0)
@@ -299,11 +329,11 @@ extension FacadeLoadSurrogate {
                             uncertainty.strengthMedian
                             * exp(
                                 uncertainty.strengthLogSD
-                                    * Random.normal(uncertainty.seed, 2, UInt64(k), owner))
+                                    * uncertainty.normal(2, k, owner, draws: draws))
                         var errors = SIMD2<Double>.zero
                         if let scatter = uncertainty.scatter(atZ: middle / cbrt(mass)) {
-                            let a = Random.normal(uncertainty.seed, 3, UInt64(k), UInt64(s))
-                            let b = Random.normal(uncertainty.seed, 4, UInt64(k), UInt64(s))
+                            let a = uncertainty.normal(3, k, UInt64(s), draws: draws)
+                            let b = uncertainty.normal(4, k, UInt64(s), draws: draws)
                             let r = scatter.correlation
                             errors = SIMD2(
                                 scatter.peak * a, scatter.impulse * (r * a + (1 - r * r).squareRoot() * b))
@@ -352,6 +382,20 @@ extension FacadeLoadSurrogate {
                     someBroken: 0, blownOut: 0, fractionBroken: 0, thrownPast3b: 0)
         }
         return (judged, keepDraws ? outcomes : nil)
+    }
+
+    /// The panes' responses to the surrogate's pulses, kept between calls of
+    /// `glassProbabilities(sides:)` with the same bin: exact, as each is a pane's response to a
+    /// rounded pulse, so a district judged again and again (the charge dragged) integrates each
+    /// once.
+    public final class GlassResponses: @unchecked Sendable {
+        let binS: Double
+        let table: GlassTable
+
+        public init(binS: Double = 0.7e-3) {
+            self.binS = binS
+            table = GlassTable(binS: binS)
+        }
     }
 
     /// A side's glass under one load: the panes broken (`GlazingBreakage`), and the log of the

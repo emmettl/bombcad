@@ -22,6 +22,18 @@ extension ValidationTables {
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
             quote: "low by 0.11–0.16"),
         Figure(
+            id: "dragPreviewGlass", low: 0.88, high: 0.93,
+            document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
+            quote: "within 0.1 of the full estimate's on 88–93% of sides"),
+        Figure(
+            id: "dragPreviewWalls", low: 0.989, high: 1.0,
+            document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
+            quote: "within 0.1 on 98.9–100% of buildings"),
+        Figure(
+            id: "dragPreviewDamage", low: 0.997, high: 0.997,
+            document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
+            quote: "the same for 99.7% of buildings"),
+        Figure(
             id: "glassChancesBrier", low: 0.020, high: 0.108,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
             quote: "Brier score 0.020, against 0.108"),

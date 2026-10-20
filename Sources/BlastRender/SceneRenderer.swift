@@ -142,6 +142,8 @@ public struct RenderSettings: Sendable, Hashable {
     public var showWave = true
     public var waveOpacity: Float = 0.3
     public var showCharge = true
+    /// Where to draw the charge, when it is not where the loaded scene has it: being dragged.
+    public var chargeAt: SIMD3<Float>?
     /// Fragments in flight and where they landed, and tracers, when a run flies them.
     public var showFragments = true
     public var showTracers = true
@@ -701,7 +703,7 @@ public final class SceneRenderer {
             counts: SIMD4(
                 Float(boxCount), Float(gaugeCount), settings.showCharge ? 0.45 : 0,
                 settings.waveScale * kiloPascal),
-            charge: SIMD4(scenario.charge.position, 0),
+            charge: SIMD4(settings.chargeAt ?? scenario.charge.position, 0),
             sun: sun,
             clip: SIMD4(Self.nearPlane, Self.farPlane, 0, 0),
             highlightLow: SIMD4(settings.highlight?.min ?? .zero, settings.highlight == nil ? 0 : 1),

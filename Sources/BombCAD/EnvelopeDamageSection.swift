@@ -71,8 +71,17 @@ struct EnvelopeDamageSection: View {
                     }
                 }
                 if model.envelopeDamageIsEstimate {
-                    // An estimate must never pass for a run.
+                    // An estimate must never pass for a run, nor a preview for the estimate.
                     Text(model.envelopeDamageStatus).font(.caption).foregroundStyle(.orange)
+                    if model.envelopeEstimateIsPreview {
+                        Text(FacadeLoadSurrogate.Prepared.previewStanding).font(.caption).foregroundStyle(
+                            .orange
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text("With Place Charge on, drag the charge in the view: the estimate follows it.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     ForEach(FacadeLoadSurrogate.standing, id: \.self) {
                         Text($0).font(.caption).foregroundStyle(.secondary)
                     }
@@ -85,7 +94,8 @@ struct EnvelopeDamageSection: View {
                     )
                     .font(.caption).foregroundStyle(.secondary)
                 }
-                ForEach(model.envelopeDamage) { building in
+                // A preview's buildings are listed once the full estimate is in.
+                ForEach(model.envelopeEstimateIsPreview ? [] : model.envelopeDamage) { building in
                     DisclosureGroup(
                         isExpanded: Binding(
                             get: { expanded.contains(building.id) },

@@ -87,14 +87,7 @@ extension FacadeLoadSurrogate {
     ) -> (chances: [StructureChance], seconds: Double) {
         let start = ContinuousClock.now
         let draws = max(1, uncertainty.samples)
-        let masses = (0..<draws).map { k -> Double in
-            if !uncertainty.masses.isEmpty {
-                let u = Random.uniform(uncertainty.seed, 1, UInt64(k), 0)
-                return uncertainty.masses[
-                    min(Int(u * Double(uncertainty.masses.count)), uncertainty.masses.count - 1)]
-            }
-            return base * exp(uncertainty.yieldLogSD * Random.normal(uncertainty.seed, 1, UInt64(k), 1))
-        }
+        let masses = uncertainty.masses(base: base, draws: draws)
         let largest = masses.max() ?? base
         // Each building's components (walls and roofs: the façade strips and walls, and the roofs),
         // its side groups, its top and base, and its construction, looked up on this thread.
@@ -170,9 +163,9 @@ extension FacadeLoadSurrogate {
                     for k in 0..<draws {
                         let mass = masses[k]
                         let wallWeak = exp(
-                            -wallSD * Random.normal(uncertainty.seed, 5, UInt64(k), ownerSeeds[b]))
+                            -wallSD * uncertainty.normal(5, k, ownerSeeds[b], draws: draws))
                         let roofWeak = exp(
-                            -roofSD * Random.normal(uncertainty.seed, 6, UInt64(k), ownerSeeds[b]))
+                            -roofSD * uncertainty.normal(6, k, ownerSeeds[b], draws: draws))
                         var worstWall = 0
                         var worstRoof = 0
                         var errorsOf: [Int: SIMD2<Double>] = [:]
@@ -187,8 +180,8 @@ extension FacadeLoadSurrogate {
                                     let z = estimate.features[n].distanceM / cbrt(mass)
                                     guard let scatter = uncertainty.scatter(atZ: z) else { return .zero }
                                     let item = ownerSeeds[b] &+ UInt64(group)
-                                    let a = Random.normal(uncertainty.seed, 3, UInt64(k), item)
-                                    let c = Random.normal(uncertainty.seed, 4, UInt64(k), item)
+                                    let a = uncertainty.normal(3, k, item, draws: draws)
+                                    let c = uncertainty.normal(4, k, item, draws: draws)
                                     let r = scatter.correlation
                                     let scale = roof ? scales.roof : scales.walls
                                     return scale

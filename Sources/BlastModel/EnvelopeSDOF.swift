@@ -366,6 +366,18 @@ public final class SDOFResponseMemo: @unchecked Sendable {
         var step: Double
         var tail: Double
         var watch: Double?
+
+        /// From every sixteenth pressure, not all of them: a district's pulses are hundreds of
+        /// bins long and looked up millions of times. Equal keys still compare every pressure.
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(system)
+            hasher.combine(pressures.count)
+            for i in stride(from: 0, to: pressures.count, by: 16) { hasher.combine(pressures[i]) }
+            if let last = pressures.last { hasher.combine(last) }
+            hasher.combine(step)
+            hasher.combine(tail)
+            hasher.combine(watch)
+        }
     }
 
     /// One of the memo's parts, by its keys' hash: its own lock and its own responses. The parts
@@ -378,6 +390,9 @@ public final class SDOFResponseMemo: @unchecked Sendable {
 
     private static let shardCount = 64
     private let shards = (0..<SDOFResponseMemo.shardCount).map { _ in Shard() }
+
+    public init() {}
+
     /// Responses integrated, and found remembered.
     public private(set) var misses = 0
     public private(set) var hits = 0
@@ -415,8 +430,17 @@ public final class SDOFResponseMemo: @unchecked Sendable {
 
     /// `body` with every SDOF response it asks for remembered (on this thread, and on the threads
     /// its `concurrently` loops run on); the memo returned with its result.
+    /// Within another `remembering` (or `remembering(in:)`), the memo already set is kept: a
+    /// response is the same whichever memo holds it.
     public static func remembering<T>(_ body: () throws -> T) rethrows -> (T, SDOFResponseMemo) {
-        let memo = SDOFResponseMemo()
+        try remembering(in: active ?? SDOFResponseMemo(), body)
+    }
+
+    /// As `remembering`, into `memo`, kept from earlier calls: a district judged again and again
+    /// (the charge dragged, emmettl/bombcad-work#34) integrates each system and load once.
+    public static func remembering<T>(in memo: SDOFResponseMemo, _ body: () throws -> T) rethrows -> (
+        T, SDOFResponseMemo
+    ) {
         let before = active
         active = memo
         defer { active = before }

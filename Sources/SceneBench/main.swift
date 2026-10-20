@@ -78,6 +78,10 @@ enum SceneBench {
             try GlassCalibration.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "drag-time" {
+            try DragTime.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "damage-yield" {
             try DamageYield.run(Array(args.dropFirst()))
             return

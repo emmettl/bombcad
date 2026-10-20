@@ -85,6 +85,8 @@ extension SimulationModel {
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
+        envelopeEstimateIsPreview = false
+        restoreFollowedLook()
         stopThermal()
         stopCloud()
         completedRunSettings = nil

@@ -669,6 +669,26 @@ final class SimulationModel {
     /// How far the quick estimate's charge may be off: its yield within this factor either way,
     /// nine times in ten; 1 for exactly the scene's.
     var quickEstimateYieldWithin = 1.5
+    /// While the charge is dragged in the view (Place Charge on): the scene is loaded again only
+    /// once it is let go, and a quick estimate on screen follows it (`beginDrag`).
+    var isDraggingCharge = false
+    /// True while the estimate shown is a preview made while dragging: only the colouring shown
+    /// is worked out, on each building side's component nearest the charge.
+    var envelopeEstimateIsPreview = false
+    /// The district laid out for the quick estimate at any place of the charge
+    /// (`FacadeLoadSurrogate.Prepared`), with the scene it was laid out from (its charge at the
+    /// origin) and the cells.
+    @ObservationIgnored var preparedDistrict:
+        (scene: Scenario, cellSize: Float, prepared: FacadeLoadSurrogate.Prepared)?
+    /// Whether the estimate follows the charge being dragged; the look being worked out; the place
+    /// waiting for the next; the last shown, with its scene and what it worked out; and whether to
+    /// show it again once the scene is loaded again after a drag.
+    @ObservationIgnored var estimateFollowsCharge = false
+    @ObservationIgnored var lookInFlight = false
+    @ObservationIgnored var lookWaiting: (charge: SIMD3<Float>, preview: Bool)?
+    @ObservationIgnored var followedLook:
+        (scene: Scenario, look: FacadeLoadSurrogate.Prepared.Look, parts: FacadeLoadSurrogate.Prepared.Parts)?
+    @ObservationIgnored var restoresFollowedLook = false
 
     @ObservationIgnored var lastEnvelopeDamage = ContinuousClock.now
     /// How long the last judgement took: a district's runs into seconds, so while running it is

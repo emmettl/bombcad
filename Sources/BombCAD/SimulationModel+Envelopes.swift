@@ -80,7 +80,8 @@ extension SimulationModel {
             renderer?.setEnvelopeDamage([:])
             return
         }
-        if envelopeColouring == .couldFlip {
+        // A preview's loads are not the estimate's: judged again once the full estimate is in.
+        if envelopeColouring == .couldFlip, !envelopeEstimateIsPreview {
             if let envelopeDoubt {
                 renderer?.setEnvelopeDamage(
                     Dictionary(
@@ -220,52 +221,10 @@ extension SimulationModel {
     /// (`FacadeLoadSurrogate`): seconds for a district, shown as an estimate until a run's
     /// damage replaces it.
     func quickEstimate() {
-        let scenario = settings.scenario
-        guard !scenario.envelopeObjects.isEmpty, !estimatingEnvelopeDamage else { return }
-        let cellSize = settings.resolution.cellSize
-        estimatingEnvelopeDamage = true
-        envelopeDamageStatus = "Estimating…"
-        // Nine times in ten within the factor: 1.645 standard deviations of its logarithm.
-        let uncertainty = FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(quickEstimateYieldWithin) / 1.645)
-        Task { [weak self] in
-            let (loads, buildings, outside, chances, structure, seconds) = await Task.detached(
-                priority: .userInitiated
-            ) {
-                let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
-                let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
-                    estimate, constructions: { scenario.envelopeConstruction(for: $0) })
-                let (chances, chancesS) = FacadeLoadSurrogate.glassProbabilities(
-                    scene: scenario, cellSize: cellSize, uncertainty: uncertainty)
-                let (structure, structureS) = FacadeLoadSurrogate.structureProbabilities(
-                    estimate, mass: Double(scenario.charge.mass), cellSize: cellSize,
-                    constructions: { scenario.envelopeConstruction(for: $0) }, uncertainty: uncertainty)
-                return (
-                    estimate.loads, buildings, estimate.outsideFit, chances, structure,
-                    estimate.seconds + damageS + chancesS + structureS
-                )
-            }.value
-            guard let self else { return }
-            self.estimatingEnvelopeDamage = false
-            // A run judged meanwhile, or the scene changed: the estimate is stale.
-            guard self.settings.scenario == scenario, self.stepCount == 0 else {
-                self.envelopeDamageStatus = ""
-                return
-            }
-            self.envelopeDamage = buildings
-            self.envelopeLoads = loads
-            self.envelopeGlassChances = chances
-            self.envelopeStructureChances = structure
-            self.envelopeDamageIsEstimate = true
-            self.envelopeDamageStatus = String(
-                format: "Quick estimate in %.1f s: not a run. Run the scene for its damage.", seconds)
-            if outside > 0 {
-                self.envelopeDamageStatus += String(
-                    format:
-                        " %d of %d components lie nearer or further than the distances it was fitted over: their loads are extrapolated.",
-                    outside, loads.count)
-            }
-            self.applyEnvelopeDamageColours()
-        }
+        guard !settings.scenario.envelopeObjects.isEmpty else { return }
+        // The district laid out once (`FacadeLoadSurrogate.Prepared`), so that a drag of the
+        // charge afterwards needs only the sight lines again.
+        requestLook(preview: false)
     }
 
     /// Judges each envelope building from the recorder's histories so far, if it records them.
@@ -297,6 +256,7 @@ extension SimulationModel {
             loads: loads, constructions: { scenario.envelopeConstruction(for: $0) }, rooms: rooms,
             strikes: strikes, vented: vented)
         envelopeDamageIsEstimate = false
+        envelopeEstimateIsPreview = false
         envelopeGlassChances = []
         envelopeStructureChances = []
         envelopeLoads = loads

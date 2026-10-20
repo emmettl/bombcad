@@ -302,17 +302,72 @@ Fitted and judged on fine runs at 1 t (emmettl/bombcad-work#4; the numbers in
     low in peak (×1.7 in impulse).
   - The close-in branch's impulse moves 17% between 1 m and 0.5 m cells: not converged.
 
+### Dragging the charge (20 October 2026)
+
+With a quick estimate on screen and Place Charge on, the charge can be dragged across the ground
+and the estimate follows it (emmettl/bombcad-work#34). The goal was a frame within about a second
+on Beirut's district, with its standing still shown.
+
+**What a frame does.**
+- **Laid out once.** `FacadeLoadSurrogate.Prepared` builds the raster and every building's
+  components on the air once. On Beirut that is 724,512 components in 0.2 s. For any place of the
+  charge, `Prepared.estimate` then gives what `estimate(scene:)` and `glassSides(scene:)` give, to
+  the bit (`scenebench drag-time --check`). The quick estimate itself now runs this way, which
+  also stops it working out the glass's sight lines twice.
+- **A preview while dragging.** Of each building's components of one kind on one side, only the
+  one nearest the charge is judged; a glazed side's nearest strip stands for the side's whole
+  area. On Beirut that is 67,699 components, 9% of them. Only the colouring shown is worked out:
+  - the damage;
+  - the glass's chances, on 10 draws;
+  - the walls' and roofs' chances, on 20 draws.
+
+  The yields are spread evenly over their distribution, and each building's strength and each
+  side's scatter over theirs in an order of their own (a Latin hypercube). Drawn at random, a few
+  yields shared one error across the whole district: at 10 draws the glass's chances read 0.075
+  low on average.
+- **Kept between frames.** The SDOF and pane responses a preview meets are kept for the next
+  frame; both are exact. The memo now hashes every sixteenth bin of a pulse, not all of them. A
+  full estimate keeps its own only while it runs, since on Beirut they would hold several GB.
+- **When you let go,** the scene is loaded again (once, as one edit) and the full estimate is made
+  where the charge stopped.
+
+**Against the full estimate** (Beirut's 4 m layout, 0.5 kt, yield within ×1.5, 100 draws; the
+charge where it was and 60 m east):
+- The glass's chances came within 0.1 of the full estimate's on 88–93% of sides: blown out 88%,
+  some broken 93%, with a mean difference of 0.04 and a bias of +0.02. The openings' came within
+  0.1 on all of them.
+- The walls' and roofs' chances came within 0.1 on 98.9–100% of buildings.
+- The damage's colour was the same for 99.7% of buildings, and never more than one colour apart.
+
+**Time a frame**, on the Studio while other sessions loaded it (load average 18–34 on 14 cores):
+
+| Colouring | First frame | Later frames | Full estimate, once let go |
+|---|---|---|---|
+| Damage | 3.2 s | 1.5–1.7 s (0.9 s at load 5–18) | 97–104 s |
+| Glass's chances | 8.8 s | 1.2–1.7 s | |
+| Walls' and roofs' chances | 1.8 s | 0.8–1.4 s | |
+
+- The first frame fills the response tables.
+- The sight lines are 0.4–0.7 s of every frame, and the rest grows with the load on the machine.
+- So **the second's bar is met only on a lightly loaded Studio**, for the damage and the walls.
+  The glass's chances need about 1.2 s even then. Fewer components would not help them much: each
+  side is already one strip.
+- What would: a pane table interpolated rather than looked up per rounded pulse (as the charge
+  inference's `BreakTable` is), or the draws on the GPU.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
   by the estimate and fills the damage section, headed as a quick estimate with this standing,
-  until a run's damage replaces it.
+  until a run's damage replaces it. With Place Charge on, drag the charge and the estimate follows
+  as a preview, marked as one ([above](#dragging-the-charge-20-october-2026)).
 - **Headless**: `BombCAD run project.bombcad --surrogate first-look.json` writes the buildings'
   damage as `--envelope-damage` would, marked as an estimate with its method and standing, and
   does not run (`--resolution` and `--mass` change the inputs as for a run).
 - **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
   run of its near field with these loads, matched to the run where they meet.
-- **Bench**: `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
+- **Bench**: `scenebench drag-time` times a drag and judges the preview (Sources/SceneBench/DragTime.swift,
+  outputs under `bombcad/drag`); `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
   `bombcad/surrogate`. The fine runs behind the canyon terms, the close-in branch
   (`Scripts/fit-close-in.py`) and the shielding study are under `bombcad/protective/refit` and
