@@ -479,7 +479,8 @@ public enum FacadeLoadSurrogate {
     }
 
     public static func estimate(
-        scene: Scenario, cellSize: Float, binS: Double = 0.7e-3, coefficients: Coefficients = .fitted
+        scene: Scenario, cellSize: Float, binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
+        roofCoefficients: Coefficients? = .roofs
     ) -> Estimate {
         let start = ContinuousClock.now
         let objects = scene.envelopeObjects
@@ -495,7 +496,11 @@ public enum FacadeLoadSurrogate {
                     .filter { facesAir($0, raster: raster) }
                     .map { component in
                         let f = features(component, owner: n, charge: charge, raster: raster)
-                        let p = predict(f, mass: mass, cellSize: Double(cellSize), coefficients: coefficients)
+                        // Roofs on their own terms, the rest on the façades'.
+                        let p = predict(
+                            f, mass: mass, cellSize: Double(cellSize),
+                            coefficients: component.kind == .roof
+                                ? roofCoefficients ?? coefficients : coefficients)
                         return (component, f, p, load(component, p, binS: binS))
                     }
             }
@@ -530,6 +535,7 @@ extension FacadeLoadSurrogate {
         let glass = ValidationTables.figure("surrogateGlassSides")
         let concrete = ValidationTables.figure("surrogateConcrete")
         let stone = ValidationTables.figure("surrogateStone")
+        let roof = ValidationTables.figure("surrogateRoof")
         let near = ValidationTables.figure("surrogateNearPeak")
         let far = ValidationTables.figure("surrogateFarLoads")
         return [
@@ -538,7 +544,8 @@ extension FacadeLoadSurrogate {
                 + "of sides deep in the district, never two states apart; the share of sides broken by distance came "
                 + "within 0.1 of the run's to 2 km.",
             "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
-                + "concrete and \(stone.percent) of the stone took the run's level. Run the scene for the structure.",
+                + "concrete, \(stone.percent) of the stone and \(roof.percent) of the roofs took the run's level. Run the "
+                + "scene for the structure.",
             "Loads: peaks \(near.ratio) of the run's on the median to Z 20 m/kg^(1/3), each scattered by about ×1.3; "
                 + "further out, over hills and near the run's open faces, \(far.ratio) times on the median and far "
                 + "more scattered.",

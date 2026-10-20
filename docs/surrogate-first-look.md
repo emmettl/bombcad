@@ -23,10 +23,11 @@ Judged against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not f
   the Studio while other jobs share it: 7–10 s for the loads, 14–22 s for the damage, against
 25–41 minutes for a full run on the CI mini. On a
   made-up district of 7,235 buildings it takes 2–3 s against the run's 69–105 s on the same Mac.
-- **Does not: walls and roofs.** Of the components either the run or the surrogate calls damaged,
-  0–10% of the concrete and 35–42% of the stone take the run's level; on its own training
-  districts the share is 12–17% and 42–53%. The few damaged components lie close in, where one
-  wrong factor of 1.3 moves a wall across a level. Run the scene for the structure.
+- **Does not: walls and roofs.** Against Beirut's near boxes rerun with uncapped loads, of the
+  components either the run or the surrogate calls damaged, 15–47% of the concrete, 33–41% of the
+  stone and, on the roofs' own terms, 29–64% of the roofs take the run's level ([below](#walls-and-roofs-20-october-2026)).
+  The few damaged components lie close in, where one wrong factor of 1.3 moves a wall across a
+  level. Run the scene for the structure.
 - **Does not: the far edge.** Beyond Z = 20 m/kg^(1/3) (1.6 km at 0.5 kt), over Beirut's hills
   and toward its run's open faces, the surrogate's loads are 1.1–1.6 times the run's on the
   median, and at 2.5–3 km it breaks glass on 0.48 of sides where the run broke 0.18.
@@ -156,6 +157,39 @@ far out (4,322), and sides the run blew out that it leaves with some panes whole
 sight of the charge and behind one to three buildings, 89–97% of sides agree; deep in the
 district, 75–84%.
 
+### Walls and roofs (20 October 2026)
+
+The first judgement of walls was against Beirut's full runs, whose saved loads were capped at
+65.5 kPa (16-bit floats) inside about Z = 7, where walls are damaged: it put the concrete at
+0–10%. Beirut's near boxes (to 1,320 m, 4 m cells, 3 s) were run again with every load uncapped,
+the walls and roofs saved beside the façades (`district-compare --save-loads` writes them to
+components.json since 20 October). `surrogate-judge` then sets each component judged on the run's
+history against the surrogate's pulse, and against an oracle: a triangle with the run's own peak,
+first impulse and rise. The oracle shows what the pulse's shape alone loses. Of the components
+either side calls damaged, the share at the run's level, and within one:
+
+| | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| Concrete walls, oracle | 0.86, 1.00 | 0.76, 1.00 | 0.66, 1.00 |
+| Concrete walls, surrogate | 0.47, 0.60 | 0.35, 0.78 | 0.15, 0.74 |
+| Stone walls, oracle / surrogate | 0.92 / 0.41 | 0.90 / 0.33 | 0.92 / 0.38 |
+| Roofs, oracle | 0.81, 1.00 | 0.70, 1.00 | 0.55, 1.00 |
+| Roofs, on the façades' terms | 0.42, 1.00 | 0.06, 0.98 | 0.11, 0.91 |
+| Roofs, on their own terms | 0.64, 1.00 | 0.29, 1.00 | 0.37, 0.99 |
+
+- **Three numbers carry the load.** The oracle takes most levels and is never two apart, so a
+  triangular pulse is not what loses walls; the predicted peak and impulse are. The cap explained
+  most of the first judgement's misses: the 126 concrete strips the run left moderate and the
+  surrogate failed are 46 on the uncapped loads.
+- **Roofs on their own terms.** Fitted to the roofs of the dense made-up district at 20, 100 and
+  500 t, rerun uncapped (`fit-surrogate.py --drop facing`: a roof faces a charge on the ground only
+  by a sliver of a cosine, and fitting that term runs away), with Beirut and the sparse fixture
+  held out. Their peaks were already near the run's (×1.03–1.11 on the façades' terms, ×0.96–0.99
+  on their own), but the façades' terms left them a level light.
+- **What is left is the tail.** The components a run damages are its loads' upper tail; a single
+  estimate, scattered by about ×1.3 either way, puts fewer of them over a level than the run does.
+  Counts by band need the scatter drawn, as the glass's chances draw it (Horizons 4).
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -173,8 +207,8 @@ district, 75–84%.
 ## Limitations
 
 - **Fitted to two made-up districts on 4 m cells.** Other cells are reached only through the
-  cell term, fitted over 0.05–0.15 of W^(1/3); other building types (thin walls, panes, roofs) are
-  given the façade strips' terms. Roofs' loads are not fitted at all.
+  cell term, fitted over 0.05–0.15 of W^(1/3); other building types (thin walls, panes) are
+  given the façade strips' terms, roofs their own (`Coefficients.roofs`).
 - **Only between Z = 4.6 and 38.7 m/kg^(1/3)**, the distances it was fitted over (the fit's 2nd
   to 98th percentiles). Beyond them the terms in log Z are held at the range's end, so that close
   in the correction cannot fall away as the fitted quadratic would (to a few hundredths of the
@@ -203,6 +237,8 @@ district, 75–84%.
 
 - A finer reference: fitting to refined or 3 m runs, so that the first look gives converged loads
   rather than a 4 m run's.
-- Roofs, thin walls and panes, from runs of the presets with detailed envelopes.
+- Thin walls and panes, from runs of the presets with detailed envelopes.
+- Chances for walls and roofs, drawn over the scatter as the glass's are, so that counts by band
+  can match a run's.
 - A street-canyon term, and a learned model if the linear terms stop improving.
 - Probabilities from the scatter: done for the glass, [glass by chance](glass-probability.md).

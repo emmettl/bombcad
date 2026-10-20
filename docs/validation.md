@@ -6125,8 +6125,14 @@ The [façade load surrogate](surrogate-first-look.md#judged-against-beirut), aga
   of sides deep in the district (89–97% in sight of the charge and behind one to three buildings),
   never two states apart; the shares broken by distance band come within about 0.1 of the run's to
   2 km.
-- **Walls and roofs:** of the components either calls damaged, 0–10% of the concrete and 35–42% of
-  the stone take the run's level. Not to be relied on.
+- **Walls and roofs**, against Beirut's near boxes (to 1,320 m) rerun with uncapped loads on 20
+  October: the full runs' loads were capped at 65.5 kPa, which had put the concrete at 0–10%. Of
+  the components either calls damaged, 15–47% of the concrete, 33–41% of the stone and, on the
+  roofs' own terms, 29–64% of the roofs take the run's level. Within one level that is 60–78% of
+  the concrete and 99–100% of the roofs. A triangle with each component's own peak, impulse and
+  rise takes 55–92%, so what is missing is the predicted load, not the pulse's shape. The
+  components a run damages are its loads' upper tail, which a single estimate undercounts. Not to
+  be relied on for a building's level.
 - **Loads** at 0.5 kt, the surrogate's over the run's on the median: peaks 0.85–1.00 and impulses
   0.81–1.01 inside Z = 20 m/kg^(1/3), each strip scattered by about ×1.3 (the logarithm's standard
   deviation 0.14–0.26); beyond it, 1.09–1.63 times the run's on the median, over the hills and

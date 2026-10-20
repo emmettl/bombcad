@@ -49,7 +49,9 @@ def prepared(path, mass):
     keep = (d["inside"] > 0) & (d["pso"] > 0) & (d["peak"] > 100) & (d["impulse"] > 0)
     d = {k: v[keep] for k, v in d.items()}
     p, i = base(d)
-    share = d["rise"] / (2 * d["impulse"] / d["peak"])
+    # The rise time; CSVs before 20 October 2026 named it "rise" too, after the ground rise, and
+    # the later column won (so their ground-rise term was fitted on the rise time).
+    share = d.get("risetime", d["rise"]) / (2 * d["impulse"] / d["peak"])
     return (terms(d, mass), np.log(d["peak"] / p), np.log(d["impulse"] / i), d["distance"] / mass ** (1 / 3),
             np.clip(share, 0, 1))
 
@@ -60,6 +62,18 @@ def main(argv):
         k = argv.index("--out")
         out = argv[k + 1]
         argv = argv[:k] + argv[k + 2:]
+    # `--drop facing,...`: terms held at nothing (a roof's facing toward a charge on the ground is a
+    # sliver of a cosine, and fitting it runs away).
+    dropped = set()
+    if "--drop" in argv:
+        k = argv.index("--drop")
+        dropped = set(argv[k + 1].split(","))
+        argv = argv[:k] + argv[k + 2:]
+    unknown = dropped - set(NAMES)
+    if unknown:
+        print(f"unknown terms to drop: {sorted(unknown)}")
+        return 1
+    kept = [n for n, name in enumerate(NAMES) if name not in dropped]
     runs = []
     for arg in argv:
         path, mass = arg.rsplit(":", 1)
@@ -73,7 +87,9 @@ def main(argv):
     fits = {}
     for name, column in (("peak", 2), ("impulse", 3), ("rise", 5)):
         y = np.concatenate([r[column] for r in runs])
-        b, *_ = np.linalg.lstsq(x * sw, y * sw[:, 0], rcond=None)
+        bk, *_ = np.linalg.lstsq(x[:, kept] * sw, y * sw[:, 0], rcond=None)
+        b = np.zeros(len(NAMES))
+        b[kept] = bk
         fits[name] = b
         for path, xr, yp, yi, _, share in runs:
             residual = {"peak": yp, "impulse": yi, "rise": share}[name] - xr @ b
