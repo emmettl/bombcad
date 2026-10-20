@@ -1,7 +1,8 @@
 # Builds BlastModel, the model without Metal, and runs its tests on Linux, on GitHub's hosted
-# runner. Package.swift keeps only RadialBlast, BlastModel and BlastModelTests on Linux, so this
-# builds nothing else; the Mac mini's Check workflow stays the reference for everything, BlastModel
-# included. Unlike Check, this runs no code on a self-hosted machine, so pull requests may run it.
+# runner. Package.swift keeps only RadialBlast, BlastModel, BlastModelCLI (the `blastmodel` tool)
+# and BlastModelTests on Linux, so this builds nothing else; the Mac mini's Check workflow stays the
+# reference for everything, BlastModel included. Unlike Check, this runs no code on a self-hosted
+# machine, so pull requests may run it.
 # Modelled on ContinuumKit's .github/workflows/linux.yml. See Scripts/split/.
 name: Linux BlastModel
 
@@ -47,3 +48,9 @@ jobs:
       - name: Test
         if: steps.model.outputs.present == 'true'
         run: swift test --skip-build --filter BlastModelTests
+      # The CPU studies' tool (docs/linux.md): it lists its commands and runs the quickest.
+      - name: blastmodel
+        if: steps.model.outputs.present == 'true'
+        run: |
+          .build/debug/blastmodel
+          .build/debug/blastmodel soil-column --points 3

@@ -1,4 +1,3 @@
-import BlastCore
 import Foundation
 import simd
 
@@ -11,7 +10,7 @@ import simd
 /// threat from `infer-charge --samples` instead (masses, and places about the scene's charge).
 /// `--confirm` re-judges the plans that leave the threat where it is on a run's saved façade
 /// histories (`district-compare --save-loads`) of the same scene, under each plan's glazing.
-enum Protect {
+package enum Protect {
     struct PlanJSON: Codable {
         var plan: String
         var cost: Double
@@ -36,7 +35,7 @@ enum Protect {
         var chances: [String: Double]
     }
 
-    static func run(_ args: [String]) throws {
+    package static func run(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
         guard let inputsPath = value("inputs") else {
@@ -93,7 +92,7 @@ enum Protect {
         let built = ProtectionSearch.asBuilt(problem)
         if problem.site.count <= 12 {
             ProtectionModel.prepare(model)
-            print(String(format: "Chances in %.1f s", DistrictBenchmark.seconds(start)))
+            print(String(format: "Chances in %.1f s", StudyClock.seconds(start)))
             let all = ProtectionSearch.exact(problem)
             plans = ProtectionSearch.ranked(problem, plans: all).enumerated().map {
                 ("\($0.offset + 1)", $0.element)
@@ -102,7 +101,7 @@ enum Protect {
         plans.insert(("as built", built), at: 0)
         plans.append(("greedy", ProtectionSearch.greedy(problem)))
         plans.append(("annealing", ProtectionSearch.anneal(problem, seed: inputs.seed ?? 1)))
-        let seconds = DistrictBenchmark.seconds(start)
+        let seconds = StudyClock.seconds(start)
 
         // Confirmation on a run's histories, for the plans that leave the threat in place.
         let confirmations = reference.map { reference in

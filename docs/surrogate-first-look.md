@@ -312,7 +312,7 @@ Fitted and judged on fine runs at 1 t (emmettl/bombcad-work#4; the numbers in
   does not run (`--resolution` and `--mass` change the inputs as for a run).
 - **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
   run of its near field with these loads, matched to the run where they meet.
-- **Bench**: `scenebench surrogate-extract` and `surrogate-judge` (Sources/SceneBench/SurrogateBench.swift)
+- **Bench**: `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
   `bombcad/surrogate`. The fine runs behind the canyon terms, the close-in branch
   (`Scripts/fit-close-in.py`) and the shielding study are under `bombcad/protective/refit` and

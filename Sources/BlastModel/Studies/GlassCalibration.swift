@@ -1,4 +1,3 @@
-import BlastCore
 import Foundation
 import simd
 
@@ -14,7 +13,7 @@ import simd
 /// survey (its shapefile): each surveyed façade matched to the side of a map building it lies on
 /// and faces as, its chance from the yields of an inferred charge (`infer-charge --samples`), each
 /// building's strength and the load scatter, against what the surveyors saw.
-enum GlassCalibration {
+package enum GlassCalibration {
     struct Bin: Codable {
         var from: Double
         var to: Double
@@ -97,7 +96,7 @@ enum GlassCalibration {
         }
     }
 
-    static func seconds(_ start: ContinuousClock.Instant) -> Double { DistrictBenchmark.seconds(start) }
+    static func seconds(_ start: ContinuousClock.Instant) -> Double { StudyClock.seconds(start) }
 
     /// GEER's façades (its shapefile, with the .dbf beside it) matched each to the side of a map
     /// building it lies on (within 25 m) and faces as (within 60°): every building's glazed sides
@@ -206,7 +205,7 @@ enum GlassCalibration {
         return (all.map(\.side), matches, records)
     }
 
-    static func run(_ args: [String]) throws {
+    package static func run(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
         guard let runsText = value("runs") else { throw BlastError.allocationFailed("--runs mass:folder,…") }

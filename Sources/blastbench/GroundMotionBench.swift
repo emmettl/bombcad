@@ -1,4 +1,5 @@
 import BlastCore
+import BlastModel
 import Foundation
 import Metal
 import simd
@@ -411,66 +412,9 @@ private func elapsedSeconds(_ duration: Duration) -> Double {
     Double(duration.components.seconds) + Double(duration.components.attoseconds) * 1e-18
 }
 
-/// `blastbench groundmotion --calibrate`: the half-space's direct source alone, no air, against
-/// UFC 3-340-01's direct-induced peak particle velocity, v = f · 160 · (R/W^(1/3))^(−n) ft/s with
-/// f = 0.14 for a surface burst, in dense sand (n = 2.5; c_P 1,600 ft/s, 488 m/s; 1,900 kg/m³;
-/// Poisson's ratio 0.3), for 1 t of TNT, 0.5 m down. The source's elastic share for the model's
-/// peak resultant velocity to equal UFC's at R/W^(1/3) = 8 ft/lb^(1/3) is the calibration.
+/// `blastbench groundmotion --calibrate`: the half-space's direct source alone, against UFC
+/// 3-340-01's peak particle velocity. The study is `GroundStudies.halfSpaceCalibration` in
+/// BlastModel, which `blastmodel halfspace-calibrate` runs too.
 func runGroundMotionCalibration() throws {
-    let mass = option("mass").flatMap(Double.init) ?? 1000
-    let probe = option("probe").flatMap(Float.init) ?? 0.01
-    let (density, speed, n) = (Float(1900), Float(488), 2.5)
-    let scaled = [4.0, 6.0, 8.0, 12.0, 16.0]
-    let pounds = cbrt(mass * 2.204_62)
-    let ranges = scaled.map { Float($0 * pounds * 0.3048) }
-    // Soil that yields, with `--friction` (degrees), `--cohesion` (Pa) and `--hs-unloading`.
-    let friction = option("friction").flatMap(Float.init)
-    let unloading = option("hs-unloading").flatMap(Float.init) ?? 2
-    var spec = GroundShockSpec()
-    spec.model = .halfspace
-    spec.points = ranges.map { SIMD2($0, 0) }
-    spec.depths = [option("depth").flatMap(Float.init) ?? 0.5]
-    spec.profile = SoilProfile(
-        layers: [
-            SoilLayer(
-                thickness: 1, density: density, waveSpeed: speed,
-                unloadingWaveSpeed: friction != nil && unloading > 1 ? speed * unloading : nil,
-                shearWaveSpeed: speed * SoilLayer.defaultShearRatio, frictionAngle: friction,
-                cohesion: friction != nil ? option("cohesion").flatMap(Float.init) ?? 0 : nil)
-        ])
-    let setup = HalfSpaceSetup(
-        centre: .zero, chargeMass: Float(mass), elasticShare: probe,
-        cellSize: option("half-cell").flatMap(Float.init))
-    let engine = try HalfSpaceGroundShock(spec: spec, setup: setup)
-    let end = Double(ranges.max()!) / (Double(speed) * Double(SoilLayer.defaultShearRatio) * 0.9) + 0.05
-    let empty = [(overpressure: Float, peak: Float, impulse: Float)?](
-        repeating: nil, count: engine.grid.radialCells)
-    var t = 0.0
-    while t < end {
-        t += 1e-3
-        engine.consume(rings: empty, time: t)
-    }
-    print(
-        String(
-            format:
-                "Direct source alone, %.0f kg, share %.3g: dense sand %.0f kg/m³ at %.0f m/s, n = %.1f, %.2f m deep; grid %.3f m%@",
-            mass, probe, density, speed, n, spec.depths[0], engine.grid.spacing,
-            friction.map { String(format: "; yielding at %.0f°, unloading ×%.1f", $0, unloading) } ?? ""))
-    var calibrated = Double.nan
-    for (k, range) in ranges.enumerated() {
-        let model = engine.peakResultant[k]
-        let ufc = DirectInducedSource.ufcPeakVelocity(range: Double(range), mass: mass, n: n)
-        let share = Double(probe) * pow(ufc / model, 2)
-        if scaled[k] == 8 { calibrated = share }
-        print(
-            String(
-                format:
-                    "  %5.1f ft/lb^(1/3), %5.1f m: model %.4f m/s, UFC %.4f m/s, ratio %.2f; share for UFC here %.3g",
-                scaled[k], range, model, ufc, model / ufc, share))
-    }
-    print(String(format: "Calibrated share at 8 ft/lb^(1/3): %.3g", calibrated))
-    print(
-        String(
-            format: "Yielding took %.3g J of the source's %.3g J", engine.stepper.yieldingLoss,
-            engine.stepper.work))
+    try GroundStudies.halfSpaceCalibration(CommandLine.arguments)
 }

@@ -1,7 +1,9 @@
-import BlastModel
-import Compression
 import Foundation
 import simd
+
+#if canImport(Compression)
+    import Compression
+#endif
 
 extension ElevationGrid {
     /// Reads an elevation file by its extension: `.asc` as an ESRI ASCII grid, `.tif` or `.tiff`
@@ -168,14 +170,29 @@ extension TIFFReader {
     static func inflate(_ input: [UInt8], expected: Int) throws -> [UInt8] {
         guard input.count > 2 else { throw ElevationGrid.Failure.malformed("an empty Deflate strip") }
         let body = Array(input.dropFirst(2))
-        var output = [UInt8](repeating: 0, count: max(expected, 1))
-        let written = output.withUnsafeMutableBufferPointer { out in
-            body.withUnsafeBufferPointer { source in
-                compression_decode_buffer(
-                    out.baseAddress!, out.count, source.baseAddress!, source.count, nil, COMPRESSION_ZLIB)
+        #if canImport(Compression)
+            var output = [UInt8](repeating: 0, count: max(expected, 1))
+            let written = output.withUnsafeMutableBufferPointer { out in
+                body.withUnsafeBufferPointer { source in
+                    compression_decode_buffer(
+                        out.baseAddress!, out.count, source.baseAddress!, source.count, nil, COMPRESSION_ZLIB)
+                }
             }
-        }
-        guard written > 0 else { throw ElevationGrid.Failure.malformed("a Deflate strip would not inflate") }
-        return Array(output.prefix(written))
+            guard written > 0 else {
+                throw ElevationGrid.Failure.malformed("a Deflate strip would not inflate")
+            }
+            return Array(output.prefix(written))
+        #else
+            // Without Apple's Compression framework (Linux), Deflate decoded in Swift.
+            do {
+                let output = try Inflate.decode(body, limit: max(expected, 1))
+                guard !output.isEmpty else {
+                    throw ElevationGrid.Failure.malformed("a Deflate strip would not inflate")
+                }
+                return output
+            } catch let failure as Inflate.Failure {
+                throw ElevationGrid.Failure.malformed(failure.description)
+            }
+        #endif
     }
 }

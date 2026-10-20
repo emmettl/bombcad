@@ -34,10 +34,7 @@ enum DistrictBenchmark {
         var binS: Double?
     }
 
-    static func seconds(_ start: ContinuousClock.Instant) -> Double {
-        let took = start.duration(to: .now)
-        return Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
-    }
+    static func seconds(_ start: ContinuousClock.Instant) -> Double { StudyClock.seconds(start) }
 
     static func run(_ args: [String]) throws {
         func value(_ name: String) -> String? {

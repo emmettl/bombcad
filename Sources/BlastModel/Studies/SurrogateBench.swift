@@ -1,4 +1,3 @@
-import BlastCore
 import Foundation
 import simd
 
@@ -16,27 +15,27 @@ import simd
 /// same inputs and each building's strips matched to its laid-out ones: the recorder leaves out a
 /// strip with no face on the air, found again here (`FacadeLoadSurrogate.facesAir`); a building
 /// whose strips do not then match one for one is left out.
-enum SurrogateBench {
-    static func value(_ args: [String], _ name: String) -> String? {
+package enum SurrogateBench {
+    package static func value(_ args: [String], _ name: String) -> String? {
         args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
     }
 
     /// `--centre lon,lat`, as `DistrictInputs` reads it.
-    static func centre(_ args: [String]) -> SIMD2<Double> {
+    package static func centre(_ args: [String]) -> SIMD2<Double> {
         let parts = value(args, "centre").map { $0.split(separator: ",").compactMap { Double($0) } } ?? []
         return parts.count == 2 ? SIMD2(parts[0], parts[1]) : SIMD2(35.519042, 33.901425)
     }
 
     /// A district run's saved strips, each found in the scene laid out again.
-    struct Reference {
-        var scene: Scenario
-        var objects: [SceneObject]
-        var raster: FacadeLoadSurrogate.Raster
-        var index: DistrictGlass.Index
+    package struct Reference {
+        package var scene: Scenario
+        package var objects: [SceneObject]
+        package var raster: FacadeLoadSurrogate.Raster
+        package var index: DistrictGlass.Index
         var values: [Float16]
         /// Matched strips: the saved strip, its object and its component.
-        var strips: [(saved: Int, object: Int, component: EnvelopeComponent)]
-        var cellSize: Float
+        package var strips: [(saved: Int, object: Int, component: EnvelopeComponent)]
+        package var cellSize: Float
         var radius: Float
         /// The walls', slabs' and roofs' saved loads (components.json, beside the façades' since 20
         /// October 2026), matched as the strips are; empty for older runs.
@@ -44,7 +43,7 @@ enum SurrogateBench {
         var otherValues: [Float16] = []
         var otherStrips: [(saved: Int, object: Int, component: EnvelopeComponent)] = []
 
-        init(_ args: [String]) throws {
+        package init(_ args: [String]) throws {
             guard let path = SurrogateBench.value(args, "loads") else {
                 throw BlastError.allocationFailed("--loads folder")
             }
@@ -55,7 +54,7 @@ enum SurrogateBench {
 
         /// The run whose strips are saved in `path`, laid out again from `args`' inputs on a
         /// square of half side `radius`.
-        init(_ args: [String], loads path: String, radius: Float) throws {
+        package init(_ args: [String], loads path: String, radius: Float) throws {
             let inputs = try DistrictInputs.read(args)
             self.radius = radius
             (scene, _) = try inputs.scene(radius: radius)
@@ -199,7 +198,7 @@ enum SurrogateBench {
         }
 
         /// A saved strip's net pressures, Pa per bin.
-        func net(_ saved: Int) -> [Double] {
+        package func net(_ saved: Int) -> [Double] {
             let strip = index.strips[saved]
             let scale = Double(index.scalePa ?? 1)
             return values[strip.first..<(strip.first + strip.count)].map { Double($0) * scale }
@@ -207,13 +206,13 @@ enum SurrogateBench {
 
         /// Whether a point lies within `share` of the half-side of the charge, in plan: outside
         /// it the run's far-field faces drain the blast.
-        func inside(_ p: SIMD3<Float>, share: Float) -> Bool {
+        package func inside(_ p: SIMD3<Float>, share: Float) -> Bool {
             let c = scene.charge.position
             return max(abs(p.x - c.x), abs(p.y - c.y)) < share * radius
         }
     }
 
-    static func key(_ box: Box, _ axis: Int, _ outward: Int) -> [Int32] {
+    package static func key(_ box: Box, _ axis: Int, _ outward: Int) -> [Int32] {
         let q = { (x: Float) in Int32((x * 100).rounded()) }
         return [
             q(box.min.x), q(box.min.y), q(box.min.z), q(box.max.x), q(box.max.y), q(box.max.z), Int32(axis),
@@ -221,7 +220,7 @@ enum SurrogateBench {
         ]
     }
 
-    static func bounds(_ object: SceneObject) -> (SIMD3<Float>, SIMD3<Float>) {
+    package static func bounds(_ object: SceneObject) -> (SIMD3<Float>, SIMD3<Float>) {
         let blocks = object.envelope?.blocks ?? []
         let low = blocks.map(\.min).reduce(SIMD3<Float>(repeating: .greatestFiniteMagnitude)) {
             simd_min($0, $1)
@@ -232,7 +231,7 @@ enum SurrogateBench {
         return (low, high)
     }
 
-    static func extract(_ args: [String]) throws {
+    package static func extract(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         guard let out = value(args, "out") else { throw BlastError.allocationFailed("--out strips.csv") }
         let start = ContinuousClock.now
@@ -291,14 +290,14 @@ enum SurrogateBench {
         print(
             String(
                 format: "Wrote %@ in %.1f s; charge %.0f kg at %.1f, %.1f, %.1f m", out,
-                DistrictBenchmark.seconds(start), mass, charge.x, charge.y, charge.z))
+                StudyClock.seconds(start), mass, charge.x, charge.y, charge.z))
     }
 
     /// The impulse of a net history's first positive phase, Pa s: from the start to where it
     /// first falls below nothing after its peak's half. Later reflections add impulse a pane or
     /// wall has mostly answered by then, and a pulse packing them into the first phase would
     /// overload it.
-    static func firstImpulse(_ net: [Double], binS: Double) -> Double {
+    package static func firstImpulse(_ net: [Double], binS: Double) -> Double {
         let peak = net.max() ?? 0
         guard peak > 0 else { return 0 }
         var impulse = 0.0
@@ -320,17 +319,17 @@ enum SurrogateBench {
 
     /// A building side's glass state, against GEER's classes: none broken (W0), some (W1–W2), or
     /// blown out (W3, nine in ten of its panes expected broken).
-    static func glassState(_ glass: GlazingBreakage) -> Int {
+    package static func glassState(_ glass: GlazingBreakage) -> Int {
         if glass.fraction >= DistrictGlass.blownOutFraction { return 2 }
         return glass.anyBroken >= 0.5 ? 1 : 0
     }
 
-    struct Agreement: Codable {
+    package struct Agreement: Codable {
         /// Rows the run's state, columns the surrogate's.
         var confusion: [[Int]]
         var count: Int
-        var exact: Double
-        var withinOne: Double
+        package var exact: Double
+        package var withinOne: Double
         /// The surrogate's state above and below the run's.
         var over: Double
         var under: Double
@@ -340,7 +339,7 @@ enum SurrogateBench {
         var damagedExact: Double
         var damagedWithinOne: Double
 
-        init(states: Int) {
+        package init(states: Int) {
             confusion = Array(repeating: Array(repeating: 0, count: states), count: states)
             count = 0
             exact = 0
@@ -352,9 +351,9 @@ enum SurrogateBench {
             damagedWithinOne = 0
         }
 
-        mutating func add(_ run: Int, _ surrogate: Int) { confusion[run][surrogate] += 1 }
+        package mutating func add(_ run: Int, _ surrogate: Int) { confusion[run][surrogate] += 1 }
 
-        mutating func finish() {
+        package mutating func finish() {
             count = confusion.joined().reduce(0, +)
             let n = Double(max(count, 1))
             var same = 0
@@ -444,7 +443,7 @@ enum SurrogateBench {
         var geerBlown: Double
     }
 
-    static func judge(_ args: [String]) throws {
+    package static func judge(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         let reference = try Reference(args)
         let share = Float(value(args, "inside").flatMap(Double.init) ?? 0.85)
@@ -547,7 +546,7 @@ enum SurrogateBench {
         print(
             String(
                 format: "Judged %d strips both ways in %.0f s", kept.count,
-                DistrictBenchmark.seconds(clockJudge)))
+                StudyClock.seconds(clockJudge)))
 
         // Groups: all, by shielding, by distance band.
         let all = outcomes.map { $0! }
@@ -776,7 +775,7 @@ enum SurrogateBench {
     }
 
     /// `body` for each of `count` on every core.
-    static func concurrentlyEach(_ count: Int, _ body: (Int) -> Void) {
+    package static func concurrentlyEach(_ count: Int, _ body: (Int) -> Void) {
         withoutActuallyEscaping(body) { body in
             nonisolated(unsafe) let shared = body
             DispatchQueue.concurrentPerform(iterations: count) { shared($0) }

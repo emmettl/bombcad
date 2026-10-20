@@ -62,7 +62,7 @@ draw's strength turns that into a chance without integrating again.
 
 ## Judged
 
-`scenebench glass-calibrate` (Sources/SceneBench/GlassCalibration.swift), on the strips of
+`scenebench glass-calibrate` (Sources/BlastModel/Studies/GlassCalibration.swift), on the strips of
 Beirut's runs within 0.85 of their half-side, matched as for the
 [first look](surrogate-first-look.md#judged-against-beirut).
 

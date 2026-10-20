@@ -1,24 +1,23 @@
-import BlastCore
 import Foundation
 import simd
 
 /// A district's façade strips and their loads, saved so that their glass can be judged again
 /// under other mixes without running the event again (`district-compare --save-loads`,
 /// `district-glass`): a JSON index and the strips' net pressures as 16-bit floats.
-enum DistrictGlass {
-    struct Building: Codable {
+package enum DistrictGlass {
+    package struct Building: Codable {
         var distanceM: Double
         var heightM: Float
         /// The mix the map gave it (`GlazingMix.name`).
-        var mix: String
+        package var mix: String
     }
 
-    struct Strip: Codable {
-        var building: Int
-        var axis: Int
-        var outward: Int
-        var areaM2: Double
-        var binS: Double
+    package struct Strip: Codable {
+        package var building: Int
+        package var axis: Int
+        package var outward: Int
+        package var areaM2: Double
+        package var binS: Double
         var first: Int
         var count: Int
         /// The strip's box, m (saved since 19 October 2026; nil in older files).
@@ -29,9 +28,9 @@ enum DistrictGlass {
         var kind: String?
     }
 
-    struct Index: Codable {
-        var buildings: [Building]
-        var strips: [Strip]
+    package struct Index: Codable {
+        package var buildings: [Building]
+        package var strips: [Strip]
         /// Pascals per stored unit: a power of two that keeps the largest net pressure inside 16-bit
         /// floats' ±65,504, whose relative precision is the same at any scale (saved since 19
         /// October 2026; nil, 1 Pa, in older files, whose close-in peaks were clipped).
@@ -41,16 +40,16 @@ enum DistrictGlass {
     /// GEER-070's façades (DesignSafe layer; data/Beirut2020/SURVEY.md §3.1) by distance band, from
     /// 500 m: the share W1 or worse (some windows broken) and the share W3 (nearly every window,
     /// door and frame blown out), for the bands' printout.
-    static let geer: [(from: Double, to: Double, damaged: Double, blownOut: Double)] = [
+    package static let geer: [(from: Double, to: Double, damaged: Double, blownOut: Double)] = [
         (500, 750, 0.84, 577.0 / 750), (750, 1000, 0.62, 357.0 / 1298), (1000, 1250, 0.39, 301.0 / 1737),
         (1250, 1500, 0.35, 449.0 / 2565), (1500, 1750, 0.38, 126.0 / 1380), (1750, 2000, 0.28, 6.0 / 386),
         (2000, 2500, 0.26, 78.0 / 534), (2500, 3000, 0.11, 12.0 / 290),
     ]
 
     /// A side counted as blown out, against GEER's W3: nine in ten of its panes expected broken.
-    static let blownOutFraction = 0.9
+    package static let blownOutFraction = 0.9
 
-    static func save(
+    package static func save(
         to folder: URL, loads: [EnvelopeComponentLoad], objects: [SceneObject], distance: (UUID) -> Double,
         height: (UUID) -> Float, mix: (UUID) -> String
     ) throws {
@@ -88,7 +87,7 @@ enum DistrictGlass {
     }
 
     /// Each building's façade sides' glass under `mix` (nil: the mix each was given), and its distance.
-    static func judge(_ folder: URL, mix override: GlazingMix?) throws -> [(
+    package static func judge(_ folder: URL, mix override: GlazingMix?) throws -> [(
         distanceM: Double, mix: String, sides: [GlazingBreakage]
     )] {
         try judgeWithPeaks(folder, mix: override).map { ($0.distanceM, $0.mix, $0.sides) }
@@ -145,7 +144,7 @@ enum DistrictGlass {
         }
     }
 
-    static func printBands(
+    package static func printBands(
         _ title: String, _ judged: [(distanceM: Double, mix: String, sides: [GlazingBreakage])],
         peaks: [[Double]]? = nil
     ) {
@@ -195,7 +194,7 @@ enum DistrictGlass {
 
     /// `scenebench district-glass --loads folder [--mix map|older|apartments|commercial|industrial]...`:
     /// a saved district's glass under each mix asked for (the map's, by default).
-    static func run(_ args: [String]) throws {
+    package static func run(_ args: [String]) throws {
         guard
             let path = args.firstIndex(of: "--loads").flatMap({
                 args.indices.contains($0 + 1) ? args[$0 + 1] : nil
@@ -213,7 +212,7 @@ enum DistrictGlass {
             let start = ContinuousClock.now
             let judged = try judgeWithPeaks(URL(filePath: path), mix: mix)
             printBands(
-                "\(name) (\(String(format: "%.1f", DistrictBenchmark.seconds(start))) s)",
+                "\(name) (\(String(format: "%.1f", StudyClock.seconds(start))) s)",
                 judged.map { ($0.distanceM, $0.mix, $0.sides) }, peaks: judged.map(\.peaks))
         }
     }

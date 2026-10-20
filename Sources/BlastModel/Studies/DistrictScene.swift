@@ -1,28 +1,27 @@
-import BlastCore
 import Foundation
 import simd
 
 /// A district from open data: a map's buildings as envelopes on a DEM's ground, a hemispherical
 /// charge on the ground at the centre (`DistrictLayout`). Shared by `scenebench district` and
 /// `district-scene`.
-struct DistrictInputs {
-    var buildings: [MapBuilding]
+package struct DistrictInputs {
+    package var buildings: [MapBuilding]
     /// Elevations in metres above sea level, already reduced to the ground if asked.
-    var ground: ElevationGrid?
+    package var ground: ElevationGrid?
     /// Building heights for untagged buildings (GHSL's), if given.
-    var heights: ElevationGrid?
+    package var heights: ElevationGrid?
     /// Longitude and latitude of the centre.
-    var centre: SIMD2<Double>
-    var cellSize: Float
+    package var centre: SIMD2<Double>
+    package var cellSize: Float
     var domainHeight: Float
-    var mass: Float
+    package var mass: Float
     /// How far the sea lies above the terrain's zero, m: the DEM's elevations are put on this.
-    var seaBase: Float = 6
-    var attributions: [String] = []
+    package var seaBase: Float = 6
+    package var attributions: [String] = []
     /// The footprints' cells (`--place-dx`), finer than the air's for refined runs; nil for the air's.
     var footprintCells: Float?
 
-    static func read(_ args: [String]) throws -> DistrictInputs {
+    package static func read(_ args: [String]) throws -> DistrictInputs {
         func value(_ name: String) -> String? {
             args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         }
@@ -33,7 +32,7 @@ struct DistrictInputs {
         let start = ContinuousClock.now
         let buildings = try MapBuilding.read(contentsOf: URL(filePath: osm))
         print(
-            "Read \(buildings.count) buildings in \(String(format: "%.2f", DistrictBenchmark.seconds(start))) s"
+            "Read \(buildings.count) buildings in \(String(format: "%.2f", StudyClock.seconds(start))) s"
         )
         var attributions: [String] = []
         let ground = try value("dem").map {
@@ -48,7 +47,7 @@ struct DistrictInputs {
             let grid = try ElevationGrid(contentsOf: URL(filePath: $0))
             print(
                 "Read the height grid, \(grid.columns) × \(grid.rows), in "
-                    + String(format: "%.1f s", DistrictBenchmark.seconds(clock)))
+                    + String(format: "%.1f s", StudyClock.seconds(clock)))
             attributions.append(
                 value("heights-credit") ?? "Building heights: \(URL(filePath: $0).lastPathComponent)")
             return grid
@@ -63,7 +62,7 @@ struct DistrictInputs {
     }
 
     /// The square scene of side `2 radius` about the centre, every building in it placed.
-    func scene(radius: Float) throws -> (scene: Scenario, report: MapBuildingReport) {
+    package func scene(radius: Float) throws -> (scene: Scenario, report: MapBuildingReport) {
         var layout = DistrictLayout(buildings: buildings, charge: centre, mass: mass)
         layout.ground = ground
         layout.heights = heights
@@ -78,8 +77,8 @@ struct DistrictInputs {
 /// [--heights heights.tif] [--centre lon,lat] [--radius 1000] [--dx 4] [--height 120]
 /// [--mass 500000] [--dem-credit text] [--heights-credit text] --out layout.json`: a district as
 /// a layout the app opens and `BombCAD run` runs.
-enum DistrictScene {
-    static func run(_ args: [String]) throws {
+package enum DistrictScene {
+    package static func run(_ args: [String]) throws {
         func value(_ name: String) -> String? {
             args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         }

@@ -1,4 +1,3 @@
-import BlastCore
 import Foundation
 
 /// `scenebench infer-charge`: the charge (its TNT mass, place and, if asked, height and clock
@@ -21,8 +20,8 @@ import Foundation
 /// (degrees clockwise from north, as GEER's layer has them). Corrections: BombCAD's
 /// `district-compare` comparison.json files, one per yield, whose arrivals over Kingery–Bulmash's
 /// become each observer's ratio (matched by name and distance).
-enum InferCharge {
-    static func run(_ args: [String]) throws {
+package enum InferCharge {
+    package static func run(_ args: [String]) throws {
         func value(_ name: String) -> String? {
             args.firstIndex(of: "--" + name).flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         }
@@ -162,7 +161,7 @@ enum InferCharge {
     // MARK: - Reporting
 
     struct Output: Codable {
-        var centre: [Double]
+        package var centre: [Double]
         var temperatureC: Double
         var arrivals: Int
         var facades: Int

@@ -11,6 +11,7 @@ let package = Package(
         .executable(name: "blastbench", targets: ["blastbench"]),
         .executable(name: "rigidboxdemo", targets: ["RigidBoxDemo"]),
         .executable(name: "scenebench", targets: ["SceneBench"]),
+        .executable(name: "blastmodel", targets: ["BlastModelCLI"]),
     ],
     dependencies: [
         .package(
@@ -62,6 +63,7 @@ let package = Package(
             ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender", "RadialBlast"]),
         .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),
+        .executableTarget(name: "BlastModelCLI", dependencies: ["BlastModel"]),
         .executableTarget(
             name: "RigidBoxDemo", dependencies: ["BlastCore"], resources: [.copy("viewer.html")]),
         .testTarget(
@@ -91,7 +93,7 @@ let package = Package(
 // RadialBlast. The Mac builds everything as before. (RadialBlast imports simd only where there
 // is Apple's, and has its two functions of it itself on Linux.)
 #if os(Linux)
-    let linuxTargets: Set<String> = ["RadialBlast", "BlastModel", "BlastModelTests"]
+    let linuxTargets: Set<String> = ["RadialBlast", "BlastModel", "BlastModelCLI", "BlastModelTests"]
     package.targets.removeAll { !linuxTargets.contains($0.name) }
-    package.products.removeAll()
+    package.products.removeAll { $0.name != "blastmodel" }
 #endif
