@@ -11,7 +11,12 @@ first tier, display frames, is described with the app's timeline).
 venting, exposure planes, deflagrations and congestion. Stage 3: the app** saves a recorded run's
 state every eighth of the way and at Simulation ▸ Save State Here, and continues a replayed run
 from the state saved at the time shown or just before ([using the
-app](using-the-app.md#continuing-a-run-from-a-saved-state)).
+app](using-the-app.md#continuing-a-run-from-a-saved-state)). Two follow-ups were measured and
+stopped on 20 October 2026: [app tests from saved
+states](#app-tests-from-saved-states-measured-and-stopped-20-october-2026), whose time is not in
+the physics, and [ensembles from a shared
+prefix](#ensembles-from-a-shared-prefix-designed-and-stopped-20-october-2026), whose proof is not
+simple and whose saving is small.
 
 ```bash
 blastbench snapshot --preset street --dx 0.25 --time 0.03 --checkpoint-at 0.01 --checkpoint-out street-10ms
@@ -174,6 +179,133 @@ Through `blastbench snapshot`, on the street at 0.25 m:
 128, a struck wall in shells and a glazed building with its recorders and venting carried on the
 same way, the refusals (a step off the boundary, another scene, other settings, a batch in
 flight), and the compression's round trip.
+
+## App tests from saved states (measured and stopped, 20 October 2026)
+
+**The idea.** A test fixture would make a checkpoint once per test run, in a temporary folder and
+never committed, since a checkpoint is read only by a build with the same part versions. App
+tests that need only a run's late state would continue from it rather than run the whole
+simulation (emmettl/bombcad-work#3).
+
+**Standing: measured, not built.** The time is not in the physics. A fixture made once per test
+run also costs the prefix it saves, unless two tests share it, and none of the slow ones do.
+
+The app's suite took 365 s on the Studio with its suites in parallel. The tests that run a scene
+to its end, each alone (debug build, `swift test --no-parallel`):
+
+| Test | Alone | Where the time goes |
+|---|---|---|
+| New District's near and far field | 70–78 s | The run to 0.8 s takes about 3 s. The envelope damage judged at its end takes 55–67 s, in the debug build's SDOF integration (`EnvelopeDamageAssessment.assess`). |
+| A scenario with a structure runs coupled | 13.7 s | Its own scene (500 kg on the blast wall); the rebuilds after it count too |
+| Results export a row per sample | 7.1 s | Its own scene (the blast wall's default charge), and its every-step rows need the whole run |
+| The others that run to the end | 0.1–2 s | Small scenes on the coarse grid |
+
+Some other tests are slow, but they cannot start late:
+- the thermal radiation, 20 s, compares a whole run with and without;
+- meshing a structure in shells and back, 18 s, and the gauges' editing, 17 s, are rebuilds, not
+  runs.
+
+Several tests in parallel took minutes, but from sharing the Mac, not from their own runs.
+
+The plan's examples cannot use a checkpoint:
+- **FragmentOverlay's last frame:** fragments are fed alongside the run from its start and are
+  not saved, so a run with them refuses to save or continue.
+- **The replay of a kept run** (`RunTimelineTests`): it checks the recording from its first frame,
+  and a continued run records only from where it continued.
+- **Envelope damage at the end:** the judgement, not the run, is the cost.
+
+A checkpoint fixture pays when several slow tests need the same late state. Then each one past the
+first saves its run.
+
+## Ensembles from a shared prefix (designed and stopped, 20 October 2026)
+
+**The idea.** Many members of an ensemble differ only in a strength: a concrete's tension, a
+steel's yield, a glass's flaw constant. Until the run reaches the point where that strength
+decides anything (the shock arriving at the structure, the first crack), every member computes
+the same thing. Run that prefix once, save it, and branch each member from the checkpoint
+(emmettl/bombcad-work#3).
+
+**Standing: stopped at the design.** The proof that a branch is safe is not simple for the
+members that exist, and they would save almost nothing. Nothing was built.
+
+### What a branching restore needs
+
+Today a restore refuses any checkpoint whose scene or settings fingerprint differs
+(`restoreCheckpoint(from:scene:)`). A branch needs a restore that takes a checkpoint saved from
+scene A into a solver built from scene B, where B differs from A only in listed fields. It must
+also prove that the saved state is, to the bit, the state B's own run would have reached. Three
+parts:
+
+1. **A fingerprint over everything but the varied fields.** The header keeps A's full
+   fingerprint, the fingerprint with the varied fields blanked, and their values in A. B is
+   accepted only if its blanked fingerprint is A's, and only for fields on an allow-list that
+   says how each may be proved unread.
+2. **The state taken back without the varied fields.** A structure's buffers are saved by
+   reflection, so any buffer built from a material (per-element parameters, a precomputed table)
+   would come back as A's and overwrite B's. Each such buffer must be known and left out, or
+   rebuilt after the restore. Today nothing marks them.
+3. **The proof that the prefix did not depend on the fields.** This is the hard part. The
+   candidate proofs are below.
+
+### The candidate proofs
+
+- **"Not yet read" per field.** A field that no kernel or CPU step has read yet cannot have
+  affected the state. This is false for every strength in the structural cases, from step 0:
+  - `ValidationEnsemble.perturbed` scales Young's modulus with the compressive strength, so `fc`
+    changes the stiffness, the wave speed and the step itself;
+  - the hourglass control caps its force at a capacity that includes `0.02 ft` and the uncracked
+    tension envelope (`Structure.metal`, the hourglass capacity), read every step in every
+    concrete element;
+  - the crack softening is packed from `ft` and the fracture energy into each material's GPU
+    parameters at load (`StructureSolver.parameters(for:)`), and the self-weight settle runs
+    every one of these kernels before the blast.
+- **"Not yet decisive" per field.** A field that is read only in a comparison that has not yet
+  gone the other way cannot have changed a bit. Suppose the base run uses each varied field's
+  weakest value and no comparison has crossed. Then by induction over steps every stronger member
+  takes the same branches and computes the same bits. That needs, for every site that reads the
+  field:
+  - an audit that the site is a pure threshold, with no smooth use below it;
+  - a recorded running maximum of the compared quantity (the largest principal stress over `ft`,
+    the hourglass force over its capacity, the bar stress over `fy`) in the kernels, saved with
+    the state.
+
+  The concrete model reads `ft` at cracking, in the tension envelope, in the hourglass capacity,
+  in the crack softening and in the mortar joints' strength. Several options change how it reads
+  it (cracked stiffness, cracked hex, tension stiffening). A site missed in the audit, or added
+  later without its monitor, gives a silently wrong member. A bit-identical test on a few scenes
+  cannot rule that out for others. This is the "cannot be proved safe" case the plan's stop rule
+  names.
+- **A digest of the would-be state.** Run B's prefix too and compare `stateDigest`s. This is the
+  right test of an implementation, but as a proof it costs the prefix it was meant to save.
+
+### What sharing would save
+
+- **The ensembles' sampled members** vary every input together: charge, stand-off and `fc` with
+  the tension. None of their prefixes are shared.
+- **The calibration's design** (`--design`) varies the concrete's tension alone, but on cases with
+  no air: Janney's and OA1's beams, Saatci's and Peterson's impacts, and the contest slab. Their
+  loads act from the first step (a ramp, a weight at the beam's face, a pressure record from 0 ms).
+  So they have no prefix before the strength is read, and only a short one before the first crack.
+- **The coupled cases** (Wu's S8, Chiquito's S1) would share the flight of the shock to the slab.
+  For Wu's S8 that flight is about 0.2 ms of a 100 ms run. The slab's response, which depends on
+  every strength, is the run.
+  - Measured on the Studio with `blastbench twoface --wu S8 --roomy --time T`, the slab already
+    moving by 0.3 ms: 3 s of computing to 0.3 ms and 58 s to 5 ms, after the settle.
+  - The ensemble reckons the whole member at about 1,000 s, so the shared prefix is about 0.3% of
+    it.
+
+### Where it would pay, and be simple
+
+The one case that looks both simple and worth having is glass on a district. Before the shock
+reaches a pane, the venting's pane is at rest: its deflection and its accumulated fatigue are
+exactly zero, and the strength enters only as `stress / strength` with a zero stress
+(`SolverVenting.metal`). A checkpoint whose panes are all still exactly at rest would then be the
+same for any glass strength. That condition can be read from the saved state (each pane's
+deflection, speed and fatigue all zero), with no new monitor. It still has to be confirmed that
+still air loads a pane with exactly zero, and that nothing else reads the strength. On a district
+the shock's flight to the far façades is a large share of the run. No ensemble varies glass strength
+in a coupled run today: the glass cases take measured loads, and the district's glass chances come
+from the surrogate. So this is left for when one does, with the would-be state's digest as its test.
 
 ## Limitations
 
