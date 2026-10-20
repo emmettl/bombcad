@@ -293,6 +293,19 @@ Since, on 15 October 2026:
   (five interleaved rounds each). As first built, with the bases worked out in a dispatch of
   their own before each sweep, it was 1.1 to 1.4 times slower than before.
 
+**The fill among many blocks** (20 October 2026). A new patch's fill asked every rigid block
+whether it held each fine cell, and asked again for the cell above: some thousands of blocks for
+each of the patch's 512 cells over Beirut. Refined everywhere, the GPU's width hid it; refining a
+[corridor](refinement-steering.md), whose two or three new patches a step leave it nearly idle,
+the fill took 0.65 of the run's 2.5 GPU s. Each block of the level now lists the boxes overlapping
+it, widened by two of its cells (`AirRefinement.setBoxes`), and the fill asks only those. Whether a
+point lies in any box is the same answer, so runs are bit-identical
+(`RefinementLevelsTests.fineOutlineOfManyBlocks`). On Beirut's 1 km box (8 m refined once to 4 m
+under the ceiling, a quiet Studio, step buffers' GPU time) the corridor takes 2.0 s against 2.5 to
+2.7, and refining everywhere 7.8 s against 8.6 to 8.9; the coarse cells alone take 1.0 s. What is
+left of the corridor's cost per block (sweeps 2 times, ghosts 3 times the everywhere run's) is
+dispatches too small to fill the GPU and the corridor's longer edge against coarse cells.
+
 ## Structural solver
 
 ```bash
