@@ -266,7 +266,36 @@ struct GroundDepthChart: View {
                 in: 0...max(result.points.count - 1, 0)
             )
             .font(.caption)
+            if let regime = Self.regimeLabel(point) {
+                Text(regime)
+                    .font(.caption2)
+                    .foregroundStyle(point.regime == .outrunning ? .orange : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if motion { motionChart(point) } else if let profile = point.profile { peakChart(profile) }
+        }
+    }
+
+    /// The point's regime in a line: how the air's front runs over the ground against the soil's
+    /// wave, and, where the ground's own wave from the charge comes first, by how long.
+    static func regimeLabel(_ point: GroundPointResult) -> String? {
+        guard let regime = point.regime else { return nil }
+        switch regime {
+        case .superseismic:
+            return
+                "Superseismic: the air's front outruns the soil's wave, the regime the one-dimensional models are for."
+        case .transseismic:
+            return
+                "Transseismic: the air's front only just outruns the soil's wave; the vertical is given, not the horizontal."
+        case .outrunning:
+            if let ground = point.groundArrival, let air = point.arrival, ground < air {
+                return String(
+                    format:
+                        "Outrun: the ground's own wave arrives %.0f ms before the air. The column has no motion ahead of the air, only the air's share; the half-space, in a ground-shock description, carries it.",
+                    (air - ground) * 1000)
+            }
+            return
+                "Outrun: the soil's wave runs ahead of the air's front. The column has no motion ahead of the air, only the air's share; the half-space, in a ground-shock description, carries it."
         }
     }
 

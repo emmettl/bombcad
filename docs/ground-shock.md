@@ -10,9 +10,13 @@ the bottom layer of cells to the estimate a frame at a time, a one-way consumer 
 **Standing: illustrative.** There are two models: the textbook one-dimensional estimate of
 air-induced ground shock from the protective design manuals, and a layered soil column under
 each point, solved step by step through the overpressure's history on the ground. The column is
-checked against closed-form solutions. Compared with one measurement, a 1 t surface burst at 21
-and 42 m, both put the vertical velocity 20 to 80 times what was measured, at ranges near and
-past where the ground's wave outruns the air ([below](#against-measured-ground-motion)). Use them to see roughly how hard and how far the ground shakes under a
+checked against closed-form solutions. Compared with two measurements, they hold at neither: at a
+1 t surface burst, 21 and 42 m out, near and past where the ground's wave outruns the air, both
+put the vertical velocity 20 to 80 times what was measured ([below](#against-measured-ground-motion));
+under Prairie Flat's 500 t, where the air outran the ground, they are within a factor of two at
+only 13 or 14 of 34 records, a fifth to a third of the measured 1.5 ft down and twice it at 17 ft,
+though their arrivals are right ([Prairie Flat](#against-prairie-flat)). There the half-space
+carried the motion ahead of the blast within a factor of two. Use them to see roughly how hard and how far the ground shakes under a
 blast, and how layers and the soil's unloading change that, and where the simple estimate stops
 applying. Do not use them for design, for damage to buried services or for vibration limits.
 
@@ -108,6 +112,14 @@ one-dimensional picture of air-induced ground shock.
   air arrives, through motion that came in from nearer the charge, which this model does not
   have. There the vertical estimate is only the air's share. The √2 cut-off is this project's
   choice, not the manuals'.
+- **By arrival** (since 20 October 2026). The front's local speed misses a faster layer below:
+  at Prairie Flat the wave along the saturated soil under the water table overtook the blast
+  about 560 ft out, where the front still ran faster than the upper soil's wave
+  ([below](#against-prairie-flat)). So each point also takes the time the ground's own wave from
+  the charge first reaches it, the direct wave in the top layer or the head wave along any
+  deeper, faster layer or the base (R/c_n + Σ 2h_j √(1/c_j² − 1/c_n²) over the layers above), and
+  wherever that comes before the air the point is outrunning, however fast the front. A headless
+  run and the app take the charge's place from the scene (`origin` in the description).
 
 **From the run.** P and I are the solver's own peak overpressure and positive impulse in the
 bottom cell, kept every time step. Frames a millisecond apart would miss a ground-level peak
@@ -239,7 +251,8 @@ The convergence is ragged, as a front smeared over a few elements is, and first 
 `--ground-results` writes, for each point:
 
 - the peak overpressure on the ground, its positive impulse and the triangular pulse's duration;
-- the arrival, the front's speed and its regime (`superseismic`, `transseismic` or `outrunning`);
+- the arrival, the front's speed and its regime (`superseismic`, `transseismic` or `outrunning`),
+  and when the ground's own wave from the charge first reaches it (`groundArrival`);
 - at each depth, the peak vertical stress, vertical and horizontal particle velocity, vertical
   displacement and the stress wave's arrival;
 - the overpressure on the ground at every frame, for anyone wanting the shape of the load;
@@ -287,8 +300,10 @@ hidden, and they share the fragments' dot size. A line under the section counts 
 blast has reached and names the one where the ground moves fastest.
 
 With the column, a chart under that line follows one point, the fastest unless another is
-stepped to: **Peaks with depth** draws the fastest the soil moved down at each depth and how far
-down it was left, and **Motion at depth** the downward velocity at each depth asked for through
+stepped to, with a line naming its regime: superseismic, the regime the one-dimensional models
+are for; transseismic; or outrun, in orange, with how many milliseconds the ground's own wave
+from the charge comes before the air, motion the column does not carry and the half-space does. **Peaks with depth** draws
+the fastest the soil moved down at each depth and how far down it was left, and **Motion at depth** the downward velocity at each depth asked for through
 the run, a value a frame. Both update as the run goes.
 
 **Keep Run** keeps the points and their estimates, without the overpressure or velocity
@@ -498,11 +513,121 @@ ranges, and the horizontal motion that dominated is not modelled. The test canno
 they hold where they claim to, closer in and superseismic: no gauge stood there. Standing stays
 illustrative.
 
+## Against Prairie Flat
+
+A second test, on 20 October 2026, this one where the models claim to hold: Prairie Flat, 500
+short tons of TNT, a sphere resting on the ground at Suffield in August 1968, with gauges 1.5
+to 30 ft deep from 84 to 1,150 ft out, both sides of where the ground's wave overtook the blast
+(D. W. Murrell, WES TR N-72-2, 1972; [Fixtures/PrairieFlat](../Fixtures/PrairieFlat/README.md)).
+The comparison is `blastbench groundmotion` with `Scripts/compare-prairie-flat.py`. **The
+one-dimensional models do not hold even there; the half-space carries the motion ahead of the
+blast within a factor of two; and the regime by arrival finds the outrunning limit where Murrell
+did.**
+
+**The test.** 129 gauges; Table 3.1 gives each record's peak acceleration, velocity and
+displacement both ways and, inside 560 ft, its arrival. The soil, as the report gives it: about
+40% air by volume and highly compressible to some 30 ft, loading at 1,270 ft/s (387 m/s) by its
+arrivals, over saturated soil at 6,100 ft/s (1,859 m/s) below a water table that Figure 3.1 draws
+at about 23 ft (7.0 m). No density, shear speed or strength is given; 1,600 kg/m³ is the
+canisters' match to it, 1,950 kg/m³ below the water table an assumption, and the shear speed
+everywhere the upper soil's at a Poisson's ratio of 0.3 (the water carries the compression).
+
+**The model.** Dial Pack's charge and cells (the same site and size): 500 short tons on the
+ground, a quarter in the corner of a domain 403 × 403 × 245 m on 4 m cells, today's recommended
+air and the mapped start, the ground streamed every millisecond to 1.4 s, 28 minutes on the
+Studio (the six half-spaces on the CPU took most of it). At each of the eight ranges and five
+depths: the manuals' estimate, the column unloading at one, two and three times its loading
+speed, and the half-space elastic and yielding (30° and 35°), with and without the charge's
+direct source; and the same fed Kingery–Bulmash's pulse.
+
+**At the ground.** The air model's peaks are low close in on cells this coarse, 404 psi at 84
+ft against Kingery–Bulmash's 1,288 and the predicted 2,000; from 330 ft out they are within a
+fifth of the curves. Its arrivals match the ground gauges', so its front's timing is right:
+
+| Range | Air model: peak, arrival | Front speed and regime by speed | The ground's own wave (head wave below the water table) | By arrival | Murrell |
+|---|---|---|---|---|---|
+| 84 ft | 404 psi, 5.7 ms | 1,687 m/s, superseismic | 49 ms | air first | superseismic |
+| 220 ft | 188 psi, 22.7 ms | 1,176 m/s, superseismic | 72 ms | air first | superseismic |
+| 400 ft | 59 psi, 69.7 ms | 717 m/s, superseismic | 101 ms | air first | superseismic |
+| 560 ft | 28 psi, 134 ms | 555 m/s, superseismic | 127 ms | **outrunning** | outrunning from about 560 ft |
+| 830 ft | 12 psi, 283 ms | 444 m/s, transseismic | 172 ms | **outrunning** | outrunning |
+| 1,150 ft | 6.4 psi, 504 ms | 399 m/s, transseismic | 224 ms | **outrunning** | outrunning |
+
+The front's speed alone never calls the ground outrun here: the upper soil is slow, and what
+outruns the blast is the wave along the saturated soil beneath, which the speed test cannot
+see. The ground's first arrival by the layers does, from between 400 and 560 ft, as Murrell's
+shock-front profile does; and its times agree with the first motions in his outrunning records
+(Figure 3.6), about 0.22 s at 1,150 ft against 0.22 here, though at 560 ft his first motion, about
+0.10 s, comes before this 0.12 s. The regime now goes by arrival as well (above, "By arrival").
+
+**Inside the outrunning limit (G2).** The judge, set beforehand: the peak downward velocity
+within a factor of two at two-thirds of the vertical records (34 velocity-gauge and integrated
+accelerometer records, 84 to 400 ft, 1.5 to 17 ft deep), and arrivals within 10%.
+
+| Model, fed the air model | Within 2× | Ratio, model / measured: 1.5 ft; 5 ft; 10 ft; 17 ft (geometric means) | Arrivals within 10% |
+|---|---|---|---|
+| The manuals' estimate | 14 of 34 | 0.22; 0.45; 0.59; 1.68 | 20 of 24 |
+| Column, elastic | 14 of 34 | 0.22; 0.49; 0.73; 2.24 | 19 of 24 |
+| Column, unloading at 2× | 13 of 34 | 0.22; 0.46; 0.60; 1.66 | 18 of 24 |
+| Half-space, elastic, the air alone | 21 of 34 | 0.36; 0.64; 0.77; 2.39 | 13 of 24 |
+| Half-space, elastic, with the direct source | 15 of 34 | 0.24; 0.42; 0.50; 2.32 | 14 of 24 |
+| Half-space, yielding 30°, the air alone | 13 of 34 | 0.22; 0.43; 0.48; 1.01 | 13 of 24 |
+
+Fed Kingery–Bulmash, whose peaks close in are three times the air model's, the column at 2× is
+within two at 16 of 34 (0.29 at 1.5 ft) and the elastic half-space at 19, but the curves' arrivals
+are off by up to a fifth here, within 10% at only 3 to 10 of 24.
+
+- **It fails, and the other way from Xia's.** Every model is too low near the surface, a fifth
+  to a third of the measured at 1.5 ft and about half at 5 ft, and too high at 17 ft. At Xia's
+  gauges the vertical was 20 to 80 times too high. The measured velocities 1.5 ft down, 2.5 m/s
+  at 400 ft under 60 to 70 psi, are three times what any soil loading at 387 m/s can give,
+  p/(ρc) = 0.7 to 0.8 m/s, though Murrell's stress gauges there read only 40% of the overpressure: the
+  top few feet, 40% air, crushed. The arrivals give the speed of the first motion, not the
+  stiffness under load, and the bilinear soil has only one loading stiffness. As a sensitivity,
+  not a fit to keep: with the upper soil loading at 250 m/s the column at 2× (Kingery–Bulmash's
+  load) is within two at 29 of 34, its arrivals then late.
+- **The arrivals pass for the one-dimensional models**, 18 to 20 of 24 within 10%, the early
+  ones at 84 ft, where the air model's front is a cell wide. The half-space reads first motion
+  from its elastic precursors and comes 20–40% early close in (13–14 of 24).
+- **The direct source** on the yielding half-space, at its default share of the charge's energy,
+  drives the soil at 84 ft at 5 to 14 times the measured (117 m/s 1.5 ft down); on elastic soil it
+  lowers the near peaks. Without it, the yielding half-space is closest at 17 ft.
+
+**Verdict: record and stop.** No model passes inside the outrunning limit, the column 13 to 16 of
+34, the half-space at best 21. Standing stays illustrative, unbanded. What this test shows the
+models lack is the soil's own loading curve: a locking, crushable near surface whose stiffness
+under load is far below its arrival speed. That, and the Watching Hill soil's measured properties
+(see [Data wanted](data-wanted.md)), would be the next step on this line, not a softer guess.
+
+**Past it, the motion ahead of the blast (G3).** From 560 to 1,150 ft no arrivals were read, and
+the accelerometers' integrals give the peaks; the judge was within a factor of three.
+
+| Model, fed the air model | Within 3×, of 16 records (downward and outward) | Geometric mean, model / measured |
+|---|---|---|
+| Half-space, elastic, with the direct source | 16 | 0.91 (0.46–1.91) |
+| Half-space, elastic, the air alone | 16 | 1.15 (0.41–1.87) |
+| Half-space, yielding 30°, with the source | 15 | 1.35 |
+| Half-space, yielding 30°, the air alone | 13 | 0.61 |
+| Column, unloading at 2× (downward only, 11 records) | 10 | 0.75 |
+
+**It passes,** and well: the elastic half-space is within a factor of two at 15 of the 16
+records past the outrunning limit fed the air alone (14 with the direct source), the outward
+motion included, 0.73 to 1.87 times the measured but for the outward motion 1.5 ft down at 1,150
+ft (0.41). The wave refracted along the water table, which outruns the blast, carries its motion
+out with little loss, and the elastic grid carries it as well. Fed Kingery–Bulmash it is the same (1.01 and 1.09). The column, by
+construction, has none of the motion that comes before the air; its downward peaks there, the
+airblast's own, are within three times but low. So stage 4 of [the outrunning
+proposal](ground-shock-outrunning.md), the half-space in three dimensions on the GPU, is
+proposed as a new issue. The outputs are on StudioData, `bombcad/issue26/g2/`.
+
 ## Limitations
 
-- Illustrative, as above. Compared with one measurement, Xia et al.'s 1 t surface burst
+- Illustrative, as above. Compared with two measurements: Xia et al.'s 1 t surface burst
   ([above](#against-measured-ground-motion)), where the vertical velocity is 20 to 80 times what
-  the accelerometers imply, at ranges near and past the outrunning limit.
+  the accelerometers imply, at ranges near and past the outrunning limit; and Prairie Flat's 500
+  t ([above](#against-prairie-flat)), where inside the limit it is a fifth to a third of the
+  measured near the surface and twice it at 17 ft, within a factor of two at under half the
+  records. One loading stiffness, set by the arrivals, misses a crushable near surface.
 - One-dimensional. The column has layers and rock beneath, but no water table of its own (a
   saturated layer can be given only as a stiffer layer), no surface waves, and nothing from the
   shape of the ground. The estimate is uniform soil.
@@ -547,14 +672,15 @@ illustrative.
   differently, and a check of the bilinear moduli against uniaxial-strain tests on a real soil.
 - The ground points in the app as a grid over an area as well as a line, and the column's depth
   drawn in the view beside them rather than only in a chart.
-- A comparison with air-induced ground motion measured where the air's front is superseismic,
-  with gauges at several depths and the site's soil measured: Prairie Flat or Pre-Dice Throw II
-  ([Data wanted](data-wanted.md#to-fetch)). The only one so far, Xia et al.'s, stood near and
-  past the outrunning limit.
+- The soil's loading curve, bending up as a crushable, air-filled soil locks: Prairie Flat's
+  near-surface velocities are three to five times what its arrival speed allows. The Watching Hill
+  soil data (on Wikimedia Commons, not yet fetched; [Data wanted](data-wanted.md#to-fetch)) would
+  give that curve measured; Pre-Dice Throw II, still blocked at DTIC, a third test.
 - The motion the ground's own wave carries ahead of the blast where it outruns it, mostly
   horizontal, which dominated Xia et al.'s records: built as an elastic half-space
-  ([stages 1 and 2](ground-shock-outrunning.md)), which gives its shape but not its size; next,
-  soil that yields near the charge.
+  ([stages 1 to 3](ground-shock-outrunning.md)), which at Xia's gauges gave its shape but not its
+  size, and at Prairie Flat's, past the outrunning limit, its size within a factor of two; next,
+  in three dimensions on the GPU (stage 4).
 
 ## Sources
 

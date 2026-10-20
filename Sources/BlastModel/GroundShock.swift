@@ -77,11 +77,23 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
     public var depths: [Float] = [0, 1, 3]
     /// The overpressure, Pa, whose first passing marks the blast's arrival at a point.
     public var arrivalThreshold: Float = 1000
+    /// Where the charge stands on the ground, (x, y) in metres, for when the ground's own wave
+    /// from it reaches each point (`SoilProfile.firstArrival`); nil for `settingOrigin(from:)`
+    /// to set from the scene, or for the regime to go by the air's front speed alone.
+    public var origin: SIMD2<Float>?
 
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case soil, model, profile, halfSpace, points, line, depths, arrivalThreshold
+        case soil, model, profile, halfSpace, points, line, depths, arrivalThreshold, origin
+    }
+
+    /// With no origin given, the scene's charge's place on the ground.
+    public func settingOrigin(from scenario: Scenario) -> GroundShockSpec {
+        guard origin == nil else { return self }
+        var spec = self
+        spec.origin = SIMD2(scenario.charge.position.x, scenario.charge.position.y)
+        return spec
     }
 
     /// Any field left out takes its default.
@@ -96,6 +108,7 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
         line = try c.decodeIfPresent(Line.self, forKey: .line)
         depths = try c.decodeIfPresent([Float].self, forKey: .depths) ?? d.depths
         arrivalThreshold = try c.decodeIfPresent(Float.self, forKey: .arrivalThreshold) ?? d.arrivalThreshold
+        origin = try c.decodeIfPresent(SIMD2<Float>.self, forKey: .origin)
     }
 
     /// The column's soil: the profile, or one layer of `soil`.
@@ -126,7 +139,7 @@ public struct GroundShockSpec: Codable, Sendable, Equatable {
             (1...10_000).contains(all.count), all.allSatisfy(finite),
             line.map({ (2...10_000).contains($0.count) }) ?? true,
             (1...32).contains(depths.count), depths.allSatisfy({ $0 >= 0 && $0 <= 1000 }),
-            arrivalThreshold > 0, arrivalThreshold.isFinite
+            arrivalThreshold > 0, arrivalThreshold.isFinite, origin.map(finite) ?? true
         else {
             throw CocoaError(
                 .coderInvalidValue,
@@ -171,6 +184,17 @@ public enum GroundShockRegime: String, Codable, Sendable {
     /// blast arrives, which the model does not cover; the vertical estimate is given only as the
     /// air's share.
     case outrunning
+
+    /// By arrival as well as by speed: outrunning wherever the ground's own wave from the charge
+    /// (`groundArrival`, through the soil's faster layers below) comes before the air does
+    /// (`arrival`), however fast the air's front then is; otherwise by the front's speed.
+    public init(frontSpeed: Float, soil: GroundSoil, arrival: Double?, groundArrival: Double?) {
+        if let arrival, let groundArrival, groundArrival < arrival {
+            self = .outrunning
+        } else {
+            self.init(frontSpeed: frontSpeed, soil: soil)
+        }
+    }
 
     public init(frontSpeed: Float, soil: GroundSoil) {
         if frontSpeed >= soil.waveSpeed * Float(2).squareRoot() {

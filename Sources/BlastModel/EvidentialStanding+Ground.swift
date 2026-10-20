@@ -13,7 +13,8 @@ extension StandingTable {
                 title: "Layered soil column", affects: [.groundShock], limit: .illustrative,
                 note: "A layered soil column under each point, solved through the ground's overpressure "
                     + "history; checked against closed-form solutions; against Xia's 1 t burst its vertical "
-                    + "velocity 20 to 80 times the measured.",
+                    + "velocity 20 to 80 times the measured, under Prairie Flat's 500 t a fifth of it near the "
+                    + "surface.",
                 document: "ground-shock.md#the-soil-column")
         case .halfSpace:
             return Entry(
@@ -22,7 +23,7 @@ extension StandingTable {
                     "An axisymmetric half-space under the charge, elastic or with soil that yields, driven by "
                     + "the air's ground pressures and a direct source; checked against Lamb's problem, Cole and "
                     + "Huth's moving load, Haskell's dispersion and the bilinear column; against Xia's 1 t burst "
-                    + "still far too high in the vertical.",
+                    + "still far too high in the vertical; past Prairie Flat's outrunning limit within two times.",
                 document: "ground-shock-outrunning.md")
         default:
             preconditionFailure("\(option) is not one of the ground shock's options")
@@ -36,6 +37,7 @@ extension StandingTable {
         "GroundShockSpec.line": .input,
         "GroundShockSpec.depths": .input,
         "GroundShockSpec.arrivalThreshold": .input,
+        "GroundShockSpec.origin": .input,
         "GroundShockSpec.model": .option([.soilColumn, .halfSpace]),
         "GroundShockSpec.halfSpace": .input,
         "GroundShockSpec.profile": .input,
@@ -71,9 +73,11 @@ extension StandingScene {
         result(
             .groundShock, .illustrative,
             "A half-space about the charge, checked against Lamb's problem, Cole and Huth and Haskell; "
-                + "against one measured surface burst, its vertical velocity 15 to 90 times too high (the safe "
-                + "side), its horizontal within one and a half (elastic) to two and a half (yielding) times "
-                + "at 21 m but 10 to 20 times too high at 42 m.",
+                + "against Xia's 1 t burst its vertical velocity 15 to 90 times too high (the safe side), its "
+                + "horizontal within one and a half to two and a half times at 21 m but 10 to 20 times too high "
+                + "at 42 m; against Prairie Flat's 500 t, past where the ground's wave outran the air, the motion "
+                + "ahead of the blast within a factor of two at 15 of 16 records, but inside it within two at "
+                + "only 21 of 34.",
             evidence: [
                 StandingEvidence(
                     "The axisymmetric solver against Lamb's problem, Cole and Huth's moving load and Haskell's "
@@ -91,6 +95,12 @@ extension StandingScene {
                         + "21 m and 10–11 times at 42 m; falling as R^(-1.5) against the measured R^(-3.3) to "
                         + "R^(-3.8)",
                     "ground-shock-outrunning.md#stage-3-soil-that-yields"),
+                StandingEvidence(
+                    "Prairie Flat, 500 t of TNT on two measured layers, 84 to 1,150 ft out and 1.5 to 17 ft deep",
+                    "Past the outrunning limit, peaks down and out within three times at all 16 records, a "
+                        + "geometric mean of 1.15; inside it, within two at 21 of 34 vertical records, a third of "
+                        + "the measured 1.5 ft down",
+                    "ground-shock-outrunning.md#against-prairie-flat-20-october-2026"),
             ],
             assumptions: [
                 "Axisymmetric about the charge: no buildings or terrain. Elastic unless its layers are given "
@@ -111,11 +121,15 @@ extension StandingScene {
             .groundShock, .illustrative,
             column
                 ? "A layered soil column under each point, checked against closed-form solutions; against "
-                    + "one measured surface burst, its vertical velocity 20 to 80 times too high (the safe side), "
-                    + "while the horizontal motion that dominated it is not modelled (the unsafe side)."
-                : "The design manuals' one-dimensional air-induced ground shock; against one measured surface "
-                    + "burst, its vertical velocity 20 to 80 times too high (the safe side), while the horizontal "
-                    + "motion that dominated it is not modelled (the unsafe side).",
+                    + "Xia's 1 t burst, its vertical velocity 20 to 80 times too high (the safe side), the horizontal "
+                    + "motion that dominated it not modelled (the unsafe side); under Prairie Flat's 500 t, where "
+                    + "it claims to hold, within a factor of two at 13 of 34 records, a fifth of the measured 1.5 "
+                    + "ft down (the unsafe side), its arrivals within 10%."
+                : "The design manuals' one-dimensional air-induced ground shock; against Xia's 1 t burst, its "
+                    + "vertical velocity 20 to 80 times too high (the safe side), the horizontal motion that "
+                    + "dominated it not modelled (the unsafe side); under Prairie Flat's 500 t, where it claims to "
+                    + "hold, within a factor of two at 14 of 34 records, a fifth of the measured 1.5 ft down (the "
+                    + "unsafe side), its arrivals within 10%.",
             evidence: (column
                 ? [
                     StandingEvidence(
@@ -128,12 +142,20 @@ extension StandingScene {
                         "Xia et al.'s 1 t surface burst, 0.5 m deep at 21 and 42 m",
                         "Vertical velocity 20–30 and 50–80 times the measured accelerations' integral; "
                             + "within three times a clipped velocity gauge; the measured motion mostly horizontal",
-                        "ground-shock.md#against-measured-ground-motion")
+                        "ground-shock.md#against-measured-ground-motion"),
+                    StandingEvidence(
+                        "Prairie Flat, 500 t of TNT, 84 to 400 ft out where the air outran the ground, 1.5 to 17 ft "
+                            + "deep",
+                        "Vertical within two times at 13–14 of 34 records: 0.15–0.29 of the measured 1.5 ft down, "
+                            + "1.0–2.3 at 17 ft; arrivals within 10% at 18–20 of 24",
+                        "ground-shock.md#against-prairie-flat"),
                 ],
             assumptions: [
                 "Away from the charge only; no direct-induced shock or crater.",
-                "No motion carried by the ground's own wave where it outruns the air, which dominated the one "
-                    + "measured test.",
+                "No motion carried by the ground's own wave where it outruns the air, which dominated Xia's "
+                    + "test; points the wave reaches first are labelled outrun, by arrival through the layers.",
+                "One loading stiffness per layer: a crushable, air-filled near surface, as at Prairie Flat, "
+                    + "loads far softer than its arrival speed says.",
                 "The ground stays rigid for the air.",
                 "Not for design, buried services or vibration limits.",
             ], documents: ["ground-shock.md#limitations"])

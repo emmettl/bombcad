@@ -282,6 +282,68 @@ struct GroundShockTests {
         #expect(throws: CocoaError.self) { try column.validate() }
     }
 
+    @Test("The ground's own wave, refracted along a faster layer below, outruns the air by arrival")
+    func groundArrival() throws {
+        // Prairie Flat's site: 7 m of soil at 387 m/s over saturated soil at 1,859 m/s.
+        let site = SoilProfile(
+            layers: [SoilLayer(thickness: 7, density: 1600, waveSpeed: 387)],
+            base: .halfSpace(density: 1950, waveSpeed: 1859))
+        // Near the charge the direct wave comes first; past the crossover, 2h√((c₂+c₁)/(c₂−c₁)),
+        // 17.3 m, the head wave: R/c₂ + 2h√(1/c₁² − 1/c₂²).
+        #expect(abs(site.firstArrival(range: 10) - 10.0 / 387) < 1e-12)
+        let head = 170.7 / 1859 + 14 * (1 / (387.0 * 387) - 1 / (1859.0 * 1859)).squareRoot()
+        #expect(abs(site.firstArrival(range: 170.7) - head) < 1e-7)
+        let crossover = 14 * ((1859.0 + 387) / (1859.0 - 387)).squareRoot()
+        #expect(abs(site.firstArrival(range: Float(crossover)) - crossover / 387) < 1e-6)
+        // A slower layer below has no head wave.
+        let soft = SoilProfile(
+            layers: [SoilLayer(thickness: 2, density: 1900, waveSpeed: 900)],
+            base: .halfSpace(density: 1600, waveSpeed: 300))
+        #expect(soft.firstArrival(range: 100) == 100.0 / 900)
+        // The regime by arrival: outrun wherever the ground's wave comes first, however fast the
+        // front; otherwise by the front's speed, as before.
+        let top = site.surface
+        #expect(
+            GroundShockRegime(frontSpeed: 700, soil: top, arrival: 0.13, groundArrival: 0.127) == .outrunning)
+        #expect(
+            GroundShockRegime(frontSpeed: 700, soil: top, arrival: 0.1, groundArrival: 0.127) == .superseismic
+        )
+        #expect(
+            GroundShockRegime(frontSpeed: 700, soil: top, arrival: nil, groundArrival: 0.1) == .superseismic)
+        // The consumer reckons it from the description's origin, and without one leaves it out.
+        var spec = GroundShockSpec()
+        spec.points = [SIMD2(1.5, 1.5)]
+        spec.arrivalThreshold = 1000
+        var plain = GroundShockConsumer(spec: spec)
+        spec.origin = SIMD2(-200, 1.5)
+        spec.model = .column
+        spec.profile = site
+        var placed = GroundShockConsumer(spec: spec)
+        for consumer in [0, 1] {
+            for (t, p) in [(0.0, Float(0)), (0.001, 0), (0.15, 50e3)] {
+                let slice = uniformSlice(time: t, overpressure: p, peak: p, impulse: 0)
+                if consumer == 0 { plain.consume(slice) } else { placed.consume(slice) }
+            }
+        }
+        let without = plain.result(frameInterval: 0.001).points[0]
+        let with = placed.result(frameInterval: 0.001).points[0]
+        #expect(without.groundArrival == nil && without.regime == .transseismic)
+        // Along the saturated soil, 201.5 m in 0.144 s, before the air's 0.15 s; the 50 kPa front, at
+        // 405 m/s, would by its speed be transseismic over 387 m/s.
+        #expect(abs((with.groundArrival ?? 0) - site.firstArrival(range: 201.5)) < 1e-9)
+        #expect((with.groundArrival ?? 1) < 0.15 && with.regime == .outrunning)
+        // Saved with the origin, and read back without it as before.
+        let decoded = try JSONDecoder().decode(GroundShockSpec.self, from: JSONEncoder().encode(spec))
+        #expect(decoded.origin == spec.origin)
+        var bad = spec
+        bad.origin = SIMD2(.nan, 0)
+        #expect(throws: CocoaError.self) { try bad.validate() }
+        let scenario = Scenario(
+            name: "Open", domainSize: SIMD3(64, 64, 32), boxes: [],
+            charge: Charge(mass: 100, position: SIMD3(12, 34, 0)))
+        #expect(GroundShockSpec().settingOrigin(from: scenario).origin == SIMD2(12, 34))
+    }
+
     @Test("Descriptions take defaults for fields left out and refuse what is out of range")
     func spec() throws {
         let json = #"{"points": [[10, 20]], "soil": {"density": 1900, "waveSpeed": 450}}"#

@@ -684,7 +684,13 @@ enum HeadlessRun {
             kinds.append(("thermal", .thermal(spec, consumerScene, live: false)))
         }
         if let spec = options.groundShock {
-            kinds.append(("ground", .groundShock(spec.settingHalfSpace(from: inputs.scenario), live: false)))
+            kinds.append(
+                (
+                    "ground",
+                    .groundShock(
+                        spec.settingHalfSpace(from: inputs.scenario).settingOrigin(from: inputs.scenario),
+                        live: false)
+                ))
         }
         if let injected {
             feeds.append(Feed(injected, place: injected is RemoteFrameConsumer ? "on a worker" : "here"))

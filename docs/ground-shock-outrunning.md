@@ -1,6 +1,8 @@
 # Ground motion where the ground's wave outruns the blast: a proposal
 
-**Status: stages 1 to 3 built (17 October 2026), and the line stopped there. The half-space
+**Status: stages 1 to 3 built (17 October 2026), and the line stopped there; against Prairie
+Flat (20 October 2026) the half-space carries the motion ahead of an outrunning blast within a
+factor of two, and stage 4 is proposed ([below](#against-prairie-flat-20-october-2026)). The half-space
 does not close the gap with Xia et al.'s measurements, elastic or yielding: the vertical motion
 is still 15 to 90 times too high; the horizontal within 1.5 times (elastic) or 2.1 to 2.4 times
 (yielding) at 21 m, but 10 to 20 times too high at 42 m. Soil that yields does make the
@@ -339,6 +341,32 @@ to the crater's energy instead of a fit, and no longer needed where the air mode
 Further work on this line waits for a test that stood where the models claim to hold: Prairie
 Flat or Pre-Dice Throw II, with their soil ([data wanted](data-wanted.md#to-fetch)).
 
+## Against Prairie Flat (20 October 2026)
+
+The test the line was stopped for: Prairie Flat's 500 t, with gauges 84 to 1,150 ft out and 1.5
+to 30 ft deep, both sides of the outrunning limit, and the site's two layers, 387 m/s over
+saturated soil at 1,859 m/s below about 7 m ([the comparison](ground-shock.md#against-prairie-flat)).
+The half-space took the two layers, the saturated one with the upper soil's shear speed, on
+0.5 m cells to 405 m out and 162 m down.
+
+- **Past the outrunning limit, 560 to 1,150 ft: it holds.** The elastic half-space's peak
+  downward and outward velocities are within a factor of three of all 16 records (the judge),
+  within two of 15 fed the air alone, a geometric mean of 1.15 (0.91 with the direct source).
+  The wave that outruns the blast is the one refracted along the water table, an elastic wave
+  in elastic, saturated soil, and the grid carries it. Yielding soil does a little worse (13 to
+  15 of 16 within three). Its arrival, the head wave's, agrees with Murrell's records' first
+  motion at 1,150 ft (0.22 s).
+- **Inside it: no better than the column.** Within a factor of two at 21 of 34 vertical records
+  (the air alone), short of two-thirds, too low near the surface and twice too high at 17 ft;
+  its first motions come 20–40% early within 140 ft.
+
+So the half-space is right where Xia's test said it was not: there the soil was not measured and
+the motion fell as R^(−3.3) to R^(−3.8); here the site's layers are known and the motion that
+outruns the blast is carried by the stiff saturated layer. **Stage 4, the half-space in three
+dimensions on the GPU, for streets and buildings, is proposed as a new issue**; it should first
+pass this comparison in its axisymmetric limit. The standing stays illustrative: one site, its
+densities assumed.
+
 ## Stages
 
 1. Done: the elastic axisymmetric solver with its absorbing layer, checked against Lamb's
@@ -348,8 +376,10 @@ Flat or Pre-Dice Throw II, with their soil ([data wanted](data-wanted.md#to-fetc
 3. Done: soil that yields, compaction and a Mohr–Coulomb cone, with the direct source tied to
    the crater's energy (above); recorded, and the line stopped, as it does not close the gap.
    Next only with Prairie Flat or Pre-Dice Throw II.
-4. If it holds: a three-dimensional version on the GPU for streets and buildings, and a
-   ContinuumKit extraction proposal for the elastic wave solver.
+4. Proposed (20 October 2026), as Prairie Flat's motion ahead of the blast held within a factor
+   of three ([above](#against-prairie-flat-20-october-2026)): a three-dimensional version on the
+   GPU for streets and buildings, and a ContinuumKit extraction proposal for the elastic wave
+   solver.
 
 ## Sources
 

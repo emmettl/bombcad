@@ -786,8 +786,9 @@ extension StandingScene {
             cloudBands(bands: &bands, unbanded: &unbanded)
         case .groundShock:
             unbanded.append(
-                "One measured surface burst, too far off to band: the vertical velocity 20 to 80 times the "
-                    + "measured, the horizontal not modelled, near and past where the ground's wave outruns the air."
+                "Two measured surface bursts, too far off to band: at Xia's the vertical velocity 20 to 80 times "
+                    + "the measured near and past where the ground's wave outruns the air; at Prairie Flat's, inside "
+                    + "that limit, within a factor of two at under half the records."
             )
         case .blastInjury:
             unbanded.append(

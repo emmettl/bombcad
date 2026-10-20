@@ -161,6 +161,32 @@ public struct SoilProfile: Codable, Sendable, Equatable {
         GroundSoil(density: layers.first?.density ?? 1600, waveSpeed: layers.first?.waveSpeed ?? 300)
     }
 
+    /// When the ground's own compression wave from a charge on the surface first reaches `range`
+    /// metres along it, s after the detonation: the direct wave in the top layer, or the head wave
+    /// refracted along a deeper, faster layer or the base, whichever is first, by Snell's law on
+    /// flat layers. The wave is taken to leave the charge at once. This is how Prairie Flat's
+    /// ground came to move before its air arrived from about 560 ft out: the wave along the
+    /// saturated soil under its water table overtook the blast (docs/ground-shock.md).
+    public func firstArrival(range: Float) -> Double {
+        var speeds = layers.map { Double($0.waveSpeed) }
+        var thicknesses = layers.map { Double($0.thickness) }
+        if case .halfSpace(_, let speed) = base {
+            speeds.append(Double(speed))
+            thicknesses.append(.infinity)
+        }
+        guard let top = speeds.first else { return .infinity }
+        let r = Double(range)
+        var first = r / top
+        for n in speeds.indices.dropFirst() where speeds[n] > speeds[..<n].max() ?? 0 {
+            let slowness = 1 / (speeds[n] * speeds[n])
+            let crossing = (0..<n).reduce(0.0) { sum, j in
+                sum + 2 * thicknesses[j] * (1 / (speeds[j] * speeds[j]) - slowness).squareRoot()
+            }
+            first = min(first, r / speeds[n] + crossing)
+        }
+        return first
+    }
+
     /// The loading wave speed at `depth`, m/s, for the angle the soil's wave trails the air's
     /// front at there; nil below a rigid base.
     public func waveSpeed(at depth: Float) -> Float? {

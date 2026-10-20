@@ -14,7 +14,10 @@ extension SimulationModel {
     /// ground points within its domain.
     func startGroundShock(_ solver: BlastSolver) {
         stopGroundShock()
-        guard let spec = groundShockSpec else { return }
+        guard let project = groundShockSpec else { return }
+        // Under the scene's charge: where the ground's own wave starts, for each point's regime.
+        // The run keeps the project's description, as it was given.
+        let spec = project.settingOrigin(from: scenario)
         guard (try? spec.validate(domain: scenario.domainSize)) != nil else {
             groundShockStatus =
                 "Some ground points lie outside the domain; move them to estimate the shaking."
@@ -25,7 +28,7 @@ extension SimulationModel {
         } else {
             groundShock = LocalFrameConsumer(.groundShock(spec, live: true))
         }
-        estimatedGroundSpec = spec
+        estimatedGroundSpec = project
         sendGroundShockFrame(solver)
         updateGroundShockStatus()
     }

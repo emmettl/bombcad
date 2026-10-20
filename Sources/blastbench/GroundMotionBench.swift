@@ -13,8 +13,19 @@ func runGroundMotion(device: MTLDevice) throws {
     let cells = (option("dx") ?? "0.5,0.25").split(separator: ",").compactMap { Float($0) }
     let ranges = (option("ranges") ?? "21,42").split(separator: ",").compactMap { Float($0) }
     let depth = option("depth").flatMap(Float.init) ?? 0.5
+    // `--depths 0.46,1.5,3`: several depths at each range in place of `--depth`'s one.
+    let depths =
+        (option("depths")?.split(separator: ",").compactMap { Float($0) }).flatMap {
+            $0.isEmpty ? nil : $0
+        } ?? [depth]
     let density = option("density").flatMap(Float.init) ?? 2050
     let speed = option("speed").flatMap(Float.init) ?? 457
+    // `--water-table 7`: the soil as given down to that many metres, and below it saturated soil
+    // loading at `--saturated-speed` (m/s) with `--saturated-density` (kg/m³), whose shear speed
+    // is the soil's above (the water carries the compression, not the shear), as at Prairie Flat.
+    let waterTable = option("water-table").flatMap(Float.init)
+    let saturatedSpeed = option("saturated-speed").flatMap(Float.init) ?? 1500
+    let saturatedDensity = option("saturated-density").flatMap(Float.init) ?? 1950
     let ratios = (option("ratios") ?? "1,2,3").split(separator: ",").compactMap { Float($0) }
     let frame = option("frame").flatMap(Double.init) ?? 2e-4
     let step = option("column-step").flatMap(Float.init) ?? SoilProfile.defaultTimeStep
@@ -35,27 +46,42 @@ func runGroundMotion(device: MTLDevice) throws {
 
     // The soils: elastic, and unloading at each ratio's multiple of the loading speed.
     let soil = GroundSoil(density: density, waveSpeed: speed)
+    // The half-space's soil: a Poisson's ratio of `--poisson` (0.3).
+    let poisson = option("poisson").flatMap(Float.init) ?? 0.3
+    let shearRatio = ((1 - 2 * poisson) / (2 * (1 - poisson))).squareRoot()
+    /// The saturated soil under the water table, if there is one: for the column a layer and an
+    /// elastic base below it, for the half-space a last layer going on, with its own shear speed.
+    func saturated(column: Bool) -> (layers: [SoilLayer], base: SoilBase?) {
+        guard waterTable != nil else { return ([], nil) }
+        let layer = SoilLayer(
+            thickness: column ? 2 * (depths.max() ?? 1) + 10 : 1, density: saturatedDensity,
+            waveSpeed: saturatedSpeed, shearWaveSpeed: speed * shearRatio)
+        return column
+            ? ([layer], .halfSpace(density: saturatedDensity, waveSpeed: saturatedSpeed)) : ([layer], nil)
+    }
+    let top = waterTable ?? 1
     func spec(_ ratio: Float?, dx: Float) -> GroundShockSpec {
         var spec = GroundShockSpec()
         spec.soil = soil
         spec.points = ranges.map { SIMD2($0, 0.25 * dx) }
-        spec.depths = [0, depth]
+        spec.depths = [0] + depths
         spec.arrivalThreshold = 500
+        // The charge in the corner: where the ground's own wave starts, for each point's regime.
+        spec.origin = .zero
         if let ratio {
             spec.model = .column
+            let below = saturated(column: true)
             spec.profile = SoilProfile(
                 layers: [
                     SoilLayer(
-                        thickness: 1, density: density, waveSpeed: speed,
+                        thickness: top, density: density, waveSpeed: speed,
                         unloadingWaveSpeed: ratio > 1 ? speed * ratio : nil)
-                ], timeStep: step)
+                ] + below.layers, base: below.base, timeStep: step)
         }
         return spec
     }
-    // The half-space: the soil with a Poisson's ratio of `--poisson` (0.3), centred on the charge
-    // in the domain's corner, with the charge's direct source at its calibrated share and without.
-    let poisson = option("poisson").flatMap(Float.init) ?? 0.3
-    let shearRatio = ((1 - 2 * poisson) / (2 * (1 - poisson))).squareRoot()
+    // The half-space centred on the charge in the domain's corner, with the charge's direct
+    // source at its calibrated share and without.
     let halfCell = option("half-cell").flatMap(Float.init)
     // Soil that yields (stage 3): at each `--friction` angle, with `--cohesion` (Pa, 0) and
     // unloading at `--hs-unloading` (2) times the loading speed, the direct source at
@@ -70,11 +96,11 @@ func runGroundMotion(device: MTLDevice) throws {
         spec.profile = SoilProfile(
             layers: [
                 SoilLayer(
-                    thickness: 1, density: density, waveSpeed: speed,
+                    thickness: top, density: density, waveSpeed: speed,
                     unloadingWaveSpeed: friction != nil && unloading > 1 ? speed * unloading : nil,
                     shearWaveSpeed: speed * shearRatio, frictionAngle: friction,
                     cohesion: friction != nil ? cohesion : nil)
-            ], timeStep: step)
+            ] + saturated(column: false).layers, timeStep: step)
         spec.halfSpace = HalfSpaceSetup(
             centre: .zero, chargeMass: Float(mass), elasticShare: share, cellSize: halfCell)
         return spec
@@ -98,12 +124,20 @@ func runGroundMotion(device: MTLDevice) throws {
     print(
         String(
             format:
-                "%.0f kg of TNT on rigid ground; soil %.0f kg/m³ loading at %.0f m/s; gauges at %@ m, %.2f m deep; to %.3f s",
-            mass, density, speed, ranges.map { format(Double($0), 0) }.joined(separator: ", "), depth,
-            duration))
+                "%.0f kg of TNT on rigid ground; soil %.0f kg/m³ loading at %.0f m/s; gauges at %@ m, %@ m deep%@; to %.3f s",
+            mass, density, speed, ranges.map { format(Double($0), 0) }.joined(separator: ", "),
+            depths.map { format(Double($0), 2) }.joined(separator: ", "),
+            waterTable.map {
+                String(
+                    format: "; saturated below %.1f m, %.0f kg/m³ at %.0f m/s", $0, saturatedDensity,
+                    saturatedSpeed)
+            } ?? "", duration))
 
     var report: [String: Any] = [
-        "mass_kg": mass, "density": density, "wave_speed": speed, "depth_m": depth, "frame_s": frame,
+        "mass_kg": mass, "density": density, "wave_speed": speed, "depth_m": depth, "depths_m": depths,
+        "frame_s": frame,
+        "water_table_m": waterTable ?? -1, "saturated_speed": saturatedSpeed,
+        "saturated_density": saturatedDensity,
         "column_step_s": step,
     ]
     var runs: [[String: Any]] = []
@@ -250,6 +284,7 @@ func runGroundMotion(device: MTLDevice) throws {
                     "regime": point.regime?.rawValue ?? "none",
                 ]
                 entry["arrival_s"] = point.arrival
+                entry["ground_arrival_s"] = point.groundArrival
                 entry["responses"] = point.responses.map { r -> [String: Any] in
                     var v: [String: Any] = [
                         "depth_m": Double(r.depth), "stress_pa": Double(r.stress),

@@ -29,8 +29,12 @@ public struct GroundPointResult: Codable, Sendable, Equatable {
     public var arrival: Double?
     /// The air front's speed over the ground, m/s, by Rankine–Hugoniot from the peak.
     public var frontSpeed: Float
-    /// How that front compares with the soil's wave speed; nil where no blast arrived.
+    /// How that front compares with the soil's wave speed, or outrunning where the ground's own
+    /// wave comes first; nil where no blast arrived.
     public var regime: GroundShockRegime?
+    /// When the ground's own wave from the charge first reaches the point, s, through the soil's
+    /// layers (`SoilProfile.firstArrival`); nil where the description gives no origin.
+    public var groundArrival: Double?
     /// The response at each depth asked for.
     public var responses: [GroundResponse]
     /// The overpressure on the ground at every frame, Pa.
@@ -321,16 +325,25 @@ public struct GroundShockConsumer: Sendable {
             let speed = AirInducedGroundShock.frontSpeed(
                 overpressure: peak, ambientPressure: air.pressure, ambientDensity: air.density,
                 gamma: air.gamma)
+            let ground = spec.origin.map {
+                (spec.model == .estimate ? SoilProfile(uniform: spec.soil) : spec.columnProfile).firstArrival(
+                    range: simd_distance(self.points[n], $0))
+            }
             var result = GroundPointResult(
                 position: self.points[n], covered: sample == nil, peakOverpressure: peak, impulse: impulse,
                 duration: AirInducedGroundShock.duration(peak: peak, impulse: impulse), arrival: arrivals[n],
                 frontSpeed: speed,
-                regime: peak > 0 ? GroundShockRegime(frontSpeed: speed, soil: spec.surfaceSoil) : nil,
+                regime: peak > 0
+                    ? GroundShockRegime(
+                        frontSpeed: speed, soil: spec.surfaceSoil, arrival: arrivals[n], groundArrival: ground
+                    )
+                    : nil,
                 responses: spec.depths.map { depth in
                     AirInducedGroundShock.response(
                         peak: peak, impulse: impulse, arrival: arrivals[n], depth: depth, soil: spec.soil,
                         frontSpeed: speed)
                 }, history: histories[n])
+            result.groundArrival = ground
             if !columns.isEmpty, sample != nil {
                 columnResponse(n, frontSpeed: speed, into: &result)
             }
