@@ -163,7 +163,10 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
   Neither yields to a point law: spreading the crushing inwards raised the energy and the
   settlement together, more heave only the settlement
   ([validation](validation.md#a-footing-shaken-on-dry-sand)). Both want the sand as a continuum.
-- **Next:** the cap on cut slivers under structures on refined levels.
+- **Done (20 October):** the cap on cut slivers under structures on refined levels, so refined
+  runs of structures on terrain cut it too: a hillside frame's displacement within 2–9% of fine
+  uniform cut cells, where the staircase gave 1.6–2.7 times
+  ([terrain](terrain.md#cut-cells)).
 - **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
   as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
   connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are

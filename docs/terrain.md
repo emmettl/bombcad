@@ -321,11 +321,21 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastModel/T
   difference for the step dropped; it stays solid for the rest of the run, so that a rocking
   footing does not open and refill it, even if the structure later slides away or falls (it held
   less than half a cell of air). The pass runs only where a structure stands on the terrain, so
-  other runs are as they were to the bit. Refined air does not apply it to its own cells yet, so
-  for now refined runs with a structure standing on the terrain (a solid's base below, or within
-  half a metre, an element or an air cell, whichever is most, of the highest ground under its
-  footprint, where that ground is above the floor, `structureStandsOnTerrain`) keep the terrain as
-  a staircase (`cutsTerrain(of:)`); the same rule in `refineRemaskPrepare` is next.
+  other runs are as they were to the bit. Refined levels apply it to their own cells (since
+  20 October 2026, `refineRemaskCapSlivers`, between `refineRemaskPrepare` and
+  `refineRemaskApply`): walking down each fine column of a patch with cut cells, a fine cut cell
+  less than half air with the cell above solid in the new outline, and any shut in beneath it,
+  becomes rigid, so it stays solid while its patch lives; across a patch's top the walk reads only
+  the outline `refineRemaskPrepare` left, so the order patches run in changes nothing. Before,
+  such a sliver took its column's difference as the last cell of air, at least half air, and
+  what it could not hold was lost: a block on a slope in a closed box, refined once or twice, lost
+  or gained up to 1.6e-6 of its gas each 5 ms, where with the cap it keeps it to 2–5e-8, as on
+  the staircase (`StructureOnTerrainTests.cappedFineSlivers`). So refined runs with a structure on
+  the terrain cut it too: until then they kept it as a staircase. On "Two-storey frame on a
+  hillside" (500 kg, 0.25 m air, 0.1 s after settling) the frame's largest displacement is 147 mm
+  refined once and 136 mm refined twice, against 139 and 150 mm on uniform 0.125 and 0.0625 m
+  cut cells; the staircase gave 382 and 235 mm. The cap costs 0.6% of the air's GPU time; the cut
+  cells themselves cost 26% over the refined staircase refined once and 8% twice there.
   The two levels can still disagree. A fine sliver whose cell above is air at its own level but
   lies under a block in its parent's cells passes up into a solid cell. That happens where the
   second level's pool is full and the patch above is not placed. What such a column carries up
