@@ -30,6 +30,7 @@ extension SimulationModel {
         farField = nil
         farFieldStatus = ""
         envelopeGlassChances = []
+        envelopeStructureChances = []
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
@@ -80,6 +81,7 @@ extension SimulationModel {
         farField = nil
         farFieldStatus = ""
         envelopeGlassChances = []
+        envelopeStructureChances = []
         envelopeDebris = nil
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""

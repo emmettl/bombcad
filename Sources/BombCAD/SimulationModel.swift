@@ -660,6 +660,9 @@ final class SimulationModel {
     /// Each building side's glass chances from the quick estimate (`FacadeLoadSurrogate`'s
     /// draws), the glass alone; empty without one.
     var envelopeGlassChances: [FacadeLoadSurrogate.SideGlass] = []
+    /// Each building's chances that its walls and roof are damaged, from the quick estimate's
+    /// draws (`FacadeLoadSurrogate.structureProbabilities`); empty without one.
+    var envelopeStructureChances: [FacadeLoadSurrogate.StructureChance] = []
     /// How far the quick estimate's charge may be off: its yield within this factor either way,
     /// nine times in ten; 1 for exactly the scene's.
     var quickEstimateYieldWithin = 1.5

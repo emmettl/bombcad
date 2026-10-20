@@ -86,6 +86,26 @@ extension SimulationModel {
             }
             judgeEnvelopeDoubt()
         }
+        if envelopeColouring.isStructure, !envelopeStructureChances.isEmpty {
+            // Each building by its walls' or roof's chance, the same on every side.
+            renderer?.setEnvelopeDamage(
+                Dictionary(
+                    uniqueKeysWithValues: envelopeStructureChances.map { c in
+                        let chance =
+                            switch envelopeColouring {
+                            case .wallsModerate: c.wallsModerate
+                            case .wallsHeavy: c.wallsHeavy
+                            default: c.roofModerate
+                            }
+                        return (
+                            c.owner,
+                            EnvelopeChanceColour.code([
+                                (0, -1, chance), (0, 1, chance), (1, -1, chance), (1, 1, chance),
+                            ])
+                        )
+                    }))
+            return
+        }
         if envelopeColouring.isChance, !envelopeGlassChances.isEmpty {
             // Each side by its chance, from the quick estimate's draws.
             renderer?.setEnvelopeDamage(chanceCodes(envelopeGlassChances))
@@ -179,9 +199,16 @@ extension SimulationModel {
         case openingsBlownOut = "Chance openings blown out (fitted to Beirut)"
         /// Whether cells twice as fine could change each building's outcome (`EnvelopeDoubt`).
         case couldFlip = "Could finer cells change it"
+        /// Each building's chance its worst wall is damaged moderately or worse, or heavily or worse
+        /// (illustrative for concrete), or its roof moderately or worse (`StructureChance`).
+        case wallsModerate = "Chance walls damaged (moderate or worse)"
+        case wallsHeavy = "Chance walls heavy or worse (illustrative for concrete)"
+        case roofModerate = "Chance roof damaged (moderate or worse)"
         var id: Self { self }
         /// Each building side's glass chance, from the quick estimate or the far field.
-        var isChance: Bool { self != .damage && self != .couldFlip }
+        var isChance: Bool { self != .damage && self != .couldFlip && !isStructure }
+        /// Each building's walls' or roof's chance, from the quick estimate.
+        var isStructure: Bool { self == .wallsModerate || self == .wallsHeavy || self == .roofModerate }
     }
 
     /// A first look at the envelope buildings' damage without running the air
@@ -196,16 +223,20 @@ extension SimulationModel {
         // Nine times in ten within the factor: 1.645 standard deviations of its logarithm.
         let uncertainty = FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(quickEstimateYieldWithin) / 1.645)
         Task { [weak self] in
-            let (loads, buildings, outside, chances, seconds) = await Task.detached(priority: .userInitiated)
-            {
+            let (loads, buildings, outside, chances, structure, seconds) = await Task.detached(
+                priority: .userInitiated
+            ) {
                 let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
                 let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
                     estimate, constructions: { scenario.envelopeConstruction(for: $0) })
                 let (chances, chancesS) = FacadeLoadSurrogate.glassProbabilities(
                     scene: scenario, cellSize: cellSize, uncertainty: uncertainty)
+                let (structure, structureS) = FacadeLoadSurrogate.structureProbabilities(
+                    estimate, mass: Double(scenario.charge.mass), cellSize: cellSize,
+                    constructions: { scenario.envelopeConstruction(for: $0) }, uncertainty: uncertainty)
                 return (
-                    estimate.loads, buildings, estimate.outsideFit, chances,
-                    estimate.seconds + damageS + chancesS
+                    estimate.loads, buildings, estimate.outsideFit, chances, structure,
+                    estimate.seconds + damageS + chancesS + structureS
                 )
             }.value
             guard let self else { return }
@@ -218,6 +249,7 @@ extension SimulationModel {
             self.envelopeDamage = buildings
             self.envelopeLoads = loads
             self.envelopeGlassChances = chances
+            self.envelopeStructureChances = structure
             self.envelopeDamageIsEstimate = true
             self.envelopeDamageStatus = String(
                 format: "Quick estimate in %.1f s: not a run. Run the scene for its damage.", seconds)
@@ -261,6 +293,7 @@ extension SimulationModel {
             strikes: strikes, vented: vented)
         envelopeDamageIsEstimate = false
         envelopeGlassChances = []
+        envelopeStructureChances = []
         envelopeLoads = loads
         applyEnvelopeDamageColours()
     }

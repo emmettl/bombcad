@@ -64,6 +64,12 @@ struct EnvelopeDamageSection: View {
                 if !model.envelopeVentingStatus.isEmpty {
                     Text(model.envelopeVentingStatus).font(.caption).foregroundStyle(.orange)
                 }
+                if !model.envelopeStructureChances.isEmpty {
+                    ForEach(FacadeLoadSurrogate.structureStanding, id: \.self) {
+                        Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
+                            horizontal: false, vertical: true)
+                    }
+                }
                 if model.envelopeDamageIsEstimate {
                     // An estimate must never pass for a run.
                     Text(model.envelopeDamageStatus).font(.caption).foregroundStyle(.orange)
@@ -101,6 +107,11 @@ struct EnvelopeDamageSection: View {
                                     + Self.chances(sides)
                             )
                             .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let structure = model.envelopeStructureChances.first(where: {
+                            $0.owner == building.id
+                        }) {
+                            Text(Self.structureLine(structure)).font(.caption).foregroundStyle(.secondary)
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
@@ -343,6 +354,14 @@ struct EnvelopeDamageSection: View {
         }
     }
 
+    /// A building's walls' and roof's chances, from the quick estimate's draws.
+    static func structureLine(_ c: FacadeLoadSurrogate.StructureChance) -> String {
+        String(
+            format:
+                "Chances of the structure: walls damaged (moderate or worse) %.2f, heavy or worse %.2f (illustrative for concrete); roof damaged %.2f",
+            c.wallsModerate, c.wallsHeavy, c.roofModerate)
+    }
+
     /// Each side's chances, by the way it faces (a map's x east, y north).
     static func chances(_ sides: [FacadeLoadSurrogate.SideGlass]) -> String {
         sides.sorted { ($0.axis, $0.outward) < ($1.axis, $1.outward) }.map { side in
@@ -522,6 +541,13 @@ struct InspectedEnvelopeSection: View {
                             + EnvelopeDamageSection.chances(sides)
                     )
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                if !building.far,
+                    let structure = model.envelopeStructureChances.first(where: { $0.owner == id })
+                {
+                    Text(EnvelopeDamageSection.structureLine(structure))
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(
+                            horizontal: false, vertical: true)
                 }
             }
             .monospacedDigit()

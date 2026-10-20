@@ -1183,6 +1183,8 @@ enum HeadlessRun {
         /// Each map building side's glass chances, and what they were drawn over.
         var glass: [FacadeLoadSurrogate.SideGlass]
         var glassDrawnOver: String
+        /// Each building's walls' and roof's chances, drawn over the same (and its walls' strength).
+        var walls: [FacadeLoadSurrogate.StructureChance]
     }
 
     /// The first look at the project's envelope buildings (as `--resolution` and `--mass` change
@@ -1215,12 +1217,16 @@ enum HeadlessRun {
         }
         let (glass, glassS) = FacadeLoadSurrogate.glassProbabilities(
             scene: scenario, cellSize: cellSize, uncertainty: uncertainty)
+        let (walls, wallsS) = FacadeLoadSurrogate.structureProbabilities(
+            estimate, mass: Double(scenario.charge.mass), cellSize: cellSize,
+            constructions: { scenario.envelopeConstruction(for: $0) }, uncertainty: uncertainty)
         let look = FirstLook(
             method: FacadeLoadSurrogate.method, fittedTo: FacadeLoadSurrogate.Coefficients.fitted.fittedTo,
-            standing: FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding,
+            standing: FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding
+                + FacadeLoadSurrogate.structureStanding,
             components: estimate.loads.count, outsideFit: estimate.outsideFit,
-            seconds: estimate.seconds + damageS + glassS, buildings: buildings,
-            glass: glass, glassDrawnOver: drawnOver)
+            seconds: estimate.seconds + damageS + glassS + wallsS, buildings: buildings,
+            glass: glass, glassDrawnOver: drawnOver, walls: walls)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
         try encoder.encode(look).write(to: url, options: .withoutOverwriting)
@@ -1247,7 +1253,18 @@ enum HeadlessRun {
                         "  Glass chances of %d building sides (%@): some broken %.2f, blown out %.2f on average",
                     glass.count, drawnOver, some, blown))
         }
-        lines += (FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding).map { "  " + $0 }
+        if !walls.isEmpty {
+            let damaged = walls.map(\.wallsModerate).reduce(0, +)
+            let roofs = walls.map(\.roofModerate).reduce(0, +)
+            lines.append(
+                String(
+                    format:
+                        "  Walls and roofs of %d buildings: %.1f expected with walls damaged, %.1f with the roof damaged (moderate or worse)",
+                    walls.count, damaged, roofs))
+        }
+        lines +=
+            (FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding
+            + FacadeLoadSurrogate.structureStanding).map { "  " + $0 }
         return lines
     }
 

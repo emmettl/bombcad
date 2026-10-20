@@ -195,6 +195,44 @@ beside them:
   fails. The same curve on the 0.2 and 1.1 kt runs' own loads gives 0.17 and 0.60 at 0.75–1 km,
   bracketing GEER's 0.27 with the yield; it is fitted and judged on one event.
 
+## Walls and roofs
+
+Since 20 October 2026 the quick estimate also gives each building three chances:
+- that its worst wall is damaged moderately or worse;
+- that its worst wall is damaged heavily or worse, illustrative for concrete;
+- that its roof is damaged moderately or worse.
+
+They are drawn as the glass's are, over the yield and each side's load scatter, and over an assumed
+scatter in what the walls and roof can bear. That scatter is a log-normal on the resistance, about
+15% for concrete and 30% for masonry; no survey gives it. A single estimate undercounts the
+components a run damages, which are its loads' upper tail; drawn, the counts can follow the run's
+([the first look](surrogate-first-look.md#walls-and-roofs-20-october-2026)).
+
+**Calibrated** against Beirut's near boxes (to 1,320 m, 4 m cells, uncapped loads) at ten yields
+from 0.15 to 1.5 kt (`scenebench wall-calibrate`). Each yield is held out in turn, and its chances
+are taken at its own yield with the load factor and scatter scale that did best on the other nine.
+The judgement uses the façade terms with their close-in branch (emmettl/bombcad-work#4). The runs
+judge every wall at its nominal strength, so they check the load's scatter, not the strength's.
+
+| Chance (2,053 buildings × 10 yields) | Settings chosen | Brier skill | Tenths, each within 0.1 of the runs |
+|---|---|---|---|
+| Concrete walls, moderate or worse | loads ×1.0, the whole scatter (9 folds of 10) | 0.55 | pass |
+| Concrete walls, heavy or worse (illustrative) | as above | 0.52 | 0.3–0.4 and 0.6–0.7 off by 0.15–0.25 |
+| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ (9 folds) | 0.70 | 0.4–0.9 high by 0.09–0.15 |
+| Roofs, moderate or worse | loads ×1.3, scatter ×½ (all 10) | 0.75 | 0.5–0.8 low by 0.11–0.16 |
+
+- **Concrete walls' damage is calibrated.** It passes the protective-design report's test, each
+  tenth holding 50 buildings or more within 0.1 of the share of runs.
+- **Roofs' chances are skilful but low in the middle.** That is the unsafe side, even with a load
+  factor fitted on these runs (their own terms read low).
+- **Stone's chances are high** by up to 0.15, the safe side. For masonry, moderate and heavy are
+  one level.
+- **No chance of failure is given.** Before the close-in branch the roofs' read far too high
+  (skill −0.48), and the walls' were too few to judge. Concrete's heavy damage is illustrative.
+- **The roofs' factor is a calibration, not physics.** It is rejudged whenever the load terms are
+  refitted (the judge is scripted:
+  /Volumes/StudioData/bombcad/surrogate-walls/calibrate/judge19.sh).
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage now also draws the glass chances.
@@ -204,9 +242,14 @@ beside them:
   worst side; each building's row lists its sides' chances. "Yield known to within" sets the
   yield's spread for the next estimate.
 - **Headless**: `BombCAD run project --surrogate first-look.json [--surrogate-yields samples.csv |
-  --surrogate-yield-within 1.5]` adds `glass`, each side's chances, and what they were drawn over.
+  --surrogate-yield-within 1.5]` adds `glass`, each side's chances, and what they were drawn over,
+  and `walls`, each building's walls' and roof's chances.
 - **Bench**: `scenebench glass-calibrate`; the runs' judgements and the posterior are on StudioData
-  under `bombcad/uncertainty`.
+  under `bombcad/uncertainty`. `scenebench wall-calibrate` for the walls and roofs, its ensemble
+  under `bombcad/surrogate-walls`.
+- **In the app, walls and roofs**: "Colour by" also offers the chance of walls damaged (moderate
+  or worse), of walls heavy or worse (illustrative for concrete), and of the roof damaged, each
+  building in one colour; each building's row lists them.
 
 ## Limitations
 
@@ -236,5 +279,5 @@ beside them:
 
 - Fit the strength spread, or a strength by building age, to a survey with panes counted.
 - Correlated scatter between neighbouring sides.
-- Chances for walls once a surrogate can be relied on for them, or from a few full runs drawn
-  where the first look is least sure (Horizons items 1 and 2 together).
+- Chances of failure for walls and roofs, once the surrogate's pulse escalates past moderate as
+  a run's does, or from a few full runs drawn where the first look is least sure.

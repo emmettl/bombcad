@@ -6216,6 +6216,29 @@ strength and the surrogate's scatter (its spread taken from the made-up district
 Standing: an approximation of a run's spread for the glass; not of the event's. Openings blown
 out: fitted to one event's survey, illustrative elsewhere.
 
+
+### The walls' and roofs' chances against Beirut's runs
+
+The [walls' and roofs' chances](glass-probability.md#walls-and-roofs), each building's chance of
+its walls damaged moderately or worse and of its roof damaged moderately or worse, drawn over the
+yield, each side's load scatter and an assumed strength scatter. They are judged against Beirut's
+near boxes rerun uncapped at ten yields from 0.15 to 1.5 kt, each yield held out in turn and
+taken at its own yield, on the façade terms with the close-in branch:
+
+- **Concrete walls, moderate or worse:** Brier skill 0.55 for concrete walls moderate or worse,
+  0.75 for roofs; for the walls, each tenth of chance within 0.1 of the share of runs, which
+  passes the protective-design report's test. No load factor was needed.
+- **Roofs:** their middle chances are low by 0.11–0.16 (the unsafe side), even with a load factor
+  of ×1.3 fitted to the runs. The test fails.
+- **Stone:** each building taken as 0.5 m stone, walls heavy or worse at skill 0.70. Its middle
+  chances are high by up to 0.15 (the safe side). The test fails.
+- **Heavy and failure:** concrete walls heavy or worse score skill 0.52 but fail the test, so they
+  are illustrative. No chance of failure is given: before the close-in branch, the roofs' read
+  far too high (skill −0.48).
+
+Standing: an approximation for concrete walls' damage across a district, illustrative for roofs,
+stone and heavy damage; judged on one district.
+
 ### The hybrid far field against Beirut's runs
 
 The [hybrid far field](hybrid-far-field.md#what-holds-and-what-does-not), handing over at 1 km,

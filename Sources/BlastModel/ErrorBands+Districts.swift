@@ -10,6 +10,18 @@ extension ValidationTables {
         // Estimates beside a run, against BombCAD's own runs: the standing lines of
         // `FacadeLoadSurrogate`, `HybridFarField` and `ChargeInference` are worded from these.
         Figure(
+            id: "structureChancesSkill", low: 0.55, high: 0.75,
+            document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
+            quote: "Brier skill 0.55 for concrete walls moderate or worse, 0.75 for roofs"),
+        Figure(
+            id: "structureChancesUnderCall", low: 0.1, high: 0.1,
+            document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
+            quote: "each tenth of chance within 0.1"),
+        Figure(
+            id: "structureChancesRoofLow", low: 0.11, high: 0.16,
+            document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
+            quote: "low by 0.11–0.16"),
+        Figure(
             id: "glassChancesBrier", low: 0.020, high: 0.108,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
             quote: "Brier score 0.020, against 0.108"),
