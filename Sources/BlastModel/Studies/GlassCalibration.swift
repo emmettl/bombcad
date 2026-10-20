@@ -14,21 +14,21 @@ import simd
 /// and faces as, its chance from the yields of an inferred charge (`infer-charge --samples`), each
 /// building's strength and the load scatter, against what the surveyors saw.
 package enum GlassCalibration {
-    struct Bin: Codable {
-        var from: Double
-        var to: Double
-        var count: Int
-        var predicted: Double
-        var observed: Double
+    package struct Bin: Codable {
+        package var from: Double
+        package var to: Double
+        package var count: Int
+        package var predicted: Double
+        package var observed: Double
     }
 
-    struct Reliability: Codable {
-        var name: String
-        var count: Int
-        var brier: Double
+    package struct Reliability: Codable {
+        package var name: String
+        package var count: Int
+        package var brier: Double
         /// The Brier score of the mean chance given to every side alike: the skill's reference.
-        var climatology: Double
-        var bins: [Bin]
+        package var climatology: Double
+        package var bins: [Bin]
     }
 
     struct Band: Codable {
@@ -51,7 +51,7 @@ package enum GlassCalibration {
         var seconds: [String: Double]
     }
 
-    static func reliability(_ name: String, predicted: [Double], observed: [Double]) -> Reliability {
+    package static func reliability(_ name: String, predicted: [Double], observed: [Double]) -> Reliability {
         let n = Double(max(predicted.count, 1))
         let brier = zip(predicted, observed).reduce(0) { $0 + ($1.0 - $1.1) * ($1.0 - $1.1) } / n
         let mean = observed.reduce(0, +) / n
@@ -102,7 +102,7 @@ package enum GlassCalibration {
     /// building it lies on (within 25 m) and faces as (within 60°): every building's glazed sides
     /// with their strips on the air, the matches (the side, GEER's class, the distance from the
     /// charge, the record) and the records.
-    static func geerFacades(
+    package static func geerFacades(
         _ path: String, scene: Scenario, objects: [SceneObject], raster: FacadeLoadSurrogate.Raster,
         cellSize: Float, radius: Float, centre: SIMD2<Double>
     ) throws -> (

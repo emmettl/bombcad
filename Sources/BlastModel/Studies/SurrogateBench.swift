@@ -36,12 +36,12 @@ package enum SurrogateBench {
         /// Matched strips: the saved strip, its object and its component.
         package var strips: [(saved: Int, object: Int, component: EnvelopeComponent)]
         package var cellSize: Float
-        var radius: Float
+        package var radius: Float
         /// The walls', slabs' and roofs' saved loads (components.json, beside the façades' since 20
         /// October 2026), matched as the strips are; empty for older runs.
-        var others: DistrictGlass.Index?
+        package var others: DistrictGlass.Index?
         var otherValues: [Float16] = []
-        var otherStrips: [(saved: Int, object: Int, component: EnvelopeComponent)] = []
+        package var otherStrips: [(saved: Int, object: Int, component: EnvelopeComponent)] = []
 
         package init(_ args: [String]) throws {
             guard let path = SurrogateBench.value(args, "loads") else {
@@ -190,7 +190,7 @@ package enum SurrogateBench {
         static func kindCode(_ kind: String) -> Int32 { ["wall": 1, "slab": 2, "roof": 3][kind] ?? 0 }
 
         /// A saved wall's, slab's or roof's net pressures, Pa per bin.
-        func otherNet(_ saved: Int) -> [Double] {
+        package func otherNet(_ saved: Int) -> [Double] {
             guard let others else { return [] }
             let strip = others.strips[saved]
             let scale = Double(others.scalePa ?? 1)
