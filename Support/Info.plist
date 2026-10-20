@@ -4,28 +4,6 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>BombCAD</string>
-	<key>CFBundleExecutable</key>
-	<string>BombCAD</string>
-	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
-	<key>CFBundleIdentifier</key>
-	<string>dev.bombcad.BombCAD</string>
-	<key>CFBundleName</key>
-	<string>BombCAD</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>0.5.1</string>
-	<key>CFBundleVersion</key>
-	<string>12</string>
-	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.developer-tools</string>
-	<key>LSMinimumSystemVersion</key>
-	<string>15.0</string>
-	<key>NSHighResolutionCapable</key>
-	<true/>
-	<key>NSPrincipalClass</key>
-	<string>NSApplication</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -43,17 +21,46 @@
 			<true/>
 		</dict>
 	</array>
+	<key>CFBundleExecutable</key>
+	<string>BombCAD</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>dev.bombcad.BombCAD</string>
+	<key>CFBundleName</key>
+	<string>BombCAD</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.6.0</string>
+	<key>CFBundleVersion</key>
+	<string>13</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.developer-tools</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_bombcad._tcp</string>
+		<string>_bombcad-pair._tcp</string>
+	</array>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>BombCAD finds Macs nearby that share their GPU, and shares this Mac's when you turn it on, to run simulations on them.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>dev.bombcad.project</string>
-			<key>UTTypeDescription</key>
-			<string>BombCAD Project</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>com.apple.package</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>BombCAD Project</string>
+			<key>UTTypeIdentifier</key>
+			<string>dev.bombcad.project</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -62,13 +69,6 @@
 				</array>
 			</dict>
 		</dict>
-	</array>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>BombCAD finds Macs nearby that share their GPU, and shares this Mac's when you turn it on, to run simulations on them.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_bombcad._tcp</string>
-		<string>_bombcad-pair._tcp</string>
 	</array>
 </dict>
 </plist>
