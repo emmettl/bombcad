@@ -1367,17 +1367,25 @@ kernel void refineRedistributeCut(device Cell *fine [[buffer(0)]],
     }
 }
 
+// A cut cell holding less than this share of air, shut in between the ground and a solid above, is
+// made solid: as the coarse grid's columns count their first cell at least half air
+// (`TerrainCutGeometry`, `remaskCapSlivers`).
+constant float sliverShare = 0.5f;
+
 // A structure standing on the terrain's cut cells, at a level's resolution: a fine cut cell less
-// than half air with the cell above it solid in the new outline is shut in between the ground and
-// the structure, as `remaskCapSlivers` finds on the coarse grid. Its column's difference would come
-// to it blocked, as the last cell of air, and what its volume could not hold would be lost
-// (`refineRedistributeCut`). Between `refineRemaskPrepare` and `refineRemaskApply`, it is marked
-// (bit 5), which apply makes rigid and solid, so that it stays so while its patch lives and a
-// rocking footing does not open it; its difference is dropped. Walked down each fine column of a
-// patch with cut cells, so that what it shuts in shuts in the sliver beneath it; across a patch's
-// top it reads the outline above as `refineRemaskPrepare` left it (bits 1 and 2), never another
-// patch's marks, so the order the patches run in changes nothing. Dispatched as the ghosts are
-// (four of their layers to a patch's one), only where a structure stands on cut terrain.
+// than `sliverShare` air with the cell above it solid is shut in between the ground and the
+// structure, as `remaskCapSlivers` finds on the coarse grid. Its column's difference would come to
+// it blocked, as the last cell of air, and what its volume could not hold would be lost
+// (`refineRedistributeCut`). It is marked (bit 5), which `refineRemaskApply`, or after a patch is
+// placed `refineCapSliversApply`, makes rigid and solid, so that it stays so while its patch lives
+// and a rocking footing does not open it; its difference is dropped. `outline` is the mask's bits
+// that are solid: 6 between `refineRemaskPrepare` and `refineRemaskApply` (rigid, and the new
+// outline), 3 once patches are placed (solid, rigid). Walked down each fine column of a patch with
+// cut cells, so that what it shuts in shuts in the sliver beneath it. Above a patch's top, the walk
+// goes up through slivers until a solid cell (all shut in) or air that is not one (none), reading
+// shares and `outline` only, never another patch's marks, so the order the patches run in changes
+// nothing. Dispatched as the ghosts are (four of their layers to a patch's one), only where a
+// structure stands on cut terrain.
 kernel void refineRemaskCapSlivers(device uchar *fineMask [[buffer(0)]],
                                    const device float4 *fineCut [[buffer(1)]],
                                    device float4 *fineDefects [[buffer(2)]],
@@ -1388,6 +1396,7 @@ kernel void refineRemaskCapSlivers(device uchar *fineMask [[buffer(0)]],
                                    const device uint *patchCut [[buffer(7)]],
                                    const device uchar *mask [[buffer(8)]],
                                    const device int *parentPatches [[buffer(9)]],
+                                   constant uint &outline [[buffer(10)]],
                                    uint gid [[thread_position_in_grid]]) {
     int r = int(u.refineRatio);
     int side = patchSize * r;
@@ -1404,16 +1413,23 @@ kernel void refineRemaskCapSlivers(device uchar *fineMask [[buffer(0)]],
     int a = int(position) % side;
     int b = int(position) / side;
     int3 dims = int3(u.nx, u.ny, u.nz);
-    // Whether the cell above the patch's top, in this column, is solid in the new outline.
-    int3 top = tile * side + int3(a, b, side);
+    // Whether the cell above the patch's top, in this column, is solid or a sliver shut in.
     bool aboveSolid = false;
-    if (top.z / r < dims.z) {
-        int3 up = tile + int3(0, 0, 1);
-        int holder = up.z < int(u.refineTileNz) ? patchOfTile[tileIndex(up, u)] : -1;
-        if (holder >= 0) {
-            aboveSolid = (fineMask[fineIndex(uint(holder), top, up, u)] & 6) != 0;
-        } else {
-            aboveSolid = parentSolid(mask, parentIndex(top / r, parentPatches, u), u);
+    for (int3 g = tile * side + int3(a, b, side); g.z / r < dims.z; ++g.z) {
+        int3 there = g / side;
+        int holder = there.z < int(u.refineTileNz) ? patchOfTile[tileIndex(there, u)] : -1;
+        if (holder < 0) {
+            aboveSolid = parentSolid(mask, parentIndex(g / r, parentPatches, u), u);
+            break;
+        }
+        uint index = fineIndex(uint(holder), g, there, u);
+        if ((fineMask[index] & outline) != 0) {
+            aboveSolid = true;
+            break;
+        }
+        float share = patchCut[holder] != 0u ? fineCut[2 * index].x : 1.0f;
+        if (!(share > 0.0f && share < sliverShare)) {
+            break;
         }
     }
     for (int k = side - 1; k >= 0; --k) {
@@ -1424,15 +1440,29 @@ kernel void refineRemaskCapSlivers(device uchar *fineMask [[buffer(0)]],
         }
         uint index = fineIndex(patch, f, tile, u);
         uchar m = fineMask[index];
-        bool solid = (m & 6) != 0;
+        bool solid = (m & outline) != 0;
         float share = fineCut[2 * index].x;
-        if (!solid && aboveSolid && share > 0.0f && share < 0.5f) {
+        if (!solid && aboveSolid && share > 0.0f && share < sliverShare) {
             fineMask[index] = m | 32;
             fineDefects[2 * index] = float4(0.0f);
             fineDefects[2 * index + 1] = float4(0.0f);
             solid = true;
         }
         aboveSolid = solid;
+    }
+}
+
+// Once patches are placed: each sliver `refineRemaskCapSlivers` marked becomes solid and rigid.
+kernel void refineCapSliversApply(device uchar *fineMask [[buffer(0)]],
+                                  constant SolverUniforms &u [[buffer(1)]],
+                                  const device uint *patchList [[buffer(2)]],
+                                  uint gid [[thread_position_in_grid]]) {
+    uint side = uint(patchSize) * u.refineRatio;
+    uint cells = side * side * side;
+    uint at = patchList[gid / cells] * cells + gid % cells;
+    uchar m = fineMask[at];
+    if ((m & 32) != 0) {
+        fineMask[at] = (m & ~uchar(32)) | 3;
     }
 }
 

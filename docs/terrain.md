@@ -326,7 +326,9 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastModel/T
   `refineRemaskApply`): walking down each fine column of a patch with cut cells, a fine cut cell
   less than half air with the cell above solid in the new outline, and any shut in beneath it,
   becomes rigid, so it stays solid while its patch lives; across a patch's top the walk reads only
-  the outline `refineRemaskPrepare` left, so the order patches run in changes nothing. Before,
+  the outline `refineRemaskPrepare` left, and above a patch's top it walks up through slivers to a
+  solid cell or air, so the order patches run in changes nothing. Patches placed between remasks
+  are capped as they are placed, before their first sweep (`refineCapSliversApply`). Before,
   such a sliver took its column's difference as the last cell of air, at least half air, and
   what it could not hold was lost: a block on a slope in a closed box, refined once or twice, lost
   or gained up to 1.6e-6 of its gas each 5 ms, where with the cap it keeps it to 2–5e-8, as on
@@ -337,7 +339,8 @@ map](using-the-app.md#a-district-from-a-map)). The code is `Sources/BlastModel/T
   cut cells; the staircase gave 382 and 235 mm. The gauges by the footings (2–8 MPa) are not
   converged even between the uniform grids, 0.125 and 0.0625 m reading up to 17% apart, so they
   judge nothing to 5%; the cut cells come at least as close to them as the staircase. The cap
-  costs 0.6% of the air's GPU time; the cut cells themselves cost 26% over the refined staircase
+  costs 2% of the air's GPU time (1.5% of it capping new patches); the cut cells themselves cost
+  26% over the refined staircase
   refined once and 8% twice there, the cost of cut terrain on a refined slope, which the advisor
   counts (`RunCost`, through `cutsTerrain(of:)`).
   The two levels can still disagree. A fine sliver whose cell above is air at its own level but

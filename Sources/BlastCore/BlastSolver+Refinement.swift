@@ -275,11 +275,29 @@ extension BlastSolver {
         refinement.encodePlace(
             encoder, parent: coarseView(species: species), control: controlBuffer, tileFlags: tileFlagBuffer,
             uniforms: uniforms, boxDefinition: experimentalBoxDefinition, maxSpeed: maxSpeedBuffer)
+        // New patches over a structure standing on cut terrain: its slivers solid before their
+        // first sweep, each level's before the next is placed over it.
+        let caps = capsFineSlivers
+        if caps {
+            refinement.encodeCapSliversAfterPlacing(
+                encoder, parent: coarseView(species: species), uniforms: uniforms)
+        }
         if let finerRefinement, let deep {
             finerRefinement.encodePlace(
                 encoder, parent: refinement.view(), control: controlBuffer, tileFlags: tileFlagBuffer,
                 uniforms: deep, maxSpeed: maxSpeedBuffer)
+            if caps {
+                finerRefinement.encodeCapSliversAfterPlacing(
+                    encoder, parent: refinement.view(), uniforms: deep)
+            }
         }
+    }
+
+    /// Whether a structure stands on the terrain's cut cells, which then shuts in slivers on the
+    /// grid (`remaskCapSlivers`) and on each level (`refineRemaskCapSlivers`).
+    var capsFineSlivers: Bool {
+        !(terrainCut?.geometry.cutColumns.isEmpty ?? true)
+            && bodies.contains(where: { $0.model.ground != nil })
     }
 
     /// Whether each refined level takes only the substeps its own waves need

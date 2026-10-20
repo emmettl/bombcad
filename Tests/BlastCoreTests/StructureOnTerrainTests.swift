@@ -143,12 +143,34 @@ struct StructureOnTerrainTests {
         // (about 4e-5 of the gas here, as on the staircase); after that the gas is kept.
         #expect(solver.advance(until: 0.005).isStable)
         let start = solver.totals().mass
+        let placedAtStart = solver.refinedPatchesPlaced
         var last = start
         for n in 2...6 {
             #expect(solver.advance(until: 0.005 * Double(n)).isStable)
             let mass = solver.totals().mass
             #expect(abs(mass - last) / start < 3e-7, "\(n): \((mass - last) / start)")
             last = mass
+        }
+        // Meanwhile patches were placed afresh, over the block among them, each capped as it was
+        // placed, not only at the next remask (`encodeCapSliversAfterPlacing`).
+        #expect(zip(solver.refinedPatchesPlaced, placedAtStart).allSatisfy { $0 > $1 })
+        // No cell of air above is left with every fine cell beneath it solid, which would keep stale
+        // gas while covered (`refineRestrict` keeps an all-solid cut cell's state).
+        let levels = solver.refinementLevels
+        // The first level's fine cells, by cell, for the second's parents.
+        let first = Dictionary(
+            levels[0].fineOutline(solver.grid).map { ($0.cell, $0.mask) }, uniquingKeysWith: { a, _ in a })
+        for (n, level) in levels.enumerated() {
+            let outline = level.fineOutline(solver.grid)
+            let ratio = level.ratio
+            var solidChildren: [SIMD3<Int>: Int] = [:]
+            for entry in outline where entry.mask & 1 != 0 {
+                solidChildren[entry.cell / ratio, default: 0] += 1
+            }
+            let parentSolid: (SIMD3<Int>) -> Bool =
+                n == 0 ? { solver.isSolid($0.x, $0.y, $0.z) } : { (first[$0] ?? 1) & 1 != 0 }
+            let stale = solidChildren.filter { $0.value == ratio * ratio * ratio && !parentSolid($0.key) }
+            #expect(stale.isEmpty, "level \(n + 1): \(stale.count) air cells with every fine cell solid")
         }
     }
 }

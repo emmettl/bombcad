@@ -239,9 +239,7 @@ extension BlastSolver {
             // Bit 31 asks the fine outline for the coarse one's hysteresis.
             let hysteresis: UInt32 = uniforms.maskHysteresis != 0 ? 1 << 31 : 0
             // A structure standing on the terrain's cut cells shuts in fine slivers too.
-            let caps =
-                !(terrainCut?.geometry.cutColumns.isEmpty ?? true)
-                && bodies.contains(where: { $0.model.ground != nil })
+            let caps = capsFineSlivers
             refinement.encodeRemask(
                 encoder, parent: coarseView(species: currentSpecies),
                 threshold: uniforms.fineThreshold | hysteresis, uniforms: makeUniforms(), capSlivers: caps)
