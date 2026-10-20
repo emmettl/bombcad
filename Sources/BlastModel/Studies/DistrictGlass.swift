@@ -6,7 +6,7 @@ import simd
 /// `district-glass`): a JSON index and the strips' net pressures as 16-bit floats.
 package enum DistrictGlass {
     package struct Building: Codable {
-        var distanceM: Double
+        package var distanceM: Double
         var heightM: Float
         /// The mix the map gave it (`GlazingMix.name`).
         package var mix: String
@@ -21,8 +21,8 @@ package enum DistrictGlass {
         var first: Int
         var count: Int
         /// The strip's box, m (saved since 19 October 2026; nil in older files).
-        var low: SIMD3<Float>?
-        var high: SIMD3<Float>?
+        package var low: SIMD3<Float>?
+        package var high: SIMD3<Float>?
         /// The component's kind (`EnvelopeComponent.Kind`) in components.json, the walls' and roofs'
         /// file beside the façades' (saved since 20 October 2026); nil in strips.json, all façades.
         var kind: String?

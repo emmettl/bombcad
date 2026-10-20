@@ -63,6 +63,10 @@ public final class BlastSolver {
     public var earlyFrameVoxelLimit: Int?
     public var earlyFrameSampleCount: Int?
     var exposureNeedsInitialSample = false
+    /// The first positive phase's impulse over each plan cell, when asked for
+    /// (`configureFirstPhaseColumns`); nil otherwise.
+    var firstPhaseColumns: FirstPhaseColumns?
+    var firstPhaseNeedsInitialSample = false
     var envelopeExposure: EnvelopeExposure?
     var envelopeNeedsInitialSample = false
     var envelopeComponentRecorder: EnvelopeComponentRecorder?

@@ -8,7 +8,7 @@ import simd
 /// [--design-probability 0.008] [--glass 0.006,0.004] [--staircase] [--bare] [--trace]
 /// [--save-loads folder] [--refine 2 --levels 2 --threshold 0.005 --refine-memory GB --hold Pa]
 /// [--ceiling auto|m] [--place-dx m] [--profile] [--steer 0.8,1.5 --steer-reach 12 --steer-by ring|near --steer-on glass|structure] [--corridor x,y,60] [--doubt [--doubt-band 1,1.6]]
-/// [--refine-toward x,y;x,y [--toward-width 1.5]] [--export-field folder [--field-above 2]]
+/// [--refine-toward x,y;x,y [--toward-width 1.5]] [--export-field folder [--field-above 2] [--first-phase]]
 /// --out folder`: the district's event, and what an accident survey
 /// can be set against: arrival times at observers' positions (Rigby et al.'s CSV: lat, lon, and
 /// the time seen), peak overpressures on a line of gauges over the open side, and each building's
@@ -216,6 +216,11 @@ enum DistrictComparison {
                 return (i, j, k)
             }
             solver.setGauges(cells: cells, points: points)
+            if exportField != nil, args.contains("--first-phase") {
+                try FieldExport.recordFirstPhase(
+                    solver: solver, scene: scene, above: Float(value("field-above").flatMap(Double.init) ?? 2)
+                )
+            }
             try solver.configureEnvelopeComponents(
                 objects: scene.envelopeObjects,
                 options: EnvelopeHistoryOptions(
@@ -343,11 +348,15 @@ enum DistrictComparison {
             }
 
             if let exportField {
+                // `--first-phase`: the first positive phase's impulse as a third target, recorded
+                // as the run went (set up before it, below).
                 try FieldExport.write(
                     solver: solver, scene: scene, folder: exportField, id: exportField.lastPathComponent,
                     layout: nil, buildings: report.placed.count,
                     above: Float(value("field-above").flatMap(Double.init) ?? 2), edgeCells: 4,
-                    configuration: args.contains("--bare") ? "bare" : "recommended, balloon start",
+                    configuration: args.contains("--bare")
+                        ? "bare"
+                        : args.contains("--balloon-start") ? "recommended, balloon start" : "recommended",
                     ground: value("ground"), steps: steps, wallS: wall, stable: solver.time >= until * 0.999,
                     arguments: args)
             }

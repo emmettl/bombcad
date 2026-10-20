@@ -153,6 +153,10 @@ extension BlastSolver {
                 encodeExposure(encoder, initial: true)
                 exposureNeedsInitialSample = false
             }
+            if firstPhaseNeedsInitialSample {
+                encodeFirstPhase(encoder, initial: true)
+                firstPhaseNeedsInitialSample = false
+            }
             if envelopeNeedsInitialSample {
                 encodeEnvelopeExposure(encoder, initial: true)
                 envelopeNeedsInitialSample = false
@@ -504,6 +508,7 @@ extension BlastSolver {
             }
             phase("observation")
             encodeExposure(encoder, initial: false)
+            encodeFirstPhase(encoder, initial: false)
             encodeEnvelopeExposure(encoder, initial: false)
             encodeEnvelopeComponents(encoder, initial: false)
             encodeEnvelopeVenting(encoder)

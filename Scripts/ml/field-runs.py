@@ -253,7 +253,8 @@ def run_here(data, runs, arguments):
             continue
         layout = data["layouts"][run["layout"]]
         command = [GPU_SLOT, "--mem", str(run["estimate"]["memGB"]), scenebench] + \
-            field_arguments(run, layout, inputs_for(run["layout"], layout, make=not arguments.dry_run), out)
+            field_arguments(run, layout, inputs_for(run["layout"], layout, make=not arguments.dry_run), out) + \
+            (["--first-phase"] if arguments.first_phase else [])
         print("%s: %s" % (run["id"], " ".join(command)), flush=True)
         if arguments.dry_run:
             continue
@@ -297,7 +298,8 @@ def run_there(data, runs, arguments):
                     shutil.copy2(inputs[key], target)
                 inputs[key] = target
         cases.append({"id": run["id"], "seconds": run["estimate"]["seconds"],
-                      "arguments": field_arguments(run, layout, inputs, "OUT", relative=stage)})
+                      "arguments": field_arguments(run, layout, inputs, "OUT", relative=stage)
+                      + (["--first-phase"] if arguments.first_phase else [])})
     with open(os.path.join(stage, "cases.json"), "w") as handle:
         json.dump(cases, handle, indent=1)
     job = "fields-%s-%s" % (arguments.on.split(".")[0], time.strftime("%Y%m%d-%H%M%S", time.gmtime()))
@@ -353,6 +355,8 @@ def main(argv):
     r.add_argument("--scenebench", default=os.path.join(REPOSITORY, ".build", "release", "scenebench"))
     r.add_argument("--on", help="an SSH host to run the cases on through remote-train.py")
     r.add_argument("--dry-run", action="store_true")
+    r.add_argument("--first-phase", action="store_true",
+                   help="export the first positive phase's impulse as a third target (field-export --first-phase)")
     arguments = parser.parse_args(argv)
     if arguments.command == "plan":
         cost = dict(COST)

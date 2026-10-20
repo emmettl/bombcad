@@ -182,12 +182,25 @@ From the solver's peak overpressure and impulse fields, it writes into the folde
 The arrays are little-endian float32 `.npy` files (format 1.0), with the header written by
 SceneBench itself. `numpy.load` reads them, and so does `standin_train.py` without NumPy.
 
-`district-compare --export-field folder` writes the same files from a district-compare run. That
-run is on the balloon start, as district-compare's runs are pinned, and `meta.json` says so.
+`district-compare --export-field folder` writes the same files from a district-compare run. Its
+runs have been on the mapped start since 20 October (`--balloon-start` for the balloon), and
+`meta.json` says which.
 
 The export is off unless asked for, and it only reads fields the solver already keeps. Other
 targets are unchanged: `blastbench digest --recommended` was the same before and after, on release
 builds (see [testing](#what-was-tested-where)).
+
+**`--first-phase`** (to `field-export`, or to `district-compare --export-field`) adds a third
+target, `firstPhaseImpulse`: the first positive phase's impulse, by the façade recorder's rule
+(from the start until the overpressure first falls below nothing after reaching half its peak).
+The solver keeps it only when asked: a small kernel (`FirstPhaseColumns`, `sampleFirstPhase`)
+reads each plan cell's column between the same two cells the export reads, after every step. The
+rule wants the history's whole peak, which a run knows only at its end. So a phase stands while its
+peak is at least half the peak so far; a later sample more than twice its peak starts it again
+there, counting the impulse before it, as the rule does. Within a mapped start's radius the
+columns take the one-dimensional solution's peak and impulse, the phase still going. It only
+observes: the run is the same to the bit with it or without
+([below](#the-first-phase-target-and-glass-by-side-20-october-2026)).
 
 ### The run list: `Scripts/ml/field-runs.json`
 
@@ -244,7 +257,7 @@ weights stay on StudioData and are never committed.
 ## Training: `Scripts/ml/train_field.py`
 
 ```bash
-python train_field.py --data DATASET --out OUT --model unet|fno [--epochs 40] [--batch 8] [--crop 256] [--holdout 0.2] [--split-by run|layout] [--resume auto]
+python train_field.py --data DATASET --out OUT --model unet|fno [--epochs 40] [--batch 8] [--crop 256] [--holdout 0.2] [--split-by run|layout] [--holdout-layouts beirut,made-*-s6] [--impulse all|first] [--resume auto]
 ```
 
 - **Inputs.** Six channels, each standardised over the training runs:
@@ -253,7 +266,9 @@ python train_field.py --data DATASET --out OUT --model unet|fno [--epochs 40] [-
   - the ground;
   - ln Z;
   - the logs of Kingery–Bulmash's peak and impulse.
-- **Outputs.** The logs of the run's peak overpressure and impulse. By default the network
+- **Outputs.** The logs of the run's peak overpressure and impulse: every positive phase's
+  (`--impulse all`, the default) or the first phase's (`--impulse first`, the `firstPhaseImpulse`
+  target of `--first-phase` exports; a run without it stops the training). By default the network
   predicts corrections to Kingery–Bulmash's logs (`--no-residual` predicts the logs outright). The
   loss is the squared error of the logs over the mask, leaving out peaks under 10 Pa.
 - **Models.**
@@ -266,7 +281,8 @@ python train_field.py --data DATASET --out OUT --model unet|fno [--epochs 40] [-
   of the eight flips and rotations of the square. Nothing in a plan prefers a direction.
 - **The split.** Whole runs are held out (`--holdout 0.2`, drawn with `--seed`, or named with
   `--holdout-runs`). `--split-by layout` holds out every run of a layout together, the stricter
-  test.
+  test. `--holdout-layouts beirut,made-*-s6` holds out every run of the layouts matching the shell
+  patterns: here all of Beirut and each made-up style's sixth layout, 75 runs.
 - **The judge.** After each epoch the held-out runs are judged on their full maps. By bands of
   scaled distance (Z 0–3, 3–5, 5–7, 7–10, 10–14, 14–20, 20–28, 28–40 and beyond), it gives the
   median of predicted over run, as a ratio, and the standard deviation of its log, for peak and
@@ -543,6 +559,48 @@ The judgements, the strips and the four recorder runs are in
 ```bash
 python -I Scripts/ml/judge_field.py --data /Volumes/StudioData/bombcad/ml/datasets/main \
     --model unet2=/Volumes/StudioData/bombcad/ml/field-unet-main-2/out/best.pt --out judged.json
+```
+
+## The first-phase target and glass by side (20 October 2026)
+
+emmettl/bombcad-work#33, #47: the three steps the [judgement above](#what-it-would-take) asked
+for.
+
+### The first-phase impulse target
+
+`field-export --first-phase` (and `district-compare --export-field … --first-phase`) writes a
+third target, `firstPhaseImpulse`, by the recorder's rule ([above](#what-one-run-gives)). It was
+checked on the four recorder runs of the judgement, run again with it into
+`/Volumes/StudioData/bombcad/ml/judge/compare-first/`:
+
+- **Nothing else moved.** Each run's `inputs.npy`, `mask.npy` and its peak and all-phases impulse
+  targets are bit-identical to the dataset's. `FirstPhaseColumnsTests` checks the same in the
+  solver's state digest, and checks the columns against the rule applied afterwards to each
+  column's whole history (within 0.1%).
+- **It is the recorder's quantity.** The new target in front of each ground-floor strip, against
+  the strip's own first-phase impulse, over the 65,934 strips: **1.00, log-SD 0.02** (the
+  all-phases target: 1.34 / 0.11). By band:
+
+| Z, m/kg^(1/3) | Strips | Peak | All phases | First phase |
+|---|---|---|---|---|
+| 0–3 | 2,556 | 1.02 / 0.12 | 1.36 / 0.18 | 1.00 / 0.05 |
+| 3–5 | 6,200 | 1.01 / 0.06 | 1.35 / 0.13 | 1.00 / 0.02 |
+| 5–7 | 7,811 | 1.00 / 0.05 | 1.34 / 0.12 | 1.00 / 0.02 |
+| 7–10 | 17,926 | 1.00 / 0.04 | 1.36 / 0.11 | 1.00 / 0.02 |
+| 10–14 | 18,694 | 1.00 / 0.04 | 1.34 / 0.11 | 1.00 / 0.01 |
+| 14–20 | 11,325 | 1.00 / 0.03 | 1.33 / 0.09 | 1.01 / 0.01 |
+| 20–28 | 1,422 | 1.00 / 0.05 | 1.32 / 0.10 | 1.01 / 0.01 |
+
+  In sight 1.00 / 0.04, shielded 1.00 / 0.01, facing away 1.00 / 0.02; Beirut 50–700 m (23,394
+  strips) 1.00 / 0.02. Over the mask, the first phase is a median 0.76–0.80 of all the phases.
+- **Cost.** The kernel reads two cells a column a step: nothing measurable beside the air.
+
+`train_field.py --impulse first` trains on it. The 200-run dataset has not been exported again
+with it: that waits for the user's go-ahead. The command, about 5 GPU hours on the Studio as the
+first export took (5.3 h measured, partly on the mini):
+
+```bash
+python3 -I Scripts/ml/field-runs.py run --set main --first-phase --dataset /Volumes/StudioData/bombcad/ml/datasets/main-first
 ```
 
 ## Not done yet

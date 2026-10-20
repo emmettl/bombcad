@@ -458,3 +458,61 @@ kernel void advanceEnvelopeClock(const device StepControl &control [[buffer(2)]]
     clock.bin = bin;
     clock.fraction = fraction;
 }
+
+// The first positive phase's impulse over each plan cell (FirstPhaseColumns.swift), by the façade
+// recorder's rule: summed from the start until the overpressure first falls below nothing after
+// reaching half its peak. Each column reads between its two cells (column.xy, column.z the share
+// of the second); record = (peak, every positive phase's impulse, the first phase's, that phase's
+// peak), open[n] = 1 while that phase is still going. A sample more than twice the phase's peak
+// starts the phase again from it, the impulse before it counted, as the rule would with the run's
+// whole peak. Each column has one writer.
+kernel void sampleFirstPhase(const device Cell *state [[buffer(0)]],
+                             const device StepControl &control [[buffer(1)]],
+                             const device float4 *columns [[buffer(2)]],
+                             device float4 *records [[buffer(3)]],
+                             device float *open [[buffer(4)]],
+                             constant SolverUniforms &u [[buffer(5)]],
+                             constant uint4 &parameters [[buffer(6)]],
+                             uint2 tid [[thread_position_in_grid]]) {
+    if (tid.x >= parameters.x || tid.y >= parameters.y || (control.dt <= 0 && parameters.z == 0)) {
+        return;
+    }
+    uint n = tid.x + parameters.x * tid.y;
+    float4 column = columns[n];
+    if (column.w == 0) {
+        return;
+    }
+    float pressure = 0;
+    for (uint side = 0; side < 2; ++side) {
+        float w = side == 0 ? 1 - column.z : column.z;
+        if (w <= 0) {
+            continue;
+        }
+        uint k = uint(side == 0 ? column.x : column.y);
+        Cell c = state[tid.x + u.nx * (tid.y + u.ny * k)];
+        float rho = max(c.rho, u.densityFloor);
+        float kinetic = 0.5f * (c.mx * c.mx + c.my * c.my + c.mz * c.mz) / rho;
+        pressure += w * gasPressure(rho, c.energy - kinetic, u.airModel, u.gamma);
+    }
+    float p = pressure - u.ambientPressure;
+    float dt = max(control.dt, 0.0f);
+    float4 record = records[n];
+    float going = open[n];
+    record.y += max(p, 0.0f) * dt;
+    record.x = max(record.x, p);
+    if (going != 0) {
+        if (p < 0) {
+            going = 0;
+        } else {
+            record.z = record.y;
+            record.w = max(record.w, p);
+        }
+    }
+    if (p > 0 && record.w < 0.5f * record.x) {
+        record.z = record.y;
+        record.w = p;
+        going = 1;
+    }
+    records[n] = record;
+    open[n] = going;
+}

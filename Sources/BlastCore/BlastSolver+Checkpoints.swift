@@ -158,6 +158,9 @@ extension BlastSolver: SolverCheckpointing {
         if let exposurePlane {
             parts.append(ClosureCheckpoint.buffers(of: exposurePlane, name: "exposurePlane"))
         }
+        if let firstPhaseColumns {
+            parts.append(ClosureCheckpoint.buffers(of: firstPhaseColumns, name: "firstPhaseColumns"))
+        }
         if let deflagrationStage { parts.append(deflagrationStage.checkpoint()) }
         if let congestion { parts.append(congestion.checkpoint()) }
         return parts
@@ -199,6 +202,7 @@ extension BlastSolver: SolverCheckpointing {
                 + (envelopeComponentRecorder == nil && envelopeExposure == nil ? [] : ["envelopes"])
                 + (envelopeVenting == nil ? [] : ["venting"])
                 + (exposurePlane == nil ? [] : ["exposurePlane"])
+                + (firstPhaseColumns == nil ? [] : ["firstPhaseColumns"])
                 + (deflagrationStage == nil ? [] : ["deflagration"]),
             complete: true, parts: [], rawBytes: 0, storedBytes: 0, seconds: 0)
         return try SolverCheckpoint.write(checkpointSubsystems, header: header, to: folder)
@@ -232,6 +236,7 @@ extension BlastSolver: SolverCheckpointing {
         try SolverCheckpoint.read(checkpointSubsystems, header: header, from: folder)
         frameExtractor?.invalidate()
         exposureNeedsInitialSample = false
+        firstPhaseNeedsInitialSample = false
         envelopeNeedsInitialSample = false
         componentsNeedInitialSample = false
         return header

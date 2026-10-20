@@ -3,7 +3,7 @@
 
     python judge_field.py --data DATASET --model NAME=OUT/best.pt [--model NAME=...] [--split OUT/split.json]
         [--scenebench .build/release/scenebench] [--strips FOLDER] [--recorded FOLDER] [--inside 0.85]
-        [--device cpu] [--out judged.json]
+        [--device cpu] [--impulse all|first] [--peaks-out FOLDER] [--out judged.json]
 
 The field model (train_field.py) predicts the peak overpressure and positive impulse 2 m over the
 ground on the run's plan cells; the surrogate (FacadeLoadSurrogate) predicts each façade strip's
@@ -33,6 +33,13 @@ first positive phase's impulse, the quantities the surrogate was fitted to. The 
 strip (`runField`) is judged against them beside the predictors. On the first four such runs the
 field's peak is the strip's within a few per cent; its impulse, all the positive phases, is about
 1.3 times the strip's first phase (docs/learned-models.md).
+
+`--peaks-out FOLDER` writes FOLDER/<id>.csv for each run: the judged strips' boxes with each
+predictor's peak and impulse there (`peak:<name>`, `impulse:<name>`, the run's own field as
+`runField`), for `scenebench field-glass` to judge glass by building side through the SDOF.
+
+`--impulse first` judges impulse against the runs' first-phase target (`field-export
+--first-phase`; the default is the first model's own target).
 
 CPU only (the network is small); the PyTorch venv's torch and numpy only.
 """
@@ -242,6 +249,9 @@ def main(argv):
     parser.add_argument("--recorded", default="/Volumes/StudioData/bombcad/ml/judge/compare",
                         help="folder of district-compare runs of held-out runs (<id>/loads), for the recorder's strips")
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--impulse", choices=("all", "first"),
+                        help="the runs' impulse target judged against (default: the first model's)")
+    parser.add_argument("--peaks-out", help="folder for each run's judged strips with the predictors' peaks")
     parser.add_argument("--out")
     args = parser.parse_args(argv)
 
@@ -258,11 +268,14 @@ def main(argv):
         plan = json.load(handle)
     os.makedirs(args.strips, exist_ok=True)
     predictors = [m[0] for m in models] + ["surrogate", "kb", "kbFacing"]
+    impulse = args.impulse or getattr(argparse.Namespace(**models[0][2]["args"]), "impulse", "all")
+    if args.peaks_out:
+        os.makedirs(args.peaks_out, exist_ok=True)
 
     rows = []
     began = time.time()
     for run_id in held:
-        run = train_field.load_run(os.path.join(args.data, "runs", run_id))
+        run = train_field.load_run(os.path.join(args.data, "runs", run_id), impulse)
         if run is None:
             print("judge_field: %s is not in the dataset, or was unstable; left out" % run_id)
             continue
@@ -277,6 +290,14 @@ def main(argv):
         middle = (0.5 * meta["domainM"][0], 0.5 * meta["domainM"][1])
         root = meta["charge"]["massKg"] ** (1 / 3)
         recorded = recorded_for(run_id, args.recorded) if args.recorded else None
+        # The recorder run's own first-phase target (field-export --first-phase), where it has one.
+        first_phase = None
+        exported = os.path.join(args.recorded or "", run_id, "field")
+        if args.recorded and os.path.exists(os.path.join(exported, "meta.json")):
+            with open(os.path.join(exported, "meta.json")) as handle:
+                names = [c["name"] for c in json.load(handle)["targets"]]
+            if "firstPhaseImpulse" in names:
+                first_phase = np.load(os.path.join(exported, "targets.npy"))[names.index("firstPhaseImpulse")]
         used = 0
         for s in strips:
             # The ground-floor strip: its storey spans the field's 2 m over the ground.
@@ -299,6 +320,8 @@ def main(argv):
                    "kbFacing": {"peak": s["basepeak"], "impulse": s["baseimpulse"]}}
             for name, field in fields.items():
                 row[name] = {"peak": float(field[0, r, c].mean()), "impulse": float(field[1, r, c].mean())}
+            if first_phase is not None:
+                row["runFieldFirst"] = {"peak": row["truth"]["peak"], "impulse": float(first_phase[r, c].mean())}
             if recorded is not None:
                 # The recorder's strip of the same box: its peak of the mean over its faces and its
                 # first positive phase.
@@ -307,8 +330,19 @@ def main(argv):
                 if found and found[0] > 0 and found[1] > 0:
                     row["recorded"] = {"peak": found[0], "impulse": found[1]}
             if all(row[p][q] > 0 for p in predictors + ["truth"] for q in ("peak", "impulse")):
+                row["box"] = [int(s["axis"]), int(s["outward"]), s["x0"], s["y0"], s["z0"], s["x1"], s["y1"], s["z1"]]
                 rows.append(row)
                 used += 1
+        if args.peaks_out:
+            names = [m[0] for m in models] + ["runField"] + (["runFieldFirst"] if first_phase is not None else [])
+            with open(os.path.join(args.peaks_out, run_id + ".csv"), "w") as handle:
+                handle.write("axis,outward,x0,y0,z0,x1,y1,z1," + ",".join(
+                    "%s:%s" % (q, n) for n in names for q in ("peak", "impulse")) + "\n")
+                for row in rows[len(rows) - used:]:
+                    values = [row["truth" if n == "runField" else n] for n in names]
+                    handle.write(",".join(["%d" % row["box"][0], "%d" % row["box"][1]] + [
+                        "%.2f" % v for v in row["box"][2:]] + ["%.6g,%.6g" % (v["peak"], v["impulse"]) for v in values])
+                        + "\n")
         print("judge_field: %s (%s), %d of %d strips judged, %.0f s" % (
             run_id, run["layout"], used, len(strips), time.time() - began))
         sys.stdout.flush()

@@ -4,8 +4,8 @@ import Metal
 import simd
 
 /// `scenebench field-export <district-scene's inputs> [--radius 1024] [--dx 4] [--height m]
-/// [--until s] [--above 2] [--edge 4] [--ground saturated] [--balloon] [--id name] [--layout name]
-/// --out folder`: one training pair for the learned field model (docs/learned-models.md). The
+/// [--until s] [--above 2] [--edge 4] [--ground saturated] [--balloon] [--first-phase] [--id name]
+/// [--layout name] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
 /// district is laid out as `district-scene` lays it out, the air is run on the recommended
 /// configuration until the blast has passed the domain's corners, and the run's own peak
 /// overpressure and positive impulse fields are read at a fixed height above the ground on the
@@ -16,6 +16,10 @@ import simd
 /// peak and impulse there), `targets.npy` (peak overpressure, Pa, and positive impulse, Pa s),
 /// `mask.npy` (1 where the target is air at that height and away from the side faces), all
 /// little-endian float32 `.npy` files, and `meta.json`. Rows run north (y), columns east (x).
+///
+/// `--first-phase` adds a third target, the first positive phase's impulse by the façade
+/// recorder's rule (`FirstPhaseColumns`), recorded at the same height as the run goes. It is off
+/// unless asked for, and it only observes: the run is the same to the bit either way.
 ///
 /// `district-compare --export-field folder` writes the same files from its own run.
 enum FieldExport {
@@ -32,6 +36,12 @@ enum FieldExport {
         ("peakOverpressure", "Pa, the run's largest overpressure in the cell at the height"),
         ("impulse", "Pa s, the run's positive-phase impulse in the cell at the height"),
     ]
+    /// The target `--first-phase` adds.
+    static let firstPhaseChannel = (
+        name: "firstPhaseImpulse",
+        units:
+            "Pa s, the first positive phase's impulse at the height, by the façade recorder's rule: from the start until the overpressure first falls below nothing after reaching half its peak"
+    )
 
     struct Meta: Codable {
         struct Channel: Codable {
@@ -115,6 +125,8 @@ enum FieldExport {
         }
         let solver = try BlastSolver(
             device: device, scenario: scene, cellSize: dx, configuration: configuration)
+        let above = Float(value("above").flatMap(Double.init) ?? 2)
+        if args.contains("--first-phase") { try recordFirstPhase(solver: solver, scene: scene, above: above) }
         print(
             String(
                 format: "%d × %d × %d cells (%.1f M), %.0f m top, %.0f kg, to %.2f s", solver.grid.nx,
@@ -146,8 +158,7 @@ enum FieldExport {
         let folder = URL(filePath: out)
         try write(
             solver: solver, scene: scene, folder: folder, id: value("id") ?? folder.lastPathComponent,
-            layout: value("layout"), buildings: report.placed.count,
-            above: Float(value("above").flatMap(Double.init) ?? 2),
+            layout: value("layout"), buildings: report.placed.count, above: above,
             edgeCells: value("edge").flatMap(Int.init) ?? 4,
             configuration: args.contains("--balloon") ? "recommended, balloon start" : "recommended",
             ground: value("ground"), steps: steps, wallS: wall, stable: stable, arguments: args)
@@ -195,6 +206,48 @@ enum FieldExport {
 
     // MARK: - The files
 
+    /// The two cells over plan cell (`i`, `j`) whose centres span `height` m (the ground's there
+    /// plus the height over it), and the share of the upper: both when both are air, else the one
+    /// that is (`both` false); nil when neither is.
+    static func readCells(solver: BlastSolver, i: Int, j: Int, height: Float) -> (
+        k0: Int, k1: Int, share: Float, both: Bool
+    )? {
+        let grid = solver.grid
+        let s = height / grid.cellSize - 0.5
+        let k0 = max(0, min(grid.nz - 1, Int(s.rounded(.down))))
+        let k1 = min(grid.nz - 1, k0 + 1)
+        let t = max(0, min(1, s - Float(k0)))
+        let open0 = !solver.isSolid(i, j, k0)
+        let open1 = !solver.isSolid(i, j, k1)
+        if open0 && open1 { return (k0, k1, t, true) }
+        if open0 || open1 {
+            let k = open0 ? k0 : k1
+            return (k, k, 0, false)
+        }
+        return nil
+    }
+
+    /// The ground's height under plan cell (`i`, `j`)'s centre.
+    static func groundAt(_ scene: Scenario, _ i: Int, _ j: Int, cellSize dx: Float) -> Float {
+        scene.terrain?.height(at: SIMD2((Float(i) + 0.5) * dx, (Float(j) + 0.5) * dx)) ?? 0
+    }
+
+    /// Sets `solver` to record the first positive phase's impulse `above` m over the ground in every
+    /// plan cell's column, between the cells `write` reads the fields from (`--first-phase`).
+    static func recordFirstPhase(solver: BlastSolver, scene: Scenario, above: Float) throws {
+        let grid = solver.grid
+        var columns = [SIMD4<Float>](repeating: .zero, count: grid.nx * grid.ny)
+        for j in 0..<grid.ny {
+            for i in 0..<grid.nx {
+                let height = groundAt(scene, i, j, cellSize: grid.cellSize) + above
+                if let cells = readCells(solver: solver, i: i, j: j, height: height) {
+                    columns[i + grid.nx * j] = SIMD4(Float(cells.k0), Float(cells.k1), cells.share, 1)
+                }
+            }
+        }
+        try solver.configureFirstPhaseColumns(columns)
+    }
+
     /// Writes the training pair for `solver`'s run of `scene` into `folder`.
     static func write(
         solver: BlastSolver, scene: Scenario, folder: URL, id: String, layout: String?, buildings: Int,
@@ -204,18 +257,15 @@ enum FieldExport {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let grid = solver.grid
         let dx = grid.cellSize
-        let (nx, ny, nz) = (grid.nx, grid.ny, grid.nz)
+        let (nx, ny) = (grid.nx, grid.ny)
         let plan = nx * ny
         let charge = scene.charge.position
         let chargeGround = scene.terrain?.height(at: SIMD2(charge.x, charge.y)) ?? 0
         let mass = Double(scene.charge.mass)
         let root = cbrt(mass)
-        func groundAt(_ i: Int, _ j: Int) -> Float {
-            scene.terrain?.height(at: SIMD2((Float(i) + 0.5) * dx, (Float(j) + 0.5) * dx)) ?? 0
-        }
         var groundMap = [Float](repeating: 0, count: plan)
         for j in 0..<ny {
-            for i in 0..<nx { groundMap[i + nx * j] = groundAt(i, j) }
+            for i in 0..<nx { groundMap[i + nx * j] = groundAt(scene, i, j, cellSize: dx) }
         }
         // The buildings' tops over the cells whose centres their blocks cover, as the air holds them.
         var top = [Float](repeating: -.greatestFiniteMagnitude, count: plan)
@@ -230,8 +280,11 @@ enum FieldExport {
                 for i in i0...i1 { top[i + nx * j] = max(top[i + nx * j], block.max.z) }
             }
         }
+        // `--first-phase`: the first phase's impulse, recorded between the same cells.
+        let firstPhase = solver.firstPhaseSnapshot()
+        let targetNames = targetChannels + (firstPhase == nil ? [] : [firstPhaseChannel])
         var inputs = [Float](repeating: 0, count: inputChannels.count * plan)
-        var targets = [Float](repeating: 0, count: targetChannels.count * plan)
+        var targets = [Float](repeating: 0, count: targetNames.count * plan)
         var mask = [Float](repeating: 0, count: plan)
         for j in 0..<ny {
             for i in 0..<nx {
@@ -255,33 +308,31 @@ enum FieldExport {
                 else {
                     continue
                 }
-                let s = (g + above) / dx - 0.5
-                let k0 = max(0, min(nz - 1, Int(s.rounded(.down))))
-                let k1 = min(nz - 1, k0 + 1)
-                let t = max(0, min(1, s - Float(k0)))
-                let open0 = !solver.isSolid(i, j, k0)
-                let open1 = !solver.isSolid(i, j, k1)
-                var peak: Float
-                var impulse: Float
-                if open0 && open1 {
-                    peak = (1 - t) * solver.peakOverpressure(i, j, k0) + t * solver.peakOverpressure(i, j, k1)
-                    impulse = (1 - t) * solver.impulse(i, j, k0) + t * solver.impulse(i, j, k1)
-                } else if open0 || open1 {
-                    let k = open0 ? k0 : k1
-                    peak = solver.peakOverpressure(i, j, k)
-                    impulse = solver.impulse(i, j, k)
-                } else {
+                guard let (k0, k1, t, both) = readCells(solver: solver, i: i, j: j, height: g + above) else {
                     continue
                 }
+                let peak: Float
+                let impulse: Float
+                if both {
+                    peak = (1 - t) * solver.peakOverpressure(i, j, k0) + t * solver.peakOverpressure(i, j, k1)
+                    impulse = (1 - t) * solver.impulse(i, j, k0) + t * solver.impulse(i, j, k1)
+                } else {
+                    peak = solver.peakOverpressure(i, j, k0)
+                    impulse = solver.impulse(i, j, k0)
+                }
                 guard peak.isFinite, impulse.isFinite else { continue }
+                if let firstPhase {
+                    let first = firstPhase[n].z
+                    guard first.isFinite else { continue }
+                    targets[2 * plan + n] = first
+                }
                 targets[0 * plan + n] = peak
                 targets[1 * plan + n] = impulse
                 mask[n] = 1
             }
         }
         try NPY.write(inputs, shape: [inputChannels.count, ny, nx], to: folder.appending(path: "inputs.npy"))
-        try NPY.write(
-            targets, shape: [targetChannels.count, ny, nx], to: folder.appending(path: "targets.npy"))
+        try NPY.write(targets, shape: [targetNames.count, ny, nx], to: folder.appending(path: "targets.npy"))
         try NPY.write(mask, shape: [ny, nx], to: folder.appending(path: "mask.npy"))
         let ci = Int(charge.x / dx)
         let cj = Int(charge.y / dx)
@@ -293,7 +344,7 @@ enum FieldExport {
                 massKg: mass, yieldKt: mass / 1e6, positionM: [charge.x, charge.y, charge.z], cell: [ci, cj]),
             buildings: buildings,
             inputs: inputChannels.map { Meta.Channel(name: $0.name, units: $0.units) },
-            targets: targetChannels.map { Meta.Channel(name: $0.name, units: $0.units) },
+            targets: targetNames.map { Meta.Channel(name: $0.name, units: $0.units) },
             configuration: configuration, ground: ground, untilS: solver.time, steps: steps, wallS: wallS,
             stable: stable, maskedShare: Double(mask.reduce(0, +)) / Double(plan),
             sourceRevision: ProcessInfo.processInfo.environment["BOMBCAD_SOURCE_REVISION"],

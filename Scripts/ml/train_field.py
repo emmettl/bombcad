@@ -2,7 +2,8 @@
 """Train the learned field model: peak overpressure and impulse over a district from its plan.
 
     python train_field.py --data DATASET --out OUT [--model unet|fno] [--epochs 40] [--batch 8]
-        [--crop 256] [--holdout 0.2 | --holdout-runs id,id] [--split-by run|layout] [--device auto]
+        [--crop 256] [--holdout 0.2 | --holdout-runs id,id | --holdout-layouts pattern,pattern]
+        [--split-by run|layout] [--impulse all|first] [--device auto]
         [--amp auto|on|off] [--resume auto|PATH|none] [--width 32] [--depth 4] [--modes 24]
     python train_field.py --estimate [--grid 256,512] [--batch 8] [--model unet,fno] [--gpu rtx3080ti]
 
@@ -11,7 +12,9 @@ and meta.json for each run (docs/learned-models.md). The network sees, on the ru
 buildings' heights over the ground, their footprints, the ground, the scaled distance from the
 charge and Kingery–Bulmash's incident peak and impulse there, and predicts the natural logs of the
 run's peak overpressure (Pa) and positive impulse (Pa s) 2 m over the ground, as corrections to
-Kingery–Bulmash's (`--no-residual` predicts them outright). The loss is the squared error of the
+Kingery–Bulmash's (`--no-residual` predicts them outright). The impulse is every positive phase's
+(`--impulse all`, the default) or the first phase's (`--impulse first`, the façade recorder's rule:
+the runs' `firstPhaseImpulse` target, exported with `field-export --first-phase`). The loss is the squared error of the
 logs over the mask (air at that height, away from the side faces).
 
 Training draws random crops from the training runs, each turned by one of the eight flips and
@@ -29,6 +32,7 @@ this machine's device, and estimated for the PCs' 12 GB cards from the step's ar
 memory traffic at a stated share of their peaks. It needs no dataset.
 """
 import argparse
+import fnmatch
 import json
 import math
 import os
@@ -56,23 +60,26 @@ INPUTS = ["height", "footprint", "ground", "logScaledDistance", "logKingeryBulma
 
 # MARK: - Data
 
-def load_runs(folder, only=None):
+def load_runs(folder, only=None, impulse="all"):
     """[{id, layout, x (C, H, W) float32 features before standardising, y (2, H, W) log targets,
     kb (2, H, W) log Kingery–Bulmash, mask (H, W), z (H, W) scaled distance}] of a dataset (the
-    runs named in `only`, if given)."""
+    runs named in `only`, if given); the impulse every positive phase's or, `impulse="first"`, the
+    first phase's."""
     root = os.path.join(folder, "runs")
     runs = []
     for name in sorted(os.listdir(root)):
         if only is not None and name not in only:
             continue
-        run = load_run(os.path.join(root, name))
+        run = load_run(os.path.join(root, name), impulse)
         if run:
             runs.append(run)
     return runs
 
 
-def load_run(path):
-    """One run of a dataset (as `load_runs`), or None if it is unfinished or was unstable."""
+def load_run(path, impulse="all"):
+    """One run of a dataset (as `load_runs`), or None if it is unfinished or was unstable. With
+    `impulse="first"` a run without the first-phase target (`field-export --first-phase`) is an
+    error, not left out."""
     try:
         with open(os.path.join(path, "meta.json")) as handle:
             meta = json.load(handle)
@@ -82,6 +89,12 @@ def load_run(path):
         return None
     raw = np.load(os.path.join(path, "inputs.npy"))
     targets = np.load(os.path.join(path, "targets.npy"))
+    target_names = [c["name"] for c in meta.get("targets", [])] or ["peakOverpressure", "impulse"]
+    wanted = {"all": "impulse", "first": "firstPhaseImpulse"}[impulse]
+    if wanted not in target_names:
+        raise SystemExit("train_field: %s has no %s target (export it with field-export --first-phase)" % (
+            path, wanted))
+    targets = np.stack([targets[target_names.index("peakOverpressure")], targets[target_names.index(wanted)]])
     mask = np.load(os.path.join(path, "mask.npy")) > 0
     names = [c["name"] for c in meta["inputs"]]
     channel = {n: raw[names.index(n)] for n in names}
@@ -98,11 +111,14 @@ def load_run(path):
             "meta": meta}
 
 
-def split(runs, holdout, holdout_runs, by, seed):
-    """The held-out runs' ids: those named, or a share of the runs (or of the layouts, all runs of
-    a layout together) drawn with `seed`."""
+def split(runs, holdout, holdout_runs, by, seed, holdout_layouts=None):
+    """The held-out runs' ids: those named, every run of the layouts matching `holdout_layouts`
+    (shell patterns, such as `beirut,made-*-s6`), or a share of the runs (or of the layouts, all
+    runs of a layout together) drawn with `seed`."""
     if holdout_runs:
         held = set(holdout_runs)
+    elif holdout_layouts:
+        held = {run["id"] for run in runs if any(fnmatch.fnmatchcase(run["layout"], p) for p in holdout_layouts)}
     else:
         groups = sorted({run["id"] if by == "run" else run["layout"] for run in runs})
         rng = random.Random(seed)
@@ -359,7 +375,7 @@ def train(args):
     device = device_for(args.device)
     autocast, dtype, scaled = precision(device, args.amp)
     os.makedirs(args.out, exist_ok=True)
-    runs = load_runs(args.data)
+    runs = load_runs(args.data, impulse=args.impulse)
     if len(runs) < 2:
         raise SystemExit("train_field: %d usable runs in %s; at least 2 are needed" % (len(runs), args.data))
     checkpoint_path = os.path.join(args.out, "checkpoint.pt")
@@ -375,7 +391,8 @@ def train(args):
         print("train_field: resuming from %s at epoch %d" % (resume, state["epoch"]))
     else:
         held = split(runs, args.holdout, args.holdout_runs.split(",") if args.holdout_runs else None,
-                     args.split_by, args.seed)
+                     args.split_by, args.seed,
+                     args.holdout_layouts.split(",") if args.holdout_layouts else None)
         stats = None
     training = [run for run in runs if run["id"] not in held]
     testing = [run for run in runs if run["id"] in held]
@@ -384,7 +401,9 @@ def train(args):
             len(training), len(testing)))
     stats = stats or statistics(training)
     with open(os.path.join(args.out, "split.json"), "w") as handle:
-        json.dump({"training": [r["id"] for r in training], "heldOut": held, "by": args.split_by,
+        json.dump({"training": [r["id"] for r in training], "heldOut": held,
+                   "by": "layouts " + args.holdout_layouts if args.holdout_layouts else args.split_by,
+                   "impulse": args.impulse,
                    "seed": args.seed, "stats": stats, "inputs": INPUTS}, handle, indent=1)
     model = build(args.model, args).to(device)
     parameters = sum(p.numel() for p in model.parameters())
@@ -629,7 +648,11 @@ def main(argv):
     parser.add_argument("--layers", type=int, default=4)
     parser.add_argument("--holdout", type=float, default=0.2)
     parser.add_argument("--holdout-runs", default="")
+    parser.add_argument("--holdout-layouts", default="",
+                        help="hold out every run of the layouts matching these shell patterns, e.g. beirut,made-*-s6")
     parser.add_argument("--split-by", choices=("run", "layout"), default="run")
+    parser.add_argument("--impulse", choices=("all", "first"), default="all",
+                        help="the impulse target: every positive phase's, or the first phase's (field-export --first-phase)")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--amp", choices=("auto", "on", "off"), default="auto")
