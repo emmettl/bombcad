@@ -89,5 +89,29 @@ class NeededTests(unittest.TestCase):
         self.assertEqual(self.model.read_text(), MODEL)
 
 
+class PrivateTests(unittest.TestCase):
+    def test_private_put_back(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "Solver+Part.swift"
+            source = (
+                "extension Solver {\n"
+                "    @discardableResult func step() -> Int { 1 }\n"
+                "    var count = 0\n"
+                "    public internal(set) var time = 0.0\n"
+                "    private func kept() {}\n"
+                "    func other() {}\n"
+                "}\n")
+            path.write_text(source)
+            edits = na.private_edits(path, {"step": False, "count": True, "time": True, "kept": False}, "Solver")
+            na.ORIGINAL.clear()
+            na.write(edits, set(range(len(edits))))
+            text = path.read_text()
+            self.assertIn("@discardableResult private func step()", text)
+            self.assertIn("private(set) var count = 0", text)
+            self.assertIn("public private(set) var time", text)
+            self.assertIn("    func other() {}", text)
+            self.assertEqual(len(edits), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

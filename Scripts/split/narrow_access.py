@@ -2,6 +2,7 @@
 
     python3 Scripts/split/narrow_access.py package [--module BlastModel] [--files F ...]
         [--state FILE] [--log-dir DIR] [--scratch-path DIR] [--dry-run]
+    python3 Scripts/split/narrow_access.py private --names-from LOG --files F ... [--owner BlastSolver]
 
 Every `package` declaration in the module's sources (or in `--files`) is made internal (`public
 package(set)` becomes `public internal(set)`, `package private(set)` `private(set)`), then the
@@ -12,6 +13,11 @@ by the labels of a call that now meets another overload, by the type a given-bac
 uses, and, for what nothing else explains outside the module, by the names on the error's line.
 That repeats until the build is clean; giving back too much is safe, too little cannot build.
 `--state` keeps what has been given back, so a run stopped part way goes on from there.
+
+`private` does the same inside one module for what a split widened from `private` so that its new
+files could share it: each of the owner's members named in the split's list (`widened <name>: used
+from ...` or `set from ...`, as split_solver.py prints them) gets its `private`, or `private(set)`,
+back, and keeps its wider access only where the build says another file needs it.
 
 The edits change nothing but access modifiers. Run make format, build-strict and the digests after.
 """
@@ -74,6 +80,45 @@ def package_edits(path: Path) -> list[Edit]:
                 name_line = sf.tokens[min(d.keyword + 1, len(sf.tokens) - 1)].line
                 edits.append(Edit(path, d.name or d.kind, (t.line, name_line), start, end, text[start:end],
                                   narrow, d.path, d.kind, labels_of(sf, d)))
+    return edits
+
+
+def private_edits(path: Path, names: dict[str, bool], owner: str) -> list[Edit]:
+    """`private` (or `private(set)`, where `names` says the setter was what was widened) put back
+    on `owner`'s members named in `names` that hold no `private` now."""
+    text = path.read_text(encoding="utf-8")
+    sf = ss.parse(text)
+    edits = []
+    for top in sf.decls:
+        if top.kind not in ("class", "extension") or top.name != owner:
+            continue
+        for d in top.members:
+            if d.name not in names:
+                continue
+            span = range(d.header, d.keyword)
+            words = [sf.tokens[i].text for i in span]
+            if "private" in words or "fileprivate" in words:
+                continue
+            name_line = sf.tokens[min(d.keyword + 1, len(sf.tokens) - 1)].line
+            lines = (sf.tokens[d.header].line, name_line)
+            setter = names[d.name]
+            internal_set = next((i for i in span if sf.tokens[i].text == "internal"
+                                 and sf.tokens[i + 1].text == "("), None)
+            if setter and internal_set is not None:
+                # `public internal(set)` was `public private(set)`.
+                start, end = sf.tokens[internal_set].start, sf.tokens[internal_set + 3].end
+                edits.append(Edit(path, d.name, lines, start, end, text[start:end], "private(set)",
+                                  d.path, d.kind))
+                continue
+            # Before the first modifier or the keyword, after any attributes.
+            at = next((i for i in span if sf.tokens[i].kind != "attr"
+                       and not (i > d.header and sf.tokens[i - 1].kind == "attr" and sf.tokens[i].text == "(")),
+                      d.keyword)
+            if sf.tokens[at].text == "(":
+                at = d.keyword
+            start = sf.tokens[at].start
+            edits.append(Edit(path, d.name, lines, start, start, "", "private(set) " if setter else "private ",
+                              d.path, d.kind, labels_of(sf, d)))
     return edits
 
 
@@ -247,7 +292,10 @@ def narrow(edits: list[Edit], kind: str, dry_run: bool) -> None:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("kind", choices=["package"])
+    parser.add_argument("kind", choices=["package", "private"])
+    parser.add_argument("--names-from", type=Path,
+                        help="private: the split's list of what it widened (`widened <name>: used|set from ...`)")
+    parser.add_argument("--owner", default="BlastSolver", help="private: the type whose members it narrows")
     parser.add_argument("--module", default="BlastModel")
     parser.add_argument("--files", nargs="*")
     parser.add_argument("--dry-run", action="store_true")
@@ -267,8 +315,19 @@ def main(argv: list[str]) -> int:
     else:
         paths = sorted((ROOT / "Sources" / args.module).glob("*.swift"))
     edits: list[Edit] = []
-    for p in paths:
-        edits += package_edits(p)
+    if args.kind == "package":
+        for p in paths:
+            edits += package_edits(p)
+    else:
+        if not args.names_from or not args.files:
+            parser.error("private takes --names-from and --files")
+        names: dict[str, bool] = {}
+        for line in args.names_from.read_text(encoding="utf-8").split("\n"):
+            m = re.match(r"\s*widened (\w+): (used|set) from", line)
+            if m:
+                names[m.group(1)] = m.group(2) == "set"
+        for p in paths:
+            edits += private_edits(p, names, args.owner)
     narrow(edits, args.kind, args.dry_run)
     return 0
 
