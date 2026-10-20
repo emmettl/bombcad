@@ -206,6 +206,8 @@ struct ConsumerPlacementTests {
         let placed = try await HeadlessRun.perform(
             document(), options: options(["thermal": "auto", "ground": "auto"], workers: ["mini", "gone"]),
             costs: store,
+            // A loaded Mac may take longer than the 30 s a real run allows its probes.
+            probeTimeout: nil,
             connect: { host in
                 connected.append(host)
                 guard host == "mini" else { throw ProjectFileError.invalid("No such Mac.") }

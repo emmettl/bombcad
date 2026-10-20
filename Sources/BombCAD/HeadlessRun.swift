@@ -572,6 +572,7 @@ enum HeadlessRun {
         consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
         view: ((BlastSolver, Int, Bool) -> Void)? = nil,
         viewRequest: ((BlastSolver) -> FrameRequest)? = nil,
+        probeTimeout: Duration? = .seconds(30),
         connect: (String) async throws -> SweepWorkerClient = {
             try await RemoteSweepWorker.connect(host: $0)
         }
@@ -694,7 +695,7 @@ enum HeadlessRun {
         if places.values.contains("auto") {
             let plan = try await placeByCost(
                 kinds, places: places, workers: options.workers, inputs: inputs, costs: &costs,
-                clients: &clients, connect: connect)
+                clients: &clients, probeTimeout: probeTimeout, connect: connect)
             places = plan.places
             streams.append(plan.line)
         }
@@ -1000,7 +1001,7 @@ enum HeadlessRun {
     private static func placeByCost(
         _ kinds: [(name: String, kind: ConsumerKind)], places: [String: String], workers: [String],
         inputs: SimulationInputs, costs: inout ConsumerCosts, clients: inout [String: SweepWorkerClient],
-        connect: (String) async throws -> SweepWorkerClient
+        probeTimeout: Duration?, connect: (String) async throws -> SweepWorkerClient
     ) async throws -> (places: [String: String], line: String) {
         var unreachable: [String] = []
         for host in workers where clients[host] == nil {
@@ -1013,7 +1014,8 @@ enum HeadlessRun {
         let hosts = workers.filter { clients[$0] != nil }
         for (name, kind) in kinds where places[name] == "auto" {
             await ConsumerProbe.probe(
-                name, kind: kind, inputs: inputs, workers: hosts.map { ($0, clients[$0]!) }, into: &costs)
+                name, kind: kind, inputs: inputs, workers: hosts.map { ($0, clients[$0]!) }, into: &costs,
+                timeout: probeTimeout)
         }
         let choices = places.mapValues { $0 == "auto" ? ["local"] + hosts : [$0] }
         let plan = ConsumerPlacement.plan(
