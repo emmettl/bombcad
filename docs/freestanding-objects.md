@@ -157,6 +157,20 @@ So a fractional shell would change what a user sees for cars beside structures a
 and on flat open ground not at all. Choosing the motion run's cells so that the gap lies on cell
 faces beside structures too would mend the first of these without it.
 
+**What the app does about it** (since 20 October 2026). The standing's freestanding motion, and
+the Compute Motion section, warn for each car whose gap lies off the motion's cell faces, saying
+why (beside a structure, on a slope, tilted) and that whether it overturns may differ on finer
+cells (`FreestandingMotion.unresolvedGaps`). Beside a structure the section offers uniform cells
+that resolve it, 0.075 m (or 0.05 m), with how many the crop needs and the time against 0.1 m,
+about 3.2 times (`finerCells`). It doesn't make them the default because they are too dear for
+ordinary scenes. A saloon beside the blast wall preset already needs 1.6 million 0.1 m cells, and
+127 s for 1 s; on 0.075 m cells the crop spans 3.7 million, over the 3 million Compute Motion
+allows, and the section then says to place the objects closer together. Patches beside a
+deformable structure, as the open run has, would resolve the gap at a fraction of that, once
+supported. Stages 1 and 2 of the fractional outline (state redistribution for structures' cut
+cells, and a fractional shell for boxes and cars) are deferred: the first flips no outcome a user
+sees, and the second matters only on slopes.
+
 ## Several objects
 
 `RigidBodyWorld` steps several boxes and cars together with the ground, static blocks and each
