@@ -32,7 +32,9 @@ Rules for every session and agent. Keep them lean: the aim is throughput with li
   someone else's recent work (`--allow-reverts` if that's intended). By hand, it is:
   1. `make format && make lint`, then `make build-strict` with no warnings;
   2. plain `make check-affected`. Never wrap it in gpu-slot, and **never pipe it** (`| tail`
-     makes `&&` test tail's exit status, not the check's);
+     makes `&&` test tail's exit status, not the check's). When bombcad-pc is free, it runs
+     BlastModel's suites there beside the Mac's steps (the Linux lane; `--no-linux` keeps them
+     here): a failure there fails the check, and a lost lane reruns here;
   3. `git fetch origin && git rebase origin/main`;
   4. `git diff origin/main...HEAD --stat` showing only your own files;
   5. `git push origin HEAD:main`, chained with `&&`.
