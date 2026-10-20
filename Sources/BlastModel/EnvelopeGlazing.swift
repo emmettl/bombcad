@@ -330,6 +330,6 @@ extension GlassStrength {
     /// held for 60 s, by the flaw model with the whole pane at that stress: 1 − exp(−k A σᵐ).
     public static func probability(stress: Double, area: Double) -> Double {
         guard stress > 0 else { return 0 }
-        return 1 - exp(-flawConstant * area * pow(stress, weibullModulus))
+        return 1 - exp(-effectiveFlawConstant * area * pow(stress, weibullModulus))
     }
 }

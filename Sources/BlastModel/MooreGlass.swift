@@ -64,9 +64,21 @@ public enum GlassStrength {
     /// The duration the equivalent stress refers to, s.
     public static let referenceDuration = 60.0
 
+    /// A factor on every pane's strength, for studies only: the environment's
+    /// `BOMBCAD_GLASS_STRENGTH` where set (docs/glass-strength.md), else 1, E1300's. It divides the
+    /// flaw constant by its seventh power; at 1 nothing changes. Never set by the app or a scene.
+    public static let studyStrengthFactor: Double =
+        ProcessInfo.processInfo.environment["BOMBCAD_GLASS_STRENGTH"].flatMap(Double.init).flatMap {
+            $0 > 0 && $0.isFinite ? $0 : nil
+        } ?? 1
+
+    /// The flaw constant the strength is worked from: `flawConstant`, over the study's factor to
+    /// the seventh power.
+    static let effectiveFlawConstant = flawConstant * pow(studyStrengthFactor, -weibullModulus)
+
     /// The stress held for 60 s that breaks a pane of `area` (m²) with `probability`, Pa.
     public static func sixtySecond(area: Double, probability: Double = 0.5) -> Double {
-        pow(-log(1 - probability) / (flawConstant * area), 1 / weibullModulus)
+        pow(-log(1 - probability) / (effectiveFlawConstant * area), 1 / weibullModulus)
     }
 }
 

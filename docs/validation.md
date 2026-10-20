@@ -3911,6 +3911,9 @@ the model breaks; the measured deflections are table 2's means and 90% confidenc
   whole pane, the default, is the least strength the flaw model allows. A third of it gives
   0.86–1.13 of the measured times, a tenth 0.91–1.19, late for the 1:1.7 and 1:2 panes.
 
+The same panes, E1300's threshold, Osnes's laminated panes and Beirut, rerun with every pane's
+strength 1.2, 1.4 and 1.6 times E1300's, are in [glass strength](glass-strength.md).
+
 ### The threshold, against ASTM E1300
 
 No test here finds where a pane only just breaks. The closest open check is ASTM E1300's load
