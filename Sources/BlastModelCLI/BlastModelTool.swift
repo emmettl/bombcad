@@ -30,7 +30,7 @@ enum BlastModelTool {
     ]
 
     static func main() {
-        setvbuf(stdout, nil, _IOLBF, 0)
+        StudyOutput.lineBuffered()
         let args = Array(CommandLine.arguments.dropFirst())
         guard let name = args.first, let command = commands.first(where: { $0.name == name }) else {
             print(

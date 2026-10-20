@@ -36,7 +36,7 @@ package enum Protect {
     }
 
     package static func run(_ args: [String]) throws {
-        setvbuf(stdout, nil, _IOLBF, 0)
+        StudyOutput.lineBuffered()
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
         guard let inputsPath = value("inputs") else {
             throw BlastError.allocationFailed("--inputs protect.json")

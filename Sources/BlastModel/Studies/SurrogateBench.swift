@@ -232,7 +232,7 @@ package enum SurrogateBench {
     }
 
     package static func extract(_ args: [String]) throws {
-        setvbuf(stdout, nil, _IOLBF, 0)
+        StudyOutput.lineBuffered()
         guard let out = value(args, "out") else { throw BlastError.allocationFailed("--out strips.csv") }
         let start = ContinuousClock.now
         let reference = try Reference(args)
@@ -444,7 +444,7 @@ package enum SurrogateBench {
     }
 
     package static func judge(_ args: [String]) throws {
-        setvbuf(stdout, nil, _IOLBF, 0)
+        StudyOutput.lineBuffered()
         let reference = try Reference(args)
         let share = Float(value(args, "inside").flatMap(Double.init) ?? 0.85)
         let scene = reference.scene

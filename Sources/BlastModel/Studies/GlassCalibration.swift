@@ -206,7 +206,7 @@ package enum GlassCalibration {
     }
 
     package static func run(_ args: [String]) throws {
-        setvbuf(stdout, nil, _IOLBF, 0)
+        StudyOutput.lineBuffered()
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
         guard let runsText = value("runs") else { throw BlastError.allocationFailed("--runs mass:folder,…") }
         let runs = runsText.split(separator: ",").map { part -> (mass: Double, folder: String) in
