@@ -36,6 +36,21 @@ enum InferChargeStudy {
                 gridChecks: value("grid-checks").flatMap(Int.init) ?? 0, showMisses: args.contains("--misses")
             )
         }
+        if args.contains("--forward-damage") {
+            try forwardDamage(
+                fixture: URL(filePath: value("fixture") ?? "Fixtures/SyntheticDistrict"),
+                cellSize: Float(value("dx").flatMap(Double.init) ?? 4),
+                frame: value("frame").flatMap(Double.init) ?? 1.0 / 120,
+                only: value("charges").map { $0.split(separator: ",").compactMap { Int($0) } })
+            return
+        }
+        if args.contains("--damage-probe") {
+            try damageProbe(
+                fixture: URL(filePath: value("fixture") ?? "Fixtures/SyntheticDistrict"),
+                cellSize: Float(value("dx").flatMap(Double.init) ?? 2),
+                spacing: value("spacing").flatMap(Double.init) ?? 20)
+            return
+        }
         if args.contains("--forward") {
             try forward(
                 fixture: URL(filePath: value("fixture") ?? "Fixtures/SyntheticDistrict"),
@@ -295,6 +310,168 @@ enum InferChargeStudy {
             100 * exp(posterior.summary("logSpread")!.median))
     }
 
+    /// `--damage-probe`: the surrogate's own glass damage (each side drawn from its chance) from
+    /// each of `charges`, scored back by `ChargeInference.SurrogateDamage` over masses at the true
+    /// place and places at the true mass: where its likelihood peaks, and what an evaluation costs.
+    static func damageProbe(fixture: URL, cellSize: Float, spacing: Double) throws {
+        let buildings = try MapBuilding.read(contentsOf: fixture.appending(path: "district.osm"))
+        let metres = ElevationGrid.metresPerDegree
+        let reference = SIMD2(600.0, 600.0)
+        var layout = DistrictLayout(
+            buildings: buildings, charge: SIMD2(reference.x / metres, reference.y / metres), mass: 1000)
+        layout.heights = try ElevationGrid(contentsOf: fixture.appending(path: "heights.asc"))
+        layout.ground = DistrictLayout.ground(
+            try ElevationGrid(contentsOf: fixture.appending(path: "ground.asc")), openingM: 0, seaM: 1)
+        let half = layout.halfSide(radius: 500, cellSize: cellSize)
+        let (scene, _) = try layout.scene(halfSide: half, cellSize: cellSize)
+        let centre = SIMD2<Float>(half, half)
+        let everySide = scene.envelopeObjects.flatMap { object in
+            [(0, -1), (0, 1), (1, -1), (1, 1)].map {
+                (owner: object.id, axis: $0.0, outward: $0.1, damaged: false)
+            }
+        }
+        let probe = ChargeInference.SurrogateDamage(
+            scene: scene, observed: everySide, reference: centre, placeRadius: 300, spacing: spacing,
+            cellSize: cellSize)
+        print(
+            String(
+                format: "%d sides, grid %.0f m: features and tables in %.1f s", probe.sides.count, spacing,
+                probe.seconds))
+        var generator = SplitMixGenerator(seed: 11)
+        for charge in charges {
+            let east = charge.east - reference.x
+            let north = charge.north - reference.y
+            let chances = probe.chances(massKg: Double(charge.mass), east: east, north: north)
+            let observed = zip(probe.sides, chances).map { side, p in
+                (
+                    owner: scene.envelopeObjects[side.owner].id, axis: side.axis, outward: side.outward,
+                    damaged: Double.random(in: 0..<1, using: &generator) < p
+                )
+            }
+            let damage = ChargeInference.SurrogateDamage(
+                scene: scene, observed: observed, reference: centre, placeRadius: 300, spacing: spacing,
+                cellSize: cellSize)
+            let start = ContinuousClock.now
+            let masses = stride(from: -1.0, through: 1.0, by: 0.1).map {
+                Double(charge.mass) * pow(10, $0 * 0.7)
+            }
+            let perSide = CommandLine.arguments.contains("--per-side")
+            let byMass = masses.map {
+                (
+                    mass: $0,
+                    value: damage.logLikelihood(massKg: $0, east: east, north: north, perSide: perSide)
+                )
+            }
+            let perEvaluation = DistrictBenchmark.seconds(start) / Double(masses.count)
+            var best = (east: east, north: north, value: -Double.infinity)
+            for dx in stride(from: -150.0, through: 150.0, by: 10) {
+                for dy in stride(from: -150.0, through: 150.0, by: 10) {
+                    let value = damage.logLikelihood(
+                        massKg: Double(charge.mass), east: east + dx, north: north + dy, perSide: perSide)
+                    if value > best.value { best = (east + dx, north + dy, value) }
+                }
+            }
+            let peak = byMass.max { $0.value < $1.value }!
+            print(
+                String(
+                    format:
+                        "  %.0f kg at (%.0f, %.0f): %d of %d sides broken; best mass %.0f kg (%.2f of the truth); best place off %.0f m; %.2f ms an evaluation",
+                    charge.mass, charge.east, charge.north, observed.filter(\.damaged).count, observed.count,
+                    peak.mass, peak.mass / Double(charge.mass), hypot(best.east - east, best.north - north),
+                    1000 * perEvaluation))
+        }
+    }
+
+    /// `--forward-damage`: each of `charges` run by BombCAD on the made-up district, its arrivals
+    /// at the observers and its glass broken building side by building side; the charge then
+    /// inferred from the glass alone (the scene's own surrogate as the forward model,
+    /// `ChargeInference.SurrogateDamage`), from the arrivals alone (Kingery–Bulmash), and from both.
+    static func forwardDamage(fixture: URL, cellSize: Float, frame: Double, only: [Int]?) throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw BlastError.allocationFailed("Metal") }
+        let buildings = try MapBuilding.read(contentsOf: fixture.appending(path: "district.osm"))
+        let heights = try ElevationGrid(contentsOf: fixture.appending(path: "heights.asc"))
+        let ground = try ElevationGrid(contentsOf: fixture.appending(path: "ground.asc"))
+        let district = District(
+            buildings: buildings, heights: heights, ground: ground, device: device, cellSize: cellSize)
+        // The scene the glass is weighed on: the district about its centre, which no charge moves.
+        let metres = ElevationGrid.metresPerDegree
+        let reference = SIMD2(600.0, 600.0)
+        var layout = DistrictLayout(
+            buildings: buildings, charge: SIMD2(reference.x / metres, reference.y / metres), mass: 1000)
+        layout.heights = heights
+        layout.ground = DistrictLayout.ground(ground, openingM: 0, seaM: 1)
+        let half = layout.halfSide(radius: 500, cellSize: cellSize)
+        let (scene, _) = try layout.scene(halfSide: half, cellSize: cellSize)
+        let byName = Dictionary(grouping: scene.envelopeObjects, by: \.name).compactMapValues {
+            $0.count == 1 ? $0[0].id : nil
+        }
+        var generator = SplitMixGenerator(seed: 7)
+        let scatter = (0..<400).map { _ in
+            SIMD2(
+                Double.random(in: 150...1050, using: &generator),
+                Double.random(in: 150...1050, using: &generator))
+        }
+        var settings = ChargeInference.Settings()
+        settings.massRange = 10...1e6
+        settings.placeRadius = 300
+        print("Forward with damage: the New District, \(cellSize) m cells, frame \(frame) s")
+        for (n, charge) in charges.enumerated() where only?.contains(n) ?? true {
+            let start = ContinuousClock.now
+            let observers = Array(
+                scatter.filter { p in
+                    let d = hypot(p.x - charge.east, p.y - charge.north)
+                    return d >= 40 && d <= Double(district.reach)
+                }.prefix(40))
+            let (times, glass) = try district.run(
+                mass: charge.mass, east: charge.east, north: charge.north, observers: observers)
+            var arrivals: [ChargeInference.Arrival] = []
+            for (k, p) in observers.enumerated() {
+                guard let at = times[k] else { continue }
+                let latest = (at / frame).rounded(.up) * frame
+                arrivals.append(
+                    ChargeInference.Arrival(
+                        name: "o\(k)", east: p.x - reference.x, north: p.y - reference.y,
+                        earliest: latest - frame,
+                        latest: latest))
+            }
+            let observed = glass.flatMap { name, sides in
+                sides.compactMap { side -> (owner: UUID, axis: Int, outward: Int, damaged: Bool)? in
+                    byName[name].map {
+                        (owner: $0, axis: side.axis, outward: side.outward, damaged: side.broken)
+                    }
+                }
+            }
+            let damage = ChargeInference.SurrogateDamage(
+                scene: scene, observed: observed, reference: SIMD2(half, half),
+                placeRadius: settings.placeRadius,
+                spacing: 20, cellSize: cellSize)
+            let truth = (charge.mass, charge.east - reference.x, charge.north - reference.y)
+            print(
+                String(
+                    format:
+                        "  %.0f kg at (%.0f, %.0f) m from the centre: %d arrivals; %d sides seen, %d broken (run %.0f s, features %.1f s)",
+                    charge.mass, truth.1, truth.2, arrivals.count, damage.sides.count,
+                    damage.sides.filter(\.damaged).count, DistrictBenchmark.seconds(start), damage.seconds))
+            settings.seed = UInt64(n + 1)
+            let started = ContinuousClock.now
+            let fromDamage = ChargeInference.infer(arrivals: [], damage: damage, settings: settings)
+            print(
+                line("Damage alone", fromDamage, truth: truth)
+                    + String(format: " (%.0f s)", DistrictBenchmark.seconds(started)))
+            if arrivals.count >= 5 {
+                print(
+                    line(
+                        "Arrivals alone", ChargeInference.infer(arrivals: arrivals, settings: settings),
+                        truth: truth))
+                print(
+                    line(
+                        "Arrivals and damage",
+                        ChargeInference.infer(arrivals: arrivals, damage: damage, settings: settings),
+                        truth: truth))
+            }
+        }
+    }
+
     static func forward(fixture: URL, cellSize: Float, frame: Double, passes: Int) throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw BlastError.allocationFailed("Metal") }
         let district = District(
@@ -394,5 +571,70 @@ struct SplitMixGenerator: RandomNumberGenerator {
         z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
         z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
         return z ^ (z >> 31)
+    }
+}
+
+extension InferChargeStudy.District {
+    /// As `arrivals`, and each building side's glass as the run judges it (broken where its chance
+    /// that some pane breaks is over a half), by its building's name: the run's envelope components recorded and judged as the
+    /// app judges them (`EnvelopeDamageAssessment`).
+    func run(mass: Float, east: Double, north: Double, observers: [SIMD2<Double>]) throws -> (
+        arrivals: [Double?], glass: [String: [(axis: Int, outward: Int, broken: Bool)]]
+    ) {
+        let metres = ElevationGrid.metresPerDegree
+        var layout = DistrictLayout(
+            buildings: buildings, charge: SIMD2(east / metres, north / metres), mass: mass)
+        layout.heights = heights
+        layout.ground = DistrictLayout.ground(ground, openingM: 0, seaM: 1)
+        let half = layout.halfSide(radius: reach, cellSize: cellSize)
+        var (scene, _) = try layout.scene(halfSide: half, cellSize: cellSize)
+        let positions = observers.map { SIMD2(Float($0.x - east) + half, Float($0.y - north) + half) }
+        let inside = positions.indices.filter { k in
+            positions[k].x > cellSize && positions[k].y > cellSize && positions[k].x < 2 * half - cellSize
+                && positions[k].y < 2 * half - cellSize
+        }
+        scene.gauges = inside.prefix(BlastSolver.maxGauges).map { k in
+            let p = positions[k]
+            return Gauge("o\(k)", at: SIMD3(p.x, p.y, (scene.terrain?.height(at: p) ?? 0) + 2))
+        }
+        let solver = try BlastSolver(
+            device: device, scenario: scene, cellSize: cellSize, configuration: .recommended)
+        let points = scene.gauges.map(\.position)
+        let cells = points.map { p -> (i: Int, j: Int, k: Int) in
+            let i = Int(p.x / cellSize)
+            let j = Int(p.y / cellSize)
+            var k = Int(p.z / cellSize)
+            while k < solver.grid.nz - 1, solver.isSolid(i, j, k) { k += 1 }
+            return (i, j, k)
+        }
+        solver.setGauges(cells: cells, points: points)
+        try solver.configureEnvelopeComponents(
+            objects: scene.envelopeObjects,
+            options: EnvelopeHistoryOptions(windowS: 0.2, memoryBudget: 1024 << 20, windowFromArrival: true))
+        // Until the blast has crossed the domain's corners and their window has passed.
+        let until = Double(half) * 1.5 / 300 + 0.25
+        while solver.time < until {
+            let batch = solver.advance(until: until)
+            guard batch.steps > 0, batch.isStable else { break }
+        }
+        var arrivals = [Double?](repeating: nil, count: observers.count)
+        for (slot, k) in inside.prefix(BlastSolver.maxGauges).enumerated() {
+            let samples = solver.gaugeHistories[slot]
+            guard let first = samples.first?.pressure else { continue }
+            arrivals[k] = samples.first(where: { $0.pressure - first > 500 })?.time
+        }
+        let loads = (solver.envelopeComponentHistories() ?? []).filter { !$0.invalid }.map(
+            EnvelopeComponentLoad.init)
+        let judged = EnvelopeDamageAssessment.assess(
+            loads: loads, constructions: { scene.envelopeConstruction(for: $0) })
+        let names = Dictionary(uniqueKeysWithValues: scene.envelopeObjects.map { ($0.id, $0.name) })
+        var glass: [String: [(axis: Int, outward: Int, broken: Bool)]] = [:]
+        for building in judged {
+            guard let name = names[building.id], let sides = building.facadeGlass else { continue }
+            glass[name] = sides.filter { $0.axis < 2 }.map {
+                ($0.axis, $0.outward, $0.glass.logNoneBroken < log(0.5))
+            }
+        }
+        return (arrivals, glass)
     }
 }

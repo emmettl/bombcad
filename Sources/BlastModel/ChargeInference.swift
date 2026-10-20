@@ -138,6 +138,17 @@ public enum ChargeInference {
         public var exposureMedian = 1.0
         public var exposureSpread = 0.0
         /// The sampler: walkers, steps each (the first half discarded) and the seed.
+        /// The scene's own damage (`SurrogateDamage`): weighed side by side (a Bernoulli each, its
+        /// chance kept `damageFloor` from 0 and 1) or, if not, by bands as the glass is.
+        public var damagePerSide = true
+        public var damageFloor = 0.02
+        /// A bias on every side's load at once (the surrogate's error shared across a district),
+        /// sampled as a parameter of its own, `damageBias`, its log normal about nothing with this
+        /// standard deviation; nil, the default, for none. On the made-up district it widened the
+        /// yield's interval but moved its median up 1.1–2.9 times: given the bias, a larger charge
+        /// matches the run's fall of broken glass with distance better than the surrogate's own
+        /// does (docs/charge-inference.md).
+        public var damageBiasLogSD: Double?
         public var walkers = 48
         public var steps = 3000
         public var seed: UInt64 = 1
@@ -154,6 +165,7 @@ public enum ChargeInference {
             if let offsets = offsetRange {
                 scales.append(0.1 * max(offsets.upperBound - offsets.lowerBound, 1e-3))
             }
+            if damageBiasLogSD != nil { scales.append(0.1) }
             return Array(scales.prefix(dimensions))
         }
     }
@@ -369,6 +381,7 @@ public enum ChargeInference {
     static func names(_ settings: Settings) -> [String] {
         ["log10MassKg", "east", "north", "logSpread"] + (settings.heightRange != nil ? ["height"] : [])
             + (settings.offsetRange != nil ? ["offset"] : [])
+            + (settings.damageBiasLogSD != nil ? ["damageBias"] : [])
     }
 
     /// The model's chance of the window [a, b] for an arrival predicted at `t` with standard
@@ -407,6 +420,9 @@ public enum ChargeInference {
             k += 1
         }
         if let offsets = settings.offsetRange, !offsets.contains(theta[k]) { return -.infinity }
+        if let sigma = settings.damageBiasLogSD, let bias = theta.last {
+            return -0.5 * (bias / sigma) * (bias / sigma)
+        }
         return 0
     }
 
@@ -575,9 +591,11 @@ public enum ChargeInference {
     /// the share done now and then, and stops the sampling, with no samples kept, if it returns
     /// false; it changes nothing of the result otherwise.
     public static func infer(
-        arrivals: [Arrival], facades: [Facade] = [], settings: Settings = Settings(),
-        progress: (Double) -> Bool = { _ in true }
+        arrivals: [Arrival], facades: [Facade] = [], damage: SurrogateDamage? = nil,
+        settings given: Settings = Settings(), progress: (Double) -> Bool = { _ in true }
     ) -> Posterior {
+        var settings = given
+        if damage == nil { settings.damageBiasLogSD = nil }
         let names = names(settings)
         let dimensions = names.count
         let table = facades.isEmpty ? nil : GlassTable(settings: settings)
@@ -587,6 +605,12 @@ public enum ChargeInference {
             var likelihood = arrivalLogLikelihood(theta, arrivals: arrivals, settings: settings)
             if let table, likelihood > -.infinity {
                 likelihood += glassLogLikelihood(theta, facades: facades, table: table, settings: settings)
+            }
+            if let damage, likelihood > -.infinity {
+                likelihood += damage.logLikelihood(
+                    massKg: pow(10, theta[0]), east: theta[1], north: theta[2], bandM: settings.glassBandM,
+                    kappa: settings.glassConcentration, perSide: settings.damagePerSide,
+                    floor: settings.damageFloor, factor: exp(theta.last ?? 0))
             }
             // Anything that is not a number counts as impossible, so that no search or walker
             // settles on it.
@@ -609,6 +633,11 @@ public enum ChargeInference {
             }
             if let offsets = settings.offsetRange {
                 theta.append(offsets.lowerBound + random.unit() * (offsets.upperBound - offsets.lowerBound))
+            }
+            if let sigma = settings.damageBiasLogSD {
+                // Box–Muller.
+                let u = max(random.unit(), 1e-12)
+                theta.append(sigma * (-2 * log(u)).squareRoot() * cos(2 * Double.pi * random.unit()))
             }
             return theta
         }
