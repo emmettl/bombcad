@@ -3,6 +3,7 @@
 
     python3 -I Scripts/remote-sweep.py run <host|--here> <sweep.json> [--cores 16] [--wait 30m] [--results DIR]
     python3 -I Scripts/remote-sweep.py compare <results-A> <results-B> [--tolerance 1e-9]
+    python3 -I Scripts/remote-sweep.py test <host> <Suite>[,<Suite>…] [--cores 16] [--wait 0]
 
 A sweep (JSON) names its cases, each the arguments of one `blastmodel` command, and the files they
 read:
@@ -29,6 +30,11 @@ exit status. With `--here`, the same on this Mac, with this worktree's release b
 bytes, or for JSON the same structure with numbers within `--tolerance` (relative), or for text
 the same lines once times ("in 12.3 s") are left out. Exit 0 if every file agrees.
 
+`test` is the Linux lane of `check-affected`: BlastModel's test suites named, built and run on the
+host under the same lock and cores, from this worktree's copy there, their output streamed back.
+Its exit status is the tests'; 69 (the host unreachable), 75 (its lock taken) or 255 (the
+connection lost) say the lane was not there, and the suites should run here instead.
+
 Exit status of `run`: the first failing case's, 69 if the host could not be reached, 75 if its lock
 stayed taken. Nothing on the host but ~/bombcad-sweeps is touched: not the training runner's
 ~/bombcad-ml or its lock.
@@ -50,6 +56,8 @@ ROOT = "bombcad-sweeps"  # under the host's home
 RESULTS = "/Volumes/StudioData/bombcad/sweeps"
 SWIFT_PATHS = "$HOME/.local/share/swiftly/bin"
 UNREACHABLE, TAKEN = 69, 75
+# What says the lane was not there (the host, its lock, the connection), rather than a test failing.
+LANE_DOWN = {UNREACHABLE, TAKEN, 255}
 
 
 def _runner():
@@ -136,21 +144,9 @@ def serve_run(options):
     """Under the host's sweep lock: build, run the cases, write sweep.json beside them."""
     home = os.path.expanduser("~")
     os.environ["PATH"] = os.path.expandvars(SWIFT_PATHS) + ":" + os.environ.get("PATH", "")
-    lock = os.path.join(home, ROOT, "lock")
-    boot = runner.boot_id()
-    what = "sweep %s" % options["sweep"]["name"]
-    deadline = time.time() + options["wait"]
-    said = None
-    while not runner.acquire(lock, what, boot):
-        owner = runner.lock_owner(lock, boot) or {}
-        if time.time() >= deadline:
-            print("remote-sweep: the lock ~/%s/lock is held (%s); gave up" % (ROOT, owner.get("what", "unknown")),
-                  flush=True)
-            return TAKEN
-        if owner.get("what") != said:
-            said = owner.get("what")
-            print("remote-sweep: waiting for the lock (%s)" % said, flush=True)
-        time.sleep(10)
+    lock = take_lock(options, "sweep %s" % options["sweep"]["name"])
+    if lock is None:
+        return TAKEN
 
     def hung_up(signum, frame):
         runner.release(lock)
@@ -178,6 +174,106 @@ def serve_run(options):
         return failed
     finally:
         runner.release(lock)
+
+
+def take_lock(options, what):
+    """The host's sweep lock, waiting up to options["wait"] seconds: (lock path or None)."""
+    lock = os.path.join(os.path.expanduser("~"), ROOT, "lock")
+    boot = runner.boot_id()
+    deadline = time.time() + options["wait"]
+    said = None
+    while not runner.acquire(lock, what, boot):
+        owner = runner.lock_owner(lock, boot) or {}
+        if time.time() >= deadline:
+            print("remote-sweep: the lock ~/%s/lock is held (%s)" % (ROOT, owner.get("what", "unknown")), flush=True)
+            return None
+        if owner.get("what") != said:
+            said = owner.get("what")
+            print("remote-sweep: waiting for the lock (%s)" % said, flush=True)
+        time.sleep(5)
+    return lock
+
+
+def serve_test(options):
+    """Under the host's sweep lock: BlastModel's tests built, and the suites named run."""
+    os.environ["PATH"] = os.path.expandvars(SWIFT_PATHS) + ":" + os.environ.get("PATH", "")
+    lock = take_lock(options, "tests %s" % ",".join(options["suites"])[:80])
+    if lock is None:
+        return TAKEN
+
+    def hung_up(signum, frame):
+        runner.release(lock)
+        os._exit(128 + signum)
+
+    signal.signal(signal.SIGHUP, hung_up)
+    signal.signal(signal.SIGTERM, hung_up)
+    try:
+        repo = os.path.join(os.path.expanduser("~"), ROOT, "src")
+        cores = options["cores"]
+        pinned = ["taskset", "-c", "0-%d" % (cores - 1)] if cores and shutil.which("taskset") else []
+        started = time.time()
+        built = subprocess.run(["swift", "build", "--build-tests", "-j", str(cores)], cwd=repo,
+                               stdin=subprocess.DEVNULL)
+        print("remote-sweep: tests built in %.0f s" % (time.time() - started), flush=True)
+        if built.returncode:
+            return built.returncode
+        pattern = r"\.(" + "|".join(options["suites"]) + r")(/|$)"
+        return subprocess.run(pinned + ["swift", "test", "--skip-build", "--filter", pattern], cwd=repo,
+                              stdin=subprocess.DEVNULL).returncode
+    finally:
+        runner.release(lock)
+
+
+def send_worktree(host, log):
+    """This worktree and these tools to the host's ~/bombcad-sweeps: 0, or rsync's status."""
+    rsync = ["rsync", "-a", "-e", " ".join(SSH)]
+    made = runner.ssh(host, "mkdir -p %s/src %s/tools" % (ROOT, ROOT))
+    if made.returncode != 0:
+        return UNREACHABLE
+    log("sending this worktree to %s:~/%s/src" % (host, ROOT))
+    for step in (
+        rsync + ["--delete", "--exclude", "/.build", "--exclude", "/.git", "--exclude", "/.claude", "--exclude",
+                 "/dist", REPO + "/", "%s:%s/src/" % (host, ROOT)],
+        rsync + [os.path.abspath(__file__), os.path.join(HERE, "ml", "remote-train.py"), "%s:%s/tools/" % (host, ROOT)],
+    ):
+        result = subprocess.run(step, stdin=subprocess.DEVNULL)
+        if result.returncode != 0:
+            return result.returncode
+    return 0
+
+
+def lane_ready(host):
+    """None if `host` answers and its sweep lock is free, else why not: asked before a check splits
+    its suites, so that a lane that is not there costs nothing."""
+    why = runner.reachable(host)
+    if why:
+        return why
+    probe = runner.ssh(host, "cat %s/lock/owner 2>/dev/null; echo; cat /proc/sys/kernel/random/boot_id" % ROOT,
+                       timeout=30)
+    lines = probe.stdout.decode(errors="replace").strip().splitlines()
+    try:
+        owner = json.loads(lines[0]) if lines and lines[0].startswith("{") else None
+    except ValueError:
+        owner = None
+    if owner and owner.get("boot") == (lines[-1] if lines else None):
+        alive = runner.ssh(host, "kill -0 %d 2>/dev/null && echo alive" % int(owner.get("pid") or 0), timeout=30)
+        if b"alive" in alive.stdout:
+            return "its lock is held (%s)" % owner.get("what", "unknown")
+    return None
+
+
+def test(host, suites, cores=16, wait=0, stream=None):
+    """BlastModel's `suites` run on `host`, their output to `stream` (a file; default this one's):
+    the tests' exit status, or one of LANE_DOWN."""
+    def log(line):
+        print("remote-sweep: " + line, file=stream or sys.stdout, flush=True)
+    sent = send_worktree(host, log)
+    if sent:
+        return UNREACHABLE
+    options = {"suites": suites, "cores": cores, "wait": wait}
+    command = SSH + ["-tt", "-q", host, "python3 %s/tools/remote-sweep.py serve-test %s" % (
+        ROOT, shlex.quote(json.dumps(options)))]
+    return subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT if stream else None).wait()
 
 
 # MARK: - Here
@@ -315,6 +411,13 @@ def compare(arguments):
 def main(arguments):
     if arguments and arguments[0] == "serve-run":
         return serve_run(json.loads(arguments[1]))
+    if arguments and arguments[0] == "serve-test":
+        return serve_test(json.loads(arguments[1]))
+    if len(arguments) >= 3 and arguments[0] == "test":
+        def option(name, default):
+            return arguments[arguments.index(name) + 1] if name in arguments else default
+        return test(arguments[1], [s for s in arguments[2].split(",") if s], int(option("--cores", "16")),
+                    duration(option("--wait", "0")))
     if len(arguments) >= 3 and arguments[0] == "run":
         return run(arguments[1:])
     if len(arguments) >= 3 and arguments[0] == "compare":

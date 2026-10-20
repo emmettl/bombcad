@@ -69,6 +69,15 @@ SPEC.loader.exec_module(impact)
 REMOTE_SPEC = importlib.util.spec_from_file_location("remote", Path(__file__).with_name("remote.py"))
 remote = importlib.util.module_from_spec(REMOTE_SPEC)
 REMOTE_SPEC.loader.exec_module(remote)
+SWEEP_SPEC = importlib.util.spec_from_file_location("remote_sweep", Path(__file__).with_name("remote-sweep.py"))
+sweep = importlib.util.module_from_spec(SWEEP_SPEC)
+SWEEP_SPEC.loader.exec_module(sweep)
+
+# The Linux lane: BlastModel's suites run on this host (Scripts/remote-sweep.py's `test`) beside
+# the build and the other suites here, when it answers and its lock is free. BOMBCAD_LINUX_HOST
+# names another; set empty, or `--no-linux`, there is none.
+LINUX_HOST = "bombcad-pc"
+LINUX_TESTS = "Tests/BlastModelTests/"
 
 # Files whose change can move any result: the solvers' shaders, BlastSolver and its extensions, the
 # solvers' shared types (with their `+GPU`/`+CPU` halves), RadialBlast. Tier core: their suites, and
@@ -859,10 +868,22 @@ def run(command, env=None):
     return subprocess.run(command, cwd=ROOT, env=env).returncode
 
 
+def suite_filter(suites):
+    return r"\.(" + "|".join(suites) + r")(/|$)"
+
+
 def steps(suites):
-    """The build and test steps, which may run on the other Mac."""
-    return [["make", "build-strict"], ["make", "ifc-converter"],
-            ["swift", "test", "--filter", r"\.(" + "|".join(suites) + r")(/|$)"]]
+    """The build and test steps, which may run on the other Mac (no test run without suites: the
+    Linux lane may have taken them all)."""
+    return [["make", "build-strict"], ["make", "ifc-converter"]] + (
+        [["swift", "test", "--filter", suite_filter(suites)]] if suites else [])
+
+
+def linux_suites(suites, tests=None):
+    """Those of `suites` defined in BlastModel's tests, which build and run on Linux."""
+    tests = test_files() if tests is None else tests
+    defined = {name for path, text in tests.items() if path.startswith(LINUX_TESTS) for name in suites_in(text)}
+    return [suite for suite in suites if suite in defined]
 
 
 def run_steps(suites):
@@ -945,6 +966,8 @@ def main():
     where_group.add_argument("--local", action="store_true", help="run the build and tests here, under gpu-slot")
     where_group.add_argument("--remote", action="store_true",
                              help="run the build and tests on the other Mac (remote.json), waiting for it if taken")
+    parser.add_argument("--no-linux", action="store_true",
+                        help="run BlastModel's suites with the rest, not on the Linux lane")
     parser.add_argument("--min-waiting", type=int, default=MIN_WAITING,
                         help="jobs waiting for gpu-slot from which this Mac counts as busy")
     arguments = parser.parse_args()
@@ -982,6 +1005,19 @@ def main():
     digests = DigestCheck(base, arguments.digest_cache, in_slot=in_slot) if level == "core" else None
     if digests:
         print("  " + digests.describe(), flush=True)
+    # The Linux lane: BlastModel's suites on the PC beside the rest, if it is there now.
+    linux_host = os.environ.get("BOMBCAD_LINUX_HOST", LINUX_HOST)
+    lane = []
+    if level in ("affected", "covered", "core") and suites and linux_host and not arguments.no_linux:
+        candidates = linux_suites(suites)
+        if candidates:
+            why = sweep.lane_ready(linux_host)
+            if why:
+                print(f"  BlastModel's {len(candidates)} suite(s) here: the Linux lane {linux_host} is not there ({why})",
+                      flush=True)
+            else:
+                lane = candidates
+                print(f"  BlastModel's {len(lane)} suite(s) on the Linux lane, {linux_host}, beside the rest", flush=True)
     if arguments.dry_run:
         return 0
     wait = 7200 if forced == "remote" else 0
@@ -1010,14 +1046,37 @@ def main():
         beside = {"log": log, "status": 1}
         beside["thread"] = threading.Thread(target=lambda: beside.update(status=digests.run()), daemon=True)
         beside["thread"].start()
+    linux = None
+    if lane:
+        linux = {"log": tempfile.TemporaryFile(mode="w+"), "status": sweep.UNREACHABLE, "started": time.time()}
+
+        def on_linux():
+            linux["status"] = sweep.test(linux_host, lane, stream=linux["log"])
+            linux["seconds"] = time.time() - linux["started"]
+
+        linux["thread"] = threading.Thread(target=on_linux, daemon=True)
+        linux["thread"].start()
     if level in ("affected", "covered", "core"):
+        mine = [suite for suite in suites if suite not in lane]
         # The suites go in the environment here, so that gpu-slot learns one command's memory.
-        environment = dict(os.environ, CHECK_AFFECTED_SUITES=",".join(suites))
+        environment = dict(os.environ, CHECK_AFFECTED_SUITES=",".join(mine))
         status, ran = run_where(
             where, host, settings,
             lambda: run(slotted([sys.executable, "Scripts/check-affected.py", "check-steps"]), env=environment),
-            ["python3", "Scripts/check-affected.py", "check-steps", "--suites", ",".join(suites)],
+            ["python3", "Scripts/check-affected.py", "check-steps", "--suites", ",".join(mine)],
             settings["laneGB"], wait)
+        if linux and not status:
+            linux["thread"].join()
+            linux["log"].seek(0)
+            print(linux["log"].read(), end="", flush=True)
+            if linux["status"] in sweep.LANE_DOWN:
+                print(f"check-affected: the Linux lane {linux_host} was lost (exit {linux['status']}); "
+                      f"BlastModel's {len(lane)} suite(s) here", flush=True)
+                status = run(slotted(["swift", "test", "--filter", suite_filter(lane)]))
+            else:
+                print(f"check-affected: BlastModel's {len(lane)} suite(s) on {linux_host} in {linux['seconds']:.0f} s, "
+                      f"sending and building included: {'passed' if linux['status'] == 0 else 'FAILED'}", flush=True)
+                status = linux["status"]
         if beside:
             if status:
                 print("check-affected: stopping the digests, since the steps failed", flush=True)
@@ -1030,6 +1089,7 @@ def main():
         if status:
             return status
     print(f"check-affected: passed ({level}{', build and tests on ' + host if ran == 'there' else ''}"
+          f"{', BlastModel on ' + linux_host if linux and linux['status'] == 0 else ''}"
           f"{', digests bit-identical' if digests else ''})")
     return 0
 

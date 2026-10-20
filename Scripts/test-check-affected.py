@@ -155,6 +155,27 @@ def made_up_map():
     }
 
 
+class LinuxLaneTests(unittest.TestCase):
+    def test_only_blastmodels_suites_go_to_the_linux_lane(self):
+        tests = {
+            "Tests/BlastModelTests/GlassTests.swift": "@Suite struct GlassTests {}\nstruct HelperTests {}",
+            "Tests/BlastCoreTests/SolverTests.swift": "@Suite struct SolverTests {}",
+            "Tests/BombCADTests/AppTests.swift": "struct AppTests {}",
+        }
+        self.assertEqual(check.linux_suites(["AppTests", "GlassTests", "SolverTests"], tests), ["GlassTests"])
+        self.assertEqual(check.linux_suites(["SolverTests"], tests), [])
+
+    def test_with_every_suite_on_the_lane_the_mac_still_builds_but_runs_no_tests(self):
+        self.assertEqual(check.steps([]), [["make", "build-strict"], ["make", "ifc-converter"]])
+        self.assertEqual(check.steps(["A", "B"])[-1], ["swift", "test", "--filter", r"\.(A|B)(/|$)"])
+
+    def test_a_lost_lane_is_told_apart_from_failing_tests(self):
+        for status in (69, 75, 255):
+            self.assertIn(status, check.sweep.LANE_DOWN)
+        for status in (0, 1, 2):
+            self.assertNotIn(status, check.sweep.LANE_DOWN)
+
+
 class FakeRepository:
     """What check-affected asks git, made up: the base and the map's commit are the same unless
     `ages` says how many commits since the map touched a file."""
