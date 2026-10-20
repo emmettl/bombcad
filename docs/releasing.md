@@ -272,5 +272,21 @@ user had said to publish once it was ready. It was published on 2026-10-19 as `v
 the checksum, validated its ticket, passed `codesign` and was accepted by `spctl`. The Homebrew
 cask was moved to 0.5.1 and `brew audit --cask --strict --online` passed.
 
+Build 13 (0.6.0) was prepared on 2026-10-20 from `27fb9be7` on the branch `release/0.6.0`:
+main at `86496801` with its notes assembled from 72 fragments (the main changes first, then New,
+Changed, Fixed and Known limitations), and one fix picked from main (`14d084fd`, an unused
+binding that the strict build in `make release` caught from a file split). A first `make release`
+stopped there, before signing. The second passed `make check` (399 app and 803 model tests, the
+core GPU suites, build-strict with no warnings), the release smoke runs and the app's own run and
+interface smoke from inside its bundle, and Apple accepted it. A fresh expansion of its ZIP
+matched the checksum (`face37a4fda6794923f18659312bd7247747d8780ae11a3c64fcdfad25b14bfb`),
+validated its stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl`
+as `Notarized Developer ID`, holds the licence and the four resource bundles, is 0.6.0, build 13,
+arm64, and ran a project from inside its bundle. The user said to publish; it was published on
+2026-10-20 as `v0.6.0`, tag on `27fb9be7`, with its notes' links pointing at the docs as tagged.
+The copy downloaded back matched the checksum, validated its ticket, passed `codesign` and was
+accepted by `spctl`. The Homebrew cask was moved to 0.6.0 and `brew audit --cask --strict
+--online` passed.
+
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
