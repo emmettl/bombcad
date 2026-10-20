@@ -121,4 +121,24 @@ struct TerrainDownstreamTests {
         try flat.finish()
         #expect(try !String(contentsOf: flatURL, encoding: .utf8).contains("Terrain"))
     }
+
+    @Test("Thermal receivers on the ground lie on the terrain, facing out of it")
+    func thermalReceivers() throws {
+        var scenario = Scenario(
+            name: "Hill", domainSize: SIMD3(40, 30, 20), boxes: [],
+            charge: Charge(mass: 10, position: SIMD3(5, 15, 1)))
+        let hill = Terrain.hill(
+            domain: scenario.domainSize, spacing: 0.5, centre: SIMD2(25, 15), height: 6, radius: 5)
+        scenario.terrain = hill
+        let grids = ThermalExposure.surfaceGrids(scene: FragmentScene(scenario), spec: ThermalSpec())
+        let ground = try #require(grids.first { $0.surface == "ground" })
+        #expect(!ground.receivers.isEmpty)
+        for receiver in ground.receivers {
+            // A millimetre off the surface along the normal there.
+            let foot = receiver.position - 0.001 * receiver.normal
+            #expect(simd_distance(receiver.normal, hill.normal(at: SIMD2(foot.x, foot.y))) < 1e-5)
+            #expect(abs(foot.z - hill.height(at: foot)) < 1e-4)
+        }
+        #expect(ground.receivers.contains { $0.normal.z < 0.9 })
+    }
 }

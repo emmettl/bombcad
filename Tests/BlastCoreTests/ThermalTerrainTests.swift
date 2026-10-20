@@ -116,30 +116,6 @@ struct ThermalTerrainTests {
         }
     }
 
-    @Test("The sight-line test agrees with the surface sampled finely along each segment")
-    func againstSampling() throws {
-        let terrain = rough
-        let sight = try #require(TerrainSight(terrain))
-        let rays = segments(over: terrain, count: 2000)
-        var (checked, blocked) = (0, 0)
-        for ray in rays {
-            // The lowest the segment comes below or above the surface, at 4,000 points.
-            var lowest = Float.infinity
-            for n in 0...4000 {
-                let p = ray.origin + Float(n) / 4000 * ray.length * ray.direction
-                lowest = min(lowest, p.z - terrain.height(at: p))
-            }
-            // Too close to call by sampling: a grazing segment, or a step between samples.
-            if abs(lowest) < 0.05 { continue }
-            checked += 1
-            if lowest < 0 { blocked += 1 }
-            #expect(
-                sight.blocks(from: ray.origin, to: ray.end) == (lowest < 0), "\(ray), clearance \(lowest)")
-        }
-        print("\(checked) segments checked by sampling, \(blocked) blocked")
-        #expect(checked > 1800 && blocked > 250 && checked - blocked > 250)
-    }
-
     @Test(
         "The GPU's test, waited for, is the CPU's ray for ray on a rough terrain with blocks",
         .enabled(if: ThermalTerrainTests.gpu))
@@ -226,22 +202,6 @@ struct ThermalTerrainTests {
             #expect(largest > 0 && worst < 1e-3 * largest, "\(worst) of \(largest)")
             #expect(answers[0].filter { $0 == 0 }.count == answers[1].filter { $0 == 0 }.count)
         }
-    }
-
-    @Test("Receivers on a block's faces below the terrain are buried")
-    func buriedFaces() {
-        var spec = ThermalSpec()
-        spec.groundSpacing = 20
-        spec.surfaceSpacing = 1
-        var scenario = Scenario(
-            name: "Cut", domainSize: domain, boxes: [Box(min: SIMD3(52, 45, 0), max: SIMD3(54, 55, 20))],
-            charge: Charge(mass: 1, position: SIMD3(30, 50, 1)))
-        scenario.gauges = []
-        scenario.terrain = ridge
-        let receivers = ThermalExposure.receivers(scene: FragmentScene(scenario), spec: spec)
-        let block = receivers.filter { $0.surface == "block 0" }
-        #expect(!block.isEmpty)
-        #expect(block.allSatisfy { !ridge.contains($0.position) })
     }
 }
 

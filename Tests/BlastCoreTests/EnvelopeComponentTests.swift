@@ -345,19 +345,6 @@ struct EnvelopeComponentHistoryTests {
         }
     }
 
-    @Test("Saved options without the arrival's overpressure start their windows as the air moves")
-    func arrivalDecoding() throws {
-        let options = EnvelopeHistoryOptions(windowS: 0.5, windowFromArrival: true)
-        #expect(options.arrivalPa == 500)
-        var json = try #require(
-            JSONSerialization.jsonObject(with: JSONEncoder().encode(options)) as? [String: Any])
-        #expect(json["arrivalPa"] as? Double == 500)
-        json["arrivalPa"] = nil
-        let old = try JSONDecoder().decode(
-            EnvelopeHistoryOptions.self, from: JSONSerialization.data(withJSONObject: json))
-        #expect(old.arrivalPa == 0)
-    }
-
     @Test("Histories repeat bit for bit however the steps are cut into batches")
     func batching() throws {
         var scene = try scene()

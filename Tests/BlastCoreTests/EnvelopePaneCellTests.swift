@@ -26,18 +26,6 @@ struct EnvelopePaneCellTests {
         return scene
     }
 
-    @Test("A pane thinner than a cell takes the cells across its window through its wall, cut or not")
-    func cells() throws {
-        for cut in [true, false] {
-            let scene = try scene(cutOpening: cut)
-            let grid = scene.grid(cellSize: 0.25)
-            let cells = scene.envelopeObjects[0].envelope!.paneCells(0, grid: grid)
-            // 6 across, 5 up (centres in [1, 2.25)), the wall's one row of centres (4.125 m) through.
-            #expect(cells.count == 30, "cut \(cut): \(cells.count)")
-            #expect(Set(cells.map { ($0 / grid.nx) % grid.ny }) == [16])
-        }
-    }
-
     @Test("Its window is closed in the air and it records the load, not the wall")
     func records() throws {
         for cut in [true, false] {

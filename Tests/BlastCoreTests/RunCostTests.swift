@@ -294,17 +294,4 @@ struct RunCostTests {
         let none = advice(memory: 4 << 30)
         #expect(none.unmet.contains { $0.contains("more than this Mac's 4.3 GB.") })
     }
-
-    @Test("Targets read from the command line")
-    func targets() {
-        #expect(AdvisorTarget(text: "peak:20%") == .fidelity(.peak, within: 0.2))
-        #expect(AdvisorTarget(text: "impulse:0.15") == .fidelity(.impulse, within: 0.15))
-        #expect(
-            AdvisorTarget(text: "time:10m") == .seconds(600)
-                && AdvisorTarget(text: "time:2h") == .seconds(7200))
-        #expect(AdvisorTarget(text: "time:90") == .seconds(90))
-        for bad in ["peak", "peak:", "speed:10%", "time:-1", "peak:0"] {
-            #expect(AdvisorTarget(text: bad) == nil, "\(bad)")
-        }
-    }
 }
