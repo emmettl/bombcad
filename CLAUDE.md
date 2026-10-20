@@ -28,15 +28,18 @@ Rules for every session and agent. Keep them lean: the aim is throughput with li
 
 ## Landing a change
 
-- `make ship` (once it is on main) runs the whole sequence below. By hand, it is:
+- `make ship` runs the whole sequence below, and refuses a branch that would silently revert
+  someone else's recent work (`--allow-reverts` if that's intended). By hand, it is:
   1. `make format && make lint`, then `make build-strict` with no warnings;
   2. plain `make check-affected`. Never wrap it in gpu-slot, and **never pipe it** (`| tail`
      makes `&&` test tail's exit status, not the check's);
   3. `git fetch origin && git rebase origin/main`;
   4. `git diff origin/main...HEAD --stat` showing only your own files;
   5. `git push origin HEAD:main`, chained with `&&`.
-- Solver and shader changes need the affected suites plus bit-identical digests; the nightly
-  full check catches the rest and names the suspect commits.
+- `make ship` checks solver and shader changes by the affected suites plus bit-identical
+  digests; the nightly full check catches the rest and names the suspect commits. A change meant
+  to move results fails the digests: land it with `make ship ARGS=--full`, and give the reason in
+  the commit message.
 - User-visible changes add a fragment in `docs/release-notes/next/`
   (`python3 Scripts/release-notes.py add <topic>`). Don't edit `docs/roadmap.md`: the
   orchestrator refreshes it from the tracker.
