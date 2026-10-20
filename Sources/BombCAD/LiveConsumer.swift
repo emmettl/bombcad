@@ -83,9 +83,13 @@ protocol FrameConsumer: AnyObject, Sendable {
     func finish(frameInterval: Double) async throws -> ConsumerOutcome
     /// Lets the consumer go without its result, as when the run fails.
     func cancel()
+    /// Why its session or connection failed before the result, once it has; nil while it holds
+    /// (and always, for one that cannot fail or carries on by itself).
+    var sessionFailure: (any Error)? { get }
 }
 
 extension FrameConsumer {
+    var sessionFailure: (any Error)? { nil }
     /// The particles as of the last frame consumed, for fragments flown live.
     var fragmentLive: FragmentLive? { live?.fragments }
     /// The receivers as of the last frame consumed, for thermal radiation reckoned live.
@@ -203,6 +207,7 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     private var total = 0
     private var spent = 0.0
     private var current: ConsumerLive?
+    private var failedWith: (any Error)?
     /// Whether the connection is this consumer's to close when done, or shared, as by the app.
     private let ownsClient: Bool
 
@@ -237,7 +242,11 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
                     let next = try? live.updated(by: header, payload: payload)
                 else { return }
                 self.lock.withLock { self.current = next }
-            }, failed: failed)
+            },
+            failed: { [weak self] error in
+                self?.lock.withLock { self?.failedWith = error }
+                failed(error)
+            })
     }
 
     func report(after frame: Int) -> ConsumerReport? {
@@ -249,6 +258,7 @@ final class RemoteFrameConsumer: FrameConsumer, @unchecked Sendable {
     var seconds: Double { lock.withLock { spent } }
     var report: ConsumerReport { lock.withLock { latest } }
     var live: ConsumerLive? { lock.withLock { current } }
+    var sessionFailure: (any Error)? { lock.withLock { failedWith } }
 
     func send(_ input: ConsumerInput) {
         lock.withLock {

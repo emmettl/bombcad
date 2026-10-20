@@ -161,9 +161,16 @@ struct FrameConsumerTests {
                 there[n].send(input)
             }
         }
-        while !(here + there as [any FrameConsumer]).allSatisfy(\.caughtUp) {
+        // A session that fails ends the wait at once, with its reason, not at the hang limit.
+        while !(here + there as [any FrameConsumer]).allSatisfy({ $0.caughtUp || $0.sessionFailure != nil }) {
             try await Task.sleep(for: .milliseconds(5))
         }
+        for consumer in there {
+            #expect(
+                consumer.sessionFailure == nil,
+                "\(consumer.kind): \(String(describing: consumer.sessionFailure))")
+        }
+        guard there.allSatisfy({ $0.sessionFailure == nil }) else { return }
         // Caught up, each has its last frame's state in.
         #expect(zip(here, there).allSatisfy { $0.live == $1.live })
         #expect(here[0].fragmentLive?.positions.count == 220)
@@ -206,6 +213,21 @@ struct FrameConsumerTests {
         await #expect(throws: ProjectFileError.self) { try await local.finish(frameInterval: 0.001) }
         worker.close()
         await server.value
+    }
+
+    @Test("A plain remote model whose Mac drops says so at once, rather than never catching up")
+    func failureIsSeen() async throws {
+        let frames = try Frames()
+        let worker = flakyWorker(dropAfter: 2)
+        _ = try await worker.start()
+        let consumer = RemoteFrameConsumer(client: worker, kind: frames.kinds[0], ownsClient: false)
+        for frame in frames.inputs { consumer.send(frame[0]) }
+        while !consumer.caughtUp && consumer.sessionFailure == nil {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(!consumer.caughtUp)
+        #expect(consumer.sessionFailure != nil)
+        worker.close()
     }
 
     @Test("A model whose Mac drops carries on here, from the frames kept, to the same result")
