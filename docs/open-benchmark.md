@@ -12,11 +12,24 @@ other code has run them yet ([what this doesn't yet do](#what-this-doesnt-yet-do
 | `Benchmarks/open/schema/case.schema.json`, `results.schema.json` | JSON Schemas (draft 2020-12) for a case and a results file |
 | `Benchmarks/open/results/bombcad-0.6.0-dev.json` | BombCAD's entry |
 | `Scripts/open-benchmark/score.py` | The scorer: Python 3, standard library only |
-| `Scripts/open-benchmark/test_score.py` | Its tests, run by `make ci-test` |
+| `Scripts/open-benchmark/make_cases.py`, `make_bombcad_results.py` | The generators that write the cases and BombCAD's entry |
+| `Scripts/open-benchmark/test_score.py` | The scorer's tests, and a check that the committed JSON is exactly what the generators write; run by `make ci-test` |
 
 ```bash
 python3 -I Scripts/open-benchmark/score.py Benchmarks/open/results/bombcad-0.6.0-dev.json
 ```
+
+**Changing a case or the entry.** The JSON files are generated: edit the values in the
+generator, not the file, then write them again and run the tests, which fail if a committed file
+differs by a byte from what its generator writes.
+
+```bash
+python3 -I Scripts/open-benchmark/make_cases.py               # Benchmarks/open/cases/*.json
+python3 -I Scripts/open-benchmark/make_bombcad_results.py     # Benchmarks/open/results/bombcad-0.6.0-dev.json
+python3 -I Scripts/open-benchmark/test_score.py
+```
+
+Both take `--out` to write elsewhere.
 
 ## The cases
 

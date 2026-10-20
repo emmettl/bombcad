@@ -251,5 +251,34 @@ class Validation(unittest.TestCase):
             self.assertIn("should be its id", err)
 
 
+def load_generator(name):
+    spec = importlib.util.spec_from_file_location(name, HERE / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class Regeneration(unittest.TestCase):
+    """The committed JSON is exactly what the generators write: edit the generators, not the files."""
+
+    def test_cases_regenerate_exactly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with contextlib.redirect_stdout(io.StringIO()):
+                load_generator("make_cases").main(["--out", directory])
+            written = {path.name: path.read_bytes() for path in Path(directory).glob("*.json")}
+        committed = {path.name: path.read_bytes() for path in CASES.glob("*.json")}
+        self.assertEqual(sorted(written), sorted(committed))
+        for name in committed:
+            self.assertEqual(written[name], committed[name], f"{name} differs from make_cases.py's output")
+
+    def test_bombcad_entry_regenerates_exactly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "entry.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                load_generator("make_bombcad_results").main(["--out", str(out)])
+            self.assertEqual(out.read_bytes(), BOMBCAD.read_bytes(),
+                             "bombcad-0.6.0-dev.json differs from make_bombcad_results.py's output")
+
+
 if __name__ == "__main__":
     unittest.main()
