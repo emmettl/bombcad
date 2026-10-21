@@ -8,6 +8,11 @@ func runAcousticPhase() throws {
     guard let destination = option("out") else {
         throw BlastError.allocationFailed("acoustic-phase requires --out NEW-DIRECTORY")
     }
+    let cflText = option("cfl") ?? "0.45"
+    guard let cfl = Float(cflText), [Float(0.45), 0.225].contains(cfl) else {
+        throw BlastError.allocationFailed("acoustic-phase --cfl takes 0.45 or 0.225")
+    }
+    let resolutions = flag("fine") ? [512, 1024, 2048] : [128, 256, 512]
     let out = URL(fileURLWithPath: destination)
     guard !FileManager.default.fileExists(atPath: out.path) else {
         throw BlastError.allocationFailed("acoustic-phase refuses to overwrite output")
@@ -19,7 +24,7 @@ func runAcousticPhase() throws {
     }
     var results: [[String: Any]] = []
     for amplitude in [1.0, 10, 100] {
-        for nx in [128, 256, 512] {
+        for nx in resolutions {
             let reference = AcousticPhaseReference(amplitude: amplitude)
             let dx = Float(16) / Float(nx)
             let indices = [Int(4 / dx), 0]
@@ -30,6 +35,7 @@ func runAcousticPhase() throws {
                     var configuration = SolverConfiguration()
                     configuration.reflectiveFaces = [.xMin, .yMin, .yMax, .zMin, .zMax]
                     configuration.skipStillAir = tiled
+                    configuration.cfl = cfl
                     let solver = try BlastSolver(
                         device: device, grid: Grid(nx: nx, ny: 1, nz: 1, cellSize: dx),
                         configuration: configuration)
@@ -46,12 +52,17 @@ func runAcousticPhase() throws {
                     let initialPressure = (0..<nx).map {
                         solver.primitive($0, 0, 0).pressure - configuration.ambientPressure
                     }
+                    let initialConserved = solver.withState { cells in
+                        (0..<nx).map { i in [cells[i].density, cells[i].momentumX, cells[i].energy] }
+                    }
                     let initial = solver.firstPhaseDiagnosticStateHashes()
                     let advanced = solver.advance(until: reference.stopTime)
                     let final = solver.firstPhaseDiagnosticStateHashes()
                     let records = solver.firstPhaseSnapshot() ?? []
                     let row: [String: Any] = [
                         "initialHostProjectedOverpressurePa": initialPressure,
+                        "initialConservedRhoMxEnergy": initialConserved, "gamma": configuration.gamma,
+                        "cfl": cfl,
                         "observed": observed, "stable": advanced.isStable, "steps": advanced.steps,
                         "time": solver.time, "initialHashes": initial, "finalHashes": final,
                         "records": indices.map { i in
@@ -65,7 +76,7 @@ func runAcousticPhase() throws {
                         let traceRow: [String: Any] = [
                             "format": "bombcad-acoustic-phase-trace-1",
                             "complete": advanced.isStable && solver.time >= reference.stopTime * (1 - 1e-6),
-                            "amplitudePa": amplitude, "nx": nx, "dx": dx, "tiled": tiled,
+                            "amplitudePa": amplitude, "nx": nx, "dx": dx, "tiled": tiled, "cfl": cfl,
                             "columns": indices, "x": indices.map { Double(Float($0) + 0.5) * Double(dx) },
                             "seedRecords": trace.seedRecords, "steps": trace.samples.map(\.step),
                             "times": trace.samples.map(\.time), "values": trace.samples.map(\.values),

@@ -518,3 +518,10 @@ now supplies independent linear direct/reflected-pulse references at 1/10/100 Pa
 resolutions. All 36 Metal runs have exact observation and tiled/full parity. The 1 Pa
 impulse trend is nonmonotonic and its finest wall-cell peak is 6.14% low; no broader accuracy
 or CUDA-admission claim follows. The fixed opt-in CLI and all histories are retained.
+
+The [144-run acoustic control matrix](../Benchmarks/CUDAAcceptance/2026-10-22-acoustic-controls/summary.md)
+shows that more cells or smaller CFL do not reliably improve 1 Pa impulse accuracy, despite
+exact observation/tiling parity and shared-baseline reproduction. A default-arithmetic
+1024-cell wall case changes from −0.44% impulse error at CFL0.45 to −16.75% at CFL0.225.
+Initialization transport and recorder accumulation controls do not explain it.
+emmettl/bombcad-work#80 remains open; no CUDA admission or numerical default changes.

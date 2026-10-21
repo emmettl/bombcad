@@ -1,0 +1,19 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Using on-disk description]
+[12 / 107]
+[20 / 106] SceneModel
+[38 / 119] ContactSearchMetal
+[53 / 103] SceneView
+[55 / 97] BlastModel
+[57 / 98] BlastModel
+[65 / 99] BlastCore
+[67 / 100] BlastCore
+[72 / 96] BlastRender
+[74 / 97] BlastRender
+[79 / 82] blastbench-product
+[81 / 84] blastbench-product
+[84 / 86] blastbench-product
+Build complete! (6.65 secs)
+build-strict: no warnings

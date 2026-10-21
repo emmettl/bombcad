@@ -1,0 +1,34 @@
+[
+  {
+    "command": [
+      "/Users/louisemmett/.local/bin/gpu-slot",
+      "--mem",
+      "1",
+      "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+      "acoustic-phase",
+      "--fine",
+      "--cfl",
+      "0",
+      "--out",
+      "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/refused-output"
+    ],
+    "returncode": 1,
+    "output": "Error: Could not allocate acoustic-phase --cfl takes 0.45 or 0.225\n"
+  },
+  {
+    "command": [
+      "/Users/louisemmett/.local/bin/gpu-slot",
+      "--mem",
+      "1",
+      "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+      "acoustic-phase",
+      "--fine",
+      "--cfl",
+      "nan",
+      "--out",
+      "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/refused-output"
+    ],
+    "returncode": 1,
+    "output": "Error: Could not allocate acoustic-phase --cfl takes 0.45 or 0.225\n"
+  }
+]

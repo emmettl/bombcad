@@ -836,3 +836,17 @@ two-pulse histories. At 1 Pa the finest direct/wall-cell impulse errors are −0
 but the resolution trend is nonmonotonic and the wall-cell peak stays 6.14% low. This is
 Metal ideal-gas-core evidence, not CUDA/hot-air/terrain acceptance or an exact finite-amplitude
 Euler reference. `blastbench acoustic-phase --out NEW-DIRECTORY` exposes the fixed diagnostic.
+
+For the follow-up tracked by emmettl/bombcad-work#80, `acoustic-phase --fine` selects
+512/1024/2048 cells. Explicit `--cfl 0.45` (the existing setting) or `--cfl 0.225` keeps
+temporal controls bounded. The command now retains initial rho, x-momentum and energy
+alongside host-projected overpressure; the default 128/256/512 matrix is unchanged.
+
+The [fine arithmetic/CFL controls](../Benchmarks/CUDAAcceptance/2026-10-22-acoustic-controls/summary.md)
+complete 144 runs with exact observation, tiling and shared-baseline parity. At 1 Pa,
+refinement to 2048 cells does not converge the first impulse, and halving CFL worsens
+wall-cell error to −16.75% at 1024 cells (default arithmetic), versus −0.44% at CFL0.45.
+Declared Double linear transports of the rounded initial state and native/Double recorder
+accumulation do not account for that discrepancy. No arithmetic/CFL setting or target policy
+is adopted. emmettl/bombcad-work#80 remains open for nonlinear higher-precision/update-level
+analysis; this is Metal ideal-gas evidence, not CUDA or recommended-product admission.

@@ -1,0 +1,2033 @@
+{
+  "files": [
+    {
+      "original": "candidate.patch",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/candidate.patch.gz",
+      "compressedSHA256": "586f8c7baa3fdf6518f667842bbafafac7820d16b3215055aa2d0f17628b88c4",
+      "rawSHA256": "ba20303efda0591f1fa9f802db1c5a0022546e0d9aa49da03fda4f3418c0c57e",
+      "rawBytes": 4710,
+      "compressedBytes": 1773,
+      "repositoryCopy": "evidence/candidate.patch.gz"
+    },
+    {
+      "original": "default-cfl0.225.log",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225.log.gz",
+      "compressedSHA256": "56e52d1ece9dcc776f884d90faf562ad74a82af2763266f14e277c713f5402d3",
+      "rawSHA256": "107f6c9b5b1d53b648a984b90e42876ea0aebeeae6810075ff091b6455ad8ff8",
+      "rawBytes": 723,
+      "compressedBytes": 119,
+      "repositoryCopy": "evidence/default-cfl0.225.log.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n1024-full-observed.json.gz",
+      "compressedSHA256": "879c029441557c336472c6b1cacb591ee17113b06c457c3802555a6ba3ec12fe",
+      "rawSHA256": "63ba3d0af0d1138b215a2052f72b61348121337ddd23145316756959e781e222",
+      "rawBytes": 81944,
+      "compressedBytes": 3295,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n1024-full-plain.json.gz",
+      "compressedSHA256": "92bf43617721c41ca0652afb9c47cb1959bc2dc8b5070a21829e7f89609bf910",
+      "rawSHA256": "42c069cadf5362bc387b25450318a8dcb855acc8452014915ca608bab255d546",
+      "rawBytes": 81945,
+      "compressedBytes": 3300,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n1024-full-trace.json.gz",
+      "compressedSHA256": "1af6e2bd93dff89f025545047dcb1b71d3c6806a95cfb1f64b8a7a1a5755017a",
+      "rawSHA256": "3e2e3f2ac7b81b93fb03f1de76dfdd0e9d55ab0ccc1d1180fd19904d1aa9d189",
+      "rawBytes": 1659589,
+      "compressedBytes": 131321,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "879c029441557c336472c6b1cacb591ee17113b06c457c3802555a6ba3ec12fe",
+      "rawSHA256": "63ba3d0af0d1138b215a2052f72b61348121337ddd23145316756959e781e222",
+      "rawBytes": 81944,
+      "compressedBytes": 3295,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "92bf43617721c41ca0652afb9c47cb1959bc2dc8b5070a21829e7f89609bf910",
+      "rawSHA256": "42c069cadf5362bc387b25450318a8dcb855acc8452014915ca608bab255d546",
+      "rawBytes": 81945,
+      "compressedBytes": 3300,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "9c144201a1d763993a840e0676c2f1dcfc6ca3cf79003d0dcfd4514ad1041eb9",
+      "rawSHA256": "5c7851e3b47b4331e2ffa3dd0435fa35535e1ad9888ddc178efefe31bd0a1416",
+      "rawBytes": 1659588,
+      "compressedBytes": 131319,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n2048-full-observed.json.gz",
+      "compressedSHA256": "fcf70a9dcbc2e28b6f29bd9abbd7010e1416844a1a69226c7cc2739660d9b5d6",
+      "rawSHA256": "fd6d84f413fa369269fc5965db09163c367036c183dd7367035f0b23a12b214b",
+      "rawBytes": 162147,
+      "compressedBytes": 5329,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n2048-full-plain.json.gz",
+      "compressedSHA256": "473d73c66d65456b30de458ba93807099d1dcb0adb500e64a67bccb9ee8b80d4",
+      "rawSHA256": "60408f253e5cca1a766ba5f4078a97d39b0edd8afb4e9c22e6f8b1a1b38f10aa",
+      "rawBytes": 162148,
+      "compressedBytes": 5335,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n2048-full-trace.json.gz",
+      "compressedSHA256": "0c06c91abc3224bd02f4f2e0008438824da41c7d5f5ee2580ce09ff96c12f359",
+      "rawSHA256": "404445d0fad76f49383c2f960e058d6219a2352d2b9a6c30be4f977dd3dc0ca7",
+      "rawBytes": 3327926,
+      "compressedBytes": 233880,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "fcf70a9dcbc2e28b6f29bd9abbd7010e1416844a1a69226c7cc2739660d9b5d6",
+      "rawSHA256": "fd6d84f413fa369269fc5965db09163c367036c183dd7367035f0b23a12b214b",
+      "rawBytes": 162147,
+      "compressedBytes": 5329,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "473d73c66d65456b30de458ba93807099d1dcb0adb500e64a67bccb9ee8b80d4",
+      "rawSHA256": "60408f253e5cca1a766ba5f4078a97d39b0edd8afb4e9c22e6f8b1a1b38f10aa",
+      "rawBytes": 162148,
+      "compressedBytes": 5335,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "d6d45455164ed90288d96afb09ea874883b7b9d267e97b2c1b715697988209ca",
+      "rawSHA256": "57bc448c7a6bbde742f8c3c27104fc520bdd0f2765b666396c809b8bbc2186d1",
+      "rawBytes": 3327925,
+      "compressedBytes": 233881,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n512-full-observed.json.gz",
+      "compressedSHA256": "a48f5bd4ce85bf865cbc38522ec673bc51fdeaa3f10a3e35c072ff654c44babc",
+      "rawSHA256": "a74151264c88c240d34a6f3aa83b9102dcd56ca92b65cbafc0ff9f2a57426923",
+      "rawBytes": 41815,
+      "compressedBytes": 2171,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n512-full-plain.json.gz",
+      "compressedSHA256": "a004eb1690d137eb84132ef724d88f8df6d9ec4b716cafafae2d8632e6e82607",
+      "rawSHA256": "8a0321d2551946d7982e3bc250b05ae3a043d0bec83a07d7a259cf1372985276",
+      "rawBytes": 41816,
+      "compressedBytes": 2175,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n512-full-trace.json.gz",
+      "compressedSHA256": "5ba1e688c43e3af5e5b873df04e8c10ff77a001a16781644484b94eb2fe4c625",
+      "rawSHA256": "f472e0634756fe3131f9814a9356df37ed5eef9da58048f6377b3368a98525ac",
+      "rawBytes": 835784,
+      "compressedBytes": 64835,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n512-tiled-observed.json.gz",
+      "compressedSHA256": "a48f5bd4ce85bf865cbc38522ec673bc51fdeaa3f10a3e35c072ff654c44babc",
+      "rawSHA256": "a74151264c88c240d34a6f3aa83b9102dcd56ca92b65cbafc0ff9f2a57426923",
+      "rawBytes": 41815,
+      "compressedBytes": 2171,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n512-tiled-plain.json.gz",
+      "compressedSHA256": "a004eb1690d137eb84132ef724d88f8df6d9ec4b716cafafae2d8632e6e82607",
+      "rawSHA256": "8a0321d2551946d7982e3bc250b05ae3a043d0bec83a07d7a259cf1372985276",
+      "rawBytes": 41816,
+      "compressedBytes": 2175,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a1-n512-tiled-trace.json.gz",
+      "compressedSHA256": "34693ef8e9e8d656ad98f7cd4f010b38e5be950f4880078a1ccf00524527ccac",
+      "rawSHA256": "21eb45fbd44edb0ee7d1095a7d1c0788098c2d5ee14b503125f556aea9c82361",
+      "rawBytes": 835783,
+      "compressedBytes": 64832,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n1024-full-observed.json.gz",
+      "compressedSHA256": "b847b825fbfe9f4061055d6e87bfadaf742c272e520468118e77f4729941a534",
+      "rawSHA256": "2a2e250ec09a818603ac7e4efccfa47c504e60b9731d34a93cb2646cd85c9e8c",
+      "rawBytes": 81898,
+      "compressedBytes": 3459,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n1024-full-plain.json.gz",
+      "compressedSHA256": "97e1ad6efa08932753932e7162054350aa4b19977b2cc3269bbf432f4144d1d3",
+      "rawSHA256": "301edd0cb92d7c9b50c2a2d39a1232b2ee1f4096231431db27e2db63a211c3f4",
+      "rawBytes": 81899,
+      "compressedBytes": 3464,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n1024-full-trace.json.gz",
+      "compressedSHA256": "ff742de878d6e2a7b940007ce5af54cedb7c01f86f5c29e02a65ec60891c2ca3",
+      "rawSHA256": "8f1b0ff41cf566f78a6c8386396d4b027af18034b93b6bed494a8d8ee803a3fa",
+      "rawBytes": 1664621,
+      "compressedBytes": 132982,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "b847b825fbfe9f4061055d6e87bfadaf742c272e520468118e77f4729941a534",
+      "rawSHA256": "2a2e250ec09a818603ac7e4efccfa47c504e60b9731d34a93cb2646cd85c9e8c",
+      "rawBytes": 81898,
+      "compressedBytes": 3459,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "97e1ad6efa08932753932e7162054350aa4b19977b2cc3269bbf432f4144d1d3",
+      "rawSHA256": "301edd0cb92d7c9b50c2a2d39a1232b2ee1f4096231431db27e2db63a211c3f4",
+      "rawBytes": 81899,
+      "compressedBytes": 3464,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "0b4e20ed6397a2f92f94ab212ec1d7c1d71f979bf2b10d396e203fc78b4b5da7",
+      "rawSHA256": "e02b82c5bf5429c7a4b008374e5aca29b1243bce59f46a9bb376aaab6615fbe9",
+      "rawBytes": 1664620,
+      "compressedBytes": 132981,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n2048-full-observed.json.gz",
+      "compressedSHA256": "fcca4318a035455c025507b9f0e3f57813f627c96fa772cff29b456b6d7eecb3",
+      "rawSHA256": "b2299d435b07a0926dc771af5c7c08118b0b5f4cb4b837bfeae494340524c1cf",
+      "rawBytes": 161943,
+      "compressedBytes": 5820,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n2048-full-plain.json.gz",
+      "compressedSHA256": "bf4cb2e3de1ba48236c60d4fbc8e417916ec34fcc274fbbaf5c07d2c93844efa",
+      "rawSHA256": "077d12935d9d1130b54f129e09600db5408d99428850db77e417dd32fff0c816",
+      "rawBytes": 161944,
+      "compressedBytes": 5825,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n2048-full-trace.json.gz",
+      "compressedSHA256": "8861a117978b78c37f767d29b15b246984a72920391dccdffb4feef3dbb614af",
+      "rawSHA256": "975d2b7df9c60eecb8734eb8074e033f038f7584dbec71644b42f05b7d384929",
+      "rawBytes": 3303303,
+      "compressedBytes": 252746,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "fcca4318a035455c025507b9f0e3f57813f627c96fa772cff29b456b6d7eecb3",
+      "rawSHA256": "b2299d435b07a0926dc771af5c7c08118b0b5f4cb4b837bfeae494340524c1cf",
+      "rawBytes": 161943,
+      "compressedBytes": 5820,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "bf4cb2e3de1ba48236c60d4fbc8e417916ec34fcc274fbbaf5c07d2c93844efa",
+      "rawSHA256": "077d12935d9d1130b54f129e09600db5408d99428850db77e417dd32fff0c816",
+      "rawBytes": 161944,
+      "compressedBytes": 5825,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "4190fb6b710107462c21f7cfcaea7db003ee682f44e9ea6f6c0f8eaba25cc8db",
+      "rawSHA256": "bd9fa1522ea96fbdd67a95bedf25d314f4b23023b17015100f4ed64ff34fbc13",
+      "rawBytes": 3303302,
+      "compressedBytes": 252744,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n512-full-observed.json.gz",
+      "compressedSHA256": "5f801549e48f72efa9b316a039ec6eeb7f5bdc152037d7b5d9e991ba2041a03b",
+      "rawSHA256": "cdc7e643b7f7b303aa4d36141013b78b267d338a9da398b2f212463139686068",
+      "rawBytes": 41781,
+      "compressedBytes": 2252,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n512-full-plain.json.gz",
+      "compressedSHA256": "4f60a147dadc321515a64a6f8ce8593edd6cd01890a54ce87bd9ba605d78b240",
+      "rawSHA256": "1f81ab90ba4dbba8e395ed16a94e616f6c9b1e6e3125d3998325d8f28c962521",
+      "rawBytes": 41782,
+      "compressedBytes": 2255,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n512-full-trace.json.gz",
+      "compressedSHA256": "7c3164a576fd5a25ced4048331c8161db8fe1e5eca8511cf1869ab0cb0c3a760",
+      "rawSHA256": "21e7bf3e1f4575d221cd798764c855baca39638d2f5bdc4015c0b2a9a677e06e",
+      "rawBytes": 834310,
+      "compressedBytes": 75093,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n512-tiled-observed.json.gz",
+      "compressedSHA256": "5f801549e48f72efa9b316a039ec6eeb7f5bdc152037d7b5d9e991ba2041a03b",
+      "rawSHA256": "cdc7e643b7f7b303aa4d36141013b78b267d338a9da398b2f212463139686068",
+      "rawBytes": 41781,
+      "compressedBytes": 2252,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n512-tiled-plain.json.gz",
+      "compressedSHA256": "4f60a147dadc321515a64a6f8ce8593edd6cd01890a54ce87bd9ba605d78b240",
+      "rawSHA256": "1f81ab90ba4dbba8e395ed16a94e616f6c9b1e6e3125d3998325d8f28c962521",
+      "rawBytes": 41782,
+      "compressedBytes": 2255,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a10-n512-tiled-trace.json.gz",
+      "compressedSHA256": "ecd9e177fefbfa6900bc180284161bccf5b6b3157554724e6d57bf05c293ff6b",
+      "rawSHA256": "18d6a81c02574d6ec2bb900ac91893d990f4514ead050ee5ff3e70174703356a",
+      "rawBytes": 834309,
+      "compressedBytes": 75091,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n1024-full-observed.json.gz",
+      "compressedSHA256": "4c511af3887b8ea8375496ca5e6a78e0e7701c1679361191a12a4e19937d54fc",
+      "rawSHA256": "9b94fb85a745cf28131877cb3ad5b77302c2e60622a2f756448b63f7b3311aa7",
+      "rawBytes": 81825,
+      "compressedBytes": 3578,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n1024-full-plain.json.gz",
+      "compressedSHA256": "741b03851bf34ce1e13ef10da0e43f699e4578babe8e8b33334ebf3cc355070f",
+      "rawSHA256": "f94e9eea5a1932d2cd2493277eeb641d9342cd774c35736e7896306037e3ab12",
+      "rawBytes": 81826,
+      "compressedBytes": 3583,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n1024-full-trace.json.gz",
+      "compressedSHA256": "f9d58ad5319e9e1181b6a87734d8d8dce6b83276bcfdc9deb35d1c3ad3da1778",
+      "rawSHA256": "46c94bba9edf6f86901ba826ad4de5d7142769be7c96ccbb0345f11aa6258ceb",
+      "rawBytes": 1677631,
+      "compressedBytes": 160148,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "4c511af3887b8ea8375496ca5e6a78e0e7701c1679361191a12a4e19937d54fc",
+      "rawSHA256": "9b94fb85a745cf28131877cb3ad5b77302c2e60622a2f756448b63f7b3311aa7",
+      "rawBytes": 81825,
+      "compressedBytes": 3578,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "741b03851bf34ce1e13ef10da0e43f699e4578babe8e8b33334ebf3cc355070f",
+      "rawSHA256": "f94e9eea5a1932d2cd2493277eeb641d9342cd774c35736e7896306037e3ab12",
+      "rawBytes": 81826,
+      "compressedBytes": 3583,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "6bac1ab20e42c55e037e867de7c46e2721e951224e9dc109e67d399bf47df74a",
+      "rawSHA256": "072f935a20adfd07ef913b3664e5a5f25f1e900263c04c12da4b84683e505097",
+      "rawBytes": 1677630,
+      "compressedBytes": 160147,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n2048-full-observed.json.gz",
+      "compressedSHA256": "c4898f763d6c3ffed850253db06ce21522be0609f663e7920df72a49b20eb4f6",
+      "rawSHA256": "4117b15acb3914c84f98872450e1f1653dda4694f8146e8f14ee3024f1138e74",
+      "rawBytes": 162068,
+      "compressedBytes": 6089,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n2048-full-plain.json.gz",
+      "compressedSHA256": "73831a5d2ce12f9deb4ac70f91eae418589b8d3de7443e28ac2dab41e59a3daf",
+      "rawSHA256": "cd04daaee67c812c30ad7c93b5daeeabb46323dc0097a053c0dadcc0600a0e23",
+      "rawBytes": 162069,
+      "compressedBytes": 6094,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n2048-full-trace.json.gz",
+      "compressedSHA256": "44f6120985e1fbf4ad3e0a9160dbd75a4870080842d384b50140500aed8621fa",
+      "rawSHA256": "200783ab11b119b4151e21f4ccc6f36363e19f3110f27b8e8996c1c6d2152904",
+      "rawBytes": 3338518,
+      "compressedBytes": 278512,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "c4898f763d6c3ffed850253db06ce21522be0609f663e7920df72a49b20eb4f6",
+      "rawSHA256": "4117b15acb3914c84f98872450e1f1653dda4694f8146e8f14ee3024f1138e74",
+      "rawBytes": 162068,
+      "compressedBytes": 6089,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "73831a5d2ce12f9deb4ac70f91eae418589b8d3de7443e28ac2dab41e59a3daf",
+      "rawSHA256": "cd04daaee67c812c30ad7c93b5daeeabb46323dc0097a053c0dadcc0600a0e23",
+      "rawBytes": 162069,
+      "compressedBytes": 6094,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "697557f4cb76f21f7472eadb65772092c48bac1ccbcdbfaabb6e0ad951a70d61",
+      "rawSHA256": "d2e2fefe7e1597778d797241b08da0091f6261826ba4bf27dd49c4b4d6b56338",
+      "rawBytes": 3338517,
+      "compressedBytes": 278509,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n512-full-observed.json.gz",
+      "compressedSHA256": "0408a9ad0afeb25f5081c5ee3d20b7c7fe83a9fe4023cbabcef65e04593ce9d4",
+      "rawSHA256": "5665e028d73af0a1f47ce9a521a51bda1d20d4fe28fc3174c98d9087e9444a4b",
+      "rawBytes": 41772,
+      "compressedBytes": 2319,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n512-full-plain.json.gz",
+      "compressedSHA256": "59cbbd3132ade425f599ef37fc868671fb317bef60594928ec83d7624ed6ead7",
+      "rawSHA256": "37e5151016df993e59f8a959146dc8485522ad2d179b56929c09da502acca92b",
+      "rawBytes": 41773,
+      "compressedBytes": 2324,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n512-full-trace.json.gz",
+      "compressedSHA256": "a57afc617c75aee8a48da13cca91e5ee7f2ba78a424e6f691810a13a656b463d",
+      "rawSHA256": "c0d6542651c2ae76b714be61990054a432274b2415861b4593798d0ba710c9df",
+      "rawBytes": 840751,
+      "compressedBytes": 82283,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n512-tiled-observed.json.gz",
+      "compressedSHA256": "0408a9ad0afeb25f5081c5ee3d20b7c7fe83a9fe4023cbabcef65e04593ce9d4",
+      "rawSHA256": "5665e028d73af0a1f47ce9a521a51bda1d20d4fe28fc3174c98d9087e9444a4b",
+      "rawBytes": 41772,
+      "compressedBytes": 2319,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n512-tiled-plain.json.gz",
+      "compressedSHA256": "59cbbd3132ade425f599ef37fc868671fb317bef60594928ec83d7624ed6ead7",
+      "rawSHA256": "37e5151016df993e59f8a959146dc8485522ad2d179b56929c09da502acca92b",
+      "rawBytes": 41773,
+      "compressedBytes": 2324,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/a100-n512-tiled-trace.json.gz",
+      "compressedSHA256": "f69c38cc9d32a8594b94a458037da18edb075de6234547d5dd1bf24390202046",
+      "rawSHA256": "ea46883ef790f62364915d0e674184eda4ae0331e741bdb1a49813c37718018e",
+      "rawBytes": 840750,
+      "compressedBytes": 82280,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/runs.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.225/runs.json.gz",
+      "compressedSHA256": "0f0981cd7a2c9ff90ebe05a0e50584bb413dd64fd80a91a3343f7519eb519016",
+      "rawSHA256": "21c82d7a59c931a6f4503e3c3ecf33077b7d8da9827428bfa93f25b61cb82688",
+      "rawBytes": 5507286,
+      "compressedBytes": 143721,
+      "repositoryCopy": "evidence/default-cfl0.225/runs.json.gz"
+    },
+    {
+      "original": "default-cfl0.45.log",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45.log.gz",
+      "compressedSHA256": "56e52d1ece9dcc776f884d90faf562ad74a82af2763266f14e277c713f5402d3",
+      "rawSHA256": "107f6c9b5b1d53b648a984b90e42876ea0aebeeae6810075ff091b6455ad8ff8",
+      "rawBytes": 723,
+      "compressedBytes": 119,
+      "repositoryCopy": "evidence/default-cfl0.45.log.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n1024-full-observed.json.gz",
+      "compressedSHA256": "be234c90a7c28124737abf397db40e4618f48f4f548fdd89ecafc3fca5281a3c",
+      "rawSHA256": "4137231cd383e85110dc7ffddd0900928a4ebc1406255f8febf8eb1d1bd9ac39",
+      "rawBytes": 81945,
+      "compressedBytes": 3293,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n1024-full-plain.json.gz",
+      "compressedSHA256": "0cc4fd067e3299aca0c2578fd9250677cfd523f289331aac295da54de37a0c74",
+      "rawSHA256": "fbc0ffc807b694dd8df9c5ef567c16b0ca4938ae4dae2b9cf59a1090c01b4fd6",
+      "rawBytes": 81946,
+      "compressedBytes": 3297,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n1024-full-trace.json.gz",
+      "compressedSHA256": "b290e90c0719a5354787cc8fd7c632efa752d916d669f691e71f1d74ac4c557f",
+      "rawSHA256": "6f4fedeac73d23dd85042edebedc659c7541238b6afbb961458992d86e2906cf",
+      "rawBytes": 830346,
+      "compressedBytes": 75162,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a1-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "be234c90a7c28124737abf397db40e4618f48f4f548fdd89ecafc3fca5281a3c",
+      "rawSHA256": "4137231cd383e85110dc7ffddd0900928a4ebc1406255f8febf8eb1d1bd9ac39",
+      "rawBytes": 81945,
+      "compressedBytes": 3293,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "0cc4fd067e3299aca0c2578fd9250677cfd523f289331aac295da54de37a0c74",
+      "rawSHA256": "fbc0ffc807b694dd8df9c5ef567c16b0ca4938ae4dae2b9cf59a1090c01b4fd6",
+      "rawBytes": 81946,
+      "compressedBytes": 3297,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "4e6df2b267abe39aab27130920692e1e6b18c752f55be5f3b70a42a8065af794",
+      "rawSHA256": "6f37cea024f1d97db3e9182325606418a1161c3ad3447e09e152ede519a7a5c3",
+      "rawBytes": 830345,
+      "compressedBytes": 75159,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a1-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n2048-full-observed.json.gz",
+      "compressedSHA256": "0878887f506190d0d0ad307a0b390e6d4bcd8aef88fb0f67bb5b3cb741d9b88a",
+      "rawSHA256": "a2f6d51a86b84929f10bb850c906cb2880658c644d2abdb1a4e641c53ec9dee1",
+      "rawBytes": 162148,
+      "compressedBytes": 5340,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n2048-full-plain.json.gz",
+      "compressedSHA256": "c8e23dd6be8f67bd144a91cd428d54db75f76ab2d1914fad3f25b8aedba7dbda",
+      "rawSHA256": "bdbc01e7681965741437774c94a99cac24dc29649e1db144c2197860ff53edc7",
+      "rawBytes": 162149,
+      "compressedBytes": 5345,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n2048-full-trace.json.gz",
+      "compressedSHA256": "4f7d9ca27f17bd855d0bcaf00cf8ba1a7e5435dfbd7cbf551d912d9bcf33c882",
+      "rawSHA256": "846bbe6ce98870f42d55fdf458cafadf5d7f96b0bfba2b519770e370362498a0",
+      "rawBytes": 1667764,
+      "compressedBytes": 147213,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a1-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "0878887f506190d0d0ad307a0b390e6d4bcd8aef88fb0f67bb5b3cb741d9b88a",
+      "rawSHA256": "a2f6d51a86b84929f10bb850c906cb2880658c644d2abdb1a4e641c53ec9dee1",
+      "rawBytes": 162148,
+      "compressedBytes": 5340,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "c8e23dd6be8f67bd144a91cd428d54db75f76ab2d1914fad3f25b8aedba7dbda",
+      "rawSHA256": "bdbc01e7681965741437774c94a99cac24dc29649e1db144c2197860ff53edc7",
+      "rawBytes": 162149,
+      "compressedBytes": 5345,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "a273ad06265e994682141500eada4821ea47b24050aca459296c3d6b5eddab7c",
+      "rawSHA256": "2826b9f8a2fd44dfac69c5f0c8dd2a93fc14edc45417072092e3710db00b47be",
+      "rawBytes": 1667763,
+      "compressedBytes": 147211,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a1-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n512-full-observed.json.gz",
+      "compressedSHA256": "75b0c41fab5e46c3dda9be66b0576475bf5753f80ac009f47e2d7c3ee98d6314",
+      "rawSHA256": "85007c2208815683210b83a488fb8c9d68b4c86924ef5e4008ca6a041596dc6c",
+      "rawBytes": 41805,
+      "compressedBytes": 2171,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n512-full-plain.json.gz",
+      "compressedSHA256": "65637df6fb2e2dbbff3d461cf4affa6ce3b7d533743a9647b984078edcc92cd2",
+      "rawSHA256": "28c3d33db53c8228061f53a51cb24026b92f6d3f29e45d1e666af86ea4b6d45c",
+      "rawBytes": 41806,
+      "compressedBytes": 2176,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n512-full-trace.json.gz",
+      "compressedSHA256": "3914317d5325fcdb2df5dd3a5935b507307f2fcc07d9d1af85b8bb086fbd3afd",
+      "rawSHA256": "e495806e3fe57faf5fc8fc2e4efb89d1c84a0f93ec27d593edb6c138a14ee539",
+      "rawBytes": 412019,
+      "compressedBytes": 40445,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a1-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n512-tiled-observed.json.gz",
+      "compressedSHA256": "75b0c41fab5e46c3dda9be66b0576475bf5753f80ac009f47e2d7c3ee98d6314",
+      "rawSHA256": "85007c2208815683210b83a488fb8c9d68b4c86924ef5e4008ca6a041596dc6c",
+      "rawBytes": 41805,
+      "compressedBytes": 2171,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n512-tiled-plain.json.gz",
+      "compressedSHA256": "65637df6fb2e2dbbff3d461cf4affa6ce3b7d533743a9647b984078edcc92cd2",
+      "rawSHA256": "28c3d33db53c8228061f53a51cb24026b92f6d3f29e45d1e666af86ea4b6d45c",
+      "rawBytes": 41806,
+      "compressedBytes": 2176,
+      "repositoryCopy": "evidence/default-cfl0.45/a1-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a1-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a1-n512-tiled-trace.json.gz",
+      "compressedSHA256": "c3d45500363f3a9c50fea3bf15e8724f06864f9a6b03c203a6986d80c213e7ec",
+      "rawSHA256": "1f7435f488343085cf47622cfa097f3995c22d499c821ff0cde7941d10086415",
+      "rawBytes": 412018,
+      "compressedBytes": 40442,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a10-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n1024-full-observed.json.gz",
+      "compressedSHA256": "19a9d76e447b221aeb5e9968611622ad7c8ddb29a005523b8cf40daeaaea2672",
+      "rawSHA256": "1d5f8a6fe73fabadc521df74765cfa61cf06730b197cb042bb9e3bfb4e6deada",
+      "rawBytes": 81901,
+      "compressedBytes": 3455,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n1024-full-plain.json.gz",
+      "compressedSHA256": "efd61e3207e22c25a4929457cb7f82ecc1976b5dd99e6737c7d6893b480d5c84",
+      "rawSHA256": "2af9e7e1471ff44ffbdd20c0df3ba4338a8e31a3bf97b0169582a1f7f3462888",
+      "rawBytes": 81902,
+      "compressedBytes": 3460,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n1024-full-trace.json.gz",
+      "compressedSHA256": "1157e9dd4d150dc5c5bab4d796acb853ed5121eb8bd7aef13466466e585ea3b5",
+      "rawSHA256": "a7f08b7eb578bd8b2e8f07bd6f6e77517bb6b12dbbcef67af8de77e0f3030cc9",
+      "rawBytes": 833222,
+      "compressedBytes": 79782,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a10-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "19a9d76e447b221aeb5e9968611622ad7c8ddb29a005523b8cf40daeaaea2672",
+      "rawSHA256": "1d5f8a6fe73fabadc521df74765cfa61cf06730b197cb042bb9e3bfb4e6deada",
+      "rawBytes": 81901,
+      "compressedBytes": 3455,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "efd61e3207e22c25a4929457cb7f82ecc1976b5dd99e6737c7d6893b480d5c84",
+      "rawSHA256": "2af9e7e1471ff44ffbdd20c0df3ba4338a8e31a3bf97b0169582a1f7f3462888",
+      "rawBytes": 81902,
+      "compressedBytes": 3460,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "2b5aeb6521e5aed9c0a625b349cfbee97db49c98f63d8bb8c55caf01fb366593",
+      "rawSHA256": "74ee763ddfab8b0df0237d03b4c52124991331ad6d0a2bdd02bf295f6a2c549e",
+      "rawBytes": 833221,
+      "compressedBytes": 79779,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a10-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n2048-full-observed.json.gz",
+      "compressedSHA256": "2522bfd9570f44806ce1ddd040797e55c26aab9053a03c3ddcf60d4bb1be45c8",
+      "rawSHA256": "fd2c3c83554aeee7298cdee2c077c1d3ba0279d4e1f09b353a68b9dfe662125f",
+      "rawBytes": 161948,
+      "compressedBytes": 5820,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n2048-full-plain.json.gz",
+      "compressedSHA256": "a1167a84c84eef258b4e8198da855a9758de595edf1c9e90d299d732fa14ba2b",
+      "rawSHA256": "8f507c0a4ce494bc14fa14c85bf3735228c709e4a2aa145c5bb192e4a7bf3d70",
+      "rawBytes": 161949,
+      "compressedBytes": 5825,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n2048-full-trace.json.gz",
+      "compressedSHA256": "d0960e61c5e5f1129faa0e8ae67a22ec2803ead3ea57e7d915917949d7c1815e",
+      "rawSHA256": "01aad1ce1f7ce39ac75dd64b32841813a621c5da0664a17acb4a2a91a7cd3dcf",
+      "rawBytes": 1664982,
+      "compressedBytes": 153917,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a10-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "2522bfd9570f44806ce1ddd040797e55c26aab9053a03c3ddcf60d4bb1be45c8",
+      "rawSHA256": "fd2c3c83554aeee7298cdee2c077c1d3ba0279d4e1f09b353a68b9dfe662125f",
+      "rawBytes": 161948,
+      "compressedBytes": 5820,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "a1167a84c84eef258b4e8198da855a9758de595edf1c9e90d299d732fa14ba2b",
+      "rawSHA256": "8f507c0a4ce494bc14fa14c85bf3735228c709e4a2aa145c5bb192e4a7bf3d70",
+      "rawBytes": 161949,
+      "compressedBytes": 5825,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "6909d6cfefc7b7386d80a722137fb180eda9257d848399e9cf6ed86cc65855bb",
+      "rawSHA256": "c7092d13fa6e3871e63cdfc33f81b6a46968ed2a1582c06549cc27c2ecf71f8e",
+      "rawBytes": 1664981,
+      "compressedBytes": 153917,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a10-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n512-full-observed.json.gz",
+      "compressedSHA256": "82a404ff6424b9387d649b78a6dea26a367969ca2e74ba15af19f8f4ad2ba222",
+      "rawSHA256": "5dcad13d5c339f841f8d0a7dab784fe0367f641410a1f5fe81497106b06d5318",
+      "rawBytes": 41777,
+      "compressedBytes": 2249,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n512-full-plain.json.gz",
+      "compressedSHA256": "5b02a39b1c80a914e6ed9db25be5aacf2d543b59ae7aca2cfcea30ee8d3bf37c",
+      "rawSHA256": "37e82c7b5d4067e5b04c08e109b855fa031ce3ec1d2ae5f126384f82c7890510",
+      "rawBytes": 41778,
+      "compressedBytes": 2255,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n512-full-trace.json.gz",
+      "compressedSHA256": "d96181f9b48163bfa8aadab750abb743b636785294dae1cc8dfb46c9b39f9d78",
+      "rawSHA256": "c4548c25837c31d1c3bb08e6681e42c8b7d41d7b2b9a0a7d3eede8b0ae8bcbc5",
+      "rawBytes": 416643,
+      "compressedBytes": 41365,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a10-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n512-tiled-observed.json.gz",
+      "compressedSHA256": "82a404ff6424b9387d649b78a6dea26a367969ca2e74ba15af19f8f4ad2ba222",
+      "rawSHA256": "5dcad13d5c339f841f8d0a7dab784fe0367f641410a1f5fe81497106b06d5318",
+      "rawBytes": 41777,
+      "compressedBytes": 2249,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n512-tiled-plain.json.gz",
+      "compressedSHA256": "5b02a39b1c80a914e6ed9db25be5aacf2d543b59ae7aca2cfcea30ee8d3bf37c",
+      "rawSHA256": "37e82c7b5d4067e5b04c08e109b855fa031ce3ec1d2ae5f126384f82c7890510",
+      "rawBytes": 41778,
+      "compressedBytes": 2255,
+      "repositoryCopy": "evidence/default-cfl0.45/a10-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a10-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a10-n512-tiled-trace.json.gz",
+      "compressedSHA256": "b08158fd259d2d9654ceaf290a59e341178a31e2ebba0f2b5b64633d05c3c40a",
+      "rawSHA256": "1f4105954ab183226927fa9ce0cccba00990d6597171d334c2fc7cb662800a45",
+      "rawBytes": 416642,
+      "compressedBytes": 41362,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a100-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n1024-full-observed.json.gz",
+      "compressedSHA256": "bb134fa20dbff91981f4cdbea24731b400770af0e9fef97894ecad5d2fd2561e",
+      "rawSHA256": "eef77e4217c06ab93bc3ad4614377de767d17ed0f6b7b8eacb3669be5af32a95",
+      "rawBytes": 81815,
+      "compressedBytes": 3580,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n1024-full-plain.json.gz",
+      "compressedSHA256": "71c990ebfb528a4c6bb944e3a17ea81c22d72fda9f5e2ae9e18155492896ceb6",
+      "rawSHA256": "00f96479ad018e5db11c7eb1093c5bb3c362064215558939abf59093d7240445",
+      "rawBytes": 81816,
+      "compressedBytes": 3585,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n1024-full-trace.json.gz",
+      "compressedSHA256": "8c53b39047cb6cd57eb185a7a7f9cd459fcbe054d656fa10e7b7648fb5ff0d52",
+      "rawSHA256": "ed92e72067d2993e051ce03ed38715857eab96d4ff17a437d277084a62d7b8ac",
+      "rawBytes": 826634,
+      "compressedBytes": 81160,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a100-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "bb134fa20dbff91981f4cdbea24731b400770af0e9fef97894ecad5d2fd2561e",
+      "rawSHA256": "eef77e4217c06ab93bc3ad4614377de767d17ed0f6b7b8eacb3669be5af32a95",
+      "rawBytes": 81815,
+      "compressedBytes": 3580,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "71c990ebfb528a4c6bb944e3a17ea81c22d72fda9f5e2ae9e18155492896ceb6",
+      "rawSHA256": "00f96479ad018e5db11c7eb1093c5bb3c362064215558939abf59093d7240445",
+      "rawBytes": 81816,
+      "compressedBytes": 3585,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "c9863faff6bc238db0fd97dbcff4c82ad56a81c5df13695fb746e11488734bdc",
+      "rawSHA256": "c4d3ff21179c71458fcbd9c8ac3d6f5718771376dca57c07617c0c7f5acc565a",
+      "rawBytes": 826633,
+      "compressedBytes": 81156,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a100-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n2048-full-observed.json.gz",
+      "compressedSHA256": "a1457e9cdacae43659755ac1fe8e3b33ec6d644970c078ac2c3fb1a3964624f0",
+      "rawSHA256": "367cae857ea04976a2bec3d8c8c9f3024162362ed829aa2e95a39e67937a0b4a",
+      "rawBytes": 162067,
+      "compressedBytes": 6088,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n2048-full-plain.json.gz",
+      "compressedSHA256": "d7dfe187b1b2fbd3a60f6b0e9caed3c190ac5130280b5d124c835c7e02b44435",
+      "rawSHA256": "469406911b5985d80f8e0d7a559d4180bdc498ce46754880fa9fc6eff2457e32",
+      "rawBytes": 162068,
+      "compressedBytes": 6094,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n2048-full-trace.json.gz",
+      "compressedSHA256": "45340f8eb7f5d02981299447608163a5c3ac8e917cebc47a9333508a8c85d6f3",
+      "rawSHA256": "3f79e5919007beea596d814e75f55817afac596ec528140c943f867f71d5eff3",
+      "rawBytes": 1669654,
+      "compressedBytes": 155231,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a100-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "a1457e9cdacae43659755ac1fe8e3b33ec6d644970c078ac2c3fb1a3964624f0",
+      "rawSHA256": "367cae857ea04976a2bec3d8c8c9f3024162362ed829aa2e95a39e67937a0b4a",
+      "rawBytes": 162067,
+      "compressedBytes": 6088,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "d7dfe187b1b2fbd3a60f6b0e9caed3c190ac5130280b5d124c835c7e02b44435",
+      "rawSHA256": "469406911b5985d80f8e0d7a559d4180bdc498ce46754880fa9fc6eff2457e32",
+      "rawBytes": 162068,
+      "compressedBytes": 6094,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "63b66f16eb73f9794928173437697536c715d769b2b2afce6b2f2be116735308",
+      "rawSHA256": "dd8da0ab235876d6fd18510ebfb017d7a7058b76c1af27285ab9a269bc667557",
+      "rawBytes": 1669653,
+      "compressedBytes": 155229,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a100-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n512-full-observed.json.gz",
+      "compressedSHA256": "3e879fafc5a0fab24a0935799a1b858c0321cbb5a18cfc66f7290e7843240648",
+      "rawSHA256": "855fcedf65e4577b869971043aaed56669aaa3b9261ae7ab397fa4d53c8b623b",
+      "rawBytes": 41761,
+      "compressedBytes": 2315,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n512-full-plain.json.gz",
+      "compressedSHA256": "c95fd1f1c0098aff151c725601df641b1bae1e9a314610b4f2cf08d13d65404f",
+      "rawSHA256": "1718c9dfb40a8c6515be1706cf6998720bd58cfcc6f7802a05d1a7ab95a65c6a",
+      "rawBytes": 41762,
+      "compressedBytes": 2319,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n512-full-trace.json.gz",
+      "compressedSHA256": "1a59a0d459c11c4338a811d90cfbadd76ee59c7dd03550ae26e25694e321958a",
+      "rawSHA256": "d18fddffe8a09da37d415f18f65443a063a6143c23d4ee6bd5f0eb263d7d6be1",
+      "rawBytes": 414857,
+      "compressedBytes": 43721,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/a100-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n512-tiled-observed.json.gz",
+      "compressedSHA256": "3e879fafc5a0fab24a0935799a1b858c0321cbb5a18cfc66f7290e7843240648",
+      "rawSHA256": "855fcedf65e4577b869971043aaed56669aaa3b9261ae7ab397fa4d53c8b623b",
+      "rawBytes": 41761,
+      "compressedBytes": 2315,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n512-tiled-plain.json.gz",
+      "compressedSHA256": "c95fd1f1c0098aff151c725601df641b1bae1e9a314610b4f2cf08d13d65404f",
+      "rawSHA256": "1718c9dfb40a8c6515be1706cf6998720bd58cfcc6f7802a05d1a7ab95a65c6a",
+      "rawBytes": 41762,
+      "compressedBytes": 2319,
+      "repositoryCopy": "evidence/default-cfl0.45/a100-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.45/a100-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/a100-n512-tiled-trace.json.gz",
+      "compressedSHA256": "b2c2703e677c0e8296bab690932fc4838b01ff51ab2f67aa2da703f915e9bceb",
+      "rawSHA256": "64747137db1d452b77f160b035568c4f2de6e624a7e75c970ab7d0d0804cfa5c",
+      "rawBytes": 414856,
+      "compressedBytes": 43717,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.45/runs.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/default-cfl0.45/runs.json.gz",
+      "compressedSHA256": "ec5a5d62edddc750ec8c90a8ad6fbc7f15bff3b9645fb390288644bd9f7b7091",
+      "rawSHA256": "4c146f616b1a925119dc643e09008a029f8c54ef4d03940b3d829eee1c143cff",
+      "rawBytes": 5507182,
+      "compressedBytes": 143684,
+      "repositoryCopy": "evidence/default-cfl0.45/runs.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225.log",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225.log.gz",
+      "compressedSHA256": "56e52d1ece9dcc776f884d90faf562ad74a82af2763266f14e277c713f5402d3",
+      "rawSHA256": "107f6c9b5b1d53b648a984b90e42876ea0aebeeae6810075ff091b6455ad8ff8",
+      "rawBytes": 723,
+      "compressedBytes": 119,
+      "repositoryCopy": "evidence/unfused-cfl0.225.log.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n1024-full-observed.json.gz",
+      "compressedSHA256": "a6a3a507f464872b26ea142f095fb58990745266263280af4d7e3ecb60f87074",
+      "rawSHA256": "26ac918a309cbd79b1d4cb20763a081b7f8fabcd62f7040fcf9a338b496bcd0f",
+      "rawBytes": 81946,
+      "compressedBytes": 3292,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n1024-full-plain.json.gz",
+      "compressedSHA256": "e46381f45e938875f735933a6a9b3cfe46ec43ba3311e4c8384193c4bea1f1a5",
+      "rawSHA256": "55e83881bb17c80a6d9f7eaac120dc0a3ab1e5ed70dee33696cc299d5fcd6ea0",
+      "rawBytes": 81947,
+      "compressedBytes": 3297,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n1024-full-trace.json.gz",
+      "compressedSHA256": "fc81cd7f9cae1fbddb5ee5a5cbcaa8c155db103de6c3e5b57fac354105538dbe",
+      "rawSHA256": "8f2601b340de5e1bbfe7b77f9d3e40f62184a1b210bcb63037cea6337d924bda",
+      "rawBytes": 1667488,
+      "compressedBytes": 129867,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "a6a3a507f464872b26ea142f095fb58990745266263280af4d7e3ecb60f87074",
+      "rawSHA256": "26ac918a309cbd79b1d4cb20763a081b7f8fabcd62f7040fcf9a338b496bcd0f",
+      "rawBytes": 81946,
+      "compressedBytes": 3292,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "e46381f45e938875f735933a6a9b3cfe46ec43ba3311e4c8384193c4bea1f1a5",
+      "rawSHA256": "55e83881bb17c80a6d9f7eaac120dc0a3ab1e5ed70dee33696cc299d5fcd6ea0",
+      "rawBytes": 81947,
+      "compressedBytes": 3297,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "31694c407203b802b4fb99e12b8ffb81225ff6fc302d587490d4dc488123666a",
+      "rawSHA256": "d51c095937dabeba18ae494fc2df615005daac3f4ae86075f6a4d7ce7012e4a8",
+      "rawBytes": 1667487,
+      "compressedBytes": 129865,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n2048-full-observed.json.gz",
+      "compressedSHA256": "5b9a86cd6e2ccaae29aed7f04de86bc5b97e6829015aa47da4383280bd3ad53e",
+      "rawSHA256": "4c9a1607bff504408b41b0ef86b99795e06da699932672ac2ebd466be8bbd6ea",
+      "rawBytes": 162150,
+      "compressedBytes": 5334,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n2048-full-plain.json.gz",
+      "compressedSHA256": "c81ac48af4934b0e80aa2030044c72aa121bd49c5f22877f98eb5faefd2fe462",
+      "rawSHA256": "997b8d6959fe0694aa740ff624c00697969a9611880dbfebaf452f66ee9f5bff",
+      "rawBytes": 162151,
+      "compressedBytes": 5339,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n2048-full-trace.json.gz",
+      "compressedSHA256": "4c6a219f65691f806c3ae4af3a531b2cfe394d521a4b32ec333a084f9de8f1cd",
+      "rawSHA256": "b5ccb242fe0c01d20ce36e43a89b46a2693f5589b67bcfa8a948afec849bf3fb",
+      "rawBytes": 3336473,
+      "compressedBytes": 241459,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "5b9a86cd6e2ccaae29aed7f04de86bc5b97e6829015aa47da4383280bd3ad53e",
+      "rawSHA256": "4c9a1607bff504408b41b0ef86b99795e06da699932672ac2ebd466be8bbd6ea",
+      "rawBytes": 162150,
+      "compressedBytes": 5334,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "c81ac48af4934b0e80aa2030044c72aa121bd49c5f22877f98eb5faefd2fe462",
+      "rawSHA256": "997b8d6959fe0694aa740ff624c00697969a9611880dbfebaf452f66ee9f5bff",
+      "rawBytes": 162151,
+      "compressedBytes": 5339,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "b0a457036800c10207052dc6f9c2745db178877cae0f76a502fc796e9e0db07c",
+      "rawSHA256": "9978913d979dcc05acc3f2e26ea263f52d4b231a4359421ef1e6745243bc99cc",
+      "rawBytes": 3336472,
+      "compressedBytes": 241460,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n512-full-observed.json.gz",
+      "compressedSHA256": "0746f6783ad533ed5d128d82fd8dea71cd37d9e328eba3035678db5451a85495",
+      "rawSHA256": "bfc8644abcf516ded80c965ce4991a6f43e5d5c08fd01247a204e15da4937048",
+      "rawBytes": 41817,
+      "compressedBytes": 2172,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n512-full-plain.json.gz",
+      "compressedSHA256": "d204c2b886535815762e5c0ccb689ac0fdb8c15f9c986df43b12c5a3105fa574",
+      "rawSHA256": "093a117d86694bbd5873a598a3b3ede1a931a7fc00008ff6d4ee2131d257b91c",
+      "rawBytes": 41818,
+      "compressedBytes": 2176,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n512-full-trace.json.gz",
+      "compressedSHA256": "19b483257d61bf57530448d412de36e39b3ba5ba4a9b1e7343a8b818a5c00776",
+      "rawSHA256": "bfc55405343eb1abada433e4fd279bfa394adf33a6c214196ba5976e01f60810",
+      "rawBytes": 833928,
+      "compressedBytes": 72683,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n512-tiled-observed.json.gz",
+      "compressedSHA256": "0746f6783ad533ed5d128d82fd8dea71cd37d9e328eba3035678db5451a85495",
+      "rawSHA256": "bfc8644abcf516ded80c965ce4991a6f43e5d5c08fd01247a204e15da4937048",
+      "rawBytes": 41817,
+      "compressedBytes": 2172,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n512-tiled-plain.json.gz",
+      "compressedSHA256": "d204c2b886535815762e5c0ccb689ac0fdb8c15f9c986df43b12c5a3105fa574",
+      "rawSHA256": "093a117d86694bbd5873a598a3b3ede1a931a7fc00008ff6d4ee2131d257b91c",
+      "rawBytes": 41818,
+      "compressedBytes": 2176,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a1-n512-tiled-trace.json.gz",
+      "compressedSHA256": "e614ce0c51f8a14c17b6f46681ee399393336d4f8b7929ee8b7846f5be7f0212",
+      "rawSHA256": "43de5e645fbb0ff81bce50dca4978e1c86eb60f39e4496b06ffeb5d95e18c344",
+      "rawBytes": 833927,
+      "compressedBytes": 72680,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n1024-full-observed.json.gz",
+      "compressedSHA256": "64622f2200926620d0d5c5e28f1e5d394f1b62f8a94258bab3c52c5f1b7d4bfb",
+      "rawSHA256": "b6621859478e9964fe557752a7143ae47c8eca9ef923661d526e413dbcf069c0",
+      "rawBytes": 81896,
+      "compressedBytes": 3462,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n1024-full-plain.json.gz",
+      "compressedSHA256": "4eab60a25cc7f9c13433de4392ce9a1479962beabe519a2972bb49d19b7bcb7a",
+      "rawSHA256": "feee285f275fa667ba9af62d95fc97cfdec9144374f2c7c949c2712965b1d644",
+      "rawBytes": 81897,
+      "compressedBytes": 3467,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n1024-full-trace.json.gz",
+      "compressedSHA256": "b1f1a78cfb0b218476fee0ba8c1a7293eeb88cfae538de357de29d6a65b8fd88",
+      "rawSHA256": "a84ff57726b3b2dcfdaef4c49b9b69407dcc6dc2e76479189298e4f05da38a8f",
+      "rawBytes": 1658106,
+      "compressedBytes": 136038,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "64622f2200926620d0d5c5e28f1e5d394f1b62f8a94258bab3c52c5f1b7d4bfb",
+      "rawSHA256": "b6621859478e9964fe557752a7143ae47c8eca9ef923661d526e413dbcf069c0",
+      "rawBytes": 81896,
+      "compressedBytes": 3462,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "4eab60a25cc7f9c13433de4392ce9a1479962beabe519a2972bb49d19b7bcb7a",
+      "rawSHA256": "feee285f275fa667ba9af62d95fc97cfdec9144374f2c7c949c2712965b1d644",
+      "rawBytes": 81897,
+      "compressedBytes": 3467,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "67b6c8860cc7c0b29f8dbb5f18c0c2f6e65725d172870ad3629b1e1a36590e0a",
+      "rawSHA256": "469489ecba90b54529862a6e56cf726f944cf68bc8d9d589407eb3160f49809f",
+      "rawBytes": 1658105,
+      "compressedBytes": 136036,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n2048-full-observed.json.gz",
+      "compressedSHA256": "c0e0ef1cac4802e732bbf4837385d45e258e36f4afcc50b87085ea1ab5a5be3b",
+      "rawSHA256": "8e52617ecba2bfa85866884892e79e0a1b6dacdfa3b863e0b6d2f8bec51b7116",
+      "rawBytes": 161951,
+      "compressedBytes": 5816,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n2048-full-plain.json.gz",
+      "compressedSHA256": "ad0274f1763135d394177eedf12b15a5f8b09de1f788d547343250ebbc580ec3",
+      "rawSHA256": "70186164fc10931aa61849913ccffdae1cb9934a5d266abe06a28817302e0b82",
+      "rawBytes": 161952,
+      "compressedBytes": 5821,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n2048-full-trace.json.gz",
+      "compressedSHA256": "714cdbdb4523ae97984d4510130a2d63bdf6726acb192630cb08cd5ae19a6087",
+      "rawSHA256": "9a91b0f06f30ba8c31cdee1fae5c252fb02c3fef1ff3fbfe6babbc1f3c766de9",
+      "rawBytes": 3345008,
+      "compressedBytes": 252993,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "c0e0ef1cac4802e732bbf4837385d45e258e36f4afcc50b87085ea1ab5a5be3b",
+      "rawSHA256": "8e52617ecba2bfa85866884892e79e0a1b6dacdfa3b863e0b6d2f8bec51b7116",
+      "rawBytes": 161951,
+      "compressedBytes": 5816,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "ad0274f1763135d394177eedf12b15a5f8b09de1f788d547343250ebbc580ec3",
+      "rawSHA256": "70186164fc10931aa61849913ccffdae1cb9934a5d266abe06a28817302e0b82",
+      "rawBytes": 161952,
+      "compressedBytes": 5821,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "3fbf7d5a33b716e95d6ec9f65f005d50e9f6aa4ed7f5af3a1b58fe1803ff7d38",
+      "rawSHA256": "2b0d2c6a752e6f722100cfeb23938f12b7ea6bc4c57d8fb06e21a3797c7a00f1",
+      "rawBytes": 3345007,
+      "compressedBytes": 252991,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n512-full-observed.json.gz",
+      "compressedSHA256": "e204eca27594c8b442f193bd8c94f5f8e3f1da2efb71cbf41343ed6f53969591",
+      "rawSHA256": "5ba058066d46f45b7ef2ce7fbb8400ea4d76e4624612bdff3239a39d702c3c2f",
+      "rawBytes": 41779,
+      "compressedBytes": 2251,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n512-full-plain.json.gz",
+      "compressedSHA256": "f40e84712699029b08513b63aa3a3f837200d3a0a3c8a6f1ec11a78067695024",
+      "rawSHA256": "99fb81a94a1eca938a64443106b75a56242dfa5bbf528555b20a28370c2af113",
+      "rawBytes": 41780,
+      "compressedBytes": 2255,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n512-full-trace.json.gz",
+      "compressedSHA256": "76e0fa355b2bf33afaa56cbe6f61b4be7cb61fc0b7d929d365e0b1053d0592f8",
+      "rawSHA256": "318d8919aa894edfb855ddfbcbdd256b9476471b44cff520718cf463faca3e2e",
+      "rawBytes": 832565,
+      "compressedBytes": 74627,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n512-tiled-observed.json.gz",
+      "compressedSHA256": "e204eca27594c8b442f193bd8c94f5f8e3f1da2efb71cbf41343ed6f53969591",
+      "rawSHA256": "5ba058066d46f45b7ef2ce7fbb8400ea4d76e4624612bdff3239a39d702c3c2f",
+      "rawBytes": 41779,
+      "compressedBytes": 2251,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n512-tiled-plain.json.gz",
+      "compressedSHA256": "f40e84712699029b08513b63aa3a3f837200d3a0a3c8a6f1ec11a78067695024",
+      "rawSHA256": "99fb81a94a1eca938a64443106b75a56242dfa5bbf528555b20a28370c2af113",
+      "rawBytes": 41780,
+      "compressedBytes": 2255,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a10-n512-tiled-trace.json.gz",
+      "compressedSHA256": "d1af0188c3c4506cf5aec2537fe802aa1c00b8bf3eff7e22ec5c89a04ea7cc34",
+      "rawSHA256": "75b24ccc24a2006a5d7b82d457d253036359d66594f29b56282504c7037c4f74",
+      "rawBytes": 832564,
+      "compressedBytes": 74623,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n1024-full-observed.json.gz",
+      "compressedSHA256": "acae6d5ef96d1568bb54044a2009cb8d05e751ea33ab1282a0240782935d680d",
+      "rawSHA256": "67007c9e3b01182a23b0ab9032d884e363795611adeeea3a89a4f5074a4604f9",
+      "rawBytes": 81817,
+      "compressedBytes": 3581,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n1024-full-plain.json.gz",
+      "compressedSHA256": "9873fcae071a6b07f3c2fd44b3cd0a2a3a55f0e29d493fba233ec8bb13579194",
+      "rawSHA256": "a7e3b987d3fc9ea3b71dd385f4844b340ef10f5cae1228cc5017ee9ae18e5726",
+      "rawBytes": 81818,
+      "compressedBytes": 3585,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n1024-full-trace.json.gz",
+      "compressedSHA256": "a3a3fc19bbfab9d60a28b4fb538823977d02e0027ef68c76c6e4f122ba652550",
+      "rawSHA256": "b73e7c7d54f6cdf785245a827fdee4e15eb093f211870c834e7c8f88c05f6827",
+      "rawBytes": 1657649,
+      "compressedBytes": 145938,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "acae6d5ef96d1568bb54044a2009cb8d05e751ea33ab1282a0240782935d680d",
+      "rawSHA256": "67007c9e3b01182a23b0ab9032d884e363795611adeeea3a89a4f5074a4604f9",
+      "rawBytes": 81817,
+      "compressedBytes": 3581,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "9873fcae071a6b07f3c2fd44b3cd0a2a3a55f0e29d493fba233ec8bb13579194",
+      "rawSHA256": "a7e3b987d3fc9ea3b71dd385f4844b340ef10f5cae1228cc5017ee9ae18e5726",
+      "rawBytes": 81818,
+      "compressedBytes": 3585,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "9e32705c12fa93e1cdc170a0e902a8f015a65ddfc3b54a2f47179b1cb56ffc53",
+      "rawSHA256": "2a87a0a363584fa2f3cdfb48525f7dbb35c6716e6be45094a9ff3737660a6bde",
+      "rawBytes": 1657648,
+      "compressedBytes": 145936,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n2048-full-observed.json.gz",
+      "compressedSHA256": "ebed3f46b5992767de56a540c4a1022287a1b3f12be61cb839dca566b3029552",
+      "rawSHA256": "a1122405eba3ad9226a1703d15a40435f7286e79058c4f0a8246a9ab9e5abbca",
+      "rawBytes": 162069,
+      "compressedBytes": 6090,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n2048-full-plain.json.gz",
+      "compressedSHA256": "46dfc8cd1902043ff279353a2eb70b327434c2778cf27ba54ce1b85afc6dc627",
+      "rawSHA256": "ab37b658eaebe0f0e3fc82f343122f0c476fe05907e5781ebb19c27b2195d33a",
+      "rawBytes": 162070,
+      "compressedBytes": 6096,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n2048-full-trace.json.gz",
+      "compressedSHA256": "ec49272210413c5ca79cfca9f207ad52a3864a668d79341957658f80c30f905e",
+      "rawSHA256": "0bf63505ec4e9dbca18cd3373c1333d62a05830efe1b938732b9ca85ac4bb719",
+      "rawBytes": 3338534,
+      "compressedBytes": 278556,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "ebed3f46b5992767de56a540c4a1022287a1b3f12be61cb839dca566b3029552",
+      "rawSHA256": "a1122405eba3ad9226a1703d15a40435f7286e79058c4f0a8246a9ab9e5abbca",
+      "rawBytes": 162069,
+      "compressedBytes": 6090,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "46dfc8cd1902043ff279353a2eb70b327434c2778cf27ba54ce1b85afc6dc627",
+      "rawSHA256": "ab37b658eaebe0f0e3fc82f343122f0c476fe05907e5781ebb19c27b2195d33a",
+      "rawBytes": 162070,
+      "compressedBytes": 6096,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "43217be3f177d62d4c8a1247baf43cbc1dbe21c09b0a0a8b93e6c61fdce1f018",
+      "rawSHA256": "7902c7530e42fcf13d78bd658f0f8b475ebe0f96f41d9a2094565a0d78a2f176",
+      "rawBytes": 3338533,
+      "compressedBytes": 278554,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n512-full-observed.json.gz",
+      "compressedSHA256": "cfd7da65040233e12a2ba209dd97c076ae7827089e3cb07d2c498d0dff358e70",
+      "rawSHA256": "c243c19f1e901d60ca39d956465e9411ae60050bde347e96fa9ae438c21679ae",
+      "rawBytes": 41769,
+      "compressedBytes": 2315,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n512-full-plain.json.gz",
+      "compressedSHA256": "a19b470e56427977ed1767fc476894fdbc166ef967dfa9643e2cc7a63f647c18",
+      "rawSHA256": "fb00c611ccca8ede68954b99736c4d4574f6634bff090caa2887bcad8dab4d5c",
+      "rawBytes": 41770,
+      "compressedBytes": 2319,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n512-full-trace.json.gz",
+      "compressedSHA256": "0399d560f1d4321a888c54b3fdf3d9dbb6838d094587f0a178f0e8f9496d3758",
+      "rawSHA256": "ba5cd6086007a9126a9649c222b583b484dee4c2efddd52001cc6e72f36a85aa",
+      "rawBytes": 833732,
+      "compressedBytes": 82499,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n512-tiled-observed.json.gz",
+      "compressedSHA256": "cfd7da65040233e12a2ba209dd97c076ae7827089e3cb07d2c498d0dff358e70",
+      "rawSHA256": "c243c19f1e901d60ca39d956465e9411ae60050bde347e96fa9ae438c21679ae",
+      "rawBytes": 41769,
+      "compressedBytes": 2315,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n512-tiled-plain.json.gz",
+      "compressedSHA256": "a19b470e56427977ed1767fc476894fdbc166ef967dfa9643e2cc7a63f647c18",
+      "rawSHA256": "fb00c611ccca8ede68954b99736c4d4574f6634bff090caa2887bcad8dab4d5c",
+      "rawBytes": 41770,
+      "compressedBytes": 2319,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/a100-n512-tiled-trace.json.gz",
+      "compressedSHA256": "8291c4993a09cfafd07fb89879730d181651fd1635f6cd84413ffd3451967f2f",
+      "rawSHA256": "319a3d9c02c7049136cd9c56420d31d48025191622d94bc338ede4f3894c3dc5",
+      "rawBytes": 833731,
+      "compressedBytes": 82495,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/runs.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.225/runs.json.gz",
+      "compressedSHA256": "d60deb40fcbd5ebb6f173c43ca5018a09f85dd3108d56ce30bc4a3d1cd4fd087",
+      "rawSHA256": "ef9cf9df0b71cfcd9bd1fb3efe3171a8418714b56080a07b9996dd3b21ed4c1f",
+      "rawBytes": 5507290,
+      "compressedBytes": 143750,
+      "repositoryCopy": "evidence/unfused-cfl0.225/runs.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45.log",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45.log.gz",
+      "compressedSHA256": "56e52d1ece9dcc776f884d90faf562ad74a82af2763266f14e277c713f5402d3",
+      "rawSHA256": "107f6c9b5b1d53b648a984b90e42876ea0aebeeae6810075ff091b6455ad8ff8",
+      "rawBytes": 723,
+      "compressedBytes": 119,
+      "repositoryCopy": "evidence/unfused-cfl0.45.log.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n1024-full-observed.json.gz",
+      "compressedSHA256": "a0987f96373bf71eb49c643003fbe085ac6f1366b62150d6d7d0db89e1eedbba",
+      "rawSHA256": "1b26dd4aae0832e694d64d644e2110a9d9bfa38fb9848665d6d5f793794e3491",
+      "rawBytes": 81945,
+      "compressedBytes": 3293,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n1024-full-plain.json.gz",
+      "compressedSHA256": "f85b39927ea77d4207d6f3ea7149dc1ed85cd2006f1f0b19766ba1cbc56ad7b2",
+      "rawSHA256": "9d0dbf7f5837475746486d3834f11f8bfc0bad4c67bf3d5cc760d10ca8fcc6c6",
+      "rawBytes": 81946,
+      "compressedBytes": 3298,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n1024-full-trace.json.gz",
+      "compressedSHA256": "fd607ddecb5aff015b1da831d2dad3e343e23b74bcde96551b4c629bcd0959ad",
+      "rawSHA256": "6580228b1dc99990120d0f025b39e33d4deb0c8e0081e0ba2f031207d5a3ec76",
+      "rawBytes": 834127,
+      "compressedBytes": 76629,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "a0987f96373bf71eb49c643003fbe085ac6f1366b62150d6d7d0db89e1eedbba",
+      "rawSHA256": "1b26dd4aae0832e694d64d644e2110a9d9bfa38fb9848665d6d5f793794e3491",
+      "rawBytes": 81945,
+      "compressedBytes": 3293,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "f85b39927ea77d4207d6f3ea7149dc1ed85cd2006f1f0b19766ba1cbc56ad7b2",
+      "rawSHA256": "9d0dbf7f5837475746486d3834f11f8bfc0bad4c67bf3d5cc760d10ca8fcc6c6",
+      "rawBytes": 81946,
+      "compressedBytes": 3298,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "e0266e986ecd25f773c1f69bb9e6881a39f2af9c32015f62f4cdea39505206e6",
+      "rawSHA256": "793e9372c3c3253a514f1c676a69b160838bb30c56f844d6b2276f72c669798d",
+      "rawBytes": 834126,
+      "compressedBytes": 76627,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n2048-full-observed.json.gz",
+      "compressedSHA256": "8684439ebf947a9f239336fee80cbcdd5e2db777973736223f334882d20f1238",
+      "rawSHA256": "abd4e81e7549200bb0b44a6b4ce2b68f5d666267de3404a6232d0de1822a9a8c",
+      "rawBytes": 162149,
+      "compressedBytes": 5345,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n2048-full-plain.json.gz",
+      "compressedSHA256": "446ef791a00830098961d4208fa3dbf7af8bae651b632f7506ca19f8711f3f20",
+      "rawSHA256": "afb04a86b3744de2694491411fc5bd2914015ef9fb3b32cf46a36c0c935a56ad",
+      "rawBytes": 162150,
+      "compressedBytes": 5350,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n2048-full-trace.json.gz",
+      "compressedSHA256": "6f99b09cbdbb64567d70638afc3fdd00e895bc5645f204cd85f74aa7030f146f",
+      "rawSHA256": "8fd369c7b96a2a1d6df26d8c32a8a6666522202c3b0df5ebccc09174ba837129",
+      "rawBytes": 1685048,
+      "compressedBytes": 152994,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "8684439ebf947a9f239336fee80cbcdd5e2db777973736223f334882d20f1238",
+      "rawSHA256": "abd4e81e7549200bb0b44a6b4ce2b68f5d666267de3404a6232d0de1822a9a8c",
+      "rawBytes": 162149,
+      "compressedBytes": 5345,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "446ef791a00830098961d4208fa3dbf7af8bae651b632f7506ca19f8711f3f20",
+      "rawSHA256": "afb04a86b3744de2694491411fc5bd2914015ef9fb3b32cf46a36c0c935a56ad",
+      "rawBytes": 162150,
+      "compressedBytes": 5350,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "3aaf2d251b7897a0382e58672ea13dd0bb4f533fe37aa7f0989008a414637666",
+      "rawSHA256": "f8caacd6e77f766c5cd3a6ba4cd0f37dd08433ef72ad957153f9b6518ae449d0",
+      "rawBytes": 1685047,
+      "compressedBytes": 152992,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n512-full-observed.json.gz",
+      "compressedSHA256": "7be38744a76b91573cabf057d134e241a46304f33b5c3ed5f7a463b79ae0cb03",
+      "rawSHA256": "345cdafe7b2eb1b8b67dd43b51220449bc25033d1efb2bae54995aae395e697b",
+      "rawBytes": 41810,
+      "compressedBytes": 2177,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n512-full-plain.json.gz",
+      "compressedSHA256": "c912405d16fd54f77375255dbb496b72d7f0561adce39e9c096153517f871ec0",
+      "rawSHA256": "97a88fa3606fc82789b4581fccb00299159093c8343c74530bb10f836016fae4",
+      "rawBytes": 41811,
+      "compressedBytes": 2181,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n512-full-trace.json.gz",
+      "compressedSHA256": "f12fa013f02fc245a86dc03cd733f72f2e49fe9c30d973f585e1ad50b929b062",
+      "rawSHA256": "82cd1a2c2856ba23d3e3d6fc8dcac64b7f87a1202457e59deea0db0df51339f4",
+      "rawBytes": 415018,
+      "compressedBytes": 39360,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n512-tiled-observed.json.gz",
+      "compressedSHA256": "7be38744a76b91573cabf057d134e241a46304f33b5c3ed5f7a463b79ae0cb03",
+      "rawSHA256": "345cdafe7b2eb1b8b67dd43b51220449bc25033d1efb2bae54995aae395e697b",
+      "rawBytes": 41810,
+      "compressedBytes": 2177,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n512-tiled-plain.json.gz",
+      "compressedSHA256": "c912405d16fd54f77375255dbb496b72d7f0561adce39e9c096153517f871ec0",
+      "rawSHA256": "97a88fa3606fc82789b4581fccb00299159093c8343c74530bb10f836016fae4",
+      "rawBytes": 41811,
+      "compressedBytes": 2181,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a1-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a1-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a1-n512-tiled-trace.json.gz",
+      "compressedSHA256": "0e9d171776d1019d52a975015c9c14b2b566b90b73ccd07d834fd61a71705c80",
+      "rawSHA256": "74b4211fb0451ca98a7aa03d03d89b5dd27481da19ac56e11c7eb17ffad8b777",
+      "rawBytes": 415017,
+      "compressedBytes": 39357,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n1024-full-observed.json.gz",
+      "compressedSHA256": "d27c4e5acd37a9c2c058a1ad72c4386eddf8db4c8afe3053db9a62965ec102ef",
+      "rawSHA256": "724a3ebec8e93983a81f4444412c455b73b48717270968aa0fc1b15391a30d5e",
+      "rawBytes": 81895,
+      "compressedBytes": 3451,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n1024-full-plain.json.gz",
+      "compressedSHA256": "f2b106021c4d51cfd163c5710939cefdf22b47f6060147a7280f41f7ff4cb945",
+      "rawSHA256": "c0db14399bbcc945b59fba8d01539b297ec8f12a998cb7bd2afaff0b49d8acf2",
+      "rawBytes": 81896,
+      "compressedBytes": 3456,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n1024-full-trace.json.gz",
+      "compressedSHA256": "8601b46011aee3c721b33482e42655bd10bfd5ed8ce50a8a24d9f088dad06a53",
+      "rawSHA256": "82cf5a3a5401e7ea6b9e4bdc1d79a8c1bf9d2ebdd89096f30061e7247b14c412",
+      "rawBytes": 828936,
+      "compressedBytes": 77713,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "d27c4e5acd37a9c2c058a1ad72c4386eddf8db4c8afe3053db9a62965ec102ef",
+      "rawSHA256": "724a3ebec8e93983a81f4444412c455b73b48717270968aa0fc1b15391a30d5e",
+      "rawBytes": 81895,
+      "compressedBytes": 3451,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "f2b106021c4d51cfd163c5710939cefdf22b47f6060147a7280f41f7ff4cb945",
+      "rawSHA256": "c0db14399bbcc945b59fba8d01539b297ec8f12a998cb7bd2afaff0b49d8acf2",
+      "rawBytes": 81896,
+      "compressedBytes": 3456,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "6f18ed6ecbc69881b09885f214260f3ef651b33bea3a3c94aea639aa37d535f1",
+      "rawSHA256": "834df340f7ff044d4b0fced6fa9eaa3420df1080b1214a60aa7cb4c96e05027d",
+      "rawBytes": 828935,
+      "compressedBytes": 77711,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n2048-full-observed.json.gz",
+      "compressedSHA256": "ac2251cc60711679004474a741318044c1fbd21cad244d4cf1a4e4d321de67b6",
+      "rawSHA256": "27cc856424fc2a62a3f4b4d53f8c96f1990462088f1d01258981c6475098c72b",
+      "rawBytes": 161945,
+      "compressedBytes": 5811,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n2048-full-plain.json.gz",
+      "compressedSHA256": "cba60512329e0e85e92cc66fcf10334a50e13438209ac3a53fd7e207cbb0b595",
+      "rawSHA256": "31bd79c2bf39a3f8f4a7cac63aed19d088cdc3e8a21175fef60602c6d0e59e6e",
+      "rawBytes": 161946,
+      "compressedBytes": 5817,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n2048-full-trace.json.gz",
+      "compressedSHA256": "78ce12fd06a2dd69a911979414c07fb78f1bbc34e3b00f17b7781a46563a009a",
+      "rawSHA256": "9e2e6dad9d8d804c340e32d62268c410b52c3b2dd4845d2bb25cd31e4e5e5f7b",
+      "rawBytes": 1668657,
+      "compressedBytes": 157787,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "ac2251cc60711679004474a741318044c1fbd21cad244d4cf1a4e4d321de67b6",
+      "rawSHA256": "27cc856424fc2a62a3f4b4d53f8c96f1990462088f1d01258981c6475098c72b",
+      "rawBytes": 161945,
+      "compressedBytes": 5811,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "cba60512329e0e85e92cc66fcf10334a50e13438209ac3a53fd7e207cbb0b595",
+      "rawSHA256": "31bd79c2bf39a3f8f4a7cac63aed19d088cdc3e8a21175fef60602c6d0e59e6e",
+      "rawBytes": 161946,
+      "compressedBytes": 5817,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "0ce561df492c3310acedcbf80d8d04729e11e414d0c3c578afeabc5e45bd602d",
+      "rawSHA256": "cddf8ca87ee815d3689611b63507a79561ed59768589d333b0f55e153ab5b9bd",
+      "rawBytes": 1668656,
+      "compressedBytes": 157786,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n512-full-observed.json.gz",
+      "compressedSHA256": "f565532aac7861287d5619939526d379ab06656d6f7ef6e74d522313dddc3bea",
+      "rawSHA256": "ebf2eca0dc6126fe14563f2970b9c528b4ff1ae9bc5638b331d84aef50b611b7",
+      "rawBytes": 41778,
+      "compressedBytes": 2246,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n512-full-plain.json.gz",
+      "compressedSHA256": "89c5ba0f566b8a377969ea7a4e321140734538a725244163682c927dba3b2d34",
+      "rawSHA256": "c4d602e4c65cc2f020132e95c947e6f7e7f4f2ff396561d058b14eb4d8b1283e",
+      "rawBytes": 41779,
+      "compressedBytes": 2250,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n512-full-trace.json.gz",
+      "compressedSHA256": "19c35ddd6293a3c168f1ee856ac75947662f1bbbb76727d966f1be0d2f74ed38",
+      "rawSHA256": "7c7afa3518c213d39f7676318477f09aa634716da472ba5327673f64bb347edc",
+      "rawBytes": 415398,
+      "compressedBytes": 40610,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n512-tiled-observed.json.gz",
+      "compressedSHA256": "f565532aac7861287d5619939526d379ab06656d6f7ef6e74d522313dddc3bea",
+      "rawSHA256": "ebf2eca0dc6126fe14563f2970b9c528b4ff1ae9bc5638b331d84aef50b611b7",
+      "rawBytes": 41778,
+      "compressedBytes": 2246,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n512-tiled-plain.json.gz",
+      "compressedSHA256": "89c5ba0f566b8a377969ea7a4e321140734538a725244163682c927dba3b2d34",
+      "rawSHA256": "c4d602e4c65cc2f020132e95c947e6f7e7f4f2ff396561d058b14eb4d8b1283e",
+      "rawBytes": 41779,
+      "compressedBytes": 2250,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a10-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a10-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a10-n512-tiled-trace.json.gz",
+      "compressedSHA256": "674a0ac0777b659ff25c6c7fda103481d9a2b7848ee2e673ca8542e3a75567a3",
+      "rawSHA256": "bc8c43a48c45ae2cd626675c884b9b08a198c92306bbcce0452ea24d976bd2ce",
+      "rawBytes": 415397,
+      "compressedBytes": 40607,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n1024-full-observed.json.gz",
+      "compressedSHA256": "4d7a27ec992f71cf7f92ae90408c60526df90c175644585bdab7655263bbabb3",
+      "rawSHA256": "a0338188eb1faf24e6f5f6ec4a1bad8fa87f75b1ec41ad77f063c7bfb662dce6",
+      "rawBytes": 81817,
+      "compressedBytes": 3580,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n1024-full-plain.json.gz",
+      "compressedSHA256": "fea74864991f8bb641a85a454860f5f2fe920c1a2ebd3154de1a9b66f9500eb2",
+      "rawSHA256": "33e6e4a99ee1446a8ffd3514650328cac4ae725e7c5b8e68eec385e5e569e920",
+      "rawBytes": 81818,
+      "compressedBytes": 3585,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n1024-full-trace.json.gz",
+      "compressedSHA256": "b4a1ef713ae6f3cdbf466b6baca85b7898bed37aea8fa04d3acf468ab4c6cea7",
+      "rawSHA256": "559cd7add5faa38012e6b10039082574b68da11d262e5271a2fca47410d631db",
+      "rawBytes": 827252,
+      "compressedBytes": 83112,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n1024-tiled-observed.json.gz",
+      "compressedSHA256": "4d7a27ec992f71cf7f92ae90408c60526df90c175644585bdab7655263bbabb3",
+      "rawSHA256": "a0338188eb1faf24e6f5f6ec4a1bad8fa87f75b1ec41ad77f063c7bfb662dce6",
+      "rawBytes": 81817,
+      "compressedBytes": 3580,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n1024-tiled-plain.json.gz",
+      "compressedSHA256": "fea74864991f8bb641a85a454860f5f2fe920c1a2ebd3154de1a9b66f9500eb2",
+      "rawSHA256": "33e6e4a99ee1446a8ffd3514650328cac4ae725e7c5b8e68eec385e5e569e920",
+      "rawBytes": 81818,
+      "compressedBytes": 3585,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n1024-tiled-trace.json.gz",
+      "compressedSHA256": "3b04d030d31e3e5775d5595cfbbe4057bf3fb11a621c8c29e64457eb465898f9",
+      "rawSHA256": "03d56b3b794fe343e6faea19f79d079680dded93a398e32f154441acc1487bdf",
+      "rawBytes": 827251,
+      "compressedBytes": 83108,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n2048-full-observed.json.gz",
+      "compressedSHA256": "dc76be5523a401964626ffcfd4ebb5edd80fae99181b802ceecb69bfa26ccc63",
+      "rawSHA256": "a648b635c97706521896e82f21915fca0436b7208ed32a0bd68ea6279e42d96c",
+      "rawBytes": 162067,
+      "compressedBytes": 6096,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n2048-full-plain.json.gz",
+      "compressedSHA256": "dcc332aa8831e9cbd88f1705888c23f9a5a72c75bc355a1f70aec8706a616bae",
+      "rawSHA256": "dc5afc2b27727988226d3d9e208ac2871fbb863977dd551c12f5bfdf5c07dd0e",
+      "rawBytes": 162068,
+      "compressedBytes": 6101,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n2048-full-trace.json.gz",
+      "compressedSHA256": "f3575aed0ca15c0b38ede59a63263c39cc29b96efb1c6e8013d907e7f7c95b6f",
+      "rawSHA256": "6bc58a9396f78552272d66ec9e23c45c1b177dd4f7fc24de85392894ab3e36be",
+      "rawBytes": 1676559,
+      "compressedBytes": 157399,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n2048-tiled-observed.json.gz",
+      "compressedSHA256": "dc76be5523a401964626ffcfd4ebb5edd80fae99181b802ceecb69bfa26ccc63",
+      "rawSHA256": "a648b635c97706521896e82f21915fca0436b7208ed32a0bd68ea6279e42d96c",
+      "rawBytes": 162067,
+      "compressedBytes": 6096,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n2048-tiled-plain.json.gz",
+      "compressedSHA256": "dcc332aa8831e9cbd88f1705888c23f9a5a72c75bc355a1f70aec8706a616bae",
+      "rawSHA256": "dc5afc2b27727988226d3d9e208ac2871fbb863977dd551c12f5bfdf5c07dd0e",
+      "rawBytes": 162068,
+      "compressedBytes": 6101,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n2048-tiled-trace.json.gz",
+      "compressedSHA256": "31824dbadd345b8226cf57cfc14af25645835fe28fd63f117cdd579e1b2a308e",
+      "rawSHA256": "836db42c77f1b668c6ca07df9a4233ce778d2beabdf9717afc9ff742ab0311ed",
+      "rawBytes": 1676558,
+      "compressedBytes": 157397,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n512-full-observed.json.gz",
+      "compressedSHA256": "e9207d3b5418500fc4d283dd45d02ccc56595daaff74077cda4d7159e43fb7ca",
+      "rawSHA256": "410f6ac27cb0a4d352c2e4235acfdaf17f09c04b9983c2b11aba70dd3ed27dbb",
+      "rawBytes": 41749,
+      "compressedBytes": 2308,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n512-full-plain.json.gz",
+      "compressedSHA256": "ba0d881eb97284b4c89991a0d0550839fdfe3468a406d334b3d4e57c045206c6",
+      "rawSHA256": "7c73407f0925c35b857d82ea4c37f88dc523ac8c5b03db3ef0cdeedff53967f2",
+      "rawBytes": 41750,
+      "compressedBytes": 2312,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n512-full-trace.json.gz",
+      "compressedSHA256": "603080b634493f9c289a5b102863015a7746ae92f60b3d1a3ff2c708843ae4ab",
+      "rawSHA256": "ddfd1581508b38761b94b82b1713cbd4ee75bbaca9f824c1fa1d15483a764966",
+      "rawBytes": 406043,
+      "compressedBytes": 45037,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n512-tiled-observed.json.gz",
+      "compressedSHA256": "e9207d3b5418500fc4d283dd45d02ccc56595daaff74077cda4d7159e43fb7ca",
+      "rawSHA256": "410f6ac27cb0a4d352c2e4235acfdaf17f09c04b9983c2b11aba70dd3ed27dbb",
+      "rawBytes": 41749,
+      "compressedBytes": 2308,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n512-tiled-plain.json.gz",
+      "compressedSHA256": "ba0d881eb97284b4c89991a0d0550839fdfe3468a406d334b3d4e57c045206c6",
+      "rawSHA256": "7c73407f0925c35b857d82ea4c37f88dc523ac8c5b03db3ef0cdeedff53967f2",
+      "rawBytes": 41750,
+      "compressedBytes": 2312,
+      "repositoryCopy": "evidence/unfused-cfl0.45/a100-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.45/a100-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/a100-n512-tiled-trace.json.gz",
+      "compressedSHA256": "55d03386fbf0122470c1f1e79b54244cde6bfbde37dd59b22bdb80fe02d24f8a",
+      "rawSHA256": "d165eb07963edb56e29cb87c29e96609fa45dd2616f853698dc46a8428c084bb",
+      "rawBytes": 406042,
+      "compressedBytes": 45035,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.45/runs.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/archive/unfused-cfl0.45/runs.json.gz",
+      "compressedSHA256": "1bebb6f6af81f61f3f842f0e683baa8b00951ee6e94a7883c4664c045f1afd5c",
+      "rawSHA256": "69eff3b840b04cd9c915ec5ca4c2ac458a9ca3ca3641a5e0e8831f60615e24bc",
+      "rawBytes": 5507134,
+      "compressedBytes": 143806,
+      "repositoryCopy": "evidence/unfused-cfl0.45/runs.json.gz"
+    }
+  ],
+  "rawBytes": 140709516,
+  "compressedBytes": 10076641,
+  "repositoryCopies": 153,
+  "repositoryBytes": 1126528
+}

@@ -1,0 +1,109 @@
+{
+  "status": "complete",
+  "scope": "Run the predeclared 144-run acoustic controls once, retaining partial output on failure.",
+  "commands": [
+    {
+      "label": "default-cfl0.45",
+      "command": [
+        "/Users/louisemmett/.local/bin/gpu-slot",
+        "--mem",
+        "2",
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--fine",
+        "--rounding",
+        "default",
+        "--cfl",
+        "0.45",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/default-cfl0.45"
+      ],
+      "returncode": 0,
+      "terminalProcess": {
+        "pid": 42405,
+        "pgid": 42405,
+        "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+        "birth": "Wed Oct 21 23:04:17 2026",
+        "label": "default-cfl0.45"
+      }
+    },
+    {
+      "label": "default-cfl0.225",
+      "command": [
+        "/Users/louisemmett/.local/bin/gpu-slot",
+        "--mem",
+        "2",
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--fine",
+        "--rounding",
+        "default",
+        "--cfl",
+        "0.225",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/default-cfl0.225"
+      ],
+      "returncode": 0,
+      "terminalProcess": {
+        "pid": 42465,
+        "pgid": 42465,
+        "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+        "birth": "Wed Oct 21 23:04:25 2026",
+        "label": "default-cfl0.225"
+      }
+    },
+    {
+      "label": "unfused-cfl0.45",
+      "command": [
+        "/Users/louisemmett/.local/bin/gpu-slot",
+        "--mem",
+        "2",
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--fine",
+        "--rounding",
+        "unfused",
+        "--cfl",
+        "0.45",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/unfused-cfl0.45"
+      ],
+      "returncode": 0,
+      "terminalProcess": {
+        "pid": 42539,
+        "pgid": 42539,
+        "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+        "birth": "Wed Oct 21 23:04:37 2026",
+        "label": "unfused-cfl0.45"
+      }
+    },
+    {
+      "label": "unfused-cfl0.225",
+      "command": [
+        "/Users/louisemmett/.local/bin/gpu-slot",
+        "--mem",
+        "2",
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--fine",
+        "--rounding",
+        "unfused",
+        "--cfl",
+        "0.225",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-acoustic-controls/unfused-cfl0.225"
+      ],
+      "returncode": 0,
+      "terminalProcess": {
+        "pid": 42606,
+        "pgid": 42606,
+        "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+        "birth": "Wed Oct 21 23:04:46 2026",
+        "label": "unfused-cfl0.225"
+      }
+    }
+  ],
+  "pid": 42398,
+  "revision": "98d2fa2175f8bf32a635c042f111b9b058d5ce07",
+  "worktreeDirty": true
+}
