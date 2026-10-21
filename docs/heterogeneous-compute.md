@@ -183,3 +183,19 @@ the existing `Scripts/ml/remote-train.py`; the benchmark does not bypass that lo
 remote deployment uses `remote.py --cache-dir bombcad-cuda/ptx-cache`. Default worker deployments
 remain uncached. Next on #60: representative larger-grid/terrain stage timings and allocation,
 control-readback or cooling profiling; retain #47's acceptance gate before bulk generation.
+
+## Numerical gate follow-up: first-phase labels
+
+The next diagnostic stage found why the terrain phase targets diverge: a pressure difference
+of hundredths of a pascal can change the exact-zero phase-closing decision and include or exclude
+a later positive tail. Matched safe Metal itself fails one production target, while fast/fused
+standalone Metal reproduces the entire first-phase plane within the existing gate. This is
+label sensitivity, not evidence of a large sampled-pressure discrepancy or permission to relax
+the dataset gate. See [the diagnosis and complete histories](cuda-backend.md#diagnosing-first-phase-acceptance-21-october-2026).
+
+Read-only opt-in tracing and a float32 replay tool are available; diagnostic-only remote retrieval
+avoids transferring large fields. [#62](https://github.com/emmettl/bombcad-work/issues/62) tracks
+justified phase semantics and validation. #47 remains open. Beirut traces demonstrate near-zero closure sensitivity at two more phase
+points; the third needs a direct production trace. Fast standalone Metal still fails the peak
+gate, so a precision switch is not an established fix. Backend scheduling and performance work
+must preserve those acceptance dependencies.

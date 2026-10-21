@@ -22,7 +22,11 @@ def command(args):
     subprocess.run(args,check=True,stdin=subprocess.DEVNULL)
 
 
-def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,cache_dir=None):
+def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,cache_dir=None,trace_columns=None,diagnostics_only=False):
+    if diagnostics_only and (dataset_only or not trace_columns):
+        raise ValueError('diagnostics-only requires traces and excludes dataset-only')
+    if dataset_only and trace_columns:
+        raise ValueError('trace retrieval requires full output, not dataset-only')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*',host):
         raise ValueError('use a configured SSH host alias')
     if not re.fullmatch(r'[A-Za-z0-9_./-]+',python) or '..' in Path(python).parts:
@@ -40,7 +44,7 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,c
     def ssh(text):command(['ssh','-o','BatchMode=yes',host,text])
     with tempfile.TemporaryDirectory(prefix='bombcad-cuda-deploy-') as temp:
         staging=Path(temp)/'worker';staging.mkdir()
-        for name in ('run.py','job.py','compile.py'):
+        for name in ('run.py','job.py','compile.py','trace_columns.py'):
             shutil.copyfile(local/name,staging/name)
         shutil.copyfile(local.parent/'ml/remote-train.py',staging/'remote-train.py')
         (staging/'solver.cu').write_text(source)
@@ -56,10 +60,15 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,c
     worker=f'{remote}/worker/run.py'
     args=[python,worker,f'{remote}/input','--source',f'{remote}/worker/solver.cu','--out',f'{remote}/out',
           '--lock','bombcad-ml/lock']
+    if trace_columns: args += ['--trace-columns',','.join(str(i) for i in trace_columns)]
     if cache_dir is not None: args += ['--cache-dir',str(cache_dir)]
     ssh(' '.join(shlex.quote(x) for x in args))
     out.parent.mkdir(parents=True,exist_ok=True)
-    if dataset_only:
+    if diagnostics_only:
+        out.mkdir()
+        for name in ('trace.npy','trace.json','result.json'):
+            command(['scp',f'{host}:{remote}/out/{name}',str(out/name)])
+    elif dataset_only:
         out.mkdir()
         command(['scp','-r',f'{host}:{remote}/out/dataset',str(out/'dataset')])
         command(['scp',f'{host}:{remote}/out/result.json',str(out/'result.json')])
@@ -69,6 +78,11 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,c
     if report['sourceSHA256']!=hashlib.sha256(source.encode()).hexdigest():
         raise ValueError('returned worker source hash differs')
     expected={name:hashlib.sha256((local/name).read_bytes()).hexdigest() for name in ('run.py','job.py','compile.py')}
+    if trace_columns: expected['trace_columns.py']=hashlib.sha256((local/'trace_columns.py').read_bytes()).hexdigest()
+    if trace_columns:
+        from trace_columns import trace_source
+        if report.get('traceColumns')!=trace_columns or report.get('diagnosticSourceSHA256')!=hashlib.sha256((source+trace_source(source)).encode()).hexdigest():
+            raise ValueError('returned diagnostic source or columns differ')
     if report.get('workerFilesSHA256')!=expected:
         raise ValueError('deployed worker files differ from this checkout')
     (out/'deployment.json').write_text(json.dumps({'host':host,'directory':remote,'sourceSHA256':report['sourceSHA256']},indent=2)+'\n')
@@ -78,6 +92,9 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,c
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('host');p.add_argument('job',type=Path)
     p.add_argument('--out',type=Path,required=True);p.add_argument('--python',default='bombcad-ml/venv/bin/python')
+    p.add_argument('--diagnostics-only',action='store_true',help='retrieve only requested traces and provenance; retain raw fields on PC')
     p.add_argument('--dataset-only',action='store_true',help='retrieve training arrays and provenance; retain raw fields on the PC')
+    from trace_columns import parse_columns
+    p.add_argument('--trace-columns',type=parse_columns,help='read-only receiver histories; retrieve without --dataset-only')
     p.add_argument('--cache-dir',help='opt-in remote PTX cache directory, e.g. bombcad-cuda/ptx-cache')
-    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python,a.dataset_only,a.cache_dir),indent=2))
+    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python,a.dataset_only,a.cache_dir,a.trace_columns,a.diagnostics_only),indent=2))

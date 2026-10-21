@@ -49,3 +49,11 @@ the generated source, architecture, all compiler flags and the installed NVRTC/c
 binaries. A missing, corrupt or mismatched entry is rebuilt and atomically replaced. The default
 remains uncached. Worker reports now separate validation/imports, compilation, GPU setup/upload,
 solve and validation/output wall time; deployment and retrieval remain outside those timings.
+
+Numerical diagnostics: `trace_columns.py` derives a read-only pressure/recorder trace kernel;
+`run.py --trace-columns i,j` enables it, and `remote.py --diagnostics-only --trace-columns i,j`
+retrieves only histories and provenance. `diagnose-phase.py TRACE-DIR... --out NEW.json` reports
+phase transitions, float32 replay and clearly labelled offline sensitivity experiments.
+The standalone Metal reference takes the column list as its optional fourth argument and uses
+source augmented by `trace_columns.py`. See the backend documentation for the controlled math
+variants and the diagnosed near-zero label sensitivity. No acceptance tolerance changed.

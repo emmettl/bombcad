@@ -10,7 +10,7 @@ import time
 from job import scalar_layout, validate
 
 
-def run(folder, source_path, out, cache_dir=None):
+def run(folder, source_path, out, cache_dir=None, trace_columns=None):
     worker_start=time.monotonic();timings={}
     import numpy as np
     import torch
@@ -18,12 +18,19 @@ def run(folder, source_path, out, cache_dir=None):
     meta,u=validate(folder,source)
     if Path(out).exists():
         raise ValueError('output folder already exists')
+    trace_columns=trace_columns or []
+    if len(trace_columns)>64 or len(set(trace_columns))!=len(trace_columns) or any(not isinstance(i,int) or i<0 or i>=meta['shape'][0]*meta['shape'][1] for i in trace_columns):
+        raise ValueError('invalid trace column indices')
+    compilation_source=source
+    if trace_columns:
+        from trace_columns import trace_source, FIELDS
+        compilation_source+=trace_source(source)
     timings['importsAndValidationSeconds']=time.monotonic()-worker_start
     stage_start=time.monotonic()
     spec=importlib.util.spec_from_file_location('cuda_compile',Path(__file__).with_name('compile.py'))
     compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
     capability=torch.cuda.get_device_capability()
-    ptx=compiler.compile_ptx(source,f'compute_{capability[0]}{capability[1]}',cut_cells='terrain' in meta,cache_dir=cache_dir)
+    ptx=compiler.compile_ptx(compilation_source,f'compute_{capability[0]}{capability[1]}',cut_cells='terrain' in meta,cache_dir=cache_dir)
     timings['compileSeconds']=time.monotonic()-stage_start
     stage_start=time.monotonic()
     required=(77 if 'cooling' in meta else 65)*__import__('math').prod(meta['shape'])+36*meta['shape'][0]*meta['shape'][1]
@@ -41,6 +48,8 @@ def run(folder, source_path, out, cache_dir=None):
     functions={}
     for name in ('cudaSweep','cudaPrepare','cudaMeasure','cudaFirstPhase','cudaCoolingClock','cudaCoolingReset','cudaCoolingMedium','cudaCoolingLines','cudaCoolingApply','cudaRedistribute'):
         f=C.c_void_p();check(driver.cuModuleGetFunction(C.byref(f),module,name.encode()));functions[name]=f
+    if trace_columns:
+        f=C.c_void_p();check(driver.cuModuleGetFunction(C.byref(f),module,b'cudaTraceColumns'));functions['cudaTraceColumns']=f
     def launch(name,buffers,count):
         values=[C.c_uint64(t.data_ptr()) for t in buffers]
         params=(C.c_void_p*len(values))(*(C.addressof(v) for v in values))
@@ -100,7 +109,17 @@ def run(folder, source_path, out, cache_dir=None):
     else:
         dummy=torch.zeros(16,device='cuda',dtype=torch.uint8)
         cut_buffers=[dummy]*5
+    if trace_columns:
+        trace_indices=torch.tensor([len(trace_columns),*trace_columns],device='cuda',dtype=torch.int32)
+        trace_values=torch.zeros((len(trace_columns),8),device='cuda',dtype=torch.float32)
+        trace_rows=[];trace_times=[]
+    def trace():
+        if trace_columns:
+            launch('cudaTraceColumns',[state,columns,records,opened,uniforms,trace_indices,trace_values,controls],len(trace_columns))
+            trace_rows.append(trace_values.cpu().numpy().copy())
     launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
+    trace()
+    if trace_columns: trace_times.append(meta.get('startTime',0))
     launch('cudaMeasure',[state,mask,speed,uniforms],count)
     torch.cuda.synchronize()
     timings['deviceSetupAndUploadSeconds']=time.monotonic()-stage_start
@@ -126,12 +145,14 @@ def run(folder, source_path, out, cache_dir=None):
                 launch('cudaCoolingApply',[state,medium,loss,box,elapsed_cooling,uniforms,radiation,controls],count)
                 launch('cudaCoolingReset',[controls,elapsed_cooling],1)
         launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
+        trace()
         torch.cuda.synchronize()
         control=Control.from_buffer_copy(controls.cpu().numpy().tobytes())
         if control.stopped==3:
             raise RuntimeError('nonphysical wave speed; no completed dataset written')
         if control.dt>0:
             steps+=1;dt_history.append(control.dt)
+        if trace_columns: trace_times.append(meta.get('startTime',0)+sum(dt_history))
         if control.stopped==2:
             break
         if control.stopped==1:
@@ -148,6 +169,10 @@ def run(folder, source_path, out, cache_dir=None):
     out=Path(out);out.mkdir(parents=True)
     for name,tensor in [('state',state),('species',species),('peak',peak),('impulse',impulse),('first-phase',records)]:
         tensor.cpu().numpy().astype('<f4').tofile(out/(name+'.bin'))
+    if trace_columns:
+        np.save(out/'trace.npy',np.stack(trace_rows))
+        (out/'trace.json').write_text(json.dumps({'columns':trace_columns,'fields':FIELDS,'times':trace_times,
+            'sampling':'after first-phase recording, including initial sample; read-only diagnostic kernel; timing is perturbed'},indent=2)+'\n')
     np.save(out/'dt.npy',np.array(dt_history,dtype='<f4'))
     # Match the dataset's field channels: interpolate the accumulated fields, not instantaneous peaks.
     def plane(field):
@@ -189,6 +214,10 @@ def run(folder, source_path, out, cache_dir=None):
         details['cudaProvenance']=report
     timings['validationAndOutputSeconds']=time.monotonic()-stage_start
     timings['workerSecondsBeforeManifests']=time.monotonic()-worker_start
+    if trace_columns:
+        report['workerFilesSHA256']['trace_columns.py']=hashlib.sha256(Path(__file__).with_name('trace_columns.py').read_bytes()).hexdigest()
+        report['traceColumns']=trace_columns
+        report['diagnosticSourceSHA256']=hashlib.sha256(compilation_source.encode()).hexdigest()
     report['compileCacheEnabled']=cache_dir is not None
     report['timings']=timings
     report['timingScope']='Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload'
@@ -203,6 +232,8 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('job',type=Path);p.add_argument('--source',type=Path,required=True);p.add_argument('--out',type=Path,required=True)
     p.add_argument('--lock',type=Path,help='shared remote-train lock directory')
+    from trace_columns import parse_columns
+    p.add_argument('--trace-columns',type=parse_columns,help='opt-in read-only traces for up to 64 flattened plan indices')
     p.add_argument('--cache-dir',type=Path,help='opt-in content-addressed NVRTC PTX cache')
     a=p.parse_args()
     lock_module=None
@@ -214,6 +245,6 @@ if __name__=='__main__':
         if not lock_module.acquire(str(a.lock),f'CUDA dataset {a.job}',lock_module.boot_id()):
             raise SystemExit('PC GPU is held by another job; retry after it finishes')
     try:
-        print(json.dumps(run(a.job,a.source,a.out,a.cache_dir),indent=2))
+        print(json.dumps(run(a.job,a.source,a.out,a.cache_dir,a.trace_columns),indent=2))
     finally:
         if lock_module:lock_module.release(str(a.lock))

@@ -4,7 +4,7 @@ import Metal
 
 func run() throws {
     let args = CommandLine.arguments
-    guard args.count == 4, let device = MTLCreateSystemDefaultDevice(),
+    guard args.count == 4 || args.count == 5, let device = MTLCreateSystemDefaultDevice(),
         let queue = device.makeCommandQueue()
     else { throw NSError(domain: "usage: metal-reference job source.metal output", code: 1) }
     let folder = URL(fileURLWithPath: args[1], isDirectory: true)
@@ -14,6 +14,15 @@ func run() throws {
         as! [String: Any]
     let dims = meta["shape"] as! [Int]
     let count = dims.reduce(1, *)
+    let traceArguments =
+        args.count == 5 ? args[4].split(separator: ",", omittingEmptySubsequences: false) : []
+    let traceColumns = traceArguments.compactMap { Int($0) }
+    guard traceColumns.count == traceArguments.count, args.count == 4 || !traceColumns.isEmpty,
+        traceColumns.count <= 64, Set(traceColumns).count == traceColumns.count,
+        traceColumns.allSatisfy({ $0 >= 0 && $0 < dims[0] * dims[1] })
+    else { throw NSError(domain: "invalid trace columns", code: 1) }
+    var traceRows: [Float] = []
+    var traceTimes: [Double] = []
     let values = meta["uniforms"] as! [String: NSNumber]
     func layout(_ name: String) throws -> [(String, String)] {
         let pattern = "struct " + name + "\\s*\\{([\\s\\S]*?)\\};"
@@ -97,15 +106,21 @@ func run() throws {
     let cutList = try terrain == nil ? dummy : read("cut-list")
     let cutCeilings = try terrain == nil ? dummy : read("cut-ceilings")
     let cutCount = try words([UInt32(terrain?["cutColumnCount"] ?? 0)])
+    let traceIndices = try words([UInt32(traceColumns.count)] + traceColumns.map { UInt32($0) })
+    let traceValues = try zeros(max(1, traceColumns.count * 8) * 4)
     let constants = MTLFunctionConstantValues()
     if terrain != nil {
         var enabled = true
         constants.setConstantValue(&enabled, type: .bool, index: 13)
     }
+    let math = ProcessInfo.processInfo.environment["BOMBCAD_REFERENCE_MATH"] ?? "safe"
+    guard ["safe", "fast", "unfused-fast"].contains(math) else {
+        throw NSError(domain: "BOMBCAD_REFERENCE_MATH must be safe, fast or unfused-fast", code: 1)
+    }
     let options = MTLCompileOptions()
-    options.mathMode = .safe
-    let library = try device.makeLibrary(
-        source: "#pragma METAL fp contract(off)\n" + source, options: options)
+    options.mathMode = math == "safe" ? .safe : .fast
+    let contract = math == "fast" ? "" : "#pragma METAL fp contract(off)\n"
+    let library = try device.makeLibrary(source: contract + source, options: options)
     var pipelines: [String: MTLComputePipelineState] = [:]
     for name in [
         "referenceSweep", "referencePrepare", "referenceMeasure", "referenceFirstPhase",
@@ -114,6 +129,10 @@ func run() throws {
     ] {
         pipelines[name] = try device.makeComputePipelineState(
             function: library.makeFunction(name: name, constantValues: constants))
+    }
+    if !traceColumns.isEmpty {
+        pipelines["referenceTraceColumns"] = try device.makeComputePipelineState(
+            function: library.makeFunction(name: "referenceTraceColumns", constantValues: constants))
     }
     func launch(_ encoder: MTLComputeCommandEncoder, _ name: String, _ buffers: [MTLBuffer], _ n: Int) {
         let pipeline = pipelines[name]!
@@ -133,11 +152,28 @@ func run() throws {
         command.waitUntilCompleted()
         if let error = command.error { throw error }
     }
+    func encodeTrace(_ encoder: MTLComputeCommandEncoder) {
+        if !traceColumns.isEmpty {
+            launch(
+                encoder, "referenceTraceColumns",
+                [state, columns, records, opened, uniform, traceIndices, traceValues, control],
+                traceColumns.count)
+        }
+    }
+    func collectTrace(_ time: Double) {
+        if !traceColumns.isEmpty {
+            let values = traceValues.contents().bindMemory(to: Float.self, capacity: traceColumns.count * 8)
+            traceRows.append(contentsOf: UnsafeBufferPointer(start: values, count: traceColumns.count * 8))
+            traceTimes.append(time)
+        }
+    }
     try command {
         launch(
             $0, "referenceFirstPhase", [state, control, columns, records, opened, uniform], dims[0] * dims[1])
         launch($0, "referenceMeasure", [state, mask, speed, uniform], count)
+        encodeTrace($0)
     }
+    collectTrace((meta["startTime"] as? NSNumber)?.doubleValue ?? 0)
     var timesteps: [Float] = []
     for _ in 0..<(meta["steps"] as! Int) {
         try command { encoder in
@@ -189,11 +225,14 @@ func run() throws {
             launch(
                 encoder, "referenceFirstPhase", [state, control, columns, records, opened, uniform],
                 dims[0] * dims[1])
+            encodeTrace(encoder)
         }
         let c = control.contents().bindMemory(to: UInt32.self, capacity: controlWords.count)
         if c[8] == 3 { throw NSError(domain: "nonphysical wave speed", code: 3) }
         let dt = Float(bitPattern: c[0])
         if dt > 0 { timesteps.append(dt) }
+        collectTrace(
+            ((meta["startTime"] as? NSNumber)?.doubleValue ?? 0) + timesteps.reduce(0) { $0 + Double($1) })
         if c[8] == 2 { break }
         if c[8] == 1 {
             c[8] = 0
@@ -213,6 +252,20 @@ func run() throws {
         try Data(bytes: b.contents(), count: b.length).write(to: output.appendingPathComponent(name + ".bin"))
     }
     try timesteps.withUnsafeBytes { try Data($0).write(to: output.appendingPathComponent("dt.bin")) }
+    if !traceColumns.isEmpty {
+        try traceRows.withUnsafeBytes { try Data($0).write(to: output.appendingPathComponent("trace.bin")) }
+        let info: [String: Any] = [
+            "columns": traceColumns,
+            "fields": [
+                "overpressure", "peak", "allPositiveImpulse", "firstPhaseImpulse", "phasePeak", "open", "dt",
+                "batchTime",
+            ],
+            "times": traceTimes, "math": math,
+            "sampling": "after first-phase recording, including initial sample; read-only diagnostics",
+        ]
+        try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
+            .write(to: output.appendingPathComponent("trace.json"))
+    }
     print("Metal reference: \(device.name), \(timesteps.count) steps, \(count) cells")
 }
 try run()

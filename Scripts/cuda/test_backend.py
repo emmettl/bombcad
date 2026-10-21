@@ -51,6 +51,10 @@ class DeploymentTests(unittest.TestCase):
             self.assertTrue(downloads[1].endswith('/out/result.json'))
 
 
+    def test_trace_retrieval_is_not_silently_dropped_by_dataset_only(self):
+        with self.assertRaisesRegex(ValueError,'trace retrieval requires full output'):
+            remote.deploy('bombcad-pc','unused','unused-output',dataset_only=True,trace_columns=[1])
+
     def test_invalid_cache_path_is_rejected_before_deployment(self):
         with self.assertRaisesRegex(ValueError,'invalid remote cache path'):
             remote.deploy('bombcad-pc','unused','unused-output',cache_dir='../other')
@@ -86,6 +90,25 @@ class CompileCacheTests(unittest.TestCase):
             self.compiler.store_ptx(path,'key',b'rebuilt')
             self.assertEqual(self.compiler.cached_ptx(path,'key'),b'rebuilt')
             self.assertEqual([p.name for p in path.parent.iterdir()],['entry.json'])
+
+
+class TraceTests(unittest.TestCase):
+    def test_bad_or_unbounded_column_lists_are_rejected(self):
+        import argparse
+        from trace_columns import parse_columns
+        self.assertEqual(parse_columns('17,400'),[17,400])
+        for value in ('','1,','-1','1,1','1.5','1,no',','.join(str(i) for i in range(65))):
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
+                parse_columns(value)
+
+    def test_diagnostic_uses_existing_pressure_expression(self):
+        from generate import numerical_source
+        from trace_columns import trace_source
+        source=numerical_source()
+        begin=source.index('    float pressure = 0;',source.index('void portableFirstPhase('))
+        end=source.index('    float dt = max(control.dt',begin)
+        for metal in (False,True):
+            self.assertIn(source[begin:end],trace_source(source,metal))
 
 class JobTests(unittest.TestCase):
     @classmethod

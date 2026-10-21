@@ -1,0 +1,68 @@
+{
+  "files": {
+    "trace.npy": {
+      "bytes": 1920,
+      "sha256": "cad865ee30207f24b44f36699af62f6d6d97edcd5b39eb85426b6f71d6783d88"
+    },
+    "trace.json": {
+      "bytes": 1068,
+      "sha256": "c037b72eeb6950be9cb8b2cf74b9ca2380aef899d69e74eb3bc387d58d59b256"
+    },
+    "result.json": {
+      "bytes": 1641,
+      "sha256": "9b0651db7a104b234341958685140150a45e6e8e0ad71be30165f969804789a8"
+    },
+    "deployment.json": {
+      "bytes": 199,
+      "sha256": "48dc5f4c3d9b81c273f31fc5a0794ab207a4e17a58703fef1b5068bfe8f31230"
+    }
+  },
+  "report": {
+    "format": "bombcad-cuda-result-1",
+    "backend": "cuda",
+    "terrainCutCells": false,
+    "device": "NVIDIA GeForce RTX 3080 Ti",
+    "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "steps": 26,
+    "startTime": 0,
+    "elapsedSimulationTime": 0.0020000000004074536,
+    "wallSeconds": 0.009243264998076484,
+    "shape": [
+      32,
+      32,
+      32
+    ],
+    "math": "float32, unfused, precise division/sqrt",
+    "workerFilesSHA256": {
+      "run.py": "3a14c3f8040c96893ad290369324bc3901c79fc259dd53cc667b6df8662aa16b",
+      "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "trace_columns.py": "e62515bf87cea72146e23222ee62860b37b73343f3050391d82a43bb76bb31da"
+    },
+    "channels": [
+      "peakOverpressure",
+      "impulse"
+    ],
+    "units": [
+      "Pa",
+      "Pa s"
+    ],
+    "above": 0.625,
+    "traceColumns": [
+      17,
+      400
+    ],
+    "diagnosticSourceSHA256": "8b48bac9aecb6d2458dae18ecc8b06314dc751400632211ca3fc330d7aa99746",
+    "compileCacheEnabled": true,
+    "timings": {
+      "importsAndValidationSeconds": 1.876154001998657,
+      "compileSeconds": 1.2936816529982025,
+      "deviceSetupAndUploadSeconds": 0.29366777099494357,
+      "solverSeconds": 0.009243264998076484,
+      "validationAndOutputSeconds": 0.06470265299867606,
+      "workerSecondsBeforeManifests": 3.5374532909991103
+    },
+    "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+  },
+  "scope": "End-to-end --trace-columns 17,400 --diagnostics-only deployment; only trace arrays/metadata/result retrieved, deployment receipt written locally"
+}

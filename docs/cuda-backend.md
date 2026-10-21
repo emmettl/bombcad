@@ -172,3 +172,103 @@ Repeated correctness-gated fixture experiments are retained in
 [Heterogeneous compute](heterogeneous-compute.md). They establish useful startup savings for
 small jobs, not faster numerical sweeps or an end-to-end large-district speedup. The full-size
 training acceptance failures above remain open regardless of caching.
+
+## Diagnosing first-phase acceptance: 21 October 2026
+
+Read-only traces now identify the terrain pilot's two first-phase discrepancies as sensitivity
+to a tiny pressure's sign at phase closure. The [retained histories and replay summary](../Benchmarks/CUDAAcceptance/2026-10-21-phase-traces/summary.json)
+cover columns 134058 (x=426, y=261) and 250097 (x=241, y=488), in the 512 × 512 × 50
+`made-perimeter-s3-1` job. CUDA took 2,708 steps; both matched Metal arithmetic variants took
+2,708 too. Trace samples also include the initial state and no-op control samples.
+
+| Column | CUDA first phase, Pa s | Safe/unfused Metal | Fast/fused standalone Metal | Production Metal |
+|---|---|---|---|---|
+| 134058 | 417.1382 | 426.4038 | 426.4051 | 426.4054 |
+| 250097 | 186.4339 | 186.4344 | 225.7190 | 225.7193 |
+
+At sample 1216 of column 134058, CUDA sees -0.0078125 Pa and closes the phase at 1.965568 s;
+safe Metal sees +0.03125 Pa and stays open until 2.038151 s. At sample 1581 of column 250097,
+CUDA and safe Metal see -0.046875 and -0.0234375 Pa and close near 2.584012 s. Fast/fused Metal
+stays open until 2.702129 s. CUDA versus safe-Metal sampled pressures differ by at most 0.0625 Pa
+over these two full histories. This bound describes only the sampled columns, not the whole grid.
+
+The safe-Metal **whole first-phase target plane itself fails one production-reference point**;
+fast/fused standalone Metal passes that plane's existing per-value gate (relative L2 7.68e-7).
+Thus the observed issue is not unique to a CUDA translation: the phase label amplifies a
+near-zero rounding decision into later positive impulse inclusion. This does not establish that
+all discrepancies, particularly Beirut's peak failures, share that cause.
+
+`diagnose-phase.py` replays the recorder in float32. CUDA's recorder values match at every
+sample exactly; all three arithmetic paths' final impulses replay exactly. Fast Metal has small
+intermediate sum differences (up to 1.53e-5) consistent with contraction. In an **offline sensitivity
+experiment only**, replacing just the single CUDA closing pressure with zero recovers 426.4032
+and 225.7174 Pa s. No solver, recorder, target, mask or tolerance was changed by that experiment.
+
+Full CUDA terrain arrays and timestep histories are bit-identical with tracing enabled and
+without it; smaller CUDA and Metal controls pass the same no-change check. Compressed complete
+histories, source/worker hashes, transition windows and counterfactual summaries are retained.
+These traced runs perturb execution timing and must not be used as performance benchmarks.
+
+[#62](https://github.com/emmettl/bombcad-work/issues/62) tracks a justified, versioned phase-label
+robustness policy and its physical/product checks. #47 remains gated; neither a new epsilon nor
+exceptions to dataset comparison have been introduced. The Beirut follow-up below separates peak behavior from phase decisions; assess candidate
+definitions on held-out histories before changing any label semantics or regenerating data.
+
+### Reproducing a trace
+
+`run.py` and `remote.py` accept `--trace-columns 134058,250097` (up to 64 distinct flattened
+plan indices). The diagnostic kernel derives its pressure expression from the generated
+production recorder and writes only a separate trace buffer. It records overpressure, peak,
+all-positive impulse, first-phase impulse, phase peak, open state, dt and batch clock after each
+recorder sample. Output includes `trace.npy`, `trace.json`, indices and diagnostic-source hash.
+Ordinary runs do not compile or dispatch that kernel.
+
+Use `remote.py --trace-columns ... --diagnostics-only` to retrieve just those histories and
+provenance, keeping large raw fields on the PC. Dataset-only retrieval cannot be combined with
+traces. The shared GPU lock still applies. Tracing is diagnostic, not an acceptance bypass.
+
+For standalone matched Metal, generate its source, then append the read-only kernel:
+
+```sh
+python3 Scripts/cuda/generate.py --out solver.cu --metal-out reference.metal
+python3 Scripts/cuda/trace_columns.py reference.metal --metal-out trace.metal
+swiftc Scripts/cuda/metal-reference.swift -o metal-reference
+# Run under the normal Mac gpu-slot reservation:
+metal-reference JOB trace.metal NEW-OUT 134058,250097
+```
+
+The reference defaults to safe, unfused math. Set `BOMBCAD_REFERENCE_MATH=fast` for the separate
+fast/fused diagnostic, or `unfused-fast` to isolate contraction from the math mode. These options
+change only that standalone diagnostic; no production default is affected. `diagnose-phase.py
+TRACE-DIR... --out NEW.json` reads CUDA NPY, Metal binary or the archived gzip traces and reports
+transitions and float32 replay. The standalone runner remains a supported-subset reference,
+not a complete substitute for production Metal.
+
+### Beirut follow-up
+
+[Six-column Beirut histories and full-plane comparisons](../Benchmarks/CUDAAcceptance/2026-10-21-beirut-traces/summary.json)
+now cover all three peak and three first-phase failures. Both CUDA and fast/fused standalone
+Metal took 2,477 steps. Tracing preserved every original CUDA array and timestep byte.
+
+At columns 164452 and 200270, CUDA closes at -0.03125 and -0.015625 Pa, giving 1244.798 and
+1024.856 Pa s. Fast standalone Metal stays open longer and gives 1345.859 and 1032.393 Pa s,
+matching production's 1345.858 and 1032.393. Offline zeroing of those single CUDA samples gives
+1345.850 and 1032.389 Pa s. This extends the demonstrated near-zero sensitivity to those points.
+
+At column 255969, both standalone paths give about 684.06 Pa s, against production's 634.63.
+A +0.03125 Pa CUDA sample at index 2022 occurs near that accumulated impulse; offline replacing
+it with -0.0078125 Pa gives 634.6302. This supports the same sensitivity hypothesis, but the
+production recorder's closure has **not** been directly traced, so the cause at this point is
+not established to the same standard. `diagnose-phase.py --replace COLUMN:SAMPLE:PA` makes this
+counterfactual reproducible and explicitly labels it offline-only.
+
+The peak discrepancy remains separate. CUDA's original three failures are around 5.8 kPa,
+about 12–13 Pa low. Fast/fused standalone Metal gives still lower peaks there (5806.81,
+5716.25 and 5806.08 Pa), and its whole peak plane has 112 values outside the existing gate,
+maximum absolute difference 46.87 Pa. The first-phase plane has one failure, at column 255969.
+Its very small aggregate peak L2 error does not override those individual failures; neither a
+new math mode nor a global precision switch is a demonstrated acceptance fix.
+
+Next: capture production receiver closure directly without changing its stepping/results;
+isolate standalone/full-grid versus production execution and arithmetic for the peak field;
+then evaluate #62's label definitions. No broad CUDA batch has been enabled.

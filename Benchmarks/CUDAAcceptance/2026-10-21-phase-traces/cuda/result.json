@@ -1,0 +1,47 @@
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": true,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2708,
+  "startTime": 0,
+  "elapsedSimulationTime": 4.579999999987194,
+  "wallSeconds": 49.86213803500141,
+  "shape": [
+    512,
+    512,
+    50
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "1e347116f044239366d7ed1d43aece860f93d67455b8b31a8d2f18995c29cfda",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+    "trace_columns.py": "c9222476a396f693aab8e57b9825fdea81c02291c0b16131eab8b28d2c7da2ad"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "traceColumns": [
+    134058,
+    250097
+  ],
+  "diagnosticSourceSHA256": "8b48bac9aecb6d2458dae18ecc8b06314dc751400632211ca3fc330d7aa99746",
+  "compileCacheEnabled": true,
+  "timings": {
+    "importsAndValidationSeconds": 1.7167776999995112,
+    "compileSeconds": 2.042534512002021,
+    "deviceSetupAndUploadSeconds": 5.777146519998496,
+    "solverSeconds": 49.86213803500141,
+    "validationAndOutputSeconds": 0.534975377995579,
+    "workerSecondsBeforeManifests": 59.933577329997206
+  },
+  "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}
