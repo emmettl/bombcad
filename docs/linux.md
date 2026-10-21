@@ -95,6 +95,17 @@ shared checkout before locking must be updated; they cannot be made safe by a ne
 Stale-lease cleanup, acquisition and release are serialized by a short filesystem mutex.
 Waiting uses a monotonic deadline; it does not rely on wall-clock corrections.
 
+Fresh source stages reuse identical files from a verified, completed source stage through a
+private hard-link basis view (emmettl/bombcad-work#70). Files enter that view only when SHA-256
+and permissions match the requested manifest. Changed bytes or modes transfer into separate
+inodes; directories, links, declared inputs and tools transfer normally. Checksummed rsync and
+the final manifest check remain mandatory. The mutable build checkout is never a link basis,
+so builds cannot write through to retained snapshots. A missing/corrupt basis falls back to a
+full transfer; removal during transfer either yields a verified complete source or refuses
+before execution. Source transfer statistics and elapsed transfer time are printed. These
+measure staging work, not solver speed. Retained stages/views share unchanged file storage;
+there is no automatic garbage collector, and active/recoverable snapshots must be preserved.
+
 The log prints the invocation ID. To recover a retained invocation without sending changed
 local sources or inputs:
 

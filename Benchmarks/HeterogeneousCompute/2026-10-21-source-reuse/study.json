@@ -1,0 +1,168 @@
+{
+  "status": "complete",
+  "baseRevision": "34c280084c62b101139b446d56ea7ec592e7a61b",
+  "commands": [
+    {
+      "label": "freeze",
+      "returncode": 0
+    },
+    {
+      "label": "full-mkdir",
+      "returncode": 0
+    },
+    {
+      "label": "full-transfer",
+      "returncode": 0
+    },
+    {
+      "label": "a-transfer",
+      "returncode": 0
+    },
+    {
+      "label": "a-test",
+      "returncode": 0
+    },
+    {
+      "label": "b-transfer",
+      "returncode": 0
+    },
+    {
+      "label": "b-test",
+      "returncode": 0
+    },
+    {
+      "label": "b-cached-test",
+      "returncode": 0
+    },
+    {
+      "label": "c-transfer",
+      "returncode": 0
+    },
+    {
+      "label": "c-run",
+      "returncode": 1
+    },
+    {
+      "label": "cached-failed-run",
+      "returncode": 1
+    },
+    {
+      "label": "d-final-transfer",
+      "returncode": 0
+    },
+    {
+      "label": "d-final-run",
+      "returncode": 0
+    },
+    {
+      "label": "d-final-cached-run",
+      "returncode": 0
+    },
+    {
+      "label": "d-retrieve",
+      "returncode": 0
+    },
+    {
+      "label": "e-final-transfer",
+      "returncode": 0
+    },
+    {
+      "label": "e-final-test",
+      "returncode": 0
+    },
+    {
+      "label": "e-final-cached-test",
+      "returncode": 0
+    },
+    {
+      "label": "linux-final-controls",
+      "returncode": 0
+    }
+  ],
+  "invocations": [
+    {
+      "kind": "test",
+      "invocation": "f0c7674f83f04fea800d79abb2f6c698",
+      "host": "bombcad-pc",
+      "cores": 8,
+      "wait": 0,
+      "suites": [
+        "ReceiverLoadStudyTests"
+      ]
+    },
+    {
+      "kind": "test",
+      "invocation": "71a8316249904bd284b9f1ededfea2c9",
+      "host": "bombcad-pc",
+      "cores": 8,
+      "wait": 0,
+      "suites": [
+        "ReceiverLoadStudyTests"
+      ]
+    },
+    {
+      "kind": "run",
+      "invocation": "f22dea83e18040f0bfb1e0f51f273456",
+      "host": "bombcad-pc",
+      "cores": 8,
+      "wait": 0,
+      "sweep": {
+        "name": "source-reuse-20261021",
+        "inputs": [
+          "/private/tmp/bombcad-source-reuse/dist"
+        ],
+        "cases": [
+          {
+            "name": "fixtures",
+            "args": [
+              "receiver-fixtures",
+              "--input",
+              "/private/tmp/bombcad-source-reuse/dist/__pycache__/input.json",
+              "--out",
+              "{out}/dist/__pycache__/results.json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "kind": "run",
+      "invocation": "5fd5b8ccaa8c4a3291a1c7aa94ac77c6",
+      "host": "bombcad-pc",
+      "cores": 8,
+      "wait": 0,
+      "sweep": {
+        "name": "source-reuse-20261021",
+        "inputs": [
+          "/private/tmp/bombcad-source-reuse/dist"
+        ],
+        "cases": [
+          {
+            "name": "fixtures",
+            "args": [
+              "receiver-fixtures",
+              "--input",
+              "/private/tmp/bombcad-source-reuse/dist/__pycache__/input.json",
+              "--out",
+              "{out}/results.json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "kind": "test",
+      "invocation": "edbbdd2764e542c695c6a34df0821865",
+      "host": "bombcad-pc",
+      "cores": 8,
+      "wait": 0,
+      "suites": [
+        "ReceiverLoadStudyTests"
+      ]
+    }
+  ],
+  "fullReference": "983308e10c884bc48f48c5f35b2e922f",
+  "failedAttemptPreserved": "AssertionError(('c-run', 1, b'remote-sweep: building blastmodel in /home/lemme/bombcad-sweeps/src\\r\\nremote-sweep: built in 139 s\\r\\nremote-sweep: case fixtures: receiver-fixtures --input /home/lemme/bombcad-sweeps/staging/f22dea83e18040f0bfb1e0f51f273456/inputs/dist/__pycache__/input.json --out /home/lemme/bombcad-sweeps/staging/f22dea83e18040f0bfb1e0f51f273456/results/fixtures/dist/__pycache__/results.json\\r\\nremote-sweep: case fixtures: exit 1 in 0.1 s\\r\\n'))",
+  "finalRunnerSHA256": "c7c9682af08e141b28aec54907c8c5c66b0bebf170037f87b58dd631d715108f",
+  "matchesPreviousCPUStudy": true
+}

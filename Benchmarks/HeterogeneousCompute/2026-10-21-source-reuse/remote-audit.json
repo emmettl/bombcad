@@ -1,0 +1,48 @@
+{
+  "status": "complete",
+  "allSnapshotsAndResultsVerified": true,
+  "unchangedLargeInodeShared": true,
+  "modeAndSameMetadataEditsIsolated": true,
+  "oldSnapshotsUnchangedAfterFinalBuilds": true,
+  "cacheSampleIndependent": "Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/state.tar.gz",
+  "threeSourceLogicalBytes": 741541776,
+  "uniqueSourceInodeLogicalBytes": 247180597,
+  "uniqueSourceInodeAllocatedBytes": 253407232,
+  "records": [
+    {
+      "invocation": "f0c7674f83f04fea800d79abb2f6c698",
+      "exitCode": 0,
+      "regularBytes": 247180592,
+      "sharedBytes": 247180587,
+      "runnerSHA256": "cf88b841d7d3dc8c917f94179a6e2303a99799b329d0017e0bbd562044898c91"
+    },
+    {
+      "invocation": "71a8316249904bd284b9f1ededfea2c9",
+      "exitCode": 0,
+      "regularBytes": 247180592,
+      "sharedBytes": 247180592,
+      "runnerSHA256": "cf88b841d7d3dc8c917f94179a6e2303a99799b329d0017e0bbd562044898c91"
+    },
+    {
+      "invocation": "f22dea83e18040f0bfb1e0f51f273456",
+      "exitCode": 1,
+      "regularBytes": 247180592,
+      "sharedBytes": 247180592,
+      "runnerSHA256": "cf88b841d7d3dc8c917f94179a6e2303a99799b329d0017e0bbd562044898c91"
+    },
+    {
+      "invocation": "5fd5b8ccaa8c4a3291a1c7aa94ac77c6",
+      "exitCode": 0,
+      "regularBytes": 242986841,
+      "sharedBytes": 242986841,
+      "runnerSHA256": "c7c9682af08e141b28aec54907c8c5c66b0bebf170037f87b58dd631d715108f"
+    },
+    {
+      "invocation": "edbbdd2764e542c695c6a34df0821865",
+      "exitCode": 0,
+      "regularBytes": 242986841,
+      "sharedBytes": 242986841,
+      "runnerSHA256": "c7c9682af08e141b28aec54907c8c5c66b0bebf170037f87b58dd631d715108f"
+    }
+  ]
+}

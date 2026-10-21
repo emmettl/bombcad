@@ -1,0 +1,8 @@
+{
+  "status": "complete",
+  "controlRoot": "bombcad-sweeps/controls/644dcc387fd74127bdffd8e0a8228e57",
+  "productionRunnerSHA256": "c7c9682af08e141b28aec54907c8c5c66b0bebf170037f87b58dd631d715108f",
+  "testsSHA256": "6c27b4d061308c8ee74ccdd62d5ace92c9f8db6dc16562a9b69d0325c5ee5274",
+  "controlsPassed": 23,
+  "cleanupDuringBasisLinkPreparationExercised": true
+}

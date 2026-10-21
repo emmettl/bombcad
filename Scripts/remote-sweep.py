@@ -446,6 +446,76 @@ def input_manifest(inputs):
     return result
 
 
+def source_basis(root=ROOT):
+    """Newest verified completed source stage; never the mutable build checkout.
+
+    No lease is needed to read immutable stages. Removal during selection/transfer can
+    fall back or fail verification; no worker may start with an incomplete destination.
+    """
+    staging = Path(root) / "staging"
+    if not staging.is_dir():
+        return None
+    candidates = []
+    try:
+        entries = list(staging.iterdir())
+    except FileNotFoundError:
+        return None
+    for path in entries:
+        if re.fullmatch(r"[0-9a-f]{32}", path.name) and not path.is_symlink():
+            try:
+                candidates.append((path.stat().st_mtime_ns, path))
+            except FileNotFoundError:
+                continue
+    for _, path in sorted(candidates, reverse=True):
+        try:
+            receipt = json.loads((path / "completion.json").read_text())
+            expected = json.loads((path / "manifest.json").read_text())
+            if not isinstance(receipt, dict) or not isinstance(expected, dict) or not isinstance(expected.get("src"), dict):
+                continue
+            if receipt.get("invocation") != path.name or type(receipt.get("exitCode")) is not int or receipt["exitCode"] != 0:
+                continue
+            if (path / "src").is_symlink():
+                continue
+            if tree_manifest(path / "src", EXCLUDED) == expected["src"]:
+                return path.name
+        except (OSError, ValueError, KeyError):
+            continue
+    return None
+
+
+def prepare_source_basis(invocation, root=ROOT):
+    """Private link view of identical file records only (including permissions).
+
+    Some openrsync receivers link a mode-changed file without applying its new mode.
+    Filtering before rsync avoids that case and prevents attribute writes to a basis
+    inode. Directories and symlinks are always created fresh by the transfer.
+    """
+    stage = Path(root) / "staging" / Path(invocation_path(invocation)).name
+    desired = json.loads((stage / "manifest.json").read_text())["src"]
+    identity = source_basis(root)
+    if identity is None:
+        return None
+    source = Path(root) / "staging" / identity / "src"
+    view = stage / "basis"
+    view.mkdir()  # Never reuse or mutate an older invocation's view.
+    for name, record in desired.items():
+        path = Path(name)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("invalid source manifest path")
+        if "sha256" not in record:
+            continue
+        candidate = source / path
+        try:
+            if candidate.is_symlink() or file_record(candidate) != record:
+                continue
+            target = view / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            os.link(candidate, target)
+        except FileNotFoundError:
+            continue  # Concurrent removal: transfer this file normally instead.
+    return identity
+
+
 def send_worktree(host, log, options):
     """Transfer only to a fresh invocation directory; no active checkout/input/tool mutation."""
     stage = invocation_path(options["invocation"])
@@ -459,16 +529,38 @@ def send_worktree(host, log, options):
         return UNREACHABLE
     log("staging invocation %s at %s:~/%s" % (options["invocation"], host, stage))
     rsync = ["rsync", "-a", "-e", " ".join(SSH)]
-    steps = [rsync + sum((["--exclude", x] for x in sorted(EXCLUDED)), []) +
-             [REPO + "/", "%s:%s/src/" % (host, stage)],
-             rsync + [os.path.abspath(__file__), os.path.join(HERE, "ml", "remote-train.py"),
-                      "%s:%s/tools/" % (host, stage)]]
+    # Bootstrap the invocation-private helper before asking it for a verified source basis.
+    tools = subprocess.run(rsync + [os.path.abspath(__file__), os.path.join(HERE, "ml", "remote-train.py"),
+                                   "%s:%s/tools/" % (host, stage)], stdin=subprocess.DEVNULL)
+    if tools.returncode:
+        return tools.returncode
+    sent_manifest = subprocess.run(SSH + [host, "cat > " + stage + "/manifest.json"],
+                                   input=json.dumps(expected).encode())
+    if sent_manifest.returncode:
+        return sent_manifest.returncode
+    probe = runner.ssh(host, "python3 %s/tools/remote-sweep.py source-basis %s" %
+                       (stage, options["invocation"]), timeout=300)
+    if probe.returncode:
+        return probe.returncode
+    basis = probe.stdout.decode().strip()
+    if basis and not re.fullmatch(r"[0-9a-f]{32}", basis):
+        raise ValueError("invalid source basis identity")
+    log("source basis " + (basis or "none (full transfer)"))
+    # rsync's default temp-file/rename updates keep basis inodes unchanged. Never use
+    # --inplace or --ignore-times: same-size/mtime edits must be checksummed, and mode
+    # differences must create a separate file instead of chmod-ing a shared inode.
+    steps = [rsync + ["--checksum", "--stats"] + (["--link-dest=../basis"] if basis else []) +
+             sum((["--exclude", x] for x in sorted(EXCLUDED)), []) +
+             [REPO + "/", "%s:%s/src/" % (host, stage)]]
     if inputs:
         steps.append(rsync + [os.path.abspath(p.rstrip("/")) for p in inputs] + ["%s:%s/inputs/" % (host, stage)])
+    transfer_started = time.monotonic()
     for step in steps:
         code = subprocess.run(step, stdin=subprocess.DEVNULL).returncode
         if code:
             return code
+    log("source/input transfer finished in %.3f s (basis %s)" %
+        (time.monotonic() - transfer_started, basis or "none"))
     # Detect changes during transfer. The host independently verifies every received byte/link.
     if expected != {"src": tree_manifest(REPO, EXCLUDED), "inputs": input_manifest(inputs), "request": options,
                     "tools": {"remote-sweep.py": file_record(__file__),
@@ -702,6 +794,9 @@ def compare(arguments):
 
 
 def main(arguments):
+    if len(arguments) == 2 and arguments[0] == "source-basis":
+        print(prepare_source_basis(arguments[1]) or "")
+        return 0
     if arguments and arguments[0] == "serve-run":
         prepare_worker()
         return serve_run(json.loads(arguments[1]))

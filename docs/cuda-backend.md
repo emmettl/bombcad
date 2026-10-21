@@ -502,6 +502,14 @@ records the fix for emmettl/bombcad-work#68, including stale-child ownership, co
 and recovery controls. Earlier ownership probes were advisory; the revised protocol supplies
 the protection. All clients sharing the host must use it.
 
+[Immutable source reuse](../Benchmarks/HeterogeneousCompute/2026-10-21-source-reuse/summary.md)
+implements emmettl/bombcad-work#70. A private basis view includes only checksum/mode-identical
+files from a verified completed stage. In the bounded PC control, a 247 MB source tree sent
+only five file-data bytes after a byte/mode change, then zero for unchanged source; metadata
+traffic and verification work remain. Old snapshots and the mutable build cache stay separate.
+Normal run/test, cached success/failure recovery and 23 Mac/Linux protocol controls pass.
+These are transfer/storage results, with no solver throughput or numerical admission claim.
+
 ### Independent geometry and grid controls
 
 [Independent geometry/grid controls](../Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/summary.md)

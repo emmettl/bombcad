@@ -47,6 +47,81 @@ class CaseTests(unittest.TestCase):
 
 
 class SnapshotTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("rsync"), "rsync is required for source reuse")
+    def test_source_reuse_preserves_basis_bytes_modes_and_cache_independence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "host"; local = Path(folder) / "local"; local.mkdir()
+            (local / "large.bin").write_bytes(bytes(range(256)) * 4096)
+            (local / "edit.txt").write_text("A"); (local / "mode.txt").write_text("mode")
+            for p in local.iterdir(): os.utime(p, (1700000000, 1700000000))
+            old = root / "staging" / ("a" * 32); (old / "src").mkdir(parents=True)
+            subprocess.run(["rsync", "-a", str(local) + "/", str(old / "src") + "/"], check=True)
+            original = sweep.tree_manifest(old / "src", sweep.EXCLUDED)
+            sweep.atomic_json(old / "manifest.json", dict(src=original))
+            sweep.atomic_json(old / "completion.json", dict(invocation=old.name, exitCode=0))
+            self.assertEqual(sweep.source_basis(root), old.name)
+            (local / "edit.txt").write_text("B")
+            os.utime(local / "edit.txt", (1700000000, 1700000000))
+            (local / "mode.txt").chmod(0o700)
+            new = root / "staging" / ("b" * 32); (new / "src").mkdir(parents=True)
+            sweep.atomic_json(new / "manifest.json", dict(src=sweep.tree_manifest(local)))
+            self.assertEqual(sweep.prepare_source_basis(new.name, root), old.name)
+            subprocess.run(["rsync", "-a", "--checksum", "--link-dest=../basis",
+                            str(local) + "/", str(new / "src") + "/"], check=True)
+            self.assertEqual(sweep.tree_manifest(new / "src"), sweep.tree_manifest(local))
+            self.assertEqual(sweep.tree_manifest(old / "src"), original)
+            self.assertEqual((old / "src/large.bin").stat().st_ino, (new / "src/large.bin").stat().st_ino)
+            for name in ("edit.txt", "mode.txt"):
+                self.assertNotEqual((old / "src" / name).stat().st_ino, (new / "src" / name).stat().st_ino)
+            cache = root / "src"; cache.mkdir()
+            subprocess.run(["rsync", "-a", "--checksum", str(new / "src") + "/", str(cache) + "/"], check=True)
+            (cache / "large.bin").write_bytes(b"mutable build output")
+            self.assertEqual(sweep.tree_manifest(old / "src"), original)
+            self.assertEqual(sweep.tree_manifest(new / "src"), sweep.tree_manifest(local))
+            # A basis removed after selection can be ignored by rsync or fail closed;
+            # a successful transfer must still have the complete requested identity.
+            shutil.rmtree(old)
+            missing = root / "staging" / ("c" * 32); (missing / "src").mkdir(parents=True)
+            result = subprocess.run(["rsync", "-a", "--checksum", "--link-dest=../../%s/src" % old.name,
+                                     str(local) + "/", str(missing / "src") + "/"], capture_output=True)
+            if result.returncode == 0:
+                self.assertEqual(sweep.tree_manifest(missing / "src"), sweep.tree_manifest(local))
+            self.assertIsNone(sweep.source_basis(root))  # uncompleted destinations are ineligible
+            # Exercise removal inside the actual basis preparation, after selection
+            # but before the first link. The private empty view safely falls back.
+            sweep.atomic_json(new / "completion.json", dict(invocation=new.name, exitCode=0))
+            raced = root / "staging" / ("d" * 32); (raced / "src").mkdir(parents=True)
+            sweep.atomic_json(raced / "manifest.json", dict(src=sweep.tree_manifest(local)))
+            original_link = os.link; removed = []
+            def remove_basis_then_link(source, target):
+                if not removed:
+                    shutil.rmtree(new / "src"); removed.append(True)
+                return original_link(source, target)
+            with patch.object(sweep.os, "link", side_effect=remove_basis_then_link):
+                self.assertEqual(sweep.prepare_source_basis(raced.name, root), new.name)
+            self.assertTrue(removed)
+            subprocess.run(["rsync", "-a", "--checksum", "--link-dest=../basis",
+                            str(local) + "/", str(raced / "src") + "/"], check=True)
+            self.assertEqual(sweep.tree_manifest(raced / "src"), sweep.tree_manifest(local))
+
+    def test_source_basis_rejects_corruption_wrong_identity_and_mutable_cache(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); (root / "src").mkdir(); (root / "src/value").write_text("cache")
+            self.assertIsNone(sweep.source_basis(root))
+            stage = root / "staging" / ("a" * 32); (stage / "src").mkdir(parents=True)
+            (stage / "src/value").write_text("A")
+            sweep.atomic_json(stage / "manifest.json", dict(src=sweep.tree_manifest(stage / "src")))
+            sweep.atomic_json(stage / "completion.json", dict(invocation="b" * 32, exitCode=0))
+            self.assertIsNone(sweep.source_basis(root))
+            sweep.atomic_json(stage / "completion.json", dict(invocation=stage.name, exitCode=0))
+            self.assertEqual(sweep.source_basis(root), stage.name)
+            (stage / "src/value").write_text("B")
+            self.assertIsNone(sweep.source_basis(root))
+            (stage / "src/value").write_text("A")
+            for malformed in (None, [], False, {"invocation": stage.name, "exitCode": False}):
+                sweep.atomic_json(stage / "completion.json", malformed)
+                self.assertIsNone(sweep.source_basis(root))
+
     @unittest.skipUnless(shutil.which("rsync"), "rsync is required for host activation")
     def test_activation_copies_same_size_same_mtime_edits_and_keeps_build_cache(self):
         with tempfile.TemporaryDirectory() as folder:

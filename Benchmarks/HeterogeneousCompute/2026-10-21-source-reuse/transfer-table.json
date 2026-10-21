@@ -1,0 +1,26 @@
+[
+  {
+    "label": "full reference",
+    "sourceBytes": 247180592,
+    "transferredFileBytes": 247180592,
+    "totalSentBytes": 247623839
+  },
+  {
+    "label": "A: changed worktree plus new asset",
+    "sourceBytes": 247180592,
+    "transferredFileBytes": 5274307,
+    "totalSentBytes": 5561396
+  },
+  {
+    "label": "B: byte and mode changes",
+    "sourceBytes": 247180592,
+    "transferredFileBytes": 5,
+    "totalSentBytes": 284480
+  },
+  {
+    "label": "C: unchanged source; invalid output path",
+    "sourceBytes": 247180592,
+    "transferredFileBytes": 0,
+    "totalSentBytes": 284383
+  }
+]
