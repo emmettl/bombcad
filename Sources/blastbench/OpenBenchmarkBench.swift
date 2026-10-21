@@ -66,7 +66,7 @@ func runOpenBenchmark() throws {
     }
     let handle = try FileHandle(forWritingTo: url)
     defer { try? handle.close() }
-    try handle.write(contentsOf: Data("case,run,gauge,time_s,overpressurePa\n".utf8))
+    try handle.write(contentsOf: Data("case,run,gauge,time_s,overpressure_Pa\n".utf8))
     let room = deck.sampling.observable == "volume-mean-overpressure"
     let samples = Int((deck.sampling.stopS / deck.sampling.intervalS).rounded())
     for sample in 0...samples {
