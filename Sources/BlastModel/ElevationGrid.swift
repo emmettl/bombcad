@@ -219,9 +219,16 @@ extension ElevationGrid {
             if name == "yllcenter" { centred.y = true }
             header[name.replacingOccurrences(of: "center", with: "corner")] = value
         }
-        guard let ncols = header["ncols"].map(Int.init), let nrows = header["nrows"].map(Int.init),
-            ncols >= 2, nrows >= 2, let x = header["xllcorner"], let y = header["yllcorner"]
+        // A count that is a whole number no larger than a billion, so that it converts to an Int
+        // and two of them multiply without overflow; nil for a fraction, NaN or infinity.
+        func count(_ value: Double?) -> Int? {
+            guard let value, value.rounded() == value, value >= 2, value <= 1e9 else { return nil }
+            return Int(value)
+        }
+        guard let ncols = count(header["ncols"]), let nrows = count(header["nrows"]),
+            let x = header["xllcorner"], let y = header["yllcorner"]
         else { throw Failure.malformed("the header needs ncols, nrows (two or more), xll and yll") }
+        guard x.isFinite, y.isFinite else { throw Failure.malformed("the corner is not a finite number") }
         let cell: SIMD2<Double>
         if let size = header["cellsize"] {
             cell = SIMD2(size, size)
@@ -230,7 +237,9 @@ extension ElevationGrid {
         } else {
             throw Failure.malformed("the header has no cellsize")
         }
-        guard cell.x > 0, cell.y > 0 else { throw Failure.malformed("the cell size is not positive") }
+        guard cell.x > 0, cell.y > 0, cell.x.isFinite, cell.y.isFinite else {
+            throw Failure.malformed("the cell size is not a positive, finite number")
+        }
         let noData = header["nodata_value"]
         guard tokens.count >= ncols * nrows else {
             throw Failure.malformed("\(tokens.count) values for \(ncols) × \(nrows) cells")
@@ -245,6 +254,11 @@ extension ElevationGrid {
                     throw Failure.malformed("value \(row * ncols + i + 1) is not a number")
                 }
                 index = tokens.index(after: index)
+                // NaN reads as no data, as the nodata value does; an elevation beyond a Float's
+                // range would read as infinite.
+                guard value == noData || !Float(value).isInfinite else {
+                    throw Failure.malformed("value \(row * ncols + i + 1) is out of range")
+                }
                 values[i + ncols * j] = value == noData ? .nan : Float(value)
             }
         }
@@ -328,13 +342,18 @@ package struct TIFFReader {
             throw ElevationGrid.Failure.malformed("a BigTIFF header with offsets other than 8 bytes")
         }
         let word = big ? 8 : 4
-        let ifd = Int(Self.read(data, big ? 8 : 4, word, littleEndian))
         let countSize = big ? 8 : 2
         let entrySize = big ? 20 : 12
-        guard ifd + countSize <= data.count else {
+        // BigTIFF's offsets and counts are 64-bit: one past Int's range, or a sum or product of
+        // them past it, is a corrupt file, not a trap.
+        guard let ifd = Int(exactly: Self.read(data, big ? 8 : 4, word, littleEndian)),
+            ifd <= data.count - countSize
+        else {
             throw ElevationGrid.Failure.malformed("the directory is missing")
         }
-        let count = Int(Self.read(data, ifd, countSize, littleEndian))
+        guard let count = Int(exactly: Self.read(data, ifd, countSize, littleEndian)) else {
+            throw ElevationGrid.Failure.malformed("the directory is cut short")
+        }
         for n in 0..<count {
             let at = ifd + countSize + entrySize * n
             guard at + entrySize <= data.count else {
@@ -342,11 +361,13 @@ package struct TIFFReader {
             }
             let tag = UInt16(Self.read(data, at, 2, littleEndian))
             let type = UInt16(Self.read(data, at + 2, 2, littleEndian))
-            let values = Int(Self.read(data, at + 4, word, littleEndian))
-            let size = values * Self.typeSize(type)
-            let offset =
-                size <= word ? at + 4 + word : Int(Self.read(data, at + 4 + word, word, littleEndian))
-            guard offset + size <= data.count else {
+            guard let values = Int(exactly: Self.read(data, at + 4, word, littleEndian)),
+                case (let size, let overflow) = values.multipliedReportingOverflow(by: Self.typeSize(type)),
+                !overflow,
+                let offset = size <= word
+                    ? at + 4 + word : Int(exactly: Self.read(data, at + 4 + word, word, littleEndian)),
+                offset <= data.count, size <= data.count - offset
+            else {
                 throw ElevationGrid.Failure.malformed("tag \(tag) runs past the end")
             }
             entries[tag] = (type, values, offset)

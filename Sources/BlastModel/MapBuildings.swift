@@ -103,6 +103,10 @@ extension MapBuilding {
     /// relations tagged `building` whose outer and inner ways are joined into rings. Building parts
     /// (`building:part`) are left out: they lie within their buildings.
     public static func readOSM(_ data: Data) throws -> [MapBuilding] {
+        // Invalid UTF-8 can trap Linux's XMLParser (`SVGTree.isXMLText`).
+        guard SVGTree.isXMLText(data) else {
+            throw Failure.malformed("not valid UTF-8 text, and no other encoding named")
+        }
         let reader = OSMReader()
         let parser = XMLParser(data: data)
         parser.delegate = reader

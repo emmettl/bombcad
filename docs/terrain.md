@@ -90,12 +90,16 @@ did not show them either way.
 - **ESRI ASCII grids** (`.asc`): `ncols`, `nrows`, `xllcorner` or `xllcenter`, `yllcorner` or
   `yllcenter`, `cellsize` (or `dx` and `dy`) and `NODATA_value`, rows north to south. The format
   does not say its units; degrees are assumed when the cell is under a thousandth and the corner
-  lies within longitude and latitude, metres otherwise, unless the caller says.
+  lies within longitude and latitude, metres otherwise, unless the caller says. A header whose
+  `ncols` or `nrows` is not a whole number from 2 to a billion, whose corner or cell size is not
+  finite, or an elevation beyond a 32-bit float's range, is refused as malformed; `nan` in the
+  rows reads as no data, as the nodata value does.
 - **GeoTIFFs** (`.tif`): one band, classic TIFF in either byte order, strips or tiles,
   uncompressed, LZW or Deflate, horizontal or floating-point predictor, 8 to 32-bit integers or
   32 or 64-bit floats; placed by ModelPixelScale and ModelTiepoint (or a ModelTransformation
   without rotation), PixelIsArea or PixelIsPoint, geographic or projected by GTModelTypeGeoKey,
-  and GDAL's nodata tag.
+  and GDAL's nodata tag. A directory whose offsets or counts run past the file, BigTIFF's 64-bit
+  ones past a signed 64-bit integer included, is refused as malformed.
 
 A crop becomes the scene's terrain: nodes `spacing` apart over the scene's extent from a chosen
 origin in the DEM's coordinates, each the bilinear elevation there, less the crop's lowest

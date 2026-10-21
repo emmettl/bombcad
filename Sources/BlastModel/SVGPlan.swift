@@ -14,23 +14,39 @@ import simd
 /// a physical unit (mm, cm, in, pt, pc); in pixels or none, the plan's scale is asked for.
 /// Text, fills, images and styles are passed over.
 extension DXFDrawing {
-    public init(svg data: Data) throws {
+    public init(svg data: Data) throws { try self.init(svg: data, pieceLimit: Self.pieceLimit) }
+
+    /// Reads an SVG, refusing it past `pieceLimit` pieces (`DXFDrawing.pieceLimit` but in tests).
+    init(svg data: Data, pieceLimit: Int) throws {
         guard data.count <= Self.sizeLimit else { throw ReadError(message: "The SVG is over 100 MB.") }
         let tree = try SVGTree(data: data)
         guard let root = tree.root, root.name == "svg" else {
             throw ReadError(message: "Not an SVG: no svg element.")
         }
         var reader = SVGReader(ids: tree.ids)
+        reader.limit = pieceLimit
+        var known: [ObjectIdentifier: Int] = [:]
+        let shapes = reader.shapes(under: root, known: &known)
         // y up: the plan's y is the SVG's turned over.
-        reader.walk(root, transform: .init(a: 1, b: 0, c: 0, d: -1, e: 0, f: 0), layer: "0", depth: 0)
+        if shapes <= pieceLimit / 2 {
+            reader.walk(root, transform: .init(a: 1, b: 0, c: 0, d: -1, e: 0, f: 0), layer: "0", depth: 0)
+        }
+        guard shapes <= pieceLimit / 2, reader.pieces <= pieceLimit else {
+            throw ReadError(
+                message:
+                    "The SVG comes to more than 5,000,000 pieces, the copies its <use> elements make counted: more than a plan needs."
+            )
+        }
         var names: [String] = []
+        var named = Set<String>()
         // A block's own layer "0" takes its insert's: not a layer of the drawing.
         for entity in reader.entities + reader.blocks.values.flatMap(\.entities).filter({ $0.layer != "0" })
-        where !names.contains(entity.layer) {
+        where named.insert(entity.layer).inserted {
             names.append(entity.layer)
         }
         self.init(
             layers: names, entities: reader.entities, blocks: reader.blocks, unitMetres: Self.svgUnit(root))
+        try checkFinite()
     }
 
     /// Metres per user unit from the root's width (or height) in a physical unit over its view
@@ -50,8 +66,10 @@ extension DXFDrawing {
                 let value = Double(text.dropLast(unit.key.count).trimmingCharacters(in: .whitespaces))
             else { continue }
             let span = box.count == 4 ? box[index] : value
-            guard span > 0 else { continue }
-            return value * unit.value / span
+            // A size or view box of 1e309, NaN or below zero gives no unit to go by.
+            let metres = value * unit.value / span
+            guard span > 0, metres.isFinite, metres > 0 else { continue }
+            return metres
         }
         return nil
     }
@@ -71,15 +89,44 @@ struct SVGTree {
 
     var root: Node?
     var ids: [String: Node] = [:]
+    /// The deepest an element may be nested (the root at depth 1).
+    static let depthLimit = 64
+
+    /// Whether `data` may be handed to XMLParser: UTF-8 that is valid, UTF-16 with its byte-order
+    /// mark, or text whose declaration names one of the 8-bit encodings that libxml2 converts to
+    /// valid UTF-8 itself. Linux's FoundationXML traps (SIGILL, in `_NSXMLParserStartElementNs`) on
+    /// a name that is not valid UTF-8, which libxml2 passes on from a file it takes as UTF-8
+    /// (`<p\u{F4}i/>`), or whose declared encoding it does not know (`encoding="UTF%8"`); XML in
+    /// invalid UTF-8 is malformed anyway.
+    static func isXMLText(_ data: Data) -> Bool {
+        if String(data: data, encoding: .utf8) != nil { return true }
+        let start = Array(data.prefix(200))
+        if start.starts(with: [0xFE, 0xFF]) || start.starts(with: [0xFF, 0xFE]) { return true }
+        // `<?xml version="1.0" encoding="ISO-8859-1"?>`.
+        let head = String(decoding: start, as: UTF8.self).lowercased()
+        guard head.hasPrefix("<?xml"), let range = head.range(of: "encoding=") else { return false }
+        let name = head[range.upperBound...].dropFirst().prefix { $0 != "\"" && $0 != "'" }
+        return ["iso-8859-1", "latin1", "iso-8859-15", "windows-1252", "cp1252"].contains(String(name))
+    }
 
     init(data: Data) throws {
+        guard Self.isXMLText(data) else {
+            throw DXFDrawing.ReadError(
+                message: "Not an SVG: it is not valid UTF-8 text, and names no other encoding.")
+        }
         let parser = XMLParser(data: data)
         let builder = Builder()
         parser.delegate = builder
         parser.shouldResolveExternalEntities = false
         // Linux's parser (FoundationXML over libxml2) can recover from a tag left open or closed by
         // another's name and still say it parsed; the builder's own count of open elements decides.
-        guard parser.parse(), !builder.malformed, builder.stack.isEmpty, let root = builder.root else {
+        let parsed = parser.parse()
+        guard !builder.tooDeep else {
+            throw DXFDrawing.ReadError(
+                message:
+                    "The SVG nests its elements more than \(Self.depthLimit) deep, which no drawing needs.")
+        }
+        guard parsed, !builder.malformed, builder.stack.isEmpty, let root = builder.root else {
             throw DXFDrawing.ReadError(
                 message:
                     "Not an SVG: \(parser.parserError?.localizedDescription ?? "it does not read as XML").")
@@ -94,11 +141,19 @@ struct SVGTree {
         var ids: [String: Node] = [:]
         /// An element closed by another's name, or a close with nothing open.
         var malformed = false
+        /// Elements opened more than `depthLimit` deep: the walk down the tree recurses once a
+        /// level, and thousands of levels overflowed the stack.
+        var tooDeep = false
 
         func parser(
             _ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?,
             attributes: [String: String] = [:]
         ) {
+            guard stack.count < SVGTree.depthLimit else {
+                tooDeep = true
+                parser.abortParsing()
+                return
+            }
             // Namespaced names (svg:path) as plain ones.
             let local = name.split(separator: ":").last.map(String.init) ?? name
             let node = Node(name: local, attributes: attributes)
@@ -170,6 +225,10 @@ struct SVGReader {
     let ids: [String: SVGTree.Node]
     var entities: [DXFDrawing.Entity] = []
     var blocks: [String: DXFDrawing.Block] = [:]
+    /// The points read so far, those of every copy a `<use>` makes included: past
+    /// `limit` the walk stops, and the drawing is refused.
+    var pieces = 0
+    var limit = DXFDrawing.pieceLimit
     /// The largest angle an arc's piece spans, radians.
     static let arcStep = Double.pi / 12
 
@@ -224,7 +283,39 @@ struct SVGReader {
         return layer
     }
 
+    /// The shapes `walk` would draw under `node`, a `<use>` counting its target's again, counted
+    /// without parsing a path: each shape is two points or more, so a file whose copies come to
+    /// past the limit is refused before they are made, rather than after the copying up to it.
+    func shapes(under node: SVGTree.Node, known: inout [ObjectIdentifier: Int]) -> Int {
+        // As walkShape draws a used element: groups opened, shapes counted, nothing else.
+        func drawn(_ node: SVGTree.Node) -> Int {
+            switch node.name {
+            case "g", "a": return node.children.reduce(0) { min($0 + drawn($1), Int.max / 4) }
+            case "line", "polyline", "polygon", "rect", "circle", "ellipse", "path": return 1
+            default: return 0
+            }
+        }
+        switch node.name {
+        case "defs", "symbol", "clipPath", "mask", "pattern", "marker", "metadata", "title", "desc", "style",
+            "text", "image":
+            return 0
+        case "svg", "g", "a", "switch":
+            return node.children.reduce(0) { min($0 + shapes(under: $1, known: &known), Int.max / 4) }
+        case "use":
+            let reference = (node.attributes["href"] ?? node.attributes["xlink:href"] ?? "")
+            guard reference.hasPrefix("#"), let target = ids[String(reference.dropFirst())] else { return 0 }
+            if let count = known[ObjectIdentifier(target)] { return count }
+            let count = (target.name == "symbol" ? target.children : [target]).reduce(0) {
+                min($0 + drawn($1), Int.max / 4)
+            }
+            known[ObjectIdentifier(target)] = count
+            return count
+        default: return drawn(node)
+        }
+    }
+
     mutating func walk(_ node: SVGTree.Node, transform: SVGTransform, layer: String, depth: Int) {
+        guard pieces <= limit else { return }
         var transform = transform
         if let text = node.attributes["transform"] { transform = transform.then(SVGTransform.parse(text)) }
         switch node.name {
@@ -244,7 +335,8 @@ struct SVGReader {
             var inner = SVGReader(ids: ids)
             let children = target.name == "symbol" ? target.children : [target]
             for child in children { inner.walkShape(child, transform: placed, layer: "0") }
-            guard !inner.entities.isEmpty else { return }
+            pieces += inner.pieces
+            guard !inner.entities.isEmpty, pieces <= limit else { return }
             let name = "use \(blocks.count + 1)"
             blocks[name] = DXFDrawing.Block(base: .zero, entities: inner.entities)
             for (key, block) in inner.blocks { blocks[key] = block }
@@ -266,6 +358,7 @@ struct SVGReader {
         func add(_ points: [SIMD2<Double>], closed: Bool) {
             let mapped = points.map(transform.apply)
             guard mapped.count >= 2 else { return }
+            pieces += mapped.count
             if mapped.count == 2 && !closed {
                 entities.append(DXFDrawing.Entity(layer: layer, shape: .line(mapped[0], mapped[1])))
             } else {
@@ -530,6 +623,9 @@ struct SVGReader {
         var delta = angle(u, v)
         if !sweep && delta > 0 { delta -= 2 * .pi }
         if sweep && delta < 0 { delta += 2 * .pi }
+        // Radii or ends so large that the arithmetic overflows (a corrupt file's) leave no arc to
+        // draw: the path goes straight to the end, as it does where a radius is zero.
+        guard delta.isFinite, theta.isFinite, centre.x.isFinite, centre.y.isFinite else { return [p1] }
         let n = max(1, Int((abs(delta) / arcStep).rounded(.up)))
         return (1...n).map { k in
             if k == n { return p1 }

@@ -80,6 +80,82 @@ public struct DXFDrawing: Sendable {
     /// The largest DXF read, in bytes.
     public static let sizeLimit = 100_000_000
 
+    /// The most pieces a drawing may come to with its blocks inserted (`expandedPieces`). Far
+    /// more than a plan within `sizeLimit` draws, it refuses a file whose blocks insert one
+    /// another many times over, which a few kilobytes can make into more pieces than memory holds.
+    public static let pieceLimit = 5_000_000
+
+    /// About how many pieces `segments(depth:)` makes of the drawing (one for a line, an arc or a
+    /// circle, one for each of a polyline's vertices), its blocks inserted as it inserts them,
+    /// counted without making them and no further than just past `limit`.
+    public func expandedPieces(depth: Int = 8, limit: Int = pieceLimit) -> Int {
+        var known: [String: Int] = [:]
+        func pieces(_ entities: [Entity], level: Int) -> Int {
+            var total = 0
+            for entity in entities {
+                let count: Int
+                switch entity.shape {
+                case .line, .arc, .circle: count = 1
+                case .polyline(let points, _, _): count = points.count
+                case .insert(let name, _, _, _):
+                    guard level < depth, let definition = blocks[name] else { continue }
+                    let key = "\(level) \(name)"
+                    if let n = known[key] {
+                        count = n
+                    } else {
+                        count = pieces(definition.entities, level: level + 1)
+                        known[key] = count
+                    }
+                }
+                total = min(total + count, limit + 1)
+                if total > limit { break }
+            }
+            return total
+        }
+        return pieces(entities, level: 0)
+    }
+
+    /// Throws where any entity's number (a point, radius, angle, bulge, scale or rotation) is NaN
+    /// or infinite, as "nan", "inf" or 1e309 read: no drawing has one, and downstream it was
+    /// dropped without a word or raised as a wall at infinity.
+    func checkFinite() throws {
+        func finite(_ shape: Shape) -> Bool {
+            func point(_ p: SIMD2<Double>) -> Bool { p.x.isFinite && p.y.isFinite }
+            switch shape {
+            case .line(let a, let b): return point(a) && point(b)
+            case .polyline(let points, let bulges, _):
+                return points.allSatisfy(point) && bulges.allSatisfy(\.isFinite)
+            case .arc(let c, let r, let start, let end):
+                return point(c) && r.isFinite && start.isFinite && end.isFinite
+            case .circle(let c, let r): return point(c) && r.isFinite
+            case .insert(_, let position, let scale, let rotation):
+                return point(position) && point(scale) && rotation.isFinite
+            }
+        }
+        let all =
+            entities.map { ($0, "the model space") }
+            + blocks.flatMap { name, block in block.entities.map { ($0, "block \(name)") } }
+        if let (bad, place) = all.first(where: { !finite($0.0.shape) }) {
+            throw ReadError(
+                message:
+                    "An entity on layer \(bad.layer) in \(place) has a number that is NaN or infinite: the file is corrupt."
+            )
+        }
+        for (name, block) in blocks where !(block.base.x.isFinite && block.base.y.isFinite) {
+            throw ReadError(message: "Block \(name)'s base point is NaN or infinite: the file is corrupt.")
+        }
+    }
+
+    /// Throws where the drawing's blocks expand past `pieceLimit`.
+    func checkExpansion() throws {
+        guard expandedPieces() <= Self.pieceLimit else {
+            throw ReadError(
+                message:
+                    "The drawing's blocks insert one another so many times over that it comes to more than 5,000,000 pieces: explode or purge the nested blocks and import it again."
+            )
+        }
+    }
+
     /// Reads an ASCII DXF (any release; group codes and values on alternate lines).
     public init(data: Data) throws {
         guard data.count <= Self.sizeLimit else { throw ReadError(message: "The DXF is over 100 MB.") }
@@ -120,13 +196,18 @@ public struct DXFDrawing: Sendable {
         try reader.read()
         insertionUnits = reader.units
         var names = reader.tableLayers
+        // A set beside the list: searching the list for each entity's layer took a file of many
+        // layers quadratic time.
+        var named = Set(names)
         for entity in reader.entities + reader.blocks.values.flatMap(\.entities)
-        where !names.contains(entity.layer) {
+        where named.insert(entity.layer).inserted {
             names.append(entity.layer)
         }
         layers = names
         entities = reader.entities
         blocks = reader.blocks
+        try checkFinite()
+        try checkExpansion()
     }
 
     public init(insertionUnits: Int?, layers: [String], entities: [Entity], blocks: [String: Block] = [:]) {
@@ -163,6 +244,9 @@ public struct DXFDrawing: Sendable {
                 }
             }
             func arc(_ c: SIMD2<Double>, _ r: Double, _ from: Double, _ to: Double) {
+                // A NaN or infinite angle has no arc to draw, nor a count of pieces (a file's is
+                // refused as it is read; this is for a drawing made in code).
+                guard (to - from).isFinite else { return }
                 let n = max(1, Int(((to - from) / arcStep).rounded(.up)))
                 var previous = c + r * SIMD2(cos(from), sin(from))
                 for k in 1...n {
@@ -181,13 +265,15 @@ public struct DXFDrawing: Sendable {
                     let p = points[k]
                     let q = points[(k + 1) % points.count]
                     let bulge = k < bulges.count ? bulges[k] : 0
-                    if abs(bulge) < 1e-9 {
+                    let chord = simd_distance(p, q)
+                    // A vertex repeated (no chord to bend) or a NaN or infinite bulge is drawn
+                    // straight.
+                    if abs(bulge) < 1e-9 || !bulge.isFinite || !(chord > 0) {
                         add(p, q)
                         continue
                     }
                     // The arc through p and q whose included angle is 4 atan(bulge).
                     let angle = 4 * atan(bulge)
-                    let chord = simd_distance(p, q)
                     let radius = chord / (2 * sin(abs(angle) / 2))
                     let mid = (p + q) / 2
                     let normal = simd_normalize(SIMD2(-(q - p).y, (q - p).x)) * (bulge > 0 ? 1 : -1)
@@ -203,7 +289,12 @@ public struct DXFDrawing: Sendable {
                     }
                     arc(centre, radius, from, to)
                 }
-            case .arc(let c, let r, let start, let end):
+            case .arc(let c, let r, var start, var end):
+                guard start.isFinite, end.isFinite else { return }
+                // Angles beyond two turns (a corrupt file's) brought within one first: turns added
+                // one at a time would take forever to reach 1e15 degrees, and never reach 1e300.
+                if abs(start) > 720 { start = start.truncatingRemainder(dividingBy: 360) }
+                if abs(end) > 720 { end = end.truncatingRemainder(dividingBy: 360) }
                 var to = end
                 while to <= start { to += 360 }
                 arc(c, r, start * .pi / 180, to * .pi / 180)
@@ -279,12 +370,13 @@ public struct DXFDrawing: Sendable {
 
         mutating func tables() {
             var inLayer = false
+            var listed = Set(tableLayers)
             while position < pairs.count {
                 let (code, value) = pairs[position]
                 position += 1
                 if code == 0 && value == "ENDSEC" { return }
                 if code == 0 { inLayer = value == "LAYER" }
-                if inLayer && code == 2 && !tableLayers.contains(value) { tableLayers.append(value) }
+                if inLayer && code == 2 && listed.insert(value).inserted { tableLayers.append(value) }
             }
         }
 

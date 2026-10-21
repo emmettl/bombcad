@@ -176,3 +176,65 @@ used code lands up to about ten minutes sooner on the mini.
 
 **Not yet:** teaching `BombCAD sweep` and `BombCAD ensemble` to hand their CPU-only cases to a
 Linux host (emmettl/bombcad-work#48).
+
+## Sanitizers and importer fuzzing, 20 October 2026
+
+A cloud session ran BlastModel's tests on Linux (Swift 6.4, not CI's 6.4.1 container) under
+AddressSanitizer, ThreadSanitizer and checked exclusivity, and fuzzed the readers of the files a
+user hands BombCAD. Its full report is kept outside the repository, at
+`/Volumes/StudioData/bombcad/cloud-reports/2026-10-20/sanitize-fuzz.md`.
+
+**The sanitizers found no fault in BombCAD.**
+- AddressSanitizer ran all 823 tests in two halves: no memory error. LeakSanitizer reported 72
+  bytes for each malformed SVG parsed, leaked by swift-corelibs-foundation's XMLParser in the error
+  it makes, not by BombCAD.
+- Checked exclusivity (a debug build's default anyway) ran the whole suite: no conflict.
+- ThreadSanitizer ran 16 suites that work on more than one thread, the parallel loops and the
+  locked caches: no race reported. ProtectionSearchTests and the glass probabilities' and the
+  half-space's suites did not finish in the time it had, so they are covered only in part.
+- Under ThreadSanitizer a frame of the SVG reader's walk is about 5 KB, so an SVG nested 125
+  deep overflowed a 512 KB thread: the nesting limit is 64.
+
+**The fuzzer.** `Scripts/fuzz/fuzz-importers.py` (Linux only: it reads `/proc`) writes mutated
+copies of Fixtures/ and Samples/ (DXF, SVG, OBJ, STL, ESRI grids, TIFF, LZW streams, OSM and
+GeoJSON) into a scratch folder and runs `ImporterFuzzReplayTests` over them, which reads each file
+as the app does and through what the app does next. The test is disabled unless
+`BLASTMODEL_FUZZ_DIR` is set. A crash, a hang or a run past its memory is put down to its input.
+
+```sh
+swift build --build-tests --scratch-path /tmp/fuzz-build
+python3 Scripts/fuzz/fuzz-importers.py --work /tmp/fuzz --scratch-path /tmp/fuzz-build \
+    --count 3000 --seed 1 --timeout 60 --memory-mb 3000
+```
+
+**What it found, and what is fixed.** Sixteen findings, each now a test in
+`ImporterRobustnessTests` or `ElevationFileRobustnessTests`. Those marked *macOS* were also
+reproduced on this Mac with main's readers before the fix (21 October), each ending the process.
+- **Traps:** a DXF arc's angle of 1e300 or NaN, a bulge between a vertex and its repeat, an SVG
+  arc whose radii overflow, an ESRI grid's `ncols` of 1e300, and a BigTIFF offset past a signed
+  64-bit integer (*macOS*, each); an SVG nested 5,000 deep, a stack overflow (*macOS*).
+- **Hangs and memory:** a DXF arc starting at 1e15° (adding turns one at a time), an arc to 1e10°
+  (700 million pieces), blocks that insert one another (36 million copies from 535 bytes), SVG
+  `<use>` copies (24 million points from 114 KB), and plans of 100,000 layers (quadratic searches).
+- **Misreads:** a DXF coordinate of 1e309 read as a wall at infinity (*macOS*), and an SVG's too; an SVG size
+  of 1e309 mm as an infinite unit, an ESRI cell size, corner or elevation past a float's range, and
+  `ncols 2.5` read as two columns.
+- **Linux only:** invalid UTF-8 in an SVG or .osm element name or comment trapped Linux's
+  FoundationXML. macOS's XMLParser refuses the same files (NSXMLParser error 111), so there the
+  check only changes the message.
+
+The fixes refuse such files with a message, or bound the work: angles past two turns reduced by
+whole turns first, `DXFDrawing.pieceLimit` (5,000,000 pieces once blocks or uses are expanded,
+counted before they are made), SVG nesting to 64, grid counts whole numbers from 2 to a billion,
+BigTIFF offsets checked without overflow, and files handed to XMLParser only as valid UTF-8,
+UTF-16 with its byte-order mark, or a declared ISO-8859-1, ISO-8859-15 or Windows-1252. The 57
+seed files read as before, line for line, and an arc within ±720° is drawn bit for bit as before.
+No numerical model changed.
+
+**Left for a decision.**
+- A DXF number that does not parse (`1e`, `0x10`) reads as 0, as an absent group does: refusing
+  it would match the non-finite rule, but it is the reader's long-standing choice.
+- An ESRI header is read while tokens start with a letter, so a first value of `nan` is taken as a
+  key; stopping the header at the known keys would close it.
+- Not fuzzed: the IFC reader (macOS only), the GeoTIFF strips, tiles and Deflate (BlastCore), and
+  ContinuumKit's mesh files beyond what `ImportedMesh.inspect` reaches.

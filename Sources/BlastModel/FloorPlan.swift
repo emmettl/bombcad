@@ -283,11 +283,15 @@ public enum FloorPlan {
 
         // Walls, layer by layer.
         var blocksOnWalls = Set<Int>()
+        // Each layer's segments in the drawing's order, gathered once: going through every
+        // segment for each wall layer took a plan of thousands of layers quadratic time.
+        var onLayer: [String: [Int]] = [:]
+        for (n, s) in segments.enumerated() { onLayer[s.layer, default: []].append(n) }
         for (layer, role) in options.roles.sorted(by: { $0.key < $1.key }) {
             guard case .wall(let construction) = role else { continue }
             var lines: [Line] = []
             var slanted: [(a: SIMD2<Double>, b: SIMD2<Double>)] = []
-            for s in segments where s.layer == layer {
+            for s in (onLayer[layer] ?? []).map({ segments[$0] }) {
                 // Blocks on a wall layer are furniture, symbols or columns, not walls.
                 if s.insert != nil {
                     blocksOnWalls.insert(s.insert!)

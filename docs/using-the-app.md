@@ -636,7 +636,10 @@ arcs), arcs, circles and blocks, on their layers. From an SVG it reads lines, po
 polygons, rectangles, circles, ellipses and paths (curves and arcs in pieces of 15° at most),
 each on the layer of its group (an Inkscape layer's name, else the outermost group's id), with
 their transforms; a symbol placed with `<use>`, as drawing programs place doors and windows, is
-one item, as a DXF block is. A sheet then asks what the plan means:
+one item, as a DXF block is. A file of more than 100 MB is refused, as is one whose blocks (or
+`<use>` copies) come to more than 5,000,000 pieces once inserted, one with a NaN or infinite
+coordinate, and an SVG nested more than 64 elements deep, or not in valid UTF-8 while declaring
+no ISO-8859-1, ISO-8859-15 or Windows-1252 encoding. A sheet then asks what the plan means:
 
 - **Units and scale**: from the DXF's header, or the SVG page's size in millimetres (or other
   real units) over its view box, where they give them; otherwise BombCAD guesses from the plan's
