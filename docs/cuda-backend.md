@@ -586,3 +586,10 @@ All tracing state is removed and verified; no clock/service settings changed. Th
 the setter and duplicate controllers, not a proven feedback mechanism or completed fix. #64
 retains quiescent single-owner normalization and paired/longer validation. Raw elapsed reporting
 and existing numerical gates remain unchanged.
+
+
+The pinned-buffer report also records a post-study observer-precision limitation: installed
+Python's POSIX timeout wait can poll up to 50 ms between exit checks. Fresh-process totals
+include this observation delay; historical values are retained, not rescaled. [66](https://github.com/emmettl/bombcad-work/issues/66)
+tracks a readiness-based runner and same-source validation under #60. This is measurement
+work, not a CUDA speedup or a changed numerical-admission decision.

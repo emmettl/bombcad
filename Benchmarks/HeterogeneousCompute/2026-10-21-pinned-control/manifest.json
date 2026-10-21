@@ -18,11 +18,12 @@
     "final-resource.txt": "1494cfffc26b31a969613ad5ab42e010c76161547d3f2d31bc706299436008fe",
     "inputs.json": "384708a69d68f553b51c433e3d223ddc8f7e3018dc076da23f1b62a8ee2a2f4e",
     "null-small.json": "129bbabcf525fe053833403524c6cfba782f0f1d787cbeb065d8e115288b8e87",
+    "observer-precision.json": "e51fc52396345aa0dee320e2c871e2cf2ba60bb08c822e3fe8757c7819abed12",
     "profile-worker.py.txt": "ed9cb547bca0b24654f43ffc9350b74ed00ac86e63456425a8a667c76cc7eaba",
     "setup.py.txt": "103f2d06a47e78e81fc0cb0b5ed0e9672c5dcf4393deb19f3933e2159a1ec3bf",
     "small-terrain.json": "8c1f4d2dc12dae16dda72ff4728ff63fbbd8db73f3dfe97e99a8a1c2bc0a9459",
     "small-terrain.log": "71defd8ff296f3f83364494d710ca2da052306eeb6237c65bb8fa1131c5703ba",
-    "summary.md": "a356fc151c6554a2d1dd85930cc89b28616034fe44a91cb647b609d43dcc1782",
+    "summary.md": "cdc32a7eb1e57bb70793dec577c1a2538996311837e20716406a5a95225c298a",
     "verification.json": "7e6d821147069de21d13e2107a2ae0c3809f5c25902cbee76a5fbea45cbc9a24",
     "verify.py.txt": "6a84ec37fa0e60b380df735d00ac37805f518e8bd40bdc52c0d2f4fcac585b51",
     "write-summary.py.txt": "4d6dcd6adf93960e6b39be314ac44fa70defd8b93e6f3b7d578384dbbb0fca9f"

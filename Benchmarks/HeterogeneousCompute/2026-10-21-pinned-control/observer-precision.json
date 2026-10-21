@@ -1,0 +1,11 @@
+{
+  "scope": "Post-study installed-interpreter inspection; no timings altered or rescaled",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "implementationFile": "/usr/lib/python3.12/subprocess.py",
+  "waitFunctionSHA256": "773f67be387e442975136954e06b0113780c904d6075cb6957d5cfa7d3ad5fbd",
+  "posixTimeoutWaitUsesWNOHANG": true,
+  "maximumPollingSleepSeconds": 0.05,
+  "interpretation": "Fresh-process observer totals can contain exit-detection delay; this is a possible source of variation, not a full attribution. Compare workers only under the same harness.",
+  "upstreamImplementation": "https://github.com/python/cpython/blob/v3.12.3/Lib/subprocess.py",
+  "followUp": "https://github.com/emmettl/bombcad-work/issues/66"
+}

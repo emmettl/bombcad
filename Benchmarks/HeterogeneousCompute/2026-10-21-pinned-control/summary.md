@@ -114,3 +114,18 @@ Validation: `make check-affected` passed after experiments: strict build/lint/sc
 57 CUDA/queue/profiler tests (four local Torch skips), 7 selected Mac tests and 36 PC tests.
 Final GPU snapshot: 0% utilization, 912 MiB, shared lock absent. All owned experiment,
 diagnostic, audit and check commands are terminal; no compute reservation remains.
+
+
+## Observer precision follow-up
+
+Post-study inspection of the installed PC Python 3.12.3 POSIX timeout-wait implementation
+confirms WNOHANG polling with sleeps capped at 50 ms. The fresh-process harness uses a timeout
+and discards stdout, so totalSeconds can contain exit-observation delay. These remain valid
+observer intervals, not exact child lifetimes. This is a possible contributor to the roughly
+50 ms-spaced small observations, not a complete attribution of all variation. No values are
+subtracted or rescaled. `observer-precision.json` records the inspected version/function hash;
+[the matching CPython implementation](https://github.com/python/cpython/blob/v3.12.3/Lib/subprocess.py)
+supports this observation. [66](https://github.com/emmettl/bombcad-work/issues/66) tracks a readiness-based runner
+with preserved timeout/cleanup semantics and new same-source controls. The #65 no-adoption
+conclusion stands; a future optimizer comparison must use the same corrected harness for both
+workers.
