@@ -350,3 +350,78 @@ justified portability contract. Next isolate contraction from other math-mode ef
 fixed fixtures, and assess localized errors and damage-threshold effects before deciding
 whether to constrain arithmetic or revise a versioned contract. #62 separately owns phase
 label conditioning. No default, mask, label or tolerance changed in these controls.
+
+## Explicit contraction-policy factorial
+
+[The complete factorial and bridge records](../Benchmarks/CUDAAcceptance/2026-10-21-math-factorial/summary.json)
+now separate requested math mode from contraction policy on Beirut. Each explicit fast/safe ×
+contract-on/off setting was run through tiled and full-grid production. Every within-setting
+pair is bit-identical in all exported arrays. Relative to the original default production gate:
+
+| Requested math | Contraction policy | Peak failures | Total-impulse failures | Phase failures |
+|---|---|---|---|---|
+| fast | on | 170 | 0 | 7 |
+| fast | off | 87 | 0 | 2 |
+| safe | on | 44 | 0 | 2 |
+| safe | off | 7 | 0 | 6 |
+
+Bridge controls matter here. Explicit fast mode **without a contraction pragma** reproduces
+both original tiled/full-grid arrays exactly, including their 64-peak/two-phase disagreement.
+Leaving math mode unset but adding contract-off matches explicit fast/off exactly. Thus
+constructing explicit fast options is not the explanation for path agreement in this case;
+the explicit contraction policy is the distinguishing source-level intervention. Contract-on
+still permits fusion, so disabling fusion is not necessary for the observed path agreement.
+No particular emitted instruction or compiler transformation has been inspected or established.
+
+No explicit-policy variant passes the original gate. These are diagnostic settings, not a new
+reference or chosen product policy. The safe/off repeat also reproduces the previous safe/off
+arrays exactly. #63 still needs independent-case, resolution and damage-threshold evidence
+before a justified numerical portability contract can be chosen.
+
+`math-matrix.py` reproduces the experiment from prepared field-run inputs and a matching stable
+three-channel reference. It uses gpu-slot, resets known compiler probes, hashes the executable,
+runtime Metal resources and sources, and records variant receipts, whole-array gates and atomic
+running/failed/complete status. Complete experiment status is separate from acceptance status.
+The final runner also checks layout inputs and all observations before and after each variant;
+its single-configuration smoke reproduced the original arrays bit for bit. Initial archived
+runner snapshots predate that input-hash hardening; their after-run input hashes are labelled
+as such. Cancellation/timeout terminates the owned process group. Invalid modes, duplicate
+columns and a mismatched reference were rejected without creating outputs.
+
+```sh
+python3 Scripts/cuda/math-matrix.py --case beirut-p0-1 \
+  --scenebench .build/release/scenebench --reference REFERENCE \
+  --out NEW-MATRIX --columns 159267,159777,159779,164452,200270,255969
+# Optional bridges, in another new output root:
+# --modes default-off,fast-default
+```
+
+## Whole-field spread and phase-conditioning probes
+
+[The full-field spread study](../Benchmarks/CUDAAcceptance/2026-10-21-reference-spread/study.json)
+uses six distinct reference outcomes (default tiled/full plus four explicit policies), with
+223,548 valid targets per channel. Their observed range exceeds the original per-value
+tolerance at 228 peak and 11 phase points; total impulse has none. Maximum ranges are 45.06 Pa,
+0.431 Pa s and 239.90 Pa s respectively. Many CUDA values sit outside the raw observed min/max;
+none lies farther outside it than the original per-value tolerance in this one case.
+This is descriptive context, **not an error bound, confidence interval, physical validation or
+admission rule**. These variants are not independent observations. The original CUDA gate
+remains failed. `reference-spread.py` reports that unchanged gate beside the spread and retains
+all input hashes; it does not admit data or select a policy.
+
+[The offline closing-threshold sweep](../Benchmarks/CUDAAcceptance/2026-10-21-phase-conditioning/summary.json)
+uses the previously recorded pressure histories only. At 101,325 Pa, float32 ambient spacing is
+0.0078125 Pa. A probe band of eight spacings (0.0625 Pa) reduces four large between-backend
+impulse spreads from 9.27, 39.29, 101.06 and 7.54 Pa s to below 0.01 Pa s. Three smaller spreads
+remain. Actual production pressure is absent from the recorder-only fifth-point trace, so its
+new label cannot be reconstructed by this sweep. These columns were preselected because they
+disagreed; this is not held-out/full-field validation, and ambient spacing is not a proven total
+pressure-error bound.
+
+An analytic counterexample prevents interpreting this as a ready fix. Two genuine positive
+phases at 1 Pa peak, separated by a sustained -0.05 Pa interval, have first-positive impulse
+0.016 Pa s. The 0.0625 Pa band merges the phases and gives 0.028 Pa s (+75%). Scaling the same
+proportional history to 10/100 Pa avoids that merge. This is a mathematical control, not a CFD
+or measured-data validation. `phase-conditioning.py` retains all candidate outcomes and those
+controls; no threshold is selected. #62 requires a justified definition and independent weak,
+reflected/multiphase and resolution/product checks before any versioned target change.

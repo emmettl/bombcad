@@ -1,0 +1,405 @@
+{
+  "format": "bombcad-reference-spread-1",
+  "case": "beirut-p0-1",
+  "canonical": "default",
+  "referenceNames": [
+    "default",
+    "default-full",
+    "fast-on",
+    "fast-off",
+    "safe-on",
+    "safe-off"
+  ],
+  "uniqueReferenceTargetHashes": 6,
+  "inputSHA256": {
+    "default": {
+      "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "targets.npy": "47b294f960e3d617d7508ba0ca74839ca9249d01e2806d543715f076ff893dc9"
+    },
+    "default-full": {
+      "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "targets.npy": "3cc12e20b6dda3fcb533b07396fba06c70c94041b9364a38f6d9ee5b3e101d8b"
+    },
+    "fast-on": {
+      "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "targets.npy": "1765fcedad19ca10a2f8e5939a55fbbd91d08d2981087b51f236af4826690364"
+    },
+    "fast-off": {
+      "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "targets.npy": "070a080ef425a7c8a41e4e0d8b45ccdb2b71d1a361f5a8539124f01a20871af1"
+    },
+    "safe-on": {
+      "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "targets.npy": "89f5c51614fb2477c7e859ab9280a1b1171ddffc926822bd40d44e17b33761bd"
+    },
+    "safe-off": {
+      "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "targets.npy": "1601acb265c5c8d3f4dfbf582ca564216c3b13bae2d7f0e0505e03612a64eae1"
+    },
+    "candidate": {
+      "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6"
+    }
+  },
+  "channels": [
+    {
+      "channel": 0,
+      "target": {
+        "name": "peakOverpressure",
+        "units": "Pa, the run's largest overpressure in the cell at the height"
+      },
+      "validTargets": 223548,
+      "referenceRangeExceedsOriginalPerValueTolerance": 228,
+      "maxReferenceRange": 45.06103515625,
+      "p99ReferenceRange": 3.2109375,
+      "p99RelativeRangeAboveExistingMagnitudeFloor": 0.0005165911517940822,
+      "candidateOutsideObservedRange": 81071,
+      "candidateOutsideObservedRangeByMoreThanOriginalTolerance": 0,
+      "largestReferenceRanges": [
+        {
+          "column": 159777,
+          "range": 45.06103515625,
+          "min": 5718.05615234375,
+          "max": 5763.1171875,
+          "canonical": 5763.1171875,
+          "candidate": 5750.7314453125,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159265,
+          "range": 41.3017578125,
+          "min": 5726.8662109375,
+          "max": 5768.16796875,
+          "canonical": 5768.16796875,
+          "candidate": 5758.53857421875,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159775,
+          "range": 40.5068359375,
+          "min": 5641.4296875,
+          "max": 5681.9365234375,
+          "canonical": 5681.9365234375,
+          "candidate": 5674.3251953125,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159263,
+          "range": 36.46875,
+          "min": 5651.8203125,
+          "max": 5688.2890625,
+          "canonical": 5688.2890625,
+          "candidate": 5681.076171875,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159779,
+          "range": 35.28662109375,
+          "min": 5807.5048828125,
+          "max": 5842.79150390625,
+          "canonical": 5842.79150390625,
+          "candidate": 5830.46240234375,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 160287,
+          "range": 34.97998046875,
+          "min": 5654.5,
+          "max": 5689.47998046875,
+          "canonical": 5689.47998046875,
+          "candidate": 5683.70654296875,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 160289,
+          "range": 33.005859375,
+          "min": 5755.70166015625,
+          "max": 5788.70751953125,
+          "canonical": 5788.70751953125,
+          "candidate": 5781.82080078125,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159267,
+          "range": 32.18505859375,
+          "min": 5807.5546875,
+          "max": 5839.73974609375,
+          "canonical": 5839.73974609375,
+          "candidate": 5826.72119140625,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 158753,
+          "range": 31.58251953125,
+          "min": 5729.46533203125,
+          "max": 5761.0478515625,
+          "canonical": 5761.0478515625,
+          "candidate": 5753.0595703125,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 160291,
+          "range": 29.1025390625,
+          "min": 5823.85595703125,
+          "max": 5852.95849609375,
+          "canonical": 5852.95849609375,
+          "candidate": 5844.52490234375,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159773,
+          "range": 28.04296875,
+          "min": 5592.9130859375,
+          "max": 5620.9560546875,
+          "canonical": 5620.9560546875,
+          "candidate": 5616.90673828125,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 160285,
+          "range": 27.61767578125,
+          "min": 5587.90625,
+          "max": 5615.52392578125,
+          "canonical": 5615.52392578125,
+          "candidate": 5612.7060546875,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 160286,
+          "range": 27.5302734375,
+          "min": 5591.962890625,
+          "max": 5619.4931640625,
+          "canonical": 5591.962890625,
+          "candidate": 5598.73193359375,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159774,
+          "range": 27.3154296875,
+          "min": 5600.3359375,
+          "max": 5627.6513671875,
+          "canonical": 5600.3359375,
+          "candidate": 5607.60107421875,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159781,
+          "range": 27.08642578125,
+          "min": 5903.36376953125,
+          "max": 5930.4501953125,
+          "canonical": 5930.4501953125,
+          "candidate": 5920.6689453125,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 160284,
+          "range": 26.7138671875,
+          "min": 5513.162109375,
+          "max": 5539.8759765625,
+          "canonical": 5513.162109375,
+          "candidate": 5519.14697265625,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159266,
+          "range": 26.412109375,
+          "min": 5767.11865234375,
+          "max": 5793.53076171875,
+          "canonical": 5767.11865234375,
+          "candidate": 5774.69873046875,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159778,
+          "range": 26.06884765625,
+          "min": 5766.6240234375,
+          "max": 5792.69287109375,
+          "canonical": 5766.6240234375,
+          "candidate": 5773.89111328125,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 158755,
+          "range": 25.7646484375,
+          "min": 5808.50341796875,
+          "max": 5834.26806640625,
+          "canonical": 5834.26806640625,
+          "candidate": 5823.27685546875,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 159772,
+          "range": 25.4580078125,
+          "min": 5525.97119140625,
+          "max": 5551.42919921875,
+          "canonical": 5525.97119140625,
+          "candidate": 5531.791015625,
+          "candidateExcessBeyondRange": 0.0
+        }
+      ]
+    },
+    {
+      "channel": 1,
+      "target": {
+        "name": "impulse",
+        "units": "Pa s, the run's positive-phase impulse in the cell at the height"
+      },
+      "validTargets": 223548,
+      "referenceRangeExceedsOriginalPerValueTolerance": 0,
+      "maxReferenceRange": 0.430908203125,
+      "p99ReferenceRange": 0.068359375,
+      "p99RelativeRangeAboveExistingMagnitudeFloor": 5.385309012834149e-05,
+      "candidateOutsideObservedRange": 137111,
+      "candidateOutsideObservedRangeByMoreThanOriginalTolerance": 0,
+      "largestReferenceRanges": []
+    },
+    {
+      "channel": 2,
+      "target": {
+        "name": "firstPhaseImpulse",
+        "units": "Pa s, the first positive phase's impulse at the height, by the fa\u00e7ade recorder's rule: from the start until the overpressure first falls below nothing after reaching half its peak"
+      },
+      "validTargets": 223548,
+      "referenceRangeExceedsOriginalPerValueTolerance": 11,
+      "maxReferenceRange": 239.89892578125,
+      "p99ReferenceRange": 0.06732177734375,
+      "p99RelativeRangeAboveExistingMagnitudeFloor": 6.779586117246629e-05,
+      "candidateOutsideObservedRange": 171033,
+      "candidateOutsideObservedRangeByMoreThanOriginalTolerance": 0,
+      "largestReferenceRanges": [
+        {
+          "column": 163162,
+          "range": 239.89892578125,
+          "min": 2011.304931640625,
+          "max": 2251.203857421875,
+          "canonical": 2011.305419921875,
+          "candidate": 2011.30322265625,
+          "candidateExcessBeyondRange": 0.001708984375
+        },
+        {
+          "column": 144538,
+          "range": 196.1090087890625,
+          "min": 1932.3304443359375,
+          "max": 2128.439453125,
+          "canonical": 1932.330810546875,
+          "candidate": 1932.328369140625,
+          "candidateExcessBeyondRange": 0.0020751953125
+        },
+        {
+          "column": 164452,
+          "range": 101.059326171875,
+          "min": 1244.7987060546875,
+          "max": 1345.8580322265625,
+          "canonical": 1345.8580322265625,
+          "candidate": 1244.7979736328125,
+          "candidateExcessBeyondRange": 0.000732421875
+        },
+        {
+          "column": 244211,
+          "range": 53.13720703125,
+          "min": 644.2872924804688,
+          "max": 697.4244995117188,
+          "canonical": 697.4241333007812,
+          "candidate": 697.4193725585938,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 196122,
+          "range": 52.232666015625,
+          "min": 817.514404296875,
+          "max": 869.7470703125,
+          "canonical": 817.5161743164062,
+          "candidate": 817.5155639648438,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 242674,
+          "range": 50.5885009765625,
+          "min": 657.6417846679688,
+          "max": 708.2302856445312,
+          "canonical": 708.2302856445312,
+          "candidate": 708.224365234375,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 255969,
+          "range": 49.4359130859375,
+          "min": 634.6305541992188,
+          "max": 684.0664672851562,
+          "canonical": 634.6305541992188,
+          "candidate": 684.0570678710938,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 251380,
+          "range": 32.0858154296875,
+          "min": 610.615234375,
+          "max": 642.7010498046875,
+          "canonical": 610.63134765625,
+          "candidate": 610.6204223632812,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 250864,
+          "range": 26.38421630859375,
+          "min": 647.7181396484375,
+          "max": 674.1023559570312,
+          "canonical": 647.7230224609375,
+          "candidate": 647.7177734375,
+          "candidateExcessBeyondRange": 0.0003662109375
+        },
+        {
+          "column": 231431,
+          "range": 20.534423828125,
+          "min": 643.3216552734375,
+          "max": 663.8560791015625,
+          "canonical": 663.8558349609375,
+          "candidate": 663.8525390625,
+          "candidateExcessBeyondRange": 0.0
+        },
+        {
+          "column": 200270,
+          "range": 7.5341796875,
+          "min": 1024.859619140625,
+          "max": 1032.393798828125,
+          "canonical": 1032.393310546875,
+          "candidate": 1024.8563232421875,
+          "candidateExcessBeyondRange": 0.0032958984375
+        }
+      ]
+    }
+  ],
+  "originalCandidateGate": {
+    "0": {
+      "relativeL2": 2.3345044825070764e-07,
+      "maxAbsolute": 16.0,
+      "outsideTolerance": 3,
+      "medianRelative": 2.5939563411208225e-06,
+      "p99Relative": 0.0001604531600597384
+    },
+    "1": {
+      "relativeL2": 1.7335533224143104e-06,
+      "maxAbsolute": 0.1875,
+      "outsideTolerance": 0,
+      "medianRelative": 2.9395241615868188e-06,
+      "p99Relative": 1.8228568451773384e-05
+    },
+    "2": {
+      "relativeL2": 4.728914245918789e-05,
+      "maxAbsolute": 101.06005859375,
+      "outsideTolerance": 3,
+      "medianRelative": 2.8334958685187568e-06,
+      "p99Relative": 1.9991739636000554e-05
+    },
+    "passed": false
+  },
+  "scope": "Descriptive observed spread only; not a bound, confidence interval, physical validation or admission rule. No tolerance/mask/default change and no policy chosen.",
+  "runnerSHA256": "795d5e034567d7742de7ab15b16a93d2e9a2461609427b02323a8d6e4e32a28c"
+}

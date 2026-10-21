@@ -1,0 +1,8 @@
+{
+  "scope": "Input hashes observed after these runs; original runner snapshots did not revalidate these files per variant. Final runner does so for future experiments. Exported features/masks and reference hashes are retained for the completed matrix.",
+  "layoutInputSHA256": {
+    "osm": "65dc68ed1814f75cc0a1a9a88e4f4433aad71834309b4bde6eae6acc4c465e49",
+    "dem": "5c354a55aa89f068d837d5cdbae342702b35c2735866ff7f16873b2fe0e85b37",
+    "heights": "13c5f63349b6cc38ac720e449f513c25fb5ae821132c53278277a75936ee8328"
+  }
+}

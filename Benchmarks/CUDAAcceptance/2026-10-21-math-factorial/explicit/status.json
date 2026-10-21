@@ -1,0 +1,15 @@
+{
+  "state": "complete",
+  "completed": [
+    "fast-on-tiled",
+    "fast-on-full",
+    "fast-off-tiled",
+    "fast-off-full",
+    "safe-on-tiled",
+    "safe-on-full",
+    "safe-off-tiled",
+    "safe-off-full"
+  ],
+  "elapsedWallSeconds": 642.2750978469849,
+  "acceptancePassed": false
+}

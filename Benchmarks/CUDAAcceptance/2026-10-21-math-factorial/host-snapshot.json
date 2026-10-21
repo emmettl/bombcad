@@ -1,0 +1,13 @@
+{
+  "scope": "Read-only host snapshot observed after matrix runs, not per-run clock or temperature telemetry",
+  "system": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.9.6",
+  "systemProfilerExit": 0,
+  "gpu": [
+    {
+      "sppci_model": "Apple M4 Max",
+      "spdisplays_vendor": "sppci_vendor_Apple",
+      "spdisplays_metal": "spdisplays_supported"
+    }
+  ]
+}

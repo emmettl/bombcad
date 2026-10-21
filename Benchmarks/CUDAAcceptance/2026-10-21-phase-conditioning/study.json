@@ -1,0 +1,1679 @@
+{
+  "format": "bombcad-phase-conditioning-study-1",
+  "ambientPressurePa": 101325.0,
+  "float32AmbientSpacingPa": 0.0078125,
+  "spacingMultipliers": [
+    0,
+    1,
+    2,
+    4,
+    8,
+    16
+  ],
+  "analyticControls": {
+    "scope": "Analytic counterexamples, not CFD or measured-data validation. A pressure-only band may merge two genuine positive phases despite a sustained negative interval.",
+    "histories": [
+      {
+        "peakPa": 1.0,
+        "negativeIntervalPa": -0.05,
+        "negativeDurationS": 0.02,
+        "exactFirstPositiveImpulsePaS": 0.016,
+        "candidateFirstPhaseImpulsePaS": {
+          "0": 0.01599999889731407,
+          "1": 0.01599999889731407,
+          "2": 0.01599999889731407,
+          "4": 0.01599999889731407,
+          "8": 0.02800000086426735,
+          "16": 0.02800000086426735
+        }
+      },
+      {
+        "peakPa": 10.0,
+        "negativeIntervalPa": -0.5,
+        "negativeDurationS": 0.02,
+        "exactFirstPositiveImpulsePaS": 0.16,
+        "candidateFirstPhaseImpulsePaS": {
+          "0": 0.1599999964237213,
+          "1": 0.1599999964237213,
+          "2": 0.1599999964237213,
+          "4": 0.1599999964237213,
+          "8": 0.1599999964237213,
+          "16": 0.1599999964237213
+        }
+      },
+      {
+        "peakPa": 100.0,
+        "negativeIntervalPa": -5.0,
+        "negativeDurationS": 0.02,
+        "exactFirstPositiveImpulsePaS": 1.6,
+        "candidateFirstPhaseImpulsePaS": {
+          "0": 1.5999999046325684,
+          "1": 1.5999999046325684,
+          "2": 1.5999999046325684,
+          "4": 1.5999999046325684,
+          "8": 1.5999999046325684,
+          "16": 1.5999999046325684
+        }
+      }
+    ]
+  },
+  "inputSHA256": {
+    "made-perimeter-s3-1/cuda": {
+      "trace.json": "345f0652a07caa337f25780f181422f28df96f3020adc1bd9181869d3c696504",
+      "trace-f32.bin.gz": "11e579a500aa42a0b78a7da78c9ce00800df584d78a5683c415593b57926b79a"
+    },
+    "made-perimeter-s3-1/metal-safe": {
+      "trace.json": "9baad20886305315b0c9d217ab92e50f7e45e9b630e2317c3636590fd76b722a",
+      "trace-f32.bin.gz": "d0d038464b3d7432f9561ab296d7a714f972e7e8eb36557b7350d388bf632b35"
+    },
+    "made-perimeter-s3-1/metal-fast": {
+      "trace.json": "deafb5ac1b92e95e440e1dffe6db5d3c786af104b2e3f2b2e465f3d467e44252",
+      "trace-f32.bin.gz": "d9191214bdca55f79cecf9efc35e7824608151a85df9c95e3407f11511c18574"
+    },
+    "beirut-p0-1/cuda": {
+      "trace.json": "b7be44fd77177642bb4369fa88df584ee9c64fb6762f1b53c79ed595c7a6c582",
+      "trace-f32.bin.gz": "d146b80ee29e5b5a06885fde39db42d17ba5ab1e6a7159bf28d242ff2b1734ad"
+    },
+    "beirut-p0-1/metal-fast": {
+      "trace.json": "6f964115337c87b765bea70e7e72255cfc2548ae2ffa13219672456cf638979c",
+      "trace-f32.bin.gz": "1713ab1092d68a38b86bad0bfaf50229276a716e77ed75e8bcd97672b80232b8"
+    }
+  },
+  "groups": {
+    "made-perimeter-s3-1": [
+      {
+        "column": 134058,
+        "actualRecordedFirstPhase": {
+          "cuda": 417.13818359375,
+          "metal-safe": 426.40380859375,
+          "metal-fast": 426.40509033203125
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 417.13818359375,
+                "closingSamples": [
+                  1216
+                ],
+                "closingTimes": [
+                  1.9655684784811456
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 426.40380859375,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381511298764963
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 426.40509033203125,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510285951663
+                ]
+              }
+            },
+            "rangePaS": 9.26690673828125,
+            "relativeRange": 0.021732636285053106,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 426.4032287597656,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510149745736
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 426.40380859375,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381511298764963
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 426.40509033203125,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510285951663
+                ]
+              }
+            },
+            "rangePaS": 0.001861572265625,
+            "relativeRange": 4.365736497600062e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 9.265045166015625,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 426.4032287597656,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510149745736
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 426.40380859375,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381511298764963
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 426.40509033203125,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510285951663
+                ]
+              }
+            },
+            "rangePaS": 0.001861572265625,
+            "relativeRange": 4.365736497600062e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 9.265045166015625,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 426.4032287597656,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510149745736
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 426.40380859375,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381511298764963
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 426.40509033203125,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510285951663
+                ]
+              }
+            },
+            "rangePaS": 0.001861572265625,
+            "relativeRange": 4.365736497600062e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 9.265045166015625,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 426.4032287597656,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510149745736
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 426.40380859375,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381511298764963
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 426.40509033203125,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510285951663
+                ]
+              }
+            },
+            "rangePaS": 0.001861572265625,
+            "relativeRange": 4.365736497600062e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 9.265045166015625,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 426.4032287597656,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510149745736
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 426.40380859375,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381511298764963
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 426.40509033203125,
+                "closingSamples": [
+                  1259
+                ],
+                "closingTimes": [
+                  2.0381510285951663
+                ]
+              }
+            },
+            "rangePaS": 0.001861572265625,
+            "relativeRange": 4.365736497600062e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 9.265045166015625,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          }
+        }
+      },
+      {
+        "column": 250097,
+        "actualRecordedFirstPhase": {
+          "cuda": 186.43394470214844,
+          "metal-safe": 186.43435668945312,
+          "metal-fast": 225.71897888183594
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 186.43394470214844,
+                "closingSamples": [
+                  1581
+                ],
+                "closingTimes": [
+                  2.584012097591767
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 186.43435668945312,
+                "closingSamples": [
+                  1581
+                ],
+                "closingTimes": [
+                  2.5840122746594716
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 225.71897888183594,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021288666001055
+                ]
+              }
+            },
+            "rangePaS": 39.2850341796875,
+            "relativeRange": 0.17404400097101824,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 186.43394470214844,
+                "closingSamples": [
+                  1581
+                ],
+                "closingTimes": [
+                  2.584012097591767
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 186.43435668945312,
+                "closingSamples": [
+                  1581
+                ],
+                "closingTimes": [
+                  2.5840122746594716
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 225.71897888183594,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021288666001055
+                ]
+              }
+            },
+            "rangePaS": 39.2850341796875,
+            "relativeRange": 0.17404400097101824,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 186.43394470214844,
+                "closingSamples": [
+                  1581
+                ],
+                "closingTimes": [
+                  2.584012097591767
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 186.43435668945312,
+                "closingSamples": [
+                  1581
+                ],
+                "closingTimes": [
+                  2.5840122746594716
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 225.71897888183594,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021288666001055
+                ]
+              }
+            },
+            "rangePaS": 39.2850341796875,
+            "relativeRange": 0.17404400097101824,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-safe": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 186.43394470214844,
+                "closingSamples": [
+                  1581
+                ],
+                "closingTimes": [
+                  2.584012097591767
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 225.71829223632812,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021289689291734
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 225.71897888183594,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021288666001055
+                ]
+              }
+            },
+            "rangePaS": 39.2850341796875,
+            "relativeRange": 0.17404400097101824,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-safe": 39.283935546875,
+              "metal-fast": 0.0
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 225.71739196777344,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.702128758915933
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 225.71829223632812,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021289689291734
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 225.71897888183594,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021288666001055
+                ]
+              }
+            },
+            "rangePaS": 0.0015869140625,
+            "relativeRange": 7.030485740991903e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 39.283447265625,
+              "metal-safe": 39.283935546875,
+              "metal-fast": 0.0
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 225.71739196777344,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.702128758915933
+                ]
+              },
+              "metal-safe": {
+                "firstPhaseImpulse": 225.71829223632812,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021289689291734
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 225.71897888183594,
+                "closingSamples": [
+                  1650
+                ],
+                "closingTimes": [
+                  2.7021288666001055
+                ]
+              }
+            },
+            "rangePaS": 0.0015869140625,
+            "relativeRange": 7.030485740991903e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 39.283447265625,
+              "metal-safe": 39.283935546875,
+              "metal-fast": 0.0
+            }
+          }
+        }
+      }
+    ],
+    "beirut-p0-1": [
+      {
+        "column": 159267,
+        "actualRecordedFirstPhase": {
+          "cuda": 1000.4713134765625,
+          "metal-fast": 1000.293701171875
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1000.4713134765625,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904922735528
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1000.2937622070312,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904189580935
+                ]
+              }
+            },
+            "rangePaS": 0.17755126953125,
+            "relativeRange": 0.00017746762664715764,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 6.103515625e-05
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1000.4713134765625,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904922735528
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1000.2937622070312,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904189580935
+                ]
+              }
+            },
+            "rangePaS": 0.17755126953125,
+            "relativeRange": 0.00017746762664715764,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 6.103515625e-05
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1000.4713134765625,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904922735528
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1000.2937622070312,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904189580935
+                ]
+              }
+            },
+            "rangePaS": 0.17755126953125,
+            "relativeRange": 0.00017746762664715764,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 6.103515625e-05
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1000.4713134765625,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904922735528
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1000.2937622070312,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904189580935
+                ]
+              }
+            },
+            "rangePaS": 0.17755126953125,
+            "relativeRange": 0.00017746762664715764,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 6.103515625e-05
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1000.4713134765625,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904922735528
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1000.2937622070312,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904189580935
+                ]
+              }
+            },
+            "rangePaS": 0.17755126953125,
+            "relativeRange": 0.00017746762664715764,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 6.103515625e-05
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1000.4713134765625,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904922735528
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1000.2937622070312,
+                "closingSamples": [
+                  1449
+                ],
+                "closingTimes": [
+                  2.598904189580935
+                ]
+              }
+            },
+            "rangePaS": 0.17755126953125,
+            "relativeRange": 0.00017746762664715764,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 6.103515625e-05
+            }
+          }
+        }
+      },
+      {
+        "column": 159777,
+        "actualRecordedFirstPhase": {
+          "cuda": 990.1138916015625,
+          "metal-fast": 989.7169189453125
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 990.1138916015625,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.624780033962452
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 989.7169189453125,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.6247793267684756
+                ]
+              }
+            },
+            "rangePaS": 0.39697265625,
+            "relativeRange": 0.00040093635653154546,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 990.1138916015625,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.624780033962452
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 989.7169189453125,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.6247793267684756
+                ]
+              }
+            },
+            "rangePaS": 0.39697265625,
+            "relativeRange": 0.00040093635653154546,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 990.1138916015625,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.624780033962452
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 989.7169189453125,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.6247793267684756
+                ]
+              }
+            },
+            "rangePaS": 0.39697265625,
+            "relativeRange": 0.00040093635653154546,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 990.1138916015625,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.624780033962452
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 989.7169189453125,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.6247793267684756
+                ]
+              }
+            },
+            "rangePaS": 0.39697265625,
+            "relativeRange": 0.00040093635653154546,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 990.1138916015625,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.624780033962452
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 989.7169189453125,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.6247793267684756
+                ]
+              }
+            },
+            "rangePaS": 0.39697265625,
+            "relativeRange": 0.00040093635653154546,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 990.1138916015625,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.624780033962452
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 989.7169189453125,
+                "closingSamples": [
+                  1463
+                ],
+                "closingTimes": [
+                  2.6247793267684756
+                ]
+              }
+            },
+            "rangePaS": 0.39697265625,
+            "relativeRange": 0.00040093635653154546,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          }
+        }
+      },
+      {
+        "column": 159779,
+        "actualRecordedFirstPhase": {
+          "cuda": 998.4940795898438,
+          "metal-fast": 998.3207397460938
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 998.4940795898438,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.6007521626452217
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 998.3207397460938,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.600751431469689
+                ]
+              }
+            },
+            "rangePaS": 0.17333984375,
+            "relativeRange": 0.00017360127345091884,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 998.4940795898438,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.6007521626452217
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 998.3207397460938,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.600751431469689
+                ]
+              }
+            },
+            "rangePaS": 0.17333984375,
+            "relativeRange": 0.00017360127345091884,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 998.4940795898438,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.6007521626452217
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 998.3207397460938,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.600751431469689
+                ]
+              }
+            },
+            "rangePaS": 0.17333984375,
+            "relativeRange": 0.00017360127345091884,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 998.4940795898438,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.6007521626452217
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 998.3207397460938,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.600751431469689
+                ]
+              }
+            },
+            "rangePaS": 0.17333984375,
+            "relativeRange": 0.00017360127345091884,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 998.4940795898438,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.6007521626452217
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 998.3207397460938,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.600751431469689
+                ]
+              }
+            },
+            "rangePaS": 0.17333984375,
+            "relativeRange": 0.00017360127345091884,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 998.4940795898438,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.6007521626452217
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 998.3207397460938,
+                "closingSamples": [
+                  1450
+                ],
+                "closingTimes": [
+                  2.600751431469689
+                ]
+              }
+            },
+            "rangePaS": 0.17333984375,
+            "relativeRange": 0.00017360127345091884,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          }
+        }
+      },
+      {
+        "column": 164452,
+        "actualRecordedFirstPhase": {
+          "cuda": 1244.7979736328125,
+          "metal-fast": 1345.8587646484375
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1244.7979736328125,
+                "closingSamples": [
+                  997
+                ],
+                "closingTimes": [
+                  1.7727713717758888
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1345.858642578125,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.9077659969188971
+                ]
+              }
+            },
+            "rangePaS": 101.0606689453125,
+            "relativeRange": 0.07509010660415333,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -0.0001220703125
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1244.7979736328125,
+                "closingSamples": [
+                  997
+                ],
+                "closingTimes": [
+                  1.7727713717758888
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1345.858642578125,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.9077659969188971
+                ]
+              }
+            },
+            "rangePaS": 101.0606689453125,
+            "relativeRange": 0.07509010660415333,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -0.0001220703125
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1244.7979736328125,
+                "closingSamples": [
+                  997
+                ],
+                "closingTimes": [
+                  1.7727713717758888
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1345.858642578125,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.9077659969188971
+                ]
+              }
+            },
+            "rangePaS": 101.0606689453125,
+            "relativeRange": 0.07509010660415333,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -0.0001220703125
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1345.849609375,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.907766907606856
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1345.858642578125,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.9077659969188971
+                ]
+              }
+            },
+            "rangePaS": 0.009033203125,
+            "relativeRange": 6.711851333581369e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 101.0516357421875,
+              "metal-fast": -0.0001220703125
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1345.849609375,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.907766907606856
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1345.858642578125,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.9077659969188971
+                ]
+              }
+            },
+            "rangePaS": 0.009033203125,
+            "relativeRange": 6.711851333581369e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 101.0516357421875,
+              "metal-fast": -0.0001220703125
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1345.849609375,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.907766907606856
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1345.858642578125,
+                "closingSamples": [
+                  1071
+                ],
+                "closingTimes": [
+                  1.9077659969188971
+                ]
+              }
+            },
+            "rangePaS": 0.009033203125,
+            "relativeRange": 6.711851333581369e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 101.0516357421875,
+              "metal-fast": -0.0001220703125
+            }
+          }
+        }
+      },
+      {
+        "column": 200270,
+        "actualRecordedFirstPhase": {
+          "cuda": 1024.8563232421875,
+          "metal-fast": 1032.393310546875
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1024.8563232421875,
+                "closingSamples": [
+                  1360
+                ],
+                "closingTimes": [
+                  2.435076660607592
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1032.393310546875,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380271291796817
+                ]
+              }
+            },
+            "rangePaS": 7.5369873046875,
+            "relativeRange": 0.007300499942890021,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1024.8563232421875,
+                "closingSamples": [
+                  1360
+                ],
+                "closingTimes": [
+                  2.435076660607592
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1032.393310546875,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380271291796817
+                ]
+              }
+            },
+            "rangePaS": 7.5369873046875,
+            "relativeRange": 0.007300499942890021,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": 0.0
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1032.3887939453125,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380278871307382
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1032.393310546875,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380271291796817
+                ]
+              }
+            },
+            "rangePaS": 0.0045166015625,
+            "relativeRange": 4.3748845680794705e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 7.532470703125,
+              "metal-fast": 0.0
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1032.3887939453125,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380278871307382
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1032.393310546875,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380271291796817
+                ]
+              }
+            },
+            "rangePaS": 0.0045166015625,
+            "relativeRange": 4.3748845680794705e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 7.532470703125,
+              "metal-fast": 0.0
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1032.3887939453125,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380278871307382
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1032.393310546875,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380271291796817
+                ]
+              }
+            },
+            "rangePaS": 0.0045166015625,
+            "relativeRange": 4.3748845680794705e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 7.532470703125,
+              "metal-fast": 0.0
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 1032.3887939453125,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380278871307382
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 1032.393310546875,
+                "closingSamples": [
+                  1416
+                ],
+                "closingTimes": [
+                  2.5380271291796817
+                ]
+              }
+            },
+            "rangePaS": 0.0045166015625,
+            "relativeRange": 4.3748845680794705e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 7.532470703125,
+              "metal-fast": 0.0
+            }
+          }
+        }
+      },
+      {
+        "column": 255969,
+        "actualRecordedFirstPhase": {
+          "cuda": 684.0570678710938,
+          "metal-fast": 684.0626220703125
+        },
+        "candidates": {
+          "0": {
+            "deadbandPa": 0.0,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 684.0570678710938,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429571679444
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 684.0625610351562,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429228516179
+                ]
+              }
+            },
+            "rangePaS": 0.0054931640625,
+            "relativeRange": 8.030207140977693e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -6.103515625e-05
+            }
+          },
+          "1": {
+            "deadbandPa": 0.0078125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 684.0570678710938,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429571679444
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 684.0625610351562,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429228516179
+                ]
+              }
+            },
+            "rangePaS": 0.0054931640625,
+            "relativeRange": 8.030207140977693e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -6.103515625e-05
+            }
+          },
+          "2": {
+            "deadbandPa": 0.015625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 684.0570678710938,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429571679444
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 684.0625610351562,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429228516179
+                ]
+              }
+            },
+            "rangePaS": 0.0054931640625,
+            "relativeRange": 8.030207140977693e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -6.103515625e-05
+            }
+          },
+          "4": {
+            "deadbandPa": 0.03125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 684.0570678710938,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429571679444
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 684.0625610351562,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429228516179
+                ]
+              }
+            },
+            "rangePaS": 0.0054931640625,
+            "relativeRange": 8.030207140977693e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -6.103515625e-05
+            }
+          },
+          "8": {
+            "deadbandPa": 0.0625,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 684.0570678710938,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429571679444
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 684.0625610351562,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429228516179
+                ]
+              }
+            },
+            "rangePaS": 0.0054931640625,
+            "relativeRange": 8.030207140977693e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -6.103515625e-05
+            }
+          },
+          "16": {
+            "deadbandPa": 0.125,
+            "backends": {
+              "cuda": {
+                "firstPhaseImpulse": 684.0570678710938,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429571679444
+                ]
+              },
+              "metal-fast": {
+                "firstPhaseImpulse": 684.0625610351562,
+                "closingSamples": [
+                  2093
+                ],
+                "closingTimes": [
+                  3.788429228516179
+                ]
+              }
+            },
+            "rangePaS": 0.0054931640625,
+            "relativeRange": 8.030207140977693e-06,
+            "changeFromRecordedBaseline": {
+              "cuda": 0.0,
+              "metal-fast": -6.103515625e-05
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scope": "Offline replay of preselected discrepancy columns; not held-out/full-field/physical validation. Negative band keeps a phase open but adds no negative impulse. No production rule or tolerance changes and no winning policy selected.",
+  "replayScope": "Unfused float32 accumulation; zero-band replay error against each recorded backend is reported, not assumed zero for fused arithmetic",
+  "qualification": "Ambient float32 spacing is a probe scale, not a total error bound. Columns were preselected for disagreement; reduction here does not select a valid threshold.",
+  "groupsSHA256": "7966275ce4dadc6af52014baa1d9c847d95ad9da9aa752f6f3ddd417dbbfc3ef",
+  "runnerSHA256": "af469fad60e179147f64338dc82bc302c7fdcf8f2dce927137a31955efdfee05"
+}

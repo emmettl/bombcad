@@ -64,3 +64,14 @@ accumulated fields, not recomputed pressure. `diagnose-production.py` compares e
 and summarizes the actual production transitions; archived gzip traces require `--arrays` for
 a fresh gate computation. `--full-grid-diagnostic` and `--all-tiles-diagnostic` on field-export
 provide mutually exclusive controlled paths. No product defaults or acceptance rules change.
+
+`math-matrix.py` runs explicit fast/safe × contraction-on/off × tiled/full production controls
+from prepared field-run inputs. `--dry-run` plans without creating outputs; `--modes
+ default-off,fast-default` runs bridge controls in a fresh root. Status completion is separate
+from acceptance. Hashes and runner snapshots are retained; interruption terminates the owned
+process group. See the backend documentation for the result and scope.
+
+`reference-spread.py` describes whole-field variation across named reference outcomes while
+reporting the original candidate gate unchanged. `phase-conditioning.py` performs offline
+threshold sensitivity on archived pressure histories and includes analytic counterexamples.
+Neither chooses a policy, changes targets or admits a dataset.

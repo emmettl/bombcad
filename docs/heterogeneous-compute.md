@@ -213,3 +213,12 @@ which compiler transformation causes it. Safe production still fails seven peak/
 points against default production, and CUDA still fails against the safe reference. #63 tracks
 the separate peak portability contract; #62 tracks label conditioning. These findings do not
 enable a full CUDA batch or justify changing the acceptance gate.
+
+Explicit contraction-on **and** contraction-off each make the Beirut tiled/full-grid pairs
+bit-identical under fast and safe math. Bridge controls rule out merely constructing explicit
+fast options as the cause. Thus an explicit contraction policy removes this case's path
+variation without proving that fusion must be disabled. None of those variants passes the
+original gate. The six-outcome reference spread and an offline phase-band sweep are retained
+as diagnostics; an analytic weak-wave counterexample shows why a band that repairs selected
+points cannot simply become the target rule. #62/#63 remain policy/validation work, not resolved
+by a precision switch or larger tolerance. See the backend documentation for full receipts.

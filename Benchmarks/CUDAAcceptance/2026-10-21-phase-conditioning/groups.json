@@ -1,0 +1,11 @@
+{
+  "made-perimeter-s3-1": {
+    "cuda": "../2026-10-21-phase-traces/cuda",
+    "metal-safe": "../2026-10-21-phase-traces/metal-safe",
+    "metal-fast": "../2026-10-21-phase-traces/metal-fast"
+  },
+  "beirut-p0-1": {
+    "cuda": "../2026-10-21-beirut-traces/cuda",
+    "metal-fast": "../2026-10-21-beirut-traces/metal-fast"
+  }
+}

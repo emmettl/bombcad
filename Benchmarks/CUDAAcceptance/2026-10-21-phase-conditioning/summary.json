@@ -1,0 +1,65 @@
+{
+  "scope": "Offline replay of preselected discrepancy columns; not held-out/full-field/physical validation. Negative band keeps a phase open but adds no negative impulse. No production rule or tolerance changes and no winning policy selected.",
+  "ambientPressurePa": 101325.0,
+  "spacingPa": 0.0078125,
+  "rows": [
+    {
+      "case": "made-perimeter-s3-1",
+      "column": 134058,
+      "baselineRangePaS": 9.26690673828125,
+      "eightSpacingRangePaS": 0.001861572265625,
+      "maxLabelChangeAtEightSpacingPaS": 9.265045166015625
+    },
+    {
+      "case": "made-perimeter-s3-1",
+      "column": 250097,
+      "baselineRangePaS": 39.2850341796875,
+      "eightSpacingRangePaS": 0.0015869140625,
+      "maxLabelChangeAtEightSpacingPaS": 39.283935546875
+    },
+    {
+      "case": "beirut-p0-1",
+      "column": 159267,
+      "baselineRangePaS": 0.17755126953125,
+      "eightSpacingRangePaS": 0.17755126953125,
+      "maxLabelChangeAtEightSpacingPaS": 6.103515625e-05
+    },
+    {
+      "case": "beirut-p0-1",
+      "column": 159777,
+      "baselineRangePaS": 0.39697265625,
+      "eightSpacingRangePaS": 0.39697265625,
+      "maxLabelChangeAtEightSpacingPaS": 0.0
+    },
+    {
+      "case": "beirut-p0-1",
+      "column": 159779,
+      "baselineRangePaS": 0.17333984375,
+      "eightSpacingRangePaS": 0.17333984375,
+      "maxLabelChangeAtEightSpacingPaS": 0.0
+    },
+    {
+      "case": "beirut-p0-1",
+      "column": 164452,
+      "baselineRangePaS": 101.0606689453125,
+      "eightSpacingRangePaS": 0.009033203125,
+      "maxLabelChangeAtEightSpacingPaS": 101.0516357421875
+    },
+    {
+      "case": "beirut-p0-1",
+      "column": 200270,
+      "baselineRangePaS": 7.5369873046875,
+      "eightSpacingRangePaS": 0.0045166015625,
+      "maxLabelChangeAtEightSpacingPaS": 7.532470703125
+    },
+    {
+      "case": "beirut-p0-1",
+      "column": 255969,
+      "baselineRangePaS": 0.0054931640625,
+      "eightSpacingRangePaS": 0.0054931640625,
+      "maxLabelChangeAtEightSpacingPaS": 6.103515625e-05
+    }
+  ],
+  "conclusion": "Four large between-backend disagreements in available pressure traces collapse below 0.01 Pa s at eight ambient spacings (0.0625 Pa), while three smaller disagreements remain. Production pressure is absent for the fifth problematic phase point; its original label cannot be recomputed from a recorder-only trace. No band is selected or adopted; independent/full-field/product validation is still required.",
+  "analyticCounterexample": "At 1 Pa peak, a sustained -0.05 Pa interval separates two positive phases. The 0.0625 Pa band merges them: impulse rises from 0.016 to 0.028 Pa s (+75%). At 10/100 Pa scaling the same proportional waveform does not merge. This is a mathematical counterexample, not CFD/physical validation."
+}

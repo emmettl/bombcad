@@ -1,0 +1,269 @@
+{
+  "case": "beirut-p0-1",
+  "scope": "Numerical arithmetic/execution controls; all target gates unchanged; these are not performance or physical-validation claims",
+  "experiments": {
+    "explicit": {
+      "settings": [
+        "fast-on-tiled",
+        "fast-on-full",
+        "fast-off-tiled",
+        "fast-off-full",
+        "safe-on-tiled",
+        "safe-on-full",
+        "safe-off-tiled",
+        "safe-off-full"
+      ],
+      "tiledVsFull": {
+        "fast-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "1": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "2": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "passed": true
+          }
+        },
+        "fast-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "1": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "2": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "1": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "2": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "1": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "2": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "passed": true
+          }
+        }
+      },
+      "allVariantsPassOriginalReference": false
+    },
+    "bridges": {
+      "settings": [
+        "default-off-tiled",
+        "default-off-full",
+        "fast-default-tiled",
+        "fast-default-full"
+      ],
+      "tiledVsFull": {
+        "default-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "1": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "2": {
+              "relativeL2": 0.0,
+              "maxAbsolute": 0.0,
+              "outsideTolerance": 0,
+              "medianRelative": 0.0,
+              "p99Relative": 0.0
+            },
+            "passed": true
+          }
+        },
+        "fast-default": {
+          "arraysBitIdentical": false,
+          "comparison": {
+            "0": {
+              "relativeL2": 3.4627264275636203e-07,
+              "maxAbsolute": 33.451171875,
+              "outsideTolerance": 64,
+              "medianRelative": 1.7060415366520845e-06,
+              "p99Relative": 0.00021849902958684955
+            },
+            "1": {
+              "relativeL2": 1.422303543047379e-06,
+              "maxAbsolute": 0.29833984375,
+              "outsideTolerance": 0,
+              "medianRelative": 8.966113024130948e-07,
+              "p99Relative": 2.2242788904561044e-05
+            },
+            "2": {
+              "relativeL2": 2.1004464520628344e-05,
+              "maxAbsolute": 49.4305419921875,
+              "outsideTolerance": 2,
+              "medianRelative": 3.7028972949594683e-07,
+              "p99Relative": 2.7361791508885853e-05
+            },
+            "passed": false
+          }
+        }
+      },
+      "allVariantsPassOriginalReference": false
+    }
+  },
+  "referenceGateByVariant": {
+    "fast-on-tiled": {
+      "0": 170,
+      "1": 0,
+      "2": 7
+    },
+    "fast-on-full": {
+      "0": 170,
+      "1": 0,
+      "2": 7
+    },
+    "fast-off-tiled": {
+      "0": 87,
+      "1": 0,
+      "2": 2
+    },
+    "fast-off-full": {
+      "0": 87,
+      "1": 0,
+      "2": 2
+    },
+    "safe-on-tiled": {
+      "0": 44,
+      "1": 0,
+      "2": 2
+    },
+    "safe-on-full": {
+      "0": 44,
+      "1": 0,
+      "2": 2
+    },
+    "safe-off-tiled": {
+      "0": 7,
+      "1": 0,
+      "2": 6
+    },
+    "safe-off-full": {
+      "0": 7,
+      "1": 0,
+      "2": 6
+    },
+    "default-off-tiled": {
+      "0": 87,
+      "1": 0,
+      "2": 2
+    },
+    "default-off-full": {
+      "0": 87,
+      "1": 0,
+      "2": 2
+    },
+    "fast-default-tiled": {
+      "0": 0,
+      "1": 0,
+      "2": 0
+    },
+    "fast-default-full": {
+      "0": 64,
+      "1": 0,
+      "2": 2
+    }
+  },
+  "bridgeChecks": {
+    "explicitFastNoPragmaMatchesOriginal-tiled": true,
+    "unsetMathOffMatchesExplicitFastOff-tiled": true,
+    "explicitFastNoPragmaMatchesOriginal-full": true,
+    "unsetMathOffMatchesExplicitFastOff-full": true,
+    "safeOffRepeatsPreviousArrays": true
+  },
+  "conclusion": "Explicit contraction on and off each remove tiled/full-grid array differences for both requested fast and safe math. Explicit fast mode without a pragma reproduces the original path difference; unset math plus contract off matches explicit fast/off. Explicit contraction policy is the distinguishing control in this case. This does not prove particular machine instructions or disable fusion as a necessary condition. None of the explicit-policy variants pass the original production gate; no policy/default/gate selected or changed.",
+  "finalRunnerSmoke": {
+    "scope": "One unchanged production configuration validates the final wrapper, including layout hashes and pre/post verification; not another factorial cell",
+    "allExportedArraysBitIdenticalToOriginal": true,
+    "runnerSHA256": "ff8bedce98f4f5938d26eb53dc1d2e5c5bddcd9a6b9a7c412af17135afbe8d47"
+  }
+}

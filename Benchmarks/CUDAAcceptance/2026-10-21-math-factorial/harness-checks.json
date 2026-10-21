@@ -1,0 +1,30 @@
+{
+  "dryRunCreatesNoOutput": true,
+  "rejections": [
+    {
+      "arguments": [
+        "--modes",
+        "fast-on,fast-on"
+      ],
+      "rejected": true,
+      "lastErrorLine": "math-matrix.py: error: argument --modes: choose distinct comma-separated values from fast-on,fast-off,safe-on,safe-off,default-off,fast-default"
+    },
+    {
+      "arguments": [
+        "--columns",
+        "1,1"
+      ],
+      "rejected": true,
+      "lastErrorLine": "math-matrix.py: error: 1\u201364 distinct non-negative column indices required"
+    },
+    {
+      "arguments": [
+        "--reference",
+        "/Volumes/StudioData/bombcad/ml/datasets/main-fp/runs/made-perimeter-s3-1"
+      ],
+      "rejected": true,
+      "lastErrorLine": "math-matrix.py: error: reference must be this case with three stable target channels"
+    }
+  ],
+  "timeoutChildGroupCleanup": "verified separately with an owned sleeping child; child process missing after timeout"
+}
