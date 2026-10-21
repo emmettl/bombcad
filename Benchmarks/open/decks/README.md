@@ -5,7 +5,8 @@ These two decks pin numerical inputs for the existing
 [UFC room](../cases/ufc-closed-room-gas-pressure.json) cases. They do **not** replace the
 references, prescribe how real TNT behaves, or change BombCAD's defaults. They are a shared
 constant-volume ideal-gas balloon control, intended to expose differences between codes with
-identical inputs. No second code has run this protocol yet. In particular, turning afterburning
+identical inputs. pyro2 has run it, 1-D spherical, as a stated deviation
+([record](../records/pyro2-ideal-gas-balloon-v1/README.md)). In particular, turning afterburning
 off removes energy important to the UFC comparison; a low score is an approximation result,
 not a reason to silently change the deck.
 

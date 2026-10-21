@@ -1,0 +1,84 @@
+{
+  "format": "open-blast-benchmark-history-receipt",
+  "format_version": 1,
+  "protocol": "ideal-gas-balloon-v1",
+  "code": {
+    "name": "pyro2",
+    "version": "4.5.1"
+  },
+  "prepared": "2026-10-21",
+  "histories": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "path": "kb-surface-burst-free-field--100kg.csv",
+      "sha256": "c1259d9740407318daea5bcc4d3195772f53ec53c37d6b05da17bf00a9fe1c49"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.25kg-m3",
+      "path": "ufc-closed-room-gas-pressure--0.25kg-m3.csv",
+      "sha256": "5aed713b0df462bf2754ee7d68309479e5cfa57f9d022f5b5ef9999c3d337d25"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.5kg-m3",
+      "path": "ufc-closed-room-gas-pressure--0.5kg-m3.csv",
+      "sha256": "8f9fa2971e2f185fca892c717e465b9d48dba8328df887dc63c1f458c3872352"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "1kg-m3",
+      "path": "ufc-closed-room-gas-pressure--1kg-m3.csv",
+      "sha256": "dbd8bcdf65bb43b8bd921d0d9dd1d7c3c3ed7436e30d9847914317184d53bb70"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "2kg-m3",
+      "path": "ufc-closed-room-gas-pressure--2kg-m3.csv",
+      "sha256": "8698b1849114c0d86582fd51f9e1b8d103f57fe69d1470cdc63a3c7b65cc99b5"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "4kg-m3",
+      "path": "ufc-closed-room-gas-pressure--4kg-m3.csv",
+      "sha256": "bccd956cc604a3d3e086830d4ada302fc6aea358e563b78e9f15f28d96b77393"
+    }
+  ],
+  "decks": {
+    "kb-surface-burst-free-field": {
+      "path": "kb-surface-burst-free-field.deck.json",
+      "sha256": "2884564266f1efed782bafbeddfb3bb130280c05764c28ba031fe130ce86ea87"
+    },
+    "ufc-closed-room-gas-pressure": {
+      "path": "ufc-closed-room-gas-pressure.deck.json",
+      "sha256": "87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214"
+    }
+  },
+  "requested_runs": [
+    [
+      "kb-surface-burst-free-field",
+      "100kg"
+    ],
+    [
+      "ufc-closed-room-gas-pressure",
+      "0.25kg-m3"
+    ],
+    [
+      "ufc-closed-room-gas-pressure",
+      "0.5kg-m3"
+    ],
+    [
+      "ufc-closed-room-gas-pressure",
+      "1kg-m3"
+    ],
+    [
+      "ufc-closed-room-gas-pressure",
+      "2kg-m3"
+    ],
+    [
+      "ufc-closed-room-gas-pressure",
+      "4kg-m3"
+    ]
+  ]
+}

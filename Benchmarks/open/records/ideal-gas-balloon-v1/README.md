@@ -40,5 +40,5 @@ CSV column spelling. Its files remain separately on StudioData. This record come
 run of the corrected writer and passed the complete import/extraction/scoring path.
 
 **Next stage:** implement the same deck and history contract in a second solver, then compare
-histories and extracted quantities. No outside code has run it yet, and no external invitations
-were sent. A spatial and sampling convergence study should accompany stronger accuracy claims.
+histories and extracted quantities. pyro2 has since run it, 1-D spherical
+([its record](../pyro2-ideal-gas-balloon-v1/README.md)); no external invitations were sent. A spatial and sampling convergence study should accompany stronger accuracy claims.

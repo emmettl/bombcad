@@ -16,12 +16,30 @@ They deviate from the decks in the mesh (1-D spherical at 10 mm, not 3-D at 0.5 
 at 75 ms rather than 100 ms, and in the room (a sphere of its volume, read at 80 ms rather than
 averaged over 100–120 ms). So they are not an import of the decks' contract.
 
+**The decks' run** (21 October) is `run_deck.py`: the same grid code, started and read as the decks
+say, every step written as a history in the decks' CSV, imported by `run_decks.py`. Its record is
+[`records/pyro2-ideal-gas-balloon-v1`](../../records/pyro2-ideal-gas-balloon-v1/README.md). To rerun
+(Python 3.12 with `pyro-hydro==4.5.1`; with SciPy in the environment Numba's JIT works, and
+without it set `NUMBA_DISABLE_JIT=1`, slower):
+
+```bash
+python -I Benchmarks/open/other-codes/pyro2/run_deck.py --case kb-surface-burst-free-field \
+  --run 100kg --dr 0.02 --r-out 36 --out HISTORIES
+for run in 0.25kg-m3 0.5kg-m3 1kg-m3 2kg-m3 4kg-m3; do
+  python -I Benchmarks/open/other-codes/pyro2/run_deck.py --case ufc-closed-room-gas-pressure \
+    --run $run --dr 0.02 --out HISTORIES
+done
+python3 -I Scripts/open-benchmark/run_decks.py import --histories HISTORIES --code-name pyro2 --code-version 4.5.1
+python3 -I Scripts/open-benchmark/run_decks.py extract --histories HISTORIES --out RESULTS.json
+```
+
 | File | What |
 |---|---|
 | `blast1d.py` | The spherical blast: the grid, the charge, the probes, and the peak, impulse and arrival of a record |
 | `run_free_field.py` | `kb-surface-burst-free-field`: writes `outputs/free-field-dr<cell>mm.json` and a thinned history `-history.csv` |
 | `run_closed_room.py` | `ufc-closed-room-gas-pressure`, as a closed sphere of the room's volume: writes `outputs/closed-room-dr20mm-<run>.json` |
 | `make_results.py` | Writes the entry from the outputs (standard library only) |
+| `run_deck.py` | One run of an `ideal-gas-balloon-v1` deck, written as the decks' CSV history |
 | `outputs/` | The runs' summaries, as committed |
 
 ## Why pyro2

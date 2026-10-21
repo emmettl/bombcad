@@ -218,7 +218,8 @@ changed decks and history hash mismatches. Raw histories remain available, with 
 source commit, executable hash and initial-budget logs, separately from their scalar scores.
 
 A second code can implement the documented initial states and CSV contract, then use the same
-import, extraction and scoring commands. **No second code has done so yet.** The handoff no longer
+import, extraction and scoring commands. **pyro2 has done so, 1-D spherical**
+([below](#to-the-decks-contract-21-october-2026)). The handoff no longer
 leaves the source and read rules open for these two controls; translation to another solver,
 mesh/time-window convergence and a real independent comparison are still outstanding.
 
@@ -230,7 +231,8 @@ contains 29 predictions from all six shots, with receipts and diagnostics. KB fr
 are separate from the recommended model and historical entry; they are not a replacement score
 for the ten-case benchmark. All input and extraction choices stayed fixed. The full pressure
 histories and runtime snapshot are retained on StudioData, rather than committed; the record
-states where they are and how to reproduce them. **A second-solver run is still needed.**
+states where they are and how to reproduce them. A second solver has since run the same decks
+([pyro2, below](#to-the-decks-contract-21-october-2026)).
 
 ## A second code: pyro2, 20 October 2026
 
@@ -282,15 +284,36 @@ balloon's peaks are within the free field's band. The impulses agree within 1% f
 This is the first check of the control against a converged run; it does not test the 3-D code
 on a finer mesh, which is still to do.
 
+### To the decks' contract, 21 October 2026
+
+pyro2 was then rerun to `ideal-gas-balloon-v1` itself, by
+[`run_deck.py`](../Benchmarks/open/other-codes/pyro2/run_deck.py), and its histories imported,
+extracted and scored by `run_decks.py` and `score.py` unchanged
+([record](../Benchmarks/open/records/pyro2-ideal-gas-balloon-v1/README.md), entry
+`pyro2-4.5.1-ideal-gas-balloon-v1.json`). It keeps the decks' gas, ambient state, balloon (excess
+mass and energy on ambient), stops at 0.100 and 0.120 s, sampling (every step, under 50 µs) and
+read rules. **The one deviation is 1-D spherical in place of the decks' 3-D meshes**: the free
+field as the whole 200 kg sphere on 20 mm cells to 36 m, the room as a closed sphere of 216 m³ on
+20 mm cells. The importer's checks all passed, the room's initial energy among them.
+
+| Case | Strict coverage | Pass | Score | Geometric mean ratio |
+|---|---:|---:|---:|---:|
+| KB free field | 24/24 | 23/24 | 0.96 | 0.94 |
+| UFC room | 5/5 | 3/5 | 0.60 | 0.74 |
+
+The scores are the earlier run's, and so is the comparison with the control: on the same read rules
+the control's peaks are 0.39–0.66 of pyro2's, its arrivals 2–21% early, its impulses +3–13% to
+Z = 2 and within 1.5% beyond, and its rooms within 0.7%. Against 40 mm cells pyro2's own peaks move
+2–7% and its rooms under 0.2%. The rooms' half-window drift is under 0.04%.
+
 **What the case format left open, as the run found it, and where it stands now.**
 - **Settled by the decks** for these two cases: the source (t = 0, density, specific energy, γ),
   the symmetry (the hemisphere as half a sphere), the ambient state, the read rules (arrival at
   half the peak, the positive phase about the peak, the room as a volume mean over a window), the
   sampling and the case version (each deck hashes its case).
-- **The sampling still moves a resolved peak.** pyro2's raw maximum at Z = 1 is 1,665 kPa from
-  every step and 1,514 kPa from 50 µs samples, 9% lower; at Z = 0.75 its impulse moves 3%. The
-  decks' 50 µs is fine for the control's 0.5 m cells, not for a code that resolves the shock close
-  in.
+- **Sampling.** pyro2's raw maximum at Z = 1 is 1,665 kPa from every step and 1,514 kPa from
+  50 µs samples, 9% lower. The decks allow any spacing up to 50 µs, so a code that resolves the
+  shock should write every step, as the rerun does; a v2 deck might say so.
 - **Still open:** what a code that cannot model the cube should keep (its volume, here); a
   structured set-up in the results file beside the free-text `configuration` (dimension, cells,
   source, ambient, far boundary, read rules); a check that the far boundary returns nothing inside
@@ -299,9 +322,9 @@ on a finer mesh, which is still to do.
 
 ## What this doesn't yet do
 
-- **One other code has run two cases.** pyro2's 1-D runs of the free field and the room found
-  what the prose left open, and the decks now settle most of it; no other code has run the
-  decks' contract, a 3-D case or any structure.
+- **One other code has run two cases.** pyro2 ran the free field and the room, first from the
+  prose and then to the decks' contract, 1-D spherical; no other code has run a 3-D case or any
+  structure.
 - **Three of the ten are curves, not tests**: Kingery–Bulmash's two and UFC 3-340-02's, each a
   fit or design chart with little or no stated scatter, labelled as such.
 - **Peaks and integrals only**: the two controls retain raw pressure histories, but no pressure or displacement histories are scored, so a code can
