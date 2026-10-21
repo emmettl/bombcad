@@ -101,23 +101,17 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         }
 
         /// The largest principal stress at deflection `x` either way, Pa.
-        public func stress(at x: Double) -> Double { Self.stress(stress, at: x) }
+        public func stress(at x: Double) -> Double {
+            var hint = 1
+            return Self.stress(stress, at: x, hint: &hint)
+        }
 
-        /// The same on the (deflection, stress) points `stress`.
-        static func stress(_ stress: [SIMD2<Double>], at x: Double) -> Double {
+        /// The same on the (deflection, stress) points `stress`, its segment searched from `hint`
+        /// (`SDOFSystem.interpolate`).
+        static func stress(_ stress: [SIMD2<Double>], at x: Double, hint: inout Int) -> Double {
             let x = x.magnitude
             guard x > stress[0].x else { return stress[0].y * x / stress[0].x }
-            // By index, as `SDOFSystem.envelope`.
-            var i = 1
-            while i < stress.count {
-                let b = stress[i]
-                if x <= b.x {
-                    let a = stress[i - 1]
-                    return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
-                }
-                i += 1
-            }
-            return stress[stress.count - 1].y
+            return SDOFSystem.interpolate(stress, past: x, hint: &hint)
         }
     }
 
@@ -153,17 +147,31 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
     /// Elastic stiffness, Pa/m.
     public var stiffness: Double { backbone[0].y / backbone[0].x }
     /// Largest resistance on the backbone, Pa.
-    public var ultimateResistance: Double { backbone.map(\.y).max()! }
+    public var ultimateResistance: Double {
+        // `backbone.map(\.y).max()!` by index (`Sequence.max` keeps the first of equals, replacing
+        // it only by a larger): `integrate` reads this twice a call, and unspecialised in a debug
+        // build the map and max cost more than a short response's steps.
+        var ultimate = backbone[0].y
+        var i = 1
+        while i < backbone.count {
+            if ultimate < backbone[i].y { ultimate = backbone[i].y }
+            i += 1
+        }
+        return ultimate
+    }
     /// The equivalent elastic deflection X_E of UFC eqs 3-34 to 3-36: the deflection at the
     /// ultimate resistance on a single line of the same area under the curve up to it.
     public var equivalentElasticDeflection: Double {
         let ultimate = ultimateResistance
         var area = 0.0
         var previous = SIMD2<Double>.zero
-        for point in backbone {
+        var i = 0
+        while i < backbone.count {
+            let point = backbone[i]
             area += 0.5 * (previous.y + point.y) * (point.x - previous.x)
             previous = point
             if point.y == ultimate { break }
+            i += 1
         }
         // The deflection where it reaches the ultimate resistance, less the area's excess over a
         // rectangle, is X_E (eq 3-34 for two segments, 3-35 for three).
@@ -177,21 +185,50 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
 
     /// The backbone's resistance at deflection `x` ≥ 0.
     func envelope(_ x: Double) -> Double {
-        if x <= backbone[0].x { return stiffness * x }
-        // By index, not over `zip(backbone, backbone.dropFirst())`: unspecialised in a debug build,
-        // the zip's iterators looked up generic metadata on every call, and `integrate` calls this
-        // up to three times a step, for tens of thousands of steps a response (a district's
-        // judgement took a minute in debug tests).
+        var hint = 1
+        return Self.envelope(backbone, x, hint: &hint)
+    }
+
+    /// The same on the backbone `backbone`, its segment searched from
+    /// `hint` (`interpolate`). Static, the table passed in: in a debug build, reading
+    /// `self.backbone` retained and released it on each call, and `integrate` calls this twice a
+    /// step.
+    static func envelope(_ backbone: [SIMD2<Double>], _ x: Double, hint: inout Int) -> Double {
+        if x <= backbone[0].x { return backbone[0].y / backbone[0].x * x }
+        return interpolate(backbone, past: x, hint: &hint)
+    }
+
+    /// Linear in `table`'s (x, y) points at `x` past the first: between the first point with
+    /// x ≤ its own and the one before, or the last point's y if there is none. That point is
+    /// searched from index `hint` (≥ 1), back or on, and `hint` left at it. On a table whose x
+    /// never decreases, `x <= table[i].x` is false and then true along it, so the search finds
+    /// the same point from any start; on any other, start at 1 each time.
+    ///
+    /// By index, not over `zip(table, table.dropFirst())`: unspecialised in a debug build, the
+    /// zip's iterators looked up generic metadata on every call, and a district's judgement took a
+    /// minute in debug tests. From the last step's point, not the first: a pane's tables have
+    /// 75–89 points, `integrate` looks in two of them each step, and the next step is almost always
+    /// on the same segment.
+    static func interpolate(_ table: [SIMD2<Double>], past x: Double, hint: inout Int) -> Double {
+        let count = table.count
+        var i = hint
+        while i > 1, x <= table[i - 1].x { i -= 1 }
+        while i < count, !(x <= table[i].x) { i += 1 }
+        hint = i
+        guard i < count else { return table[count - 1].y }
+        let a = table[i - 1]
+        let b = table[i]
+        return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
+    }
+
+    /// Whether `table`'s x never decreases (`interpolate`).
+    static func isOrdered(_ table: [SIMD2<Double>]) -> Bool {
         var i = 1
-        while i < backbone.count {
-            let b = backbone[i]
-            if x <= b.x {
-                let a = backbone[i - 1]
-                return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x)
-            }
+        while i < table.count {
+            guard table[i].x >= table[i - 1].x else { return false }
             i += 1
         }
-        return backbone[backbone.count - 1].y
+        return true
     }
 
     /// The response to a net pressure held at `pressures[i]` over [i·step, (i+1)·step) and then
@@ -218,11 +255,15 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         // A stiffening backbone's steepest segment sets the shortest period it reaches.
         var steepest = stiffness
         if brittle != nil {
-            for (a, b) in zip(backbone, backbone.dropFirst()) where b.y > a.y {
-                steepest = max(steepest, (b.y - a.y) / (b.x - a.x))
+            var i = 1
+            while i < backbone.count {
+                let a = backbone[i - 1]
+                let b = backbone[i]
+                if b.y > a.y { steepest = larger(steepest, (b.y - a.y) / (b.x - a.x)) }
+                i += 1
             }
         }
-        let shortest = min(period, 2 * .pi * (loadMassElastic * massPerArea / steepest).squareRoot())
+        let shortest = smaller(period, 2 * .pi * (loadMassElastic * massPerArea / steepest).squareRoot())
         let substeps = max(1, Int((step / (shortest / 200)).rounded(.up)))
         let h = step / Double(substeps)
         let k = stiffness
@@ -234,6 +275,16 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         var response = SDOFResponse(
             yieldDeflection: backbone[0].x, equivalentElasticDeflection: equivalentElasticDeflection,
             period: period)
+        // The backbone read once, for `Self.envelope`, and where its last look inward and outward
+        // ended (`interpolate`).
+        let backbone = backbone
+        let backboneOrdered = Self.isOrdered(backbone)
+        var inwardHint = 1
+        var outwardHint = 1
+        func envelope(_ x: Double, _ hint: inout Int) -> Double {
+            if !backboneOrdered { hint = 1 }
+            return Self.envelope(backbone, x, hint: &hint)
+        }
         func loadMass() -> Double {
             guard yielded else { return loadMassElastic }
             if let span, atan(larger(x.magnitude, response.peakDeflection) / (span / 2)) <= 2 * .pi / 180 {
@@ -251,6 +302,8 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         let strength = brittle?.strength ?? 0
         let referenceDuration = brittle?.referenceDuration ?? 0
         let fatigueExponent = brittle?.fatigueExponent
+        let stressOrdered = Self.isOrdered(brittleStress)
+        var stressHint = 1
         // And the backbone's ends. Below, `larger`, `smaller` and `magnitude` stand for `max`, `min`
         // and `abs`: the same results, but concrete, where the generic ones, unspecialised in a
         // debug build, cost a metadata lookup (and the three-argument `max` an array) each call.
@@ -262,15 +315,15 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 // its interlayer's membrane until that tears or pulls out.
                 guard !broken else { return 0 }
                 if cracked, let membrane { return membrane.resistance(at: x) }
-                return x < 0 ? -reboundFactor * envelope(-x) : envelope(x)
+                return x < 0 ? -reboundFactor * envelope(-x, &outwardHint) : envelope(x, &inwardHint)
             }
             var r = k * (x - permanent)
             // Inward, the backbone at the furthest inward deflection yet (so unloading and
             // reloading follow the elastic line back to it); outward, the rebound resistance.
             let reached = larger(larger(x, response.peakDeflection), yieldDeflection)
-            let upper = envelope(reached)
+            let upper = envelope(reached, &inwardHint)
             let outward = larger(larger(-x, -response.reboundDeflection), yieldDeflection)
-            let lower = -reboundFactor * smaller(envelope(outward), envelope(reached))
+            let lower = -reboundFactor * smaller(envelope(outward, &outwardHint), upper)
             if r > upper {
                 r = upper
                 permanent = x - r / k
@@ -288,7 +341,10 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
         let loaded = pressures.count * substeps
         let total = loaded + Int((tail * period / h).rounded(.up))
         var r = 0.0
-        for n in 0..<total {
+        // A while loop, not `for n in 0..<total`: unspecialised in a debug build, the range's
+        // iterator cost a fifth of the steps' time.
+        var n = 0
+        while n < total {
             // Both half-kicks of a substep take its own load, so each bin's impulse goes in whole.
             let p = n < loaded ? pressures[n / substeps] : 0
             v += 0.5 * h * acceleration(p, r, v)
@@ -315,7 +371,8 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                 response.deflectionAtLoss = x.magnitude
             }
             if isBrittle, !broken, !cracked {
-                let sigma = Brittle.stress(brittleStress, at: x)
+                if !stressOrdered { stressHint = 1 }
+                let sigma = Brittle.stress(brittleStress, at: x, hint: &stressHint)
                 response.peakStress = larger(response.peakStress ?? 0, sigma)
                 if let n = fatigueExponent {
                     fatigue += h * pow(sigma / strength, n)
@@ -345,6 +402,7 @@ public struct SDOFSystem: Codable, Hashable, Sendable {
                     response.deflectionAtBreak = x.magnitude
                 }
             }
+            n += 1
         }
         response.residualDeflection = permanent
         if let brittle, let n = brittle.fatigueExponent {

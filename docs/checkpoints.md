@@ -195,7 +195,7 @@ to its end, each alone (debug build, `swift test --no-parallel`):
 
 | Test | Alone | Where the time goes |
 |---|---|---|
-| New District's near and far field | 70–78 s | The run to 0.8 s takes about 3 s. The envelope damage judged at its end takes 55–67 s, in the debug build's SDOF integration (`EnvelopeDamageAssessment.assess`). |
+| New District's near and far field | 70–78 s, now 2–4 s | The run to 0.8 s takes about 3 s. The envelope damage judged at its end took 55–67 s, in the debug build's SDOF integration (`EnvelopeDamageAssessment.assess`); now under 1.2 s (below). |
 | A scenario with a structure runs coupled | 13.7 s | Its own scene (500 kg on the blast wall); the rebuilds after it count too |
 | Results export a row per sample | 7.1 s | Its own scene (the blast wall's default charge), and its every-step rows need the whole run |
 | The others that run to the end | 0.1–2 s | Small scenes on the coarse grid |
@@ -206,6 +206,24 @@ Some other tests are slow, but they cannot start late:
   runs.
 
 Several tests in parallel took minutes, but from sharing the Mac, not from their own runs.
+
+**The SDOF integration made cheap (20–21 October 2026).** `SDOFSystem.integrate` now does the same
+arithmetic in the same order, without generic code the debug build leaves unspecialised. First, the
+tables are walked by index and `max`, `min` and `abs` have concrete stand-ins (a99c4117). Then:
+- the backbone is read once, not on each step (each read retained and released it);
+- each table's search starts at the last step's segment, not its first point: a pane's tables have
+  75–89 points;
+- the steps loop without a range iterator, and `ultimateResistance` runs without `map` and `max`.
+
+Measured on 6,282 distinct SDOF inputs captured from the near/far test and the 25 envelope and glass
+suites, replayed alone through the old and new code: 28.5 s to 6.9 s in a debug build, 1.07 s to
+0.61 s at `-O`. Every response is the same to the byte, in both builds. In the package's debug
+tests, under the same load: the near/far test 7.4–9.1 s to 1.9–4.3 s, and its end-of-run judgement
+5.2–6.4 s to 0.66–1.2 s. The 25 suites went from 21.3 s to 0.9–1.4 s.
+
+In release the judgement was a real wait at a district's end. On Beirut's saved run, the app's
+`assess` of 465,671 façade loads (10,961 buildings) took 63–81 s and now takes 28–30 s, every
+building judged the same.
 
 The plan's examples cannot use a checkpoint:
 - **FragmentOverlay's last frame:** fragments are fed alongside the run from its start and are

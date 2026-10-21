@@ -106,4 +106,26 @@ struct EnvelopeSDOFTests {
         #expect(yielding.ductility > 1)
         #expect(yielding.peakDeflection != elastic.response(pressures: pulse, step: 1e-4).peakDeflection)
     }
+
+    @Test("A table's search from any start finds what a search from its first point finds")
+    func searchFromAnyStart() {
+        // An ordered table with a flat step and a repeated deflection, and one out of order.
+        let ordered: [SIMD2<Double>] = [
+            SIMD2(0.01, 100), SIMD2(0.02, 150), SIMD2(0.02, 160), SIMD2(0.04, 160), SIMD2(0.08, 90),
+            SIMD2(0.1, 0),
+        ]
+        let xs = [0.011, 0.02, 0.025, 0.04, 0.05, 0.08, 0.09, 0.1, 0.2, .infinity, .nan]
+        for x in xs {
+            var first = 1
+            let expected = SDOFSystem.interpolate(ordered, past: x, hint: &first)
+            for start in 1...ordered.count {
+                var hint = start
+                let found = SDOFSystem.interpolate(ordered, past: x, hint: &hint)
+                #expect(found.bitPattern == expected.bitPattern, "x \(x) from \(start)")
+                #expect(hint == first)
+            }
+        }
+        #expect(SDOFSystem.isOrdered(ordered))
+        #expect(!SDOFSystem.isOrdered([SIMD2(0.01, 1), SIMD2(0.03, 2), SIMD2(0.02, 3)]))
+    }
 }
