@@ -9,6 +9,7 @@ accuracy measurements and limits.
 - `remote.py`: deploy, run under the PC's shared training lock, and retrieve results over SSH.
 - `job.py`: CPU-only job validation, scalar ABI and checksums.
 - `fixtures.py`: synthetic acceptance jobs; no NumPy/GPU needed to generate them.
+- `terrain-fixtures.py`: reproducible made-up sloped/hilly DEMs for the sample neighbourhood.
 - `metal-reference.swift`: standalone matched Metal acceptance runner.
 - `compare.py`: complete-field comparison with explicit per-value tolerances.
 - `compare_dataset.py`: end-to-end production training-array comparison, checking masks/features.

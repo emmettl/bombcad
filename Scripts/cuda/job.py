@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import re
+import struct
 from pathlib import Path
 
 FORMAT = 'bombcad-cuda-job-1'
@@ -29,7 +30,7 @@ def validate(folder, source):
     meta = json.loads((folder/'job.json').read_text())
     if meta.get('format') != FORMAT:
         raise ValueError('unsupported job version')
-    allowed = {'format','sourceSHA256','shape','uniforms','steps','duration','startTime','axes','above','description','files','startStep','dataset','cooling','startupSteps'}
+    allowed = {'format','sourceSHA256','shape','uniforms','steps','duration','startTime','axes','above','description','files','startStep','dataset','cooling','startupSteps','terrain'}
     if set(meta) - allowed:
         raise ValueError(f'unknown job fields: {set(meta)-allowed}')
     if meta['sourceSHA256'] != hashlib.sha256(source.encode()).hexdigest():
@@ -86,12 +87,41 @@ def validate(folder, source):
     sizes={'state.bin':count*20,'mask.bin':count,'species.bin':count*8,
            'peak.bin':count*4,'impulse.bin':count*4,'columns.bin':dims[0]*dims[1]*16,
            'records.bin':dims[0]*dims[1]*16,'open.bin':dims[0]*dims[1]*4}
+    if 'terrain' in meta:
+        terrain=meta['terrain']
+        if set(terrain)!={'records','cutColumnCount'} or any(type(v) is not int or v<0 for v in terrain.values()):
+            raise ValueError('invalid terrain geometry contract')
+        nr,nc=terrain['records'],terrain['cutColumnCount']
+        if nr>(dims[0]+1)*(dims[1]+1)*dims[2] or nc>dims[0]*dims[1]:
+            raise ValueError('terrain geometry exceeds grid bounds')
+        sizes.update({'cut-columns.bin':max(16,(dims[0]+1)*(dims[1]+1)*16),
+                      'cut-records.bin':max(16,nr*16),'cut-walls.bin':max(16,nr*16),
+                      'cut-defects.bin':max(16,nr*32),'cut-list.bin':max(16,nc*4),
+                      'cut-ceilings.bin':max(16,((dims[0]+7)//8)*((dims[1]+7)//8)*4)})
     if set(meta.get('files',{})) != set(sizes):
         raise ValueError('job manifest must name every required buffer exactly')
     for name,size in sizes.items():
         data=(folder/name).read_bytes()
         if len(data)!=size or hashlib.sha256(data).hexdigest()!=meta['files'][name]:
             raise ValueError(f'buffer length/checksum mismatch: {name}')
+    if 'terrain' in meta:
+        nr=meta['terrain']['records'];nc=meta['terrain']['cutColumnCount']
+        columns=list(struct.iter_unpack('<4I',(folder/'cut-columns.bin').read_bytes()))
+        for offset,low,high,half in columns:
+            if not (low<=high<=dims[2] and half<=dims[2] and offset+high-low<=nr):
+                raise ValueError('terrain column references records outside its buffers')
+        active=list(struct.unpack('<'+'I'*nc,(folder/'cut-list.bin').read_bytes()[:nc*4]))
+        if len(set(active))!=nc or any(i>=(dims[0]+1)*(dims[1]+1) or i%(dims[0]+1)>=dims[0] or i//(dims[0]+1)>=dims[1] for i in active):
+            raise ValueError('terrain redistribution columns overlap or lie outside the grid')
+        records=struct.iter_unpack('<4f',(folder/'cut-records.bin').read_bytes()[:nr*16])
+        if any(not math.isfinite(v) or v<0 or v>1.000001 for record in records for v in record):
+            raise ValueError('invalid cut-cell volume or aperture')
+        for name in ('cut-walls.bin','cut-defects.bin'):
+            if any(not math.isfinite(v[0]) for v in struct.iter_unpack('<f',(folder/name).read_bytes())):
+                raise ValueError('nonfinite cut-cell geometry or history')
+        ceilings=struct.iter_unpack('<I',(folder/'cut-ceilings.bin').read_bytes())
+        if any(v[0]>dims[2]+2 for v in ceilings):
+            raise ValueError('cut-cell tile ceiling outside grid')
     if 'cooling' in meta:
         cooling=meta['cooling']
         if set(cooling)!={'interval','luminous','absorption','sootAbsorption','hasSpecies','largestShare','luminousEnergy','capacity'}:

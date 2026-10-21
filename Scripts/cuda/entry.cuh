@@ -1,14 +1,16 @@
 extern "C" __global__ void cudaSweep(Cell* src, Cell* dst, const uchar* mask,
     float* peak, float* impulse, const StepControl* control, uint* maxSpeed,
-    const SolverUniforms* uniforms, float2* speciesSrc, float2* speciesDst) {
+    const SolverUniforms* uniforms, float2* speciesSrc, float2* speciesDst,
+    const uint4* cutColumns,const float4* cutRecords,const float4* cutWalls,
+    float4* cutDefects,const uint* cutCeilings) {
     const SolverUniforms &u = *uniforms;
     uint i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= u.nx*u.ny*u.nz) return;
     int3 cell(i % u.nx, (i/u.nx)%u.ny, i/(u.nx*u.ny));
     sweepCell(cell, src, dst, mask, peak, impulse, *control, maxSpeed, u,
         nullptr, nullptr, speciesSrc, speciesDst, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+        nullptr, nullptr, nullptr, nullptr, cutColumns, cutRecords, cutWalls, cutDefects,
+        cutCeilings, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
 extern "C" __global__ void cudaPrepare(StepControl* control, uint* maxSpeed, const SolverUniforms* u) {
@@ -55,4 +57,13 @@ extern "C" __global__ void cudaCoolingApply(Cell* state,const float2* medium,con
     uint i=blockIdx.x*blockDim.x+threadIdx.x;
     if(i<u->nx*u->ny*u->nz && c->dt>0)
         portableRadiationApply(state,medium,loss,box,*elapsed,*u,*r,nullptr,uint3(i%u->nx,(i/u->nx)%u->ny,i/(u->nx*u->ny)));
+}
+
+extern "C" __global__ void cudaRedistribute(Cell* state,float2* species,
+    const uint4* columns,const float4* records,const SolverUniforms* u,const StepControl* control,
+    float* peak,uint* maxSpeed,float4* defects,const uint* columnsCut,const uint* columnCount,
+    const uchar* mask) {
+    uint gid=blockIdx.x*blockDim.x+threadIdx.x;
+    portableRedistribute(state,species,columns,records,*u,*control,peak,maxSpeed,defects,
+        columnsCut,*columnCount,nullptr,mask,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,gid);
 }

@@ -20,8 +20,10 @@ def run(folder, source_path, out):
     spec=importlib.util.spec_from_file_location('cuda_compile',Path(__file__).with_name('compile.py'))
     compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
     capability=torch.cuda.get_device_capability()
-    ptx=compiler.compile_ptx(source,f'compute_{capability[0]}{capability[1]}')
+    ptx=compiler.compile_ptx(source,f'compute_{capability[0]}{capability[1]}',cut_cells='terrain' in meta)
     required=(77 if 'cooling' in meta else 65)*__import__('math').prod(meta['shape'])+36*meta['shape'][0]*meta['shape'][1]
+    if 'terrain' in meta:
+        required+=sum((Path(folder)/name).stat().st_size for name in meta['files'] if name.startswith('cut-'))
     free,_=torch.cuda.mem_get_info()
     if required>free*0.8:
         raise MemoryError(f'job needs at least {required} bytes, only {free} free; keep 20% headroom')
@@ -32,7 +34,7 @@ def run(folder, source_path, out):
             raise RuntimeError(f'CUDA driver error {code}')
     module=C.c_void_p();check(driver.cuModuleLoadData(C.byref(module),ptx))
     functions={}
-    for name in ('cudaSweep','cudaPrepare','cudaMeasure','cudaFirstPhase','cudaCoolingClock','cudaCoolingReset','cudaCoolingMedium','cudaCoolingLines','cudaCoolingApply'):
+    for name in ('cudaSweep','cudaPrepare','cudaMeasure','cudaFirstPhase','cudaCoolingClock','cudaCoolingReset','cudaCoolingMedium','cudaCoolingLines','cudaCoolingApply','cudaRedistribute'):
         f=C.c_void_p();check(driver.cuModuleGetFunction(C.byref(f),module,name.encode()));functions[name]=f
     def launch(name,buffers,count):
         values=[C.c_uint64(t.data_ptr()) for t in buffers]
@@ -83,6 +85,16 @@ def run(folder, source_path, out):
         directions=[(1,0,0),(0,1,0),(0,0,1),(1,1,0),(1,-1,0),(1,0,1),(1,0,-1),
                     (0,1,1),(0,1,-1),(1,1,1),(1,1,-1),(1,-1,1),(1,-1,-1)]
         rays=[torch.tensor([*d,int(i==0)],device='cuda',dtype=torch.int32) for i,d in enumerate(directions)]
+    terrain=meta.get('terrain')
+    if terrain:
+        cut_columns=read('cut-columns.bin','<i4',(-1,4));cut_records=read('cut-records.bin','<f4',(-1,4))
+        cut_walls=read('cut-walls.bin','<f4',(-1,4));cut_defects=read('cut-defects.bin','<f4',(-1,4))
+        cut_list=read('cut-list.bin','<i4',(-1,));cut_ceilings=read('cut-ceilings.bin','<i4',(-1,))
+        cut_count=torch.tensor([terrain['cutColumnCount']],device='cuda',dtype=torch.int32)
+        cut_buffers=[cut_columns,cut_records,cut_walls,cut_defects,cut_ceilings]
+    else:
+        dummy=torch.zeros(16,device='cuda',dtype=torch.uint8)
+        cut_buffers=[dummy]*5
     launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
     launch('cudaMeasure',[state,mask,speed,uniforms],count)
     torch.cuda.synchronize();start=time.monotonic()
@@ -93,8 +105,11 @@ def run(folder, source_path, out):
         prepare_uniforms=blob(prepared)
         launch('cudaPrepare',[controls,speed,prepare_uniforms],1)
         for variant in variants[(meta.get('startStep',0)+steps)%2]:
-            launch('cudaSweep',[state,other,mask,peak,impulse,controls,speed,variant,species,other_species],count)
+            launch('cudaSweep',[state,other,mask,peak,impulse,controls,speed,variant,species,other_species,*cut_buffers],count)
             state,other=other,state;species,other_species=other_species,species
+        if terrain and terrain['cutColumnCount']:
+            launch('cudaRedistribute',[state,species,cut_columns,cut_records,uniforms,controls,peak,speed,
+                                      cut_defects,cut_list,cut_count,mask],terrain['cutColumnCount'])
         if cooling:
             launch('cudaCoolingClock',[controls,elapsed_cooling],1)
             if (meta.get('startStep',0)+steps+1)%cooling['interval']==0:
@@ -140,7 +155,7 @@ def run(folder, source_path, out):
     np.save(out/'targets.npy',target.astype('<f4'))
     np.save(out/'firstPhaseImpulse.npy',records[:,2].reshape(ny,nx).cpu().numpy().astype('<f4'))
     np.save(out/'mask.npy',valid.astype('<f4'))
-    report={'format':'bombcad-cuda-result-1','backend':'cuda','device':torch.cuda.get_device_name(),
+    report={'format':'bombcad-cuda-result-1','backend':'cuda','terrainCutCells':bool(terrain),'device':torch.cuda.get_device_name(),
             'sourceSHA256':hashlib.sha256(source.encode()).hexdigest(),'steps':steps,
             'startTime':meta.get('startTime',0),'elapsedSimulationTime':sum(dt_history),
             'wallSeconds':elapsed,'shape':meta['shape'],'math':'float32, unfused, precise division/sqrt',

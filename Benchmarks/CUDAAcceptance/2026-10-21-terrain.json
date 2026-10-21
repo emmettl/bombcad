@@ -1,0 +1,721 @@
+{
+  "date": "2026-10-21",
+  "referenceDevice": "Apple M4 Max",
+  "candidateDevice": "NVIDIA RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "terrain": {
+    "slope": {
+      "completeFields": {
+        "state": {
+          "count": 184320,
+          "outsideTolerance": 0,
+          "differentValues": 58131,
+          "maxAbsolute": 0.125,
+          "relativeL2": 5.551259046701e-08
+        },
+        "species": {
+          "count": 73728,
+          "outsideTolerance": 0,
+          "differentValues": 18528,
+          "maxAbsolute": 5.066394805908203e-07,
+          "relativeL2": 2.095223673465375e-07
+        },
+        "peak": {
+          "count": 36864,
+          "outsideTolerance": 0,
+          "differentValues": 8413,
+          "maxAbsolute": 0.0546875,
+          "relativeL2": 1.6951542830365333e-06
+        },
+        "impulse": {
+          "count": 36864,
+          "outsideTolerance": 0,
+          "differentValues": 11862,
+          "maxAbsolute": 0.000579833984375,
+          "relativeL2": 1.0197495009752593e-06
+        },
+        "first-phase": {
+          "count": 9216,
+          "outsideTolerance": 0,
+          "differentValues": 4400,
+          "maxAbsolute": 0.0625,
+          "relativeL2": 1.0338678872539613e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "productionTargets": {
+        "0": {
+          "relativeL2": 9.490790166762279e-07,
+          "maxAbsolute": 0.0771484375,
+          "outsideTolerance": 0,
+          "medianRelative": 2.8675622736285274e-06,
+          "p99Relative": 0.0001437035836471878
+        },
+        "1": {
+          "relativeL2": 8.719133085263614e-07,
+          "maxAbsolute": 0.000396728515625,
+          "outsideTolerance": 0,
+          "medianRelative": 2.1568485219173837e-06,
+          "p99Relative": 0.0008007613593620314
+        },
+        "2": {
+          "relativeL2": 9.429663762070842e-07,
+          "maxAbsolute": 0.0004730224609375,
+          "outsideTolerance": 0,
+          "medianRelative": 2.308021111930715e-06,
+          "p99Relative": 0.0007275350979107167
+        },
+        "passed": true
+      },
+      "worker": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": true,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 61,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.07999999998719431,
+        "wallSeconds": 0.04777146499691298,
+        "shape": [
+          48,
+          48,
+          16
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "9a763a8afdf0199fe3594564fb9f3adcf07f1a2621a44f548a80b800e327db0f",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "076b26e154ab680d944621f11a2bcc361abd32ab769833ae84e582960c31f421"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 1
+      },
+      "geometry": {
+        "cutColumnCount": 2304,
+        "records": 2835
+      }
+    },
+    "hill": {
+      "completeFields": {
+        "state": {
+          "count": 184320,
+          "outsideTolerance": 0,
+          "differentValues": 49611,
+          "maxAbsolute": 0.09375,
+          "relativeL2": 4.866303002935405e-08
+        },
+        "species": {
+          "count": 73728,
+          "outsideTolerance": 0,
+          "differentValues": 15522,
+          "maxAbsolute": 5.662441253662109e-07,
+          "relativeL2": 1.8606342900069815e-07
+        },
+        "peak": {
+          "count": 36864,
+          "outsideTolerance": 0,
+          "differentValues": 7152,
+          "maxAbsolute": 0.0625,
+          "relativeL2": 1.6056922125935294e-06
+        },
+        "impulse": {
+          "count": 36864,
+          "outsideTolerance": 0,
+          "differentValues": 10182,
+          "maxAbsolute": 0.00048065185546875,
+          "relativeL2": 1.015351887258716e-06
+        },
+        "first-phase": {
+          "count": 9216,
+          "outsideTolerance": 0,
+          "differentValues": 4182,
+          "maxAbsolute": 0.0546875,
+          "relativeL2": 9.984440089329882e-07
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "productionTargets": {
+        "0": {
+          "relativeL2": 9.640331105991352e-07,
+          "maxAbsolute": 0.046875,
+          "outsideTolerance": 0,
+          "medianRelative": 2.929285519242604e-06,
+          "p99Relative": 0.00015303890669168227
+        },
+        "1": {
+          "relativeL2": 9.442750149738805e-07,
+          "maxAbsolute": 0.0004119873046875,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7867471996219718e-06,
+          "p99Relative": 0.000991653402795424
+        },
+        "2": {
+          "relativeL2": 1.0257655145067693e-06,
+          "maxAbsolute": 0.0004425048828125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7450540645260642e-06,
+          "p99Relative": 0.0009731608323157619
+        },
+        "passed": true
+      },
+      "worker": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": true,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 58,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.07999999998719431,
+        "wallSeconds": 0.020629583996196743,
+        "shape": [
+          48,
+          48,
+          16
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "9a763a8afdf0199fe3594564fb9f3adcf07f1a2621a44f548a80b800e327db0f",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "076b26e154ab680d944621f11a2bcc361abd32ab769833ae84e582960c31f421"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 1
+      },
+      "geometry": {
+        "cutColumnCount": 2304,
+        "records": 2660
+      }
+    }
+  },
+  "fixtures64": {
+    "blast": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 1169200,
+        "maxAbsolute": 0.625,
+        "relativeL2": 1.0751878856632841e-07
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 92691,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.2848675467627212e-07
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 160320,
+        "maxAbsolute": 0.0003662109375,
+        "relativeL2": 9.892213561970573e-08
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 7729,
+        "maxAbsolute": 0.0390625,
+        "relativeL2": 7.934332683973622e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "burning": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 1177330,
+        "maxAbsolute": 0.625,
+        "relativeL2": 1.1841608158478171e-07
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 485656,
+        "maxAbsolute": 4.76837158203125e-07,
+        "relativeL2": 2.882042385767696e-07
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 113161,
+        "maxAbsolute": 0.5,
+        "relativeL2": 1.6972668497281915e-07
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 153063,
+        "maxAbsolute": 0.0003662109375,
+        "relativeL2": 1.1251283437128782e-07
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 7754,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 1.0971147703986846e-05
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "closed": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 1169200,
+        "maxAbsolute": 0.625,
+        "relativeL2": 1.0751878856632841e-07
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 92691,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.2848675467627212e-07
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 160320,
+        "maxAbsolute": 0.0003662109375,
+        "relativeL2": 9.892213561970573e-08
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 7729,
+        "maxAbsolute": 0.0390625,
+        "relativeL2": 7.934332683973622e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "cooling": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 1176154,
+        "maxAbsolute": 0.625,
+        "relativeL2": 1.1360500461346126e-07
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 484158,
+        "maxAbsolute": 4.470348358154297e-07,
+        "relativeL2": 2.8797903304773317e-07
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 112490,
+        "maxAbsolute": 0.5,
+        "relativeL2": 1.6894168079305607e-07
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 151845,
+        "maxAbsolute": 0.00048828125,
+        "relativeL2": 1.0005077155522976e-07
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 7749,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 1.0864773046822376e-05
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "farfield": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 1167953,
+        "maxAbsolute": 0.625,
+        "relativeL2": 1.074279547690603e-07
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 91640,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.28436628569693e-07
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 158881,
+        "maxAbsolute": 0.00048828125,
+        "relativeL2": 1.0367724124552719e-07
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 8086,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 8.059716118365276e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "hot": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 1177663,
+        "maxAbsolute": 0.5,
+        "relativeL2": 1.1215202009746516e-07
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 110666,
+        "maxAbsolute": 0.5,
+        "relativeL2": 1.6268008826411917e-07
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 151613,
+        "maxAbsolute": 0.0003662109375,
+        "relativeL2": 1.0744982531541287e-07
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 7811,
+        "maxAbsolute": 0.0390625,
+        "relativeL2": 1.0898418338587168e-05
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "obstacle": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 1151491,
+        "maxAbsolute": 0.75,
+        "relativeL2": 1.0666179422957307e-07
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 90525,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.2515375606231923e-07
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 157459,
+        "maxAbsolute": 0.00048828125,
+        "relativeL2": 9.764619279864568e-08
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 7461,
+        "maxAbsolute": 0.0234375,
+        "relativeL2": 6.918276141905966e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "shock": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 155648,
+        "maxAbsolute": 0.125,
+        "relativeL2": 3.960351712909918e-08
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 16384,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 2.8635952652378884e-08
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 53248,
+        "maxAbsolute": 6.103515625e-05,
+        "relativeL2": 3.9606117008516796e-08
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 2048,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 2.2071233385136988e-08
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    },
+    "still": {
+      "state": {
+        "count": 1310720,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "species": {
+        "count": 524288,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "impulse": {
+        "count": 262144,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "first-phase": {
+        "count": 16384,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    }
+  },
+  "positivity64": {
+    "blast": {
+      "minimumDensity": 0.26950785517692566,
+      "minimumInternalEnergyDensity": 237405.95655205628
+    },
+    "burning": {
+      "minimumDensity": 0.3194623291492462,
+      "minimumInternalEnergyDensity": 237380.86431457664
+    },
+    "closed": {
+      "minimumDensity": 0.26950785517692566,
+      "minimumInternalEnergyDensity": 237405.95655205628
+    },
+    "cooling": {
+      "minimumDensity": 0.32131749391555786,
+      "minimumInternalEnergyDensity": 237380.75493989533
+    },
+    "farfield": {
+      "minimumDensity": 0.26950791478157043,
+      "minimumInternalEnergyDensity": 243885.54413470562
+    },
+    "hot": {
+      "minimumDensity": 0.32059428095817566,
+      "minimumInternalEnergyDensity": 237379.34907525682
+    },
+    "obstacle": {
+      "minimumDensity": 0.26955848932266235,
+      "minimumInternalEnergyDensity": 237406.0659381191
+    },
+    "shock": {
+      "minimumDensity": 1.225000023841858,
+      "minimumInternalEnergyDensity": 253312.51562499994
+    },
+    "still": {
+      "minimumDensity": 1.225000023841858,
+      "minimumInternalEnergyDensity": 253312.515625
+    }
+  },
+  "trainingScale": {
+    "description": "Planned smoke-grid-30t geometry: made-up grid seed 3, extent 2600 m, slope, offset (40,-60) m, radius 512 m, dx 4 m, mass 30000 kg; first-phase recording enabled",
+    "buildings": 1176,
+    "productionTargets": {
+      "0": {
+        "relativeL2": 9.488699841891596e-08,
+        "maxAbsolute": 4.0,
+        "outsideTolerance": 0,
+        "medianRelative": 1.3096730298378128e-06,
+        "p99Relative": 8.556173714519724e-06
+      },
+      "1": {
+        "relativeL2": 6.115089620396947e-07,
+        "maxAbsolute": 0.015625,
+        "outsideTolerance": 0,
+        "medianRelative": 8.326200554858005e-07,
+        "p99Relative": 3.569946116531479e-06
+      },
+      "2": {
+        "relativeL2": 4.6958354307115796e-07,
+        "maxAbsolute": 0.0234375,
+        "outsideTolerance": 0,
+        "medianRelative": 7.230887168393021e-07,
+        "p99Relative": 2.4910653049673354e-06
+      },
+      "passed": true
+    },
+    "worker": {
+      "format": "bombcad-cuda-result-1",
+      "backend": "cuda",
+      "terrainCutCells": true,
+      "device": "NVIDIA GeForce RTX 3080 Ti",
+      "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "steps": 1229,
+      "startTime": 0,
+      "elapsedSimulationTime": 2.2499999999563443,
+      "wallSeconds": 5.655026348998945,
+      "shape": [
+        256,
+        256,
+        44
+      ],
+      "math": "float32, unfused, precise division/sqrt",
+      "workerFilesSHA256": {
+        "run.py": "9a763a8afdf0199fe3594564fb9f3adcf07f1a2621a44f548a80b800e327db0f",
+        "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+        "compile.py": "076b26e154ab680d944621f11a2bcc361abd32ab769833ae84e582960c31f421"
+      },
+      "channels": [
+        "peakOverpressure",
+        "impulse"
+      ],
+      "units": [
+        "Pa",
+        "Pa s"
+      ],
+      "above": 2
+    },
+    "minimumDensity": 0.1483888328075409,
+    "minimumInternalEnergyDensity": 251689.17277020784
+  },
+  "closedTerrainConservation": {
+    "metal": {
+      "massRelativeDrift": -4.2475031825084386e-08,
+      "gasEnergyRelativeDrift": -1.2523288295263058e-08
+    },
+    "cuda": {
+      "massRelativeDrift": -4.1489673030525864e-08,
+      "gasEnergyRelativeDrift": -1.0217180212990229e-08
+    },
+    "completeFields": {
+      "state": {
+        "count": 184320,
+        "outsideTolerance": 0,
+        "differentValues": 86602,
+        "maxAbsolute": 0.140625,
+        "relativeL2": 8.290503348217905e-08
+      },
+      "species": {
+        "count": 73728,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 36864,
+        "outsideTolerance": 0,
+        "differentValues": 14168,
+        "maxAbsolute": 0.0625,
+        "relativeL2": 2.8438211595851985e-06
+      },
+      "impulse": {
+        "count": 36864,
+        "outsideTolerance": 0,
+        "differentValues": 18073,
+        "maxAbsolute": 0.0007171630859375,
+        "relativeL2": 2.2687050439331594e-06
+      },
+      "first-phase": {
+        "count": 9216,
+        "outsideTolerance": 0,
+        "differentValues": 6901,
+        "maxAbsolute": 0.0625,
+        "relativeL2": 1.5021265454688514e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05
+    }
+  }
+}

@@ -12,17 +12,17 @@ It exports a checksummed, versioned job. The PC performs all subsequent uniform-
 steps and produces peak pressure, positive impulse and optionally first-phase impulse targets.
 The existing CPU/Linux tools can prepare layouts, score results and train models independently.
 
-Supported: uniform grids; stationary whole-cell obstacles; ideal, thermally perfect and
+Supported: uniform grids; stationary whole-cell obstacles and static terrain cut cells; ideal, thermally perfect and
 production dissociating-air equations; HLLC or HLL fluxes; reflective/copy/far-field boundaries;
 transport and fitted afterburning of fuel and oxygen; radiative cooling; production startup CFL
 ramping, alternating sweeps and receiver interpolation. Dissociating air and HLL are available
 from the translated equations but not covered by the initial acceptance record below.
 
-Not supported: refinement, terrain or structural cut cells, gravity, sub-grid mixing, mixing- or
+Not supported: refinement, structural cut cells, gravity, sub-grid mixing, mixing- or
 extinction-limited burning, deflagration, congestion, periodic boundaries, moving bodies,
 structural mechanics, delayed events or glazing venting. The exporter and worker refuse these
-rather than substituting different physics. Terrain export is intentionally not approximated
-with a flat mask. Work on these additional backends remains separate.
+rather than substituting different physics. Static terrain retains the production volume fractions,
+face apertures, wall normals and conservative defect redistribution.
 
 ## Using it
 
@@ -92,7 +92,31 @@ Apple M4 Max and the user's RTX 3080 Ti:
   impulses' above 0.1 Pa s are 0.077%. Input features and masks agree exactly.
 - The SSH deployment command runs that job on the PC and retrieves the training pair.
 
-This establishes the tested uniform path, not agreement for every geometry, resolution or
+Two additional production-Metal pairs use the same district over a planar slope and a curved hill,
+made by `python3 Scripts/cuda/terrain-fixtures.py /path/to/terrain`. Supply the resulting
+`--dem /path/to/terrain/slope.asc` or `hill.asc` to the export command above. Both retain cooling,
+afterburning and first-phase recording. Slope takes 61 steps on both devices; hill takes 58.
+All complete-state comparisons pass the same tolerance. Production training targets have relative
+L2 errors below 1.1e-6, with exact features and masks. The terrain source hash and full metrics are
+in [the terrain acceptance record](../Benchmarks/CUDAAcceptance/2026-10-21-terrain.json).
+
+The nine uniform fixtures were also repeated at 64³ cells with the terrain-capable worker.
+All pass the same complete-field gate; still air remains exact. Their full metrics are included
+in the terrain acceptance record.
+
+A planned training-scale case (made-up grid, seed 3, sloped ground, 30 tonnes, 512 m radius,
+4 m cells) places 1,176 buildings in a 256 × 256 × 44 grid. Both backends take 1,229 steps
+to 2.25 s. CUDA takes 5.7 s for the simulation, excluding initialization, compilation and
+SSH transfer; this is not a speedup claim. Production target relative L2 errors are 9.49e-8
+(peak), 6.12e-7 (impulse) and 4.70e-7 (first-phase impulse), with no valid target outside the
+same tolerance. Features and masks agree exactly; every final cell has positive density and
+internal energy. The acceptance record retains these measurements.
+
+A closed-boundary sloped-district control runs to 0.2 s with burning and cooling disabled.
+Volume-weighted CUDA mass drifts by -4.15e-8 and gas energy by -1.02e-8 relative to the initial
+state; matched Metal has comparable rounding drift. All complete fields pass the comparison gate.
+
+This establishes the tested uniform and static-terrain paths, not agreement for every geometry, resolution or
 long-duration run, and not agreement with physical measurements. Existing model errors and grid
 resolution errors remain. Large training batches should first check representative cases against
 Metal, particularly near reflections and damage thresholds. No training-model accuracy claim is

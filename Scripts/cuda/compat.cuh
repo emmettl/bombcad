@@ -23,6 +23,7 @@ template<class T, int N> struct V {
     D V(T a,T b,T c) : x(a), y(b), z(c), w(0) {}
     D V(T a,T b,T c,T d) : x(a), y(b), z(c), w(d) {}
     template<class U> D V(V<U,N> a) : x(T(a.x)),y(T(a.y)),z(T(a.z)),w(T(a.w)) {}
+    D V(V<T,2> a,T b):x(a.x),y(a.y),z(b),w(0){}
     D V(V<T,2> a,V<T,2> b):x(a.x),y(a.y),z(b.x),w(b.y){}
     D V(V<T,3> a,T b):x(a.x),y(a.y),z(a.z),w(b){}
     D V(T a,V<T,3> b):x(a),y(b.x),z(b.y),w(b.z){}
@@ -94,4 +95,8 @@ D uint atomic_exchange_explicit(uint*p,uint a,int){return atomicExch(p,a);}
 #endif
 #ifndef M_PI_F
 #define M_PI_F 3.14159265358979323846f
+#endif
+
+#ifndef BOMBCAD_CUDA_CUT_CELLS
+#define BOMBCAD_CUDA_CUT_CELLS 0
 #endif

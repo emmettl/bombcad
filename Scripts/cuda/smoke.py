@@ -51,7 +51,8 @@ def main():
     peak=torch.zeros(n**3,device='cuda'); impulse=peak.clone()
     speed=torch.zeros(2,device='cuda',dtype=torch.int32)
     species=torch.zeros((n**3,2),device='cuda'); other=species.clone()
-    buffers=[state,target,mask,peak,impulse,controls,speed,uniforms,species,other]
+    dummy=torch.zeros(16,device="cuda",dtype=torch.uint8)
+    buffers=[state,target,mask,peak,impulse,controls,speed,uniforms,species,other]+[dummy]*5
     values=[C.c_uint64(t.data_ptr()) for t in buffers]
     params=(C.c_void_p*len(values))(*(C.addressof(v) for v in values))
     stream=C.c_void_p(torch.cuda.current_stream().cuda_stream)

@@ -22,9 +22,7 @@ extension BlastSolver {
         }
         guard !hasBody, experimentalBoxes.isEmpty else { try refuse("moving or deformable bodies") }
         guard refinement == nil, finerRefinement == nil else { try refuse("refined grids") }
-        guard terrain == nil, terrainCut == nil, structureCut == nil else {
-            try refuse("terrain or cut cells")
-        }
+        guard structureCut == nil else { try refuse("structural cut cells") }
         guard !hasFlame, congestion == nil else {
             try refuse("deflagration or congestion")
         }
@@ -76,6 +74,25 @@ extension BlastSolver {
         try write(phase.columns, "columns.bin")
         try write(phase.records, "records.bin")
         try write(phase.open, "open.bin")
+        if let cut = terrainCut {
+            func geometryBuffer(_ buffer: MTLBuffer, _ activeBytes: Int, _ name: String) throws {
+                if activeBytes == 0 {
+                    try write(Data(count: 16), name)
+                } else {
+                    var data = Data(bytes: buffer.contents(), count: activeBytes)
+                    if data.count < 16 { data.append(Data(count: 16 - data.count)) }
+                    try write(data, name)
+                }
+            }
+            try geometryBuffer(cut.columns, cut.geometry.columns.count * 16, "cut-columns.bin")
+            try geometryBuffer(cut.records, cut.geometry.records.count * 16, "cut-records.bin")
+            try geometryBuffer(cut.walls, cut.geometry.walls.count * 16, "cut-walls.bin")
+            try geometryBuffer(cut.defects, cut.geometry.records.count * 32, "cut-defects.bin")
+            try geometryBuffer(cut.cutColumns, cut.geometry.cutColumns.count * 4, "cut-list.bin")
+            try geometryBuffer(
+                cut.ceilings, cut.geometry.tileCeilings(tileSize: Self.tileSize).count * 4, "cut-ceilings.bin"
+            )
+        }
         let axes = [grid.nx, grid.ny, grid.nz].enumerated().filter { $0.element > 1 }.map(\.offset)
         var metadata: [String: Any] = [
             "format": "bombcad-cuda-job-1", "sourceSHA256": sourceSHA256,
@@ -85,6 +102,11 @@ extension BlastSolver {
             "above": above, "axes": axes, "files": hashes,
             "description": "BombCAD initial grid; mapped start retained where used",
         ]
+        if let cut = terrainCut {
+            metadata["terrain"] = [
+                "records": cut.geometry.records.count, "cutColumnCount": cut.geometry.cutColumns.count,
+            ]
+        }
         if let settings = configuration.radiativeCooling {
             let model: AirModel = configuration.airModel == .idealGas ? .idealGas : .thermallyPerfect
             let energy = model.internalEnergy(

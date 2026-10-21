@@ -77,6 +77,31 @@ class JobTests(unittest.TestCase):
         self.meta['axes']=[2,0,1];self.save()
         with self.assertRaisesRegex(ValueError,'axes'):validate(self.folder,self.source)
 
+    def terrain(self):
+        import struct
+        self.meta['terrain']={'records':1,'cutColumnCount':1}
+        columns=[(0,0,1,1)]+[(1,0,0,0)]*24
+        buffers={'cut-columns.bin':b''.join(struct.pack('<4I',*c) for c in columns),
+                 'cut-records.bin':struct.pack('<4f',.5,1,1,1),
+                 'cut-walls.bin':struct.pack('<4f',0,0,-1,0),'cut-defects.bin':bytes(32),
+                 'cut-list.bin':bytes(16),'cut-ceilings.bin':struct.pack('<4I',2,0,0,0)}
+        for name,value in buffers.items():
+            (self.folder/name).write_bytes(value)
+            self.meta['files'][name]=hashlib.sha256(value).hexdigest()
+        self.save()
+
+    def test_cut_geometry_and_out_of_bounds_refusal(self):
+        import struct
+        self.terrain();validate(self.folder,self.source)
+        path=self.folder/'cut-columns.bin';data=bytearray(path.read_bytes())
+        data[:4]=struct.pack('<I',10);path.write_bytes(data)
+        self.meta['files'][path.name]=hashlib.sha256(data).hexdigest();self.save()
+        with self.assertRaisesRegex(ValueError,'outside'):validate(self.folder,self.source)
+
+    def test_duplicate_redistribution_columns_refused(self):
+        self.terrain();self.meta['terrain']['cutColumnCount']=2;self.save()
+        with self.assertRaisesRegex(ValueError,'overlap'):validate(self.folder,self.source)
+
     def test_comparator_rejects_changed_and_nonfinite_fields(self):
         import array
         a=Path(self.temp.name)/'a';b=Path(self.temp.name)/'b';a.mkdir();b.mkdir()

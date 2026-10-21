@@ -88,6 +88,20 @@ func run() throws {
     let rays = try directions.enumerated().map { i, d in
         try words((d + [i == 0 ? 1 : 0]).map { UInt32(bitPattern: $0) })
     }
+    let terrain = meta["terrain"] as? [String: Int]
+    let dummy = try zeros(16)
+    let cutColumns = try terrain == nil ? dummy : read("cut-columns")
+    let cutRecords = try terrain == nil ? dummy : read("cut-records")
+    let cutWalls = try terrain == nil ? dummy : read("cut-walls")
+    let cutDefects = try terrain == nil ? dummy : read("cut-defects")
+    let cutList = try terrain == nil ? dummy : read("cut-list")
+    let cutCeilings = try terrain == nil ? dummy : read("cut-ceilings")
+    let cutCount = try words([UInt32(terrain?["cutColumnCount"] ?? 0)])
+    let constants = MTLFunctionConstantValues()
+    if terrain != nil {
+        var enabled = true
+        constants.setConstantValue(&enabled, type: .bool, index: 13)
+    }
     let options = MTLCompileOptions()
     options.mathMode = .safe
     let library = try device.makeLibrary(
@@ -96,10 +110,10 @@ func run() throws {
     for name in [
         "referenceSweep", "referencePrepare", "referenceMeasure", "referenceFirstPhase",
         "referenceCoolingClock", "referenceCoolingReset", "referenceCoolingMedium", "referenceCoolingLines",
-        "referenceCoolingApply",
+        "referenceCoolingApply", "referenceRedistribute",
     ] {
         pipelines[name] = try device.makeComputePipelineState(
-            function: library.makeFunction(name: name, constantValues: MTLFunctionConstantValues()))
+            function: library.makeFunction(name: name, constantValues: constants))
     }
     func launch(_ encoder: MTLComputeCommandEncoder, _ name: String, _ buffers: [MTLBuffer], _ n: Int) {
         let pipeline = pipelines[name]!
@@ -138,10 +152,21 @@ func run() throws {
             for variant in variants[((meta["startStep"] as? Int ?? 0) + timesteps.count) % 2] {
                 launch(
                     encoder, "referenceSweep",
-                    [state, other, mask, peak, impulse, control, speed, variant, species, otherSpecies], count
+                    [
+                        state, other, mask, peak, impulse, control, speed, variant, species, otherSpecies,
+                        cutColumns, cutRecords, cutWalls, cutDefects, cutCeilings,
+                    ], count
                 )
                 swap(&state, &other)
                 swap(&species, &otherSpecies)
+            }
+            if let terrain, terrain["cutColumnCount"]! > 0 {
+                launch(
+                    encoder, "referenceRedistribute",
+                    [
+                        state, species, cutColumns, cutRecords, uniform,
+                        control, peak, speed, cutDefects, cutList, cutCount, mask,
+                    ], terrain["cutColumnCount"]!)
             }
             if let cooling {
                 launch(encoder, "referenceCoolingClock", [control, elapsedCooling], 1)

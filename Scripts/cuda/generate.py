@@ -30,6 +30,13 @@ def numerical_source():
                'const device StepControl &control, const device float4 *columns, '
                'device float4 *records, device float *open, constant SolverUniforms &u, '
                'uint4 parameters, uint2 tid) {\n' + phase)
+    redistribution = (ROOT / 'Sources/BlastCore/Shaders/SolverCutCells.metal').read_text()
+    prefix = redistribution[:redistribution.index('kernel void redistributeCutDefects(')]
+    start = redistribution.index('kernel void redistributeCutDefects(')
+    end = redistribution.index('\n}', start) + 2
+    helper = redistribution[start:end].replace('kernel void redistributeCutDefects(', 'static inline void portableRedistribute(')
+    helper = re.sub(r'\[\[[^]]+\]\]', '', helper)
+    source += '\n' + prefix + '\n' + helper
     # Cooling is part of recommended air: retain its production medium, ray march and loss.
     extract = (ROOT / 'Sources/BlastCore/Shaders/Extract.metal').read_text()
     for name in ('finiteBits', 'luminousTemperatureOf'):
@@ -71,6 +78,7 @@ def generate():
     source = re.sub(r'is_function_constant_defined\(\w+\)', 'false', source)
     source = re.sub(r'\b(device|thread)\s+', '', source)
     source = re.sub(r'\bconstant\s+', 'const ', source)
+    source = source.replace('const bool cutCells = false && cutCellsConstant;', 'const bool cutCells = BOMBCAD_CUDA_CUT_CELLS;')
     source = source.replace('static inline', 'static __device__ __forceinline__')
     source = re.sub(r'\.(xyz|yzx|zxy|yzw|xy|zw)\b', r'.\1()', source)
     source = source.replace('as_type<uint>', 'floatBits').replace('as_type<float>', 'bitsFloat')

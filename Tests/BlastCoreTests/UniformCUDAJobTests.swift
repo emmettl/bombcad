@@ -75,6 +75,40 @@ struct UniformCUDAJobTests {
         #expect(try Data(contentsOf: folder.appendingPathComponent("records.bin")) == bytes)
     }
 
+    @Test("Terrain jobs preserve the production cut geometry and checksums")
+    func terrainGeometry() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        var scenario = Scenario(
+            name: "CUDA terrain", domainSize: SIMD3(8, 8, 4), boxes: [],
+            charge: Charge(mass: 1, position: SIMD3(2, 4, 0)))
+        scenario.replaceTerrain(with: .slope(domain: scenario.domainSize, spacing: 0.5, foot: 1, angle: 15))
+        let solver = try BlastSolver(
+            device: device, scenario: scenario, cellSize: 0.5, configuration: .recommended)
+        try solver.configureFirstPhaseColumns(
+            Array(repeating: SIMD4<Float>(2, 3, 0.5, 1), count: solver.grid.nx * solver.grid.ny))
+        let cut = try #require(solver.terrainCut)
+        #expect(!cut.geometry.records.isEmpty)
+        #expect(!cut.geometry.cutColumns.isEmpty)
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try solver.exportUniformCUDAJob(
+            to: folder, sourceSHA256: String(repeating: "a", count: 64), until: 0.02)
+        let meta = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: folder.appendingPathComponent("job.json")))
+                as? [String: Any])
+        let terrain = try #require(meta["terrain"] as? [String: Int])
+        #expect(terrain["records"] == cut.geometry.records.count)
+        #expect(terrain["cutColumnCount"] == cut.geometry.cutColumns.count)
+        let expected = cut.geometry.records.withUnsafeBytes { Data($0) }
+        #expect(try Data(contentsOf: folder.appendingPathComponent("cut-records.bin")) == expected)
+        let files = try #require(meta["files"] as? [String: String])
+        #expect(files.count == 14)
+        for (name, hash) in files {
+            let data = try Data(contentsOf: folder.appendingPathComponent(name))
+            #expect(SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() == hash)
+        }
+    }
+
     @Test("Unsupported physics and unconfigured receivers are refused before writing a job")
     func refusesUnsupported() throws {
         let solver = try solver()

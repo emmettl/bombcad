@@ -3,13 +3,16 @@ kernel void referenceSweep(device Cell* src [[buffer(0)]], device Cell* dst [[bu
     device float* impulse [[buffer(4)]], const device StepControl& control [[buffer(5)]],
     device atomic_uint* maxSpeed [[buffer(6)]], constant SolverUniforms& u [[buffer(7)]],
     device float2* speciesSrc [[buffer(8)]], device float2* speciesDst [[buffer(9)]],
+    const device uint4* cutColumns [[buffer(10)]], const device float4* cutRecords [[buffer(11)]],
+    const device float4* cutWalls [[buffer(12)]], device float4* cutDefects [[buffer(13)]],
+    const device uint* cutCeilings [[buffer(14)]],
     uint i [[thread_position_in_grid]]) {
     if(i>=u.nx*u.ny*u.nz) return;
     int3 cell(i%u.nx,(i/u.nx)%u.ny,i/(u.nx*u.ny));
     sweepCell(cell,src,dst,mask,peak,impulse,control,maxSpeed,u,
         nullptr,nullptr,speciesSrc,speciesDst,nullptr,nullptr,nullptr,
-        nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,
-        nullptr,nullptr,nullptr,nullptr,nullptr,nullptr);
+        nullptr,nullptr,nullptr,nullptr,cutColumns,cutRecords,cutWalls,cutDefects,
+        cutCeilings,nullptr,nullptr,nullptr,nullptr,nullptr);
 }
 kernel void referencePrepare(device StepControl& control [[buffer(0)]],
     device atomic_uint* speed [[buffer(1)]],constant SolverUniforms& u [[buffer(2)]],
@@ -51,4 +54,15 @@ kernel void referenceCoolingLines(const device float2* medium [[buffer(0)]],cons
 kernel void referenceCoolingApply(device Cell* state [[buffer(0)]],const device float2* medium [[buffer(1)]],const device float* loss [[buffer(2)]],
     const device uint* box [[buffer(3)]],const device float& elapsed [[buffer(4)]],constant SolverUniforms& u [[buffer(5)]],constant RadiationUniforms& r [[buffer(6)]],const device StepControl& c [[buffer(7)]],uint i [[thread_position_in_grid]]) {
     if(i<u.nx*u.ny*u.nz && c.dt>0) portableRadiationApply(state,medium,loss,box,elapsed,u,r,nullptr,uint3(i%u.nx,(i/u.nx)%u.ny,i/(u.nx*u.ny)));
+}
+
+kernel void referenceRedistribute(device Cell* state [[buffer(0)]],device float2* species [[buffer(1)]],
+    const device uint4* columns [[buffer(2)]],const device float4* records [[buffer(3)]],
+    constant SolverUniforms& u [[buffer(4)]],const device StepControl& control [[buffer(5)]],
+    device float* peak [[buffer(6)]],device atomic_uint* maxSpeed [[buffer(7)]],
+    device float4* defects [[buffer(8)]],const device uint* columnsCut [[buffer(9)]],
+    constant uint& columnCount [[buffer(10)]],const device uchar* mask [[buffer(11)]],
+    uint gid [[thread_position_in_grid]]) {
+    portableRedistribute(state,species,columns,records,u,control,peak,maxSpeed,defects,
+        columnsCut,columnCount,nullptr,mask,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,gid);
 }
