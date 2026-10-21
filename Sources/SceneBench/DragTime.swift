@@ -3,12 +3,14 @@ import Foundation
 import simd
 
 /// `scenebench drag-time <district-scene's inputs> --loads folder --mass kg [--radius 2500]
-/// [--moves 0,20,50] [--draws 100,20] [--check]`: what the quick estimate costs a frame as the
+/// [--moves 0,20,50] [--draws 100,20] [--check] [--drag 0,5,… [--weights field.bcfw]]`: what the quick estimate costs a frame as the
 /// charge is dragged over a laid-out district (emmettl/bombcad-work#34): the district prepared once
 /// (`FacadeLoadSurrogate.Prepared`), then for each move east of the charge, the estimate (the sight
 /// lines), the damage, the glass chances and the walls' and roofs' chances, each timed. With
 /// `--check`, the prepared estimate and glass sides against `estimate(scene:)`'s and
-/// `glassSides(scene:)`'s, to the bit.
+/// `glassSides(scene:)`'s, to the bit. With `--weights`, the drag's frames and the full look take the
+/// learned field model's peak at the ground-floor façade strips (emmettl/bombcad-work#67), each
+/// frame running the network again, as the app does with the option on.
 enum DragTime {
     static func run(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
@@ -172,6 +174,19 @@ enum DragTime {
             uncertainty.stratified = true
             var dragged = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: dx)
             dragged.glassResponses = previewResponses
+            var learned: LearnedField.Estimator?
+            if let weights = value("weights") {
+                let clock = ContinuousClock.now
+                let network = try LearnedFieldNetwork(contentsOf: URL(filePath: weights))
+                let loadS = seconds(clock)
+                learned = LearnedField.Estimator(scene: scene, network: network)
+                print(
+                    String(
+                        format:
+                            "Learned field model: weights loaded %.2f s, its %d × %d plan laid out %.2f s",
+                        loadS,
+                        learned!.plan.columns, learned!.plan.rows, learned!.seconds))
+            }
             // `--parts damage|glass|structure`: what the view shows while dragging; all without.
             let parts: FacadeLoadSurrogate.Prepared.Parts =
                 switch value("parts") {
@@ -186,26 +201,38 @@ enum DragTime {
                 let look = dragged.look(
                     charge: charge, mass: mass, constructions: constructions, uncertainty: uncertainty,
                     preview: true,
-                    parts: parts)
+                    parts: parts, learned: learned)
                 print(
                     String(
                         format:
                             "Drag frame at %4.0f m: estimate %.2f s, damage %.2f s, glass %.2f s, walls %.2f s; %.2f s",
                         step, look.seconds.estimate, look.seconds.damage, look.seconds.glass,
                         look.seconds.structure,
-                        look.totalSeconds) + String(format: "; resident %.1f GB", residentGB()))
+                        look.totalSeconds) + String(format: "; resident %.1f GB", residentGB())
+                        + (learned == nil
+                            ? ""
+                            : String(
+                                format: "; learned peaks %.2f s at %d strips%@", look.learnedSeconds,
+                                look.learnedStrips,
+                                (look.learnedError ?? "") as NSString)))
             }
             var charge = scene.charge.position
             charge.x += steps.last ?? 0
             let full = dragged.look(
                 charge: charge, mass: mass, constructions: constructions,
-                uncertainty: FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(1.5) / 1.645))
+                uncertainty: FacadeLoadSurrogate.Uncertainty(yieldLogSD: log(1.5) / 1.645), learned: learned)
             print(
                 String(
                     format:
                         "Let go: full look, 100 draws: estimate %.2f s, damage %.2f s, glass %.2f s, walls %.2f s; %.2f s",
                     full.seconds.estimate, full.seconds.damage, full.seconds.glass, full.seconds.structure,
-                    full.totalSeconds))
+                    full.totalSeconds)
+                    + (learned == nil
+                        ? ""
+                        : String(
+                            format: "; learned peaks %.2f s at %d strips%@", full.learnedSeconds,
+                            full.learnedStrips,
+                            (full.learnedError ?? "") as NSString)))
             print(
                 "  responses kept: SDOF \(dragged.memo.misses) integrated, \(dragged.memo.hits) reused; "
                     + String(format: "resident %.1f GB", residentGB()))

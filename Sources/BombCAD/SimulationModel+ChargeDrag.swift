@@ -84,16 +84,42 @@ extension SimulationModel {
         let parts: FacadeLoadSurrogate.Prepared.Parts = waiting.preview ? previewParts : .all
         let within = quickEstimateYieldWithin
         let draws = Self.previewDraws
+        // The learned field model, if asked for: its network loaded once, its plan of the district
+        // laid out once for every place of the charge.
+        let learnedWanted = quickEstimateLearnedPeaks
+        let weightsURL = LearnedField.weightsURL(
+            setting: UserDefaults.standard.string(forKey: Self.learnedWeightsKey))
+        let knownNetwork = learnedNetwork.flatMap { $0.url == weightsURL ? $0.network : nil }
+        let knownEstimator = learnedEstimator.flatMap {
+            $0.scene == layout && $0.estimator.network === knownNetwork ? $0.estimator : nil
+        }
         lookInFlight = true
         estimatingEnvelopeDamage = true
         if !waiting.preview { envelopeDamageStatus = "Estimating…" }
         Task { [weak self] in
-            let (prepared, look) = await Task.detached(priority: .userInitiated) {
+            let (prepared, look, estimator, problem) = await Task.detached(priority: .userInitiated) {
                 // The previews' kept responses grow with each place: begun again past a few
                 // hundred thousand.
                 let prepared =
                     known.flatMap { $0.memo.misses < 400_000 ? $0 : nil }
                     ?? FacadeLoadSurrogate.Prepared(scene: scenario, cellSize: cellSize)
+                var estimator: LearnedField.Estimator?
+                var problem: String?
+                if learnedWanted {
+                    if let knownEstimator {
+                        estimator = knownEstimator
+                    } else if !FileManager.default.fileExists(atPath: weightsURL.path) {
+                        problem =
+                            "No learned field model's weights at \(weightsURL.path): the estimate is the surrogate's alone."
+                    } else {
+                        do {
+                            let network = try knownNetwork ?? LearnedFieldNetwork(contentsOf: weightsURL)
+                            estimator = LearnedField.Estimator(scene: scenario, network: network)
+                        } catch {
+                            problem = "\(error) The estimate is the surrogate's alone."
+                        }
+                    }
+                }
                 // Nine times in ten within the factor: 1.645 standard deviations of its logarithm.
                 let logSD = log(within) / 1.645
                 let samples =
@@ -106,12 +132,24 @@ extension SimulationModel {
                     charge: waiting.charge, mass: Double(scenario.charge.mass),
                     constructions: { scenario.envelopeConstruction(for: $0) },
                     uncertainty: uncertainty,
-                    preview: waiting.preview, parts: parts)
-                return (prepared, look)
+                    preview: waiting.preview, parts: parts, learned: estimator)
+                return (prepared, look, estimator, problem)
             }.value
             guard let self else { return }
             self.lookInFlight = false
             self.preparedDistrict = (layout, cellSize, prepared)
+            if let estimator, let network = estimator.network as? LearnedFieldNetwork {
+                self.learnedNetwork = (weightsURL, network)
+                self.learnedEstimator = (layout, estimator)
+            }
+            self.learnedPeaksStatus =
+                !learnedWanted
+                ? ""
+                : problem ?? look.learnedError.map { "\($0) The estimate is the surrogate's alone." }
+                    ?? String(
+                        format:
+                            "Learned field model's peak at %d ground-floor façade strips, in %.2f s; roofs, upper storeys and the impulse from the surrogate.",
+                        look.learnedStrips, look.learnedSeconds)
             self.estimatingEnvelopeDamage = self.lookWaiting != nil
             // Shown only for the scene as it is now, before any run.
             var now = self.settings.scenario
@@ -152,6 +190,10 @@ extension SimulationModel {
             envelopeDamageStatus = String(
                 format: "Quick estimate in %.1f s: not a run. Run the scene for its damage.",
                 look.totalSeconds)
+            if look.learnedStrips > 0 {
+                envelopeDamageStatus +=
+                    " Ground-floor façade peaks from the learned field model (illustrative)."
+            }
             if look.estimate.outsideFit > 0 {
                 envelopeDamageStatus += String(
                     format:

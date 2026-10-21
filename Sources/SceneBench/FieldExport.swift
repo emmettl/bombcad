@@ -356,20 +356,10 @@ enum FieldExport {
 
     /// Kingery–Bulmash's incident peak (Pa) and impulse (Pa s) at scaled distance `z` for `mass`
     /// kg: held at its fits' near end (0.2 m/kg^(1/3)) and carried on beyond the far end (40) by
-    /// the slope of its last stretch in log-log.
+    /// the slope of its last stretch in log-log (`LearnedField.kingeryBulmash`, which the app's
+    /// learned field model lays out its inputs with).
     static func kingeryBulmash(z: Double, mass: Double) -> (peak: Double, impulse: Double) {
-        func at(_ z: Double) -> (Double, Double) {
-            guard let p = KingeryBulmash.point(at: z) else { return (0, 0) }
-            return (p.incidentPressure, p.incidentImpulse(mass: mass))
-        }
-        if z < 0.2 { return at(0.2) }
-        if z <= 40 { return at(z) }
-        let (p40, i40) = at(40)
-        let (p36, i36) = at(36)
-        let span = log(40.0 / 36)
-        let sp = log(p40 / p36) / span
-        let si = log(i40 / i36) / span
-        return (p40 * pow(z / 40, sp), i40 * pow(z / 40, si))
+        LearnedField.kingeryBulmash(z: z, mass: mass)
     }
 
     // MARK: - The files

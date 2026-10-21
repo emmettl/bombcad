@@ -130,6 +130,14 @@ enum SceneBench {
             try FieldSurrogate.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "field-predict" {
+            try FieldApp.predict(Array(args.dropFirst()))
+            return
+        }
+        if args.first == "field-app" {
+            try FieldApp.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "field-glass" {
             try FieldGlass.run(Array(args.dropFirst()))
             return

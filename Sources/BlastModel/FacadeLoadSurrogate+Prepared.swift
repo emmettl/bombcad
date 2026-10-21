@@ -58,10 +58,12 @@ extension FacadeLoadSurrogate {
         /// The number of components with a face on the air.
         public var componentCount: Int { components.reduce(0) { $0 + $1.count } }
 
-        /// As `FacadeLoadSurrogate.estimate(scene:)` for a charge of `mass` kg at `charge`.
+        /// As `FacadeLoadSurrogate.estimate(scene:)` for a charge of `mass` kg at `charge`; with
+        /// `learned`, the learned field model's peak at the ground-floor façade strips it reads
+        /// (`LearnedField.PeakMap.adjusted`), the rest as without it.
         public func estimate(
             charge: SIMD3<Float>, mass: Double, binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
-            roofCoefficients: Coefficients? = .roofs
+            roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
         ) -> Estimate {
             let start = ContinuousClock.now
             var perObject = [[(Features, Prediction, EnvelopeComponentLoad)]](
@@ -69,11 +71,14 @@ extension FacadeLoadSurrogate {
             perObject.withUnsafeMutableBufferPointer { out in
                 concurrently(iterations: objects.count) { n in
                     out[n] = components[n].map { component in
-                        let f = features(component, owner: n, charge: charge, raster: raster)
-                        let p = predict(
-                            f, mass: mass, cellSize: Double(cellSize),
-                            coefficients: component.kind == .roof
-                                ? roofCoefficients ?? coefficients : coefficients)
+                        var f = features(component, owner: n, charge: charge, raster: raster)
+                        let chosen = component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
+                        if let learned {
+                            f = learned.adjusted(
+                                f, of: component, mass: mass, cellSize: Double(cellSize), coefficients: chosen
+                            )
+                        }
+                        let p = predict(f, mass: mass, cellSize: Double(cellSize), coefficients: chosen)
                         return (f, p, load(component, p, binS: binS))
                     }
                 }
@@ -123,7 +128,7 @@ extension FacadeLoadSurrogate {
         /// (`scenebench drag-time`), not assumed.
         public func preview(
             charge: SIMD3<Float>, mass: Double, binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
-            roofCoefficients: Coefficients? = .roofs
+            roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
         ) -> (estimate: Estimate, sides: [GlassSideStrips]) {
             let start = ContinuousClock.now
             var perObject = [[(EnvelopeComponent, Features, Prediction, EnvelopeComponentLoad, Double)]](
@@ -150,11 +155,13 @@ extension FacadeLoadSurrogate {
                     }
                     out[n] = nearest.sorted { $0.key < $1.key }.map { _, chosen in
                         let component = components[n][chosen.index]
-                        let f = features(component, owner: n, charge: charge, raster: raster)
-                        let p = predict(
-                            f, mass: mass, cellSize: Double(cellSize),
-                            coefficients: component.kind == .roof
-                                ? roofCoefficients ?? coefficients : coefficients)
+                        var f = features(component, owner: n, charge: charge, raster: raster)
+                        let terms = component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
+                        if let learned {
+                            f = learned.adjusted(
+                                f, of: component, mass: mass, cellSize: Double(cellSize), coefficients: terms)
+                        }
+                        let p = predict(f, mass: mass, cellSize: Double(cellSize), coefficients: terms)
                         return (component, f, p, load(component, p, binS: binS), chosen.area)
                     }
                 }
@@ -195,8 +202,14 @@ extension FacadeLoadSurrogate {
             public var charge: SIMD3<Float>
             public var preview: Bool
             public var seconds: (estimate: Double, damage: Double, glass: Double, structure: Double)
+            /// With the learned field model asked for (`look(learned:)`): the ground-floor façade
+            /// strips that took its peak, how long it took, s (its inputs and the network), and why
+            /// it could not be used, if it could not (the estimate is then the surrogate's alone).
+            public var learnedStrips = 0
+            public var learnedSeconds = 0.0
+            public var learnedError: String?
             public var totalSeconds: Double {
-                seconds.estimate + seconds.damage + seconds.glass + seconds.structure
+                seconds.estimate + seconds.damage + seconds.glass + seconds.structure + learnedSeconds
             }
         }
 
@@ -214,9 +227,13 @@ extension FacadeLoadSurrogate {
             public static let all: Parts = [.damage, .glass, .structure]
         }
 
+        /// With `learned`, the learned field model's peak at the ground-floor façade strips for the
+        /// estimate's damage, glass and walls (emmettl/bombcad-work#67); if it cannot be run, the
+        /// look is the surrogate's alone and says why.
         public func look(
             charge: SIMD3<Float>, mass: Double, constructions: (UUID) -> EnvelopeConstruction,
-            uncertainty: Uncertainty, preview: Bool = false, parts: Parts = .all
+            uncertainty: Uncertainty, preview: Bool = false, parts: Parts = .all,
+            learned: LearnedField.Estimator? = nil
         ) -> Look {
             func since(_ start: ContinuousClock.Instant) -> Double {
                 let took = start.duration(to: .now)
@@ -225,12 +242,23 @@ extension FacadeLoadSurrogate {
             let memo = preview ? self.memo : SDOFResponseMemo()
             let glassResponses = preview ? self.glassResponses : GlassResponses()
             var clock = ContinuousClock.now
+            var peaks: LearnedField.PeakMap?
+            var learnedError: String?
+            if let learned {
+                do {
+                    peaks = try learned.peaks(charge: charge, mass: mass)
+                } catch {
+                    learnedError = "\(error)"
+                }
+            }
+            let learnedS = since(clock)
+            clock = .now
             let estimate: Estimate
             let sides: [GlassSideStrips]
             if preview {
-                (estimate, sides) = self.preview(charge: charge, mass: mass)
+                (estimate, sides) = self.preview(charge: charge, mass: mass, learned: peaks)
             } else {
-                estimate = self.estimate(charge: charge, mass: mass)
+                estimate = self.estimate(charge: charge, mass: mass, learned: peaks)
                 sides = glassSides(estimate)
             }
             let estimateS = since(clock)
@@ -257,9 +285,15 @@ extension FacadeLoadSurrogate {
                         estimate, mass: mass, cellSize: cellSize, constructions: constructions,
                         uncertainty: uncertainty)
                 }.0.chances : []
-            return Look(
+            var look = Look(
                 estimate: estimate, damage: damage, glass: glass, structure: structure, charge: charge,
                 preview: preview, seconds: (estimateS, damageS, glassS, since(clock)))
+            if learned != nil {
+                look.learnedStrips = estimate.features.reduce(0) { $0 + ($1.learnedPeakFactor != 1 ? 1 : 0) }
+                look.learnedSeconds = learnedS
+                look.learnedError = learnedError
+            }
+            return look
         }
 
         static func kindCode(_ kind: EnvelopeComponent.Kind) -> Int {

@@ -1,0 +1,558 @@
+import Foundation
+import simd
+
+/// The learned field model's peak in the quick estimate (emmettl/bombcad-work#67;
+/// docs/learned-models.md): a U-Net trained on BombCAD's own 4 m district runs
+/// (`Scripts/ml/train_field.py`) predicts the peak overpressure 2 m over the ground on the district's
+/// plan, and at each ground-floor façade strip that peak takes the place of the façade load
+/// surrogate's, its impulse and rise kept. Roofs, upper storeys and every other component stay on
+/// the surrogate, as the judge left them (`scenebench field-glass`, `field-walls`).
+///
+/// This file is what needs no GPU: the weights' file, the network's inputs laid out from a scene
+/// exactly as `scenebench field-export` lays out its training inputs, the peak map and its cells in
+/// front of a strip. The network itself runs on the GPU (BlastCore's `LearnedFieldNetwork`, behind
+/// `LearnedField.Network`). Off, or without the weights, nothing here is reached.
+public enum LearnedField {
+    /// The cells the model was trained on, m: every training run was on 4 m cells.
+    public static let cellSize: Float = 4
+    /// How high over the ground its field is, m: the first layer of 4 m cells, which a
+    /// ground-floor strip's recorder reads.
+    public static let heightAboveGround: Float = 2
+    /// Cells by the plan's sides left out, as the training runs' masks left them.
+    public static let edgeCells = 4
+    /// Peaks below this, Pa, are not the model's (the training's mask left them out).
+    public static let smallestPeakPa: Float = 10
+
+    /// The option's standing, worded from the judge's figures (docs/learned-models.md, "In the
+    /// app's quick estimate (21 October 2026)").
+    public static let standing: [String] = {
+        let glass = ValidationTables.figure("learnedPeakGlass")
+        let glassSkill = ValidationTables.figure("learnedPeakGlassSkill")
+        let walls = ValidationTables.figure("learnedPeakWalls")
+        let wallsApp = ValidationTables.figure("learnedPeakWallsApp")
+        return [
+            String(
+                format:
+                    "Learned field model for ground-floor peaks: illustrative. A network trained on BombCAD's own 4 m "
+                    + "district runs, judged through this estimate on Beirut's 50 runs, a city it never saw. With its "
+                    + "peak at the ground-floor façade strips, glass by side was exactly right on %.3f of sides against "
+                    + "the surrogate's %.3f (Heidke skill %.2f against %.2f). Concrete walls damaged moderately or "
+                    + "worse: Brier skill %.2f against %.2f at the app's load factor, %.2f against %.2f with the "
+                    + "factor the judge chose (×0.8). Roofs, upper storeys and the impulse stay on the surrogate.",
+                glass.high, glass.low, glassSkill.high, glassSkill.low, wallsApp.high, wallsApp.low,
+                walls.high,
+                walls.low),
+            "It learned one city's runs and made-up districts on 4 m cells, with the charge on the ground: "
+                + "other cells, other cities and other charges are beyond what it was judged on.",
+        ]
+    }()
+
+    // MARK: - The weights
+
+    /// A `.bcfw` file (`Scripts/ml/export_field_weights.py`): `BCFW`, a version, a JSON header and
+    /// the tensors' values, little-endian.
+    public struct Weights: Sendable {
+        public struct Header: Codable, Sendable {
+            public struct Stats: Codable, Sendable {
+                public var mean: [Double]
+                public var std: [Double]
+            }
+            public struct Entry: Codable, Sendable {
+                public var name: String
+                public var shape: [Int]
+                public var offset: Int
+                public var count: Int
+            }
+            public var format: String
+            public var model: String
+            public var width: Int
+            public var depth: Int
+            public var inputs: [String]
+            public var stats: Stats
+            public var residual: Bool
+            public var multiple: Int
+            public var groupNormGroups: Int
+            public var groupNormEpsilon: Double
+            public var dtype: String
+            public var impulse: String?
+            public var sourceSHA256: String?
+            public var epoch: Int?
+            public var holdout: String?
+            public var tensors: [Entry]
+        }
+
+        public var header: Header
+        /// Each tensor's values as float32, C order, by its state-dict name.
+        public var tensors: [String: (shape: [Int], values: [Float])]
+
+        /// The inputs the network was trained on, in order (train_field.py's `INPUTS`).
+        public static let inputs = [
+            "height", "footprint", "ground", "logScaledDistance", "logKingeryBulmashPeak",
+            "logKingeryBulmashImpulse",
+        ]
+
+        public init(contentsOf url: URL) throws {
+            try self.init(data: Data(contentsOf: url, options: .mappedIfSafe))
+        }
+
+        public init(data: Data) throws {
+            func fail(_ why: String) -> Error { LearnedFieldError.badWeights(why) }
+            guard data.count >= 12, data.prefix(4) == Data("BCFW".utf8) else {
+                throw fail("not a .bcfw file")
+            }
+            func u32(_ at: Int) -> Int {
+                data.withUnsafeBytes { raw in
+                    Int(UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: at, as: UInt32.self)))
+                }
+            }
+            guard u32(4) == 1 else { throw fail("version \(u32(4)), not 1") }
+            let length = u32(8)
+            guard data.count >= 12 + length else { throw fail("a header longer than the file") }
+            let header = try JSONDecoder().decode(
+                Header.self, from: data.subdata(in: (data.startIndex + 12)..<(data.startIndex + 12 + length)))
+            guard header.format == "bombcad-field-weights-1", header.model == "unet" else {
+                throw fail("format \(header.format), model \(header.model)")
+            }
+            guard header.inputs == Self.inputs, header.stats.mean.count == 6, header.stats.std.count == 6
+            else {
+                throw fail("inputs \(header.inputs)")
+            }
+            let size = header.dtype == "float16" ? 2 : header.dtype == "float32" ? 4 : 0
+            guard size > 0 else { throw fail("dtype \(header.dtype)") }
+            let payload = data.startIndex + 12 + length
+            var tensors: [String: (shape: [Int], values: [Float])] = [:]
+            for entry in header.tensors {
+                guard entry.shape.reduce(1, *) == entry.count,
+                    payload + (entry.offset + entry.count) * size <= data.endIndex
+                else { throw fail("tensor \(entry.name) outside the file") }
+                let start = payload + entry.offset * size
+                let values = data.withUnsafeBytes { raw -> [Float] in
+                    let base = start - data.startIndex
+                    return (0..<entry.count).map { n in
+                        size == 2
+                            ? LearnedField.float(
+                                half: UInt16(
+                                    littleEndian: raw.loadUnaligned(
+                                        fromByteOffset: base + 2 * n, as: UInt16.self)))
+                            : Float(
+                                bitPattern: UInt32(
+                                    littleEndian: raw.loadUnaligned(
+                                        fromByteOffset: base + 4 * n, as: UInt32.self)))
+                    }
+                }
+                tensors[entry.name] = (entry.shape, values)
+            }
+            self.header = header
+            self.tensors = tensors
+            // The U-Net's own tensors (train_field.py's `UNet`): each level's two convolutions and
+            // their norms, down then up, and the head.
+            for name in Self.tensorNames(depth: header.depth) where tensors[name] == nil {
+                throw fail("no tensor \(name)")
+            }
+        }
+
+        /// The tensors a U-Net of `depth` halvings has, by name.
+        public static func tensorNames(depth: Int) -> [String] {
+            var names: [String] = []
+            for (path, levels) in [("down", depth + 1), ("up", depth)] {
+                for n in 0..<levels {
+                    for layer in [0, 1, 3, 4] {
+                        names += ["\(path).\(n).body.\(layer).weight", "\(path).\(n).body.\(layer).bias"]
+                    }
+                }
+            }
+            return names + ["head.weight", "head.bias"]
+        }
+    }
+
+    /// An IEEE half's bits as a float.
+    static func float(half bits: UInt16) -> Float {
+        let sign = UInt32(bits & 0x8000) << 16
+        let exponent = Int(bits >> 10) & 0x1F
+        let mantissa = UInt32(bits & 0x03FF)
+        if exponent == 0 {
+            // Zero or subnormal: mantissa × 2^-24.
+            let magnitude = Float(mantissa) * 0x1p-24
+            return sign == 0 ? magnitude : -magnitude
+        }
+        if exponent == 0x1F {
+            return Float(bitPattern: sign | 0x7F80_0000 | (mantissa << 13))
+        }
+        return Float(bitPattern: sign | UInt32(exponent - 15 + 127) << 23 | (mantissa << 13))
+    }
+
+    // MARK: - The network
+
+    /// The network itself, run where it can be (BlastCore's `LearnedFieldNetwork` on the GPU).
+    public protocol Network: AnyObject, Sendable {
+        /// What the weights say of the network's inputs and outputs.
+        var header: Weights.Header { get }
+        /// The network's first output (the correction to Kingery–Bulmash's log peak, or with
+        /// `residual` false the log peak itself) over a plan `rows` × `columns`, from its
+        /// standardised inputs, channels × rows × columns in C order, already padded to a multiple
+        /// of `header.multiple` each way.
+        func peakChannel(inputs: [Float], rows: Int, columns: Int) throws -> [Float]
+    }
+
+    // MARK: - The plan
+
+    /// What the network sees of a scene that does not depend on the charge: on the 4 m plan over
+    /// the scene's domain from its origin, rows north, columns east, the tallest block over each
+    /// cell's centre above the ground there, and the ground. As `scenebench field-export` lays out
+    /// its training inputs, to the bit (`LearnedFieldTests`).
+    public struct Plan: Sendable {
+        public let columns: Int
+        public let rows: Int
+        public let cell: Float
+        /// Each cell's buildings' height over the ground, m (0 with none), and its ground, m.
+        public let height: [Float]
+        public let ground: [Float]
+        let terrain: Terrain?
+
+        public init(scene: Scenario) {
+            let grid = scene.grid(cellSize: LearnedField.cellSize)
+            let (nx, ny) = (grid.nx, grid.ny)
+            let dx = LearnedField.cellSize
+            var ground = [Float](repeating: 0, count: nx * ny)
+            for j in 0..<ny {
+                for i in 0..<nx {
+                    ground[i + nx * j] =
+                        scene.terrain?.height(at: SIMD2((Float(i) + 0.5) * dx, (Float(j) + 0.5) * dx)) ?? 0
+                }
+            }
+            // The buildings' tops over the cells whose centres their blocks cover, as the air holds them.
+            var top = [Float](repeating: -.greatestFiniteMagnitude, count: nx * ny)
+            for block in scene.envelopeObjects.flatMap({ $0.envelope?.blocks ?? [] }) + scene.boxes {
+                let i0 = max(0, Int((block.min.x / dx - 0.5).rounded(.up)))
+                let i1 = min(nx - 1, Int((block.max.x / dx - 0.5).rounded(.up)) - 1)
+                let j0 = max(0, Int((block.min.y / dx - 0.5).rounded(.up)))
+                let j1 = min(ny - 1, Int((block.max.y / dx - 0.5).rounded(.up)) - 1)
+                guard i0 <= i1, j0 <= j1 else { continue }
+                for j in j0...j1 {
+                    for i in i0...i1 { top[i + nx * j] = max(top[i + nx * j], block.max.z) }
+                }
+            }
+            columns = nx
+            rows = ny
+            cell = dx
+            self.ground = ground
+            height = zip(top, ground).map { $0 > $1 ? $0 - $1 : 0 }
+            terrain = scene.terrain
+        }
+
+        /// The six channels of `field-export`'s `inputs.npy` for a charge of `mass` kg at
+        /// `charge`: the height, the ground over the ground under the charge, the distance in plan,
+        /// ln Z, and Kingery–Bulmash's incident peak and impulse at Z (channels × rows × columns).
+        public func exportChannels(charge: SIMD3<Float>, mass: Double) -> [Float] {
+            let plan = columns * rows
+            let chargeGround = terrain?.height(at: SIMD2(charge.x, charge.y)) ?? 0
+            let root = cbrt(mass)
+            var inputs = [Float](repeating: 0, count: 6 * plan)
+            inputs.withUnsafeMutableBufferPointer { out in
+                concurrently(iterations: rows) { j in
+                    for i in 0..<columns {
+                        let n = i + columns * j
+                        let x = (Float(i) + 0.5) * cell
+                        let y = (Float(j) + 0.5) * cell
+                        let distance = Double(simd_distance(SIMD2(x, y), SIMD2(charge.x, charge.y)))
+                        let z = max(distance, Double(cell) / 2) / root
+                        let kb = LearnedField.kingeryBulmash(z: z, mass: mass)
+                        out[0 * plan + n] = height[n]
+                        out[1 * plan + n] = ground[n] - chargeGround
+                        out[2 * plan + n] = Float(distance)
+                        out[3 * plan + n] = Float(log(z))
+                        out[4 * plan + n] = Float(kb.peak)
+                        out[5 * plan + n] = Float(kb.impulse)
+                    }
+                }
+            }
+            return inputs
+        }
+
+        /// The rows and columns padded to `multiple`.
+        public func padded(_ multiple: Int) -> (rows: Int, columns: Int) {
+            ((rows + multiple - 1) / multiple * multiple, (columns + multiple - 1) / multiple * multiple)
+        }
+    }
+
+    /// The network's standardised inputs from `field-export`'s six channels (`exportChannels`, or a
+    /// run's `inputs.npy`) on a plan `rows` × `columns`: train_field.py's features (the height, the
+    /// footprint, the ground, ln Z and the logs of Kingery–Bulmash's peak and impulse), each less
+    /// the training runs' mean over their standard deviation, padded at the north and east to a
+    /// multiple of `header.multiple` by repeating the edge, as judge_field.py pads them. With them,
+    /// Kingery–Bulmash's log peak on the plan, which the network corrects.
+    public static func networkInputs(
+        exportChannels raw: [Float], rows: Int, columns: Int, header: Weights.Header
+    ) -> (inputs: [Float], rows: Int, columns: Int, kbLogPeak: [Float]) {
+        let plan = rows * columns
+        precondition(raw.count == 6 * plan, "six channels over the plan")
+        let multiple = max(1, header.multiple)
+        let paddedRows = (rows + multiple - 1) / multiple * multiple
+        let paddedColumns = (columns + multiple - 1) / multiple * multiple
+        let mean = header.stats.mean.map(Float.init)
+        let std = header.stats.std.map(Float.init)
+        var kb = [Float](repeating: 0, count: plan)
+        var inputs = [Float](repeating: 0, count: 6 * paddedRows * paddedColumns)
+        let area = paddedRows * paddedColumns
+        inputs.withUnsafeMutableBufferPointer { out in
+            kb.withUnsafeMutableBufferPointer { kbOut in
+                concurrently(iterations: paddedRows) { r in
+                    let j = min(r, rows - 1)
+                    for c in 0..<paddedColumns {
+                        let n = min(c, columns - 1) + columns * j
+                        let height = raw[n]
+                        let peak = log(max(raw[4 * plan + n], 1))
+                        let at = c + paddedColumns * r
+                        func put(_ k: Int, _ value: Float) { out[k * area + at] = (value - mean[k]) / std[k] }
+                        put(0, height)
+                        put(1, height > 0 ? 1 : 0)
+                        put(2, raw[plan + n])
+                        put(3, raw[3 * plan + n])
+                        put(4, peak)
+                        put(5, log(max(raw[5 * plan + n], 1e-6)))
+                        if r < rows, c < columns { kbOut[n] = peak }
+                    }
+                }
+            }
+        }
+        return (inputs, paddedRows, paddedColumns, kb)
+    }
+
+    /// Kingery–Bulmash's incident peak (Pa) and impulse (Pa s) at scaled distance `z` for `mass`
+    /// kg, as the training inputs give them: held at its fits' near end (0.2 m/kg^(1/3)) and carried
+    /// on beyond the far end (40) by the slope of its last stretch in log-log.
+    public static func kingeryBulmash(z: Double, mass: Double) -> (peak: Double, impulse: Double) {
+        func at(_ z: Double) -> (Double, Double) {
+            guard let p = KingeryBulmash.point(at: z) else { return (0, 0) }
+            return (p.incidentPressure, p.incidentImpulse(mass: mass))
+        }
+        if z < 0.2 { return at(0.2) }
+        if z <= 40 { return at(z) }
+        let (p40, i40) = at(40)
+        let (p36, i36) = at(36)
+        let span = log(40.0 / 36)
+        let sp = log(p40 / p36) / span
+        let si = log(i40 / i36) / span
+        return (p40 * pow(z / 40, sp), i40 * pow(z / 40, si))
+    }
+
+    // MARK: - The peak map
+
+    /// The network's peak over a plan for one charge: its log, Pa, and where it is to be read (no
+    /// building over the cell's centre, away from the plan's sides, above `smallestPeakPa`).
+    public struct PeakMap: Sendable {
+        public let columns: Int
+        public let rows: Int
+        public let cell: Float
+        public let logPeak: [Float]
+        public let open: [Bool]
+        let terrain: Terrain?
+        /// How long the network took, s, and its inputs before it.
+        public var seconds: (inputs: Double, network: Double) = (0, 0)
+
+        public init(plan: Plan, logPeak: [Float]) {
+            precondition(logPeak.count == plan.columns * plan.rows, "a peak for every cell")
+            columns = plan.columns
+            rows = plan.rows
+            cell = plan.cell
+            self.logPeak = logPeak
+            terrain = plan.terrain
+            let edge = LearnedField.edgeCells
+            let smallest = log(LearnedField.smallestPeakPa)
+            open = (0..<(plan.columns * plan.rows)).map { n in
+                let (i, j) = (n % plan.columns, n / plan.columns)
+                return plan.height[n] == 0 && i >= edge && j >= edge && i < plan.columns - edge
+                    && j < plan.rows - edge && logPeak[n] > smallest
+            }
+        }
+
+        /// The plan's cells of air beside `component`'s outer face, along its width: the first
+        /// cells whose centres lie beyond the face, over the cells whose centres its width covers
+        /// (its middle one if it is narrower than a cell), as judge_field.py's `front_cells`. Only
+        /// those in the plan.
+        public func frontCells(_ component: EnvelopeComponent) -> [Int] {
+            let axis = component.axis
+            guard axis < 2 else { return [] }
+            let region = component.region
+            let face = component.outward > 0 ? region.max[axis] : region.min[axis]
+            let first = Int((face / cell - 0.5).rounded(.up))
+            let across = component.outward > 0 ? first : first - 1
+            let other = 1 - axis
+            var a = Int((region.min[other] / cell - 0.5).rounded(.up))
+            var b = Int((region.max[other] / cell - 0.5).rounded(.up)) - 1
+            if b < a {
+                a = Int((0.5 * (region.min[other] + region.max[other]) / cell).rounded(.down))
+                b = a
+            }
+            return (a...b).compactMap { along in
+                let (column, row) = axis == 0 ? (across, along) : (along, across)
+                guard column >= 0, column < columns, row >= 0, row < rows else { return nil }
+                return column + columns * row
+            }
+        }
+
+        /// Whether `component` is a ground-floor façade strip: its storey spans the field's height
+        /// over the ground under its outer face's middle, within a centimetre (the judge read the
+        /// strips' boxes and the ground to the centimetre, so a storey ending at that height
+        /// counted on both sides of it).
+        public func isGroundFloor(_ component: EnvelopeComponent) -> Bool {
+            guard component.kind == .facade, component.axis < 2 else { return false }
+            let ground = terrain?.height(at: FacadeLoadSurrogate.outerFace(component).centre) ?? 0
+            let level = ground + LearnedField.heightAboveGround
+            return component.region.min.z <= level + 0.01 && level - 0.01 <= component.region.max.z
+        }
+
+        /// The network's peak at `component`, Pa: the mean over its front cells that are open;
+        /// nil unless it is a ground-floor façade strip with one.
+        public func peak(at component: EnvelopeComponent) -> Double? {
+            guard isGroundFloor(component) else { return nil }
+            var sum = 0.0
+            var count = 0
+            for n in frontCells(component) where open[n] {
+                sum += Double(exp(logPeak[n]))
+                count += 1
+            }
+            return count > 0 ? sum / Double(count) : nil
+        }
+
+        /// `features` with the network's peak in place of the surrogate's for `component` (its
+        /// `learnedPeakFactor`, the network's peak over the surrogate's for a charge of `mass` kg),
+        /// or as they were where the network gives none.
+        public func adjusted(
+            _ features: FacadeLoadSurrogate.Features, of component: EnvelopeComponent, mass: Double,
+            cellSize: Double, coefficients: FacadeLoadSurrogate.Coefficients = .fitted
+        ) -> FacadeLoadSurrogate.Features {
+            guard let peak = peak(at: component) else { return features }
+            var plain = features
+            plain.learnedPeakFactor = 1
+            let surrogate = FacadeLoadSurrogate.predict(
+                plain, mass: mass, cellSize: cellSize, coefficients: coefficients
+            ).peakPa
+            guard surrogate > 0, surrogate.isFinite, peak.isFinite else { return features }
+            plain.learnedPeakFactor = peak / surrogate
+            return plain
+        }
+    }
+
+    /// A district's plan with the network to run on it, for any place of the charge: laid out once
+    /// (`Plan`), the network run again for each.
+    public final class Estimator: Sendable {
+        public let plan: Plan
+        public let network: any Network
+        /// How long laying out the plan took, s.
+        public let seconds: Double
+
+        public init(scene: Scenario, network: any Network) {
+            let start = ContinuousClock.now
+            plan = Plan(scene: scene)
+            self.network = network
+            let took = start.duration(to: .now)
+            seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
+        }
+
+        /// The network's peak over the plan for a charge of `mass` kg at `charge`.
+        public func peaks(charge: SIMD3<Float>, mass: Double) throws -> PeakMap {
+            func since(_ start: ContinuousClock.Instant) -> Double {
+                let took = start.duration(to: .now)
+                return Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
+            }
+            var clock = ContinuousClock.now
+            let header = network.header
+            let raw = plan.exportChannels(charge: charge, mass: mass)
+            let (inputs, rows, columns, kb) = LearnedField.networkInputs(
+                exportChannels: raw, rows: plan.rows, columns: plan.columns, header: header)
+            let inputsS = since(clock)
+            clock = .now
+            let out = try network.peakChannel(inputs: inputs, rows: rows, columns: columns)
+            guard out.count == rows * columns else {
+                throw LearnedFieldError.network("\(out.count) outputs for \(rows) × \(columns)")
+            }
+            var logPeak = [Float](repeating: 0, count: plan.rows * plan.columns)
+            for j in 0..<plan.rows {
+                for i in 0..<plan.columns {
+                    let n = i + plan.columns * j
+                    logPeak[n] = out[i + columns * j] + (header.residual ? kb[n] : 0)
+                }
+            }
+            var map = PeakMap(plan: plan, logPeak: logPeak)
+            map.seconds = (inputsS, since(clock))
+            return map
+        }
+    }
+
+    // MARK: - Files
+
+    /// NumPy's `.npy` files of little-endian float32 in C order (`scenebench field-export`'s and
+    /// the export script's references): the values and the shape.
+    public static func readNPY(_ url: URL) throws -> (values: [Float], shape: [Int]) {
+        let data = try Data(contentsOf: url)
+        let s = data.startIndex
+        guard data.count >= 10, data[s] == 0x93, data[(s + 1)..<(s + 6)] == Data("NUMPY".utf8) else {
+            throw LearnedFieldError.badWeights("\(url.lastPathComponent) is not a .npy file")
+        }
+        let lengthBytes = data[s + 6] == 1 ? 2 : 4
+        var length = 0
+        for k in 0..<lengthBytes { length |= Int(data[s + 8 + k]) << (8 * k) }
+        let headerStart = s + 8 + lengthBytes
+        guard let text = String(data: data[headerStart..<(headerStart + length)], encoding: .ascii),
+            text.contains("'<f4'"), text.contains("'fortran_order': False"),
+            let open = text.firstIndex(of: "("), let close = text.firstIndex(of: ")")
+        else {
+            throw LearnedFieldError.badWeights(
+                "\(url.lastPathComponent): not little-endian float32 in C order")
+        }
+        let shape = text[text.index(after: open)..<close].split(separator: ",").compactMap {
+            Int($0.trimmingCharacters(in: .whitespaces))
+        }
+        let count = shape.reduce(1, *)
+        let body = headerStart + length - s
+        guard data.count - body >= 4 * count else {
+            throw LearnedFieldError.badWeights("\(url.lastPathComponent) is short")
+        }
+        let values = data.withUnsafeBytes { raw in
+            (0..<count).map { n in
+                Float(
+                    bitPattern: UInt32(
+                        littleEndian: raw.loadUnaligned(fromByteOffset: body + 4 * n, as: UInt32.self)))
+            }
+        }
+        return (values, shape)
+    }
+
+    // MARK: - Where the weights are
+
+    /// The environment variable naming the weights' file, and the setting that does (the app's).
+    public static let environmentKey = "BOMBCAD_FIELD_MODEL"
+    public static let fileName = "field-unet-fp-strict.bcfw"
+
+    /// The weights' file: `BOMBCAD_FIELD_MODEL` if set, else `setting` if given, else
+    /// `~/Library/Application Support/BombCAD/LearnedModels/field-unet-fp-strict.bcfw`.
+    public static func weightsURL(
+        setting: String? = nil, environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> URL {
+        if let path = environment[environmentKey], !path.isEmpty {
+            return URL(filePath: (path as NSString).expandingTildeInPath)
+        }
+        if let setting, !setting.isEmpty { return URL(filePath: (setting as NSString).expandingTildeInPath) }
+        return defaultWeightsURL
+    }
+
+    public static var defaultWeightsURL: URL {
+        let support =
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(filePath: NSHomeDirectory()).appending(path: "Library/Application Support")
+        return support.appending(path: "BombCAD/LearnedModels").appending(path: fileName)
+    }
+}
+
+public enum LearnedFieldError: Error, CustomStringConvertible {
+    case badWeights(String)
+    case network(String)
+
+    public var description: String {
+        switch self {
+        case .badWeights(let why): "The learned field model's weights could not be read: \(why)."
+        case .network(let why): "The learned field model could not be run: \(why)."
+        }
+    }
+}

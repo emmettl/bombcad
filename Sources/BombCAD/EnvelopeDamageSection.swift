@@ -66,6 +66,25 @@ struct EnvelopeDamageSection: View {
                 {
                     CloseCallsRow(model: model)
                 }
+                Toggle("Learned field model for ground-floor peaks", isOn: $model.quickEstimateLearnedPeaks)
+                    .help(
+                        "For Quick Estimate: a network trained on BombCAD's own 4 m district runs gives the peak at "
+                            + "each ground-floor façade strip, for its damage, glass and walls; the impulse, roofs and "
+                            + "upper storeys stay on the surrogate. Illustrative. Its weights are read from "
+                            + LearnedField.weightsURL(
+                                setting: UserDefaults.standard.string(
+                                    forKey: SimulationModel.learnedWeightsKey)
+                            ).path + ".")
+                if model.quickEstimateLearnedPeaks {
+                    if !model.learnedPeaksStatus.isEmpty {
+                        Text(model.learnedPeaksStatus).font(.caption).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    ForEach(LearnedField.standing, id: \.self) {
+                        Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
+                            horizontal: false, vertical: true)
+                    }
+                }
                 if !model.envelopeVentingStatus.isEmpty {
                     Text(model.envelopeVentingStatus).font(.caption).foregroundStyle(.orange)
                 }

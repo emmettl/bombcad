@@ -58,6 +58,12 @@ public enum FacadeLoadSurrogate {
         /// the lower side's mean height over it, m; 0 with none.
         public var canyonM: Double = 0
         public var canyonHeightM: Double = 0
+        /// The learned field model's peak over the surrogate's for this component at the estimate's
+        /// yield (emmettl/bombcad-work#67, `LearnedField.PeakMap.adjusted`): `predict` multiplies
+        /// its peak by it. 1, which changes nothing to the bit, unless the option is on and this is
+        /// a ground-floor façade strip the model reads; at a yield drawn away from the estimate's
+        /// the same ratio is kept.
+        public var learnedPeakFactor: Double = 1
     }
 
     /// The buildings' blocks on a plan grid, for following a straight line from the charge
@@ -640,7 +646,8 @@ public enum FacadeLoadSurrogate {
             covered = min(close.heldWithin.lowerBound, covered.lowerBound)...covered.upperBound
         }
         return Prediction(
-            peakPa: peak * exp(p), impulsePaS: impulse * exp(i), riseShare: min(max(r, 0), 0.9),
+            peakPa: peak * exp(p) * f.learnedPeakFactor, impulsePaS: impulse * exp(i),
+            riseShare: min(max(r, 0), 0.9),
             arrivalS: arrival, outsideFit: !covered.contains(scaled))
     }
 

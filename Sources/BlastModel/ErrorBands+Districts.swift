@@ -25,6 +25,26 @@ extension ValidationTables {
             id: "surrogateCloseInShielded", low: 1.4, high: 1.7,
             document: "surrogate-first-look.md#close-in-among-buildings-21-october-2026",
             quote: "the branch reads 1.4–1.7 times the runs' among buildings"),
+        // The learned field model's peak at ground-floor façades, in the quick estimate
+        // (`LearnedField.standing`): the surrogate's figure low, the model's high.
+        Figure(
+            id: "learnedPeakGlass", low: 0.916, high: 0.942,
+            document: "learned-models.md#in-the-apps-quick-estimate-21-october-2026",
+            quote:
+                "glass by side exactly right on 0.916 of sides with the surrogate's peak and 0.942 with the model's"
+        ),
+        Figure(
+            id: "learnedPeakGlassSkill", low: 0.62, high: 0.72,
+            document: "learned-models.md#in-the-apps-quick-estimate-21-october-2026",
+            quote: "Heidke skill 0.62 and 0.72"),
+        Figure(
+            id: "learnedPeakWalls", low: 0.69, high: 0.78,
+            document: "learned-models.md#in-the-apps-quick-estimate-21-october-2026",
+            quote: "concrete walls moderate or worse, Brier skill 0.69 and 0.78"),
+        Figure(
+            id: "learnedPeakWallsApp", low: 0.60, high: 0.68,
+            document: "learned-models.md#in-the-apps-quick-estimate-21-october-2026",
+            quote: "at the app's own load factor of 1.0, 0.60 and 0.68"),
         Figure(
             id: "dragPreviewGlass", low: 0.88, high: 0.93,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",

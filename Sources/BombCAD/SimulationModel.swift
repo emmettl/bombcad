@@ -669,6 +669,26 @@ final class SimulationModel {
     /// How far the quick estimate's charge may be off: its yield within this factor either way,
     /// nine times in ten; 1 for exactly the scene's.
     var quickEstimateYieldWithin = 1.5
+    /// Whether the quick estimate takes the learned field model's peak at the ground-floor façade
+    /// strips, for their damage, glass and walls (emmettl/bombcad-work#67; `LearnedField`). Off
+    /// unless chosen, and remembered; without its weights the estimate is the surrogate's alone.
+    var quickEstimateLearnedPeaks = UserDefaults.standard.bool(forKey: SimulationModel.learnedPeaksKey) {
+        didSet {
+            UserDefaults.standard.set(quickEstimateLearnedPeaks, forKey: Self.learnedPeaksKey)
+            if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
+        }
+    }
+    static let learnedPeaksKey = "quickEstimate.learnedFieldPeaks"
+    /// A path for the learned field model's weights other than the default
+    /// (`LearnedField.weightsURL`; `BOMBCAD_FIELD_MODEL` comes first).
+    static let learnedWeightsKey = "quickEstimate.learnedFieldWeights"
+    /// What the learned field model said at the last estimate that asked for it: the strips it gave
+    /// its peak to and its time, or why it could not be used.
+    var learnedPeaksStatus = ""
+    /// The learned field model's network, once loaded, with the file it came from; and the plan it
+    /// sees of the district, laid out once for every place of the charge.
+    @ObservationIgnored var learnedNetwork: (url: URL, network: LearnedFieldNetwork)?
+    @ObservationIgnored var learnedEstimator: (scene: Scenario, estimator: LearnedField.Estimator)?
     /// While the charge is dragged in the view (Place Charge on): the scene is loaded again only
     /// once it is let go, and a quick estimate on screen follows it (`beginDrag`).
     var isDraggingCharge = false

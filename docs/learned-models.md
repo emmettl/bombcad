@@ -959,15 +959,193 @@ python -I Scripts/ml/judge_field.py walls --peaks fpw/peaks --out-dir fpw/walls 
     --only byrun=/Volumes/StudioData/bombcad/ml/field-unet-fp-byrun/out/split.json
 ```
 
+## In the app's quick estimate (21 October 2026)
+
+emmettl/bombcad-work#67. On 21 October the user decided to build the
+[recommendation above](#the-recommendation-for-the-user-to-decide-1) as an option, and to decide
+the default afterwards. The option is now in the app: **Learned field model for ground-floor
+peaks**, under the envelope damage. It is **off by default**, and off it changes nothing.
+
+### What it does
+
+- **Where the model's peak goes.** It goes to every ground-floor façade strip: a storey spanning
+  2 m over the ground under its face's middle, within a centimetre. There the strict model's peak
+  (`field-unet-fp-strict`, peak channel only) replaces the surrogate's, as the judge used it:
+  - the peak is the mean of the network's peak over the strip's front cells, the plan cells of
+    air beside its face along its width (judge_field.py's `front_cells`);
+  - a cell counts only with no building over its centre, at least 4 cells from the plan's sides,
+    and a peak above 10 Pa;
+  - the surrogate's impulse and rise are kept.
+
+  A strip with no such cell keeps the surrogate's peak. So do roofs, upper storeys and every
+  other component.
+- **Everything downstream follows.** The peak is carried as a factor on the strip's features
+  (`Features.learnedPeakFactor`, the model's peak over the surrogate's at the scene's yield). The
+  quick estimate's damage, the glass's chances and the walls' chances all take it. At a yield drawn
+  away from the scene's, the same ratio is kept, since the network is run once, at the scene's
+  yield. Off, or for a strip it does not reach, the factor is 1, and a peak multiplied by 1 is
+  the same to the bit.
+- **The inputs.** `LearnedField.Plan` lays out the network's inputs from the scene on the 4 m plan
+  over its domain, as `field-export` does: the buildings' heights over the ground and the ground,
+  laid out once per district; the distances, ln Z and Kingery–Bulmash's values, again for each
+  place of the charge. On all 50 Beirut runs these came out the same as the runs' own
+  `inputs.npy` to the bit: 0 values differing of 1,572,864 or 2,457,600 a run. The model always
+  works on 4 m cells, whatever cells the estimate is on.
+- **The network** is `LearnedFieldNetwork` in BlastCore, the U-Net on MPSGraph, in float32. It
+  needs no new dependency. It is built once for each plan size and kept, so a drag reuses it.
+- **The weights** come from `Scripts/ml/export_field_weights.py`, as one `.bcfw` file of float16
+  weights, 15.7 MB. The file holds a JSON header with the architecture, the input standardisation
+  and the source checkpoint's SHA-256, then the tensors. The weights are not committed. The app
+  reads them from `BOMBCAD_FIELD_MODEL`, else the `quickEstimate.learnedFieldWeights` setting, else
+  `~/Library/Application Support/BombCAD/LearnedModels/field-unet-fp-strict.bcfw`. Without them,
+  the sidebar says so and the estimate is the surrogate's alone. The file is on StudioData at
+  `ml/field-unet-fp-strict/app/field-unet-fp-strict.bcfw`.
+
+```bash
+python -I Scripts/ml/export_field_weights.py --model /Volumes/StudioData/bombcad/ml/field-unet-fp-strict/out/best.pt \
+    --out field-unet-fp-strict.bcfw --data /Volumes/StudioData/bombcad/ml/datasets/main-fp \
+    --reference beirut-p0-1,beirut-p0-3,beirut-p4-1,made-towers-s6-2 --reference-out reference
+```
+
+### Against PyTorch
+
+The test is on four held-out runs, three of Beirut's and a made-up sixth layout, 512² and 640²
+(`scenebench field-predict`; `LearnedFieldNetworkTests`, which skips without the weights). The
+reference is PyTorch on the CPU in float32, with the same float16 weights:
+
+- **The log peak agrees within 2.9–3.8 × 10⁻⁶** on every cell (mean 1.1 × 10⁻⁷), which is float
+  rounding.
+- **The float16 weights** against the checkpoint's own float32 move the log peak by at most
+  0.8–2.1 × 10⁻³ (mean 7 × 10⁻⁵).
+- **Over all 50 Beirut runs' 1,446,015 judged strips**, the app's peaks lie within 0.28% of the
+  judge's (judge_field.py, float32 weights), with a median of 0.009%. With float32 weights
+  exported for the check, beirut-p0-1's 10,013 strips agree within 10⁻⁵.
+
+### The app's estimate path against the judge
+
+`Scripts/ml/app_peaks.py run` lays out each of Beirut's 50 held-out runs again and runs
+`scenebench field-app` on it: the app's own `Prepared.estimate(learned:)`, the network on the GPU.
+`app_peaks.py merge` adds those peaks to the [judge's strip files](#glass-rechecked), and
+`field-glass` and `judge_field.py walls` judge them as they judged the Python model's. Every one of
+the 1,446,015 judged strips took the model's peak in the app. Everything else was the surrogate's
+to the bit.
+
+**Glass by side**, 584,486 sides (exact / Heidke skill / mean error of the share broken):
+
+| Load | All | 500–700 m | 700–1000 m | 1000–1500 m | 0.05–0.1 kt | 0.1–0.3 kt |
+|---|---|---|---|---|---|---|
+| Surrogate | 0.916 / 0.62 / 0.043 | 0.930 / 0.47 | 0.874 / 0.62 | 0.908 / 0.62 | 0.737 / 0.50 | 0.855 / 0.50 |
+| Judge's strict peak (8701c269) | 0.942 / 0.72 / 0.034 | 0.948 / 0.63 | 0.911 / 0.72 | 0.947 / 0.75 | 0.776 / 0.58 | 0.917 / 0.67 |
+| **The app's, option on** | **0.942 / 0.72 / 0.034** | 0.948 / 0.63 | 0.911 / 0.72 | 0.947 / 0.75 | 0.776 / 0.58 | 0.917 / 0.67 |
+
+In all: glass by side exactly right on 0.916 of sides with the surrogate's peak and 0.942 with the
+model's, Heidke skill 0.62 and 0.72. Between the app and the judge, at most 8 sides of the 584,486
+changed state.
+
+**Walls**, ground-floor walls of Beirut's 156,492 concrete building-runs. Each cell is the Brier
+score / skill / tenths test, each charge point held out with the load factor and scatter chosen on
+the other nine (the app's own pair, ×1.0 with the whole scatter, beside it):
+
+| Load | Moderate+ (19,492 damaged) | At the app's ×1.0 | Heavy+ (14,303) | At the app's ×1.0 |
+|---|---|---|---|---|
+| Surrogate | 0.0338 / 0.69 / fail | 0.0441 / 0.60 / fail | 0.0264 / 0.68 / fail | 0.0376 / 0.55 / fail |
+| Judge's strict peak | 0.0236 / 0.78 / pass | 0.0344 / 0.68 / fail | 0.0162 / 0.81 / pass | 0.0209 / 0.75 / fail |
+| **The app's, option on** | **0.0236 / 0.78 / pass** | 0.0344 / 0.68 / fail | 0.0162 / 0.81 / pass | 0.0209 / 0.75 / fail |
+
+So for concrete walls moderate or worse, Brier skill 0.69 and 0.78 with the factor the judge chose
+(×0.8 in every fold), and at the app's own load factor of 1.0, 0.60 and 0.68. The tenths test
+passes only at ×0.8. That factor is the user's to judge again (#19's calibration, not changed
+here). The app gives roofs the surrogate's loads, so the judge's roof proxy does not apply.
+
+The judgements are in `/Volumes/StudioData/bombcad/ml/app67/`: `app/` holds the in-app strips and
+logs, `merged/` the merged strip files, and `glass/`, `glass-summary.txt`, `walls/` and `walls.txt`
+the judgements.
+
+```bash
+python3 -I Scripts/ml/app_peaks.py run --data /Volumes/StudioData/bombcad/ml/datasets/main-fp \
+    --weights field-unet-fp-strict.bcfw --out-dir app67/app
+python3 -I Scripts/ml/app_peaks.py merge --app app67/app --peaks judge/fpw/peaks --out-dir app67/merged
+python3 -I Scripts/ml/app_peaks.py glass --peaks app67/merged --out-dir app67/glass
+python3 -I Scripts/ml/app_peaks.py summary --glass app67/glass
+python -I Scripts/ml/judge_field.py walls --peaks app67/merged --out-dir app67/walls \
+    --variants surrogate,strict:surrogate,app:surrogate
+```
+
+### Time
+
+The test is Beirut's district as the [drag was timed](surrogate-first-look.md#dragging-the-charge-20-october-2026):
+14,169 buildings, 724,512 components, 0.5 kt, the plan 1,250 × 1,250 cells of 4 m. It ran with
+`scenebench drag-time --drag 0,5,…,100 --weights …`, ten frames and then the full look, on the
+Studio shared with other sessions (load 10–27). The network needs no raster of its own beyond its
+plan: `LearnedField.Plan` holds the heights and the ground for every place of the charge, as
+#34's `Prepared` holds the sight lines' raster. The plan takes 0.02 s to lay out, and the weights
+0.05 s to load.
+
+| Colouring | Later frames, off | Later frames, on | The model's share | First frame, on |
+|---|---|---|---|---|
+| Damage | 0.62–0.72 s | 0.86–1.18 s | 0.17–0.27 s | 3.1 s |
+| Glass's chances (10 draws) | 0.40–0.41 s | 0.59–0.63 s | 0.18–0.20 s | 2.3 s |
+| Walls' and roofs' chances (20 draws) | 0.55–0.60 s | 0.70–0.77 s | 0.17–0.20 s | 2.1 s |
+
+- **Each frame runs the network again,** since the charge moves: its inputs and the network take
+  0.17–0.20 s. The first frame also builds the graph for the plan's size, 1.3–1.7 s, kept after.
+- **#34's bar of a second a frame is still met** with the option on, except the damage's frames
+  at 0.86–1.18 s, on a loaded Mac.
+- **The full estimate once let go took 63–78 s either way**, with or without the model. The model
+  added 0.18–0.19 s, and 129,772 of the strips took its peak; the glass's 100 draws are most of
+  the time.
+- **On the 512² and 640² runs**, the network alone takes 14–23 ms after its first run (0.7–1.2 s
+  to build the graph).
+
+### How the weights could ship (a proposal; nothing is published)
+
+The file is 15.7 MB, and the app runs without it. The proposal:
+
+- **Publish it as a release asset** of a release that holds only models, on the public repository
+  or a models repository. Pin its SHA-256 in the app (`LearnedField`).
+- **Fetch it on first use.** Turning the option on without the file would offer to download it,
+  saying its size and source. The app would check the hash and keep the file in Application
+  Support. A file that fails the check would not be used.
+- **Name each model by its training round** (`field-unet-fp-strict`), so that a retrained model is
+  a new file and a new pin, and a run's standing can say which file it used.
+- **Before publishing**, settle the licence and attribution. The model is trained on runs over
+  OpenStreetMap (ODbL), Copernicus DEM and GHSL inputs ([Beirut, 2020](beirut-2020.md)).
+  Whether the weights count as a produced work that needs attribution is the user's call.
+
+The alternatives are bundling the file in the app and the Homebrew cask, which costs every
+download 16 MB, or leaving it to be copied by hand, as now.
+
+### The decision for the user
+
+Whether to make the option the default. For it:
+
+- In the app's own path, it reproduces the judge to the side: glass 0.916 → 0.942 exactly right,
+  skill 0.62 → 0.72, on a city the model never saw. Concrete walls moderate+ go 0.69 → 0.78 in
+  skill (×0.8) and 0.60 → 0.68 at the app's ×1.0.
+- It costs about 0.2 s a drag frame and nothing measurable in a full estimate.
+
+Against it, or what to settle first:
+
+- **The weights do not ship yet.** With the option on by default and no file, every estimate
+  would say the model is missing. A default needs the distribution above.
+- **Its reach is one city and made-up districts, on 4 m cells.** Ground-floor façades only, a
+  charge on the ground.
+- **The walls' tenths test passes only at ×0.8.** At the app's ×1.0 it fails, with the model or
+  without. That is the factor the user is to judge again now that this is in.
+
+The recommendation: keep it off until the weights ship. Then make it the default for glass and
+walls together, and settle the walls' factor (×0.8 against ×1.0) on its own numbers above.
+Nothing has been changed by default.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
 - **Fields at more heights**, for roofs and upper storeys: the first-phase models leave both on
   the surrogate ([above](#the-first-phase-models-at-walls-and-roofs-21-october-2026)).
-- **The user's decision** on the field model's peak in the quick estimate's ground-floor glass,
-  and then in the [hybrid far field](hybrid-far-field.md)
-  ([above](#the-recommendation-for-the-user-to-decide)).
+- **The user's decision** on making the quick estimate's learned field option the default, and
+  on how its weights ship ([above](#the-decision-for-the-user)); then the same peak in the
+  [hybrid far field](hybrid-far-field.md).
 - **Other learned models** on the same runner, as they come:
   - emulators for the uncertainty work;
   - walls and roofs;

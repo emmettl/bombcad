@@ -57,6 +57,18 @@ in the list. A progress bar and **Cancel** show while it runs. A new drag, an ed
 it. On Beirut at 0.5 kt the first answer came in 13 s and eight in 22 s
 ([close calls refined by the solver](surrogate-first-look.md#close-calls-refined-by-the-solver-21-october-2026)).
 
+**Learned field model for ground-floor peaks**, under the envelope damage, is an option for the
+quick estimate, off unless you turn it on. A network trained on BombCAD's own 4 m district runs
+then gives the peak at each ground-floor façade strip, for the strip's damage, its glass and the
+walls' chances. The impulse, the roofs and the storeys above stay on the surrogate. Its standing
+is shown with it: illustrative, judged on Beirut's runs it never saw
+([in the app's quick estimate](learned-models.md#in-the-apps-quick-estimate-21-october-2026)). It
+needs its weights, a 16 MB file that is not part of the app yet:
+`~/Library/Application Support/BombCAD/LearnedModels/field-unet-fp-strict.bcfw`, or the path in
+`BOMBCAD_FIELD_MODEL`, or `defaults write dev.bombcad.BombCAD quickEstimate.learnedFieldWeights <path>`.
+Without them, the sidebar says so and the estimate is the surrogate's alone. With the option on,
+a drag's preview runs the network again at each place of the charge.
+
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey
