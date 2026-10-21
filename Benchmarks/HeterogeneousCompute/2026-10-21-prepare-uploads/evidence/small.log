@@ -1,0 +1,70 @@
+blast64 0 baseline 1.774
+blast64 0 candidate 1.531
+blast64 1 candidate 1.473
+blast64 1 baseline 1.442
+blast64 2 baseline 1.467
+blast64 2 candidate 1.534
+cooling32 0 baseline 1.514
+cooling32 0 candidate 1.437
+cooling32 1 candidate 1.543
+cooling32 1 baseline 1.554
+cooling32 2 baseline 1.482
+cooling32 2 candidate 1.422
+cooling64 0 baseline 1.678
+cooling64 0 candidate 1.668
+cooling64 1 candidate 1.613
+cooling64 1 baseline 1.685
+cooling64 2 baseline 1.72
+cooling64 2 candidate 1.639
+terrain256 0 baseline 5.629
+terrain256 0 candidate 5.544
+terrain256 1 candidate 5.481
+terrain256 1 baseline 5.621
+terrain256 2 baseline 5.681
+terrain256 2 candidate 5.563
+[
+  {
+    "job": "blast64",
+    "baseline": {
+      "medianTotalSeconds": 1.4671827689890051,
+      "medianSolverSeconds": 0.19104635900293943
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.5307302169967443,
+      "medianSolverSeconds": 0.17059860099107027
+    }
+  },
+  {
+    "job": "cooling32",
+    "baseline": {
+      "medianTotalSeconds": 1.5135465920029674,
+      "medianSolverSeconds": 0.20310076499299612
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.4367463259986835,
+      "medianSolverSeconds": 0.1630498079903191
+    }
+  },
+  {
+    "job": "cooling64",
+    "baseline": {
+      "medianTotalSeconds": 1.6846837119956035,
+      "medianSolverSeconds": 0.3663950469926931
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.6385978640028043,
+      "medianSolverSeconds": 0.31774898000003304
+    }
+  },
+  {
+    "job": "terrain256",
+    "baseline": {
+      "medianTotalSeconds": 5.628940677008359,
+      "medianSolverSeconds": 4.035243926991825
+    },
+    "candidate": {
+      "medianTotalSeconds": 5.544379359998857,
+      "medianSolverSeconds": 3.985920064005768
+    }
+  }
+]

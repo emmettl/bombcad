@@ -1,0 +1,20 @@
+{
+  "status": "complete",
+  "pid": 199751,
+  "pgid": 199751,
+  "phases": [
+    {
+      "label": "confirm-small-v2",
+      "returncode": 0
+    },
+    {
+      "label": "null-confirm-v2",
+      "returncode": 0
+    },
+    {
+      "label": "diagnostic",
+      "returncode": 0
+    }
+  ],
+  "returncode": 0
+}

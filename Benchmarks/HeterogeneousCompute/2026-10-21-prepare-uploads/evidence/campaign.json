@@ -1,0 +1,20 @@
+{
+  "status": "complete",
+  "pid": 192067,
+  "pgid": 192067,
+  "phases": [
+    {
+      "label": "full",
+      "returncode": 0
+    },
+    {
+      "label": "null-small",
+      "returncode": 0
+    },
+    {
+      "label": "null-districts",
+      "returncode": 0
+    }
+  ],
+  "returncode": 0
+}

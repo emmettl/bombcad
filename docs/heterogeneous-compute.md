@@ -496,9 +496,12 @@ and failure controls pass. The existing 128-thread worker remains unchanged. Sup
 kernel limits alone do not establish an efficient block size, and these observations do not
 establish a universal optimum or a cross-backend gain.
 
-emmettl/bombcad-work#75 separately proposes reusing the previous immutable prepare tensor only
-when its entire computed byte payload matches. CPU byte-identity/read-only-source evidence
-is retained, with no GPU execution, lifetime or performance claim. This proposal preserves
-the per-step host control and dynamic ramp calculation; it needs its own quiet complete-cost
-and numerical/failure controls before any promotion. Broader emmettl/bombcad-work#60 and the
-existing distributed integration/admission gates remain open.
+The [prepare-reuse study](../Benchmarks/HeterogeneousCompute/2026-10-21-prepare-uploads/summary.md)
+completes emmettl/bombcad-work#75 without adoption. All 264 timed executions retain exact
+outputs/dt; device payload, full-byte invalidation and bounded lifetime controls pass.
+A separate trace reduces pageable HtoD copies 590 → 22. Complete-worker gains remain
+workload-dependent: cooling64 improves 4.11% in the predeclared 12-pair confirmation,
+terrain256 0.70%, with weaker evidence for other cases. The candidate is retained for a
+workload-specific decision; production remains unchanged. This fulfils the explicit
+prepare-reuse experiment in emmettl/bombcad-work#60. Distributed integration and numerical
+admission gates remain separate.

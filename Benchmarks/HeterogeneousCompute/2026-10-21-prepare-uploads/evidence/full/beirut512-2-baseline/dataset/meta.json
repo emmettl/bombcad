@@ -1,0 +1,172 @@
+{
+  "arguments": [
+    "--osm",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/OSM/beirut-port-buildings.osm",
+    "--dem",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/DEM/Copernicus_DSM_COG_10_N33_00_E035_00_DEM.tif",
+    "--heights",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/GHSL/GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_4326_3ss_V1_0_R6_C22.tif",
+    "--ground-radius",
+    "100",
+    "--sea",
+    "1",
+    "--centre",
+    "35.51904200,33.90142500",
+    "--radius",
+    "1024",
+    "--dx",
+    "4",
+    "--mass",
+    "196200",
+    "--ground",
+    "saturated",
+    "--id",
+    "beirut-p0-1",
+    "--layout",
+    "beirut",
+    "--out",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/beirut-p0-1-1792566332868976000/input",
+    "--first-phase",
+    "--cuda-job",
+    "--cuda-source",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/solver.cu"
+  ],
+  "buildings": 1629,
+  "cellSizeM": 4,
+  "cells": 20971520,
+  "charge": {
+    "cell": [
+      256,
+      256
+    ],
+    "massKg": 196200,
+    "positionM": [
+      1024,
+      1024,
+      7.448607
+    ],
+    "yieldKt": 0.1962
+  },
+  "columns": 512,
+  "configuration": "recommended; CUDA uniform",
+  "domainM": [
+    2048,
+    2048,
+    320
+  ],
+  "edgeCells": 4,
+  "format": "bombcad-field-1",
+  "ground": "saturated",
+  "heightAboveGroundM": 2,
+  "id": "beirut-p0-1",
+  "index": "[channel, row, column]: rows from the south going north (y), columns from the west going east (x)",
+  "inputs": [
+    {
+      "name": "height",
+      "units": "m above the ground: the tallest block over the cell's centre, 0 for none"
+    },
+    {
+      "name": "ground",
+      "units": "m, the ground at the cell's centre above the ground under the charge"
+    },
+    {
+      "name": "distance",
+      "units": "m, in plan from the charge to the cell's centre"
+    },
+    {
+      "name": "logScaledDistance",
+      "units": "ln(Z), Z = max(distance, cell / 2) / W^(1/3) in m/kg^(1/3)"
+    },
+    {
+      "name": "kingeryBulmashPeak",
+      "units": "Pa, incident peak overpressure of a hemispherical surface burst at Z"
+    },
+    {
+      "name": "kingeryBulmashImpulse",
+      "units": "Pa s, incident positive impulse at Z"
+    }
+  ],
+  "layout": "beirut",
+  "made": "2026-10-21T07:05:50Z",
+  "mask": "1 where the target is air at the height and at least edgeCells from the side faces",
+  "maskedShare": 0.8527679443359375,
+  "originM": [
+    0,
+    0
+  ],
+  "rows": 512,
+  "solverBytes": 1540358144,
+  "sourceRevision": "a163e9f94fa7d954e9d984056b6eb7c4a52c2e8e",
+  "stable": true,
+  "steps": 2477,
+  "targets": [
+    {
+      "name": "peakOverpressure",
+      "units": "Pa, the run's largest overpressure in the cell at the height"
+    },
+    {
+      "name": "impulse",
+      "units": "Pa s, the run's positive-phase impulse in the cell at the height"
+    },
+    {
+      "name": "firstPhaseImpulse",
+      "units": "Pa s, the first positive phase's impulse at the height, by the fa\u00e7ade recorder's rule: from the start until the overpressure first falls below nothing after reaching half its peak"
+    }
+  ],
+  "untilS": 4.509999999994761,
+  "wallS": 64.84309096999641,
+  "cudaProvenance": {
+    "format": "bombcad-cuda-result-1",
+    "backend": "cuda",
+    "terrainCutCells": true,
+    "device": "NVIDIA GeForce RTX 3080 Ti",
+    "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "steps": 2477,
+    "startTime": 0,
+    "elapsedSimulationTime": 4.509999999994761,
+    "wallSeconds": 64.84309096999641,
+    "shape": [
+      512,
+      512,
+      80
+    ],
+    "math": "float32, unfused, precise division/sqrt",
+    "workerFilesSHA256": {
+      "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+      "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+    },
+    "channels": [
+      "peakOverpressure",
+      "impulse"
+    ],
+    "units": [
+      "Pa",
+      "Pa s"
+    ],
+    "above": 2,
+    "coolingWorkSelection": "luminous-box",
+    "coolingWork": {
+      "intervals": 620,
+      "emptyIntervals": 8,
+      "minBoxCells": 0,
+      "maxBoxCells": 163020,
+      "meanBoxCells": 108796.09838709678
+    },
+    "compileCacheEnabled": true,
+    "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+    "clockAudit": {
+      "rawSeconds": 68.08295920799719,
+      "adjustedMonotonicSeconds": 68.0814094189991
+    },
+    "timings": {
+      "importsAndValidationSeconds": 1.6193247490009526,
+      "compileSeconds": 0.1384729889978189,
+      "deviceSetupAndUploadSeconds": 0.7166824330051895,
+      "solverSeconds": 64.84309096999641,
+      "validationAndOutputSeconds": 0.7653792769997381,
+      "workerSecondsBeforeManifests": 68.0829565479944
+    },
+    "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+  }
+}

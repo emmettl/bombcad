@@ -1,0 +1,103 @@
+"""Separate perturbed transfer trace and actual device-payload/cache-lifetime controls; not timing."""
+from pathlib import Path
+import hashlib,json,importlib.util,ctypes as C,sys,weakref,gzip,shutil
+from unittest.mock import patch
+root=Path(__file__).resolve().parent;sys.path.insert(0,str(root))
+def module(file,name):
+ spec=importlib.util.spec_from_file_location(name,root/file);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def hashes(p):return {str(q.relative_to(p)):digest(q) for q in p.rglob('*') if q.is_file() and q.suffix in ('.bin','.npy')}
+lock=module('remote-train.py','lock');lockpath=str(Path.home()/'bombcad-ml/lock')
+if not lock.acquire(lockpath,'prepare upload/device/lifetime controls',lock.boot_id()):raise SystemExit('GPU held')
+try:
+ import torch,numpy as np
+ torch.cuda.init();out=root/'diagnostic';out.mkdir();workers={n:module(n+'.py',n) for n in ['baseline','candidate']};trace=[]
+ for name,worker in workers.items():
+  dest=out/('trace-'+name)
+  with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,torch.profiler.ProfilerActivity.CUDA]) as prof:r=worker.run(root/'blast64',root/'solver.cu',dest,cache_dir=Path.home()/'bombcad-cuda/ptx-cache')
+  path=out/(name+'-trace.json');prof.export_chrome_trace(str(path))
+  with path.open('rb') as src,gzip.open(str(path)+'.gz','wb') as dst:shutil.copyfileobj(src,dst)
+  path.unlink();events=[dict(name=e.key,count=e.count,selfCPUTimeMicroseconds=e.self_cpu_time_total,selfDeviceTimeMicroseconds=getattr(e,'self_device_time_total',0)) for e in prof.key_averages()]
+  trace.append(dict(worker=name,steps=r['steps'],hashes=hashes(dest),resultSHA256=digest(dest/'result.json'),events=events))
+ assert trace[0]['hashes']==trace[1]['hashes']
+ original_tensor=torch.tensor;original_cdll=C.CDLL
+ def execute(name,job,dest,mode='normal'):
+  worker=workers[name];meta=json.loads((job/'job.json').read_text());stats=dict(worker=name,job=job.name,mode=mode,prepareUploads=0,totalUniformUploads=0,prepareCalls=0,byteHits=0,byteMisses=0,maxLivePrepareObjects=0,allDevicePayloadsExactAndReadOnly=True,mutations=[]);functions={};references=[];last_bytes=None;last_ref=None
+  def tensor(*args,**kwargs):
+   result=original_tensor(*args,**kwargs);frame=sys._getframe(1)
+   if frame.f_code.co_name=='blob' and frame.f_back.f_code is worker.run.__code__ and kwargs.get('dtype')==torch.uint8 and result.numel()==276:
+    stats['totalUniformUploads']+=1
+    if 'prepared' in frame.f_back.f_locals:stats['prepareUploads']+=1
+   return result
+  class Driver:
+   def __init__(self,driver):self.driver=driver
+   def __getattr__(self,key):return getattr(self.driver,key)
+   def cuModuleGetFunction(self,pointer,mod,kernel):
+    code=self.driver.cuModuleGetFunction(pointer,mod,kernel)
+    if code==0:functions[C.cast(pointer,C.POINTER(C.c_void_p)).contents.value]=kernel.decode()
+    return code
+   def cuLaunchKernel(self,*args):
+    nonlocal last_bytes,last_ref
+    if functions[args[0].value]!='cudaPrepare':return self.driver.cuLaunchKernel(*args)
+    launch=sys._getframe(1);frame=launch.f_back;local=frame.f_locals;prepared=local['prepared'];expected=bytes(prepared);value=launch.f_locals['buffers'][2];hit=expected==last_bytes
+    stats['prepareCalls']+=1;stats['byteHits' if hit else 'byteMisses']+=1
+    if name=='candidate':
+     if hit:assert last_ref() is value,'identical payload did not reuse its live tensor'
+     else:assert last_ref is None or last_ref() is not value,'changed payload reused stale tensor'
+    if not hit or name=='baseline':references.append(weakref.ref(value))
+    stats['maxLivePrepareObjects']=max(stats['maxLivePrepareObjects'],sum(ref() is not None for ref in references));assert stats['maxLivePrepareObjects']<=3
+    code=self.driver.cuLaunchKernel(*args);assert code==0
+    torch.cuda.synchronize();actual=value.cpu().numpy().tobytes();assert actual==expected,'stale or modified device prepare payload'
+    last_bytes=expected;last_ref=weakref.ref(value)
+    index=stats['prepareCalls'];u=local['u']
+    if mode=='fields':
+     edits={1:('maxStep',5e-5),3:('maxStep',0),5:('axis',1),7:('axis',0)}
+     if index in edits:
+      field,data=edits[index];setattr(u,field,data);stats['mutations'].append(dict(afterPrepare=index,field=field,value=data))
+    elif mode=='unique':u.axis=index%3
+    return code
+  def library(path,*args,**kwargs):
+   value=original_cdll(path,*args,**kwargs);return Driver(value) if str(path)=='libcuda.so.1' else value
+  result=None;error=None
+  with patch.object(torch,'tensor',side_effect=tensor),patch.object(C,'CDLL',side_effect=library):
+   try:result=worker.run(job,root/'solver.cu',dest,cache_dir=Path.home()/'bombcad-cuda/ptx-cache')
+   except RuntimeError as failure:error=str(failure)
+  assert stats['prepareUploads']==(stats['byteMisses'] if name=='candidate' else stats['prepareCalls'])
+  stats['setupUniformUploads']=stats['totalUniformUploads']-stats['prepareUploads'];assert stats['setupUniformUploads']==1+2*len(meta['axes'])
+  stats['livePrepareObjectsAfterReturn']=sum(ref() is not None for ref in references)
+  if error is None:assert stats['livePrepareObjectsAfterReturn']==0
+  return result,error,stats
+ pairs=[]
+ def pair(case,job,mode='normal'):
+  rows=[]
+  for name in workers:
+   dest=out/(case+'-'+name);r,error,stats=execute(name,job,dest,mode);assert error is None,error;rows.append(dict(worker=name,steps=r['steps'],hashes=hashes(dest),resultSHA256=digest(dest/'result.json'),cache=stats))
+  assert rows[0]['hashes']==rows[1]['hashes'];pairs.append(dict(case=case,rows=rows));return rows
+ normal=pair('cache-normal',root/'blast64');assert normal[1]['cache']['byteHits']>0
+ def clone(label,changes):
+  p=out/(label+'-job');p.mkdir()
+  for f in (root/'blast64').iterdir():
+   if f.name!='job.json':(p/f.name).symlink_to(f.resolve())
+  meta=json.loads((root/'blast64/job.json').read_text());meta.update(changes);(p/'job.json').write_text(json.dumps(meta,indent=2)+'\n');return p
+ fields=pair('field-changes',clone('field-changes',dict(duration=.002,startupSteps=1)),'fields');assert len(fields[1]['cache']['mutations'])==4 and fields[1]['cache']['byteHits']>0 and fields[1]['cache']['byteMisses']>=5
+ unique=pair('never-repeat',clone('never-repeat',dict(duration=.002,startupSteps=64)),'unique');assert unique[1]['cache']['byteHits']==0
+ short=pair('short-ramp',clone('short-ramp',dict(duration=1e-12,startupSteps=4096)));assert short[1]['steps']==1 and short[1]['cache']['prepareUploads']==1 and short[1]['cache']['byteHits']==0
+ failures=[]
+ for label in ['step-limit','nonphysical']:
+  job=clone(label,dict(steps=1,startupSteps=1)) if label=='step-limit' else out/'nonphysical-job'
+  if label=='nonphysical':
+   job.mkdir()
+   for f in (root/'blast64').iterdir():
+    if f.name not in ['job.json','state.bin']:(job/f.name).symlink_to(f.resolve())
+   state=np.frombuffer((root/'blast64/state.bin').read_bytes(),dtype='<f4').copy().reshape(-1,5);state[0,0]=np.float32(1e-5);state[0,4]=np.float32(3e38);state.tofile(job/'state.bin');meta=json.loads((root/'blast64/job.json').read_text());meta['startupSteps']=1;meta['files']['state.bin']=digest(job/'state.bin');(job/'job.json').write_text(json.dumps(meta,indent=2)+'\n')
+  for name in workers:
+   dest=out/(label+'-'+name);r,error,stats=execute(name,job,dest);expected='step limit reached before duration' if label=='step-limit' else 'nonphysical wave speed';assert r is None and expected in error and not dest.exists();failures.append(dict(worker=name,case=label,error=error,noOutputWritten=True,cache=stats))
+ source=root/'blast64';original=json.loads((source/'job.json').read_text());n=original['shape'][0];k=31
+ for label,shape,start in [('two-axes-tail',[k,k,1],0),('one-axis-odd-tail',[k,1,1],1)]:
+  job=out/(label+'-job');job.mkdir();meta=json.loads(json.dumps(original));meta.update(shape=shape,axes=[i for i,v in enumerate(shape) if v>1],above=0,startStep=start,startupSteps=8)
+  for file,dtype,width in [('state.bin','<f4',5),('species.bin','<f4',2),('mask.bin','u1',1),('peak.bin','<f4',1),('impulse.bin','<f4',1)]:
+   a=np.frombuffer((source/file).read_bytes(),dtype=dtype).reshape(n,n,n,width);y=slice(0,k) if shape[1]>1 else slice(n//2,n//2+1);a[n//2:n//2+1,y,:k,:].copy().tofile(job/file)
+  count=shape[0]*shape[1];np.tile(np.array([0,0,0,1],dtype='<f4'),(count,1)).tofile(job/'columns.bin');np.zeros((count,4),dtype='<f4').tofile(job/'records.bin');np.zeros(count,dtype='<f4').tofile(job/'open.bin');meta['files']={f.name:digest(f) for f in job.iterdir()};(job/'job.json').write_text(json.dumps(meta,indent=2)+'\n');pair(label,job)
+ report=dict(status='complete',scope=__doc__,trace=trace,pairs=pairs,failures=failures,allFullOutputsAndTimestepsBitIdentical=True,actualDevicePayloadsByteExactAfterPrepare=True,exactByteHitMissAndBoundedLifetimeChecked=True)
+ (out/'diagnostic.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(dict(status='complete',successes=len(trace)+sum(len(p['rows']) for p in pairs),expectedFailures=len(failures),cache=[r['cache'] for r in normal]),indent=2))
+finally:lock.release(lockpath)

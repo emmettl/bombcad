@@ -1,0 +1,39 @@
+/home/lemme/bombcad-ml/venv/lib/python3.12/site-packages/torch/profiler/profiler.py:224: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+{
+  "status": "complete",
+  "successes": 14,
+  "expectedFailures": 4,
+  "cache": [
+    {
+      "worker": "baseline",
+      "job": "blast64",
+      "mode": "normal",
+      "prepareUploads": 569,
+      "totalUniformUploads": 576,
+      "prepareCalls": 569,
+      "byteHits": 568,
+      "byteMisses": 1,
+      "maxLivePrepareObjects": 1,
+      "allDevicePayloadsExactAndReadOnly": true,
+      "mutations": [],
+      "setupUniformUploads": 7,
+      "livePrepareObjectsAfterReturn": 0
+    },
+    {
+      "worker": "candidate",
+      "job": "blast64",
+      "mode": "normal",
+      "prepareUploads": 1,
+      "totalUniformUploads": 8,
+      "prepareCalls": 569,
+      "byteHits": 568,
+      "byteMisses": 1,
+      "maxLivePrepareObjects": 1,
+      "allDevicePayloadsExactAndReadOnly": true,
+      "mutations": [],
+      "setupUniformUploads": 7,
+      "livePrepareObjectsAfterReturn": 0
+    }
+  ]
+}

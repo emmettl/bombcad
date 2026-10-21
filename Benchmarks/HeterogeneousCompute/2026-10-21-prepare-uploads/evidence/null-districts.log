@@ -1,0 +1,36 @@
+flat512 0 baseline 47.935
+flat512 0 candidate 48.07
+flat512 1 candidate 48.23
+flat512 1 baseline 48.297
+flat512 2 baseline 48.275
+flat512 2 candidate 48.271
+beirut512 0 baseline 68.95
+beirut512 0 candidate 68.687
+beirut512 1 candidate 68.602
+beirut512 1 baseline 68.528
+beirut512 2 baseline 68.675
+beirut512 2 candidate 68.616
+[
+  {
+    "job": "flat512",
+    "baseline": {
+      "medianTotalSeconds": 48.2748188280093,
+      "medianSolverSeconds": 45.52511812200828
+    },
+    "candidate": {
+      "medianTotalSeconds": 48.22970067898859,
+      "medianSolverSeconds": 45.47955598999397
+    }
+  },
+  {
+    "job": "beirut512",
+    "baseline": {
+      "medianTotalSeconds": 68.67457707998983,
+      "medianSolverSeconds": 65.0117491469864
+    },
+    "candidate": {
+      "medianTotalSeconds": 68.61565021699062,
+      "medianSolverSeconds": 65.01724516999093
+    }
+  }
+]

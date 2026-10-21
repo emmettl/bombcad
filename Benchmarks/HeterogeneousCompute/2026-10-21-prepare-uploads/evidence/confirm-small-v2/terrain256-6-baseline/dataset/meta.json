@@ -1,0 +1,160 @@
+{
+  "arguments": [
+    "--osm",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/terrain-acceptance/training-layout/district.osm",
+    "--dem",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/terrain-acceptance/training-layout/ground.asc",
+    "--centre",
+    "0.01205089,0.01115157",
+    "--radius",
+    "512",
+    "--dx",
+    "4",
+    "--mass",
+    "30000",
+    "--ground",
+    "saturated",
+    "--first-phase",
+    "--cuda-job",
+    "--cuda-source",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/terrain.cu",
+    "--out",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/terrain-acceptance/training-job"
+  ],
+  "buildings": 1176,
+  "cellSizeM": 4,
+  "cells": 2883584,
+  "charge": {
+    "cell": [
+      128,
+      128
+    ],
+    "massKg": 30000,
+    "positionM": [
+      512,
+      512,
+      49.752846
+    ],
+    "yieldKt": 0.03
+  },
+  "columns": 256,
+  "configuration": "recommended; CUDA uniform",
+  "domainM": [
+    1024,
+    1024,
+    176
+  ],
+  "edgeCells": 4,
+  "format": "bombcad-field-1",
+  "ground": "saturated",
+  "heightAboveGroundM": 2,
+  "id": "training-job",
+  "index": "[channel, row, column]: rows from the south going north (y), columns from the west going east (x)",
+  "inputs": [
+    {
+      "name": "height",
+      "units": "m above the ground: the tallest block over the cell's centre, 0 for none"
+    },
+    {
+      "name": "ground",
+      "units": "m, the ground at the cell's centre above the ground under the charge"
+    },
+    {
+      "name": "distance",
+      "units": "m, in plan from the charge to the cell's centre"
+    },
+    {
+      "name": "logScaledDistance",
+      "units": "ln(Z), Z = max(distance, cell / 2) / W^(1/3) in m/kg^(1/3)"
+    },
+    {
+      "name": "kingeryBulmashPeak",
+      "units": "Pa, incident peak overpressure of a hemispherical surface burst at Z"
+    },
+    {
+      "name": "kingeryBulmashImpulse",
+      "units": "Pa s, incident positive impulse at Z"
+    }
+  ],
+  "made": "2026-10-21T01:37:36Z",
+  "mask": "1 where the target is air at the height and at least edgeCells from the side faces",
+  "maskedShare": 0.7940826416015625,
+  "originM": [
+    0,
+    0
+  ],
+  "rows": 256,
+  "solverBytes": 212860928,
+  "stable": true,
+  "steps": 1229,
+  "targets": [
+    {
+      "name": "peakOverpressure",
+      "units": "Pa, the run's largest overpressure in the cell at the height"
+    },
+    {
+      "name": "impulse",
+      "units": "Pa s, the run's positive-phase impulse in the cell at the height"
+    },
+    {
+      "name": "firstPhaseImpulse",
+      "units": "Pa s, the first positive phase's impulse at the height, by the fa\u00e7ade recorder's rule: from the start until the overpressure first falls below nothing after reaching half its peak"
+    }
+  ],
+  "untilS": 2.2499999999563443,
+  "wallS": 4.199141381992376,
+  "cudaProvenance": {
+    "format": "bombcad-cuda-result-1",
+    "backend": "cuda",
+    "terrainCutCells": true,
+    "device": "NVIDIA GeForce RTX 3080 Ti",
+    "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "steps": 1229,
+    "startTime": 0,
+    "elapsedSimulationTime": 2.2499999999563443,
+    "wallSeconds": 4.199141381992376,
+    "shape": [
+      256,
+      256,
+      44
+    ],
+    "math": "float32, unfused, precise division/sqrt",
+    "workerFilesSHA256": {
+      "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+      "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+    },
+    "channels": [
+      "peakOverpressure",
+      "impulse"
+    ],
+    "units": [
+      "Pa",
+      "Pa s"
+    ],
+    "above": 2,
+    "coolingWorkSelection": "luminous-box",
+    "coolingWork": {
+      "intervals": 307,
+      "emptyIntervals": 0,
+      "minBoxCells": 96,
+      "maxBoxCells": 20026,
+      "meanBoxCells": 13706.078175895766
+    },
+    "compileCacheEnabled": true,
+    "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+    "clockAudit": {
+      "rawSeconds": 5.540962129991385,
+      "adjustedMonotonicSeconds": 5.540864984010113
+    },
+    "timings": {
+      "importsAndValidationSeconds": 0.8637744879961247,
+      "compileSeconds": 0.1377760150062386,
+      "deviceSetupAndUploadSeconds": 0.21397280099336058,
+      "solverSeconds": 4.199141381992376,
+      "validationAndOutputSeconds": 0.1262895140098408,
+      "workerSecondsBeforeManifests": 5.540959919992019
+    },
+    "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+  }
+}

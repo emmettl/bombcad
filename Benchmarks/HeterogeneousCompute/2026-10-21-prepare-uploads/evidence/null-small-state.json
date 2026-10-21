@@ -1,0 +1,1437 @@
+{
+  "status": "complete",
+  "pid": 196872,
+  "pgid": 196872,
+  "command": [
+    "/home/lemme/bombcad-ml/venv/bin/python",
+    "/home/lemme/bombcad-prepare-01a15d45/profile-worker.py",
+    "--baseline",
+    "/home/lemme/bombcad-prepare-01a15d45/baseline.py",
+    "--candidate",
+    "/home/lemme/bombcad-prepare-01a15d45/baseline.py",
+    "--source",
+    "/home/lemme/bombcad-prepare-01a15d45/solver.cu",
+    "--jobs",
+    "/home/lemme/bombcad-prepare-01a15d45/blast64",
+    "/home/lemme/bombcad-prepare-01a15d45/cooling32",
+    "/home/lemme/bombcad-prepare-01a15d45/cooling64",
+    "/home/lemme/bombcad-prepare-01a15d45/terrain256",
+    "--out",
+    "/home/lemme/bombcad-prepare-01a15d45/null-small",
+    "--lock",
+    "/home/lemme/bombcad-ml/lock",
+    "--lock-helper",
+    "/home/lemme/bombcad-prepare-01a15d45/remote-train.py",
+    "--baseline-cache-dir",
+    "/home/lemme/bombcad-cuda/ptx-cache",
+    "--candidate-cache-dir",
+    "/home/lemme/bombcad-cuda/ptx-cache",
+    "--fresh-process"
+  ],
+  "sampleIntervalSeconds": 1,
+  "samples": [
+    {
+      "rawSeconds": 105252.074440084,
+      "owner": null,
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105253.15929373,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105254.218441327,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1350 MiB, 31 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n196902, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 196902,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/blast64 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/blast64-0-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105255.276166178,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105256.332399541,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105257.386562342,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1350 MiB, 39 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n196974, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 196974,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/blast64 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/blast64-1-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105258.441201798,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1019 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105259.496376404,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105260.566014404,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105261.623513598,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1350 MiB, 2 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197083, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197083,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/blast64 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/blast64-2-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105262.678535837,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105263.733002881,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105264.800747988,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1308 MiB, 24 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197152, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197152,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/cooling32 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/cooling32-0-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105265.871156972,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105266.92468051,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105267.982168877,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 11 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197224, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197224,
+          "pgid": 196872,
+          "command": "",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105269.066312791,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1308 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197262, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197262,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/cooling32 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/cooling32-2-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105270.123665176,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105271.181005691,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105272.250928466,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1350 MiB, 9 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197330, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197330,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/cooling64 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/cooling64-0-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105273.320902882,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105274.376118564,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1350 MiB, 22 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105275.442886364,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1262 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105276.50631492,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105277.57478376,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1350 MiB, 62 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105278.631000275,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105279.686269913,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105280.763371204,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1350 MiB, 55 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105281.823129391,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105282.880444825,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 92 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105283.937087857,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105284.995715874,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105286.054878631,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 90 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105287.111430952,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105288.167029031,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 16 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105289.222949645,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105290.280849,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105291.338122773,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 91 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105292.395619095,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1654 MiB, 56 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105293.452071949,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105294.509250021,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 89 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197654, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197654,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105295.568645252,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197654, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197654,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105296.627148697,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197654, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197654,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105297.686575028,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197654, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197654,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105298.744800108,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105299.800148708,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 53 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197747, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197747,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105300.857323839,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197747, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197747,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105301.915846714,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197747, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197747,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105302.973329861,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 92 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197747, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197747,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-1-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105304.030722567,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 1 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105305.085447471,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1019 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105306.143761697,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197801, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197801,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105307.205314836,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 94 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197801, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197801,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105308.263937313,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197801, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197801,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105309.322189523,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 92 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197801, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197801,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-baseline --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105310.381672986,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105311.43904347,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197854, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197854,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105312.497677278,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197854, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197854,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105313.555077063,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 93 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197854, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197854,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105314.614131043,
+      "owner": {
+        "pid": 196872,
+        "since": 1792613692.7534428,
+        "what": "bounded CUDA worker profile",
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade"
+      },
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1598 MiB, 91 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n197854, [Not Found], [N/A]\n",
+        "stderr": ""
+      },
+      "observed": [
+        {
+          "pid": 197854,
+          "pgid": 196872,
+          "command": "/home/lemme/bombcad-ml/venv/bin/python /home/lemme/bombcad-prepare-01a15d45/baseline.py /home/lemme/bombcad-prepare-01a15d45/terrain256 --source /home/lemme/bombcad-prepare-01a15d45/solver.cu --out /home/lemme/bombcad-prepare-01a15d45/null-small/terrain256-2-candidate --cache-dir /home/lemme/bombcad-cuda/ptx-cache ",
+          "ownedGroup": true
+        }
+      ]
+    },
+    {
+      "rawSeconds": 105315.671931381,
+      "owner": null,
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105316.757951328,
+      "owner": null,
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    },
+    {
+      "rawSeconds": 105316.873068456,
+      "owner": null,
+      "gpu": {
+        "returncode": 0,
+        "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+        "stderr": ""
+      },
+      "processes": {
+        "returncode": 0,
+        "stdout": "pid, process_name, used_gpu_memory [MiB]\n",
+        "stderr": ""
+      },
+      "observed": []
+    }
+  ],
+  "returncode": 0,
+  "externalComputeGroupObserved": false
+}

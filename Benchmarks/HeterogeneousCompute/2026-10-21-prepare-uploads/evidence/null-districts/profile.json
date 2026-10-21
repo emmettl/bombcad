@@ -1,0 +1,490 @@
+{
+  "format": "bombcad-worker-profile-1",
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "profilerSHA256": "4a50f0a7ed2a9ea3fcd24d292c42248c9b44ea622254a1b8cff795f52c9c74c5",
+  "freshProcessObserver": "drained stdout/EOF readiness; hard timeout; residual exit observation included",
+  "baselineCacheDir": "/home/lemme/bombcad-cuda/ptx-cache",
+  "candidateCacheDir": "/home/lemme/bombcad-cuda/ptx-cache",
+  "torch": "2.11.0+cu128",
+  "cuda": "12.8",
+  "before": {
+    "returncode": 0,
+    "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "after": {
+    "returncode": 0,
+    "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1011 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "scope": "fresh Python process per run; alternating order; total includes compile/setup/output, excludes deployment and retrieval; solver time excludes setup/output",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "workerSHA256": {
+    "baseline": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "candidate": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8"
+  },
+  "jobs": {
+    "/home/lemme/bombcad-prepare-01a15d45/flat512": "d87799d31ee0a96c5758b59594938dbbb06670373787fc0f2012dae9a30074a9",
+    "/home/lemme/bombcad-prepare-01a15d45/beirut512": "e4847c73ecbaf034daa7f3f1f38c873746cfebbb99d460716222fb9892c89e3c"
+  },
+  "rows": [
+    {
+      "job": "flat512",
+      "repetition": 0,
+      "worker": "baseline",
+      "totalSeconds": 47.93517558500753,
+      "solverSeconds": 45.101114245000645,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 47.66953757900046,
+        "adjustedMonotonicSeconds": 47.66859321799711
+      },
+      "steps": 2645,
+      "elapsedSimulationTime": 4.506065610017686,
+      "hashes": {
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96",
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.1949370259972056,
+        "compileSeconds": 0.1360894859972177,
+        "deviceSetupAndUploadSeconds": 0.6169267489894992,
+        "solverSeconds": 45.101114245000645,
+        "validationAndOutputSeconds": 0.6204624129895819,
+        "workerSecondsBeforeManifests": 47.66953530900355
+      }
+    },
+    {
+      "job": "flat512",
+      "repetition": 0,
+      "worker": "candidate",
+      "totalSeconds": 48.07040330598829,
+      "solverSeconds": 45.32520505899447,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 47.827310830005445,
+        "adjustedMonotonicSeconds": 47.826362104999134
+      },
+      "steps": 2645,
+      "elapsedSimulationTime": 4.506065610017686,
+      "hashes": {
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96",
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.153976376997889,
+        "compileSeconds": 0.13675614399835467,
+        "deviceSetupAndUploadSeconds": 0.6276792480057338,
+        "solverSeconds": 45.32520505899447,
+        "validationAndOutputSeconds": 0.5836861920106458,
+        "workerSecondsBeforeManifests": 47.82730821000587
+      }
+    },
+    {
+      "job": "flat512",
+      "repetition": 1,
+      "worker": "candidate",
+      "totalSeconds": 48.22970067898859,
+      "solverSeconds": 45.47955598999397,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 47.97998488199664,
+        "adjustedMonotonicSeconds": 47.97903210201184
+      },
+      "steps": 2645,
+      "elapsedSimulationTime": 4.506065610017686,
+      "hashes": {
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96",
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.1542349789961008,
+        "compileSeconds": 0.14177723799366504,
+        "deviceSetupAndUploadSeconds": 0.6061152670008596,
+        "solverSeconds": 45.47955598999397,
+        "validationAndOutputSeconds": 0.598294158000499,
+        "workerSecondsBeforeManifests": 47.979982261997066
+      }
+    },
+    {
+      "job": "flat512",
+      "repetition": 1,
+      "worker": "baseline",
+      "totalSeconds": 48.29697204800323,
+      "solverSeconds": 45.52827875899675,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 48.04624911400606,
+        "adjustedMonotonicSeconds": 48.045294021998416
+      },
+      "steps": 2645,
+      "elapsedSimulationTime": 4.506065610017686,
+      "hashes": {
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96",
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.153236341997399,
+        "compileSeconds": 0.14209589599340688,
+        "deviceSetupAndUploadSeconds": 0.6069029190111905,
+        "solverSeconds": 45.52827875899675,
+        "validationAndOutputSeconds": 0.6156920779903885,
+        "workerSecondsBeforeManifests": 48.046246383994
+      }
+    },
+    {
+      "job": "flat512",
+      "repetition": 2,
+      "worker": "baseline",
+      "totalSeconds": 48.2748188280093,
+      "solverSeconds": 45.52511812200828,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 48.027722268991056,
+        "adjustedMonotonicSeconds": 48.02676938100194
+      },
+      "steps": 2645,
+      "elapsedSimulationTime": 4.506065610017686,
+      "hashes": {
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96",
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.1582508540013805,
+        "compileSeconds": 0.13770271200337447,
+        "deviceSetupAndUploadSeconds": 0.5930754830042133,
+        "solverSeconds": 45.52511812200828,
+        "validationAndOutputSeconds": 0.6135676679987228,
+        "workerSecondsBeforeManifests": 48.02771964899148
+      }
+    },
+    {
+      "job": "flat512",
+      "repetition": 2,
+      "worker": "candidate",
+      "totalSeconds": 48.270551946014166,
+      "solverSeconds": 45.55196578100731,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 48.02595865901094,
+        "adjustedMonotonicSeconds": 48.025005414005136
+      },
+      "steps": 2645,
+      "elapsedSimulationTime": 4.506065610017686,
+      "hashes": {
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96",
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.159964040009072,
+        "compileSeconds": 0.13716116499563213,
+        "deviceSetupAndUploadSeconds": 0.5768076640088111,
+        "solverSeconds": 45.55196578100731,
+        "validationAndOutputSeconds": 0.6000519789959071,
+        "workerSecondsBeforeManifests": 48.025956109006074
+      }
+    },
+    {
+      "job": "beirut512",
+      "repetition": 0,
+      "worker": "baseline",
+      "totalSeconds": 68.9498334700038,
+      "solverSeconds": 65.27422253398981,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 68.69091816199943,
+        "adjustedMonotonicSeconds": 68.68955303200346
+      },
+      "steps": 2477,
+      "elapsedSimulationTime": 4.509999999994761,
+      "hashes": {
+        "targets.npy": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+        "first-phase.bin": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+        "peak.bin": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+        "firstPhaseImpulse.npy": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+        "state.bin": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+        "impulse.bin": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+        "species.bin": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+        "dt.npy": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+        "mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+        "dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+        "dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.626341699011391,
+        "compileSeconds": 0.13797749701188877,
+        "deviceSetupAndUploadSeconds": 0.8275649589922978,
+        "solverSeconds": 65.27422253398981,
+        "validationAndOutputSeconds": 0.8248022530024173,
+        "workerSecondsBeforeManifests": 68.69091563200345
+      }
+    },
+    {
+      "job": "beirut512",
+      "repetition": 0,
+      "worker": "candidate",
+      "totalSeconds": 68.68700071300555,
+      "solverSeconds": 65.13220408699999,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 68.43874615700042,
+        "adjustedMonotonicSeconds": 68.43738641899836
+      },
+      "steps": 2477,
+      "elapsedSimulationTime": 4.509999999994761,
+      "hashes": {
+        "targets.npy": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+        "first-phase.bin": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+        "peak.bin": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+        "firstPhaseImpulse.npy": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+        "state.bin": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+        "impulse.bin": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+        "species.bin": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+        "dt.npy": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+        "mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+        "dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+        "dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.617733428007341,
+        "compileSeconds": 0.13935484198736958,
+        "deviceSetupAndUploadSeconds": 0.7252226119890111,
+        "solverSeconds": 65.13220408699999,
+        "validationAndOutputSeconds": 0.8242226180009311,
+        "workerSecondsBeforeManifests": 68.43874333699932
+      }
+    },
+    {
+      "job": "beirut512",
+      "repetition": 1,
+      "worker": "candidate",
+      "totalSeconds": 68.601886310993,
+      "solverSeconds": 65.01724516999093,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 68.35301959399658,
+        "adjustedMonotonicSeconds": 68.35166002399637
+      },
+      "steps": 2477,
+      "elapsedSimulationTime": 4.509999999994761,
+      "hashes": {
+        "targets.npy": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+        "first-phase.bin": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+        "peak.bin": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+        "firstPhaseImpulse.npy": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+        "state.bin": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+        "impulse.bin": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+        "species.bin": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+        "dt.npy": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+        "mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+        "dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+        "dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.6161392700014403,
+        "compileSeconds": 0.13923757900192868,
+        "deviceSetupAndUploadSeconds": 0.7448874979891116,
+        "solverSeconds": 65.01724516999093,
+        "validationAndOutputSeconds": 0.8355010759987636,
+        "workerSecondsBeforeManifests": 68.35301677399548
+      }
+    },
+    {
+      "job": "beirut512",
+      "repetition": 1,
+      "worker": "baseline",
+      "totalSeconds": 68.5276166949916,
+      "solverSeconds": 64.95601886599616,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 68.28166866200627,
+        "adjustedMonotonicSeconds": 68.28031156198995
+      },
+      "steps": 2477,
+      "elapsedSimulationTime": 4.509999999994761,
+      "hashes": {
+        "targets.npy": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+        "first-phase.bin": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+        "peak.bin": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+        "firstPhaseImpulse.npy": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+        "state.bin": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+        "impulse.bin": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+        "species.bin": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+        "dt.npy": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+        "mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+        "dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+        "dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.633017733998713,
+        "compileSeconds": 0.1396827749995282,
+        "deviceSetupAndUploadSeconds": 0.7312607639905764,
+        "solverSeconds": 64.95601886599616,
+        "validationAndOutputSeconds": 0.8216794230102096,
+        "workerSecondsBeforeManifests": 68.28166614200745
+      }
+    },
+    {
+      "job": "beirut512",
+      "repetition": 2,
+      "worker": "baseline",
+      "totalSeconds": 68.67457707998983,
+      "solverSeconds": 65.0117491469864,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 68.42206390300998,
+        "adjustedMonotonicSeconds": 68.42071041298914
+      },
+      "steps": 2477,
+      "elapsedSimulationTime": 4.509999999994761,
+      "hashes": {
+        "targets.npy": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+        "first-phase.bin": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+        "peak.bin": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+        "firstPhaseImpulse.npy": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+        "state.bin": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+        "impulse.bin": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+        "species.bin": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+        "dt.npy": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+        "mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+        "dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+        "dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.624757021010737,
+        "compileSeconds": 0.13903052199748345,
+        "deviceSetupAndUploadSeconds": 0.8001754060096573,
+        "solverSeconds": 65.0117491469864,
+        "validationAndOutputSeconds": 0.8463429569965228,
+        "workerSecondsBeforeManifests": 68.42206102299679
+      }
+    },
+    {
+      "job": "beirut512",
+      "repetition": 2,
+      "worker": "candidate",
+      "totalSeconds": 68.61565021699062,
+      "solverSeconds": 65.01460582000436,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 68.36502403698978,
+        "adjustedMonotonicSeconds": 68.36366692799493
+      },
+      "steps": 2477,
+      "elapsedSimulationTime": 4.509999999994761,
+      "hashes": {
+        "targets.npy": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+        "first-phase.bin": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+        "peak.bin": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+        "firstPhaseImpulse.npy": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+        "state.bin": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+        "impulse.bin": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+        "species.bin": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+        "dt.npy": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+        "mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+        "dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+        "dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 1.6418685109965736,
+        "compileSeconds": 0.139855039989925,
+        "deviceSetupAndUploadSeconds": 0.7330818299960811,
+        "solverSeconds": 65.01460582000436,
+        "validationAndOutputSeconds": 0.8356037060002564,
+        "workerSecondsBeforeManifests": 68.36502132700116
+      }
+    }
+  ],
+  "summaries": [
+    {
+      "job": "flat512",
+      "baseline": {
+        "medianTotalSeconds": 48.2748188280093,
+        "medianSolverSeconds": 45.52511812200828
+      },
+      "candidate": {
+        "medianTotalSeconds": 48.22970067898859,
+        "medianSolverSeconds": 45.47955598999397
+      }
+    },
+    {
+      "job": "beirut512",
+      "baseline": {
+        "medianTotalSeconds": 68.67457707998983,
+        "medianSolverSeconds": 65.0117491469864
+      },
+      "candidate": {
+        "medianTotalSeconds": 68.61565021699062,
+        "medianSolverSeconds": 65.01724516999093
+      }
+    }
+  ],
+  "allOutputsAndTimestepsBitIdentical": true
+}

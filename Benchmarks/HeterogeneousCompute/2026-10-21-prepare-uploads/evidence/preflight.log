@@ -1,0 +1,175 @@
+{
+  "status": "complete",
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "torch": "2.11.0+cu128",
+  "cuda": "12.8",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "sizes": [
+    64,
+    128,
+    256
+  ],
+  "precisePTXPrimedBeforeTiming": true,
+  "kernels": [
+    {
+      "cutCells": false,
+      "kernel": "cudaSweep",
+      "maxThreadsPerBlock": 640,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 48,
+      "registersPerThread": 84
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaPrepare",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 21
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaMeasure",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 35
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaFirstPhase",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 39
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaCoolingClock",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 10
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaCoolingReset",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 6
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaCoolingMedium",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 38
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaCoolingLines",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 34
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaCoolingApply",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 22
+    },
+    {
+      "cutCells": false,
+      "kernel": "cudaRedistribute",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 4
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaSweep",
+      "maxThreadsPerBlock": 512,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 96,
+      "registersPerThread": 99
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaPrepare",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 21
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaMeasure",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 35
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaFirstPhase",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 39
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaCoolingClock",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 10
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaCoolingReset",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 6
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaCoolingMedium",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 38
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaCoolingLines",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 34
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaCoolingApply",
+      "maxThreadsPerBlock": 1024,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 22
+    },
+    {
+      "cutCells": true,
+      "kernel": "cudaRedistribute",
+      "maxThreadsPerBlock": 768,
+      "sharedBytesPerBlock": 0,
+      "localBytesPerThread": 0,
+      "registersPerThread": 80
+    }
+  ]
+}

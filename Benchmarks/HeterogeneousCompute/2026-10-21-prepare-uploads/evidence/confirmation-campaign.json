@@ -1,0 +1,12 @@
+{
+  "status": "failed",
+  "pid": 199605,
+  "pgid": 199605,
+  "phases": [
+    {
+      "label": "confirm-small",
+      "returncode": 1
+    }
+  ],
+  "returncode": 1
+}

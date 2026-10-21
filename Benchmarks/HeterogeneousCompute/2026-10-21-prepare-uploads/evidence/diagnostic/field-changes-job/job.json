@@ -1,0 +1,44 @@
+{
+  "format": "bombcad-cuda-job-1",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "shape": [
+    64,
+    64,
+    64
+  ],
+  "uniforms": {
+    "dx": 0.25,
+    "gamma": 1.4,
+    "cfl": 0.4,
+    "ambientPressure": 101325.0,
+    "densityFloor": 1e-06,
+    "pressureFloor": 0.0001,
+    "limiterTheta": 1.5,
+    "riemannSolver": 0,
+    "boundaryFlags": 63,
+    "airModel": 0,
+    "stillRho": 1.225,
+    "stillEnergy": 253312.51509860248
+  },
+  "axes": [
+    0,
+    1,
+    2
+  ],
+  "steps": 10000,
+  "duration": 0.002,
+  "above": 0.625,
+  "startTime": 0,
+  "description": "blast",
+  "files": {
+    "state.bin": "3ba028c0c33a54bd19274f60ace88e0117ca28790f4f4ba125c9ade1e9906ea8",
+    "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+    "mask.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+    "peak.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+    "impulse.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+    "columns.bin": "b124fa2814baf12256216b959a0b2c0f4c66cdeb4f8a717af54a05cc1fb4cb32",
+    "records.bin": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+    "open.bin": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"
+  },
+  "startupSteps": 1
+}

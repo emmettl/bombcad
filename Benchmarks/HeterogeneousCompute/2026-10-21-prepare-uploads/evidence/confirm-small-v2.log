@@ -1,0 +1,142 @@
+blast64 0 baseline 2.539
+blast64 0 candidate 1.497
+blast64 1 candidate 1.503
+blast64 1 baseline 1.513
+blast64 2 baseline 1.542
+blast64 2 candidate 1.545
+blast64 3 candidate 1.525
+blast64 3 baseline 1.513
+blast64 4 baseline 1.585
+blast64 4 candidate 1.521
+blast64 5 candidate 1.468
+blast64 5 baseline 1.508
+blast64 6 baseline 1.543
+blast64 6 candidate 1.477
+blast64 7 candidate 1.51
+blast64 7 baseline 1.497
+blast64 8 baseline 1.514
+blast64 8 candidate 1.494
+blast64 9 candidate 1.488
+blast64 9 baseline 1.545
+blast64 10 baseline 1.494
+blast64 10 candidate 1.499
+blast64 11 candidate 1.459
+blast64 11 baseline 1.508
+cooling32 0 baseline 1.547
+cooling32 0 candidate 1.481
+cooling32 1 candidate 1.441
+cooling32 1 baseline 1.622
+cooling32 2 baseline 1.522
+cooling32 2 candidate 1.492
+cooling32 3 candidate 1.481
+cooling32 3 baseline 1.502
+cooling32 4 baseline 1.502
+cooling32 4 candidate 1.48
+cooling32 5 candidate 1.52
+cooling32 5 baseline 1.72
+cooling32 6 baseline 1.515
+cooling32 6 candidate 1.648
+cooling32 7 candidate 1.549
+cooling32 7 baseline 1.537
+cooling32 8 baseline 1.512
+cooling32 8 candidate 1.589
+cooling32 9 candidate 1.551
+cooling32 9 baseline 1.532
+cooling32 10 baseline 1.5
+cooling32 10 candidate 1.528
+cooling32 11 candidate 1.497
+cooling32 11 baseline 1.505
+cooling64 0 baseline 1.744
+cooling64 0 candidate 1.644
+cooling64 1 candidate 1.64
+cooling64 1 baseline 1.674
+cooling64 2 baseline 1.666
+cooling64 2 candidate 1.648
+cooling64 3 candidate 1.639
+cooling64 3 baseline 1.69
+cooling64 4 baseline 1.703
+cooling64 4 candidate 1.711
+cooling64 5 candidate 1.652
+cooling64 5 baseline 1.717
+cooling64 6 baseline 1.655
+cooling64 6 candidate 1.67
+cooling64 7 candidate 1.642
+cooling64 7 baseline 1.729
+cooling64 8 baseline 1.709
+cooling64 8 candidate 1.622
+cooling64 9 candidate 1.687
+cooling64 9 baseline 1.719
+cooling64 10 baseline 1.745
+cooling64 10 candidate 1.62
+cooling64 11 candidate 1.636
+cooling64 11 baseline 1.792
+terrain256 0 baseline 5.682
+terrain256 0 candidate 5.642
+terrain256 1 candidate 5.605
+terrain256 1 baseline 5.672
+terrain256 2 baseline 5.667
+terrain256 2 candidate 5.661
+terrain256 3 candidate 5.578
+terrain256 3 baseline 5.764
+terrain256 4 baseline 5.657
+terrain256 4 candidate 5.666
+terrain256 5 candidate 5.667
+terrain256 5 baseline 5.707
+terrain256 6 baseline 5.775
+terrain256 6 candidate 5.668
+terrain256 7 candidate 5.699
+terrain256 7 baseline 5.739
+terrain256 8 baseline 5.7
+terrain256 8 candidate 5.657
+terrain256 9 candidate 5.676
+terrain256 9 baseline 5.684
+terrain256 10 baseline 5.778
+terrain256 10 candidate 5.702
+terrain256 11 candidate 5.646
+terrain256 11 baseline 5.75
+[
+  {
+    "job": "blast64",
+    "baseline": {
+      "medianTotalSeconds": 1.513490630495653,
+      "medianSolverSeconds": 0.19419792400003644
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.4979221035027876,
+      "medianSolverSeconds": 0.17582116799167125
+    }
+  },
+  {
+    "job": "cooling32",
+    "baseline": {
+      "medianTotalSeconds": 1.5184031664975919,
+      "medianSolverSeconds": 0.21004118699784158
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.5084177194949007,
+      "medianSolverSeconds": 0.19670158100052504
+    }
+  },
+  {
+    "job": "cooling64",
+    "baseline": {
+      "medianTotalSeconds": 1.7130871049957932,
+      "medianSolverSeconds": 0.3937009030050831
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.642685775499558,
+      "medianSolverSeconds": 0.32224665899411775
+    }
+  },
+  {
+    "job": "terrain256",
+    "baseline": {
+      "medianTotalSeconds": 5.7034466180048184,
+      "medianSolverSeconds": 4.115402793497196
+    },
+    "candidate": {
+      "medianTotalSeconds": 5.663280286498775,
+      "medianSolverSeconds": 4.063285087504482
+    }
+  }
+]

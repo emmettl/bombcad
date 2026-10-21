@@ -1,0 +1,54 @@
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": false,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2645,
+  "startTime": 0.003934389986701742,
+  "elapsedSimulationTime": 4.506065610017686,
+  "wallSeconds": 44.783433659002185,
+  "shape": [
+    512,
+    512,
+    59
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "b95f9b3d802b088e7f178add0c1aea18d9d5246262bc72e786eb17f16c47f698",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 662,
+    "emptyIntervals": 0,
+    "minBoxCells": 1,
+    "maxBoxCells": 162000,
+    "meanBoxCells": 113088.88972809668
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 47.20165521200397,
+    "adjustedMonotonicSeconds": 47.20058163300564
+  },
+  "timings": {
+    "importsAndValidationSeconds": 1.1456548220012337,
+    "compileSeconds": 0.1336288980091922,
+    "deviceSetupAndUploadSeconds": 0.5518299620016478,
+    "solverSeconds": 44.783433659002185,
+    "validationAndOutputSeconds": 0.5870997510064626,
+    "workerSecondsBeforeManifests": 47.20165237200854
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}

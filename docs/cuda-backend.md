@@ -207,8 +207,8 @@ not solver-only time, should drive dispatch. This does not resolve the terrain/B
 An independent [clock-calibration issue emmettl/bombcad-work#64](https://github.com/emmettl/bombcad-work/issues/64)
 records reproducible Mac/WSL interval disagreement and an apparent PC wall-clock step. Until
 resolved, use a common observer for cross-host latency and keep worker-clock diagnostics
-separate. No time or clocksource settings were changed. Per-step control/dispatch profiling
-remain emmettl/bombcad-work#60 follow-ups. A [bounded field replay queue](field-queue.md) now covers emmettl/bombcad-work#59
+separate. No time or clocksource settings were changed in that experiment. The completed
+per-step profiling acceptance audit is recorded below under emmettl/bombcad-work#60. A [bounded field replay queue](field-queue.md) now covers emmettl/bombcad-work#59
 resumability and per-case admission; finer accounting and larger evaluation remain open.
 
 ### Raw elapsed-clock correction
@@ -672,9 +672,12 @@ Retain 128 threads. The 64-thread results are mixed against same-worker controls
 256 threads raises full flat/Beirut worker medians from 48.285 to 54.018 s and 68.622 to
 70.077 s in its own matched batches. These observations do not establish a universal optimal
 size or attribute a mechanism to the recorded register counts. No default or numerical gate
-changes. A separately labelled [CPU-only prepare-buffer proposal](../Benchmarks/HeterogeneousCompute/2026-10-21-launch-blocks/followup-prepare/summary.md)
-now tracks repeated byte-identical uploads in emmettl/bombcad-work#75. It has no GPU correctness
-or performance result yet and is not mixed into these measurements.
+changes. The separate [prepare-reuse experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-prepare-uploads/summary.md)
+completes emmettl/bombcad-work#75 without adoption: 264 timed runs preserve exact outputs/dt;
+14 successful device/lifetime diagnostics and four failure refusals pass. Cooling64 improves
+4.11% in the 12-pair confirmation, while smaller gains and mixed initial/full results do not
+establish a general complete-worker benefit. The correctness-validated candidate is retained;
+production prepare allocation remains unchanged.
 
 
 ## Clock-adjustment actor identified
@@ -713,3 +716,26 @@ Longer validation passed: maximum absolute MONOTONIC/RAW error was 19.3 ppm
 for 5/15-second checks and 9.3 ppm for 60-second checks. Ubuntu-24.04
 systemd-timesyncd is now inactive/masked, with WSL PHC0 retained as clock owner.
 The rollback timer was removed and the shared reservation released.
+
+
+## Worker profiling acceptance audit
+
+The original emmettl/bombcad-work#60 profiling scope is complete. The
+[deployment/current-Metal study](../Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/summary.md)
+and retained worker cold/warm-cache reports separate compilation, initialization, transfers,
+launches, synchronization, solve and retrieval with complete job cost. They cover small,
+flat/terrain/cooling and full Beirut cases across the programme. Cross-host comparisons use
+a common observer; raw-clock correction and host clock-persistence work remain separate.
+
+The individual reversible experiments retain their own three-or-more-pair comparisons,
+identical-worker controls, exact numerical/provenance audits and separate tracing: control
+readback (emmettl/bombcad-work#60), pinned staging (emmettl/bombcad-work#65), graph dispatch
+(emmettl/bombcad-work#71), launch geometry (emmettl/bombcad-work#72) and prepare tensor reuse
+(emmettl/bombcad-work#75). Each records its complete-cost decision, including no-adoption
+outcomes; optional persistent PTX caching and corrected profiler/source attestation have
+already landed. This fulfils profiling and bounded optimization acceptance, without claiming
+that every possible GPU optimization has been exhausted or that CUDA beats production Metal.
+
+No numerical gate is relaxed. emmettl/bombcad-work#47 / emmettl/bombcad-work#62 /
+emmettl/bombcad-work#63 admission, emmettl/bombcad-work#59 distributed integration and
+emmettl/bombcad-work#64 reboot/clock persistence remain separate deliverables.

@@ -1,0 +1,23 @@
+{
+  "controllerPID": 199751,
+  "command": "bombcad-ml/venv/bin/python bombcad-prepare-01a15d45/confirm-campaign-v2.py ",
+  "rawSeconds": 106535.504813252,
+  "reason": "Hold idle controller before unexecuted diagnostic; timed supervisor/profile groups are not signalled",
+  "timedChild": {
+    "label": "null-confirm-v2",
+    "pid": 203758,
+    "pgid": 203758,
+    "command": [
+      "/home/lemme/bombcad-ml/venv/bin/python",
+      "/home/lemme/bombcad-prepare-01a15d45/supervise-confirm.py",
+      "null-confirm-v2",
+      "baseline.py",
+      "blast64",
+      "cooling32",
+      "cooling64",
+      "terrain256"
+    ]
+  },
+  "resumedUnixSeconds": 1792615175.7274332,
+  "resumeReason": "Timed child complete; corrected unexecuted diagnostic observer direct tensor wrapper"
+}

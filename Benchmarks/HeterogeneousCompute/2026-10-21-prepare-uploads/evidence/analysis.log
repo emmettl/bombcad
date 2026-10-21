@@ -1,0 +1,913 @@
+{
+  "status": "complete",
+  "scope": "Complete-worker observations with a predeclared independent 12-pair small-family confirmation.",
+  "rows": [
+    {
+      "job": "blast64",
+      "initial": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 1.4671827689890051,
+          "candidate": 1.5307302169967443
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.19104635900293943,
+          "candidate": 0.17059860099107027
+        },
+        "medianProcessRatioPercent": 4.331256429049257,
+        "pairedProcessChangePercent": [
+          -13.727130467591165,
+          2.1843721325523147,
+          4.556072591566984
+        ],
+        "pairedSolverChangePercent": [
+          -18.013496352906678,
+          -10.87632372894064,
+          -10.703034655350086
+        ],
+        "candidateFasterPairs": 1
+      },
+      "initialNull": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 1.5039693040016573,
+          "candidate": 1.512647076000576
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.19557365200307686,
+          "candidate": 0.19790840901259799
+        },
+        "medianProcessRatioPercent": 0.576991297350915,
+        "pairedProcessChangePercent": [
+          -0.663188649694324,
+          2.3361184903728516,
+          0.6137047581377786
+        ],
+        "pairedSolverChangePercent": [
+          -2.526741551110878,
+          9.5660539124802,
+          2.4078116913319736
+        ],
+        "candidateFasterPairs": 1
+      },
+      "confirmation": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 1.513490630495653,
+          "candidate": 1.4979221035027876
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.19419792400003644,
+          "candidate": 0.17582116799167125
+        },
+        "medianProcessRatioPercent": -1.0286503714771467,
+        "pairedProcessChangePercent": [
+          -41.04068087010761,
+          -0.6841755813641881,
+          0.20312635682322444,
+          0.7645557842821837,
+          -4.082709484319558,
+          -2.621105941764501,
+          -4.277583302071064,
+          0.8939943989231702,
+          -1.2853711942917845,
+          -3.6937254808038777,
+          0.36443105677193,
+          -3.2257243461565333
+        ],
+        "pairedSolverChangePercent": [
+          -17.092862300469157,
+          -23.230397223605127,
+          1.4289048674412719,
+          -7.117701896751782,
+          -4.726800185262681,
+          -4.2734552894017614,
+          -17.332590104411814,
+          6.350511909063616,
+          -8.153418286466552,
+          -29.401693195346468,
+          -4.936799414773818,
+          -19.023636034996873
+        ],
+        "candidateFasterPairs": 8
+      },
+      "confirmationNull": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 1.519532246493327,
+          "candidate": 1.5086045880016172
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.19524564500170527,
+          "candidate": 0.1961538434989052
+        },
+        "medianProcessRatioPercent": -0.7191462054805253,
+        "pairedProcessChangePercent": [
+          -2.2905641228862517,
+          1.7533321425296178,
+          -0.5153281363834084,
+          -3.859858638500635,
+          -1.5313935325558359,
+          -0.644238860656432,
+          0.5829813885482427,
+          -1.8237984620124492,
+          -0.4626157799691222,
+          -0.32787488480129356,
+          1.3866806756789307,
+          -1.2550845863032678
+        ],
+        "pairedSolverChangePercent": [
+          -5.819642894938903,
+          3.2420617731942603,
+          -2.8827611336838865,
+          -6.249529687787881,
+          -1.4751168079152444,
+          1.3723731691335672,
+          12.294376422596876,
+          -13.018101919269764,
+          -1.5346213788248853,
+          1.9206875567540305,
+          13.759774078643815,
+          -1.984840346883887
+        ],
+        "candidateFasterPairs": 9
+      }
+    },
+    {
+      "job": "cooling32",
+      "initial": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 1.5135465920029674,
+          "candidate": 1.4367463259986835
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.20310076499299612,
+          "candidate": 0.1630498079903191
+        },
+        "medianProcessRatioPercent": -5.074192390909449,
+        "pairedProcessChangePercent": [
+          -5.074192390909449,
+          -0.7524085264100422,
+          -3.998469657595649
+        ],
+        "pairedSolverChangePercent": [
+          -19.719746995565558,
+          -15.919491202550983,
+          -22.438878579299093
+        ],
+        "candidateFasterPairs": 3
+      },
+      "initialNull": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 1.492489973010379,
+          "candidate": 1.479915511998115
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.19228658100473695,
+          "candidate": 0.18218140400131233
+        },
+        "medianProcessRatioPercent": -0.8425156108017862,
+        "pairedProcessChangePercent": [
+          -0.21294521729662286,
+          -0.25300357219226743,
+          -3.979229594698408
+        ],
+        "pairedSolverChangePercent": [
+          -7.067522382772474,
+          -3.7987091455707778,
+          -5.255268958771319
+        ],
+        "candidateFasterPairs": 3
+      },
+      "confirmation": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 1.5184031664975919,
+          "candidate": 1.5084177194949007
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.21004118699784158,
+          "candidate": 0.19670158100052504
+        },
+        "medianProcessRatioPercent": -0.657628173005198,
+        "pairedProcessChangePercent": [
+          -4.2706497821890395,
+          -11.136794387240545,
+          -1.9649249012015702,
+          -1.43469263217898,
+          -1.4515379006393325,
+          -11.625430843003159,
+          8.797400023624302,
+          0.7452465054529789,
+          5.054706920308449,
+          1.2216640662230382,
+          1.9115410314416215,
+          -0.5395280030351945
+        ],
+        "pairedSolverChangePercent": [
+          -21.934081469602653,
+          -47.03935732384187,
+          -13.79328977620955,
+          -15.288355874660208,
+          -12.256499230761353,
+          -47.73303477617441,
+          47.34467426761781,
+          16.964489270753358,
+          19.94213288256792,
+          6.526240539258166,
+          17.06936154899037,
+          -14.623943207334811
+        ],
+        "candidateFasterPairs": 7
+      },
+      "confirmationNull": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 1.5263194205035688,
+          "candidate": 1.5297632884976338
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.20793854950898094,
+          "candidate": 0.22613225399254588
+        },
+        "medianProcessRatioPercent": 0.22563219387778943,
+        "pairedProcessChangePercent": [
+          1.123544835556789,
+          -1.9133001820050732,
+          -0.6334497767572778,
+          -0.9428872633089891,
+          1.5556969995242698,
+          -5.899705034488278,
+          10.558814232460056,
+          1.7843680539082696,
+          1.104691715078232,
+          1.5593170045894222,
+          5.905898365458895,
+          -0.6716343739440078
+        ],
+        "pairedSolverChangePercent": [
+          9.439089551826086,
+          4.180321653785213,
+          8.76380578403666,
+          -2.3811320782692214,
+          22.812960711271412,
+          -33.580397155890296,
+          94.10110276424494,
+          6.627460370748461,
+          0.028172713569984964,
+          2.159997775433631,
+          42.92631263644402,
+          -18.611605467788973
+        ],
+        "candidateFasterPairs": 5
+      }
+    },
+    {
+      "job": "cooling64",
+      "initial": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 1.6846837119956035,
+          "candidate": 1.6385978640028043
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.3663950469926931,
+          "candidate": 0.31774898000003304
+        },
+        "medianProcessRatioPercent": -2.735578652814774,
+        "pairedProcessChangePercent": [
+          -0.5794357602254108,
+          -4.277395422991703,
+          -4.7353647450065655
+        ],
+        "pairedSolverChangePercent": [
+          -4.3191861190363445,
+          -22.353132018117094,
+          -14.588857417032507
+        ],
+        "candidateFasterPairs": 3
+      },
+      "initialNull": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 1.66012829101237,
+          "candidate": 1.6662562690034974
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.34622674400452524,
+          "candidate": 0.347915373989963
+        },
+        "medianProcessRatioPercent": 0.36912677317186837,
+        "pairedProcessChangePercent": [
+          1.112627629103402,
+          0.36912677317186837,
+          0.10732994886342162
+        ],
+        "pairedSolverChangePercent": [
+          9.48163493094032,
+          0.4877237286486702,
+          -0.22829198795585315
+        ],
+        "candidateFasterPairs": 0
+      },
+      "confirmation": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 1.7130871049957932,
+          "candidate": 1.642685775499558
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.3937009030050831,
+          "candidate": 0.32224665899411775
+        },
+        "medianProcessRatioPercent": -4.109617619029827,
+        "pairedProcessChangePercent": [
+          -5.742667888682485,
+          -2.012849733038513,
+          -1.096008337724108,
+          -3.0391305993728857,
+          0.45556912472177746,
+          -3.829750272016974,
+          0.924318535653712,
+          -5.041998610338217,
+          -5.088396198729228,
+          -1.874100736943063,
+          -7.170203402793607,
+          -8.70705947204713
+        ],
+        "pairedSolverChangePercent": [
+          -25.827733603851264,
+          -12.802692278972739,
+          -13.89160716890514,
+          -4.376903041014857,
+          4.96825680819144,
+          -17.696343087983657,
+          -3.354280704025292,
+          -18.179337149682095,
+          -21.536426930322072,
+          -11.15019121746128,
+          -24.203657886811826,
+          -33.33095366717629
+        ],
+        "candidateFasterPairs": 10
+      },
+      "confirmationNull": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 1.670787732997269,
+          "candidate": 1.6708763895003358
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.35325467149959877,
+          "candidate": 0.3518729854913545
+        },
+        "medianProcessRatioPercent": 0.0053062696903971585,
+        "pairedProcessChangePercent": [
+          -2.0875891107910327,
+          0.6701247807216815,
+          0.9109064340848017,
+          -0.47415339755266794,
+          1.9619496425523186,
+          2.3344981838061774,
+          -3.7185454225335035,
+          -1.6911317528636949,
+          -4.476517411823789,
+          0.6111684374622728,
+          -0.1897259394548878,
+          1.572344488710642
+        ],
+        "pairedSolverChangePercent": [
+          -8.889025522526307,
+          2.4606921677680527,
+          6.849670381168194,
+          2.899842479836967,
+          4.512062894064828,
+          4.690641974227527,
+          -17.78240981277922,
+          -2.3524313595349677,
+          -12.042488907973015,
+          1.79616757716754,
+          0.7006699231045355,
+          5.6239848074784105
+        ],
+        "candidateFasterPairs": 6
+      }
+    },
+    {
+      "job": "terrain256",
+      "initial": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 5.628940677008359,
+          "candidate": 5.544379359998857
+        },
+        "medianSolverSeconds": {
+          "baseline": 4.035243926991825,
+          "candidate": 3.985920064005768
+        },
+        "medianProcessRatioPercent": -1.502259872002143,
+        "pairedProcessChangePercent": [
+          -1.502259872002143,
+          -2.4944524743991225,
+          -2.0850423108132454
+        ],
+        "pairedSolverChangePercent": [
+          -1.2223266766137386,
+          -1.7971817352488317,
+          -2.024889281262754
+        ],
+        "candidateFasterPairs": 3
+      },
+      "initialNull": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 5.682209635997424,
+          "candidate": 5.688184910002747
+        },
+        "medianSolverSeconds": {
+          "baseline": 4.07260385499103,
+          "candidate": 4.100239670005976
+        },
+        "medianProcessRatioPercent": 0.1051575775639968,
+        "pairedProcessChangePercent": [
+          0.6704509415394799,
+          0.5054461172937286,
+          -0.5681652581504548
+        ],
+        "pairedSolverChangePercent": [
+          1.2260145727809757,
+          0.09183746205734256,
+          -0.5354661468858213
+        ],
+        "candidateFasterPairs": 1
+      },
+      "confirmation": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 5.7034466180048184,
+          "candidate": 5.663280286498775
+        },
+        "medianSolverSeconds": {
+          "baseline": 4.115402793497196,
+          "candidate": 4.063285087504482
+        },
+        "medianProcessRatioPercent": -0.7042466458657581,
+        "pairedProcessChangePercent": [
+          -0.7076869726821089,
+          -1.172164222119687,
+          -0.10822023652210522,
+          -3.2344711489441735,
+          0.15866063671283737,
+          -0.6911672369738553,
+          -1.8552248167563845,
+          -0.7012735497495481,
+          -0.7554270877711433,
+          -0.13757809930801113,
+          -1.3235470021487394,
+          -1.8239390461801008
+        ],
+        "pairedSolverChangePercent": [
+          -0.7818080697923113,
+          -2.164747270777523,
+          0.280449941964811,
+          -3.0469359462886314,
+          -0.014174297908253752,
+          -1.0334096432521922,
+          -3.0884816726159725,
+          -1.4138904990691592,
+          -1.151606992663523,
+          -0.8747140182563506,
+          -2.202341642525385,
+          -2.109413416409578
+        ],
+        "candidateFasterPairs": 11
+      },
+      "confirmationNull": {
+        "pairs": 12,
+        "medianProcessSeconds": {
+          "baseline": 5.700692375001381,
+          "candidate": 5.707182957499754
+        },
+        "medianSolverSeconds": {
+          "baseline": 4.102325837498938,
+          "candidate": 4.105813860005583
+        },
+        "medianProcessRatioPercent": 0.11385603837938962,
+        "pairedProcessChangePercent": [
+          -0.10948968252999514,
+          -0.024837076871842,
+          -0.7262110208243411,
+          0.16621395003904027,
+          0.4510619663221638,
+          0.38480791299355666,
+          0.6934423346014684,
+          -1.4249943725064496,
+          0.5383064960322148,
+          -1.2312866851688975,
+          0.6693731248116563,
+          -1.0867405235323813
+        ],
+        "pairedSolverChangePercent": [
+          -0.06051431908471461,
+          -0.8528250951299832,
+          -0.5326723261613431,
+          -0.6188884198806255,
+          0.08113292864488919,
+          0.6106050767184401,
+          0.37501197385667595,
+          -2.2073610139377586,
+          -0.06972892041136047,
+          -1.3312885465353475,
+          0.28446532402714997,
+          -0.6651372832319646
+        ],
+        "candidateFasterPairs": 6
+      }
+    },
+    {
+      "job": "flat512",
+      "initial": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 47.78273585300485,
+          "candidate": 47.44497788300214
+        },
+        "medianSolverSeconds": {
+          "baseline": 45.13707383000292,
+          "candidate": 44.783433659002185
+        },
+        "medianProcessRatioPercent": -0.7068619323970182,
+        "pairedProcessChangePercent": [
+          0.2724562811778908,
+          -0.7068619323970182,
+          -0.18091077484650997
+        ],
+        "pairedSolverChangePercent": [
+          0.19463900850857918,
+          -0.7834804983872679,
+          -0.14712662420426348
+        ],
+        "candidateFasterPairs": 2
+      },
+      "initialNull": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 48.2748188280093,
+          "candidate": 48.22970067898859
+        },
+        "medianSolverSeconds": {
+          "baseline": 45.52511812200828,
+          "candidate": 45.47955598999397
+        },
+        "medianProcessRatioPercent": -0.0934610426637783,
+        "pairedProcessChangePercent": [
+          0.28210540449769006,
+          -0.13928692868730996,
+          -0.008838732280569417
+        ],
+        "pairedSolverChangePercent": [
+          0.49686314350574357,
+          -0.10701649684735637,
+          0.0589732879485938
+        ],
+        "candidateFasterPairs": 2
+      }
+    },
+    {
+      "job": "beirut512",
+      "initial": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 68.74083925200102,
+          "candidate": 68.37966731699998
+        },
+        "medianSolverSeconds": {
+          "baseline": 64.84309096999641,
+          "candidate": 64.73023362799722
+        },
+        "medianProcessRatioPercent": -0.5254110059334516,
+        "pairedProcessChangePercent": [
+          0.5069113379984724,
+          -1.452568733184978,
+          0.045422957174889866
+        ],
+        "pairedSolverChangePercent": [
+          -0.2164849971585725,
+          -0.34934295604098775,
+          0.0299123356356068
+        ],
+        "candidateFasterPairs": 1
+      },
+      "initialNull": {
+        "pairs": 3,
+        "medianProcessSeconds": {
+          "baseline": 68.67457707998983,
+          "candidate": 68.61565021699062
+        },
+        "medianSolverSeconds": {
+          "baseline": 65.0117491469864,
+          "candidate": 65.01724516999093
+        },
+        "medianProcessRatioPercent": -0.08580593504140532,
+        "pairedProcessChangePercent": [
+          -0.3811941868033575,
+          0.10837910259153816,
+          -0.08580593504140532
+        ],
+        "pairedSolverChangePercent": [
+          -0.2175720238044465,
+          0.09425809195771073,
+          0.0043940873079684195
+        ],
+        "candidateFasterPairs": 2
+      }
+    }
+  ],
+  "traceCounts": [
+    {
+      "worker": "baseline",
+      "events": {
+        "aten::empty": 594,
+        "aten::to": 1750,
+        "aten::empty_strided": 1172,
+        "cudaMemcpyAsync": 1191,
+        "Memcpy HtoD (Pageable -> Device)": 590,
+        "Memcpy DtoD (Device -> Device)": 3,
+        "Memcpy DtoH (Device -> Pinned)": 18,
+        "Memcpy DtoH (Device -> Pageable)": 580,
+        "aten::empty_like": 1
+      }
+    },
+    {
+      "worker": "candidate",
+      "events": {
+        "aten::empty": 26,
+        "aten::to": 1182,
+        "aten::empty_strided": 604,
+        "cudaMemcpyAsync": 623,
+        "Memcpy HtoD (Pageable -> Device)": 22,
+        "Memcpy DtoD (Device -> Device)": 3,
+        "Memcpy DtoH (Device -> Pinned)": 18,
+        "Memcpy DtoH (Device -> Pageable)": 580,
+        "aten::empty_like": 1
+      }
+    }
+  ],
+  "cacheControls": [
+    {
+      "case": "cache-normal",
+      "rows": [
+        {
+          "worker": "baseline",
+          "job": "blast64",
+          "mode": "normal",
+          "prepareUploads": 569,
+          "totalUniformUploads": 576,
+          "prepareCalls": 569,
+          "byteHits": 568,
+          "byteMisses": 1,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        },
+        {
+          "worker": "candidate",
+          "job": "blast64",
+          "mode": "normal",
+          "prepareUploads": 1,
+          "totalUniformUploads": 8,
+          "prepareCalls": 569,
+          "byteHits": 568,
+          "byteMisses": 1,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        }
+      ]
+    },
+    {
+      "case": "field-changes",
+      "rows": [
+        {
+          "worker": "baseline",
+          "job": "field-changes-job",
+          "mode": "fields",
+          "prepareUploads": 33,
+          "totalUniformUploads": 40,
+          "prepareCalls": 33,
+          "byteHits": 28,
+          "byteMisses": 5,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [
+            {
+              "afterPrepare": 1,
+              "field": "maxStep",
+              "value": 5e-05
+            },
+            {
+              "afterPrepare": 3,
+              "field": "maxStep",
+              "value": 0
+            },
+            {
+              "afterPrepare": 5,
+              "field": "axis",
+              "value": 1
+            },
+            {
+              "afterPrepare": 7,
+              "field": "axis",
+              "value": 0
+            }
+          ],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        },
+        {
+          "worker": "candidate",
+          "job": "field-changes-job",
+          "mode": "fields",
+          "prepareUploads": 5,
+          "totalUniformUploads": 12,
+          "prepareCalls": 33,
+          "byteHits": 28,
+          "byteMisses": 5,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [
+            {
+              "afterPrepare": 1,
+              "field": "maxStep",
+              "value": 5e-05
+            },
+            {
+              "afterPrepare": 3,
+              "field": "maxStep",
+              "value": 0
+            },
+            {
+              "afterPrepare": 5,
+              "field": "axis",
+              "value": 1
+            },
+            {
+              "afterPrepare": 7,
+              "field": "axis",
+              "value": 0
+            }
+          ],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        }
+      ]
+    },
+    {
+      "case": "never-repeat",
+      "rows": [
+        {
+          "worker": "baseline",
+          "job": "never-repeat-job",
+          "mode": "unique",
+          "prepareUploads": 64,
+          "totalUniformUploads": 71,
+          "prepareCalls": 64,
+          "byteHits": 0,
+          "byteMisses": 64,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        },
+        {
+          "worker": "candidate",
+          "job": "never-repeat-job",
+          "mode": "unique",
+          "prepareUploads": 64,
+          "totalUniformUploads": 71,
+          "prepareCalls": 64,
+          "byteHits": 0,
+          "byteMisses": 64,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        }
+      ]
+    },
+    {
+      "case": "short-ramp",
+      "rows": [
+        {
+          "worker": "baseline",
+          "job": "short-ramp-job",
+          "mode": "normal",
+          "prepareUploads": 1,
+          "totalUniformUploads": 8,
+          "prepareCalls": 1,
+          "byteHits": 0,
+          "byteMisses": 1,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        },
+        {
+          "worker": "candidate",
+          "job": "short-ramp-job",
+          "mode": "normal",
+          "prepareUploads": 1,
+          "totalUniformUploads": 8,
+          "prepareCalls": 1,
+          "byteHits": 0,
+          "byteMisses": 1,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 7,
+          "livePrepareObjectsAfterReturn": 0
+        }
+      ]
+    },
+    {
+      "case": "two-axes-tail",
+      "rows": [
+        {
+          "worker": "baseline",
+          "job": "two-axes-tail-job",
+          "mode": "normal",
+          "prepareUploads": 700,
+          "totalUniformUploads": 705,
+          "prepareCalls": 700,
+          "byteHits": 692,
+          "byteMisses": 8,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 5,
+          "livePrepareObjectsAfterReturn": 0
+        },
+        {
+          "worker": "candidate",
+          "job": "two-axes-tail-job",
+          "mode": "normal",
+          "prepareUploads": 8,
+          "totalUniformUploads": 13,
+          "prepareCalls": 700,
+          "byteHits": 692,
+          "byteMisses": 8,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 5,
+          "livePrepareObjectsAfterReturn": 0
+        }
+      ]
+    },
+    {
+      "case": "one-axis-odd-tail",
+      "rows": [
+        {
+          "worker": "baseline",
+          "job": "one-axis-odd-tail-job",
+          "mode": "normal",
+          "prepareUploads": 826,
+          "totalUniformUploads": 829,
+          "prepareCalls": 826,
+          "byteHits": 819,
+          "byteMisses": 7,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 3,
+          "livePrepareObjectsAfterReturn": 0
+        },
+        {
+          "worker": "candidate",
+          "job": "one-axis-odd-tail-job",
+          "mode": "normal",
+          "prepareUploads": 7,
+          "totalUniformUploads": 10,
+          "prepareCalls": 826,
+          "byteHits": 819,
+          "byteMisses": 7,
+          "maxLivePrepareObjects": 1,
+          "allDevicePayloadsExactAndReadOnly": true,
+          "mutations": [],
+          "setupUniformUploads": 3,
+          "livePrepareObjectsAfterReturn": 0
+        }
+      ]
+    }
+  ],
+  "limits": "Initial and confirmation cohorts are separate and all retained. Same-source controls are not a pointwise correction or a confidence bound. Transfer/solver reductions alone do not establish complete-worker benefit; promotion requires explicit review of these observations and all correctness/lifetime gates."
+}

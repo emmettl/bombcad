@@ -1,0 +1,2193 @@
+{
+  "status": "complete",
+  "allSourcesInputsProvenanceAndNumericalFilesVerified": true,
+  "allTimedGroupsTerminal": true,
+  "preDispatchGuardRefusalRetained": true,
+  "timedRuns": 264,
+  "numericalFileInstances": 2628,
+  "numericalBytesVerified": 23927907024,
+  "historicalBlockStudyRowsMatch": 108,
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "workerSHA256": {
+    "baseline": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "candidate": "b95f9b3d802b088e7f178add0c1aea18d9d5246262bc72e786eb17f16c47f698"
+  },
+  "reports": [
+    {
+      "profile": "small",
+      "profileSHA256": "876896f0d16e6df9357add32c61d05a775cc15568c9ee8d55eb4e30b20467bcf",
+      "monitorSHA256": "9cdd666361f98fa645c2f6569498f0aa89d4c4f738bdfc9ad61a161efbde9a25",
+      "samples": 62,
+      "unresolvedGroups": 0,
+      "allResolvedGroupsOwned": true,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "811ed30079d911505a64f401a1fb5cae935ae8b66f803536dd26519b1a52237b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "72aaa09f5ea2747c694905f129ed6fd61d7dfe778f6d1289d87f8b9aeca4b7da",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "1e7851e68bacc6019b319e2d46b436de0debb7546cb4e4b36fe10819a824d5bc",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "ffda006304ea716a1c01408a824a92813f630e863892e2c54a823540adc7d65d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "7b0eb01800c16eaa4619e43f6754032e40ceaecc78d1a407a0080f69a399cbbc",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "4d8e72b148c49155e322b17a8c823a6025653e1ccebae3857ad0ae32bebd494c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "209e351b8428e5934d7d86fd5ebfb1067dcfd01867f57c9797d9c2b4956a9732",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "e068715f4702ca7a5289a6a884009d146222ec0af60126687b52adef8f89aa51",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "31070f1cde67f58f7e5450729e0016d9016290161a68d99dbd52a99bb3761174",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "214f940bfa80c1f042e56c00851f83471c20484ccf4d6e7c7cef618827f62f54",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "0dc7a8a8f15307b8fa0118cc061ce7e485eeb4e77eaa1c6500e36a792b708783",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "9d88b8a6a50908d34a26e4654bb1940e48c247046d97500ba45c03a2fc55c4c3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "52e900fd9f4048f4ba17757c05cff662cb15e18afa023abd29adf25f62788341",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "f783f1372cc659eaa40a4769fcbb1f38c657999f4fb05f1011fb7f4cde4cd153",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "c9165a39b1d00cade113065beae080d174eb613a49da72b2c880522dec647e07",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "5d6826ffc4f6992b00a9f4daf2446a646b846344932ed6fd32a672f3e7b54d51",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "0b920d2a0aab9b38c5b76af73ccd9af8c15eb93b6db0ffe85ab71de4729abc61",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "cbf18fd728ef33f59217cf56a3d4133cae93826d8e95fa3ee94fd96a7d11d808",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "a9f388dc4f192f8acfb27e853a5621bc89f85db4c1aaa6ca75159ddbad110c86",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "03abf13e2856acfc4c352a88a0090c121ccf387a7762a86cfbbcf13f7879d7cd",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "16e5af9825a2431d35d524d1338cc29ea45d3c1df350ffdede29aa0efab917f9",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "4660bd566911d2ee91434a62f217ff226873638c65bdd3ec4ad4e5c58ec8f183",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "7e339b14033b7a1c0c4f45d5d9847434f08eebb5452ff55735cf55f16049599a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "6f548ea9eb3f38f48a1d727e00b651adbfd494ee809714903341ccdb1b4df911",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "full",
+      "profileSHA256": "82e0849f684a554c6ab4fdf864b930e39c6ea6b19e9baf9b93ab5e032dc7d3ce",
+      "monitorSHA256": "051f36953862a551e797a5f341398573901bc398b5fefec0a357776854ca47c5",
+      "samples": 232,
+      "unresolvedGroups": 0,
+      "allResolvedGroupsOwned": true,
+      "runs": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "fece12c2598aee922b8e8aba5d03fe9eae780a6182df340e23c1dc5c5669ad70",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "426ce5a96f8b2c3da044aafa8a51fcdced3d39cccf514393a0cb4dd4f3429bfc",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "1e3d8e547ddb83ae000bf92e188568dc86a4df6481b5f2c33f80f2ceaf8de12f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "9a81c0792493b3d64e92738de32f0d0bf7381fbb904824f1aa349f297d7147f2",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "1768f6804484a17d1e3b0afb66ba4e18e3aa3ec1308e7d628310d0994eb0dba2",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "368539619a3d858390d18cf894327478da5a34ccb395a40e6bbb4a00723d4005",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "158f89c092bf6783c6f499e8d97689a217488df48c5fff2dfcc4788942201c7f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "1c92126078e96d148660f67e2f963e345b32938c39b4caf2c2a3083e8a284d1a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "1eecef0b12314b6e1bd411837b33032469aefc0296a5827d62bf475b05e30e7d",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "88787ff40427cfda1e00e53a15cf14c7a795bf4b09aed5340dd998eb959f1e1b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "3c1a56a40e17855fe1e56593668726c5503ee16bc2a0f49490eb679f0ab4f9d6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "a563562df08fd46c53b4830620334370ddca5f592356f07d6234e5c21bd19893",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "null-small",
+      "profileSHA256": "1bc6ef627d3529a7d75e213397239faa1473ea7a680c411b6d6a91bbe63aa96b",
+      "monitorSHA256": "b4cafb36b2613ff2affa440573c890856348f6cfbe060c84459f974a3e09aaa6",
+      "samples": 63,
+      "unresolvedGroups": 0,
+      "allResolvedGroupsOwned": true,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "39057fd352420f9c7596a6cecd6694ad9432f4096f2f8f120b043c532afa003f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "acae019b3e0c25ccf1234ef0e1e2d3634568baf262e3b845ddff56be7bddf611",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "982f381bd6758c7f53479b9e1f6f531cf31070ee8422549bfb40324ae2668a01",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c2021dd08693ef66ac85748968ea0a64835e3326aa9d34ca682d1b5a1f5e18ad",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "38a3337a22c082fcffe33428e8a430a9746bf2504cc5eb982dc0bc5caa48ee3c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "56b201e54199fc47e5e71782f99bb9642938384784e22d38edf947c4674a1a57",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "2dcb3aa1ea6a4b947f80e875e73fcd9c235578d3822b18267f5bbec93857a09f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "bc3889f6e34b21800167b58345f00e8a1d0cfb660d32da551a715df56669c4f4",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "72d55e86f433ad98662bb9f1d5a32cb1ac615ea707cf028dcabc8648a060a9d7",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "78be8f3b9549aa9b28bb15eadc6fbbcb40db78a36c472cc5317e8a40b677c98a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "d7cb584fc91493cbed4837b9b56e05d8585d7aa9b0904f47c79af738424f0238",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "be4d2a3b17b15ddac4a8c8ba23abf53b03aa17dd20f7af669bdce99b4ab2d57f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "9ce1dd0fc488f0543564e540efd9a41086cd20a2073f2e51bcdb9a1345e5d6de",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "8008e3cc0371a16600aa3fdf46effddbb2f8634a63c17d6c4a1ea8bf0b90e1aa",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "55628bcb788b3cc4feccd9400f264bfd2279e9186d13ecfeb2b9c9d1ca67c465",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "a68b11c1cc90a45edf488dd870a889c701c81f9b46ecc4c3d84a378c25c3412d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "fc9bbd94c031e7c74e01caaba041140f6783468d6ef4828f04e6e3c5010610f2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "456a0971cf47f21ff78871662d21ac58991272edd73bc2cdc7a5ab5691dc1650",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "6f90dc754aa119124a26f28522784e9fa3e2f01cc079e6e1625a2f4b24d093b8",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "94db4aae6450ac3717e61e8da22fcc167608c0a94c993d2133a5cecb773d0334",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "19c74a3bc4172f798a0572661b60cd8bc4048bae5772f7635f4c6fc477c31d61",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "9a46e65af5cdee7f339e94ad6dc292457e2bca00a6fd098dd24af46f05affc1b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "1cba728028a85ad5638662d773f240504075c3c0c9f3f454d4bdb13b3c47b8dc",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "c8e55e05212093ecc48fe241afffe2010218c425cebf5dee1354311dd17ca6c2",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "null-districts",
+      "profileSHA256": "8530c140914eecb41f2142681f531a51dd8974e4cc5d6606a99a9c52ca6f056b",
+      "monitorSHA256": "e04e9bbd76d17e12fe1530fe3b8dc32ac696bef5c83b730a2bb1e78f23d82e66",
+      "samples": 233,
+      "unresolvedGroups": 0,
+      "allResolvedGroupsOwned": true,
+      "runs": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c9514e21bf348bbcb6f3dadf97a98f83900f1cb506e7d2b84939bded0c57fdca",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "bb27edbfeefb9aceb89cbe3240112d8e8d702b9db7f28dee35f61a9d4e36eda7",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "1568840df75d8f2ac3562a49bb72c1091dc5e3a38e9fc8d228cfb45e26ee772e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "3632400f9cf8cce5d6604e0920673e80939392262ace8230bcd058687fad303e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "bed3ab00bda02f6d73c765096e42c626e0a9b132fcd3fc95afdd6034dd156236",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "0037492f37740f70b6bc5c1d24d5d254a2cbf9059c31c656c930f8f51efc36d1",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "a3951ed7fd76af96f343aee83d4eb971406475e973611c55333f8b74a90c378c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "485f9a529506a865c7b855cc30d9fb31d1cb6a271787cdf369dac17908a633f7",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "852b0218561cda1785eb599feb7447924d97c030b8f83b9c2dbd8d85d7aaafbc",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "4721c714ebc5a1c235c7c595d8021f84a916ef4370f2dff58c5426c6f3483f18",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "d197c234aa2dd64e9345f99c727b53235962b04959bcf68c4b8bfd9fd8fb87cb",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "35b0c8a11b5bd57cd9cf8ff9c906aa06ec6a9cbd47e775f2b5d6064b41e2a9bb",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "confirm-small-v2",
+      "profileSHA256": "36290c4cb06929df40393428b95988125a1814c3967ac83cb4d53bcb971a40cc",
+      "monitorSHA256": "d0214fe18916e2047406d570d7ca9728b99e89057b0e0cecd290e930986f38fd",
+      "samples": 242,
+      "unresolvedGroups": 0,
+      "allResolvedGroupsOwned": true,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "9c1c0ba175c47c0909b5d3eaa907ae2c25ed2d50d9a8ba163d3d040ead6d0b2e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "5b0f2759fdad76605ed8c0ffb0369f32532275e2e6424947a89272deb4db27d8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "dec51bfed0565dfdecebaa62f89a8644efc9f4bc6f3b8d2f423494ab526ace82",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "2d74bc5c3d31799aab957d388ed7309ab6eb783504044e0f1537a956dedc0b37",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "eefd32fbbd9abd01bdafef71b2f4630879ec6b59b05f001162f349c72c563a00",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "efe328801aced8e6984e1117c31d9ee87ced85aaf043224c0f790d7880d9bff5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "82f3b05ff9ce8a004c0eacc0e6e58d9a5f9d7dd694d5dc7fa1adcfa22567b2d5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "97a9e3f703c9e1d41d43a814041ed8aa22c6dd5132083c33b7727bdd08de565c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "49c689e1d46970293ca67ed7fbfa719750c1aaafe7d55a02d97c4e438ca66178",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "f212db74832195dffb108a79f19ddc615465e16fa4ff7ffa0581d4bceb583cce",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "4c5c09e0f0a6c156cbfc52c56ffebc27843e9c39ff283be1839a92d020e2ada5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c0700b82e93a335de69495145314e8fda932604e6902523af38c30b763edbf31",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "1881e48b3cc915debc7f31af9798aedd563704dfca7b48c6439c8a2433ae4d4b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "c31735e13527bbfcec0b421b65a0e5b3a88eb40ccd90f5cb6f261ab3a12e01ff",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "04caf19c0453f5963dccec8cfca5763bbccd847f5468703b76a08db077ec06a0",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "502b73dd2da2cc43a323e931ec5e2fa0a9ab3ed6408a6f32863a5bb521d93007",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "52aa20a7b604235391f0e2b84a5570b4c0e0f60b4c0c9fd5ae2819d8d2f20a64",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "450b05a07d576e6bf3cfb54eb98171361c8ac0b6e6f5f1aab4b6956cdf4e4fb0",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "f03ada78f5b30a09b57a24c08e8d30856c89af4f9601929eb20fd25aa984ec85",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "635c1290bc948a176379591b404193c9a6555789bc758f9ae39f59dafa790f47",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "cf436a4b5fea1ebe80502a2145a9fb476a44f295844fa5d3b45975b2393c9bb3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "62171f13eac4a61226fd18cdc548be5c0bc42d74154a0e455618df36ba4c7cd3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "9aee048e39072456b011aebb9fb872625e22fef501ca03ac63c1bfe92e82396d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "2a1dbb346437d42653c6c420a5cc91a772e2f2ab682f2d8a8221a8284e724918",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "f829d39190cffec353657ae52080f200b6bff3aff43f05b74e427014952735ad",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "2d72ae97a94aac33736b3d575a8a49c020cc0ca43b7f03733119998226b53d45",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "f5beca4d276af0227909422f71cf7d60d97c4415c14b3054dbb4189be2a7ca9a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "518441af6e71f2e362eb568f1867ea9a0cc2bfa270ac987a15bc8a500cc5ef51",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "f32c6a78aa0ebe404f68022b6e08f81724b2a8d06922bd20803e8d5bfe108299",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "ada214898589201fc2cebdc408a9606ddd000eabaec984518e0d0baff319c67e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "c7eab1839ef5b5fa1551cd13ff476a9e497e5304fed4b79f4261f684f029fe59",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "4b0be9a9218ebfe09a060bbaa7f0213a4d48c5b240f5a3a1374a14ea392f99a3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "f59197f5afe69fb5cff5002e8489be8c768a891150b4f8772b839130f95fe400",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "023b53e8431950e08e2da5f17456927d2c7ccbc8d008b81365f4e64f0e3ad5ad",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "9e20e3726112b565b4c2b43544baae00668ae4d78243befb93150cbc6573b6bd",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c136e2548e33ee4554f15db4926549088948e812dd4243d0148500270d6dba18",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "4287be83e3f7285b48c421cea457eaa1b61b5eccc957e769dfb7e91268e77a7d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "ddbe8c6a61e36ec265174582ac03c2e75508001735e1c1ef9e6a69f4a4277e75",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "8d63a4c0d68434d90379c6f9476dae2fd6994c25a73040cf54cc5486a8f95037",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "ddf3b4a195dd8fd785096936e7e4e4a605cfe301e31f253aa6a26c869f6d081c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "989aaea5c0a9d11bb2237d4ddfd8a66e449c4511d1fcbe161dc7b13f207bc101",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "78dce6e32ed98e50094eebcf49f3f78cb017ba2a04e7fe1c465c7d7ac2be8f3a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "815dab836adb8ff69516284e4eecc33937950c201b97125a8318d1161d156bb0",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "00cf67debbe82241a3d3d9c7fb39477e12ddd1107b790b05f07d3fa653c2d896",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "a85f38d9e5642a03327860889423c507375b845faf349fe99aa6664ad83e1781",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "ead8f9dcbc048aa19fd958162aff741e50fff5fdd8d8ceda9411e4859cd81e22",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "c0f16df52a8757354845af79f5d3565c384b890d17250b6639900fcde61c1add",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "549e76ff28619f43db356555ffbb64ac59b299c9d9bd0cbf73ffc6c66f8b980e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c53a104e93258bc0ffd0616a9f258b87c2f7be0b9072be7255447732b4c81807",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "579cdecdc423a6570542b5454cbc62d3696f91c692850c530554358f913f6445",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "00435039498746c5ce84f6031baa859512629861eb6563ba477a028c34c39e90",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "e5c07481f47b0382dec990a8a2804b10b66744459e214a94b1b5379d4927fc22",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c3b7bf516e2774bb6fd6cf178d27bcfae4d0a0940a399e748511b6548c437990",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "68a10961d0a9ff13014965bbfaf303be5bb1492c9f43d008a88dbfb13031b22b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "e742d8070ca0021a460a1c43b4ae28527d9a0107dd6a725f22e831ec4939ae4b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "6d5ba4c7b67c58798b12e5bb04e6e6c031c5b69e3d5aaf31b7ce90b126275fd9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "00db7a1d36500fedb3685e7e262149141219200aa20c37f8b305b697d562a02b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "db26fda604f5cc3a6e31388ee91f3c16505441ffc5ec9c6a27865253082fc44d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "8ea140df847d2c51cb01cb3b7f67ad3ec604495dc95163fc4a41f410a74f49be",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "7a59f3884d168c21beca063aa39314cd4a6c1a0b20de36402c082154315ed1f3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c82fdca63c1f23513f247bdd43b3d0297ed4859c4ba7c76d41ad75d224aaa634",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "7148e32413ec41276940d3dd77d6ad9162468188e6ba93332acd3d8a2e99672d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "57a2986078fb55c90e564c663f805391fc298b542ac3cb8860b2102d02bb9db2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "7719c84c79302d2f3078935920224a32ce2027a62ecdcfe6167acd25e528f719",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "18fe017aa2eab5a0dc80a1a64175c2c6ebfa877826932eeb68fe62273f5d955f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "7914ea4dc8f12841c23560206ed22b41599155a109b134e925cdb4f569a393a9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "7ce434e816ea3a6bf30e494a441cd6218e68e9196679f407238f6f58173d807e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "98f0c90ee2c124342526370bd381930a0b9b597f7fa62a9c8d9fa0796d8a42a8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "12947add73d49a41b2dec8e16d4cfd549d8ceb51c5dd272d96690b27645cf018",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "7a0fa939b877cc92e25a543d59beb825bbbf24174af7d271e592d75f2fd4c4d7",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "5010db7b7ba226871bf3a328db1e7e22757ac3fc59b03db52299ac568841bf99",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "ea1616f6878d7dddfb5188dc9555b025fea972b9d166d6ad86f3c5f0e38b48a8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "e999fb7bbe486f3f77a23d26c2b152270d43850ac94345a889dc3dbb8ea711dd",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "658fdf7f94d055e97a010b458a8c25728c0916af2484b662f5e36d88f7c73296",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "f8f9bdfba1377f8a99e58e5a84a29e30e267cbec9493ddbdcbdb3343b1471bfa",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "1cd72c7a24f4b4acc01f7f4fd2136200a8c5dde9c30dc402286a6a230545302d",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "915507f10574e2e3d6d8486c27a7cbbf61925ad0a31575cf4108d66e96616e1b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "9a226eed2b1fd401f2bef821267116f856024adf9569197e449f925bfc1fd89c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "9b51241065d291c6405a675ebfa4fc6ebfeebc40261846a7b49ea3fc34366e90",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "9c356d956388c4578122cf6a6a3ebdc3db8d6d0cb78a89b97fa61bf30fca3854",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "7ca871572f9954000d8d50ad7732353e5e09e1e4e98b4d2829076abf47911edb",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "2023c1d472008b6ca0f309f77c3db45624744d436357be2581f93cfcf266c4b6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "26dd9b84b148e772123aac8098ff314b3ab5776dbe1dfed51e368dfe84a1b57b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "b4f61393ca2e8a4100836d6b02619c562c3a5897a60ea6b6bd051780632fdb40",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "ddd0a7aa2bbcb77accffa4da25f8a5baca53c7965e9e40e8e5d4b0b8c08c8f6f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "093d3026bfab2f672f1cd3d88d640c965fa748b9fc3fe707e927b41e5e6c9209",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "5fad1e395e98f11dea3c1e97f88974558cc8614a42decf778594accc2070c29c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "da8ed5a6cc973a19f51ad9ecfa4f1e9a36ff412de3de428d84d0f2f1ab75e02b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "0b34632d4506767be1c538c2b74f09d261dfaf771cc94f1e49b4987e94ba7b28",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "d1a73a906014ff89436832f0ab293504094599ec391cfc2b52015eb4ce0f9ad1",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "8dd2d6a8236549214c99d25affd7a97831b5411f4e9c60d9092d4286780ffb9c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "075aa35c2a7261410ff5dbd868fb95af40d49a0779e01dce5ae60c557f02a6bd",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "5e3f9b8c224e2d645ca394aaaa42bffe6eb80a11ed9da6e24db6242f53375ed5",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "fafab26ecdb84456964bcca5264be0784b978d1c302df25c8f4cf36c230bfd41",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "candidate",
+          "resultSHA256": "ae16dda35b6f0939f786e038d7909e16190e99a8c593d528cf847cfcab0ceafe",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "8f426c362b7affd03de2b7d5594c2b91bcc443a6efd1b661b77630de1bbd576f",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "null-confirm-v2",
+      "profileSHA256": "52c382dfe2c299ed2734440c6b077b76deddd0fba91b9701e5fd690dc9e1eed0",
+      "monitorSHA256": "fbb6cdb9d002635813ee5b11e06461f0e3715f0b8501deec1cf157d96a21962e",
+      "samples": 241,
+      "unresolvedGroups": 0,
+      "allResolvedGroupsOwned": true,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "bed96d8e3076f8e56a8c080020675c18085010b7cd757268a7e21edd11bdd7fb",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "b3fc328c7c3f1ff4b3ff0d626d12e47c09da4dedcd0cf645650eefcaf41ebbcf",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "4a4d4deb458d3d5a94c7f35fd933ffbd3ebe65081cd356f71c4ea6e44e358708",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "1f24d34ccb8beefe5c2eaaee6909ed10b24c99005a4e38fc194a32da2f429a27",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "ec289c71843a2d794c93fc612f4e5cddc351a3fad9ebc92c8b9e3256d5ba6094",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "e59cd1969c4217ef49acf8f799ea92023090238b37b6f499da036ed80667514b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "1a87b93e7ba2f1b6e537ca624d70890aaad94fc341aa154d15049726378f678b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "70d0cb26b6853590989099ed5e45cce23a3f0617f3ba6caf2b09c6d3208487ef",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "a86910e7e7ae06d634db26bf23a600dc367d135ca9f24fd9bede26c6046590f2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "45b066f04297bdeb6a378a264e9135345614e2e46876ab3b38f87a512a84eb87",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "580c86d2313193c02698fe1c01699b03783f57793c67c091cfc81ccc8545eb1b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "e14dbaceb366315a4148571b3c393a4e955bdd3b3bcc6bafdb4fb06fe1132612",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "82577f3f6d1e70ac834a02acba84b5f5a6ca6cdd523479b7e3fb9dc1275090ee",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "8a4f9f36ddb48df6068d226526d181be84d806f79116720d15ed0dbca6612f80",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "5d2fca475e04523087068bbc129ddf45cca7776c3635b0e605308d3026a24ac4",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "bc58d4d3381a5e27f691c13e454143085925fa1d2e19cde00cab08ebf6431350",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "db3f7db57e01b29f2e8cc5b198d8d92dbd0eb6b4eb3c31f634ca37a735de0382",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "3af718409dba30d568004f79c75ed13b53107be1f6c1a4afffcd808197f41b6e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "1bf407003c554f49bd074463a4e46c9178c4099f194ba15684c921f47e916b73",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "8a2537a54e157e0c287aec064044a168c2da3341462755b4b70492c379c37faf",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "e0bd363dee575d4c1ea29c43ea29a55ccebc7598ef7686c79bc0d797d2ee4fb0",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "f8287c2a26205f6f07b7d87c152ef8cf8ccd5729ee698ca035e23e240acb5831",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "4619558f2e5072b816f6379ebcaa0b5948c99d56af0e57e52231a770468b36ff",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "348c5bb0ba6b680d2438f68176e8f1942e1a8f9fa1914a1578428cf33b7fcf1f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "680763daa0fcaa194263ced2021bc144614a6c70ab8ca3d19c4a4d66bb437926",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "a7d9a86b07f46fc0b92db2c8428a495968db0c81f1b38560ceae5442d73f04d0",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "be90f9d7ab15ca568a858f5420c4b6a3ef7ad1e1d9d2c353b18698cc6d48a630",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "a312a488dfdd4a8fd5d3fdabf8e8d6e97f2a3a438fa17a748d37d711a10d6ac4",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "e122cd2ab98cf51a77439cf08b66b15e22d28626188a0f19674e203265451636",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "58dd995f8baa30ea911651027097661eb1ad11af888525c31e85ac4cf9303728",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "fa58b4abf285b5c58e7e2325a91cdc3bb7d0b7159a6c1b7ed7e865e55f7102b6",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "fdd500767dc3b95bae26da471ac71714eaa49e11baaeeb37caacd570406a05d5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "df2e29f207dc66075b04ed42e0c21351f6127aedbd1f512e5ccb7310bcf5f996",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "a0aa4c922eb27b593f0035c4170f47eeaeda814f6428397d659a5e0adc49a20b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "4b9bff179c2e9a6aa7f7914921024c85195d642b2dce65f34b0eb596c8105fe4",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "87b5be4ce7cc3ce4f02fdf33409177c38b476e03a3568dacbd1c632f5d43c1ee",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "682e7bed00e109cb6ca2cf2a4000cd4dbece1de485913e0bde4e1e7bbc510acf",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "1fc8bbf4b9581a198a8e308dc5726c1a1bccdcbe6959dd69b126eb349e08e40c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "785640f6e4e8a934b11b5e11b3fe4799a91a5e64eaf7591017d69149511813c9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "b7398e59bb8e190116369af608d07e41ea5c18672de55c0e2d6c938fea7f2766",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "dabd068995baa3e7cfe5b340148a440902c7239998fb0066a56b0f2a1b956227",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "455c61e99215f4922f97a81526c6b01d2c19566eccb928adf5d8e98d97b3cf9e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "113ef0c9a2cda9a04df27e43fe14550fe8f4bf53e59317420ee1e219020f2c4f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "85a5b616554a94ae75ea71e7121f784aca9b77f931ddb450a3338fed0939dcf7",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "e9dc123f6f669bb65357cdaba639051ad34e77257e6fa3d98c20cea5571c6254",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "027f614e6bad9326062a1a849c766d76738cd587b107e9e4fcc8887596cab2d9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "23c2b15c720d9fff5a09a8fb2e0169882dd2bc6f749ff37f542a9d2a6bdb74ec",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "04d29b9eebb6f682f4c973af39709499c2295aad386a7d136c5e0363e5d977f1",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "9f781b7629b93ac8638ea46379fd50758e3756b596e7541bfcb2db2483fe9ca2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "e04b6f2372dbb4836853c725f823cd9ea6733ed0f5382bf4d67bca0e6e3fd645",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "46f5e03a9a1bf8f972fdbe407df90adad25a4c9cfd960fc52e6e453f5b123a1f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "50a0a3e380feb83d52191619df91492612609ff47a4bd74266046bd990bad616",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "f75a6138bcfab205042f9ab8fdb20af4a1d78ed046f96588898ab3c3148da485",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "2eb2c7cbac25e4a92a880ea28e9f3160ff0757e9ba193f191aebaf87c163dba6",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "43db4f8c2e3e4eed57479454d5ded1e118e9dce8772cc48035c593f1d029b555",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "42ad43ca66bfb133fd157fa58c212260b69da955dc25ae29cbbe05d431dd4192",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "9b833fe695500ca889ff793b11dab3ac513ba0c12e566b55d01854bda7413161",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "aa4b69b26c8397e4ec0d5058c6a7acf052cd908f7068eab8ed78bc9262c3277e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "9c444a91184d92a30105d0240514fe1c8d2916970308176cb482b848a38b6bf8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "71352706fffb33c88a84fe1a8e62a14a2d004a2cf3a35c8c34bd075fd164fb56",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "ae53f0473aac178785e34ac214777f4b1053bcd817f9d83381d77f763890a2f9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "1d667e3c5466e44a3577de9d6ee26246a88d59f90a1913009aa0ce6ea4268ca5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "30234cabdd1974f2e0e6d6f67d0b01783ed407146fd1517e43e7bc38d478b6fa",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "2e35d5cb49099fd54fb75d51e5b30f7961c67ff3b4d72ff2b929199b733e9bbc",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "569a8bd1f66e43531bf8c4610ab78b2b6727aecff6b053a906c6634d34cfe960",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "cb34e81cadb0517faf8a21cb7cc2e7b96428128ac22e311e24f05e5238f080b6",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "8ae6262f5b8f79519fcc9830293cf335221027aa4c115e2d5b915a54331cbb1d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "35e54e75326ba08de673075ebaa58f8ef8870b379c5e44db889e7aec4877c8f8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "d4b0cb7f904fa1a74b000997a9a294e9b3fc8ccdcc52ec85bac12fca4503034a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "5325e21b2bf6dfbcaa2f38f1efdd045df0f449b28dec33f4dc7e6392446ebc8a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "9bcf80188835280552e33b74b5d75094ad576f01f5338e2d246c1ba4d26347d8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "78c60e07d49bf2788050b566f7583c9361fccca904bb18316b23b036998bf920",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "91214896b1b46cda8d6b2be474cfae14ec19dfe594dfdb8af9c56944e7ce8633",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "478c7408532b274f8897ec7db21e5d5ffcfdf8b7c173d4344560aaafa7034d8d",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "baa7a72830c288b2850b1feb0d7fe7a38cbb445794dfda4cfbb927d26d93bcd9",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "cab4128287646761645ed47121d0d7b5ed48435bb7b27daf56ae5fdb60b2565a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "e6256717984d40888ed806d713a686bf4b8832218e9422972725622eff8d9a4e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "79eea8d0253e9aa2fe533cdbd696d1e4159b2d0a58d688a8d72af8b1e2d09288",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 3,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "2f35bac8992bffd07eb3906d24edb2fd75a1af8a48f875aeb0ed91be64b55bc3",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 3,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "b3b8fb1c736a804956c7da775c869118b62aad8d7842f9e132c5575cc4e20eac",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 4,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c3f53d976d615885d50240da0f794e60f588b78e25081a7dc9fbb469baded578",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 4,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "b48c4c2a21065825f43bb6699020cd0a0368be065c5cc7e5d67ffaeef7f08f1a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 5,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "2f011489c25de3903a7a38142c6193d499409815a80754e7964ae1643c609352",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 5,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "990bec16b33288a6fb22702d99d0fd6607140fe1b7311f976b4ced0efb02e72c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 6,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "1f116123a3c5d53fa1993af23746942a03200aef6b93a6381af8336f7dad7ded",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 6,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "d0729fddd7f1b5a897fb08e2dd1af24588b360a3a767770327897edc1b2b1193",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 7,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "9c3ddd077cb4557ce40d5c09b1633b675d91963d6fd94b5fe877f381a61c7fb3",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 7,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "8facc089754504dbb8a701fb8c4906c12818bcb1a0a0b9f59dd9d93ae8a34081",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 8,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "c115c4423b4abb8091a89c4262a14a446f1576c68910f828bb2243d09105a765",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 8,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "17798f18fe5bbf22fc6cf4d289e97505a81831bab435be1e2b028c64d8569ede",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 9,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "08ffa1f10f1f1ebec5bda24cf3da1f6de1d8d02291b4c4aaf271584c986e8e67",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 9,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "0abc5156b658acd366d4cfda2a4b50ce868a438b4f0c2b1915d4985fdfe50ccc",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 10,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "abe3da153e9b86282202e46ee5404890c01532b01600e9058a651f0902b0804e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 10,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "528ea55ade47c4ad52807f52745bdffb2898cdb94127bc18f8ec0bdd788f34b3",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 11,
+          "worker": "candidate",
+          "variant": "baseline",
+          "resultSHA256": "d98ed3a745dbadcf5729bfde3a2d0f1a16ad610d93fffc68a592712b9e4e7544",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 11,
+          "worker": "baseline",
+          "variant": "baseline",
+          "resultSHA256": "ed06d221c6428a20ca51e865a2d85c2183e8f6a8b126543c7c60f82a14afc9d3",
+          "numericalFiles": 12
+        }
+      ]
+    }
+  ],
+  "diagnosticSHA256": "453c47b16949d065158bfd2bfbad12d60b4a1f85492439f6f4177d20b92cae6d",
+  "diagnosticSuccesses": 14,
+  "expectedFailures": 4,
+  "limits": "Periodic resource samples are not laboratory exclusivity. Numerical CUDA parity is not dataset admission. Device readback/lifetime instrumentation is perturbing and outside timing."
+}
