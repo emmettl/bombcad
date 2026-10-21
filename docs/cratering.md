@@ -9,7 +9,9 @@ blast, is not built.
 **Standing: approximation for the crater's diameter, illustrative for its depth and lip.** The
 diameter comes from P. W. Cooper's cube-root scaling with Kinney and Graham's scatter. Five of
 six measured craters fall within that scatter, three of them the 500-ton TNT shots at Suffield
-([below](#against-measured-craters)). The depth is a rule of thumb in dry ground. Below a shallow
+([below](#against-measured-craters)). Against H. F. Cooper's 135 high-explosive craters (1976),
+charges on the surface read 1.01 of its radius, and raised charges 0.57: too wide
+([below](#against-cooper-1976)). The depth is a rule of thumb in dry ground. Below a shallow
 water table the walls slump to Glasstone and Dolan's 10–15°. That brings the three wet sites'
 depths within 0.84–1.41 of the estimate, against 0.19–0.31 by the dry rule
 ([below](#below-a-water-table)). The air's share on soft ground is an approximation, the same for
@@ -151,7 +153,9 @@ it). Measured to their centres, a radius up, the law gives them half the measure
 Cooper's constant was presumably fitted to bursts like these. A charge centred on the surface,
 or below it, also counts as a surface burst. Above 3.2 charge radii, where under 1% of the
 energy couples into the ground, there is no crater: it is an air burst. Cooper's examples are
-still checked to his own measure (`CraterTests.cooperExamples`).
+still checked to his own measure (`CraterTests.cooperExamples`). H. F. Cooper's 1976 data favour
+the centre: measured to the underside, raised charges' craters are 0.57 of BombCAD's
+([below](#against-cooper-1976)).
 
 ## The air on soft ground
 
@@ -245,12 +249,95 @@ are Jones's Prairie Flat crater study, Roddy's tables for Snowball, Dial Pack an
 the DNA's Minor Scale reports, Gould's DNA 6187F, and the 200-event database of AFWL-TR-71-144.
 The DTIC copies were refused or down while this was written.
 
+## Against Cooper 1976
+
+On 21 October 2026, against H. F. Cooper's estimates of crater dimensions (RDA-TR-2604-001, 1976;
+[Fixtures/Cooper1976](../Fixtures/Cooper1976/README.md), `blastmodel craters-cooper`,
+`CraterCooper1976Tests`). It is a different Cooper from the P. W. Cooper whose law BombCAD uses.
+His report gathers the high-explosive cratering tests of the 1960s and early 1970s by medium and
+height of burst:
+
+- each crater's apparent volume per ton, V/Y;
+- its scaled height H = HOB / V^(1/3), from 0.75 above the surface to 0.8 below it.
+
+Figures 9–12 give 135 points (dry soil, wet soil, soft rock, hard rock), digitised for the
+fixture. They are mostly 256 lb and 1,000 lb charges, so the comparison is of scaling, not of
+any one test.
+
+**How the points are set beside BombCAD.**
+- **Radius.** Cooper's radius is 1.2 V^(1/3); 95% of his data lie within 1.1–1.4 (his equation 14).
+- **Charge.** Each point is a ton of TNT whose centre is H V^(1/3) above the ground.
+- **BombCAD's height.** From that, the height to the underside, in charge radii. Below the
+  surface, BombCAD counts the charge as on it.
+- **Ground.** BombCAD's stand-in for each medium: dry alluvium, saturated soil, soil over
+  sandstone (Mixed Company, one of figure 11's sites), and rock.
+- **Assumed.** Cooper's ton is taken as a short ton, and his heights as measured to the charge's
+  centre. The report does not say either.
+
+His radius over BombCAD's, the geometric mean (range), and the share within BombCAD's one-sigma
+band (two thirds to four thirds):
+
+| Where the charge is | Points | Height to the underside (BombCAD) | Height to the centre |
+|---|---|---|---|
+| On the surface, \|H\| ≤ 0.05 | 21 | 1.01 (0.81–1.35), 95% | the same |
+| Above it, H > 0.05 | 40 | 0.57 (0.31–0.94), 30% | 0.90 (0.50–1.52), 75% |
+| Below it, H < −0.05 (counted as on it) | 74 | 1.72 (0.99–3.26), 18% | the same |
+
+By medium, on the surface: dry soil 0.96, wet soil 0.99, soft rock 1.15, hard rock 1.01.
+
+- **On the surface BombCAD's crater is Cooper's.** Charges centred on the ground read 1.01 of
+  BombCAD's radius, all four media within 4–15%, 20 of 21 points inside its band. That puts the
+  diameter's standing on 21 small charges besides the six large craters above. Its volumes also sit inside Cooper's ranges, though they are higher than his best estimates. Centred
+  on the surface, BombCAD's paraboloid holds 1,290–1,580 ft³/ton in dry soil, against his 1,000
+  (600–1,800). Saturated soil holds 5,730, against 4,000 (2,000–8,000). Rock holds 573, against
+  500 (300–700).
+- **Above the ground BombCAD's craters are too wide.** With the height to the underside, the
+  points read 0.57 of its radius, and only 12 of 40 lie inside its band. Measured to the centre,
+  as Cooper and P. W. Cooper's own example measure it, they read 0.90, with 30 of 40 inside.
+  - **Why.** BombCAD's taper is P. W. Cooper's e^(−1.457 HOB) in charge radii. Cooper's own
+    e^(−5.2 H) in V^(1/3) is gentler per charge radius: about 0.87 in dry soil and 0.55 in wet,
+    where V^(1/3) is larger. So the taper alone does not explain it. Counting from the underside
+    takes a whole radius off every height, and that is what reads them wide.
+  - **For a 1-tonne sphere resting on dry soil.** Cooper's best estimate is a radius 0.62 of
+    BombCAD's, and 1.00 measured to the centre.
+- **The choice of the underside was made on Suffield** ([above](#height-of-burst)), where the
+  500-ton spheres fit the surface law. Cooper's method fits them without it:
+  - **Wet soil.** He puts these as wet soil (V₀ 4,000, high water table), with the height to the
+    centre. That gives 73 m, against the measured 85.5 and 70.1 m (1.17 and 0.96).
+  - **BombCAD's glacial soil** (E_CR 0.75) digs about half the volume of Cooper's wet soil. The
+    underside convention makes up for the low efficiency there, and over-reads every other
+    raised charge. Cooper's method on the other measured craters gives Snowball 0.79, Sailor Hat
+    1.50, Minor Scale 0.88 and Beirut 1.27: five of six within a third, as BombCAD's are.
+- **Below the surface the craters are larger, as expected.** Buried charges are not modelled, and
+  count as on the surface. A charge buried to H = −0.2 to −0.4 digs 1.4 to 2 times the radius
+  (Cooper's e^(5.2 |H|), 3 to 8 times the volume). The points read 1.72 of BombCAD's radius on
+  average, and up to 3.3. This is the size of the gap that [stage 2](#stage-2) would close.
+- **Depth.** Cooper's best depth is 0.5 V^(1/3) with his radius 1.2 V^(1/3): 0.42 of the radius
+  (0.25–0.64 over his ranges), against BombCAD's half. Wet craters larger than about 10⁵ ft³ come
+  out shallower (his figure 20), as the [slumped walls](#below-a-water-table) make them.
+- **The scatter is as Cooper states it.** His own best-estimate curve runs through his points at
+  0.95–1.00 of their radii, 80–100% of them within a third. He puts repeat shots in one medium
+  within a factor of 3–4 in volume and 50% in dimensions.
+
+**Standing:** the diameter of a charge on the surface stays an approximation, now on 21 small
+charges in four media beside the six large ones. For a raised charge (a car's, a charge on a
+table) the crater is too wide: Cooper's are 0.57 of it, 30% within its band.
+
+**Proposed, not changed** (the user's decision): measure the height to the charge's centre, and
+make Suffield's glacial soil a wet soil, or use Cooper's own volume law there. That would bring
+the raised charges to 0.90 (75% within the band) and leave the surface bursts as they are. With
+the centre datum and glacialSoil unchanged, Prairie Flat and Dial Pack would read 2.05 and 1.69 of
+the estimate, outside the band, so the two go together. This would change the crater of every
+raised charge, though not its blast (the air's share tapers on the same height).
+
 ## Limitations
 
 - Empirical scaling only: no soil mechanics, ejecta, or ground shock driven by the charge
   (stage 2).
 - The crater does not act on the blast or on anything during the run: debris, fragments, ground
   points and thermal sight lines see the pre-blast ground.
+- A raised charge's crater is too wide: its height is to the charge's underside, and H. F.
+  Cooper's raised charges read 0.57 of its radius ([above](#against-cooper-1976)).
 - Surface and above-ground bursts only; a charge below the surface counts as on it. Buried bursts
   scale differently (Cooper's W^(1/3.4) fits, §29.4) and are not covered.
 - The depth is a rule of thumb in dry ground, and below a water table rests on one slope (10–15°)
@@ -280,6 +367,11 @@ the check is to be redone then.
 
 ## Sources
 
+- H. F. Cooper Jr., *Estimates of Crater Dimensions for Near-Surface Explosions of Nuclear and
+  High-Explosive Sources*, RDA-TR-2604-001, R&D Associates for Lawrence Livermore Laboratory,
+  1976, OSTI [6696719](https://www.osti.gov/biblio/6696719): table 1, figure 7, equations 6, 14
+  and 15, and figures 9–12's points ([Fixtures/Cooper1976](../Fixtures/Cooper1976/README.md)).
+  Distribution unlimited; the user's copy is outside the repository.
 - P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996, chapter 29, "Scaling craters":
   equations 29.3–29.7, table 29.1, figures 29.6–29.7, examples 29.1–29.2. The book prints equation
   29.5's detonation pressure in kbar, but its figure 29.6 and example 29.1 work only in GPa.

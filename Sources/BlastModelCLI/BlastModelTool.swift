@@ -31,6 +31,10 @@ enum BlastModelTool {
             "halfspace-calibrate", "the half-space's direct source against UFC's peak particle velocity",
             GroundStudies.halfSpaceCalibration
         ),
+        (
+            "craters-cooper", "the crater against H. F. Cooper's 1976 HE craters by height and ground",
+            CraterStudies.cooper1976
+        ),
     ]
 
     static func main() {
