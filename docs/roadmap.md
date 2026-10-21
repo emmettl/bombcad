@@ -37,10 +37,10 @@ nothing in it should be used to judge the safety of a real structure.
 
 | # | Limitation                                                              | Consequence                                                   | Detail |
 |---|-------------------------------------------------------------------------|---------------------------------------------------------------|--------|
-| 1 | The structural model has been compared with eleven member tests, and springs back too far | Mostly on the unsafe side, predicting too little damage: shear 11–15% too strong (37% on coarse meshes), the chamber's roof and close-in slabs too stiff (a quarter and a third to a half as far), small charges' slabs 40–70%, struck beams' struts holding where the tests crushed, six elements through 17% strong in bending, bars that slip too stiff nearly everywhere. In detail: on a slab test the peak rises to 124 mm on 32 elements against 109 measured (113 in its repeat), not converged (a strip of it runs away on 32), and under the contest's lower shot reaches about 80% of the peak; a beam bent to failure carries 98–101% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24), and A36 breaks at the speed its test did where B36 holds, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges at a stable step to a half and a third of the measured size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof's edge peaks at 49 mm against 87 mm in the test paper's own model and is left 25 mm up against 95 mm measured, with cracks that press as they slide, now the confined regime's default (38 and 15 mm without); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere; hourglass control does 7–18% of the work at the slabs' peaks, where an element's own bending would be under 2% | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
+| 1 | The structural model has been compared with eleven member tests, and springs back too far | Mostly on the unsafe side, predicting too little damage: shear 11–15% too strong (37% on coarse meshes), the chamber's roof and close-in slabs too stiff (a quarter and a third to a half as far), small charges' slabs 40–70%, struck beams' struts holding where the tests crushed, six elements through 17% strong in bending, bars that slip too stiff nearly everywhere. In detail: on a slab test the peak rises to 124 mm on 32 elements against 109 measured (113 in its repeat), not converged (a strip of it runs away on 32), and under the contest's lower shot reaches about 80% of the peak; a beam bent to failure carries 98–101% of its measured moment; a beam failing in shear carries 111–115% of its measured load on fine meshes, 137% on coarse; beams struck by a falling weight with stirrups peak within 12–24% under light drops and −5% to +3% under heavy ones on 16 elements, and Ando's beams without stirrups peak within 15% on average on 16 elements (53% too far on 24), and A36 breaks at the speed its test did where B36 holds, while Saatci's without stirrups is damaged, and on fine meshes split, by a drop it survived; Peterson's short beams struck to a shear failure (2026) give the forces at a shear span of one depth, the deep ones too stiff, and fail without stirrups, but by splitting along their bars, while those with stirrups that crushed their strut in the test hold; full-scale slabs under close-in charges are left a third to a half as far down as measured, barely spalled and not holed; 2 m slabs with steel in one face or both bend within −20% to +7% under 1.6 kg at 0.5 m but 40–70% as far under smaller charges, and are holed by contact charges at a stable step to a half and a third of the measured size; in a full-scale internal explosion, with the chamber's detailing modelled, the roof's edge peaks at 49 mm against 87 mm in the test paper's own model and is left 25 mm up against 95 mm measured, with cracks that press as they slide, now the confined regime's default (38 and 15 mm without); on the finest mesh the answer has not converged. Bars that slip converge on every mesh but are too stiff nearly everywhere; hourglass control does 7–18% of the work at the slabs' peaks, where an element's own bending would be under 2%, and the struck beams' agreement leans on it (an element that bends in its cracked concrete without it sends Saatci's heavy drop 20% further), so their standing is low | [Validation](validation.md#an-internal-explosion-in-a-reinforced-concrete-chamber) |
 | 2 | Shear failure and joints are the least reliable predictions             | The unsafe side where they err, shear too strong: breach, punching, direct shear and wall–slab joints are indicative only | [Concrete model](concrete-model.md#limitations) |
 | 3 | Afterburning's burning time is fitted, and its fireball never cools       | Afterburning and hot air are the default since 15 October 2026 (1.3–2 times slower; off still selectable): incident and suction impulses within a few per cent, rooms within 8%, but the burning time was fitted to the open blast's impulse, and the gas, which since 19 October 2026 loses the heat it radiates, still radiates more than a TNT fireball's 4–7%; turned off, incident impulse is 13–22% low and rooms' gas 48–114% of the design value | [Air-blast model](air-blast-model.md#afterburning) |
-| 4 | Peak pressure is under-resolved near the charge                         | Incident peaks close in come within a sixth of Kingery–Bulmash from 1 m/kg^(1/3) for 10–100 kg since the mapped start (18 October 2026; 63–99% for 1 kg), where the balloon left 32–84% (11–47%); reflected peaks near walls still read low, the unsafe side, and need fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab; the comparisons of structures were run on the balloon start ([still on it](validation.md#still-on-the-balloon-start)) | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
+| 4 | Peak pressure is under-resolved near the charge                         | Incident peaks close in come within a sixth of Kingery–Bulmash from 1 m/kg^(1/3) for 10–100 kg since the mapped start (18 October 2026; 63–99% for 1 kg), where the balloon left 32–84% (11–47%); reflected peaks near walls still read low, the unsafe side, and need fine or twice-refined air; spall needs cells of 0.005 W^(1/3) and 12 elements through a slab; the comparisons have moved to the mapped start, the long ones on 20 October 2026 with every band kept, but for a few harnesses still on the balloon ([list](validation.md#still-on-the-balloon-start)) | [Validation](validation.md#what-stops-the-spall-and-the-breach) |
 | 5 | Collapse compared once, blind, and missed (two of Mendonça's slabs under an open-air charge); debris twice, off slabs under contact charges and brick walls under blasts | Debris held back rather than thrown, the unsafe side for a hazard (as rubble particles, an option, thrown at nearer the measured speed); brick walls crack at the measured heights but fall as one column, shattering on a rigid ground in the open (soft ground, an option, halves that) and thrown half as far as measured in a shock tube; collapse looks plausible, that is all | [Validation](validation.md#slabs-under-contact-charges), [brick walls](validation.md#brick-walls-debris) |
 | 6 | Moving solids are a staircase of whole cells                            | Either way, to a cell: wall positions are good to a cell; small fragments are crude. Cut-cell outlines for structures before failure (an option, unrefined air) take the offset out of a wall's impulse but not its peak. A car beside a deformable structure, or on a slope, has its underbody gap taken up to a cell narrower or wider, which can turn whether it overturns (warned, with finer cells offered where they fit) | [Structural model](structural-model.md#coupling-to-the-air) |
 | 7 | Up to sixteen bodies of up to eight materials each, bonded within and meeting each other only by contact, lattice-aligned geometry but for planes at one pitch (roof slopes); debris pushed crudely by the air | Real buildings only roughly (IFC buildings import as shells and beams where square to the axes, roof slabs at one pitch if asked, their materials, ties and supports inferred and listed); thrown debris and contact between buildings are approximate | [Structural model](structural-model.md#limitations) |
@@ -54,40 +54,68 @@ On the last point, see the [native interface review](native-interface-review.md#
 
 The aim is the best fidelity given the constraints of compute and available empirical data:
 spend computation where the [error bands](standing.md#error-bands) say it buys accuracy, and seek
-data where they say the model cannot be judged. Each area below gives what is **done** (a line
-each, linked), what a session is on **now**, what is **next**, and what is **blocked**, and on
-what. The plan as it stood item by item before 11 October 2026, with the account of each step,
-is in the [roadmap history](roadmap-history.md).
+data where they say the model cannot be judged. Each stage ends with something a user gets, or
+with a recorded stop. The plan as it stood item by item before 11 October 2026, with the account
+of each step, is in the [roadmap history](roadmap-history.md). This page was last refreshed on
+21 October 2026, after release 0.6.0 ([its notes](release-notes/0.6.0.md)).
+
+### At a glance
+
+**Now**
+- **The learned field model** ([learned models](learned-models.md)): a network trained on 200 of
+  BombCAD's own district runs gives the ground-floor peaks in the quick estimate, as an option, off
+  ([`4543c5ce`](https://github.com/emmettl/bombcad/commit/4543c5ce)). Being extended to roofs and
+  upper storeys, and its 4 m cells' bias measured. Whether it becomes the default *waits on the user*.
+- **Dragging the charge** ([dragging the charge](surrogate-first-look.md#dragging-the-charge-20-october-2026)):
+  the damage follows the charge in about half a second a frame on Beirut, and the close calls are
+  then run in the air within a budget
+  ([`94be0a6c`](https://github.com/emmettl/bombcad/commit/94be0a6c)). Its refined runs were checked
+  against finer air ([`3afdd0c9`](https://github.com/emmettl/bombcad/commit/3afdd0c9)).
+- **People in the scene:** injuries by building from the glass, walls and roofs, for injury and
+  evacuation planning. Just started.
+- **CUDA training data, gated:** the PC's CUDA worker misses a few first-phase and peak targets
+  on terrain and Beirut; bulk generation waits until the labels are reproducible and the tiled and
+  full-grid peaks agree ([below](#distributed-computing)).
+
+**Next**
+- **The façade surrogate close in among buildings:** 1.3–2.1 times high within 350 m, most of it
+  behind buildings, traced to the close-in branch dropping shielding
+  ([`f5412c09`](https://github.com/emmettl/bombcad/commit/f5412c09)). A refit is to be proposed;
+  adopting it is *the user's decision*.
+- **Full Keyboard Access and VoiceOver on a real screen.** *Waits on the user* for a screen session.
+
+**Later**
+- The fireball's radiation (*the user chooses the route*, or leaves it paused), cratering coupled to
+  the blast, cladding torn off a purlin that deforms (stopped for the test rig's dimensions), soil
+  with a fast elastic front, the ground-shock half-space in three dimensions, and the mini's slow
+  sending over Wi-Fi.
+- Sources to obtain for validation: *the user obtains them* ([data wanted](data-wanted.md)).
+
+**Big bets**, apart, each with a cheap first step: [below](#big-bets).
 
 ### Validation
 
 More evidence is worth more than more features.
 
 - **Done:** eleven member tests and the air's references compared ([validation](validation.md#summary));
-  an [independent review](validation-review.md) of the record, its wording and numbers
-  corrected; the model's spread over uncertain inputs in nine cases
-  ([ensembles](validation.md#the-models-spread-from-uncertain-inputs)); the reference curves' own
-  scatter ([data survey 3g](data-survey.md#3g-the-reference-curves-own-scatter)); each result's
-  [standing and error bands](standing.md), direction first.
-  A [mesh-refinement study](validation.md#convergence-on-todays-defaults) on one pinned commit:
-  nothing converges with the measurement inside the change; failures flip with mesh and step.
-  A strain-rate window of 100 µs, the default since 12 October 2026, removes the step dependence,
-  not the mesh dependence of failure ([what moved](validation.md#convergence-on-todays-defaults)).
-- **Done:** blind test 1, Hrynyk's slabs struck by a falling weight, scored *between*
-  ([validation](validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight)); blind test 2, slabs under an open-air charge (Mendonça et al.), frozen at `047cee3`,
-  scored *worse* ([validation](validation.md#blind-test-2-mendonças-slabs-under-an-open-air-charge));
-  test 3, Reynolds's high-strength slabs in the contest's blast load simulator, frozen at the
-  released v0.3.0 (`b524a9d`), scored *worse* on one broken slab, the rest within the band
-  ([validation](validation.md#blind-test-3-reynoldss-high-strength-slabs-in-the-blast-load-simulator)).
-- **Done 19 October 2026:** collapse (a storey lost, a structure down) is a result of its own,
-  illustrative until a compared collapse case of that structural system agrees, and no longer
-  takes the band of the material's local damage ([standing](standing.md#collapse); raised in
-  0.5.0's review).
-- **Blocked on the user:** the sources marked *needs the user to obtain* in
+  an [independent review](validation-review.md) of the record; the model's spread over uncertain
+  inputs ([ensembles](validation.md#the-models-spread-from-uncertain-inputs)); the reference curves'
+  own scatter ([data survey 3g](data-survey.md#3g-the-reference-curves-own-scatter)); each result's
+  [standing and error bands](standing.md), direction first; a
+  [mesh-refinement study](validation.md#convergence-on-todays-defaults): nothing converges with the
+  measurement inside the change, and failures flip with mesh and step.
+- **Done:** blind test 1, Hrynyk's slabs struck by a falling weight, scored *between*; tests 2 and
+  3, Mendonça's slabs under an open-air charge and Reynolds's high-strength slabs, scored *worse*
+  ([validation](validation.md#blind-test-1-hrynyks-slabs-struck-by-a-falling-weight)).
+- **Done:** collapse a result of its own, illustrative until a compared collapse of that
+  structural system agrees ([standing](standing.md#collapse)).
+- **Done, 20 October:** the long comparisons off the balloon start: Beirut and the districts,
+  terrain, the landscape, ground motion, Dial Pack and the panel block, every band kept
+  ([record](validation.md#off-the-balloon-on-20-october)).
+- **Waits on the user:** the sources marked *needs the user to obtain* in
   [data wanted](data-wanted.md), chiefly ACI SP-306 for the high-strength slabs, Saatci's
-  records, Kasun-III's mapped debris for fragment sizes, shear across cracks at high rates, a
-  footing under fast loading, and the DTIC and paywalled references behind Kingery–Bulmash and
-  UFC 3-340-02's scatter.
+  records, Kasun-III's mapped debris, shear across cracks at high rates, a footing under fast
+  loading, and the references behind Kingery–Bulmash's and UFC 3-340-02's scatter.
 
 ### Concrete
 
@@ -95,291 +123,248 @@ Strategy and decisions: [concrete strategy](concrete-strategy.md).
 
 - **Done:** options no case supports retired; defaults chosen by regime
   ([selecting by regime](concrete-strategy.md#selecting-by-regime-instead-of-waiting-for-agreement));
-  stage 0's case matrix; stage 1, discrete bars, and stage 2's first step, nonlocal cracking, both
-  options ([staged plan](concrete-strategy.md#4-a-staged-plan)); hourglass control traced
-  ([validation](validation.md#hourglass-control)); stage 3, failed concrete kept as rubble
-  particles, an option for debris: speeds nearer the tests', no holes
-  ([rubble](validation.md#rubble-kept-as-particles-stage-3)).
+  stages 0–3 of the [staged plan](concrete-strategy.md#4-a-staged-plan), the last (failed concrete
+  as rubble particles) an option for debris ([rubble](validation.md#rubble-kept-as-particles-stage-3));
+  hourglass control traced ([validation](validation.md#hourglass-control)).
+- **Stopped, 20 October:** an element that bends in its cracked concrete without hourglass control
+  (`assumedStrainCracking`, an option, off). It is sound in dynamics, but struck beams go 20%
+  further than their tests and a slab loses three to four times the elements. What it showed lowered the
+  struck beams' standing to low ([`19ae1630`](https://github.com/emmettl/bombcad/commit/19ae1630)).
+  The next attack on limitation 1 is cracked concrete's stiffness and shear, not the element; it is
+  not yet taken up.
 - **Stopped, for data:** Peterson's short beams under impact
-  ([Peterson](validation.md#short-beams-struck-to-a-shear-failure)). Bars that slip by the Model
-  Code's splitting law (`--bond splitting`) take away the false split along the bars and give
-  the tests' crack angles, but then the beams without stirrups hold and those with stirrups at
-  45 mm fail; compression softening of cracked concrete (the modified compression field theory's),
-  crushing zones, less crushing energy, spalling and no confinement each fail nothing more, or
-  the wrong beams. Rerun on 18 October's defaults, the forces and failures stand. The struts crush
-  on their face, as the tests' spalled, but the beams never ask more of them, and the images
-  cannot say whether the spalling caused the failure; strut tests that can are in
-  [data wanted](data-wanted.md). Stage 2's embedded cracks were tried three times (14–15 October)
-  and not adopted: they soften slabs that do not fail.
+  ([Peterson](validation.md#short-beams-struck-to-a-shear-failure)): the crack angles are right, the
+  failures wrong, and strut tests that could say why are in [data wanted](data-wanted.md).
 - **In reserve:** stage 4, a peridynamic zone, only if stage 3 cannot hole the right slabs.
-- **Deferred:** embedded strong discontinuities (E-FEM) until the data decides between them and
-  the alternatives ([alternatives](concrete-strategy.md#3-alternatives-for-the-failure-zones-only)).
+- **Deferred:** embedded strong discontinuities (E-FEM), tried three times and not adopted
+  ([alternatives](concrete-strategy.md#3-alternatives-for-the-failure-zones-only)).
 - **Blocked:** the tensile strain-rate law at 1 to 10 per second needs tests that separate the
   material from the specimen's inertia; fragment sizes need Kasun-III's debris.
 
 ### Air
 
 - **Done:** afterburning, hot air and dissociation; refinement in one or two levels; gravity and
-  sub-grid mixing as options ([air-blast model](air-blast-model.md)); radiative cooling, the default
-  since 19 October 2026 ([thermal radiation](thermal-radiation.md#against-clough-and-clubleys-41-kg-fireball));
-  terrain on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3) ([large scenes](large-scenes.md));
-  the mapped one-dimensional start, the default since 18 October 2026, for each charge
-  ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
-- **Next:** rerun the long comparisons still on the balloon start (districts and Beirut, terrain
-  and ground motion, Dial Pack, the panel block; [list](validation.md#still-on-the-balloon-start)),
-  the short ones having moved off it on 19 October 2026 by 0–4% but for Tyndall's broken front
-  ([record](validation.md#off-the-balloon-on-19-october)); reflected peaks near walls; the products
-  as a second gas only for contact charges (their own equation of state in the mapped start was
-  tried and moves open-air loads too little, [record](validation.md#the-products-own-equation-of-state-18-october)). Weak shocks to 40 m/kg^(1/3) need no new criterion: threshold 0.005 follows them
-  at about the least it can cost, and 8 m cells refined twice give 84–94% of Kingery–Bulmash's
-  peaks out to there ([large scenes](large-scenes.md#following-weak-shocks-further-tried-and-not-needed-to-40-mkg13)).
+  sub-grid mixing as options ([air-blast model](air-blast-model.md)); radiative cooling
+  ([thermal radiation](thermal-radiation.md#against-clough-and-clubleys-41-kg-fireball)); terrain
+  on cut cells ([terrain](terrain.md#cut-cells)); bursts checked to 40 m/kg^(1/3)
+  ([large scenes](large-scenes.md)); the mapped one-dimensional start for each charge, under the
+  comparisons since 20 October ([a finely resolved start](air-blast-model.md#a-finely-resolved-start)).
+- **Done, 20–21 October:** refinement's fixed cost among many blocks cut (a corridor's GPU time
+  2.71 to 2.02 s, [`3c57b09b`](https://github.com/emmettl/bombcad/commit/3c57b09b)); walls at
+  400–600 m of 0.5 kt against finer air: 4 m cells read their peaks 13–19% low, 2 m corridors
+  are converged against 1 m
+  ([walls against finer air](surrogate-first-look.md#walls-at-400600-m-against-finer-air-21-october-2026)).
+- **Next:** reflected peaks near walls; the products as a second gas only for contact charges
+  (their own equation of state in the mapped start moved open-air loads too little,
+  [record](validation.md#the-products-own-equation-of-state-18-october)).
 - **Deferred:** cut cells for moving solids.
 
 ### Structures and supports
 
 - **Done:** shells and beams with solids in one body; several materials, masonry as units and
-  joints, steel and glass; up to sixteen bodies meeting by contact
+  joints, steel, glass and timber; up to sixteen bodies meeting by contact
   ([multiple-object scene](multiple-object-scene.md#implemented-contact-between-bodies)); base
-  connections, joints at any angle and between parts, and footings on soil checked against FoRCy
-  and FoRDy ([supports, as they were built](structural-model.md#supports-and-connections-as-they-were-built)).
+  connections, steel connections, joints at any angle, precast seats, and footings on soil and on
+  a slope ([supports](structural-model.md#supports-and-connections-as-they-were-built),
+  [footings on a slope](validation.md#footings-on-a-slope)); the cap on cut slivers under
+  structures on refined levels ([terrain](terrain.md#cut-cells)).
+- **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md), its flanges buckling
+  and keeping their folds, screwed by screws that pull through; every envelope component judged on
+  its [equivalent uniform load](building-envelopes.md#envelope-components-and-their-pressure-histories);
+  unreinforced masonry arching between returns, an option, off
+  ([arching](building-envelopes.md#arching-between-returns)).
 - **Traced to an end:** the rebound after a slab's peak, set by the mid-span hinge turning back
-  about its bars once its crushed compression zone unloads; residual crack opening, the bars'
-  hysteresis, hourglass control, tension stiffening and a crushing band ruled out; whether the
-  specimen's hinge differed or its rig held the rebound back the record cannot say
-  ([concrete model](concrete-model.md#how-the-model-got-here), step 16).
-- **Done:** precast seats on neoprene pads, friction falling with pressure, within 0.91–1.09 of
-  the measured energy ([measured seats](structural-model.md#base-connections)).
-- **Stopped, for data:** dowelled seats, a pinched, degrading hysteresis three tests cannot fix
-  (same section); CLT panels' screwed angle connections, measured only through the panels
-  ([data wanted](data-wanted.md#to-fetch)).
-- **Done, closed forms only:** footings on a slope, level and stepped, their sides and bearing
-  capacity read from the terrain (Vesić's factor, 0.88-1.39 of Meyerhof's charts); structures
-  held at the terrain's height and landing on it; a frame on a hillside
-  ([validation](validation.md#footings-on-a-slope)). No measured footing near a slope under fast
-  loading was found.
-- **Stopped, beyond a bed of springs (19 October):** a shaken footing's lurch and the rest of its
-  energy. The lurch is a ratchet of the sand under a leaning footing. The energy at large
-  rotations is capped by the rigid footing's capacity, which the test's sinking footing passed.
-  Neither yields to a point law: spreading the crushing inwards raised the energy and the
-  settlement together, more heave only the settlement
-  ([validation](validation.md#a-footing-shaken-on-dry-sand)). Both want the sand as a continuum.
-- **Done (20 October):** the cap on cut slivers under structures on refined levels, so refined
-  runs of structures on terrain cut it too: a hillside frame's displacement within 6–9% of fine
-  uniform cut cells, where the staircase gave 1.6–2.7 times
-  ([terrain](terrain.md#cut-cells)).
-- **Done, approximation:** [profiled steel sheeting](profiled-sheeting.md) as a skin with its ribs
-  as beams, its thin flanges buckling, screwed to its purlins by screws that pull through; Langdon's
-  connections as spring supports. Against Langdon's corrugated panels 10 of 13 permanent sets are
-  within half to twice of measured; against ADBLAST's screwed cladding in air the first deflection
-  is 0.90–1.35 of measured. As an envelope construction, by UFC's method for cold-formed panels on
-  its effective section, an approximation: on the strip of ribs across the span that it is judged
-  on, the same ADBLAST tests read 0.65–1.09 of measured.
-- **Done:** every envelope component judged on its equivalent uniform load, its faces weighted by
-  its plastic mechanism's shape ([equivalent uniform
-  loads](building-envelopes.md#envelope-components-and-their-pressure-histories)).
-- **Next, for sheeting** (the first two scoped in [what is left](profiled-sheeting.md#what-is-left-scoped)):
-  - what is left after the blast (buckled shapes snapping through);
-  - buckling earlier than plate theory says;
-  - cladding torn off a purlin that deforms, which ADBLAST's deliverables would judge
-    ([data survey 3i](data-survey.md#3i-profiled-cladding-on-its-fixings)).
-- **Done, new materials** ([new materials](new-materials.md)): timber, solid and engineered
-  (glulam, CLT), orthotropic with failure along and across the grain, from ContinuumKit.
+  about its bars ([concrete model](concrete-model.md#how-the-model-got-here), step 16).
+- **Stopped, for data:** dowelled seats and CLT's screwed angle connections; a shaken footing's
+  lurch and the rest of its energy, which want the sand as a continuum
+  ([validation](validation.md#a-footing-shaken-on-dry-sand)); cladding torn off a purlin that
+  deforms, its ADBLAST reference prepared
+  ([`5b4b4fc8`](https://github.com/emmettl/bombcad/commit/5b4b4fc8)) but the blast rig's layout
+  and support spacing not given.
+- **Next, for sheeting** ([what is left](profiled-sheeting.md#what-is-left-scoped)): buckled shapes
+  snapping through after the blast; buckling earlier than plate theory says.
 - **Blocked:** a footing or connection under fast loading ([data survey 3b](data-survey.md#3b-a-footing-or-connection-under-fast-loading)).
 
 ### Freestanding objects and supports
 
 Supports are under [structures and supports](#structures-and-supports) above.
 
-- **Done:** one box, one box in the air, one simplified car, and several objects in populated
-  scenes ([staged plan](freestanding-objects.md#the-staged-plan); the studies behind it in
-  [rigid-box coupling studies](rigid-box-coupling-studies.md)); objects and a deformable structure
-  in the air together, striking it at its own step, in the app's and headless runs (19 October
-  2026, [stages 1–3](freestanding-objects.md#limitations-and-future-work)).
-- **Next:** a fractional shell boundary to converge the late flow; drawing the structure's motion
-  in the app's motion run, and the objects' finer patches beside a structure
-  ([limitations and future work](freestanding-objects.md#limitations-and-future-work)).
+- **Done:** boxes, a simplified car and populated scenes
+  ([staged plan](freestanding-objects.md#the-staged-plan)); objects and a deformable structure in
+  the air together, striking it at its own step. A car beside a structure whose underbody gap the
+  cells take up is warned of, with finer cells offered.
+- **Deferred:** a fractional shell boundary to converge the late flow, and the objects' finer
+  patches beside a structure ([limitations and future work](freestanding-objects.md#limitations-and-future-work)).
 - **Blocked:** no blast test of a vehicle or furniture is known; the cars stay illustrative.
 
 ### Effects beside the blast
 
 One way and separable ([distributed computing](distributed-computing.md#the-long-term-visions-effects)).
 
-- **Done, an approximation:** [fragments](fragments.md) from a casing's dimensions, Mott's
-  masses within 1.4 of Cooper's counted bomb, measured drag; their [hazard](fragments.md#hazard)
-  distance by DDESB's criterion, debris's alike, and glazing graded by GSA and ASTM F1642; what they
-  strike judged by UFC 3-340-02 and THOR, panes holed before the blast (17 October).
-- **Done, an approximation:** [blast hazards](hazards.md): DoD's K-factor distances, the minimum
-  safe distance and what governs it, and injury at standing height from the run's own peaks
-  (Bowen, Bass, UFC's eardrums), checked against Teland's distances within 6% (17 October).
-  Debris from failed envelope components thrown and judged beside the fragments, and DESR's
-  structure debris distance for a charge inside a building (18 October): Keys's walls' mean reach
-  as measured, the Kasun cubicle's hazardous reach under half
-  ([hazards](hazards.md#debris-from-failed-envelope-components)).
-- **Done, illustrative:** the fireball's
-  [thermal radiation](thermal-radiation.md) and [surface heating](surface-heating.md); its
-  [rise and cloud](fireball-rise.md); [ground shock](ground-shock.md), as the manuals'
-  estimate or a layered soil column, or an elastic half-space
-  about the charge, elastic or with soil that yields, against one measured 1 t burst 15 to 90
-  times too high in the vertical near the outrunning limit, the half-space's horizontal within
-  1.5 (elastic) to 2.4 (yielding) times at 21 m but 10 to 20 times at 42 m; the yielding stage
-  recorded and the line stopped until Prairie Flat or Pre-Dice Throw II; [gas deflagrations](deflagration.md), started: FM Global's
-  vented tests within 0.4–1.6 of the measured peaks, with sub-grid turbulence and the measured
-  cellular instability.
-- **Now:** why the deflagration's flame stalls when lit in the middle (0.4–0.6 there), a young
-  flame's speed on coarse cells, and a thinner front, without which K_G cannot converge.
-- **Paused:** the fireball's radiation, about 21% radiated against Dial Pack's 5.1%; if it
-  resumes, flame sheets round a fuel-rich core. Mixing-limited afterburning was tried on 20 October
-  and stopped ([an option](thermal-radiation.md#mixing-limited-afterburning-20-october-2026)): the
-  eddy viscosity is nothing in the expanding fireball, so it slows the early burning most and
-  costs the open impulse 6% to 20%. The hot shock layer shows in the early frames
-  since 19 October (hot air's absorption, soot within the products): Dial Pack's first maximum
-  three-fifths of the measured, from a quarter.
-- **Cratering, stage 1, done (approximation for the diameter):** [an empirical crater](cratering.md)
-  by Cooper's scaling for each soil and height of burst, with Kinney and Graham's scatter; it
-  forms after the blast, so it is reported, drawn and exported when the run ends and does not
-  act on the air; on earth or rock a charge keeps 0.9 of its mass for the air, the ground taking
-  the rest (a ground setting, tied to the debris's soft ground). Five of six measured craters
-  within a third, the 500-ton shots at Suffield among them; with a water-table setting (walls
-  slumped to 10–15°, Glasstone and Dolan), the wet sites' depths within 0.84–1.41.
-- **Cratering, stage 2, next:** a crater coupled to the blast near the charge, with soil that
-  flows, ejecta and the shock driven into the ground, for close-in work. It starts with a
-  ContinuumKit and Edgerton check under the sharing rule: neither had a cratering or soil-flow
-  model on 17 October 2026, but Edgerton's volume solver and cohesive cracks overlap.
-- **Next:** the cloud's top after two minutes; ground motion measured where the blast is
-  superseismic (Prairie Flat, Pre-Dice Throw II), and the motion ahead of an outrunning blast.
+- **Done, an approximation:** [fragments](fragments.md) and their [hazard](fragments.md#hazard);
+  [blast hazards](hazards.md), K-factor distances and injury from the run's own peaks, and debris
+  from failed envelope components ([hazards](hazards.md#debris-from-failed-envelope-components));
+  [an empirical crater](cratering.md) by Cooper's scaling, five of six measured craters within a
+  third.
+- **Done, illustrative:** the fireball's [thermal radiation](thermal-radiation.md) and
+  [surface heating](surface-heating.md); [ground shock](ground-shock.md) as the manuals' estimate,
+  a layered soil column or an elastic half-space; [gas deflagrations](deflagration.md), FM Global's
+  vented tests within 0.4–1.6.
+- **Done, 20 October:** the cloud's top in Church's measured air stays with his tops to five
+  minutes, 0.88–0.98 of them from three minutes on
+  ([fireball rise](fireball-rise.md#in-churchs-own-air-20-october-2026)); ground points labelled
+  where the ground's wave outruns the blast, which finds Prairie Flat's outrunning limit, and the
+  half-space carries the motion ahead of it within a factor of two
+  ([Prairie Flat](ground-shock.md#against-prairie-flat)).
+- **Stopped, 20 October:** the deflagration's flame stalling when lit in the middle (0.4–0.6 of the
+  tests), traced to the vent drawing unburnt gas from the back front faster than it burns
+  ([the stall](deflagration.md#the-centre-lit-stall-traced-20-october-2026)); nothing adopted.
+- **Paused, the user's choice:** the fireball's radiation, about 21% radiated against Dial Pack's
+  5.1%. Mixing-limited afterburning was tried and stopped
+  ([an option](thermal-radiation.md#mixing-limited-afterburning-20-october-2026)); what remains is a
+  turbulence measure that holds at the fireball's edge, or flame sheets per cell.
+- **Later:** a crater coupled to the blast near the charge, for close-in work, if an open
+  measurement can judge it; soil with a fast elastic front ahead of its crushing, to give Prairie
+  Flat's arrivals and peaks together; the half-space in three dimensions on the GPU.
 - **Blocked:** measurements wanted in [data wanted](data-wanted.md) 3a (ground shock), 3d (a
   cloud's growth), 3e (fireball radiation) and 3f (a vented deflagration).
 
 ### Scale and import
 
 - **Done:** [large scenes](large-scenes.md) of hundreds of tonnes to kilotonnes; exposure-only
-  [building envelopes](building-envelopes.md) to 64 buildings, from IFC and mesh imports and
-  OpenStreetMap footprints; a cost-against-fidelity advisor reading the error bands
-  ([choosing settings](performance.md#choosing-settings)), its costs re-timed on an unloaded Mac
-  at kilometre scale.
-- **Done:** a cheaper damage model for envelope buildings
-  ([one-way damage](building-envelopes.md#one-way-damage-single-degree-of-freedom)), in the app;
-  the [large-panel flats](large-panel-flats.md) and the [process plant](process-plant-explosion.md).
-- **Built, building types** (what each needs is in [new materials](new-materials.md#what-each-building-type-needs)):
-  - UK terraced brick houses: built ([the terraced houses](shell-model.md#the-terraced-houses)):
-    cavity walls tied across, timber joists seated in pockets, a 40° pitched roof on purlins with
-    gables (19 October; [shells at a pitch](shell-model.md#shells-at-a-pitch)), roof tiles hung
-    on their nibs and thrown as debris.
-    Judged against wartime bomb damage
-    ([validation](validation.md#terraced-houses-against-wartime-bomb-damage)): right a tenth of
-    a second in, but cracked front walls then go over that surveyed houses kept standing. SBEDS's
-    rocking resistance would not hold them either (10–60 J/m² against about 600); stopped until
-    tests of brick walls blasted past cracking ([data wanted](data-wanted.md)) can say what does.
-  - Steel portal-frame warehouses with profiled metal cladding: a sample is built
-    ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)), its sheets screwed to
-    its Zed purlins and rails and torn off as their screws pull through; the purlins at their
-    maker's capacity, what follows its peak not modelled.
-  - Transport hubs with long-span steel and glass roofs: a sample is built
-    ([transport hub](transport-hub.md)). Its parts:
-    - [laminated glass](building-envelopes.md#laminated-glass) on envelopes, compared with three
-      open sets of tests;
-    - [glass falling from overhead](building-envelopes.md#glass-falling-from-overhead);
-    - [buckling](shell-model.md#buckling) checked against Euler and Lindberg, and steel members
-      bowed by default to Eurocode 3's curves (within 3%).
-    - [laminated glass in the structure model](shell-model.md#laminated-glass), its roof laminated
-      as an option, judged on Osnes's and Hooper's panes.
-    It still needs a dynamic buckling test (Kenny's thesis, in [data wanted](data-wanted.md)).
+  [building envelopes](building-envelopes.md) from IFC, mesh and floor-plan imports and
+  OpenStreetMap footprints, with a [one-way damage model](building-envelopes.md#one-way-damage-single-degree-of-freedom);
+  a cost-against-fidelity advisor ([choosing settings](performance.md#choosing-settings)); the
+  [large-panel flats](large-panel-flats.md) and the [process plant](process-plant-explosion.md).
+- **Built, building types** ([what each needs](new-materials.md#what-each-building-type-needs)):
+  - UK terraced houses ([the terraced houses](shell-model.md#the-terraced-houses)). Since
+    21 October the sample is the pre-1919 solid one-brick row, within a category of the wartime
+    surveys at every distance by 0.3 s, its fronts standing by arching
+    ([validation](validation.md#solid-one-brick-walls-20-october-2026)); the 1930s cavity row, a
+    second sample, still grades one or two categories too severe beyond 11 m.
+  - Steel portal-frame warehouses with profiled cladding
+    ([warehouse](profiled-sheeting.md#the-portal-frame-warehouse-sample)).
+  - Transport hubs with long-span steel and glass roofs ([transport hub](transport-hub.md)),
+    laminated glass and buckling checked; a dynamic buckling test is still wanted.
 
 ### Distributed computing
-
-- **Mac/PC follow-up:** [heterogeneous compute](heterogeneous-compute.md), with initial SSH and
-  lossless-compression measurements. Independent job scheduling (#59), CUDA profiling (#60)
-  and thermal replay feasibility (#61) are scoped next steps; #47 owns CUDA dataset acceptance.
-  Phase-label reproducibility (#62) and production peak-path differences (#63) now split the
-  numerical gate into concrete investigations; bulk CUDA generation remains gated.
 
 - **Done:** sweeps and ensembles shared across Macs by measured speed; the effects beside the
   blast placed on other Macs by cost
   ([several consumers](distributed-computing.md#several-consumers-on-several-machines)); Macs
-  nearby as workers without SSH, paired once and over TLS
-  ([Macs nearby](distributed-computing.md#macs-nearby-without-ssh)). The single-GPU gains put
-  first are in: refined patches taking their own steps (`refinementOwnSteps`) and contact's exact
-  pair skip ([better first](distributed-computing.md#better-first)).
-- **Next:** the mini's slow sending to a Mac nearby over Wi-Fi, measured again in a quiet window,
-  and a session's bulk carried on a plain socket if it holds; the Studio as the sharing Mac, for
-  the thin client ([Macs nearby](distributed-computing.md#macs-nearby-without-ssh)).
+  nearby as workers without SSH ([Macs nearby](distributed-computing.md#macs-nearby-without-ssh)).
+- **Done, 20–21 October, Linux:** the CPU-only models in a module of their own that builds on Linux,
+  `blastmodel` to run their studies there, CPU sweeps sent to a Linux PC, and a Linux lane in the
+  pre-push check ([on Linux](linux.md),
+  [`781c6204`](https://github.com/emmettl/bombcad/commit/781c6204)), its shared copy protected from
+  concurrent senders ([`34c28008`](https://github.com/emmettl/bombcad/commit/34c28008)). The PCs
+  also train the learned models ([learned models](learned-models.md)).
+- **A portable compute backend (a big bet), Codex's CUDA work** ([CUDA backend](cuda-backend.md),
+  [heterogeneous compute](heterogeneous-compute.md)):
+  - **Done:** a CUDA worker, derived from the production kernels, that generates training targets
+    for uniform and static-terrain air on the NVIDIA PC
+    ([`0181b978`](https://github.com/emmettl/bombcad/commit/0181b978)), each case checked against
+    its Metal reference before it is accepted
+    ([`64df301c`](https://github.com/emmettl/bombcad/commit/64df301c)). A flat full-size case
+    passes.
+  - **Now, the gate:** terrain and Beirut miss a few targets. The first-phase misses trace to
+    decisions near zero pressure ([`900a646b`](https://github.com/emmettl/bombcad/commit/900a646b)),
+    and the peak differences to the compiler's floating-point contraction, which also separates
+    Metal's own tiled and full-grid paths
+    ([`68f1fafb`](https://github.com/emmettl/bombcad/commit/68f1fafb)). Through the damage model
+    the differences changed no outcome on the cases judged so far. Bulk CUDA data waits for
+    reproducible labels and agreeing peaks; no tolerance has been relaxed to admit it.
+  - **Measured:** a queue that sends each field job to Metal or CUDA by cost took 12.5% less time
+    on eight full-size replays of one case ([`55b4ed89`](https://github.com/emmettl/bombcad/commit/55b4ed89));
+    the thermal model on the PC is deferred, since sending its inputs costs more than computing
+    them on the Mac ([`e38b75cb`](https://github.com/emmettl/bombcad/commit/e38b75cb)); the
+    worker's costs profiled and the PC's clock audited before timings are compared
+    ([`25736353`](https://github.com/emmettl/bombcad/commit/25736353)).
+  - **Not yet:** refinement, structures or the app on CUDA. The subset is air for training data,
+    not a full backend.
+- **Later:** the mini's slow sending to a Mac nearby over Wi-Fi, measured in a quiet window.
 
 ### Usability, in parallel
 
-- **Done:** each result's [standing and error bands](standing.md); export for rendering as USD
-  and OpenVDB, from the command line and the app ([USD export](usd-export.md)); saved runs and
-  comparison ([run comparison](run-comparison.md)); an offscreen review of the panels in both
-  appearances ([review log](native-interface-review.md#review-log)), and of every sidebar section and
-  editor at the sidebar's width, with six layout fixes; release 0.2.0.
-- **Done, 18 October:** the real-screen review's labels and keyboard paths
-  ([on the real screen](native-interface-review.md#on-the-real-screen-labels-and-keyboard)); materials
-  that look like what they are in the viewport and snapshots (concrete, steel, sheeting, glass,
-  timber, brick, blockwork, earth), the damage colouring and rubble apart from each to every common
-  colour deficiency (`MaterialAppearance`).
-- **Next:** the fixes seen on a real screen, Full Keyboard Access and VoiceOver's speech
+- **Done:** each result's [standing and error bands](standing.md); export as USD and OpenVDB
+  ([USD export](usd-export.md)); saved runs and comparison ([run comparison](run-comparison.md));
+  the offscreen and real-screen reviews' fixes
+  ([review log](native-interface-review.md#review-log)); materials that look like what they are.
+- **Done, in 0.6.0 and since:** replay a run and scrub through it, and continue from any saved
+  state, the same to the bit ([replaying a run](using-the-app.md#replaying-a-run),
+  [checkpoints](checkpoints.md)). Since 0.6.0 the replay keeps vents, envelope damage, the thermal
+  paint and the cloud as they change, and recording costs the main thread under a millisecond a
+  frame ([`48a8d354`](https://github.com/emmettl/bombcad/commit/48a8d354)). Settled structures are
+  kept between runs, and a run's envelope judgement is 2.3 times faster
+  ([`b8cd063c`](https://github.com/emmettl/bombcad/commit/b8cd063c)).
+- **Next, waits on the user:** Full Keyboard Access and VoiceOver on a real screen
   ([remaining checks](native-interface-review.md#remaining-checks)).
-- **Now (asked for 19 October): scrubbable timelines.** An expensive live run can be watched only
-  once. In two tiers:
-  - **Recorded frames:** what the viewport draws, recorded at a frame interval during the run and
-    kept with the saved run, so a slider scrubs and replays it with no physics.
-  - **Solver checkpoints:** saved along the same timeline, so any moment can be re-run at full
-    detail from the nearest one, or continued with changes.
-  The first tier reuses the frames the USD and VDB export already takes. The second rests on the
-  checkpoints that also make mid-run images and ensembles from a shared start cheap.
 
 ## Horizons
 
 Longer aims, set on 18 October 2026. The binding limit is how long a run takes on one Mac, so
-most are about reaching an answer for less, with the full solver kept as the referee. In order:
+most are about reaching an answer for less, with the full solver kept as the referee. Each has its
+first step done:
 
-1. **Refinement steered by the decision** (first step traced, 19 October 2026). Refine where the
-   answer the user asked for is uncertain: a component near its damage threshold, an injury
-   contour near a boundary, a pane near breaking. For a district it does not pay: the buildings
-   whose outcome the coarse cells leave in doubt fill a domain drawn to the damage's reach. For
-   one building it does: a corridor from the charge gives full refinement's answer there at 2–9%
-   of its refined work, and about a third of its GPU time on Beirut. Refining only beside the
-   building is worse than coarse cells
-   ([refinement steering](refinement-steering.md)). Refining toward buildings the user selects is
-   in the app since 19 October (Beirut: each chosen building as refined everywhere, at 0.4 of its
-   refined GPU time). Next: refinement's fixed costs scaling with the blocks held.
-2. **Answers in seconds.** Surrogates trained on BombCAD's own runs (reduced-order loads by
-   geometry and charge, or a small learned model of envelope response), giving an instant first
-   look that real runs then refine where it matters, and inheriting the standing's error bands.
-   The first step is a surrogate for envelope damage across a district, checked against Beirut's
-   runs: done for glass, which it gets right side by side for three in four of Beirut's building
-   sides in half a minute, not for walls and roofs ([first look](surrogate-first-look.md)).
-3. **City scale in minutes** (first step done, headless). Gas dynamics only near the charge and
-   in the streets that matter, and further out the blast carried by ray-traced shielding and
-   channelling (the thermal model already uses Metal ray tracing) with scaled blast laws, handed
-   over at a boundary. The first step, a far field set against Beirut's full run beyond 1 km, is
-   done without ray tracing: `scenebench district-hybrid` runs the air to a hand-over radius and
-   carries the façades' loads beyond it on item 2's surrogate, matched to the near run, so its
-   shielding is the surrogate's and channelling is not yet in it. Handing over at 1 km, Beirut at
-   0.5 kt takes about 7 minutes against the full run's 34, and the share of building sides with
-   some glass broken comes within 0.04 of the full run's to 1.5 km at every yield; in the app
-   under File ▸ New District ([a city in minutes](hybrid-far-field.md)).
-4. **Uncertainty by default.** Results as probabilities ("this façade fails with 70% chance")
-   from the scatter in yield, materials and rounding, cheap once item 2 exists. First step done for the
-   glass: each building side's chance of broken, blown-out and thrown glass in about a minute, calibrated to
-   Beirut's runs but not to its survey ([glass by chance](glass-probability.md)).
-5. **From damage back to the explosion** (first step done). Infer yield, place and height from
-   observed arrival times, broken glass and damage, as the Beirut page did by hand for its yield.
-   `scenebench infer-charge` ([charge inference](charge-inference.md)) now samples the yield and
-   place from arrivals, finding Beirut's 0.5 kt and Warehouse 12 from Rigby's observers, and the app
-   does too ([Infer Charge](using-the-app.md#inferring-the-charge-from-arrivals)); height
-   and clock offset are not resolved by them, and GEER's glass biases the yield (the glass model
-   breaks more than the survey saw). Next: damage that calibrates (the structural survey, or glass
-   once the envelope model matches GEER), and BombCAD's own runs as the forward model in the loop.
-6. **Protective design** (scoped, prototyped outside the app). The least set of glazing, wall
-   and stand-off changes that meets a hazard target, which needs item 2's speed. A design and a
-   toy prototype in `Scripts/protective/` find the cheapest plans of film, stand-off and barriers
-   for made-up sites in seconds, and show the answer turning on how much buildings and barriers
-   shield, which the surrogate does not yet give at design stand-offs
-   ([protective design](protective-design.md)).
+1. **Refinement steered by the decision.** A corridor from the charge gives one building full
+   refinement's answer at a fraction of its cost; refining toward chosen buildings is in the app
+   ([refinement steering](refinement-steering.md)). Since 21 October the quick estimate's close
+   calls, buildings with a chance between 0.2 and 0.8, are run in the air within a budget: on
+   Beirut the first answer in 13 s, eight in 22 s
+   ([close calls](surrogate-first-look.md#close-calls-refined-by-the-solver-21-october-2026)).
+2. **Answers in seconds.** The façade surrogate gives a district's glass in half a minute
+   ([first look](surrogate-first-look.md)); since 20 October roofs take their own terms and walls
+   are judged on loads saved without the old 65.5 kPa cap
+   ([walls and roofs](surrogate-first-look.md#walls-and-roofs-20-october-2026)), and streets and
+   close-in façades are loaded as fine runs load them. The learned field model is the next step
+   ([in the quick estimate](learned-models.md#in-the-apps-quick-estimate-21-october-2026)): on
+   Beirut, never seen in training, glass by side is exactly right on 0.942 of sides against the
+   surrogate's 0.916, and concrete walls' skill is 0.68 against 0.60. Whether it becomes the
+   default *is the user's decision* ([the decision](learned-models.md#the-decision-for-the-user)).
+3. **City scale in minutes.** File ▸ New District runs the air to a hand-over radius and the
+   surrogate beyond it: Beirut at 0.5 kt in about 7 minutes against 34, its glass within 0.04
+   ([a city in minutes](hybrid-far-field.md)). Channelling down streets matters at tonne-scale
+   yields (1.2–2 times the peak) but not at the far field's, so it went into the surrogate, not a
+   far-field term.
+4. **Uncertainty by default.** Each building side's chance of broken, blown-out and thrown glass
+   ([glass by chance](glass-probability.md)), and since 20 October its walls' and roof's
+   ([walls and roofs](glass-probability.md#walls-and-roofs)): concrete walls calibrated, roofs a
+   little low in the middle, masonry high, and failure not given a chance. The same scene gives the
+   same chances every time.
+5. **From damage back to the explosion.** Yield and place inferred from arrival times, in the app
+   ([charge inference](charge-inference.md)). Through the quick estimate, Beirut's surveyed stone
+   buildings agree with the arrivals, its concrete ones do not
+   ([surveyed damage](charge-inference.md#beiruts-surveyed-damage-20-october-2026)).
+6. **Protective design.** The cheapest glazing, film, stand-off and barrier changes that meet a
+   glass hazard target, in the app since 0.6.0 ([protective design](protective-design.md)). Fine
+   runs behind buildings and barriers gave the surrogate its close-in branch and street gains; a
+   shielding factor for barriers was not adopted, so barriers still barely change the estimate,
+   on the safe side
+   ([fine runs](protective-design.md#shielding-barriers-streets-and-close-in-loads-on-fine-cells-20-october-2026)).
 
-Under all of them is raw speed: everything kept on the GPU (no CPU remaps), compact storage for
-coarse levels, smarter steps, and work spread across Macs
-([distributed computing](distributed-computing.md)).
+Under all of them is raw speed: everything kept on the GPU, compact storage for coarse levels,
+smarter steps, and work spread across machines ([distributed computing](#distributed-computing)).
+
+## Big bets
+
+Apart from the main line, each with a cheap first step and a stated way to fail:
+
+- **Calibrate the whole model against the whole record at once.** Three parameters against 21
+  comparisons ([`f91024bc`](https://github.com/emmettl/bombcad/commit/f91024bc)); a fourth, the
+  concrete's fracture energy, is being added.
+- **BombCAD's validation as an open benchmark** others can run and be scored on
+  ([open benchmark](open-benchmark.md)): ten cases and a scorer; two of them now with reproducible
+  input decks and history readers ([`a163e9f9`](https://github.com/emmettl/bombcad/commit/a163e9f9)).
+  Next, a second code's entry.
+- **Run the solver on other GPUs: a portable compute backend.** The CUDA work under
+  [distributed computing](#distributed-computing) is its first step.
+- **Whole-event simulation:** blast, collapse, debris and dust in one run. Not before limitation 1
+  improves: collapse on a model that springs back is unearned.
+- **Blasts near and under water**, for ports, quays and ships. First, a one-dimensional underwater
+  burst against Cole's similitude.
+- **Fire after the blast**, from the ignitions to spread across a district.
+- **Forensics from photographs:** damage read from images into the charge inference.
+- **A district's result walked at full scale** on a Vision Pro or iPad, from a kept timeline.
 
 ## Things tried and set aside
 
