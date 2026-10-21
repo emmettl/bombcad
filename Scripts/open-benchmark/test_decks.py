@@ -71,7 +71,19 @@ class Decks(unittest.TestCase):
             pairs = r.selected()
             for deck, run in pairs:
                 self.histories(root, deck, run)
-            receipt = r.make_receipt(root, pairs, {'name':'synthetic verification','version':'1'})
+            build = root/'build'
+            build.mkdir()
+            binary = build/'test-code'
+            binary.write_text('original executable')
+            bundle = build/'Test.bundle'
+            bundle.mkdir()
+            (bundle/'shader.txt').write_text('original shader')
+            snapshot = r.snapshot_runtime(binary, root)
+            binary.write_text('changed by concurrent build')
+            (bundle/'shader.txt').write_text('changed shader')
+            self.assertEqual(snapshot.read_text(), 'original executable')
+            self.assertEqual((root/'runtime/Test.bundle/shader.txt').read_text(), 'original shader')
+            receipt = r.make_receipt(root, pairs, {'name':'synthetic verification','version':'1'}, snapshot)
             r.write_new(root/'receipt.json', receipt)
             results, diagnostics = r.extract(root)
             self.assertEqual(sum(len(c['predictions']) for c in results['cases']), 29)
@@ -91,6 +103,9 @@ class Decks(unittest.TestCase):
                 if mutate == 'deck': changed['decks'][p.IDS[0]]['sha256'] = 'bad'
                 (root/'receipt.json').write_text(json.dumps(changed))
                 with self.assertRaises(ValueError, msg=mutate): r.extract(root)
+            (root/'receipt.json').write_text(json.dumps(receipt))
+            snapshot.write_text('tampered runtime')
+            with self.assertRaises(ValueError): r.extract(root)
 
     def test_history_rejections(self):
         with tempfile.TemporaryDirectory() as directory:

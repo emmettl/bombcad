@@ -131,8 +131,10 @@ coverage. A missing sample, duplicate time, wrong unit/header or truncated recor
 
 ## Versioning, evidence and limits
 
-The wrapper keeps a deck copy, each raw history and its adapter log, and a receipt with SHA-256
-hashes of decks, histories and the executable. Extraction checks deck equality against this
+The wrapper snapshots the executable and its adjacent SwiftPM resource bundles in the output
+folder, then keeps a deck copy, each raw history and its adapter log, and a receipt with SHA-256
+hashes of decks, histories, the executable and all snapshot files. A concurrent build cannot change
+the runtime used between shots. Extraction checks deck equality against this
 protocol, case hashes and history hashes, and refuses missing/extra/duplicate runs and unsafe
 receipt paths. Results use the existing scorer format, carry the protocol ID and hashes in
 notes, and are separate from `bombcad-0.6.0-dev.json`. The source commit and build version are

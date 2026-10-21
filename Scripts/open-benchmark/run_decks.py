@@ -8,6 +8,8 @@ import datetime
 import importlib.util
 import json
 import math
+import hashlib
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -42,6 +44,23 @@ def safe_path(root, name):
     return path
 
 
+def snapshot_runtime(binary, root):
+    """Use one executable/resource snapshot even if another build changes the shared build tree."""
+    runtime = root/'runtime'
+    runtime.mkdir()
+    original = binary.resolve()
+    target = runtime/original.name
+    shutil.copy2(original, target)
+    for bundle in sorted(original.parent.glob('*.bundle')):
+        shutil.copytree(bundle, runtime/bundle.name)
+    return target
+
+
+def runtime_hashes(root):
+    return {str(path.relative_to(root)): protocol.digest(path)
+            for path in sorted((root/'runtime').rglob('*')) if path.is_file()}
+
+
 def make_receipt(root, pairs, code, binary=None):
     receipt = {'format': 'open-blast-benchmark-history-receipt', 'format_version': 1,
                'protocol': protocol.PROTOCOL, 'code': code,
@@ -49,6 +68,7 @@ def make_receipt(root, pairs, code, binary=None):
                'requested_runs': [[d['case_id'], r['id']] for d, r in pairs]}
     if binary:
         receipt['binary_sha256'] = protocol.digest(binary)
+        receipt['runtime_files_sha256'] = runtime_hashes(root)
     for deck, run in pairs:
         cid = deck['case_id']
         path = root / f'{cid}.deck.json'
@@ -142,6 +162,8 @@ def extract(root):
     receipt = json.loads((root/'receipt.json').read_text())
     if receipt.get('format') != 'open-blast-benchmark-history-receipt' or receipt.get('format_version') != 1 or receipt.get('protocol') != protocol.PROTOCOL:
         raise ValueError('Unsupported receipt')
+    if 'runtime_files_sha256' in receipt and runtime_hashes(root) != receipt['runtime_files_sha256']:
+        raise ValueError('Runtime snapshot hash mismatch')
     code = receipt['code']
     if not isinstance(code, dict) or not all(isinstance(code.get(k), str) and code[k].strip() for k in ['name', 'version']):
         raise ValueError('Code name/version required')
@@ -193,6 +215,7 @@ def extract(root):
     notes = ['Frozen ideal-gas balloon control; no afterburning, radiation, gravity or mapped start. Not the historical BombCAD entry.']
     if 'binary_sha256' in receipt:
         notes.append('Binary sha256 '+receipt['binary_sha256'])
+        notes.append('Runtime inventory sha256 '+hashlib.sha256(json.dumps(receipt['runtime_files_sha256'], sort_keys=True).encode()).hexdigest())
     return {'format': 'open-blast-benchmark-results', 'format_version': 1, 'code': code,
             'prepared': receipt['prepared'], 'notes': notes, 'cases': list(cases.values())}, diagnostics
 
@@ -232,15 +255,19 @@ def main(argv=None):
                 code['commit'] = args.code_commit
             if args.command == 'run':
                 args.root.mkdir(parents=True, exist_ok=False)
+                binary = snapshot_runtime(args.binary, args.root)
+                initial_runtime = runtime_hashes(args.root)
                 for deck, run in pairs:
                     deck_path = args.root/f"{deck['case_id']}.deck.json"
                     if not deck_path.exists():
                         write_new(deck_path, deck)
-                    command = [str(args.binary.resolve()), 'open-benchmark', '--deck', str(deck_path.resolve()),
+                    command = [str(binary.resolve()), 'open-benchmark', '--deck', str(deck_path.resolve()),
                                '--run', run['id'], '--out', str((args.root/filename(deck,run)).resolve())]
                     with (args.root/(filename(deck,run)+'.log')).open('x') as log:
                         subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
-            receipt = make_receipt(args.root, pairs, code, args.binary if args.command == 'run' else None)
+            if args.command == 'run' and runtime_hashes(args.root) != initial_runtime:
+                raise ValueError('Runtime snapshot changed during the run')
+            receipt = make_receipt(args.root, pairs, code, binary if args.command == 'run' else None)
             write_new(args.root/'receipt.json', receipt)
             # Refuse a successful import/run receipt for incomplete or malformed histories.
             try:
