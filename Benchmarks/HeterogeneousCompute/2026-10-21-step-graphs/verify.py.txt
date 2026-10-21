@@ -1,0 +1,68 @@
+"""Independent post-timing hash/provenance/input/ownership audit; no GPU work."""
+import hashlib,json,os
+from pathlib import Path
+import numpy as np
+root=Path(__file__).resolve().parent
+labels=['pilot','small-terrain','districts','null-small','null-districts']
+def digest(p):
+ h=hashlib.sha256()
+ with p.open('rb') as handle:
+  for block in iter(lambda:handle.read(1048576),b''):h.update(block)
+ return h.hexdigest()
+source=digest(root/'solver.cu');reports=[];canonical={};total_files=0;total_bytes=0;graph_runs=[]
+inputs=json.loads((root/'inputs.json').read_text());assert source==inputs['sourceSHA256']
+for name,details in inputs['jobs'].items():
+ path=root/name
+ actual={str(p.relative_to(path)):digest(p) for p in path.rglob('*') if p.is_file()}
+ assert actual==details['files'],('changed input',name)
+for label in labels:
+ profile=json.loads((root/label/'profile.json').read_text());monitor=json.loads((root/(label+'-state.json')).read_text());assert monitor['status']=='complete' and monitor['returncode']==0
+ assert not monitor.get('externalComputeGroupObserved',False)
+ assert all(s['owner'] is None or s['owner']['pid']==monitor['pid'] for s in monitor['samples'])
+ assert profile['sourceSHA256']==source and profile['profilerSHA256']==digest(root/'profile-worker.py')
+ assert profile['baselineCacheDir']==profile['candidateCacheDir']==str(Path.home()/'bombcad-cuda/ptx-cache')
+ assert profile['freshProcessObserver'].startswith('drained stdout/EOF') and profile['allOutputsAndTimestepsBitIdentical']
+ verified=[]
+ for row in profile['rows']:
+  variant='baseline' if label.startswith('null-') else row['worker'];path=root/label/f"{row['job']}-{row['repetition']}-{row['worker']}";r=json.loads((path/'result.json').read_text())
+  expected={'run.py':digest(root/(variant+'.py')),'job.py':digest(root/'job.py'),'compile.py':digest(root/'compile.py')}
+  assert r['workerFilesSHA256']==expected and profile['workerSHA256'][row['worker']]==expected['run.py']
+  assert r['sourceSHA256']==source and r['timingClock']=='clock_gettime(CLOCK_MONOTONIC_RAW)' and r['compileCacheEnabled']
+  assert r['wallSeconds']==row['solverSeconds'] and r['steps']==row['steps']
+  dt=np.load(path/'dt.npy',allow_pickle=False);assert len(dt)==r['steps'] and sum(map(float,dt))==r['elapsedSimulationTime']==row['elapsedSimulationTime']
+  actual={str(p.relative_to(path)):digest(p) for p in path.rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')};assert actual==row['hashes']
+  if row['job'] in canonical:assert actual==canonical[row['job']]
+  else:canonical[row['job']]=actual
+  if variant=='candidate':
+   graph=r['experimentalGraphDispatch'];assert 1<=graph['captures']<=4 and graph['replays']>0 and graph['captureSeconds']>0
+   assert graph['perStepHostControlPreserved'] and graph['perStepPrepareAllocationPreserved'];graph_runs.append(dict(profile=label,job=row['job'],repetition=row['repetition'],**graph))
+  else:assert 'experimentalGraphDispatch' not in r
+  total_files+=len(actual);total_bytes+=sum((path/n).stat().st_size for n in actual)
+  verified.append(dict(job=row['job'],repetition=row['repetition'],worker=row['worker'],resultSHA256=digest(path/'result.json'),numericalFiles=len(actual)))
+ reports.append(dict(profile=label,profileSHA256=digest(root/label/'profile.json'),monitorSHA256=digest(root/(label+'-state.json')),samples=len(monitor['samples']),resolvedComputeGroupsAllOwned=all(x.get('ownedGroup') is not False for s in monitor['samples'] for x in s.get('observed',[])),exitedBeforeGroupRead=sum(x.get('exitedBeforeGroupRead',False) for s in monitor['samples'] for x in s.get('observed',[])),runs=verified))
+# Previous exact-source controls are numerical references, not a physics/admission gate.
+historical=[]
+for label in ['results-small-terrain','results-districts']:
+ old=Path.home()/'bombcad-pinned-control-01a15d45'/label/'profile.json';p=json.loads(old.read_text())
+ for row in p['rows']:
+  assert row['hashes']==canonical[row['job']];historical.append(dict(profile=str(old),job=row['job'],repetition=row['repetition'],worker=row['worker']))
+d=json.loads((root/'diagnostic/diagnostic.json').read_text());assert d['allNumericalOutputsAndTimestepsBitIdentical']
+assert all(x['noOutputWritten'] for x in d['failureControls']) and len(d['failureControls'])==4
+assert all(x['graphReplays']>0 for x in d['failureControls'] if x['worker']=='candidate')
+for row in d['rows']:
+ path=root/'diagnostic'/row['worker'];actual={str(p.relative_to(path)):digest(p) for p in path.rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')};assert actual==row['hashes']==canonical['blast64']
+for case in d['parityControls']:
+ pair=case['pair'];assert pair[0]['hashes']==pair[1]['hashes']
+ for row in pair:
+  path=root/'diagnostic'/(case['case']+'-'+row['worker']);actual={str(p.relative_to(path)):digest(p) for p in path.rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')};assert actual==row['hashes']
+# Independently confirm no non-zombie process remains in any timed profiler group.
+owned_groups={json.loads((root/(label+'-state.json')).read_text())['pgid'] for label in labels}
+live=[]
+for stat in Path('/proc').glob('[0-9]*/stat'):
+ try:
+  fields=stat.read_text().rsplit(')',1)[1].split()
+  if int(fields[2]) in owned_groups and fields[0]!='Z':live.append(str(stat.parent))
+ except (OSError,ValueError,IndexError):continue
+assert not live,('owned profiler group still live',live)
+result=dict(status='complete',allSourcesInputsProvenanceAndNumericalOutputsVerified=True,allTimedProcessGroupsTerminal=True,timedRuns=sum(len(p['runs']) for p in reports),numericalFileInstances=total_files,numericalBytesVerified=total_bytes,allRepetitionsAndLabelsNumericallyIdentical=True,historicalRowsMatch=len(historical),sourceSHA256=source,workerSHA256={n:digest(root/(n+'.py')) for n in ['baseline','candidate']},reports=reports,graphRuns=graph_runs,diagnosticSHA256=digest(root/'diagnostic/diagnostic.json'),failureControls=d['failureControls'],parityCases=[c['case'] for c in d['parityControls']],limitations='Periodic ownership/process observations, not proof of laboratory exclusivity; pilot lacks process-group resolution. Historical CUDA parity is not numerical/physics dataset admission.')
+(root/'verification.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps({k:v for k,v in result.items() if k not in ['reports','graphRuns']},indent=2))

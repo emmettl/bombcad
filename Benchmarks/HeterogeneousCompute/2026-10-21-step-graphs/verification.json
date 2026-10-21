@@ -1,0 +1,807 @@
+{
+  "status": "complete",
+  "allSourcesInputsProvenanceAndNumericalOutputsVerified": true,
+  "allTimedProcessGroupsTerminal": true,
+  "timedRuns": 72,
+  "numericalFileInstances": 756,
+  "numericalBytesVerified": 17741161488,
+  "allRepetitionsAndLabelsNumericallyIdentical": true,
+  "historicalRowsMatch": 36,
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "workerSHA256": {
+    "baseline": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "candidate": "04bff5bc3eadbeb3ebe95a0cd0a4b61b69489b8cbdedf9b7e321755e1b2c5f00"
+  },
+  "reports": [
+    {
+      "profile": "pilot",
+      "profileSHA256": "217fed5bee03b35908fc61eb1c6c0d17cb020019afd5c2a529404c563a30dc3a",
+      "monitorSHA256": "8789944aa2f428688cc99e65c215fb7a803aeb5d782d92eeb630b6d52fbfdd3b",
+      "samples": 13,
+      "resolvedComputeGroupsAllOwned": true,
+      "exitedBeforeGroupRead": 0,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "b80f99f5c23f0c36cf95af02e7c45f78a0cc00255d0df5f30f34a12434d8feb3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "42af5beb62ea7a842d8bda46075f765cf7737085aad4dcd39ac3c639bff5d037",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "76e545578c14b441cb8fce599706344a835cf47e07c26c763f5bd036f24cdd58",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "5754656417a92aaf2b49ea1fc0e79b48158b233dc8e66574a39914144fd79c8a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "19edcc20171a4e9341b6a249256dfc0e74da0c47bc3a2f8696e919f37dbd69e2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "03004b1cb164be7bf209f7f5105538255a5939fbe1acbb7360c7e2832ef45bf0",
+          "numericalFiles": 9
+        }
+      ]
+    },
+    {
+      "profile": "small-terrain",
+      "profileSHA256": "12e272046ecbd39ce18a2c6e13ad20e43dfb38e99b7fc6ea26e034510a6a55a5",
+      "monitorSHA256": "0bef7a947302571873c4bf3bdb1c53e6544873d48184b73fbdf0838a6ff207f7",
+      "samples": 54,
+      "resolvedComputeGroupsAllOwned": true,
+      "exitedBeforeGroupRead": 0,
+      "runs": [
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "3d9e51141585f89539c9cd1ab674994b984e1a8aa96674ea2556c29aea99af23",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "2bdd9ade4663a0c4f99b56b9391dc8d144826b22406f1ce921091997911d7203",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "83219557816119afe6e322d45054c6dfbfe9be847cddafdf1b1e61ca7fe3eb60",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "1564de337cb49c4bd29db9c0019c68ef3ecbb041923193a6f7fc3ba9f88db767",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "9f14c5b6428e6359f295edd3a327f2cf6b06a1d3d07ade2e6fda66380e0bc234",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "bb9990be74d3196fa499fecae34e358a96cbec071cb6f14f4b349e140bd78d75",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "371724ccb9e37b0f6b1b7a70c7cd2c83cf916e860a9919ff9e425f157fb495db",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "a25c3fb83cf4229183774d342300013b3b1622cc4d833ba9c1ae266920b2beac",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "39bf81a53bf15c921a77ab0369ce27e96230dbe0769e9b7a5cf96a3ee8523382",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "bd20ce67e2f67076336d8553b37f1f951b2ab63303935d46b69c135be8a277fa",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "b3f9a032414f524a234e68767174a5bbd4f3987d77950775fb3dd31275b9ca0e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "35fa5907feedc74444c4affbef0350ebbfa1e969c89798c7a66494586abe5949",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "aceaec342e1dfae8bca198ab2ad374cbeb49db18a202495a0fc7edda0a7352a9",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "ad7e6b8c8c483e053ad557dc1b9208b4a75b13cf006f8355b593357326ffcff4",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "a2a713ee91697ab4efa0b4825774c6a1215490afd61b8eaa4c013d769d7322bb",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "16acd5147ee6bfbfe57bb3cdce6f4d482377c33e70ef530e03ee58f2449621ea",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "b837cb0b8febda3e8773366e9f0b20cd38af306e3e3e79dc87b5f6befedbaa66",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "9dc2946edcf9925d632e02e6e3082954565bdce9cc2ef4526c24d70bf49de6a4",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "districts",
+      "profileSHA256": "10888c4da7aa72d404c9089b08eb434847ece3a6bce50b6bcf57ba3f9deb4402",
+      "monitorSHA256": "ffffdf9b4e49a4de9f5d67c21351d507c69ed7ddaf346501caffe033f88d53dc",
+      "samples": 232,
+      "resolvedComputeGroupsAllOwned": true,
+      "exitedBeforeGroupRead": 0,
+      "runs": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "439578af7920cd07e2b28466030f05d3021dcbbbec74ee9487ddc75ba979a4b9",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "58e0af94314d491afddb795101b6f298765ec4bf8de05c9aebedd30ca403551e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "34f3bdb3f438841286b42f805160ca3afb355ef3434b49889a2530f131e25e96",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "fa0c5a6d58bd290b0b416c04be7ba59888eb7fee8c222cce994a4ac98abcbb2d",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "ad15228d5d39d8a314479b1709e4df4380b71e2665266437ac576d9bc7c6c023",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "29a960b1c004106d0fd4d2778774e91238dc165c619c2ccadb62fc276768ed94",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "d316d2ae6fd8e1a1089d305927bef055c97bca217e17cfb978d78b493035a3c0",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "5a85b57336363a376353bed5230772fea1f4d107a32eeea65eb849d1b224d85a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "4a2e6e00d5eb109a5b8cf060e2899d0d8f5d1aa57c01faa7c79cdecbaae8986a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "d2fee653e2a27a1a6223e190dc97d76f0c35eba023b6d1d94b6c7d58a446cf30",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "9b996365d86beca1f289cab942bb29f809417f0b50290b3272a65e4446eb09a6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "b8bf295fb7c1eff8206b59f977170f647e4f133eb280a3d2a0c54338768f1e80",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "null-small",
+      "profileSHA256": "66d850c68ce0f67f71db73aaf3909b05092eb1b5f0ad73ba405ac2dcc5b17c42",
+      "monitorSHA256": "f351d657c2837c630db8028595b15f8461f4f1f8d3d746f1a59938a886e1cc50",
+      "samples": 68,
+      "resolvedComputeGroupsAllOwned": true,
+      "exitedBeforeGroupRead": 0,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "14b0bffa9e09fb550df4379b4ff0e2ff5c3c9fbc9611e93bdf507742b8426316",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "d3d46ab6a215b15b5121b3b959273aed0ff49e6e09105690770d2778a64ec104",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "5cac75633ea30b3abf298b629a9cf28acfd38c54c956aa16f11ea2d17d1833b1",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "cc59207c24a9bb5ffe34af47194caba591ab3fbaec20eb4733e605b8034a5ddd",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "c38c9a8c3352ed6c20f0abb9472c5dca643445c0ac656c8cb9edf8ce059a46b8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "294764c4fa76630c3fb66e1c2ae2f18da8fa726c81c19451a5f374953c5bede7",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "8f759c068cf6195bf6e57ea84adafcec14bb79ccee20d0a5752f5970312db02e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "2fc8b5f6c40366ab8bebdc51ce30b4e1d7c4bca52e7771a641523f96d37054fa",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "0835e54f35a1092fbd89a7c417f6f8e3b1324c92b774c168425ffd510900df7b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "8ea76bc033efdd362df714f75af4040f3291f15ff44a78f7c950f53704394706",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "d0dc53264dc4573bb3c9c98263bf9168e53059b481a12af9a43b040c9f3588d9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "41a0b6bf72c73d900f0980219ad1847aed74f300fc80cf208ead5b74bd17b145",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "e68bef17bf3ad75f2459308145816245b9e8eb1af7d9b861d61ae54819c1dd1f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "4bbcde4b25d6ef117a5e4fd5b65669a70b76d56233595a9818f4adfff6aaebd9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "bb6788b5283374f5a0efe942da0baf90f3c5b27cf83acaabc940e212e21ad41a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "ec529cab06345a855e7f625b2db598e9464b3801e0adf0f6d59cf48189f80d02",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "add14de228fd772294b485a59039f960ef1ee7cd6a30f2937e1f7f1bc8f3ba4d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "db9243c76130e354f9c03b50cb810781ba166f2fc945e9a2230f9bd9f9bbd1e0",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "afce0add1fcedf65dbdfe7ec3e0f42dd5af515af059a3ba866758b8a343001b0",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "c4bb26fe317e270ae9dc7604b8544f568129ee1b99e6d74f78c2f02b9e7660cd",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "8fb6d8e14452cd51a4be3d83e3825e539bac4835e61db46bd288017d1b34a4bc",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "38583f1552041d7742d9e5d448b3fceb28f3ecaa61e4dea5d7f4ebdadca93b47",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "9e07310585580d5811a55cb177a7a7ca5193f97ac0f2fab3bc38c8bec6dfaf1f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "24df0bbaa970702c471f0094f36e23004d709871201e97d787ff1c395c2e7f89",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "null-districts",
+      "profileSHA256": "3a38fc86c93c704c061ad9f41c1b7f5eaafb52e403875a18751686c567787e4e",
+      "monitorSHA256": "575e32b38088c3665a71883531afb5eb577cc4124dda502f3826cd537148eb9a",
+      "samples": 234,
+      "resolvedComputeGroupsAllOwned": true,
+      "exitedBeforeGroupRead": 0,
+      "runs": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "a91fb3632887034d12d224fee1b02c90ea398d79337131a346573474d4eadeb7",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "0163874d69e843db71ec834ba0f963dafcc5093ab2c74661be9eb1fbf4b6cca7",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "bf04a037c739e51d5dfbb2f025b3704244b8b48f0bafdb232311acf18087d689",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "e6241b9baeb2524eaaf2b4db569cf7d6bd65739bacdc1d8417eca86d41a6449f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "9a99107b779bd90f93f0cc8db03e57b6020939c51d776c521f7fccb6ec8fc7a5",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "443ce9ac4a5aa980c8bb49c34cec684e5f7dac8b8807350c708a1f6377310ee5",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "eecfed4ff736c75eeb3060649f61b291404b864a579b4f2e72a3f61797283b24",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "7a4915b0d2b6d54f4e9f58cc7bb9d504762c066472dec6ee00a9d210dfe4010e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "9a77ba8fb3fe1704923a9688615d8b289677764997a782723ac8b120fc9e8bbd",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "ea54608f313dc0395db093f63ffe62282f1b218175a213d1d2abf38835ca5dc0",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "82c254d8e2882c8c8b973d1fcada8cb539e6359975681b47b7c6042e5bd902cf",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "b096b6f79c9b715a34c8c4d8254ed8b10fb4bc4fca4391fa6c96ad42d3729d1e",
+          "numericalFiles": 12
+        }
+      ]
+    }
+  ],
+  "graphRuns": [
+    {
+      "profile": "pilot",
+      "job": "blast64",
+      "repetition": 0,
+      "captures": 3,
+      "replays": 569,
+      "captureSeconds": 0.006395797987352125,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "pilot",
+      "job": "blast64",
+      "repetition": 1,
+      "captures": 3,
+      "replays": 569,
+      "captureSeconds": 0.004142417979892343,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "pilot",
+      "job": "blast64",
+      "repetition": 2,
+      "captures": 3,
+      "replays": 569,
+      "captureSeconds": 0.004591914999764413,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "cooling32",
+      "repetition": 0,
+      "captures": 3,
+      "replays": 541,
+      "captureSeconds": 0.006276809988776222,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "cooling32",
+      "repetition": 1,
+      "captures": 3,
+      "replays": 541,
+      "captureSeconds": 0.005184302004636265,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "cooling32",
+      "repetition": 2,
+      "captures": 3,
+      "replays": 541,
+      "captureSeconds": 0.004777496011229232,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "cooling64",
+      "repetition": 0,
+      "captures": 3,
+      "replays": 553,
+      "captureSeconds": 0.004618166000000201,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "cooling64",
+      "repetition": 1,
+      "captures": 3,
+      "replays": 553,
+      "captureSeconds": 0.004707082000095397,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "cooling64",
+      "repetition": 2,
+      "captures": 3,
+      "replays": 553,
+      "captureSeconds": 0.004711930989287794,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "terrain256",
+      "repetition": 0,
+      "captures": 3,
+      "replays": 1225,
+      "captureSeconds": 0.005888654020964168,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "terrain256",
+      "repetition": 1,
+      "captures": 3,
+      "replays": 1225,
+      "captureSeconds": 0.005641381998430006,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "small-terrain",
+      "job": "terrain256",
+      "repetition": 2,
+      "captures": 3,
+      "replays": 1225,
+      "captureSeconds": 0.004954092990374193,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "districts",
+      "job": "flat512",
+      "repetition": 0,
+      "captures": 4,
+      "replays": 2642,
+      "captureSeconds": 0.007600905024446547,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "districts",
+      "job": "flat512",
+      "repetition": 1,
+      "captures": 4,
+      "replays": 2642,
+      "captureSeconds": 0.00602738800807856,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "districts",
+      "job": "flat512",
+      "repetition": 2,
+      "captures": 4,
+      "replays": 2642,
+      "captureSeconds": 0.006145891995402053,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "districts",
+      "job": "beirut512",
+      "repetition": 0,
+      "captures": 4,
+      "replays": 2474,
+      "captureSeconds": 0.0061275429907254875,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "districts",
+      "job": "beirut512",
+      "repetition": 1,
+      "captures": 4,
+      "replays": 2474,
+      "captureSeconds": 0.005843926017405465,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    },
+    {
+      "profile": "districts",
+      "job": "beirut512",
+      "repetition": 2,
+      "captures": 4,
+      "replays": 2474,
+      "captureSeconds": 0.006086926005082205,
+      "group": "prepare+sweeps+optional redistribution; steady CFL only",
+      "perStepHostControlPreserved": true,
+      "perStepPrepareAllocationPreserved": true
+    }
+  ],
+  "diagnosticSHA256": "a92f44e2a3d9b18c4d6ef227b9c6c9de0c506356a4c223684cce64a5fdb73e7d",
+  "failureControls": [
+    {
+      "case": "step-limit",
+      "worker": "baseline",
+      "error": "step limit reached before duration; no completed dataset written",
+      "noOutputWritten": true,
+      "graphReplays": 0
+    },
+    {
+      "case": "step-limit",
+      "worker": "candidate",
+      "error": "step limit reached before duration; no completed dataset written",
+      "noOutputWritten": true,
+      "graphReplays": 1
+    },
+    {
+      "case": "nonphysical",
+      "worker": "baseline",
+      "error": "nonphysical wave speed; no completed dataset written",
+      "noOutputWritten": true,
+      "graphReplays": 0
+    },
+    {
+      "case": "nonphysical",
+      "worker": "candidate",
+      "error": "nonphysical wave speed; no completed dataset written",
+      "noOutputWritten": true,
+      "graphReplays": 1
+    }
+  ],
+  "parityCases": [
+    "two-axes",
+    "one-axis-odd-start"
+  ],
+  "limitations": "Periodic ownership/process observations, not proof of laboratory exclusivity; pilot lacks process-group resolution. Historical CUDA parity is not numerical/physics dataset admission."
+}

@@ -1,0 +1,259 @@
+{
+  "status": "complete",
+  "scope": "Summarize paired observations; three repetitions do not establish universal speed or a confidence bound.",
+  "rows": [
+    {
+      "job": "blast64",
+      "graph": {
+        "medianProcessSeconds": {
+          "baseline": 1.5766383030131692,
+          "candidate": 1.520694872000604
+        },
+        "medianRatioChangePercent": -3.5482729872571173,
+        "pairedProcessChangePercent": [
+          -17.397315216789856,
+          -6.813316903705813,
+          4.060892695507379
+        ],
+        "pairedSolverChangePercent": [
+          -2.5493335347688717,
+          -2.192628238875549,
+          5.433207277792462
+        ],
+        "candidateFasterPairs": 2
+      },
+      "identicalWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 1.6780280850070994,
+          "candidate": 1.6721854609932052
+        },
+        "medianRatioChangePercent": -0.3481839229091066,
+        "pairedProcessChangePercent": [
+          -9.98769637170238,
+          0.710007206621377,
+          5.867305016127422
+        ],
+        "pairedSolverChangePercent": [
+          -11.836473599178433,
+          6.217451276409158,
+          -12.430975696309797
+        ],
+        "candidateFasterPairs": 1
+      }
+    },
+    {
+      "job": "cooling32",
+      "graph": {
+        "medianProcessSeconds": {
+          "baseline": 1.4981600520113716,
+          "candidate": 1.6776472380006453
+        },
+        "medianRatioChangePercent": 11.980508073773644,
+        "pairedProcessChangePercent": [
+          -4.674495914996058,
+          3.6692619316305075,
+          13.580863587789228
+        ],
+        "pairedSolverChangePercent": [
+          -6.886711315311322,
+          6.731113334360783,
+          62.165425148368804
+        ],
+        "candidateFasterPairs": 1
+      },
+      "identicalWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 1.8307329310046043,
+          "candidate": 1.7995731249975506
+        },
+        "medianRatioChangePercent": -1.7020399578410839,
+        "pairedProcessChangePercent": [
+          -12.033715474102957,
+          5.813120483944911,
+          -2.7085719582903622
+        ],
+        "pairedSolverChangePercent": [
+          -48.92318714828382,
+          23.665064287709402,
+          -10.054013500695225
+        ],
+        "candidateFasterPairs": 2
+      }
+    },
+    {
+      "job": "cooling64",
+      "graph": {
+        "medianProcessSeconds": {
+          "baseline": 1.689293101997464,
+          "candidate": 1.6427149249939248
+        },
+        "medianRatioChangePercent": -2.7572584620433216,
+        "pairedProcessChangePercent": [
+          -4.664976251334052,
+          -2.002265704966688,
+          -3.2750997996411346
+        ],
+        "pairedSolverChangePercent": [
+          -9.54250916063386,
+          -1.0340480135576757,
+          -3.1475877988253687
+        ],
+        "candidateFasterPairs": 3
+      },
+      "identicalWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 1.7906590080092428,
+          "candidate": 1.912699538996094
+        },
+        "medianRatioChangePercent": 6.815397596135808,
+        "pairedProcessChangePercent": [
+          1.3867459347419064,
+          11.896219195112012,
+          0.328807101531825
+        ],
+        "pairedSolverChangePercent": [
+          0.6877299891020927,
+          49.930000142032746,
+          0.5080153146139743
+        ],
+        "candidateFasterPairs": 0
+      }
+    },
+    {
+      "job": "terrain256",
+      "graph": {
+        "medianProcessSeconds": {
+          "baseline": 5.625309257986373,
+          "candidate": 5.622002666001208
+        },
+        "medianRatioChangePercent": -0.05878062580241261,
+        "pairedProcessChangePercent": [
+          -0.6176245254552293,
+          1.8502959937309438,
+          -0.9629372626647426
+        ],
+        "pairedSolverChangePercent": [
+          -0.5842872944619493,
+          1.046987014482581,
+          -0.6333771612513472
+        ],
+        "candidateFasterPairs": 2
+      },
+      "identicalWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 5.916587436004193,
+          "candidate": 5.999547988001723
+        },
+        "medianRatioChangePercent": 1.40216895118781,
+        "pairedProcessChangePercent": [
+          2.7709439738578867,
+          2.512844365140343,
+          -2.1586895533892037
+        ],
+        "pairedSolverChangePercent": [
+          3.2104997693344295,
+          1.8619481938007887,
+          -3.4668222663253756
+        ],
+        "candidateFasterPairs": 1
+      }
+    },
+    {
+      "job": "flat512",
+      "graph": {
+        "medianProcessSeconds": {
+          "baseline": 47.825951207007165,
+          "candidate": 47.63132674600638
+        },
+        "medianRatioChangePercent": -0.4069432098870007,
+        "pairedProcessChangePercent": [
+          0.5243242105406054,
+          -0.4069432098870007,
+          0.05008999018132343
+        ],
+        "pairedSolverChangePercent": [
+          0.9977588862325248,
+          -0.40106050092793,
+          0.06753178068132915
+        ],
+        "candidateFasterPairs": 1
+      },
+      "identicalWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 48.31155652200687,
+          "candidate": 48.416140401997836
+        },
+        "medianRatioChangePercent": 0.21647797653410183,
+        "pairedProcessChangePercent": [
+          0.8396900395898133,
+          0.03955318225712379,
+          0.028535563098408545
+        ],
+        "pairedSolverChangePercent": [
+          0.7638495545387425,
+          -0.11314512832850676,
+          0.0029001657660954194
+        ],
+        "candidateFasterPairs": 0
+      }
+    },
+    {
+      "job": "beirut512",
+      "graph": {
+        "medianProcessSeconds": {
+          "baseline": 68.80504623400338,
+          "candidate": 68.64827983400028
+        },
+        "medianRatioChangePercent": -0.22784142818529363,
+        "pairedProcessChangePercent": [
+          0.28158005036360567,
+          -0.22784142818529363,
+          0.08262848284377178
+        ],
+        "pairedSolverChangePercent": [
+          0.1427511607987597,
+          0.020046393311301536,
+          -0.04970064003672059
+        ],
+        "candidateFasterPairs": 1
+      },
+      "identicalWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 68.65736803400796,
+          "candidate": 68.93880931701278
+        },
+        "medianRatioChangePercent": 0.4099214564493803,
+        "pairedProcessChangePercent": [
+          0.35829154797732965,
+          0.5481592915335343,
+          0.02534057230854092
+        ],
+        "pairedSolverChangePercent": [
+          0.458380144373427,
+          0.23321699116845007,
+          0.057577342674308696
+        ],
+        "candidateFasterPairs": 0
+      }
+    }
+  ],
+  "diagnosticLaunchCounts": [
+    {
+      "worker": "baseline",
+      "events": {
+        "cudaLaunchKernel": 93,
+        "cuLaunchKernel": 2847
+      }
+    },
+    {
+      "worker": "candidate",
+      "events": {
+        "cudaLaunchKernel": 99,
+        "cuLaunchKernel": 583,
+        "cudaGraphLaunch": 569
+      }
+    }
+  ],
+  "decision": "No adoption: this one-step steady-state graph grouping does not establish a consistent complete-worker benefit across the tested workloads. Production worker is unchanged. This does not rule out other graph scopes or allocation/control/kernel optimizations.",
+  "timingScope": "Fresh isolated worker processes; equal primed PTX caches; capture/setup/output/teardown included, deployment/retrieval excluded; Linux CLOCK_MONOTONIC_RAW; periodic resource observations, not proof of laboratory exclusivity."
+}

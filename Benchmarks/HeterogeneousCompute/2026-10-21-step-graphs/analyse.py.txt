@@ -1,0 +1,21 @@
+"""Summarize paired observations; three repetitions do not establish universal speed or a confidence bound."""
+from pathlib import Path
+import json,statistics
+root=Path(__file__).resolve().parent
+profiles={label:json.loads((root/label/'profile.json').read_text()) for label in ['pilot','small-terrain','districts','null-small','null-districts']}
+rows=[]
+for name in ['blast64','cooling32','cooling64','terrain256','flat512','beirut512']:
+ real=profiles['pilot' if name=='blast64' else 'districts' if name.endswith('512') else 'small-terrain']
+ null=profiles['null-districts' if name.endswith('512') else 'null-small']
+ def collect(profile):
+  pairs={i:{r['worker']:r for r in profile['rows'] if r['job']==name and r['repetition']==i} for i in range(3)}
+  medians={worker:statistics.median(p[worker]['totalSeconds'] for p in pairs.values()) for worker in ['baseline','candidate']}
+  return dict(medianProcessSeconds=medians,medianRatioChangePercent=(medians['candidate']/medians['baseline']-1)*100,
+    pairedProcessChangePercent=[(p['candidate']['totalSeconds']/p['baseline']['totalSeconds']-1)*100 for p in pairs.values()],
+    pairedSolverChangePercent=[(p['candidate']['solverSeconds']/p['baseline']['solverSeconds']-1)*100 for p in pairs.values()],
+    candidateFasterPairs=sum(p['candidate']['totalSeconds']<p['baseline']['totalSeconds'] for p in pairs.values()))
+ rows.append(dict(job=name,graph=collect(real),identicalWorkerLabels=collect(null)))
+d=json.loads((root/'diagnostic/diagnostic.json').read_text())
+api=[dict(worker=row['worker'],events={e['name']:e['count'] for e in row['events'] if 'launchkernel' in e['name'].lower() or 'graphlaunch' in e['name'].lower()}) for row in d['rows']]
+report=dict(status='complete',scope=__doc__,rows=rows,diagnosticLaunchCounts=api,decision='No adoption: this one-step steady-state graph grouping does not establish a consistent complete-worker benefit across the tested workloads. Production worker is unchanged. This does not rule out other graph scopes or allocation/control/kernel optimizations.',timingScope='Fresh isolated worker processes; equal primed PTX caches; capture/setup/output/teardown included, deployment/retrieval excluded; Linux CLOCK_MONOTONIC_RAW; periodic resource observations, not proof of laboratory exclusivity.')
+(root/'analysis.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))

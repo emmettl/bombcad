@@ -626,8 +626,8 @@ now supports symmetric cached-worker comparisons; omit the baseline option for t
 uncached-versus-cached experiment. The worker hashes its executed `__file__` under the logical
 `run.py` provenance role, even when the variant is renamed. The profiler rejects a result whose
 executed-worker hash differs from the selected file. This fixes aliased variants attesting an
-unexecuted canonical sibling. The next focused emmettl/bombcad-work#60 experiment is pinned host StepControl buffer
-reuse with existing synchronization initially retained, separating allocation/staging from waits.
+unexecuted canonical sibling. The pinned host StepControl buffer experiment below retains
+synchronization to separate allocation/staging from waits under emmettl/bombcad-work#60.
 
 
 ## Pinned host control-buffer experiment
@@ -642,6 +642,21 @@ in the same-worker control and are not consistently reflected in solve time. The
 is retained as a patch, with no production adoption. emmettl/bombcad-work#65 is complete as an experiment; emmettl/bombcad-work#60
 retains broader control/launch work. Existing numerical admission and default worker behavior
 remain unchanged.
+
+
+## Steady-state CUDA graph dispatch
+
+The [emmettl/bombcad-work#71 graph study](../Benchmarks/HeterogeneousCompute/2026-10-21-step-graphs/summary.md)
+captures prepare, sweeps and optional terrain redistribution after the startup CFL ramp.
+Per-step host control, dynamic cooling and prepare-uniform allocation remain. All 72 timed
+runs retain exact files/dt across graph/baseline and same-worker controls; separate graph-path
+fatal/step-limit and one-/two-axis controls pass. The perturbed trace reduces direct
+`cuLaunchKernel` calls from 2,847 to 583, plus 569 graph launches, but complete worker cost
+does not establish a consistent benefit. Flat/Beirut medians are 47.826/47.631 s and
+68.805/68.648 s; graph wins only one of three pairs per full case and same-worker labels also
+vary. Cooling32 worsens in median. The production worker is unchanged; this bounded candidate
+is retained without adoption. emmettl/bombcad-work#60 stays open; emmettl/bombcad-work#72
+separately tracks block-size experiments with the same numerical and total-cost requirements.
 
 
 ## Clock-adjustment actor identified

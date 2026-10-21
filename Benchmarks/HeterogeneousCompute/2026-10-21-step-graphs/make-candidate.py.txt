@@ -1,0 +1,53 @@
+"""Experimental one-step graph grouping; production code is not changed."""
+from pathlib import Path
+import shutil,difflib,json,hashlib
+root=Path('/private/tmp/bombcad-cuda-graphs');original=Path('Scripts/cuda/run.py').read_text();s=original
+anchor="    launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)\n    trace()\n"
+assert s.count(anchor)==1
+helper='''    graphs={};graph_replays=0;graph_capture_seconds=0.
+    def dispatch_group(state,other,species,other_species,prepare_uniforms,row):
+        launch('cudaPrepare',[controls,speed,prepare_uniforms],1)
+        for variant in row:
+            launch('cudaSweep',[state,other,mask,peak,impulse,controls,speed,variant,species,other_species,*cut_buffers],count)
+            state,other=other,state;species,other_species=other_species,species
+        if terrain and terrain['cutColumnCount']:
+            launch('cudaRedistribute',[state,species,cut_columns,cut_records,uniforms,controls,peak,speed,
+                                      cut_defects,cut_list,cut_count,mask],terrain['cutColumnCount'])
+        return state,other,species,other_species
+'''
+s=s.replace(anchor,helper+anchor)
+old='''        launch('cudaPrepare',[controls,speed,prepare_uniforms],1)
+        for variant in variants[(meta.get('startStep',0)+steps)%2]:
+            launch('cudaSweep',[state,other,mask,peak,impulse,controls,speed,variant,species,other_species,*cut_buffers],count)
+            state,other=other,state;species,other_species=other_species,species
+        if terrain and terrain['cutColumnCount']:
+            launch('cudaRedistribute',[state,species,cut_columns,cut_records,uniforms,controls,peak,speed,
+                                      cut_defects,cut_list,cut_count,mask],terrain['cutColumnCount'])
+'''
+new='''        parity=(meta.get('startStep',0)+steps)%2
+        if ramp==1.:
+            key=(parity,state.data_ptr(),species.data_ptr())
+            if key not in graphs:
+                capture_start=elapsed_time();graph=torch.cuda.CUDAGraph()
+                with torch.cuda.graph(graph):
+                    outputs=dispatch_group(state,other,species,other_species,prepare_uniforms,variants[parity])
+                # Hold the exact captured uniform and all output buffers for graph lifetime.
+                # Each later prepared blob is still allocated/uploaded as in baseline,
+                # isolating grouping from uniform-allocation optimization. Steady CFL is fixed.
+                graphs[key]=(graph,prepare_uniforms,outputs)
+                graph_capture_seconds+=elapsed_time()-capture_start
+            captured=graphs[key];captured[0].replay();graph_replays+=1
+            state,other,species,other_species=captured[2]
+        else:
+            state,other,species,other_species=dispatch_group(state,other,species,other_species,
+                                                            prepare_uniforms,variants[parity])
+'''
+assert s.count(old)==1;s=s.replace(old,new)
+s=s.replace("    report['compileCacheEnabled']=cache_dir is not None", "    report['experimentalGraphDispatch']={'captures':len(graphs),'replays':graph_replays,'captureSeconds':graph_capture_seconds,\n        'group':'prepare+sweeps+optional redistribution; steady CFL only','perStepHostControlPreserved':True,\n        'perStepPrepareAllocationPreserved':True}\n    report['compileCacheEnabled']=cache_dir is not None")
+s=s.replace('    check(driver.cuModuleUnload(module))', '    for captured in graphs.values(): captured[0].reset()\n    graphs.clear()\n    check(driver.cuModuleUnload(module))')
+(root/'baseline.py').write_text(original);(root/'candidate.py').write_text(s)
+(root/'candidate.patch').write_text(''.join(difflib.unified_diff(original.splitlines(True),s.splitlines(True),fromfile='baseline.py',tofile='candidate.py')))
+for name in ['job.py','compile.py','profile-worker.py','trace_columns.py']:shutil.copy2(Path('Scripts/cuda')/name,root/name)
+shutil.copy2('Scripts/ml/remote-train.py',root/'remote-train.py')
+(root/'candidates.json').write_text(json.dumps({n:hashlib.sha256((root/n).read_bytes()).hexdigest() for n in ['baseline.py','candidate.py','job.py','compile.py','profile-worker.py','trace_columns.py','remote-train.py']},indent=2)+'\n')
+compile(s,'candidate.py','exec')

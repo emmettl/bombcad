@@ -1,0 +1,57 @@
+"""Perturbed graph/API trace and failure/startup/buffer-parity controls; not timing trials."""
+import gzip,hashlib,importlib.util,json,shutil,sys
+from pathlib import Path
+from unittest.mock import patch
+root=Path(__file__).resolve().parent;sys.path.insert(0,str(root))
+def module(path,name):
+ spec=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def hashes(out):return {str(p.relative_to(out)):digest(p) for p in out.rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')}
+lock=module(root/'remote-train.py','lock');lockpath=str(Path.home()/'bombcad-ml/lock')
+if not lock.acquire(lockpath,'graph trace and failure/parity controls',lock.boot_id()):raise SystemExit('GPU held by another job')
+try:
+ import torch,numpy as np
+ torch.cuda.init();out=root/'diagnostic';out.mkdir();workers={n:module(root/(n+'.py'),'diagnostic_'+n) for n in ['baseline','candidate']};rows=[]
+ for name,worker in workers.items():
+  with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,torch.profiler.ProfilerActivity.CUDA]) as prof:
+   result=worker.run(root/'blast64',root/'solver.cu',out/name,cache_dir=Path.home()/'bombcad-cuda/ptx-cache')
+  trace=out/(name+'-trace.json');prof.export_chrome_trace(str(trace))
+  with trace.open('rb') as src,gzip.open(str(trace)+'.gz','wb') as dst:shutil.copyfileobj(src,dst)
+  trace.unlink()
+  events=[dict(name=e.key,count=e.count,selfCPUTimeMicroseconds=e.self_cpu_time_total,selfDeviceTimeMicroseconds=getattr(e,'self_device_time_total',0)) for e in prof.key_averages()]
+  rows.append(dict(worker=name,steps=result['steps'],graph=result.get('experimentalGraphDispatch'),events=events,hashes=hashes(out/name),workerFilesSHA256=result['workerFilesSHA256']))
+ assert rows[0]['hashes']==rows[1]['hashes'];assert rows[1]['graph']['replays']>0
+ failures=[]
+ for label in ['step-limit','nonphysical']:
+  job=out/label;job.mkdir();meta=json.loads((root/'blast64/job.json').read_text());meta['startupSteps']=1
+  for f in (root/'blast64').iterdir():
+   if f.name!='job.json' and not (label=='nonphysical' and f.name=='state.bin'):(job/f.name).symlink_to(f.resolve())
+  if label=='step-limit':meta['steps']=1
+  else:
+   state=np.frombuffer((root/'blast64/state.bin').read_bytes(),dtype='<f4').copy().reshape(-1,5);state[0,0]=np.float32(1e-5);state[0,4]=np.float32(3e38);state.tofile(job/'state.bin');meta['files']['state.bin']=digest(job/'state.bin')
+  (job/'job.json').write_text(json.dumps(meta,indent=2)+'\n')
+  for name,worker in workers.items():
+   dest=out/(label+'-'+name);replays=[];original=torch.cuda.CUDAGraph.replay
+   def replay(graph):replays.append(True);return original(graph)
+   with patch.object(torch.cuda.CUDAGraph,'replay',replay):
+    try:worker.run(job,root/'solver.cu',dest,cache_dir=Path.home()/'bombcad-cuda/ptx-cache')
+    except RuntimeError as error:
+     expected='step limit reached before duration' if label=='step-limit' else 'nonphysical wave speed'
+     assert expected in str(error) and not dest.exists()
+     if name=='candidate':assert replays
+     failures.append(dict(case=label,worker=name,error=str(error),noOutputWritten=True,graphReplays=len(replays)))
+    else:raise AssertionError('failed control accepted')
+ parity=[];source=root/'blast64';original_meta=json.loads((source/'job.json').read_text());n=original_meta['shape'][0]
+ for label,shape,start in [('two-axes',[n,n,1],0),('one-axis-odd-start',[n,1,1],1)]:
+  job=out/label;job.mkdir();meta=json.loads(json.dumps(original_meta));meta.update(shape=shape,axes=[i for i,k in enumerate(shape) if k>1],above=0,startStep=start,startupSteps=8)
+  cell_specs={'state.bin':('<f4',5),'species.bin':('<f4',2),'mask.bin':('u1',1),'peak.bin':('<f4',1),'impulse.bin':('<f4',1)}
+  for filename,(dtype,width) in cell_specs.items():
+   a=np.frombuffer((source/filename).read_bytes(),dtype=dtype).reshape(n,n,n,width);value=a[n//2:n//2+1,:,:,:] if shape[1]>1 else a[n//2:n//2+1,n//2:n//2+1,:,:];value.copy().tofile(job/filename)
+  plan=shape[0]*shape[1];columns=np.tile(np.array([0,0,0,1],dtype='<f4'),(plan,1));columns.tofile(job/'columns.bin');np.zeros((plan,4),dtype='<f4').tofile(job/'records.bin');np.zeros(plan,dtype='<f4').tofile(job/'open.bin')
+  meta['files']={f.name:digest(f) for f in job.iterdir()};(job/'job.json').write_text(json.dumps(meta,indent=2)+'\n');pair=[]
+  for name,worker in workers.items():
+   dest=out/(label+'-'+name);result=worker.run(job,root/'solver.cu',dest,cache_dir=Path.home()/'bombcad-cuda/ptx-cache');pair.append(dict(worker=name,steps=result['steps'],graph=result.get('experimentalGraphDispatch'),hashes=hashes(dest)))
+  assert pair[0]['hashes']==pair[1]['hashes'] and pair[1]['graph']['replays']>0;parity.append(dict(case=label,shape=shape,startStep=start,startupSteps=8,pair=pair))
+ report=dict(scope=__doc__,torch=torch.__version__,rows=rows,allNumericalOutputsAndTimestepsBitIdentical=True,failureControls=failures,parityControls=parity)
+ (out/'diagnostic.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(dict(status='complete',failures=failures,parityCases=[x['case'] for x in parity]),indent=2))
+finally:lock.release(lockpath)

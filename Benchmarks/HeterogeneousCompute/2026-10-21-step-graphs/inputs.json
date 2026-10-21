@@ -1,0 +1,495 @@
+{
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "jobs": {
+    "cooling32": {
+      "path": "/home/lemme/bombcad-control-profile-01a15d45/cooling32",
+      "meta": {
+        "format": "bombcad-cuda-job-1",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "uniforms": {
+          "dx": 0.25,
+          "gamma": 1.4,
+          "cfl": 0.4,
+          "ambientPressure": 101325.0,
+          "densityFloor": 1e-06,
+          "pressureFloor": 0.0001,
+          "limiterTheta": 1.5,
+          "riemannSolver": 0,
+          "boundaryFlags": 63,
+          "airModel": 1,
+          "stillRho": 1.225,
+          "stillEnergy": 253312.51509860248,
+          "afterburnEnergy": 3000000.0,
+          "oxygenPerFuel": 0.5,
+          "afterburnRate": 500.0
+        },
+        "axes": [
+          0,
+          1,
+          2
+        ],
+        "steps": 10000,
+        "duration": 0.05,
+        "above": 0.625,
+        "startTime": 0,
+        "description": "cooling",
+        "files": {
+          "state.bin": "6f4cdf7bf9d1424ea5a9a0afd71696b56e56d5e5f14d3a6fd816cf1ec54d9a72",
+          "species.bin": "82351f47377a8cdfe4404e6495dc656f809e515f52dc0d8fe83d589c92ca5eb6",
+          "mask.bin": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "peak.bin": "fa43239bcee7b97ca62f007cc68487560a39e19f74f3dde7486db3f98df8e471",
+          "impulse.bin": "fa43239bcee7b97ca62f007cc68487560a39e19f74f3dde7486db3f98df8e471",
+          "columns.bin": "1e582c9f8f18a27106d5ae07cf889545cb5196b4f2016c76702d6e4c51279081",
+          "records.bin": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+          "open.bin": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7"
+        },
+        "cooling": {
+          "interval": 4,
+          "luminous": 1500.0,
+          "absorption": 0.1,
+          "sootAbsorption": 0.18675,
+          "hasSpecies": 1,
+          "largestShare": 0.25,
+          "luminousEnergy": 1000000.0,
+          "capacity": 0
+        }
+      },
+      "files": {
+        "peak.bin": "fa43239bcee7b97ca62f007cc68487560a39e19f74f3dde7486db3f98df8e471",
+        "job.json": "19cec80487d69e5bf45169ef122bf451dbc6895751647b0fe06e6c935d81c76a",
+        "state.bin": "6f4cdf7bf9d1424ea5a9a0afd71696b56e56d5e5f14d3a6fd816cf1ec54d9a72",
+        "impulse.bin": "fa43239bcee7b97ca62f007cc68487560a39e19f74f3dde7486db3f98df8e471",
+        "mask.bin": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+        "species.bin": "82351f47377a8cdfe4404e6495dc656f809e515f52dc0d8fe83d589c92ca5eb6",
+        "open.bin": "ad7facb2586fc6e966c004d7d1d16b024f5805ff7cb47c7a85dabd8b48892ca7",
+        "records.bin": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+        "columns.bin": "1e582c9f8f18a27106d5ae07cf889545cb5196b4f2016c76702d6e4c51279081"
+      }
+    },
+    "blast64": {
+      "path": "/home/lemme/bombcad-control-profile-01a15d45/blast64",
+      "meta": {
+        "format": "bombcad-cuda-job-1",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "uniforms": {
+          "dx": 0.25,
+          "gamma": 1.4,
+          "cfl": 0.4,
+          "ambientPressure": 101325.0,
+          "densityFloor": 1e-06,
+          "pressureFloor": 0.0001,
+          "limiterTheta": 1.5,
+          "riemannSolver": 0,
+          "boundaryFlags": 63,
+          "airModel": 0,
+          "stillRho": 1.225,
+          "stillEnergy": 253312.51509860248
+        },
+        "axes": [
+          0,
+          1,
+          2
+        ],
+        "steps": 10000,
+        "duration": 0.05,
+        "above": 0.625,
+        "startTime": 0,
+        "description": "blast",
+        "files": {
+          "state.bin": "3ba028c0c33a54bd19274f60ace88e0117ca28790f4f4ba125c9ade1e9906ea8",
+          "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+          "mask.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+          "peak.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+          "impulse.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+          "columns.bin": "b124fa2814baf12256216b959a0b2c0f4c66cdeb4f8a717af54a05cc1fb4cb32",
+          "records.bin": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+          "open.bin": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"
+        }
+      },
+      "files": {
+        "peak.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+        "job.json": "3ebae67f87ac05e92a1df1aae5e1d7467258a08e855d7852570c272386d3146e",
+        "state.bin": "3ba028c0c33a54bd19274f60ace88e0117ca28790f4f4ba125c9ade1e9906ea8",
+        "impulse.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+        "mask.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "open.bin": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+        "records.bin": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+        "columns.bin": "b124fa2814baf12256216b959a0b2c0f4c66cdeb4f8a717af54a05cc1fb4cb32"
+      }
+    },
+    "cooling64": {
+      "path": "/home/lemme/bombcad-control-profile-01a15d45/cooling64",
+      "meta": {
+        "format": "bombcad-cuda-job-1",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "uniforms": {
+          "dx": 0.25,
+          "gamma": 1.4,
+          "cfl": 0.4,
+          "ambientPressure": 101325.0,
+          "densityFloor": 1e-06,
+          "pressureFloor": 0.0001,
+          "limiterTheta": 1.5,
+          "riemannSolver": 0,
+          "boundaryFlags": 63,
+          "airModel": 1,
+          "stillRho": 1.225,
+          "stillEnergy": 253312.51509860248,
+          "afterburnEnergy": 3000000.0,
+          "oxygenPerFuel": 0.5,
+          "afterburnRate": 500.0
+        },
+        "axes": [
+          0,
+          1,
+          2
+        ],
+        "steps": 10000,
+        "duration": 0.05,
+        "above": 0.625,
+        "startTime": 0,
+        "description": "cooling",
+        "files": {
+          "state.bin": "3ba028c0c33a54bd19274f60ace88e0117ca28790f4f4ba125c9ade1e9906ea8",
+          "species.bin": "87b71063f1f4a5675d67c017124960c469a359e55d429cc419b7bac2f897277b",
+          "mask.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+          "peak.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+          "impulse.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+          "columns.bin": "b124fa2814baf12256216b959a0b2c0f4c66cdeb4f8a717af54a05cc1fb4cb32",
+          "records.bin": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+          "open.bin": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe"
+        },
+        "cooling": {
+          "interval": 4,
+          "luminous": 1500.0,
+          "absorption": 0.1,
+          "sootAbsorption": 0.18675,
+          "hasSpecies": 1,
+          "largestShare": 0.25,
+          "luminousEnergy": 1000000.0,
+          "capacity": 0
+        }
+      },
+      "files": {
+        "peak.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+        "job.json": "63e3835036992d8bed57154543cccd5d4d1c2189d5d99850423f345e962d1a7e",
+        "state.bin": "3ba028c0c33a54bd19274f60ace88e0117ca28790f4f4ba125c9ade1e9906ea8",
+        "impulse.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+        "mask.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+        "species.bin": "87b71063f1f4a5675d67c017124960c469a359e55d429cc419b7bac2f897277b",
+        "open.bin": "4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+        "records.bin": "de2f256064a0af797747c2b97505dc0b9f3df0de4f489eac731c23ae9ca9cc31",
+        "columns.bin": "b124fa2814baf12256216b959a0b2c0f4c66cdeb4f8a717af54a05cc1fb4cb32"
+      }
+    },
+    "terrain256": {
+      "path": "/home/lemme/bombcad-cuda/c58f4f0a7ab5563b/jobs/e0ca9de41d5d4cbba58f130a846aa37b/input",
+      "meta": {
+        "above": 2,
+        "axes": [
+          0,
+          1,
+          2
+        ],
+        "cooling": {
+          "absorption": 0.10000000149011612,
+          "capacity": 0,
+          "hasSpecies": 1,
+          "interval": 4,
+          "largestShare": 0.25,
+          "luminous": 1500,
+          "luminousEnergy": 1203432.625,
+          "sootAbsorption": 0.1867472380399704
+        },
+        "dataset": {
+          "inputs.npy": "48b574fff9eba347101baffd1a151d4c0d44722410398fcf8fc7559549cb97a6",
+          "mask.npy": "841743a7cb790c86d4667903759dff1fc931e504d9c8e3062dd04920fded480f",
+          "meta.json": "d9e8dc3c7baaa0d6a53b9d420668312ba9faf6c8fabf3d22ac2e42fdbbb46836"
+        },
+        "description": "BombCAD initial grid; mapped start retained where used",
+        "duration": 2.25,
+        "files": {
+          "columns.bin": "f03f9c6c0e830233c4886617ec62954a66db35af29a976429b7eed9e3c7493cd",
+          "cut-ceilings.bin": "09197980148f0c06e0f950fcf3ba7f390e198d978f2dd89940a8d7520afd9ab1",
+          "cut-columns.bin": "e69ccc4b16cf963ef8c7e3193c20b5ff1f6b8bb06c56bc47f431a0ea92e3cb03",
+          "cut-defects.bin": "07d7ffcf74f5d43829b78ca956661428a9ce218bcd6d9e693a523de674940734",
+          "cut-list.bin": "4632c933adef3d8d3c2b651f564bc254f5e6fbf4f75f8cc2d301dc5c10aaff12",
+          "cut-records.bin": "79a2bf2c95438767e9e035162261e45c1c64e514ea9f4a9163e38a3dd4b29a10",
+          "cut-walls.bin": "327f4a72b70322cad395220212487003364a2cb5db9601399c2b5591326eb4c3",
+          "impulse.bin": "d4d2639ad94b0211839461226eb57a5e185829e5c4a9783c2da9f0a3da032bf5",
+          "mask.bin": "b31195975decb2477104ec616977a3823fe6c07e1bc2c974f9b88a3712361a6b",
+          "open.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+          "peak.bin": "d4d2639ad94b0211839461226eb57a5e185829e5c4a9783c2da9f0a3da032bf5",
+          "records.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+          "species.bin": "12d95e8e09b5a24bde19994133ea5843f47e808038129bc7233a70f9a8728504",
+          "state.bin": "b260f4e94673e7052a5fd7717545fc991f21c2b40de7d4f9b70f051beffbe7df"
+        },
+        "format": "bombcad-cuda-job-1",
+        "shape": [
+          256,
+          256,
+          44
+        ],
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "startStep": 0,
+        "startTime": 0,
+        "startupSteps": 6,
+        "steps": 10000000,
+        "terrain": {
+          "cutColumnCount": 65536,
+          "records": 67540
+        },
+        "uniforms": {
+          "afterburnEnergy": 10000000,
+          "afterburnRate": 3.3333334922790527,
+          "airModel": 1,
+          "ambientPressure": 101325,
+          "boundaryFlags": 80,
+          "cfl": 0.44999998807907104,
+          "densityFloor": 9.999999974752427e-07,
+          "dx": 4,
+          "gamma": 1.399999976158142,
+          "gaugeWalls": 0,
+          "limiterTheta": 1.5,
+          "maxStep": 0,
+          "oxygenPerFuel": 0.7396644949913025,
+          "pressureFloor": 0.0010000000474974513,
+          "refineMargin": 1,
+          "riemannSolver": 0,
+          "stillEnergy": 253383.40625,
+          "stillMx": 0,
+          "stillMy": 0,
+          "stillMz": 0,
+          "stillOxygen": 0.284199982881546,
+          "stillRho": 1.225000023841858
+        }
+      },
+      "files": {
+        "cut-defects.bin": "07d7ffcf74f5d43829b78ca956661428a9ce218bcd6d9e693a523de674940734",
+        "peak.bin": "d4d2639ad94b0211839461226eb57a5e185829e5c4a9783c2da9f0a3da032bf5",
+        "cut-list.bin": "4632c933adef3d8d3c2b651f564bc254f5e6fbf4f75f8cc2d301dc5c10aaff12",
+        "job.json": "9aa9f761745f38482edc095f10fc0bf0e84b6c1079b721b84394dfd9c6103369",
+        "state.bin": "b260f4e94673e7052a5fd7717545fc991f21c2b40de7d4f9b70f051beffbe7df",
+        "impulse.bin": "d4d2639ad94b0211839461226eb57a5e185829e5c4a9783c2da9f0a3da032bf5",
+        "mask.bin": "b31195975decb2477104ec616977a3823fe6c07e1bc2c974f9b88a3712361a6b",
+        "species.bin": "12d95e8e09b5a24bde19994133ea5843f47e808038129bc7233a70f9a8728504",
+        "open.bin": "8a39d2abd3999ab73c34db2476849cddf303ce389b35826850f9a700589b4a90",
+        "cut-records.bin": "79a2bf2c95438767e9e035162261e45c1c64e514ea9f4a9163e38a3dd4b29a10",
+        "cut-columns.bin": "e69ccc4b16cf963ef8c7e3193c20b5ff1f6b8bb06c56bc47f431a0ea92e3cb03",
+        "cut-walls.bin": "327f4a72b70322cad395220212487003364a2cb5db9601399c2b5591326eb4c3",
+        "inputs.npy": "48b574fff9eba347101baffd1a151d4c0d44722410398fcf8fc7559549cb97a6",
+        "records.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+        "columns.bin": "f03f9c6c0e830233c4886617ec62954a66db35af29a976429b7eed9e3c7493cd",
+        "cut-ceilings.bin": "09197980148f0c06e0f950fcf3ba7f390e198d978f2dd89940a8d7520afd9ab1",
+        "meta.json": "d9e8dc3c7baaa0d6a53b9d420668312ba9faf6c8fabf3d22ac2e42fdbbb46836",
+        "mask.npy": "841743a7cb790c86d4667903759dff1fc931e504d9c8e3062dd04920fded480f"
+      }
+    },
+    "flat512": {
+      "path": "/home/lemme/bombcad-cuda/c58f4f0a7ab5563b/jobs/f4d8b98fb54e4d50a739f31ecc791a6a/input",
+      "meta": {
+        "above": 2,
+        "axes": [
+          0,
+          1,
+          2
+        ],
+        "cooling": {
+          "absorption": 0.10000000149011612,
+          "capacity": 0,
+          "hasSpecies": 1,
+          "interval": 4,
+          "largestShare": 0.25,
+          "luminous": 1500,
+          "luminousEnergy": 1203432.625,
+          "sootAbsorption": 0.1867472380399704
+        },
+        "dataset": {
+          "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+          "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+          "meta.json": "839d0fab4c689a3ea44ad3b92e1bdb32c5a89bbb86e35ed1e1e6cb1b0ac3bb2f"
+        },
+        "description": "BombCAD initial grid; mapped start retained where used",
+        "duration": 4.506065610013298,
+        "files": {
+          "columns.bin": "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+          "impulse.bin": "a24ddd98e4d056b5b8ff96eb189d601eca3e3cdb797e20a5f7956b3fd8c6b107",
+          "mask.bin": "f47f4e678aea3bf472c49649a52a63ece09d651a43f036ecdfc64c0fbfdfc780",
+          "open.bin": "571f6a851b8926e78094aca76ba5743aaddcd31c26ced58324d33a925e04cf62",
+          "peak.bin": "1469178c51c6c3074477d0102152b109cfd8f3bb2c72d99eff08459fc49ebecb",
+          "records.bin": "3e90c74f5c12bf0d0a336592c11d3ca951b72b9b2658ecc3ebb6681c52994665",
+          "species.bin": "343bc4691faa13a404449b320577a9c417ac01497b2a21e634604497b0b0b514",
+          "state.bin": "6cd2499fe5794627176d758f56f6e5300d02df481a248d57fc68548c0c893d28"
+        },
+        "format": "bombcad-cuda-job-1",
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "startStep": 0,
+        "startTime": 0.003934389986701742,
+        "startupSteps": 6,
+        "steps": 10000000,
+        "uniforms": {
+          "afterburnEnergy": 10000000,
+          "afterburnRate": 1.768742561340332,
+          "airModel": 1,
+          "ambientPressure": 101325,
+          "boundaryFlags": 80,
+          "cfl": 0.44999998807907104,
+          "densityFloor": 9.999999974752427e-07,
+          "dx": 4,
+          "gamma": 1.399999976158142,
+          "gaugeWalls": 0,
+          "limiterTheta": 1.5,
+          "maxStep": 0,
+          "oxygenPerFuel": 0.7396644949913025,
+          "pressureFloor": 0.0010000000474974513,
+          "refineMargin": 1,
+          "riemannSolver": 0,
+          "stillEnergy": 253383.40625,
+          "stillMx": 0,
+          "stillMy": 0,
+          "stillMz": 0,
+          "stillOxygen": 0.284199982881546,
+          "stillRho": 1.225000023841858
+        }
+      },
+      "files": {
+        "peak.bin": "1469178c51c6c3074477d0102152b109cfd8f3bb2c72d99eff08459fc49ebecb",
+        "job.json": "d87799d31ee0a96c5758b59594938dbbb06670373787fc0f2012dae9a30074a9",
+        "state.bin": "6cd2499fe5794627176d758f56f6e5300d02df481a248d57fc68548c0c893d28",
+        "impulse.bin": "a24ddd98e4d056b5b8ff96eb189d601eca3e3cdb797e20a5f7956b3fd8c6b107",
+        "mask.bin": "f47f4e678aea3bf472c49649a52a63ece09d651a43f036ecdfc64c0fbfdfc780",
+        "species.bin": "343bc4691faa13a404449b320577a9c417ac01497b2a21e634604497b0b0b514",
+        "open.bin": "571f6a851b8926e78094aca76ba5743aaddcd31c26ced58324d33a925e04cf62",
+        "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+        "records.bin": "3e90c74f5c12bf0d0a336592c11d3ca951b72b9b2658ecc3ebb6681c52994665",
+        "columns.bin": "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+        "meta.json": "839d0fab4c689a3ea44ad3b92e1bdb32c5a89bbb86e35ed1e1e6cb1b0ac3bb2f",
+        "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db"
+      }
+    },
+    "beirut512": {
+      "path": "/home/lemme/bombcad-cuda/c58f4f0a7ab5563b/jobs/31e85fa23c2146838624751711f6217d/input",
+      "meta": {
+        "above": 2,
+        "axes": [
+          0,
+          1,
+          2
+        ],
+        "cooling": {
+          "absorption": 0.10000000149011612,
+          "capacity": 0,
+          "hasSpecies": 1,
+          "interval": 4,
+          "largestShare": 0.25,
+          "luminous": 1500,
+          "luminousEnergy": 1203432.625,
+          "sootAbsorption": 0.1867472380399704
+        },
+        "dataset": {
+          "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+          "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+          "meta.json": "32295147365f6cb29bfa59bea4d84b60ca37b0b8201e0d2a80138d24b5d2c133"
+        },
+        "description": "BombCAD initial grid; mapped start retained where used",
+        "duration": 4.51,
+        "files": {
+          "columns.bin": "b680f2868b3e86b6de50f483e4b73bf910f33c5e7b2c2846eb13f155eef8e344",
+          "cut-ceilings.bin": "718275f90fff1d8d7df9adc6bf8c55e5c5361dba5f1968bdcc8adf22665eb552",
+          "cut-columns.bin": "e69b8ad51c0d701597de6b30778ce032c001b6442f25a31036d402e26ea35626",
+          "cut-defects.bin": "9d96d6b5854746054e114052af166cb5e29cec033741a0cfb26ec7be8733a68e",
+          "cut-list.bin": "92f8e9fca1adc97e2251993c016d8c27d75df4a93be00bb2b414fd0303aa1e4f",
+          "cut-records.bin": "06607521f34656edad6fc382b1e4784c4cc6837a8a6be1e7fc9d28d342c5236b",
+          "cut-walls.bin": "e29df3ec184feecb9d4c260a283b1b22f4903b039559421085998a0b63a3d33f",
+          "impulse.bin": "33a3a11d54de8ede604c243cedfde1ef4b534d5ea3279c9dd57df314045c23df",
+          "mask.bin": "b389a580ceeda112d850e409a2cef61680906fa605c06b8d2d9f3ce75e09085a",
+          "open.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+          "peak.bin": "33a3a11d54de8ede604c243cedfde1ef4b534d5ea3279c9dd57df314045c23df",
+          "records.bin": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+          "species.bin": "96f79c23ec6c24334ac4dea6819d0cd16989629a36479f14b24fa397cda546a1",
+          "state.bin": "2ce0880f172a5e95096d765bd5a7581191bfe87b5f8c710d5e76a3de9e11aa30"
+        },
+        "format": "bombcad-cuda-job-1",
+        "shape": [
+          512,
+          512,
+          80
+        ],
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "startStep": 0,
+        "startTime": 0,
+        "startupSteps": 6,
+        "steps": 10000000,
+        "terrain": {
+          "cutColumnCount": 262144,
+          "records": 274097
+        },
+        "uniforms": {
+          "afterburnEnergy": 10000000,
+          "afterburnRate": 1.7824589014053345,
+          "airModel": 1,
+          "ambientPressure": 101325,
+          "boundaryFlags": 80,
+          "cfl": 0.44999998807907104,
+          "densityFloor": 9.999999974752427e-07,
+          "dx": 4,
+          "gamma": 1.399999976158142,
+          "gaugeWalls": 0,
+          "limiterTheta": 1.5,
+          "maxStep": 0,
+          "oxygenPerFuel": 0.7396644949913025,
+          "pressureFloor": 0.0010000000474974513,
+          "refineMargin": 1,
+          "riemannSolver": 0,
+          "stillEnergy": 253383.40625,
+          "stillMx": 0,
+          "stillMy": 0,
+          "stillMz": 0,
+          "stillOxygen": 0.284199982881546,
+          "stillRho": 1.225000023841858
+        }
+      },
+      "files": {
+        "cut-defects.bin": "9d96d6b5854746054e114052af166cb5e29cec033741a0cfb26ec7be8733a68e",
+        "peak.bin": "33a3a11d54de8ede604c243cedfde1ef4b534d5ea3279c9dd57df314045c23df",
+        "cut-list.bin": "92f8e9fca1adc97e2251993c016d8c27d75df4a93be00bb2b414fd0303aa1e4f",
+        "job.json": "e4847c73ecbaf034daa7f3f1f38c873746cfebbb99d460716222fb9892c89e3c",
+        "state.bin": "2ce0880f172a5e95096d765bd5a7581191bfe87b5f8c710d5e76a3de9e11aa30",
+        "impulse.bin": "33a3a11d54de8ede604c243cedfde1ef4b534d5ea3279c9dd57df314045c23df",
+        "mask.bin": "b389a580ceeda112d850e409a2cef61680906fa605c06b8d2d9f3ce75e09085a",
+        "species.bin": "96f79c23ec6c24334ac4dea6819d0cd16989629a36479f14b24fa397cda546a1",
+        "open.bin": "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+        "cut-records.bin": "06607521f34656edad6fc382b1e4784c4cc6837a8a6be1e7fc9d28d342c5236b",
+        "cut-columns.bin": "e69b8ad51c0d701597de6b30778ce032c001b6442f25a31036d402e26ea35626",
+        "cut-walls.bin": "e29df3ec184feecb9d4c260a283b1b22f4903b039559421085998a0b63a3d33f",
+        "inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "records.bin": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+        "columns.bin": "b680f2868b3e86b6de50f483e4b73bf910f33c5e7b2c2846eb13f155eef8e344",
+        "cut-ceilings.bin": "718275f90fff1d8d7df9adc6bf8c55e5c5361dba5f1968bdcc8adf22665eb552",
+        "meta.json": "32295147365f6cb29bfa59bea4d84b60ca37b0b8201e0d2a80138d24b5d2c133",
+        "mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      }
+    }
+  }
+}

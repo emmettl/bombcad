@@ -464,3 +464,23 @@ emmettl/bombcad-work#59 remains open for integration beyond reference replay and
 cost validation across distinct admitted long-running cases; broader admission
 remains separate. The CUDA load also retains bounded rate-consistency evidence
 for emmettl/bombcad-work#64, without claiming reboot verification.
+
+
+### Source reuse and a bounded graph-dispatch result
+
+CPU offload now uses verified private staging and reuses unchanged source files from completed
+snapshots, with separate mutable build caches. The [source-reuse study](../Benchmarks/HeterogeneousCompute/2026-10-21-source-reuse/summary.md)
+completes emmettl/bombcad-work#70; it reduces repeated transfer/storage work while preserving
+emmettl/bombcad-work#68's concurrency and recovery protections. See [Linux studies](linux.md)
+for run/test/resume behavior. This is separate from GPU solver throughput.
+
+The [steady-state graph study](../Benchmarks/HeterogeneousCompute/2026-10-21-step-graphs/summary.md)
+completes emmettl/bombcad-work#71 without adoption. Grouping prepare/sweeps/terrain launches
+preserves all numerical files and timesteps across 72 timed runs, and the trace confirms fewer
+direct driver launches, but full-worker gains are small/mixed against same-worker controls.
+Startup, per-step stop checks, dynamic cooling and prepare allocation remain. This tests one
+graph scope rather than all graph/control strategies. Production behavior and numerical
+admission stay unchanged. Broader work remains in emmettl/bombcad-work#60, with launch block
+sizes separately tracked in emmettl/bombcad-work#72; distributed integration and data gates
+remain in emmettl/bombcad-work#59 and emmettl/bombcad-work#47 / emmettl/bombcad-work#62 /
+emmettl/bombcad-work#63.
