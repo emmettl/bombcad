@@ -1,0 +1,15 @@
+{
+  "path": "/home/lemme/bombcad-ml/experiments/mixed-unit-9a15a526-e9e2-485b-87c9-07843dad79f5",
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.070s\n\nOK\n",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "numpy": "2.5.2",
+  "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+  "sourceSHA256": {
+    "planar_euler.py": "c2ec3a40f7b1bd0f92b784024ec1cf902ba415eab807833d15f475eac3b7aa71",
+    "test-planar-euler.py": "066053b9de8e3c56af81ec2377f88eaab1f7991c9fc7e46e88659ce0125b7f9e"
+  },
+  "numpyCoreSHA256": "9369e7ee42af16a2136ec03c7c1d09d5244d028cf327a33b2f072b8893259e11"
+}

@@ -532,3 +532,10 @@ of the model's severe 1 Pa impulse loss at fixed inputs, while the Float32 model
 bit-identical to Metal. Four physical/conservation checks pass on Mac and PC NumPy.
 This narrows emmettl/bombcad-work#80 toward update-stage precision controls; production
 GPU causality, operating limits and CUDA admission remain open.
+
+The [mixed-precision CPU controls](../Benchmarks/CUDAAcceptance/2026-10-22-mixed-precision/summary.md)
+show that preserving state/update precision matters more than raising evaluation precision
+alone for these weak pulses. All 72 model runs are retained, including two absent/open
+wall signals; 36 matching-type controls reproduce exactly. This narrows the independent
+model mechanism without identifying a GPU instruction or validating a new backend policy.
+emmettl/bombcad-work#80 remains open for component-wise and actual-GPU controls.

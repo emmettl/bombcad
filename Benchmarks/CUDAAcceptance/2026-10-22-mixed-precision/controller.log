@@ -1,0 +1,15 @@
+{
+  "status": "complete",
+  "jobs": 72,
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-mixed-precision",
+  "runtime": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.14 (main, Aug 25 2026, 13:50:33) [Clang 22.1.3 ]",
+    "executable": "/Users/louisemmett/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "pythonSHA256": "b6ea0c2a9bfce48dbf181a53f1ca4f0562d40658b85bf47258e2a88d8f9e3933",
+    "numpy": "2.3.5",
+    "numpyCore": "/Users/louisemmett/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/numpy/_core/_multiarray_umath.cpython-312-darwin.so",
+    "numpyCoreSHA256": "5ce247f1236eeab22b0fa115d36648aaf16ba2932057db8f1e9a53f1b4e7f651"
+  }
+}

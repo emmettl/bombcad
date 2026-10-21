@@ -1,0 +1,5 @@
+{
+  "receipt": "Benchmarks/CUDAAcceptance/2026-10-22-euler-precision/runtime-pins.json",
+  "receiptSHA256": "1a405d77f0e8a08d239f43981a3f354f356a730b450cf1cedde25b0927225367",
+  "scope": "Producing executable/NumPy-core identities match the preceding frozen runtime pins; not a self-contained dependency environment."
+}

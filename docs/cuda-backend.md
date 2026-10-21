@@ -859,3 +859,12 @@ initialization. The Metal value remains −15.59%; the CPU model is not a GPU re
 Model lost-update and boundary-balance diagnostics support a finite-precision mechanism,
 but do not identify an individual GPU stage or a validated operating range.
 emmettl/bombcad-work#80 remains open; no numerical setting or acceptance rule changes.
+
+The [72-run mixed-precision model matrix](../Benchmarks/CUDAAcceptance/2026-10-22-mixed-precision/summary.md)
+exactly reproduces 36 prior CPU controls, then separates state/update and evaluation precision.
+At the 1 Pa/nx2048/CFL0.225 wall point, common-Double impulse error changes from −21.65%
+(S32/E32) to −0.198% (S64/E32), while S32/E64 has zero native pressure throughout the recorded window.
+Two S32/E64 wall histories have no phase closure and remain explicit adverse outcomes.
+This identifies a stored-rounding mechanism in the independent model; actual GPU update
+causality and component-wise precision remain open in emmettl/bombcad-work#80. No GPU
+representation, numerical default or admission change is adopted.

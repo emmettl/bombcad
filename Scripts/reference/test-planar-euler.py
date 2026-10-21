@@ -3,7 +3,7 @@ import unittest
 import sys
 try:
     import numpy as np
-    from planar_euler import primitive, conserved, flux, advance
+    from planar_euler import primitive, conserved, flux, advance, advance_mixed
 except ImportError as error:
     print(f"SKIP: {error}")
     sys.exit(0)
@@ -50,6 +50,11 @@ class EulerTests(unittest.TestCase):
             np.testing.assert_array_equal(result,state)
             self.assertEqual(result.dtype,dtype)
             self.assertEqual(stats['reconstructionFallback'],0)
+            for evaluation in [np.float32, np.float64]:
+                mixed, diagnostics = advance_mixed(state,.0001,.25,1.4,evaluation_dtype=evaluation)
+                np.testing.assert_array_equal(mixed,state)
+                self.assertEqual(mixed.dtype,dtype)
+                self.assertEqual(diagnostics['reconstructionFallback'],0)
     def test_sod_totals_and_refinement(self):
         errors=[]
         for n in [128,256]:

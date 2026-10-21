@@ -52,11 +52,12 @@ def flux(left, right, gamma):
     return np.where((wave_l >= 0)[:, None], fl, np.where((wave_r <= 0)[:, None], fr, middle))
 
 
-def advance(state, dt, dx, gamma):
+def advance_mixed(state, dt, dx, gamma, evaluation_dtype=None):
     """One conservative step; diagnostics report increments absorbed by state rounding."""
-    cast = state.dtype.type
+    evaluation_dtype = np.dtype(evaluation_dtype or state.dtype)
+    cast = evaluation_dtype.type
     lam = cast(dt) / cast(dx)
-    w = primitive(state, gamma)
+    w = primitive(state.astype(evaluation_dtype, copy=False), gamma)
     ghosts = np.concatenate((w[1::-1].copy(), w, np.repeat(w[-1:], 2, axis=0)))
     ghosts[:2, 1] *= -1
     a = ghosts[1:-1] - ghosts[:-2]
@@ -74,10 +75,16 @@ def advance(state, dt, dx, gamma):
     high = np.where(valid[:, None], high, mid)
     faces = flux(high[:-1], low[1:], gamma)
     delta = lam * (faces[1:] - faces[:-1])
-    updated = state - delta
+    update_dtype = np.result_type(state.dtype, evaluation_dtype)
+    updated = (state.astype(update_dtype, copy=False) - delta.astype(update_dtype, copy=False)).astype(state.dtype, copy=False)
     primitive(updated, gamma)  # Fail visibly; never silently floor a state.
     nonzero = delta != 0
     lost = nonzero & (updated == state)
     stats = dict(nonzero=np.count_nonzero(nonzero, axis=0), absorbed=np.count_nonzero(lost, axis=0), absIncrement=np.sum(np.abs(delta), axis=0, dtype=np.float64), absAbsorbed=np.sum(np.where(lost, np.abs(delta), 0), axis=0, dtype=np.float64), boundaryFlux=(faces[-1].astype(np.float64)-faces[0].astype(np.float64))*float(cast(dt)), reconstructionFallback=int(np.count_nonzero(~valid)))
-    assert updated.dtype == state.dtype and faces.dtype == state.dtype
+    assert updated.dtype == state.dtype and faces.dtype == evaluation_dtype
     return updated, stats
+
+
+def advance(state, dt, dx, gamma):
+    """Matching-type reference, retaining the original operation order."""
+    return advance_mixed(state, dt, dx, gamma, evaluation_dtype=state.dtype)

@@ -1,0 +1,8 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 39 / 40]
+[1 / 1]
+[1 / 50] DocumentKit
+Build complete! (0.86 secs)
+build-strict: no warnings
