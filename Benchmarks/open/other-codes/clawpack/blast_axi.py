@@ -194,10 +194,13 @@ def main(argv=None):
     solver.source_split = 1
     solver.cfl_desired = deck['numerics']['cfl']
     solver.cfl_max = 0.5
-    solver.dt_initial = 1e-7
+    solver.dt_initial = solver.dt = 1e-7   # dt_initial alone is applied only by pyclaw.Controller
     solver.dimensional_split = False   # PyClaw's default (True) failed: see README
     solver.transverse_waves = 2
     solver.max_steps = 10 ** 7
+    # PyClaw accepts a step unless cfl > cfl_max, which a NaN never is: reject those too.
+    solver.accept_reject_step = lambda state: math.isfinite(solver.cfl.get_cached_max()) and \
+        solver.cfl.get_cached_max() <= solver.cfl_max
     solver.bc_lower[0] = pyclaw.BC.wall      # the axis
     solver.bc_upper[0] = pyclaw.BC.extrap
     solver.bc_lower[1] = pyclaw.BC.wall      # the ground
