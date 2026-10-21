@@ -164,6 +164,8 @@ def main(argv=None):
     ap.add_argument('--label', required=True)
     ap.add_argument('--history-dir', type=Path, help='write the deck-format CSV here (full runs only)')
     ap.add_argument('--steps-csv', type=Path, help='write every step\'s gauge pressures here')
+    ap.add_argument('--startup-steps', type=int, default=0,
+                    help='first-order steps before second order (the deck names 6 for BombCAD\'s adapter)')
     args = ap.parse_args(argv)
 
     deck = protocol.deck(CASE_ID)
@@ -234,6 +236,8 @@ def main(argv=None):
     steps = [(0.0, probe.read(state.q))]
 
     def before_step(solver, state):
+        # PyClaw reads the order from _method, built at setup; a startup step is first order.
+        solver._method[1] = 1 if solver.status['numsteps'] < args.startup_steps else 2
         if state.t > steps[-1][0]:
             steps.append((state.t, probe.read(state.q)))
 
@@ -282,7 +286,7 @@ def main(argv=None):
             'geometry': '2-D axisymmetric r-z, x = radius, y = height; axis and ground reflecting (PyClaw wall), outer faces extrap',
             'cell_m': args.dx, 'cells': [n, n], 'extent_m': args.extent, 'stop_s': stop,
             'riemann_solver': 'euler_4wave_2D (Roe, entropy fix)' if args.solver == 'roe' else 'euler_hlle_2D',
-            'limiter': 'MC', 'transverse_waves': 2, 'cfl_desired': solver.cfl_desired, 'cfl_max': solver.cfl_max,
+            'limiter': 'MC', 'transverse_waves': 2, 'first_order_startup_steps': args.startup_steps, 'cfl_desired': solver.cfl_desired, 'cfl_max': solver.cfl_max,
             'source_split': 'Godunov, geometric source by two-stage Runge-Kutta',
             'dimensional_split': False,
             'density_floor_kg_m3': floors.rho_floor, 'pressure_floor_Pa': floors.p_floor,
