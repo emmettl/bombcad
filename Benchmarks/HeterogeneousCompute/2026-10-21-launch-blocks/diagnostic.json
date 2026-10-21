@@ -1,0 +1,2606 @@
+{
+  "status": "complete",
+  "scope": "Perturbed real-driver launch geometry, tail/axis/startup and failure controls; no timing claims.",
+  "allOutputsAndTimestepsBitIdentical": true,
+  "allTenEntriesGeometryCheckedForAllSizes": true,
+  "normal": [
+    {
+      "case": "blast64",
+      "rows": [
+        {
+          "worker": "baseline",
+          "steps": 568,
+          "hashes": {
+            "targets.npy": "b1d1ecd22f11ed52ed232a25f2bd6ef5f92816f4c22009bd16af4afe2868bcfd",
+            "first-phase.bin": "ef9e382e5ec8fdb2b6c08f3c0af387d9e958fe53aa3fb5fa4d7a9778b438c319",
+            "peak.bin": "f6e9bd526d4411282d3703700861f49e6deb855953491132bcfc79f68231e120",
+            "firstPhaseImpulse.npy": "5466950fbd2ba8f7af1f1e156ca1de640d5fb25a39eb6e1a3ae56f29f1065428",
+            "state.bin": "7942fdf57a9e53f71464eac5ec86b3b64029815d0c4259579355142f68cd6f0f",
+            "impulse.bin": "40542da42431e3d9056534d599cb3ba9b965b5a61b7b2128f3b87147082c9b7f",
+            "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+            "dt.npy": "e9657d3d58b17820889f18d457159cd60f4a4fe75f67cfe8dccb16473c08e822",
+            "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+          },
+          "resultSHA256": "399822af79547ddcd186e3262df71b7c3a5fa61e5961d1d78064f0ee5ed742d5"
+        },
+        {
+          "worker": "block64",
+          "steps": 568,
+          "hashes": {
+            "targets.npy": "b1d1ecd22f11ed52ed232a25f2bd6ef5f92816f4c22009bd16af4afe2868bcfd",
+            "first-phase.bin": "ef9e382e5ec8fdb2b6c08f3c0af387d9e958fe53aa3fb5fa4d7a9778b438c319",
+            "peak.bin": "f6e9bd526d4411282d3703700861f49e6deb855953491132bcfc79f68231e120",
+            "firstPhaseImpulse.npy": "5466950fbd2ba8f7af1f1e156ca1de640d5fb25a39eb6e1a3ae56f29f1065428",
+            "state.bin": "7942fdf57a9e53f71464eac5ec86b3b64029815d0c4259579355142f68cd6f0f",
+            "impulse.bin": "40542da42431e3d9056534d599cb3ba9b965b5a61b7b2128f3b87147082c9b7f",
+            "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+            "dt.npy": "e9657d3d58b17820889f18d457159cd60f4a4fe75f67cfe8dccb16473c08e822",
+            "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+          },
+          "resultSHA256": "8120d43285a898f3a71aef649cca4480f5788ccf49a4eec513478f5a903797bc"
+        },
+        {
+          "worker": "block256",
+          "steps": 568,
+          "hashes": {
+            "targets.npy": "b1d1ecd22f11ed52ed232a25f2bd6ef5f92816f4c22009bd16af4afe2868bcfd",
+            "first-phase.bin": "ef9e382e5ec8fdb2b6c08f3c0af387d9e958fe53aa3fb5fa4d7a9778b438c319",
+            "peak.bin": "f6e9bd526d4411282d3703700861f49e6deb855953491132bcfc79f68231e120",
+            "firstPhaseImpulse.npy": "5466950fbd2ba8f7af1f1e156ca1de640d5fb25a39eb6e1a3ae56f29f1065428",
+            "state.bin": "7942fdf57a9e53f71464eac5ec86b3b64029815d0c4259579355142f68cd6f0f",
+            "impulse.bin": "40542da42431e3d9056534d599cb3ba9b965b5a61b7b2128f3b87147082c9b7f",
+            "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+            "dt.npy": "e9657d3d58b17820889f18d457159cd60f4a4fe75f67cfe8dccb16473c08e822",
+            "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+          },
+          "resultSHA256": "c99f7b575987c33655c2029a0759bdff6e1fe09d4210ea0e1ac061cd3d53a889"
+        }
+      ]
+    },
+    {
+      "case": "cooling32",
+      "rows": [
+        {
+          "worker": "baseline",
+          "steps": 540,
+          "hashes": {
+            "targets.npy": "6893e0d59e590fc94b99c50e622a1750684fff0bf1b42bc90c8a9269acbcda36",
+            "first-phase.bin": "e0bf184d480a152290538991305ec4f977fc83be488995a3ae99ebfebcef88d8",
+            "peak.bin": "6058e589e15a04eb35e53558fd5a3ec35427512e11da63f94e5d8d962927a8cf",
+            "firstPhaseImpulse.npy": "4704243dae4e5132aa16559de6a4a7e16545148f2a31a2ae744ffc592de19073",
+            "state.bin": "cdc0b4b51bcf0bdd0bddef34dda8e04a75f0732a08e04b9779729e3146f9712c",
+            "impulse.bin": "9262d48d435783e0e6fd14bc886ba676f9cac1d11ccad2f0ef12c65008adebd5",
+            "species.bin": "31d3b623ab5cd688049c7cb613646fa9fe6faf2c5ccc6102dbf8a3d241ae93d9",
+            "dt.npy": "dc6ade1f6119bb548e1e02157dd86e5b489494e3b72e903a5b10ca95fc7581f8",
+            "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+          },
+          "resultSHA256": "fcf7a28c957244ccb6ebddc250a87d8c5e8ef4249197ef8237d8ab36ee35502f"
+        },
+        {
+          "worker": "block64",
+          "steps": 540,
+          "hashes": {
+            "targets.npy": "6893e0d59e590fc94b99c50e622a1750684fff0bf1b42bc90c8a9269acbcda36",
+            "first-phase.bin": "e0bf184d480a152290538991305ec4f977fc83be488995a3ae99ebfebcef88d8",
+            "peak.bin": "6058e589e15a04eb35e53558fd5a3ec35427512e11da63f94e5d8d962927a8cf",
+            "firstPhaseImpulse.npy": "4704243dae4e5132aa16559de6a4a7e16545148f2a31a2ae744ffc592de19073",
+            "state.bin": "cdc0b4b51bcf0bdd0bddef34dda8e04a75f0732a08e04b9779729e3146f9712c",
+            "impulse.bin": "9262d48d435783e0e6fd14bc886ba676f9cac1d11ccad2f0ef12c65008adebd5",
+            "species.bin": "31d3b623ab5cd688049c7cb613646fa9fe6faf2c5ccc6102dbf8a3d241ae93d9",
+            "dt.npy": "dc6ade1f6119bb548e1e02157dd86e5b489494e3b72e903a5b10ca95fc7581f8",
+            "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+          },
+          "resultSHA256": "c9d67ecd60596f525304a766e7c9184e3ac724d6916661c8c065421d7d6b4854"
+        },
+        {
+          "worker": "block256",
+          "steps": 540,
+          "hashes": {
+            "targets.npy": "6893e0d59e590fc94b99c50e622a1750684fff0bf1b42bc90c8a9269acbcda36",
+            "first-phase.bin": "e0bf184d480a152290538991305ec4f977fc83be488995a3ae99ebfebcef88d8",
+            "peak.bin": "6058e589e15a04eb35e53558fd5a3ec35427512e11da63f94e5d8d962927a8cf",
+            "firstPhaseImpulse.npy": "4704243dae4e5132aa16559de6a4a7e16545148f2a31a2ae744ffc592de19073",
+            "state.bin": "cdc0b4b51bcf0bdd0bddef34dda8e04a75f0732a08e04b9779729e3146f9712c",
+            "impulse.bin": "9262d48d435783e0e6fd14bc886ba676f9cac1d11ccad2f0ef12c65008adebd5",
+            "species.bin": "31d3b623ab5cd688049c7cb613646fa9fe6faf2c5ccc6102dbf8a3d241ae93d9",
+            "dt.npy": "dc6ade1f6119bb548e1e02157dd86e5b489494e3b72e903a5b10ca95fc7581f8",
+            "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+          },
+          "resultSHA256": "5b173cc7b1302baa4896bc9d7e6af032ef51a60a689b0e2a1ee83919f7b7b201"
+        }
+      ]
+    },
+    {
+      "case": "terrain256",
+      "rows": [
+        {
+          "worker": "baseline",
+          "steps": 1229,
+          "hashes": {
+            "targets.npy": "17bb6627763a254f38b097ad420ff6640d447bbf20f2947779e20b5b1402cf07",
+            "first-phase.bin": "d6e2ea1c8124c7f12a94c9e2e2bd9ce969165cae1046bb3a40eb1906b0a4bfb5",
+            "peak.bin": "871182de7b2caf15ca8354a753a6e8f0e4c9eb6a48fb03d7e38d8937fbac47ed",
+            "firstPhaseImpulse.npy": "6265deb827ab1f6761e135937bcdc385040c1d3bd2eb5813c067803e25dfbb69",
+            "state.bin": "c0fb575ecab4283cd3ce89a90ed9c8cfc5e804a689da59671aa53a11f8bb44ee",
+            "impulse.bin": "8a77897e3cc9b715ad3959bbd24707ddb17415bd53e73d5bb4082c0b10c8cee3",
+            "species.bin": "600e68df3efd5868b098f16800db3e376f30e01698b943c9e4fcad0a95eb917b",
+            "dt.npy": "8554f5de4ea4a4f691cc910b843b3ee5191e1f9de540ec5c12711909b1b9db42",
+            "mask.npy": "c90c13fa5fdfee64ecdd93a1616d1ab93f6c3d00109030046cf9af39495a9f41",
+            "dataset/targets.npy": "8c8ff3b10c553f02da77298d2a4eecfeb7b1e294918ef158fd42b34b190f1d7f",
+            "dataset/inputs.npy": "48b574fff9eba347101baffd1a151d4c0d44722410398fcf8fc7559549cb97a6",
+            "dataset/mask.npy": "841743a7cb790c86d4667903759dff1fc931e504d9c8e3062dd04920fded480f"
+          },
+          "resultSHA256": "44487d753cc323471a42b6694ae4a9e7ff0906bd2720e16e385ce9f3a502d73b"
+        },
+        {
+          "worker": "block64",
+          "steps": 1229,
+          "hashes": {
+            "targets.npy": "17bb6627763a254f38b097ad420ff6640d447bbf20f2947779e20b5b1402cf07",
+            "first-phase.bin": "d6e2ea1c8124c7f12a94c9e2e2bd9ce969165cae1046bb3a40eb1906b0a4bfb5",
+            "peak.bin": "871182de7b2caf15ca8354a753a6e8f0e4c9eb6a48fb03d7e38d8937fbac47ed",
+            "firstPhaseImpulse.npy": "6265deb827ab1f6761e135937bcdc385040c1d3bd2eb5813c067803e25dfbb69",
+            "state.bin": "c0fb575ecab4283cd3ce89a90ed9c8cfc5e804a689da59671aa53a11f8bb44ee",
+            "impulse.bin": "8a77897e3cc9b715ad3959bbd24707ddb17415bd53e73d5bb4082c0b10c8cee3",
+            "species.bin": "600e68df3efd5868b098f16800db3e376f30e01698b943c9e4fcad0a95eb917b",
+            "dt.npy": "8554f5de4ea4a4f691cc910b843b3ee5191e1f9de540ec5c12711909b1b9db42",
+            "mask.npy": "c90c13fa5fdfee64ecdd93a1616d1ab93f6c3d00109030046cf9af39495a9f41",
+            "dataset/targets.npy": "8c8ff3b10c553f02da77298d2a4eecfeb7b1e294918ef158fd42b34b190f1d7f",
+            "dataset/inputs.npy": "48b574fff9eba347101baffd1a151d4c0d44722410398fcf8fc7559549cb97a6",
+            "dataset/mask.npy": "841743a7cb790c86d4667903759dff1fc931e504d9c8e3062dd04920fded480f"
+          },
+          "resultSHA256": "f86b79d10e9daee3945ddb39465537a2460df5b3989be9150d446551b5932646"
+        },
+        {
+          "worker": "block256",
+          "steps": 1229,
+          "hashes": {
+            "targets.npy": "17bb6627763a254f38b097ad420ff6640d447bbf20f2947779e20b5b1402cf07",
+            "first-phase.bin": "d6e2ea1c8124c7f12a94c9e2e2bd9ce969165cae1046bb3a40eb1906b0a4bfb5",
+            "peak.bin": "871182de7b2caf15ca8354a753a6e8f0e4c9eb6a48fb03d7e38d8937fbac47ed",
+            "firstPhaseImpulse.npy": "6265deb827ab1f6761e135937bcdc385040c1d3bd2eb5813c067803e25dfbb69",
+            "state.bin": "c0fb575ecab4283cd3ce89a90ed9c8cfc5e804a689da59671aa53a11f8bb44ee",
+            "impulse.bin": "8a77897e3cc9b715ad3959bbd24707ddb17415bd53e73d5bb4082c0b10c8cee3",
+            "species.bin": "600e68df3efd5868b098f16800db3e376f30e01698b943c9e4fcad0a95eb917b",
+            "dt.npy": "8554f5de4ea4a4f691cc910b843b3ee5191e1f9de540ec5c12711909b1b9db42",
+            "mask.npy": "c90c13fa5fdfee64ecdd93a1616d1ab93f6c3d00109030046cf9af39495a9f41",
+            "dataset/targets.npy": "8c8ff3b10c553f02da77298d2a4eecfeb7b1e294918ef158fd42b34b190f1d7f",
+            "dataset/inputs.npy": "48b574fff9eba347101baffd1a151d4c0d44722410398fcf8fc7559549cb97a6",
+            "dataset/mask.npy": "841743a7cb790c86d4667903759dff1fc931e504d9c8e3062dd04920fded480f"
+          },
+          "resultSHA256": "4f85036b24cf963eae846012d1f79ef918ecf51c85bdcc457d0049e8f85299df"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "worker": "baseline",
+      "case": "step-limit",
+      "error": "step limit reached before duration; no completed dataset written",
+      "noOutputWritten": true
+    },
+    {
+      "worker": "block64",
+      "case": "step-limit",
+      "error": "step limit reached before duration; no completed dataset written",
+      "noOutputWritten": true
+    },
+    {
+      "worker": "block256",
+      "case": "step-limit",
+      "error": "step limit reached before duration; no completed dataset written",
+      "noOutputWritten": true
+    },
+    {
+      "worker": "baseline",
+      "case": "nonphysical",
+      "error": "nonphysical wave speed; no completed dataset written",
+      "noOutputWritten": true
+    },
+    {
+      "worker": "block64",
+      "case": "nonphysical",
+      "error": "nonphysical wave speed; no completed dataset written",
+      "noOutputWritten": true
+    },
+    {
+      "worker": "block256",
+      "case": "nonphysical",
+      "error": "nonphysical wave speed; no completed dataset written",
+      "noOutputWritten": true
+    }
+  ],
+  "tail": [
+    {
+      "case": "cube-tail",
+      "shape": [
+        31,
+        31,
+        31
+      ],
+      "startStep": 0,
+      "startupSteps": 8,
+      "rows": [
+        {
+          "worker": "baseline",
+          "steps": 561,
+          "hashes": {
+            "targets.npy": "8c9afdf728c6340a313105a610e970e40bcb08bee0bb4dc80b8876d5ed260073",
+            "first-phase.bin": "a6fdb462699c4d5df8b4e51d90db089841970825b3f4afb4db7eedfd3e1537b2",
+            "peak.bin": "fe9666e0e7566b9cdd7e56329216951d9957f4e95956a934fb8a8547a0c54f7a",
+            "firstPhaseImpulse.npy": "542e4711c91815cae724ec260ec633350f21be6c963ac224cc7b98bcbf587477",
+            "state.bin": "57cc4d559004cecfb837c05c6659a1777969b70b96a43d570d3a94ddcb508e8c",
+            "impulse.bin": "4952952fa62086fab12338296ebc8c6fc74dfbf01f949664e17f155a77f8fa05",
+            "species.bin": "4037d6c7da21b9af428489bb635f0a4f44145af81e27fc5122d58e8acfada17d",
+            "dt.npy": "8a875e3695a627e2adba9eb5b74a8585db582094abb711401fa2b6f91d62385d",
+            "mask.npy": "dd6ce38dc712cc84a536ac9b2dcee009653d18a771c5b9c385d4f401dfd2863a"
+          },
+          "resultSHA256": "72d6a9237ee591a247cee60c072398b7199e64aaafa3ee9ff6be72c178c069cb"
+        },
+        {
+          "worker": "block64",
+          "steps": 561,
+          "hashes": {
+            "targets.npy": "8c9afdf728c6340a313105a610e970e40bcb08bee0bb4dc80b8876d5ed260073",
+            "first-phase.bin": "a6fdb462699c4d5df8b4e51d90db089841970825b3f4afb4db7eedfd3e1537b2",
+            "peak.bin": "fe9666e0e7566b9cdd7e56329216951d9957f4e95956a934fb8a8547a0c54f7a",
+            "firstPhaseImpulse.npy": "542e4711c91815cae724ec260ec633350f21be6c963ac224cc7b98bcbf587477",
+            "state.bin": "57cc4d559004cecfb837c05c6659a1777969b70b96a43d570d3a94ddcb508e8c",
+            "impulse.bin": "4952952fa62086fab12338296ebc8c6fc74dfbf01f949664e17f155a77f8fa05",
+            "species.bin": "4037d6c7da21b9af428489bb635f0a4f44145af81e27fc5122d58e8acfada17d",
+            "dt.npy": "8a875e3695a627e2adba9eb5b74a8585db582094abb711401fa2b6f91d62385d",
+            "mask.npy": "dd6ce38dc712cc84a536ac9b2dcee009653d18a771c5b9c385d4f401dfd2863a"
+          },
+          "resultSHA256": "33d891d7950f8ebf056a65f2a2f8f8d03948f0bb5b15a16c2ece2c92d091e1cd"
+        },
+        {
+          "worker": "block256",
+          "steps": 561,
+          "hashes": {
+            "targets.npy": "8c9afdf728c6340a313105a610e970e40bcb08bee0bb4dc80b8876d5ed260073",
+            "first-phase.bin": "a6fdb462699c4d5df8b4e51d90db089841970825b3f4afb4db7eedfd3e1537b2",
+            "peak.bin": "fe9666e0e7566b9cdd7e56329216951d9957f4e95956a934fb8a8547a0c54f7a",
+            "firstPhaseImpulse.npy": "542e4711c91815cae724ec260ec633350f21be6c963ac224cc7b98bcbf587477",
+            "state.bin": "57cc4d559004cecfb837c05c6659a1777969b70b96a43d570d3a94ddcb508e8c",
+            "impulse.bin": "4952952fa62086fab12338296ebc8c6fc74dfbf01f949664e17f155a77f8fa05",
+            "species.bin": "4037d6c7da21b9af428489bb635f0a4f44145af81e27fc5122d58e8acfada17d",
+            "dt.npy": "8a875e3695a627e2adba9eb5b74a8585db582094abb711401fa2b6f91d62385d",
+            "mask.npy": "dd6ce38dc712cc84a536ac9b2dcee009653d18a771c5b9c385d4f401dfd2863a"
+          },
+          "resultSHA256": "62a658da9d551637bd328e50a28d4da1a5a32a26addf967f90e77ce56435d12d"
+        }
+      ]
+    },
+    {
+      "case": "two-axes-tail",
+      "shape": [
+        31,
+        31,
+        1
+      ],
+      "startStep": 0,
+      "startupSteps": 8,
+      "rows": [
+        {
+          "worker": "baseline",
+          "steps": 699,
+          "hashes": {
+            "targets.npy": "8004dc88dd0b680f8bf92269676f319204600d180e81e723db3e485376385276",
+            "first-phase.bin": "2485eb1ef85a4da98bdbb678526c690f19b43d6852a1936459f9913a8cf2a5b3",
+            "peak.bin": "1ea02b1425e703d805f94fafb6f347b8fd1c952fa281d48791e9b4e7591d8b15",
+            "firstPhaseImpulse.npy": "2e388ceb2c706ee80036d5cfa67e55da5aa35b784dc38ba393a974c924b2f2ef",
+            "state.bin": "868156ddd9451e4ac45353d16330bfe0077d5de67b1a283f651242ff4b3502f0",
+            "impulse.bin": "8a599276b317e705e65ff5911ac90109c8eb0e83232c9825ea908f333e173894",
+            "species.bin": "3a2ecc69c62abaeb304141daf7b1d62ccb701f2f4604d8bc6688b05f3cb70435",
+            "dt.npy": "5409c742c609237d25aa3628d09b9d6e5a743d41eff3b119bcccc5d7e1228a63",
+            "mask.npy": "dd6ce38dc712cc84a536ac9b2dcee009653d18a771c5b9c385d4f401dfd2863a"
+          },
+          "resultSHA256": "88818fea556a060f8362fa2446467f8c601f54679fc5644f0e02e4a43c9ff7c0"
+        },
+        {
+          "worker": "block64",
+          "steps": 699,
+          "hashes": {
+            "targets.npy": "8004dc88dd0b680f8bf92269676f319204600d180e81e723db3e485376385276",
+            "first-phase.bin": "2485eb1ef85a4da98bdbb678526c690f19b43d6852a1936459f9913a8cf2a5b3",
+            "peak.bin": "1ea02b1425e703d805f94fafb6f347b8fd1c952fa281d48791e9b4e7591d8b15",
+            "firstPhaseImpulse.npy": "2e388ceb2c706ee80036d5cfa67e55da5aa35b784dc38ba393a974c924b2f2ef",
+            "state.bin": "868156ddd9451e4ac45353d16330bfe0077d5de67b1a283f651242ff4b3502f0",
+            "impulse.bin": "8a599276b317e705e65ff5911ac90109c8eb0e83232c9825ea908f333e173894",
+            "species.bin": "3a2ecc69c62abaeb304141daf7b1d62ccb701f2f4604d8bc6688b05f3cb70435",
+            "dt.npy": "5409c742c609237d25aa3628d09b9d6e5a743d41eff3b119bcccc5d7e1228a63",
+            "mask.npy": "dd6ce38dc712cc84a536ac9b2dcee009653d18a771c5b9c385d4f401dfd2863a"
+          },
+          "resultSHA256": "789d3ee789e3d734fa64435d89e9f028353c8738bf264a298c21af60a233133e"
+        },
+        {
+          "worker": "block256",
+          "steps": 699,
+          "hashes": {
+            "targets.npy": "8004dc88dd0b680f8bf92269676f319204600d180e81e723db3e485376385276",
+            "first-phase.bin": "2485eb1ef85a4da98bdbb678526c690f19b43d6852a1936459f9913a8cf2a5b3",
+            "peak.bin": "1ea02b1425e703d805f94fafb6f347b8fd1c952fa281d48791e9b4e7591d8b15",
+            "firstPhaseImpulse.npy": "2e388ceb2c706ee80036d5cfa67e55da5aa35b784dc38ba393a974c924b2f2ef",
+            "state.bin": "868156ddd9451e4ac45353d16330bfe0077d5de67b1a283f651242ff4b3502f0",
+            "impulse.bin": "8a599276b317e705e65ff5911ac90109c8eb0e83232c9825ea908f333e173894",
+            "species.bin": "3a2ecc69c62abaeb304141daf7b1d62ccb701f2f4604d8bc6688b05f3cb70435",
+            "dt.npy": "5409c742c609237d25aa3628d09b9d6e5a743d41eff3b119bcccc5d7e1228a63",
+            "mask.npy": "dd6ce38dc712cc84a536ac9b2dcee009653d18a771c5b9c385d4f401dfd2863a"
+          },
+          "resultSHA256": "c628a4a1dd589960b70b7f27e660baed7167bee59d3a1463118d4963d3f95c16"
+        }
+      ]
+    },
+    {
+      "case": "one-axis-odd-tail",
+      "shape": [
+        31,
+        1,
+        1
+      ],
+      "startStep": 1,
+      "startupSteps": 8,
+      "rows": [
+        {
+          "worker": "baseline",
+          "steps": 825,
+          "hashes": {
+            "targets.npy": "b294d8a1a9b7f474194193ffee97f84e79d4a2c1da7554bc626358939d52f3c4",
+            "first-phase.bin": "6afc9027eced2a70e70d99bd546e3c3b48a3878206798b36d2495f2d38525344",
+            "peak.bin": "286b0022f156d9d6839bdff1980711bc0da0de5c99bf57c85cadc3f8dd121b5b",
+            "firstPhaseImpulse.npy": "9bae1a464a3508c0f221f277b16ea8fed8f9c7fbd467fb2f64893579c845b573",
+            "state.bin": "0dae6a9352e1f877249fda1fbc886c2f33c04dd23f4d7d3e2cf1d8d731ec4ec1",
+            "impulse.bin": "e8d164e55360e45a01a867681c5dd0ca633208f3cba8c34b8fa82b442ce166c3",
+            "species.bin": "88290da8a8b5eeaa7bfb377876af107339fe7cdeb5b75ce07f62f28489aadade",
+            "dt.npy": "b0d451a190af24b0eff53a998e83c36c7992f99492583a7f920f759cd0809feb",
+            "mask.npy": "8f0dc466156e7227d173da3194da605aa79f7a6da9d0bb131a75c16a1f4a55d2"
+          },
+          "resultSHA256": "f90d4170293819eac52a097dcabc3db002505d2274f4ebec97c43fd93edc1c2a"
+        },
+        {
+          "worker": "block64",
+          "steps": 825,
+          "hashes": {
+            "targets.npy": "b294d8a1a9b7f474194193ffee97f84e79d4a2c1da7554bc626358939d52f3c4",
+            "first-phase.bin": "6afc9027eced2a70e70d99bd546e3c3b48a3878206798b36d2495f2d38525344",
+            "peak.bin": "286b0022f156d9d6839bdff1980711bc0da0de5c99bf57c85cadc3f8dd121b5b",
+            "firstPhaseImpulse.npy": "9bae1a464a3508c0f221f277b16ea8fed8f9c7fbd467fb2f64893579c845b573",
+            "state.bin": "0dae6a9352e1f877249fda1fbc886c2f33c04dd23f4d7d3e2cf1d8d731ec4ec1",
+            "impulse.bin": "e8d164e55360e45a01a867681c5dd0ca633208f3cba8c34b8fa82b442ce166c3",
+            "species.bin": "88290da8a8b5eeaa7bfb377876af107339fe7cdeb5b75ce07f62f28489aadade",
+            "dt.npy": "b0d451a190af24b0eff53a998e83c36c7992f99492583a7f920f759cd0809feb",
+            "mask.npy": "8f0dc466156e7227d173da3194da605aa79f7a6da9d0bb131a75c16a1f4a55d2"
+          },
+          "resultSHA256": "ac6bc57087e48c172d5b0395121ebdefd9627e1dd08514a1483c242e787e41f6"
+        },
+        {
+          "worker": "block256",
+          "steps": 825,
+          "hashes": {
+            "targets.npy": "b294d8a1a9b7f474194193ffee97f84e79d4a2c1da7554bc626358939d52f3c4",
+            "first-phase.bin": "6afc9027eced2a70e70d99bd546e3c3b48a3878206798b36d2495f2d38525344",
+            "peak.bin": "286b0022f156d9d6839bdff1980711bc0da0de5c99bf57c85cadc3f8dd121b5b",
+            "firstPhaseImpulse.npy": "9bae1a464a3508c0f221f277b16ea8fed8f9c7fbd467fb2f64893579c845b573",
+            "state.bin": "0dae6a9352e1f877249fda1fbc886c2f33c04dd23f4d7d3e2cf1d8d731ec4ec1",
+            "impulse.bin": "e8d164e55360e45a01a867681c5dd0ca633208f3cba8c34b8fa82b442ce166c3",
+            "species.bin": "88290da8a8b5eeaa7bfb377876af107339fe7cdeb5b75ce07f62f28489aadade",
+            "dt.npy": "b0d451a190af24b0eff53a998e83c36c7992f99492583a7f920f759cd0809feb",
+            "mask.npy": "8f0dc466156e7227d173da3194da605aa79f7a6da9d0bb131a75c16a1f4a55d2"
+          },
+          "resultSHA256": "1dc7a59edfd0c5829bd1789f6c3a759f017c0e36b50abef04655d53d884e6cfa"
+        }
+      ]
+    }
+  ],
+  "launchGeometry": [
+    {
+      "worker": "baseline",
+      "job": "blast64",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            32,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 570
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            2048,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 569
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            2048,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1707
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "blast64",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            64,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 570
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            4096,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 569
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            4096,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1707
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "blast64",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 570
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 569
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1707
+        }
+      ]
+    },
+    {
+      "worker": "baseline",
+      "job": "cooling32",
+      "geometry": [
+        {
+          "kernel": "cudaCoolingApply",
+          "usefulCount": 32768,
+          "grid": [
+            256,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaCoolingClock",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 541
+        },
+        {
+          "kernel": "cudaCoolingLines",
+          "usefulCount": 32768,
+          "grid": [
+            256,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1768
+        },
+        {
+          "kernel": "cudaCoolingMedium",
+          "usefulCount": 32768,
+          "grid": [
+            256,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaCoolingReset",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 1024,
+          "grid": [
+            8,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 542
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 32768,
+          "grid": [
+            256,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 541
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 32768,
+          "grid": [
+            256,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1623
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "cooling32",
+      "geometry": [
+        {
+          "kernel": "cudaCoolingApply",
+          "usefulCount": 32768,
+          "grid": [
+            512,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaCoolingClock",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 541
+        },
+        {
+          "kernel": "cudaCoolingLines",
+          "usefulCount": 32768,
+          "grid": [
+            512,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1768
+        },
+        {
+          "kernel": "cudaCoolingMedium",
+          "usefulCount": 32768,
+          "grid": [
+            512,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaCoolingReset",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 1024,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 542
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 32768,
+          "grid": [
+            512,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 541
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 32768,
+          "grid": [
+            512,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1623
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "cooling32",
+      "geometry": [
+        {
+          "kernel": "cudaCoolingApply",
+          "usefulCount": 32768,
+          "grid": [
+            128,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaCoolingClock",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 541
+        },
+        {
+          "kernel": "cudaCoolingLines",
+          "usefulCount": 32768,
+          "grid": [
+            128,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1768
+        },
+        {
+          "kernel": "cudaCoolingMedium",
+          "usefulCount": 32768,
+          "grid": [
+            128,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaCoolingReset",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 136
+        },
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 1024,
+          "grid": [
+            4,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 542
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 32768,
+          "grid": [
+            128,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 541
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 32768,
+          "grid": [
+            128,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1623
+        }
+      ]
+    },
+    {
+      "worker": "baseline",
+      "job": "terrain256",
+      "geometry": [
+        {
+          "kernel": "cudaCoolingApply",
+          "usefulCount": 2883584,
+          "grid": [
+            22528,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaCoolingClock",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaCoolingLines",
+          "usefulCount": 2883584,
+          "grid": [
+            22528,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3991
+        },
+        {
+          "kernel": "cudaCoolingMedium",
+          "usefulCount": 2883584,
+          "grid": [
+            22528,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaCoolingReset",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 65536,
+          "grid": [
+            512,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1231
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 2883584,
+          "grid": [
+            22528,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaRedistribute",
+          "usefulCount": 65536,
+          "grid": [
+            512,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 2883584,
+          "grid": [
+            22528,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3690
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "terrain256",
+      "geometry": [
+        {
+          "kernel": "cudaCoolingApply",
+          "usefulCount": 2883584,
+          "grid": [
+            45056,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaCoolingClock",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaCoolingLines",
+          "usefulCount": 2883584,
+          "grid": [
+            45056,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3991
+        },
+        {
+          "kernel": "cudaCoolingMedium",
+          "usefulCount": 2883584,
+          "grid": [
+            45056,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaCoolingReset",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 65536,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1231
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 2883584,
+          "grid": [
+            45056,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaRedistribute",
+          "usefulCount": 65536,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 2883584,
+          "grid": [
+            45056,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3690
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "terrain256",
+      "geometry": [
+        {
+          "kernel": "cudaCoolingApply",
+          "usefulCount": 2883584,
+          "grid": [
+            11264,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaCoolingClock",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaCoolingLines",
+          "usefulCount": 2883584,
+          "grid": [
+            11264,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3991
+        },
+        {
+          "kernel": "cudaCoolingMedium",
+          "usefulCount": 2883584,
+          "grid": [
+            11264,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaCoolingReset",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 307
+        },
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 65536,
+          "grid": [
+            256,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1231
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 2883584,
+          "grid": [
+            11264,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaRedistribute",
+          "usefulCount": 65536,
+          "grid": [
+            256,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1230
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 2883584,
+          "grid": [
+            11264,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3690
+        }
+      ]
+    },
+    {
+      "worker": "baseline",
+      "job": "step-limit",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            32,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 2
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            2048,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            2048,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "step-limit",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            64,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 2
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            4096,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            4096,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "step-limit",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 2
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3
+        }
+      ]
+    },
+    {
+      "worker": "baseline",
+      "job": "nonphysical",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            32,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 2
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            2048,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            2048,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "nonphysical",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            64,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 2
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            4096,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            4096,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "nonphysical",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 4096,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 2
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 262144,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 262144,
+          "grid": [
+            1024,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 3
+        }
+      ]
+    },
+    {
+      "worker": "baseline",
+      "job": "cube-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 961,
+          "grid": [
+            8,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 564
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 29791,
+          "grid": [
+            233,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 563
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 29791,
+          "grid": [
+            233,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1689
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "cube-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 961,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 564
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 29791,
+          "grid": [
+            466,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 563
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 29791,
+          "grid": [
+            466,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1689
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "cube-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 961,
+          "grid": [
+            4,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 564
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 29791,
+          "grid": [
+            117,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 563
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 29791,
+          "grid": [
+            117,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1689
+        }
+      ]
+    },
+    {
+      "worker": "baseline",
+      "job": "two-axes-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 961,
+          "grid": [
+            8,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 701
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 961,
+          "grid": [
+            8,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 700
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 961,
+          "grid": [
+            8,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1400
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "two-axes-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 961,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 701
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 961,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 700
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 961,
+          "grid": [
+            16,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1400
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "two-axes-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 961,
+          "grid": [
+            4,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 701
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 961,
+          "grid": [
+            4,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 700
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 961,
+          "grid": [
+            4,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1400
+        }
+      ]
+    },
+    {
+      "worker": "baseline",
+      "job": "one-axis-odd-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 827
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 826
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            128,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 826
+        }
+      ]
+    },
+    {
+      "worker": "block64",
+      "job": "one-axis-odd-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 827
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 826
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            64,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 826
+        }
+      ]
+    },
+    {
+      "worker": "block256",
+      "job": "one-axis-odd-tail",
+      "geometry": [
+        {
+          "kernel": "cudaFirstPhase",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 827
+        },
+        {
+          "kernel": "cudaMeasure",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 1
+        },
+        {
+          "kernel": "cudaPrepare",
+          "usefulCount": 1,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 826
+        },
+        {
+          "kernel": "cudaSweep",
+          "usefulCount": 31,
+          "grid": [
+            1,
+            1,
+            1
+          ],
+          "block": [
+            256,
+            1,
+            1
+          ],
+          "dynamicSharedBytes": 0,
+          "launches": 826
+        }
+      ]
+    }
+  ]
+}

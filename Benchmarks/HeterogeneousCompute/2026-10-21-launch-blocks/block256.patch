@@ -1,0 +1,11 @@
+--- baseline.py
++++ block256.py
+@@ -83,7 +83,7 @@
+     def launch(name,buffers,count):
+         values=[C.c_uint64(t.data_ptr()) for t in buffers]
+         params=(C.c_void_p*len(values))(*(C.addressof(v) for v in values))
+-        check(driver.cuLaunchKernel(functions[name],(count+127)//128,1,1,128,1,1,0,
++        check(driver.cuLaunchKernel(functions[name],(count+255)//256,1,1,256,1,1,0,
+                                    C.c_void_p(torch.cuda.current_stream().cuda_stream),params,None))
+     folder=Path(folder);nx,ny,nz=meta['shape'];count=nx*ny*nz
+     def read(name,dtype,shape):

@@ -1,0 +1,45 @@
+{
+  "status": "CPU byte-identity proof only; no GPU execution or performance claim",
+  "numpy": "2.0.2",
+  "jobs": [
+    {
+      "job": "cooling32",
+      "wireBytes": 276,
+      "steadySHA256": "148e204faa983693a196f799aaca62f540047c84cc16a8ee4e12b63b519c580c",
+      "matchesRepeatedBaselineBytes": true
+    },
+    {
+      "job": "blast64",
+      "wireBytes": 276,
+      "steadySHA256": "1617423b9399c0179b65532175064712aca02080ca2d44e3cf2f42283e096bc6",
+      "matchesRepeatedBaselineBytes": true
+    },
+    {
+      "job": "cooling64",
+      "wireBytes": 276,
+      "steadySHA256": "ffdccf2c6584df073d174380b7f2de714d7a2b64d6963b713ed9ef6a658d45a5",
+      "matchesRepeatedBaselineBytes": true
+    },
+    {
+      "job": "terrain256",
+      "wireBytes": 276,
+      "steadySHA256": "d73f1db007799f12381552f8d51ca8a18fc866c36bb1d5b661b046ced68d81b3",
+      "matchesRepeatedBaselineBytes": true
+    },
+    {
+      "job": "flat512",
+      "wireBytes": 276,
+      "steadySHA256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "matchesRepeatedBaselineBytes": true
+    },
+    {
+      "job": "beirut512",
+      "wireBytes": 276,
+      "steadySHA256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "matchesRepeatedBaselineBytes": true
+    }
+  ],
+  "additionalCFLBitPatterns": 1005,
+  "productionWorkerSHA256": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+  "candidateSHA256": "b95f9b3d802b088e7f178add0c1aea18d9d5246262bc72e786eb17f16c47f698"
+}

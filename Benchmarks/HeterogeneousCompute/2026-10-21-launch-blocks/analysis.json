@@ -1,0 +1,421 @@
+{
+  "status": "complete",
+  "scope": "Paired launch-size observations; separate batches/null controls are not statistical error bounds.",
+  "rows": [
+    {
+      "job": "blast64",
+      "block64": {
+        "medianProcessSeconds": {
+          "baseline": 1.5089805409952533,
+          "candidate": 1.4641717260092264
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.19949207700847182,
+          "candidate": 0.1969319119962165
+        },
+        "medianProcessRatioPercent": -2.9694759984428276,
+        "pairedProcessChangePercent": [
+          -17.288371375297885,
+          -1.52743870253228,
+          -2.9694759984428276
+        ],
+        "pairedSolverChangePercent": [
+          -12.65381747945612,
+          10.515478509519593,
+          -0.9876016372611041
+        ],
+        "candidateFasterPairs": 3
+      },
+      "block256": {
+        "medianProcessSeconds": {
+          "baseline": 1.5236978989996715,
+          "candidate": 1.5312195269943913
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.18795902500278316,
+          "candidate": 0.2244534960045712
+        },
+        "medianProcessRatioPercent": 0.4936429983698254,
+        "pairedProcessChangePercent": [
+          -2.12137336028283,
+          2.744637074285783,
+          0.4936429983698254
+        ],
+        "pairedSolverChangePercent": [
+          12.541681265063387,
+          34.17666084042279,
+          15.006560071633501
+        ],
+        "candidateFasterPairs": 1
+      },
+      "sameWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 1.5349897580017569,
+          "candidate": 1.506359324004734
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.21655551600269973,
+          "candidate": 0.2021586230112007
+        },
+        "medianProcessRatioPercent": -1.8651872983370232,
+        "pairedProcessChangePercent": [
+          -6.523344077180582,
+          -0.697512406248546,
+          1.1324789689432846
+        ],
+        "pairedSolverChangePercent": [
+          -22.77448190273518,
+          -6.648130353474613,
+          8.325389947451578
+        ],
+        "candidateFasterPairs": 2
+      }
+    },
+    {
+      "job": "cooling32",
+      "block64": {
+        "medianProcessSeconds": {
+          "baseline": 1.553421671007527,
+          "candidate": 1.5452847979904618
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.22390897500736173,
+          "candidate": 0.2147952249943046
+        },
+        "medianProcessRatioPercent": -0.5238032382918756,
+        "pairedProcessChangePercent": [
+          -0.9411632571763917,
+          17.274070932393126,
+          -3.778291670784628
+        ],
+        "pairedSolverChangePercent": [
+          -4.07029240911736,
+          112.93802411449256,
+          -24.688214498572147
+        ],
+        "candidateFasterPairs": 2
+      },
+      "block256": {
+        "medianProcessSeconds": {
+          "baseline": 1.6241377299884334,
+          "candidate": 1.7941254640027182
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.21238969299884047,
+          "candidate": 0.41177143099776004
+        },
+        "medianProcessRatioPercent": 10.466337360163136,
+        "pairedProcessChangePercent": [
+          3.104542986488612,
+          10.466337360163136,
+          0.594022625442836
+        ],
+        "pairedSolverChangePercent": [
+          28.438049520835552,
+          93.87543019802193,
+          -7.276524135267093
+        ],
+        "candidateFasterPairs": 0
+      },
+      "sameWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 1.4934446690022014,
+          "candidate": 1.5442441890045302
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.21029656600148883,
+          "candidate": 0.23383874898718204
+        },
+        "medianProcessRatioPercent": 3.401499972293509,
+        "pairedProcessChangePercent": [
+          -5.321882952641199,
+          12.426214231693077,
+          4.220614749728169
+        ],
+        "pairedSolverChangePercent": [
+          -24.031146880179598,
+          84.59962972624196,
+          11.194753881775954
+        ],
+        "candidateFasterPairs": 1
+      }
+    },
+    {
+      "job": "cooling64",
+      "block64": {
+        "medianProcessSeconds": {
+          "baseline": 1.6406437889963854,
+          "candidate": 1.6767041920102201
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.3446931419894099,
+          "candidate": 0.3796406939945882
+        },
+        "medianProcessRatioPercent": 2.197942250212259,
+        "pairedProcessChangePercent": [
+          2.197942250212259,
+          3.954510003875522,
+          -0.34369111532323027
+        ],
+        "pairedSolverChangePercent": [
+          12.934002435657256,
+          2.381854110822057,
+          10.138743058094256
+        ],
+        "candidateFasterPairs": 1
+      },
+      "block256": {
+        "medianProcessSeconds": {
+          "baseline": 2.0009108439990086,
+          "candidate": 2.0301966730039567
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.4361750870011747,
+          "candidate": 0.46403405399178155
+        },
+        "medianProcessRatioPercent": 1.4636248832765375,
+        "pairedProcessChangePercent": [
+          -6.106363077614119,
+          3.42024167688173,
+          7.960462083318887
+        ],
+        "pairedSolverChangePercent": [
+          2.661491892421264,
+          6.387106421447641,
+          18.05303187427041
+        ],
+        "candidateFasterPairs": 1
+      },
+      "sameWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 1.6543807300040498,
+          "candidate": 1.6659070129971951
+        },
+        "medianSolverSeconds": {
+          "baseline": 0.359598177994485,
+          "candidate": 0.3510151130030863
+        },
+        "medianProcessRatioPercent": 0.6967128414942847,
+        "pairedProcessChangePercent": [
+          -0.825075143313192,
+          3.901066412170895,
+          0.5417685995509514
+        ],
+        "pairedSolverChangePercent": [
+          -4.558068718581543,
+          18.06505037769266,
+          1.351625113863486
+        ],
+        "candidateFasterPairs": 1
+      }
+    },
+    {
+      "job": "terrain256",
+      "block64": {
+        "medianProcessSeconds": {
+          "baseline": 5.65714659699006,
+          "candidate": 5.6689954649918946
+        },
+        "medianSolverSeconds": {
+          "baseline": 4.035914556996431,
+          "candidate": 4.070285956011503
+        },
+        "medianProcessRatioPercent": 0.20944954843735708,
+        "pairedProcessChangePercent": [
+          1.3527372964083906,
+          -0.5273148481631074,
+          -0.05975447768581388
+        ],
+        "pairedSolverChangePercent": [
+          0.9625844664501004,
+          0.801068594324228,
+          -0.613009625569183
+        ],
+        "candidateFasterPairs": 2
+      },
+      "block256": {
+        "medianProcessSeconds": {
+          "baseline": 5.757164034002926,
+          "candidate": 6.0147499199956656
+        },
+        "medianSolverSeconds": {
+          "baseline": 4.092893080000067,
+          "candidate": 4.218086660999688
+        },
+        "medianProcessRatioPercent": 4.474180073233747,
+        "pairedProcessChangePercent": [
+          -7.341151636612642,
+          4.474180073233747,
+          -0.0951764293559143
+        ],
+        "pairedSolverChangePercent": [
+          -3.38306186884505,
+          3.6929518323232324,
+          -0.4733217462177919
+        ],
+        "candidateFasterPairs": 2
+      },
+      "sameWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 5.77452383399941,
+          "candidate": 5.764285855999333
+        },
+        "medianSolverSeconds": {
+          "baseline": 4.105752306000795,
+          "candidate": 4.105605272998218
+        },
+        "medianProcessRatioPercent": -0.17729562288405498,
+        "pairedProcessChangePercent": [
+          -0.17729562288405498,
+          1.0259837802259142,
+          -1.990405154686492
+        ],
+        "pairedSolverChangePercent": [
+          0.10425434111327458,
+          0.9798759897641451,
+          -0.39982640874604014
+        ],
+        "candidateFasterPairs": 2
+      }
+    },
+    {
+      "job": "flat512",
+      "block64": {
+        "medianProcessSeconds": {
+          "baseline": 47.92522181700042,
+          "candidate": 47.75329862200306
+        },
+        "medianSolverSeconds": {
+          "baseline": 45.05767927999841,
+          "candidate": 45.04873267500079
+        },
+        "medianProcessRatioPercent": -0.358732184180266,
+        "pairedProcessChangePercent": [
+          -1.6032015248557907,
+          -0.08244393251026771,
+          0.4076283438880113
+        ],
+        "pairedSolverChangePercent": [
+          1.1044142596381423,
+          -0.019855893913267586,
+          0.47623934701599424
+        ],
+        "candidateFasterPairs": 2
+      },
+      "block256": {
+        "medianProcessSeconds": {
+          "baseline": 48.285248251995654,
+          "candidate": 54.018201757004135
+        },
+        "medianSolverSeconds": {
+          "baseline": 45.46913780699833,
+          "candidate": 51.261932972993236
+        },
+        "medianProcessRatioPercent": 11.8730952258727,
+        "pairedProcessChangePercent": [
+          12.487099810719581,
+          11.83584595276388,
+          11.870489772345882
+        ],
+        "pairedSolverChangePercent": [
+          13.289615625292939,
+          12.709342335755336,
+          12.64462956666057
+        ],
+        "candidateFasterPairs": 0
+      },
+      "sameWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 49.15164759500476,
+          "candidate": 48.28666461100511
+        },
+        "medianSolverSeconds": {
+          "baseline": 45.69930553599261,
+          "candidate": 45.53193838399602
+        },
+        "medianProcessRatioPercent": -1.759825003480775,
+        "pairedProcessChangePercent": [
+          0.40103838659002466,
+          -1.759825003480775,
+          -2.288457675901223
+        ],
+        "pairedSolverChangePercent": [
+          0.5507193978179226,
+          -0.552232029649713,
+          -0.3222849609566092
+        ],
+        "candidateFasterPairs": 2
+      }
+    },
+    {
+      "job": "beirut512",
+      "block64": {
+        "medianProcessSeconds": {
+          "baseline": 68.41702546499437,
+          "candidate": 68.51678835001076
+        },
+        "medianSolverSeconds": {
+          "baseline": 64.87039305199869,
+          "candidate": 64.96959343599156
+        },
+        "medianProcessRatioPercent": 0.14581587600213108,
+        "pairedProcessChangePercent": [
+          0.5500245522915392,
+          0.02700493784355551,
+          0.08195209459538333
+        ],
+        "pairedSolverChangePercent": [
+          0.8433506345098207,
+          -0.11886080903142915,
+          0.054009630958629096
+        ],
+        "candidateFasterPairs": 0
+      },
+      "block256": {
+        "medianProcessSeconds": {
+          "baseline": 68.62243854199187,
+          "candidate": 70.07735764099925
+        },
+        "medianSolverSeconds": {
+          "baseline": 65.03813123100554,
+          "candidate": 66.4839005190006
+        },
+        "medianProcessRatioPercent": 2.1201798273564387,
+        "pairedProcessChangePercent": [
+          2.1201798273564387,
+          2.11659463318441,
+          2.4229128154128032
+        ],
+        "pairedSolverChangePercent": [
+          2.2322217487220186,
+          2.222956380557606,
+          2.720018497959087
+        ],
+        "candidateFasterPairs": 0
+      },
+      "sameWorkerLabels": {
+        "medianProcessSeconds": {
+          "baseline": 68.86486205100664,
+          "candidate": 69.51779963700392
+        },
+        "medianSolverSeconds": {
+          "baseline": 65.22584499799996,
+          "candidate": 65.11328842300281
+        },
+        "medianProcessRatioPercent": 0.9481433151113494,
+        "pairedProcessChangePercent": [
+          1.139123413543408,
+          1.3266919700143154,
+          0.8778581976847111
+        ],
+        "pairedSolverChangePercent": [
+          -0.17079385456909568,
+          -0.1725643799641019,
+          0.5474885285811526
+        ],
+        "candidateFasterPairs": 0
+      }
+    }
+  ],
+  "interpretation": "Do not compare raw medians across separate size batches as a direct64-versus256 experiment. Each size is paired with its own128 baseline. Null runs are later separate controls, not a pointwise correction. A promotion decision requires review of whole-worker benefit and exact-output/failure gates; fewer blocks or lower solver-only time alone is insufficient."
+}

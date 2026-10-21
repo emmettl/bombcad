@@ -1,0 +1,1066 @@
+{
+  "status": "complete",
+  "allSourcesInputsProvenanceAndNumericalOutputsVerified": true,
+  "allRepetitionsVariantsAndLabelsNumericallyIdentical": true,
+  "allTimedProcessGroupsTerminal": true,
+  "timedRuns": 108,
+  "numericalFileInstances": 1134,
+  "numericalBytesVerified": 26611742232,
+  "historicalGraphStudyRowsMatch": 72,
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "workerSHA256": {
+    "baseline": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "block64": "90bf3362d833916d5bb0ff787c38478353605428aff1d48d3b5177df36801efb",
+    "block256": "3ed9521b939d652c830547682a3c30d8fbb14cbe8f60b094da652d4394024eca"
+  },
+  "reports": [
+    {
+      "profile": "small64",
+      "profileSHA256": "826ebddb4a59b424677bf1679be25f5cada3d97ec83f351f5dcdd7d1e9f66f7c",
+      "monitorSHA256": "b3fac02e6be7e4c55e803fea88acfcae3d5e25946cffe26d0148a2bef60025ca",
+      "samples": 63,
+      "resourceQueryErrors": 0,
+      "allResolvedComputeGroupsOwned": true,
+      "exitedBeforeResolution": 0,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "b5fa0e3f4b92600144402604f7c00cb63616fd1ca00d51298c59b544d4e341b1",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "8e7e51e568d7c1c82594cd677e21253fe1d5afb81e78499a0bed70037d847fdf",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "787406ae0ac20463f995141d58367ea46ca9016c0824fb71a0a8e7d6919dafb9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "31354501c3c2907b04cf20076259c4ae37dd6278cf22aa08b61aef866975a71a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "487470c4c029a137f6de92deada2885e19e999a94e9922706a6f857739ed9233",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "a203db06e92de842b586cefdcff4d32e9e07efff6129db30f9b242f72c31adb7",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "7fd7060541f67640c36fe4c78de0837b1a6dcd18adc7ac5ea8673ae71119f07c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "2dca9b54ddf66ade129e7aa58f747f51fc47a2cdcd02ceff4579771aba3dfd0f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "499b7e6e0d0103d5d5d576e9c63e7a1096c101aa9c2be45e675418aa0fbf521b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "a5759b61902cdc6d92f99814a29315b6d19cd919f4896015ec0878cc5b2cc512",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "a072bc7a5e2e4218e67cdd3fe70eb524cc9e1898a7b00bd07e22473c332abfd6",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "dd898e7cad2d4884ed9290e7a570f67e3ea312efa172aecd6f5fa543661378b3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "e286165e5f457b5b9a346fb2bd7e632b76974a9003206af510484a0802c647ed",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "3931beaa42773cd7b075b10c05f8527745e258833ef7e6e83b669a5728ee2e09",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "3656cce4b8eb011291babfc8979bcccd00354d2c176438e579318083edfb23b5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "e49a93c7e0ab5f4926bb32063df939100088e86ddda5a94ac80d6de1e0599b50",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "de0878e16cedc4a3a9f29e690c60416a1aefe50db516a871f7eff0dc48a32739",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "bbaa4a204139edf4458189611695847f6df45c1184dd3f352ae9030efaf05e6c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "d54525bb3bb0d0e4139b59a6c5faa2f0f8683998c59409e89737427c01a2881c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "bfe610c23d0edd8e482d951147ac5eac5302ff0433bd3ad2f690a88b5e0ed0e4",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "1c917632cc2e61f425601429a9441a6ff49b7cbf10cb2d7f5cb44b72300433e6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "e8a5362e18aaebdce9346f87b536a24aaf36f1e548359641dfc2ed5bcfd6032b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "6ac44e4c7a5f41b1241e58d22f8c660916c8f99fc23ad59b91b0c8a2544b463e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "85176cebd9c75849767b74978b345d4684ec0a16c3af4c3b3d36c4435356f557",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "small256",
+      "profileSHA256": "a72f8ddb44e3100f48b6849dfead406ef6584779a3e6357c6b86b5e5d7443a05",
+      "monitorSHA256": "c50619a2ab8eb624fed49bb4beb3fd2876b2c0f7eb8fbd8b47409586b149fd9f",
+      "samples": 68,
+      "resourceQueryErrors": 0,
+      "allResolvedComputeGroupsOwned": true,
+      "exitedBeforeResolution": 0,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "a2f48ef74b9cfcadf26e036a30bc8bb0cfc11cd63b5a227c1e686b48369c8033",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "d0d7a85eaa14e9ad7d64d0971c099f9d95106bc4f359058dab86ae8b98ed3a77",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "f941bcfc169eab3b4c70003305bb2e9d9609a4b7b4989a0122e9365c69e7d754",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "d6fa8648d1373a6658eb11d3852a369bcf32e437d0a8b0a3ae4ffe8ad73931fd",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "2db04c93f4a44b79be23d46cf0a2db04d6cd96623c00e0acf52c6bf6a07a1ef5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "da94a9be8d4b2f8b2b58d93888d4dbc40f35c88a0a0487ad07481ca942b328be",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "7e22540f73c962fb379884f6ffd48187751b7e1644b982d5b2333ca2b2b0d2d9",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "92a5832cf519b880f26f7eae8e7d415b06c2930aaf9430e0a47efddd0064f84a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "0125d7c57e5c4d88a11c70c0706664e8b05fb7241c76e2beeb7ad0f9eca42f87",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "b0a9dbe2151929aededea0802f164e4138c3e9a627ac460acfa883ea6ba7376c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "a21bb1eef916aa625f294c64f8a014cdfc00095712525aa7e947729dfd3894dc",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "c765734d696e0a8b6ea4eed67988358ec3e52bd35cf52193af694711e55f5ac3",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "5e8d8b634e77706fa22bb25089227dcf46f616c6dbdd0102cb34ff68fb0ee538",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "7cc41fe7bc56b0af9c7025e62f1272123422a76353f77ea91761c7f64151d040",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "6f6656805473c1e5d93b6aa8f7ddaaa2016a8166a30550dffc303ed00428c90c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "0440bbdd58f2723cf66caf5431b80d0b49e340e01c845261333cc925cdf5d1bc",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "d40a2d48b95dc62f6f8d88125e731875f1a7aa8e9647b0367904c6b96b45e51d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "7926a5ba211261f84562d110cafb70fdd4e17e7d55eb88c53af7668c13d0e53e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "c5fde339cf158303dc38bcfcf67dd12cff6efbfd7fe5d03ba1482d6dd8fb5def",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "9fdca57e906677eaa4dafbf3fd1708880e165bd487549f8a14ce990ccccea92b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "9fa79ff14f3d1fda2082d45d325bb49092c57fd9102c3a7689740ebb46bc40f1",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "bb04ee3f800a844cf9cdcfebe419c5e678e66b5d5a09710201c916af08811fad",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "81570a5c5af1bf8cbb94cb01063cd45c26add8412d2ca1c57f88c11c065b332d",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "ab15a978ba0f82dc243d98f0531c3df5e962e8fc60c4a2b9ff34431286fea9b2",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "full64",
+      "profileSHA256": "48814fdb0cc42a10748c4a20c9730f6ca0d961d9c9e2681f6586e79898d6d411",
+      "monitorSHA256": "23febff36f7097afd7007ad73ba08dd8cb2c8ad6d8a2f4b2f3e38b8e0c15d8d9",
+      "samples": 233,
+      "resourceQueryErrors": 0,
+      "allResolvedComputeGroupsOwned": true,
+      "exitedBeforeResolution": 0,
+      "runs": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "ab3c33efe3a3951dfca2fab87009658c29a127f86c6bacd63ccc530f155bb0d7",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "2ac54732e0164be73a9c7895d74bea1d30f9b51c306f78cf8e1659388d1d6358",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "88a1a397230507cd9c1632b694b33d8b17c827d68738f94d2896b7b1c22aac18",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "2ed15cb13c27834ec26024e83bbf3a1e304c707f401219f30bcdefdee090cc3f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "d1137bb5e7023c18a5d07b3b85e9845f0afa0f96aded7f2bbb141917a851de8c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "d5838993204cfd1bec6b44e15ca6fb0232fd9e0cb1766592a22ac4288481bd3e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "1dc581bfffe13357c7c58c725436f982f65e07e075c59e02ea87253973f798f9",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "8296a3a09341346eaa87a06c6893145affb90d9857bc7f5329f991291a15c9d2",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "4eb31d8e2d6a29253a21818e9f706258db8b6e43ca55056af0093099536b1d17",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "b2a1b01a9708f5966e7527e3150efa77b2dc11865a239acc1301c2485414b2e0",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "c89a5f584681676cab139b743a1c00788ef8c10b8ee96aaf256d132790e12d5c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block64",
+          "threadsPerBlock": 64,
+          "resultSHA256": "180e24b2ca2fb8cbb52bc35cda612e0dad88eab5fa9865e28a1abf42f7cbfeed",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "full256",
+      "profileSHA256": "8b0532ce5e9ebed6612c7867f3b3383bd7f8f6effe8f583d9e03132faf5146ee",
+      "monitorSHA256": "2cd8dd211cda50f2dd15b97a4ec0bc24f1ece58ac3103656684f2234e8d4277e",
+      "samples": 241,
+      "resourceQueryErrors": 0,
+      "allResolvedComputeGroupsOwned": true,
+      "exitedBeforeResolution": 0,
+      "runs": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "cc58ea9b6c9618f7abe1a5cd4d21e95f01541a637cfceefdb768728a3c55f3f7",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "d8de6710608f0c2847d480a33a10291ff490d0c27c7d0156f36f7272f94893ca",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "ff6922f9840d864be89102c0a4bcf0f923d43abce52af9da66ce0430ff45c727",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "dc6d7e220b8c46402bba32dee8aaaf892a41d5a685be30b08d963f33fa94ddb6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "ad5dd8872b34d00b6d9cb8f87155c3c3428eba4c7762244c72f2dedd68eb4491",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "e4b5af70f3fcf5f9f04276f285b53b3f1d42c518d05ee6e20d2715bd095b5b88",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "50f8376d03e986ed4e624b967f6777f8869ff4f137eab61b8541aaca210bc653",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "698ec4bd2d205d91a685cf1d96ad0f5923bee296785e697111e02b5389db4701",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "8b3aef5193348863a650049c121f1fc86b8ff39b84b5c3a574df5815fefa04a0",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "443d2e31feb0f4157cf5992ece9d8cd76e63035c36a6788dc01d36c0cdc08915",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "f31c0211e04c6ab986275877d91db36e0a116e3bad95d67f5e5210ce42577fa4",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "block256",
+          "threadsPerBlock": 256,
+          "resultSHA256": "89db5674fdfc7ca219e67fca52353c697da75d7cd7b465e2889f05753af6ae22",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "null-small",
+      "profileSHA256": "060875d763321303bbabe726e00fd025b23bb79cb691cdb22477947796903cca",
+      "monitorSHA256": "d1dd5d14b3c497071899c6d655e7b44cefc76c7e8f62e4b2b1b8399494b518c5",
+      "samples": 63,
+      "resourceQueryErrors": 0,
+      "allResolvedComputeGroupsOwned": true,
+      "exitedBeforeResolution": 0,
+      "runs": [
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "7fba8c2cafade338537f21a9d56e2d5bd40b664c69f53965e34c65f4eb059913",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "7157927be718c83082f19d5320cf436f481b38b888a64c05a5b3f026f1c3a890",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "83f979ccf4cd98c5d048dd45fabbbe090a7d36dde390cf1c559618b130c16e6d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "43cf57fad812e842b5f5704cf3bba17877d57c5b096f5f14d29b6bcd67719386",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "1e311eb627af1c888a7e3e50544b7958ee9e469739196a2b11f4b2eae1ab4e9d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "751e7cbe11956db268ec1ce62f1e0cce3f209a291e718f117cf441c7e26a5784",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "ecfbbd2a7f30fe68ca59d08bd7a284bbf5e2400a2a5903732f3ef02671fe1fa1",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "a47c97209420be3c5fa2e09db29fd68b81eee16bba23eaa3aea85edd0b81d8c5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "b585de4aac93e1bc15c5016b2ce401824842e96bdc078da54bc5aed2c8577b29",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "5fcece97700cf5790bad181ad138b1c2bc6955db6d2c02080775e169ce1b43f5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "cbde70cebe73b6173a9445ad575971a91c71de54b7b4aea7521db6d8e3bd484d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "51d92dbd60c09c42d340e40a1d5d5ccc00abcd8e83be45c45082639f05bf7760",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "38dd9649caef2f44e7baf2e3f0ad648cab216cdaaaf56d31163b351de6112649",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "8f76d21e0df0355b9a07d416bdbc043605d729af0e91e3f83cff822040ece312",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "b877b54accaf41c11a4c322744bd5cd16afd9b695006ca0e4ad90935c505269a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "f8dd0ac4374b934551ded27215b28d782ab52fc36229d8b34f6424671b3e2c04",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "2235828ff25767841db7f404baa8affb9df0a147f7e18b07acdf0ae8cbd98e75",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "02a581eb9d4312f9d900a6192d53d425deb732da52bf60e55bc9d268e32c01e6",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "c2adf31c6fc5e4f7d94f6c1c12de56a2d842a03b82e7e14410dc1f488510dcbf",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "99661529ea064bb5562022998f1e642614bb74a8477ff7892909dabdf13812a5",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "0c253f37f7add47ae3ca44b756975687b871733d75c4b6e0bc4b14efa5496ea8",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "18bcb235012563804a1c16f558d70222677bd212724e0c5cce7b5ed525256b8a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "2c6f965a458b00d090ca02f432dd3e59db62a0f468b83df84fd2adf5e8e53463",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "27c3a8f8bb7c0351583cdd6cdfc5bcd3bb87c2766784c4ab9b35b06584601323",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "null-districts",
+      "profileSHA256": "ba18e5e06dd4019c52872cefd63a7b30cacece0d8d223dafd66fe98d2450a5c1",
+      "monitorSHA256": "58dd611d566c210db563ed98a084c224cf4c5bf057542e4d34c26fb81575b515",
+      "samples": 235,
+      "resourceQueryErrors": 0,
+      "allResolvedComputeGroupsOwned": true,
+      "exitedBeforeResolution": 0,
+      "runs": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "95c927d0629fce1d8537603e1d1142efb171d500b4e36c6f5206146b7573d655",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "50841bf7ff9a53a41232434b5e2ba2ca3184ad2b05b10f26a9bbec645339a9ae",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "827a64dd2e018d634240f7a9e057360a73178d9a9d2b50ce79844092a5d2e48f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "f286a07bedb03e8f4f5c923c0807e892aecb58d22cfe7bf195fbd47a05b76be6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "8c5728e34d6eab4c5980de636706b4047559509188d29928a375caea27b8c8f4",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "b54f4bafeb90507d2508363cd20fc47d1000df756af040a07c010674db65aee0",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "90117245f2ecc8414b6e3768f0cbf6a06bc46862b738d7d375acaec5db82bcb4",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "6bc08268b4711f1b837d54696028d5d1f25777f70d50993e28e720ce2bf8ca6c",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "6212fc0371c97029b1bf11e9b9d78073f424e261f25b173ae90f192082bdfe2e",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "0f02bf73f03e225f45be9ce953907f067607e4cb6591152b7fa561c7089d26da",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "902a6f655953ccbac6efd444b5e55399743eee9da5ac2d43dff70d4564aae5f2",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "variant": "baseline",
+          "threadsPerBlock": 128,
+          "resultSHA256": "1387b078d14a3032c3eb0a19e86b4c84f58b1f8ec05dfa3118296d05e849d0fa",
+          "numericalFiles": 12
+        }
+      ]
+    }
+  ],
+  "diagnosticSHA256": "c2f43e293039825c7f9e07d3be02789a949e35ed747eacc28bb9373aa00f702e",
+  "diagnosticSuccesses": 18,
+  "expectedFailures": 6,
+  "launchGeometryRecords": 129,
+  "tailCases": [
+    "cube-tail",
+    "two-axes-tail",
+    "one-axis-odd-tail"
+  ],
+  "limitations": "Periodic resource/ownership samples are not proof of laboratory exclusivity. Historical CUDA parity is not physical validation or dataset admission."
+}

@@ -484,3 +484,21 @@ admission stay unchanged. Broader work remains in emmettl/bombcad-work#60, with 
 sizes separately tracked in emmettl/bombcad-work#72; distributed integration and data gates
 remain in emmettl/bombcad-work#59 and emmettl/bombcad-work#47 / emmettl/bombcad-work#62 /
 emmettl/bombcad-work#63.
+
+
+### Launch sizes and the next prepare-buffer experiment
+
+The [launch-size matrix](../Benchmarks/HeterogeneousCompute/2026-10-21-launch-blocks/summary.md)
+completes emmettl/bombcad-work#72 without adoption: 64-thread results are mixed, and
+256 threads slows the matched full flat/Beirut cases by about 11.9%/2.1% in median. All
+108 timed runs preserve exact files and dt; separate actual-driver, tail-count, axis/startup
+and failure controls pass. The existing 128-thread worker remains unchanged. Supported
+kernel limits alone do not establish an efficient block size, and these observations do not
+establish a universal optimum or a cross-backend gain.
+
+emmettl/bombcad-work#75 separately proposes reusing the previous immutable prepare tensor only
+when its entire computed byte payload matches. CPU byte-identity/read-only-source evidence
+is retained, with no GPU execution, lifetime or performance claim. This proposal preserves
+the per-step host control and dynamic ramp calculation; it needs its own quiet complete-cost
+and numerical/failure controls before any promotion. Broader emmettl/bombcad-work#60 and the
+existing distributed integration/admission gates remain open.

@@ -1,0 +1,22 @@
+--- baseline.py
++++ candidate.py
+@@ -101,6 +101,7 @@
+     def blob(value):
+         return torch.tensor(list(bytes(value)),dtype=torch.uint8,device='cuda')
+     controls=blob(control);uniforms=blob(u)
++    previous_prepare_bytes=None;previous_prepare_uniforms=None
+     speed=torch.zeros(2,device='cuda',dtype=torch.int32)
+     # Keep one immutable uniform buffer per axis: asynchronous launches must not see a later write.
+     variants=[]
+@@ -160,7 +161,10 @@
+     while steps<meta['steps']:
+         ramp=min(1.,float(np.float32((meta.get('startStep',0)+steps+1)/meta.get('startupSteps',1))))
+         prepared=type(u).from_buffer_copy(bytes(u));prepared.cfl=np.float32(u.cfl)*np.float32(ramp)
+-        prepare_uniforms=blob(prepared)
++        prepare_bytes=bytes(prepared)
++        if prepare_bytes!=previous_prepare_bytes:
++            previous_prepare_uniforms=blob(prepare_bytes);previous_prepare_bytes=prepare_bytes
++        prepare_uniforms=previous_prepare_uniforms
+         launch('cudaPrepare',[controls,speed,prepare_uniforms],1)
+         for variant in variants[(meta.get('startStep',0)+steps)%2]:
+             launch('cudaSweep',[state,other,mask,peak,impulse,controls,speed,variant,species,other_species,*cut_buffers],count)

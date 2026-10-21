@@ -655,8 +655,26 @@ fatal/step-limit and one-/two-axis controls pass. The perturbed trace reduces di
 does not establish a consistent benefit. Flat/Beirut medians are 47.826/47.631 s and
 68.805/68.648 s; graph wins only one of three pairs per full case and same-worker labels also
 vary. Cooling32 worsens in median. The production worker is unchanged; this bounded candidate
-is retained without adoption. emmettl/bombcad-work#60 stays open; emmettl/bombcad-work#72
-separately tracks block-size experiments with the same numerical and total-cost requirements.
+is retained without adoption. emmettl/bombcad-work#60 stays open; the completed
+emmettl/bombcad-work#72 block-size matrix below retains the same numerical and total-cost requirements.
+
+
+## CUDA launch block-size controls
+
+The [emmettl/bombcad-work#72 launch-size study](../Benchmarks/HeterogeneousCompute/2026-10-21-launch-blocks/summary.md)
+compares 64/128/256 threads with only the launch ceiling/divisor/block changed. Both precise
+PTX variants are primed before timing; all ten entries' loaded-kernel limits permit the sizes.
+All 108 timed runs retain exact files/dt; actual-driver geometry, 31³/31×31×1/31×1×1 tail grids, axis/startup
+and six expected failure refusals are checked separately. Independent audit verifies 1,134
+numerical-file instances / 26.61 GB, source/input/provenance and terminal process groups.
+
+Retain 128 threads. The 64-thread results are mixed against same-worker controls, while
+256 threads raises full flat/Beirut worker medians from 48.285 to 54.018 s and 68.622 to
+70.077 s in its own matched batches. These observations do not establish a universal optimal
+size or attribute a mechanism to the recorded register counts. No default or numerical gate
+changes. A separately labelled [CPU-only prepare-buffer proposal](../Benchmarks/HeterogeneousCompute/2026-10-21-launch-blocks/followup-prepare/summary.md)
+now tracks repeated byte-identical uploads in emmettl/bombcad-work#75. It has no GPU correctness
+or performance result yet and is not mixed into these measurements.
 
 
 ## Clock-adjustment actor identified

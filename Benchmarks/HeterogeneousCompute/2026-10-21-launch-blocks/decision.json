@@ -1,0 +1,5 @@
+{
+  "decision": "no adoption",
+  "retainedProductionThreadsPerBlock": 128,
+  "rationale": "64 threads improves the small blast observation but has mixed complete-worker results elsewhere, with tiny full-flat changes against variable identical-worker controls and no Beirut pair wins. 256 threads is consistently slower in both full cases (about 11.9% flat and 2.1% Beirut in median), with no broad compensating benefit. Retain the existing 128-thread default; this is a bounded workload/device result, not a universal optimal-block-size claim."
+}

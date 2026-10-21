@@ -1,0 +1,25 @@
+"""CPU-only preparation of a separate immutable steady-CFL buffer experiment, not a timed GPU result."""
+from pathlib import Path
+import importlib.util,ctypes,hashlib,json,difflib
+import numpy as np
+root=Path('/private/tmp/bombcad-prepare-uniforms');old=Path('/private/tmp/bombcad-cuda-graphs/collected');source=Path('Scripts/cuda/run.py').read_text()
+anchor="    controls=blob(control);uniforms=blob(u)\n";assert source.count(anchor)==1
+candidate=source.replace(anchor,anchor+"    previous_prepare_bytes=None;previous_prepare_uniforms=None\n")
+anchor="        prepare_uniforms=blob(prepared)\n";assert candidate.count(anchor)==1
+candidate=candidate.replace(anchor,"        prepare_bytes=bytes(prepared)\n        if prepare_bytes!=previous_prepare_bytes:\n            previous_prepare_uniforms=blob(prepare_bytes);previous_prepare_bytes=prepare_bytes\n        prepare_uniforms=previous_prepare_uniforms\n")
+(root/'baseline.py').write_text(source);(root/'candidate.py').write_text(candidate);(root/'candidate.patch').write_text(''.join(difflib.unified_diff(source.splitlines(True),candidate.splitlines(True),fromfile='baseline.py',tofile='candidate.py')))
+spec=importlib.util.spec_from_file_location('job',Path('Scripts/cuda/job.py'));job=importlib.util.module_from_spec(spec);spec.loader.exec_module(job);U=job.scalar_layout((old/'solver.cu').read_text(),'SolverUniforms');inputs=json.loads((old/'inputs.json').read_text());rows=[]
+for name,data in inputs['jobs'].items():
+ meta=data['meta'];u=U();u.nx,u.ny,u.nz=meta['shape']
+ for key,value in meta['uniforms'].items():setattr(u,key,value)
+ steady=U.from_buffer_copy(bytes(u));steady.cfl=np.float32(u.cfl)*np.float32(1.)
+ for iteration in range(3):
+  repeated=U.from_buffer_copy(bytes(u));repeated.cfl=np.float32(u.cfl)*np.float32(1.)
+  assert bytes(repeated)==bytes(steady)
+ rows.append(dict(job=name,wireBytes=ctypes.sizeof(U),steadySHA256=hashlib.sha256(bytes(steady)).hexdigest(),matchesRepeatedBaselineBytes=True))
+rng=np.random.default_rng(724061);bits=np.concatenate([np.array([1,0x007fffff,0x00800000,0x3ecccccd,0x3f000000],dtype=np.uint32),rng.integers(1,0x3f000001,size=1000,dtype=np.uint32)])
+for value in bits.view(np.float32):
+ u=U();u.cfl=value;prepared=U.from_buffer_copy(bytes(u));prepared.cfl=np.float32(u.cfl)*np.float32(1.)
+ assert bytes(u)==bytes(prepared)
+result=dict(status='CPU byte-identity proof only; no GPU execution or performance claim',numpy=np.__version__,jobs=rows,additionalCFLBitPatterns=len(bits),productionWorkerSHA256=hashlib.sha256(source.encode()).hexdigest(),candidateSHA256=hashlib.sha256(candidate.encode()).hexdigest())
+(root/'byte-identity.json').write_text(json.dumps(result,indent=2)+'\n');compile(candidate,'candidate.py','exec');print(json.dumps(result,indent=2))

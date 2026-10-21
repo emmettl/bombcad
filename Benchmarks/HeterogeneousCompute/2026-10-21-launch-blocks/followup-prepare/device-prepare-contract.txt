@@ -1,0 +1,64 @@
+Static source inspection only; not GPU lifetime or performance validation.
+Source SHA256 c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094
+
+static __device__ __forceinline__ void portablePrepare(StepControl &control, atomic_uint *maxSpeed, const SolverUniforms &u) {
+    uint tiles = 0;
+    float fastest = bitsFloat(atomic_load_explicit(maxSpeed, memory_order_relaxed));
+    // A cell whose density has fallen to nothing reads a wave speed that is NaN, or negative from
+    // a negative density, and either outranks every real speed in the bitwise maximum; the step
+    // would then be far longer than the air allows (a refined district once took steps of 0.6 s
+    // where 3 ms were right). The batch stops there instead, unstable. Tested on the bits, as fast
+    // math may fold a test for NaN or infinity away: NaN, infinity and every negative lie at or
+    // above infinity's.
+    if (floatBits(fastest) >= 0x7F800000u) {
+        control.stopped = 3;
+        control.maxOverpressure = NAN;
+    }
+    float dt = u.cfl * u.dx / max(fastest, 1e-6f);
+    if (u.maxStep > 0.0f) {
+        dt = min(dt, u.maxStep);
+    }
+    if (u.forcedStep > 0.0f) {
+        dt = u.forcedStep;
+    }
+    // Only a batch's first step is clipped to the time limit, where the time left is exactly
+    // what the host worked out. A later step that would come within a ten-thousandth of the
+    // batch's time to it stops the batch instead (rounding in the batch's own clock is at most
+    // a sixtieth of that), so that the rounding never decides how long a step is, and the steps
+    // come out the same however they are batched.
+    float unclipped = dt;
+    if (control.stopped != 0) {
+        dt = 0.0f;
+    } else if (control.stepIndex == 0) {
+        if (dt >= control.timeLimit) {
+            dt = max(control.timeLimit, 0.0f);
+            control.stopped = 2;
+        }
+    } else if (control.batchTime + dt >= 0.9999f * control.timeLimit) {
+        dt = 0.0f;
+        control.stopped = 1;
+    }
+    // A step that does nothing leaves the limits for the next step as they are.
+    if (dt > 0.0f) {
+        control.tileSweeps += tiles;
+        control.lastStep = unclipped;
+        atomic_store_explicit(maxSpeed, 0u, memory_order_relaxed);
+        if (u.forcedStep == 0.0f) {
+            control.maxOverpressure = bitsFloat(atomic_exchange_explicit(maxSpeed + 1, 0u, memory_order_relaxed));
+        }
+    }
+
+
+    control.dt = dt;
+    control.batchTime += dt;
+    ulong clock = (ulong(control.clockLow) | (ulong(control.clockHigh) << 32))
+        + ulong(max(dt, 0.0f) * 1099511627776.0f);
+    control.clockLow = uint(clock);
+    control.clockHigh = uint(clock >> 32);
+    control.stepIndex += 1;
+    control.activeSteps += dt > 0.0f ? 1 : 0;
+}
+
+extern "C" __global__ void cudaPrepare(StepControl* control, uint* maxSpeed, const SolverUniforms* u) {
+    if (blockIdx.x == 0 && threadIdx.x == 0) portablePrepare(*control, maxSpeed, *u);
+}

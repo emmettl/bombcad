@@ -1,0 +1,14 @@
+"""Paired launch-size observations; separate batches/null controls are not statistical error bounds."""
+from pathlib import Path
+import json,statistics
+root=Path(__file__).resolve().parent
+profiles={label:json.loads((root/label/'profile.json').read_text()) for label in ['small64','small256','full64','full256','null-small','null-districts']}
+def collect(p,job):
+ pairs={i:{r['worker']:r for r in p['rows'] if r['job']==job and r['repetition']==i} for i in range(3)}
+ totals={w:statistics.median(x[w]['totalSeconds'] for x in pairs.values()) for w in ['baseline','candidate']};solvers={w:statistics.median(x[w]['solverSeconds'] for x in pairs.values()) for w in ['baseline','candidate']}
+ return dict(medianProcessSeconds=totals,medianSolverSeconds=solvers,medianProcessRatioPercent=(totals['candidate']/totals['baseline']-1)*100,pairedProcessChangePercent=[(x['candidate']['totalSeconds']/x['baseline']['totalSeconds']-1)*100 for x in pairs.values()],pairedSolverChangePercent=[(x['candidate']['solverSeconds']/x['baseline']['solverSeconds']-1)*100 for x in pairs.values()],candidateFasterPairs=sum(x['candidate']['totalSeconds']<x['baseline']['totalSeconds'] for x in pairs.values()))
+rows=[]
+for job in ['blast64','cooling32','cooling64','terrain256','flat512','beirut512']:
+ group='full' if job.endswith('512') else 'small';rows.append(dict(job=job,block64=collect(profiles[group+'64'],job),block256=collect(profiles[group+'256'],job),sameWorkerLabels=collect(profiles['null-districts' if group=='full' else 'null-small'],job)))
+result=dict(status='complete',scope=__doc__,rows=rows,interpretation='Do not compare raw medians across separate size batches as a direct64-versus256 experiment. Each size is paired with its own128 baseline. Null runs are later separate controls, not a pointwise correction. A promotion decision requires review of whole-worker benefit and exact-output/failure gates; fewer blocks or lower solver-only time alone is insufficient.')
+(root/'analysis.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))

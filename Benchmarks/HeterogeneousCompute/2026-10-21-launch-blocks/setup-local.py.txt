@@ -1,0 +1,12 @@
+from pathlib import Path
+import shutil,hashlib,json,difflib
+root=Path('/private/tmp/bombcad-launch-blocks');source=Path('Scripts/cuda/run.py').read_text();anchor='(count+127)//128,1,1,128,1,1,0,';assert source.count(anchor)==1
+(root/'baseline.py').write_text(source)
+for size in [64,256]:
+ text=source.replace(anchor,f'(count+{size-1})//{size},1,1,{size},1,1,0,');(root/f'block{size}.py').write_text(text)
+ (root/f'block{size}.patch').write_text(''.join(difflib.unified_diff(source.splitlines(True),text.splitlines(True),fromfile='baseline.py',tofile=f'block{size}.py')))
+for name in ['job.py','compile.py','profile-worker.py','trace_columns.py']:shutil.copy2(Path('Scripts/cuda')/name,root/name)
+shutil.copy2('Scripts/ml/remote-train.py',root/'remote-train.py')
+supervisor=Path('/private/tmp/bombcad-cuda-graphs/supervise.py').read_text().replace("label=sys.argv[1];jobs=sys.argv[2:]", "label=sys.argv[1];variant=sys.argv[2];jobs=sys.argv[3:]").replace("('baseline.py' if label.startswith('null-') else 'candidate.py')", "variant")
+(root/'supervise.py').write_text(supervisor)
+(root/'sources.json').write_text(json.dumps({p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in root.glob('*.py')},indent=2)+'\n')

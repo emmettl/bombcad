@@ -1,0 +1,61 @@
+"""Independent post-timing file/source/input/geometry/ownership audit; no GPU work."""
+from pathlib import Path
+import hashlib,json
+import numpy as np
+root=Path(__file__).resolve().parent
+labels=['small64','small256','full64','full256','null-small','null-districts']
+sizes={'baseline':128,'block64':64,'block256':256}
+def sha(p):
+ h=hashlib.sha256()
+ with p.open('rb') as f:
+  for b in iter(lambda:f.read(1048576),b''):h.update(b)
+ return h.hexdigest()
+def hashes(p):return {str(q.relative_to(p)):sha(q) for q in p.rglob('*') if q.is_file() and q.suffix in ('.bin','.npy')}
+inputs=json.loads((root/'inputs.json').read_text());source=sha(root/'solver.cu');assert source==inputs['sourceSHA256']
+for name,details in inputs['jobs'].items():assert {str(p.relative_to(root/name)):sha(p) for p in (root/name).rglob('*') if p.is_file()}==details['files']
+pre=json.loads((root/'preflight.json').read_text());assert pre['status']=='complete' and pre['sourceSHA256']==source and pre['precisePTXPrimedBeforeTiming'] and len(pre['kernels'])==20
+assert all(k['maxThreadsPerBlock']>=256 for k in pre['kernels'])
+canonical={};reports=[];total_files=0;total_bytes=0
+for label in labels:
+ p=json.loads((root/label/'profile.json').read_text());state=json.loads((root/(label+'-state.json')).read_text());assert state['status']=='complete' and state['returncode']==0 and not state['externalComputeGroupObserved']
+ assert all(s['owner'] is None or s['owner']['pid']==state['pid'] for s in state['samples'])
+ query_errors=sum(s[field].get('returncode')!=0 for s in state['samples'] for field in ['gpu','processes']);assert query_errors==0,(label,'resource query errors',query_errors)
+ assert p['sourceSHA256']==source and p['profilerSHA256']==sha(root/'profile-worker.py') and p['allOutputsAndTimestepsBitIdentical']
+ assert p['baselineCacheDir']==p['candidateCacheDir']==str(Path.home()/'bombcad-cuda/ptx-cache') and p['freshProcessObserver'].startswith('drained stdout/EOF')
+ verified=[]
+ for row in p['rows']:
+  variant='baseline' if row['worker']=='baseline' or label.startswith('null-') else 'block64' if label.endswith('64') else 'block256'
+  out=root/label/f"{row['job']}-{row['repetition']}-{row['worker']}";r=json.loads((out/'result.json').read_text());expected={'run.py':sha(root/(variant+'.py')),'job.py':sha(root/'job.py'),'compile.py':sha(root/'compile.py')}
+  assert r['workerFilesSHA256']==expected and p['workerSHA256'][row['worker']]==expected['run.py'] and r['sourceSHA256']==source
+  assert r['timingClock']=='clock_gettime(CLOCK_MONOTONIC_RAW)' and r['compileCacheEnabled'] and 'experimentalGraphDispatch' not in r
+  assert r['wallSeconds']==row['solverSeconds'] and r['steps']==row['steps'];dt=np.load(out/'dt.npy',allow_pickle=False);assert len(dt)==r['steps'] and sum(map(float,dt))==r['elapsedSimulationTime']==row['elapsedSimulationTime']
+  actual=hashes(out);assert actual==row['hashes']
+  if row['job'] in canonical:assert actual==canonical[row['job']]
+  else:canonical[row['job']]=actual
+  total_files+=len(actual);total_bytes+=sum((out/f).stat().st_size for f in actual)
+  verified.append(dict(job=row['job'],repetition=row['repetition'],worker=row['worker'],variant=variant,threadsPerBlock=sizes[variant],resultSHA256=sha(out/'result.json'),numericalFiles=len(actual)))
+ reports.append(dict(profile=label,profileSHA256=sha(root/label/'profile.json'),monitorSHA256=sha(root/(label+'-state.json')),samples=len(state['samples']),resourceQueryErrors=query_errors,allResolvedComputeGroupsOwned=all(x.get('ownedGroup') is not False for s in state['samples'] for x in s.get('observed',[])),exitedBeforeResolution=sum(x.get('exitedBeforeGroupRead',False) for s in state['samples'] for x in s.get('observed',[])),runs=verified))
+historical=0
+for label in ['pilot','small-terrain','districts','null-small','null-districts']:
+ old=json.loads((Path.home()/'bombcad-graphs-01a15d45'/label/'profile.json').read_text())
+ for row in old['rows']:assert row['hashes']==canonical[row['job']];historical+=1
+d=json.loads((root/'diagnostic/diagnostic.json').read_text());assert d['status']=='complete' and d['allOutputsAndTimestepsBitIdentical'] and d['allTenEntriesGeometryCheckedForAllSizes']
+for case in d['normal']+d['tail']:
+ for row in case['rows']:
+  name=row['worker'];out=root/'diagnostic'/(case['case']+'-'+name);r=json.loads((out/'result.json').read_text());assert sha(out/'result.json')==row['resultSHA256'] and hashes(out)==row['hashes']==case['rows'][0]['hashes']
+  assert r['workerFilesSHA256']=={'run.py':sha(root/(name+'.py')),'job.py':sha(root/'job.py'),'compile.py':sha(root/'compile.py')} and r['sourceSHA256']==source
+  if case in d['normal']:assert row['hashes']==canonical[case['case']]
+assert len(d['failures'])==6 and all(r['noOutputWritten'] and not(root/'diagnostic'/(r['case']+'-'+r['worker'])).exists() for r in d['failures'])
+geometry=0
+for row in d['launchGeometry']:
+ for g in row['geometry']:
+  b=sizes[row['worker']];assert g['block']==[b,1,1] and g['grid']==[(g['usefulCount']+b-1)//b,1,1] and g['dynamicSharedBytes']==0;geometry+=1
+owned={json.loads((root/(label+'-state.json')).read_text())['pgid'] for label in labels};live=[]
+for stat in Path('/proc').glob('[0-9]*/stat'):
+ try:
+  fields=stat.read_text().rsplit(')',1)[1].split()
+  if int(fields[2]) in owned and fields[0]!='Z':live.append(str(stat.parent))
+ except (OSError,ValueError,IndexError):continue
+assert not live,live
+result=dict(status='complete',allSourcesInputsProvenanceAndNumericalOutputsVerified=True,allRepetitionsVariantsAndLabelsNumericallyIdentical=True,allTimedProcessGroupsTerminal=True,timedRuns=sum(len(r['runs']) for r in reports),numericalFileInstances=total_files,numericalBytesVerified=total_bytes,historicalGraphStudyRowsMatch=historical,sourceSHA256=source,workerSHA256={name:sha(root/(name+'.py')) for name in sizes},reports=reports,diagnosticSHA256=sha(root/'diagnostic/diagnostic.json'),diagnosticSuccesses=sum(len(c['rows']) for c in d['normal']+d['tail']),expectedFailures=len(d['failures']),launchGeometryRecords=geometry,tailCases=[c['case'] for c in d['tail']],limitations='Periodic resource/ownership samples are not proof of laboratory exclusivity. Historical CUDA parity is not physical validation or dataset admission.')
+(root/'verification.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps({k:v for k,v in result.items() if k!='reports'},indent=2))
