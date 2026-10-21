@@ -481,6 +481,46 @@ package enum SurrogateBench {
             reference.inside(
                 FacadeLoadSurrogate.outerFace(reference.strips[$0].component).centre, share: share)
         }
+        // `--strips-out strips.csv`: each kept strip's run and surrogate peak and first-phase
+        // impulse, and the surrogate's with its close-in branch off, for tracing where it errs
+        // (emmettl/bombcad-work#56); with `--strips-only`, nothing else.
+        if let path = value(args, "strips-out") {
+            var withoutCloseIn = coefficients
+            withoutCloseIn.closeIn = nil
+            // The candidate: the branch for components in sight of the charge only.
+            var inSight = coefficients
+            inSight.closeIn?.inSightOnly = true
+            var rows = [String](repeating: "", count: kept.count)
+            rows.withUnsafeMutableBufferPointer { out in
+                concurrentlyEach(kept.count) { m in
+                    let (s, n, component) = reference.strips[kept[m]]
+                    let strip = reference.index.strips[s]
+                    let net = reference.net(s)
+                    let f = FacadeLoadSurrogate.features(
+                        component, owner: n, charge: charge, raster: reference.raster)
+                    let p = FacadeLoadSurrogate.predict(
+                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: coefficients)
+                    let q = FacadeLoadSurrogate.predict(
+                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: withoutCloseIn)
+                    let a = FacadeLoadSurrogate.predict(
+                        f, mass: mass, cellSize: Double(reference.cellSize), coefficients: inSight)
+                    out[m] = String(
+                        format:
+                            "%d,%d,%d,%.2f,%.4f,%.2f,%.2f,%d,%.1f,%.1f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.2f,%.1f,%.1f,%.1f,%.1f",
+                        n, strip.axis, strip.outward, f.distanceM, f.distanceM / cbrt(mass), f.heightM,
+                        f.cosIncidence, f.buildingsCrossed, f.blockedM, f.canyonM, net.max() ?? 0,
+                        SurrogateBench.firstImpulse(net, binS: strip.binS), p.peakPa, p.impulsePaS, q.peakPa,
+                        q.impulsePaS, a.peakPa, a.impulsePaS, f.edgeM.isFinite ? f.edgeM : -999, f.shadowM,
+                        f.lastTopM, f.edgeTopM, f.edgeSideM)
+                }
+            }
+            let header =
+                "object,axis,outward,distance,z,height,cos,crossed,blocked,canyon,run_peak,run_impulse,peak,impulse,peak_nobranch,impulse_nobranch,peak_insight,impulse_insight,edge,shadow,lasttop,edgetop,edgeside"
+            try ([header] + rows).joined(separator: "\n").write(
+                toFile: path, atomically: true, encoding: .utf8)
+            print("Wrote \(kept.count) strips to \(path)")
+            if args.contains("--strips-only") { return }
+        }
         let tops = objects.map { Double(SurrogateBench.bounds($0).1.z) }
         let bases = objects.map { Double(SurrogateBench.bounds($0).0.z) }
         struct Outcome {

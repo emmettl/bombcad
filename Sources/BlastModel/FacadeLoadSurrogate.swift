@@ -482,11 +482,17 @@ public enum FacadeLoadSurrogate {
             public var heldWithin: ClosedRange<Double>
             public var blendTo: Double
             public var fittedTo: String
+            /// Whether the branch is taken only by components in sight of the charge (no building
+            /// in the way), the rest keeping the fitted terms: a candidate, not adopted
+            /// (emmettl/bombcad-work#56). The branch was fitted on open façades; taken by shielded
+            /// ones close in, it reads them 1.4–1.9 times the runs' on the mapped start.
+            public var inSightOnly: Bool?
 
             public init(
                 peak: [Double], impulse: [Double], referenceCell: Double, heldWithin: ClosedRange<Double>,
-                blendTo: Double, fittedTo: String
+                blendTo: Double, fittedTo: String, inSightOnly: Bool? = nil
             ) {
+                self.inSightOnly = inSightOnly
                 self.peak = peak
                 self.impulse = impulse
                 self.referenceCell = referenceCell
@@ -613,7 +619,7 @@ public enum FacadeLoadSurrogate {
         let scaled = f.distanceM / root
         var covered = coefficients.scaledRange
         if let close = coefficients.closeIn, scaled < close.blendTo, coefficients.peak.count > 10,
-            coefficients.impulse.count > 10
+            coefficients.impulse.count > 10, close.inSightOnly != true || f.buildingsCrossed == 0
         {
             let start = coefficients.scaledRange.lowerBound
             let z = log(min(max(scaled, close.heldWithin.lowerBound), close.heldWithin.upperBound))
@@ -764,6 +770,7 @@ extension FacadeLoadSurrogate {
         let roof = ValidationTables.figure("surrogateRoof")
         let near = ValidationTables.figure("surrogateNearPeak")
         let far = ValidationTables.figure("surrogateFarLoads")
+        let shielded = ValidationTables.figure("surrogateCloseInShielded")
         return [
             "An estimate, not a run. Against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:",
             "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
@@ -777,7 +784,9 @@ extension FacadeLoadSurrogate {
                 + "more scattered.",
             "Close in, Z 1.5–4.6 m/kg^(1/3), Kingery–Bulmash's base times the open façades' ratio on fine runs; "
                 + "a street the line runs down raises the loads by the fine canyon runs' terms; a building or barrier "
-                + "in front takes only the districts' few per cent off, less than fine runs take close behind it.",
+                + "in front takes only the districts' few per cent off, less than fine runs take close behind it. "
+                + "Behind buildings close in, with the charge among them, it reads \(String(format: "%.1f–%.1f", shielded.low, shielded.high)) "
+                + "times the runs' peaks: high.",
             "Outside Z 1.5–38.7 m/kg^(1/3) its terms are held at the range's end and its loads extrapolated: "
                 + "marked as such.",
         ]

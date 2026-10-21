@@ -302,6 +302,75 @@ Fitted and judged on fine runs at 1 t (emmettl/bombcad-work#4; the numbers in
     low in peak (×1.7 in impulse).
   - The close-in branch's impulse moves 17% between 1 m and 0.5 m cells: not converged.
 
+### Close in among buildings (21 October 2026)
+
+The field-model judge (emmettl/bombcad-work#33) found the surrogate 1.3–2.1 times high within
+350 m of charges among Beirut's buildings, and no better there than Kingery–Bulmash's incident
+values (emmettl/bombcad-work#56). Its runs are on the mapped start, the recommended one since 18
+October; the terms were fitted on the balloon start. Three causes were traced with
+`surrogate-judge --strips-out`, which writes each strip's run and surrogate loads. The runs:
+- Beirut's near box at Warehouse 12 (0.5 kt);
+- four of the judge's held-out runs with the recorder's strips saved: two charges in Beirut's
+  streets (115 and 355 t) and two made-up districts.
+
+- **Not the start.** Beirut's near box run on both starts gives the same strips: the line's
+  gauges agree to 0.1 kPa, and the surrogate's ratio to the run is the same to two places in every
+  band of scaled distance.
+- **Not the comparison.** The judge took ground-floor strips only. Upper storeys read higher still
+  (1.38 against 1.20 at Z 3–5 for the 355 t charge).
+- **The close-in branch on shielded façades.** The branch (#4, Z 1.5–4.6) puts Kingery–Bulmash
+  times the open façades' ratio in place of every fitted term but the street's. That drops the
+  shielding, and a street raises it further. Peak, the surrogate's over the run's, at Z under 5:
+
+| Strips at Z < 5 | Beirut's two street charges | Made-up districts | Warehouse 12 |
+|---|---|---|---|
+| In sight of the charge | 1.13 (log-SD 0.66) | 1.18 (0.55) | 1.31 (0.79) |
+| Behind buildings, with the branch | 1.72 (0.54) | 1.41 (0.43) | 0.98 (0.30) |
+| Behind buildings, without it | 1.10 (0.59) | 0.88 (0.50) | 0.61 (0.25) |
+| Down a street, with the branch | 1.73 (0.52) | 1.34 (0.42) | – |
+
+  - Behind buildings close in, the branch reads 1.4–1.7 times the runs' among buildings.
+  - At Warehouse 12 the façades behind buildings close in are 83 strips, nearly all in the lee of
+    the grain silos, a tall narrow obstacle round which the blast wraps. There the branch is right.
+  - No feature the surrogate has tells the silos from a city block: the knife edge's height and
+    its reach to the side are alike for both.
+- **Keeping the shielding terms in the branch does little** (1.72 → 1.65 behind buildings in
+  Beirut's streets). The fitted terms take only a few per cent off for shielding.
+- **#4's held refit (option B, fit-sq.json) is no different here**: 1.62 against 1.63 at Z 3–5
+  in Beirut's streets.
+
+**A candidate, not proposed for adoption: the branch for components in sight of the charge only**
+(`CloseIn.inSightOnly`, built and off; `surrogate-coefficients --in-sight-close-in` writes it):
+
+| | Fitted (as landed) | Branch in sight only |
+|---|---|---|
+| Beirut's streets, peak at Z < 7 | 1.38 (log-SD 0.53) | 1.02 (0.51) |
+| Beirut's streets, impulse at Z < 7 | 1.10 (0.37) | 0.93 (0.29) |
+| Beirut's streets, every strip: peak / impulse | 1.07 (0.34) / 0.91 (0.24) | 1.03 (0.32) / 0.89 (0.19) |
+| Made-up districts, peak at Z < 7 | 1.16 (0.42) | 0.86 (0.41) |
+| Made-up districts, every strip: peak / impulse | 0.98 (0.35) / 1.00 (0.21) | 0.89 (0.32) / 0.98 (0.17) |
+| Warehouse 12's near box, peak at Z < 7 | 0.92 (0.46) | 0.86 (0.47) |
+| Beirut's glass sides, full runs 0.2 / 0.5 / 1.1 kt | 0.84 / 0.75 / 0.81 | the same |
+| Near boxes' concrete walls at the run's level, 0.2 / 0.5 / 1.1 kt | 0.49 / 0.43 / 0.28 | 0.49 / 0.40 / 0.22 |
+| Near boxes' stone walls at the run's level | 0.43 / 0.36 / 0.45 | 0.41 / 0.34 / 0.41 |
+| Walls' chances, concrete moderate or worse (each yield held out) | skill 0.56, tenths pass, load ×1.0 in 9 folds | skill 0.55, tenths fail (0.60–0.70 seen at 0.78), load ×1.15–1.30 |
+| Walls' chances, stone heavy or worse / roofs moderate or worse | skill 0.71 / 0.75 | 0.71 / 0.75 |
+
+- **For:** Beirut's streets and the made-up districts close in. Over every strip, the peak's
+  scatter falls below Kingery–Bulmash's incident values' on these runs (0.37–0.38), and the
+  impulse's to theirs (0.17–0.18).
+- **Against:** Warehouse 12, where Beirut's standing and the walls' chances were measured. The
+  façades behind the silos read 0.6, the near boxes' walls lose 0.02–0.06 at the run's level, and
+  the concrete walls' chances fail their test. On the made-up districts, shielded façades at Z 3–7
+  read 0.84, the unsafe side. The glass, judged far out, is unchanged.
+- **So nothing is changed.** The terms stay as landed, and the standing now says the surrogate
+  reads high close in behind buildings. A fix needs a feature that tells a narrow obstacle from a
+  wide one (the obstacle's width across the line), or a refit on charges among buildings.
+- **Caveats.** The strength draws were keyed by envelope ids that are new each time a scene is
+  laid out (fixed since), so the before and after differ by sampling as well. That is in the third
+  decimal, far less than the concrete chances' failure. The data, scripts and judgements are in
+  /Volumes/StudioData/bombcad/start-bias.
+
 ### Dragging the charge (20 October 2026)
 
 With a quick estimate on screen and Place Charge on, the charge can be dragged across the ground

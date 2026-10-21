@@ -22,6 +22,10 @@ extension ValidationTables {
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
             quote: "low by 0.11–0.16"),
         Figure(
+            id: "surrogateCloseInShielded", low: 1.4, high: 1.7,
+            document: "surrogate-first-look.md#close-in-among-buildings-21-october-2026",
+            quote: "the branch reads 1.4–1.7 times the runs' among buildings"),
+        Figure(
             id: "dragPreviewGlass", low: 0.88, high: 0.93,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
             quote: "within 0.1 of the full estimate's on 88–93% of sides"),

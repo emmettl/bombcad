@@ -86,6 +86,10 @@ enum SceneBench {
             try DamageYield.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "surrogate-coefficients" {
+            try SurrogateCoefficients.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "wall-calibrate" {
             try WallCalibration.run(Array(args.dropFirst()))
             return

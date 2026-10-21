@@ -2,7 +2,8 @@ import BlastCore
 import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
-/// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--out calibration.json]`: how well the walls' and roofs' chances
+/// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json]
+/// [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each
 /// building's worst wall and worst roof in each run, judged on the run's histories at the
@@ -92,7 +93,14 @@ enum WallCalibration {
 
         // The chances, on the first run's layout, drawn over the runs' yields (all, or all but one).
         let first = references[0]
-        let estimate = FacadeLoadSurrogate.estimate(scene: first.scene, cellSize: first.cellSize)
+        // `--coefficients fit.json`: the façades' terms to judge; the fitted ones without it.
+        let coefficients =
+            try value("coefficients").map {
+                try JSONDecoder().decode(
+                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
+            } ?? .fitted
+        let estimate = FacadeLoadSurrogate.estimate(
+            scene: first.scene, cellSize: first.cellSize, coefficients: coefficients)
         let index = Dictionary(uniqueKeysWithValues: first.objects.enumerated().map { ($1.id, $0) })
         // With no factor, each building's calibration (`structureCalibration`).
         func chances(_ masses: [Double], factor: Double?, scale: Double = 1) -> [Int: FacadeLoadSurrogate
@@ -102,7 +110,7 @@ enum WallCalibration {
                 estimate, mass: masses[0], cellSize: first.cellSize,
                 constructions: { construction(first.scene, $0) },
                 uncertainty: FacadeLoadSurrogate.Uncertainty(masses: masses, samples: draws),
-                strengthScatter: false,
+                coefficients: coefficients, strengthScatter: false,
                 loadFactor: factor.map { ($0, $0) }, scatterScale: factor == nil ? nil : (scale, scale))
             print(
                 String(
