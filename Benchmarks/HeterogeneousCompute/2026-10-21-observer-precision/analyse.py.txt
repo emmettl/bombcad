@@ -1,0 +1,11 @@
+import hashlib,json,statistics
+from pathlib import Path
+root=Path(__file__).resolve().parent;out=Path('Benchmarks/HeterogeneousCompute/2026-10-21-observer-precision')
+p=json.loads((root/'gpu-profile.json').read_text());old=json.loads(Path('Benchmarks/HeterogeneousCompute/2026-10-21-pinned-control/small-terrain.json').read_text())
+for row in p['rows']:
+ expected=next(x['hashes'] for x in old['rows'] if x['job']==row['job'] and x['worker']=='baseline')
+ assert row['hashes']==expected
+assert p['workerSHA256']['baseline']==p['workerSHA256']['candidate']==hashlib.sha256(Path('Scripts/cuda/run.py').read_bytes()).hexdigest()
+assert p['profilerSHA256']==hashlib.sha256(Path('Scripts/cuda/profile-worker.py').read_bytes()).hexdigest()
+r={'historicalNumericalControlsMatch':True,'runsCompared':len(p['rows']),'workerSHA256':p['workerSHA256']['baseline'],'profilerSHA256':p['profilerSHA256'],'summaries':p['summaries']}
+(out/'analysis.json').write_text(json.dumps(r,indent=2)+'\n')

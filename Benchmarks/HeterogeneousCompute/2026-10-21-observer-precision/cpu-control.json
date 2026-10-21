@@ -1,0 +1,439 @@
+{
+  "scope": "CPU-only child-final-stamp to parent-return interval; includes child teardown, not exact death.",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "rows": [
+    {
+      "mode": "poll",
+      "repetition": 0,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.015475551001145504,
+      "parentReturnedMinusChildFinalStampSeconds": 0.003387878998182714
+    },
+    {
+      "mode": "pipe",
+      "repetition": 0,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.014270797997596674,
+      "parentReturnedMinusChildFinalStampSeconds": 0.00180666999949608
+    },
+    {
+      "mode": "pipe",
+      "repetition": 1,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.0208186649979325,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0019067519897362217
+    },
+    {
+      "mode": "poll",
+      "repetition": 1,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.03147813299437985,
+      "parentReturnedMinusChildFinalStampSeconds": 0.012379028004943393
+    },
+    {
+      "mode": "poll",
+      "repetition": 2,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.03162167500704527,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002640748003614135
+    },
+    {
+      "mode": "pipe",
+      "repetition": 2,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.031261227995855734,
+      "parentReturnedMinusChildFinalStampSeconds": 0.001900995004689321
+    },
+    {
+      "mode": "pipe",
+      "repetition": 3,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.04699801199603826,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0018491409864509478
+    },
+    {
+      "mode": "poll",
+      "repetition": 3,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.06352040499041323,
+      "parentReturnedMinusChildFinalStampSeconds": 0.020635592998587526
+    },
+    {
+      "mode": "poll",
+      "repetition": 4,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.06363791500916705,
+      "parentReturnedMinusChildFinalStampSeconds": 0.006399731995770708
+    },
+    {
+      "mode": "pipe",
+      "repetition": 4,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.058449333999305964,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002363620005780831
+    },
+    {
+      "mode": "pipe",
+      "repetition": 5,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.013986757010570727,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002132239009370096
+    },
+    {
+      "mode": "poll",
+      "repetition": 5,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.015473780993488617,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0035788829991361126
+    },
+    {
+      "mode": "poll",
+      "repetition": 6,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.03150578201166354,
+      "parentReturnedMinusChildFinalStampSeconds": 0.012753955001244321
+    },
+    {
+      "mode": "pipe",
+      "repetition": 6,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.020593769993865862,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0018593809945741668
+    },
+    {
+      "mode": "pipe",
+      "repetition": 7,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.030564956992748193,
+      "parentReturnedMinusChildFinalStampSeconds": 0.001843513993662782
+    },
+    {
+      "mode": "poll",
+      "repetition": 7,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.031565273005981,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0029763820057269186
+    },
+    {
+      "mode": "poll",
+      "repetition": 8,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.06343620199186262,
+      "parentReturnedMinusChildFinalStampSeconds": 0.020258825999917462
+    },
+    {
+      "mode": "pipe",
+      "repetition": 8,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.04596964600204956,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0023728210071567446
+    },
+    {
+      "mode": "pipe",
+      "repetition": 9,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.0583923490048619,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0027624159993138164
+    },
+    {
+      "mode": "poll",
+      "repetition": 9,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.06370278100075666,
+      "parentReturnedMinusChildFinalStampSeconds": 0.00818690299638547
+    },
+    {
+      "mode": "poll",
+      "repetition": 10,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.015586323002935387,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0033962390007218346
+    },
+    {
+      "mode": "pipe",
+      "repetition": 10,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.013982224991195835,
+      "parentReturnedMinusChildFinalStampSeconds": 0.001866783990408294
+    },
+    {
+      "mode": "pipe",
+      "repetition": 11,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.02075279199925717,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0019212719926144928
+    },
+    {
+      "mode": "poll",
+      "repetition": 11,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.031455342992558144,
+      "parentReturnedMinusChildFinalStampSeconds": 0.01218533499923069
+    },
+    {
+      "mode": "poll",
+      "repetition": 12,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.031468161003431305,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0026003749953815714
+    },
+    {
+      "mode": "pipe",
+      "repetition": 12,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.03152072300144937,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002261740999529138
+    },
+    {
+      "mode": "pipe",
+      "repetition": 13,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.0452309009997407,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0022180069936439395
+    },
+    {
+      "mode": "poll",
+      "repetition": 13,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.06361803600157145,
+      "parentReturnedMinusChildFinalStampSeconds": 0.020441678003408015
+    },
+    {
+      "mode": "poll",
+      "repetition": 14,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.06356322398642078,
+      "parentReturnedMinusChildFinalStampSeconds": 0.008394586999202147
+    },
+    {
+      "mode": "pipe",
+      "repetition": 14,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.0573123950016452,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002353040996240452
+    },
+    {
+      "mode": "pipe",
+      "repetition": 15,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.014372749996255152,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0019494820007821545
+    },
+    {
+      "mode": "poll",
+      "repetition": 15,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.015497353000682779,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0034988810075446963
+    },
+    {
+      "mode": "poll",
+      "repetition": 16,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.031489392000366934,
+      "parentReturnedMinusChildFinalStampSeconds": 0.012671502001467161
+    },
+    {
+      "mode": "pipe",
+      "repetition": 16,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.021103499006130733,
+      "parentReturnedMinusChildFinalStampSeconds": 0.001844840997364372
+    },
+    {
+      "mode": "pipe",
+      "repetition": 17,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.030612247996032238,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0018897730042226613
+    },
+    {
+      "mode": "poll",
+      "repetition": 17,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.031499071992584504,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002530016005039215
+    },
+    {
+      "mode": "poll",
+      "repetition": 18,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.06349456300085876,
+      "parentReturnedMinusChildFinalStampSeconds": 0.020587140999850817
+    },
+    {
+      "mode": "pipe",
+      "repetition": 18,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.045140000991523266,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0018667529948288575
+    },
+    {
+      "mode": "pipe",
+      "repetition": 19,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.056923755997559056,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0019012109987670556
+    },
+    {
+      "mode": "poll",
+      "repetition": 19,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.06359056700603105,
+      "parentReturnedMinusChildFinalStampSeconds": 0.008417328004725277
+    },
+    {
+      "mode": "poll",
+      "repetition": 20,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.015608803994837217,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0036074929957976565
+    },
+    {
+      "mode": "pipe",
+      "repetition": 20,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.013996125999256037,
+      "parentReturnedMinusChildFinalStampSeconds": 0.001846393002779223
+    },
+    {
+      "mode": "pipe",
+      "repetition": 21,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.021072347997687757,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0020535340008791536
+    },
+    {
+      "mode": "poll",
+      "repetition": 21,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.03154625500610564,
+      "parentReturnedMinusChildFinalStampSeconds": 0.012860196002293378
+    },
+    {
+      "mode": "poll",
+      "repetition": 22,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.03153160199872218,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0027821780095109716
+    },
+    {
+      "mode": "pipe",
+      "repetition": 22,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.031024682000861503,
+      "parentReturnedMinusChildFinalStampSeconds": 0.00192630200763233
+    },
+    {
+      "mode": "pipe",
+      "repetition": 23,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.04481468698941171,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0019565239927032962
+    },
+    {
+      "mode": "poll",
+      "repetition": 23,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.06350331300927792,
+      "parentReturnedMinusChildFinalStampSeconds": 0.020385177005664445
+    },
+    {
+      "mode": "poll",
+      "repetition": 24,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.06359380400681403,
+      "parentReturnedMinusChildFinalStampSeconds": 0.008032700003241189
+    },
+    {
+      "mode": "pipe",
+      "repetition": 24,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.05660890099534299,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0018618010071804747
+    },
+    {
+      "mode": "pipe",
+      "repetition": 25,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.014049688004888594,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0018329739978071302
+    },
+    {
+      "mode": "poll",
+      "repetition": 25,
+      "requestedChildSleepSeconds": 0,
+      "parentElapsedSeconds": 0.015460410999367014,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0034708509920164943
+    },
+    {
+      "mode": "poll",
+      "repetition": 26,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.031480552002904005,
+      "parentReturnedMinusChildFinalStampSeconds": 0.012245705991517752
+    },
+    {
+      "mode": "pipe",
+      "repetition": 26,
+      "requestedChildSleepSeconds": 0.007,
+      "parentElapsedSeconds": 0.021178419003263116,
+      "parentReturnedMinusChildFinalStampSeconds": 0.001963033006177284
+    },
+    {
+      "mode": "pipe",
+      "repetition": 27,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.030863642998156138,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0018871250067604706
+    },
+    {
+      "mode": "poll",
+      "repetition": 27,
+      "requestedChildSleepSeconds": 0.017,
+      "parentElapsedSeconds": 0.031542542012175545,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002374681003857404
+    },
+    {
+      "mode": "poll",
+      "repetition": 28,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.0635321540030418,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0206606540014036
+    },
+    {
+      "mode": "pipe",
+      "repetition": 28,
+      "requestedChildSleepSeconds": 0.031,
+      "parentElapsedSeconds": 0.04533179498685058,
+      "parentReturnedMinusChildFinalStampSeconds": 0.002405803999863565
+    },
+    {
+      "mode": "pipe",
+      "repetition": 29,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.057302672998048365,
+      "parentReturnedMinusChildFinalStampSeconds": 0.0019909029942937195
+    },
+    {
+      "mode": "poll",
+      "repetition": 29,
+      "requestedChildSleepSeconds": 0.043,
+      "parentElapsedSeconds": 0.06361151600140147,
+      "parentReturnedMinusChildFinalStampSeconds": 0.00833309700828977
+    }
+  ],
+  "summary": {
+    "poll": {
+      "medianObservationIntervalSeconds": 0.00826000000233762,
+      "minObservationIntervalSeconds": 0.002374681003857404,
+      "maxObservationIntervalSeconds": 0.0206606540014036
+    },
+    "pipe": {
+      "medianObservationIntervalSeconds": 0.0019140119911753573,
+      "minObservationIntervalSeconds": 0.00180666999949608,
+      "maxObservationIntervalSeconds": 0.0027624159993138164
+    }
+  }
+}

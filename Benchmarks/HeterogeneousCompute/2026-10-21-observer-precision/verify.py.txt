@@ -1,0 +1,21 @@
+"""Post-run audit of corrected-harness same-source GPU files and provenance."""
+import hashlib,json
+from pathlib import Path
+root=Path(__file__).resolve().parent
+
+def h(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+p=json.loads((root/'gpu-results/profile.json').read_text());assert p['allOutputsAndTimestepsBitIdentical']
+assert p['profilerSHA256']==h(root/'profile-worker.py')
+assert p['workerSHA256']['baseline']==p['workerSHA256']['candidate']==h(root/'run.py')
+assert p['sourceSHA256']==h(root/'solver.cu')
+rows=[];byjob={}
+for row in p['rows']:
+ out=root/'gpu-results'/f"{row['job']}-{row['repetition']}-{row['worker']}";r=json.loads((out/'result.json').read_text())
+ assert r['workerFilesSHA256']=={n:h(root/n) for n in ['run.py','job.py','compile.py']}
+ assert r['sourceSHA256']==p['sourceSHA256'] and r['timingClock']==p['timingClock'] and r['compileCacheEnabled']
+ actual={str(f.relative_to(out)):h(f) for f in out.rglob('*') if f.is_file() and f.suffix in ('.bin','.npy')};assert actual==row['hashes']
+ if row['job'] in byjob:assert actual==byjob[row['job']]
+ else:byjob[row['job']]=actual
+ rows.append(dict(job=row['job'],worker=row['worker'],repetition=row['repetition'],resultSHA256=h(out/'result.json'),numericalFiles=len(actual)))
+(root/'verification.json').write_text(json.dumps(dict(allActualOutputsAndExecutedProvenanceVerified=True,profileSHA256=h(root/'gpu-results/profile.json'),verified=rows),indent=2)+'\n')
+print('verified',len(rows),'actual runs')

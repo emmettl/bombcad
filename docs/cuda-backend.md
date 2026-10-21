@@ -588,8 +588,14 @@ retains quiescent single-owner normalization and paired/longer validation. Raw e
 and existing numerical gates remain unchanged.
 
 
-The pinned-buffer report also records a post-study observer-precision limitation: installed
-Python's POSIX timeout wait can poll up to 50 ms between exit checks. Fresh-process totals
-include this observation delay; historical values are retained, not rescaled. [66](https://github.com/emmettl/bombcad-work/issues/66)
-tracks a readiness-based runner and same-source validation under #60. This is measurement
-work, not a CUDA speedup or a changed numerical-admission decision.
+## Fresh-process observer precision
+
+The [#66 observer correction](../Benchmarks/HeterogeneousCompute/2026-10-21-observer-precision/summary.md)
+now drains stdout/EOF readiness while retaining the deadline and owned-child cleanup. A bounded
+CPU control reduces median final-child-timestamp to parent-return interval from 8.260 to
+1.914 ms; that interval includes child teardown and is not pure wait latency. Eighteen real
+same-source GPU runs retain every numerical hash and provenance contract. The fresh path also
+now passes each worker's selected cache argument, fixing the distinct/baseline-only routing bug;
+earlier symmetric-cache studies used equal paths and remain valid. Reports record observer
+scope and profiler source hash. Historical values are retained, not rescaled. This is a
+measurement correction, not a CUDA speedup or numerical-admission change; #65 remains unadopted.

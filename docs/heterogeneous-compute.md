@@ -377,3 +377,13 @@ same timekeeper. Runtime PHC0 tracking and WSL 3.0.3 init source explain the act
 Ubuntu's service list. #64 now has a concrete single-owner normalization experiment; it stays
 open because no clock/service configuration was changed or normalization validated. Owned
 tracing state is cleaned up; worker/profiler durations continue using raw elapsed time.
+
+
+### Fresh-process observation precision
+
+The [corrected profiler](../Benchmarks/HeterogeneousCompute/2026-10-21-observer-precision/summary.md)
+uses drained stdout/EOF readiness rather than relying solely on timeout polling. A 30-pair CPU
+control measures 8.260/1.914 ms median final-stamp-to-parent-return intervals, including teardown;
+18 same-source GPU runs preserve numerical files and provenance. Distinct cache arguments are
+also routed correctly in fresh processes. This closes #66 as a measurement fix; it does not
+promote the #65 candidate or establish a solver speedup. Historical observations remain intact.

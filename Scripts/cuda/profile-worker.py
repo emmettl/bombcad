@@ -42,6 +42,13 @@ def digest(path):
     return h.hexdigest()
 
 
+
+def run_fresh(command,timeout=600):
+    # A drained pipe wakes communicate on output/EOF instead of waiting solely by timeout polling.
+    # subprocess.run kills and reaps the owned child if the deadline expires.
+    return subprocess.run(command,check=True,stdout=subprocess.PIPE,timeout=timeout)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--baseline',type=Path,required=True)
@@ -83,8 +90,8 @@ def main():
                     if a.fresh_process:
                         worker_path=a.baseline if name=='baseline' else a.candidate
                         command=[sys.executable,str(worker_path),str(job),'--source',str(a.source),'--out',str(out)]
-                        if kwargs: command += ['--cache-dir',str(a.candidate_cache_dir)]
-                        subprocess.run(command,check=True,stdout=subprocess.DEVNULL,timeout=600)
+                        if kwargs: command += ['--cache-dir',str(cache)]
+                        run_fresh(command)
                         result=json.loads((out/'result.json').read_text())
                     else:
                         result=workers[name].run(job,a.source,out,**kwargs)
@@ -108,6 +115,8 @@ def main():
             summaries.append({'job':job.name,**{k:{'medianTotalSeconds':statistics.median(r['totalSeconds'] for r in v),
                 'medianSolverSeconds':statistics.median(r['solverSeconds'] for r in v)} for k,v in values.items()}})
         report={'format':'bombcad-worker-profile-1','timingClock':TIMING_CLOCK,'device':torch.cuda.get_device_name(),
+                'profilerSHA256':digest(Path(__file__)),
+                'freshProcessObserver':'drained stdout/EOF readiness; hard timeout; residual exit observation included' if a.fresh_process else None,
                 'baselineCacheDir':str(a.baseline_cache_dir) if a.baseline_cache_dir else None,
                 'candidateCacheDir':str(a.candidate_cache_dir) if a.candidate_cache_dir else None,
                 'torch':torch.__version__,'cuda':torch.version.cuda,'before':before,'after':snapshot(),

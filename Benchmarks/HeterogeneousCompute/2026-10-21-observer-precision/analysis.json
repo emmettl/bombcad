@@ -1,0 +1,41 @@
+{
+  "historicalNumericalControlsMatch": true,
+  "runsCompared": 18,
+  "workerSHA256": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+  "profilerSHA256": "4a50f0a7ed2a9ea3fcd24d292c42248c9b44ea622254a1b8cff795f52c9c74c5",
+  "summaries": [
+    {
+      "job": "cooling32",
+      "baseline": {
+        "medianTotalSeconds": 1.5708954069996253,
+        "medianSolverSeconds": 0.24568243700196035
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.5486091360071441,
+        "medianSolverSeconds": 0.23425572100677527
+      }
+    },
+    {
+      "job": "blast64",
+      "baseline": {
+        "medianTotalSeconds": 1.5175861429888755,
+        "medianSolverSeconds": 0.19105902899173088
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.5146143999882042,
+        "medianSolverSeconds": 0.20036001699918415
+      }
+    },
+    {
+      "job": "cooling64",
+      "baseline": {
+        "medianTotalSeconds": 1.7566417380003259,
+        "medianSolverSeconds": 0.47010459601006005
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.7004196280031465,
+        "medianSolverSeconds": 0.3727506340073887
+      }
+    }
+  ]
+}

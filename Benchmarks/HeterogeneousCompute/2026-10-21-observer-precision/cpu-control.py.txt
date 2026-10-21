@@ -1,0 +1,23 @@
+"""CPU-only child-final-stamp to parent-return interval; includes child teardown, not exact death."""
+import importlib.util,json,statistics,subprocess,sys,time
+from pathlib import Path
+root=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location('profiler',root/'profile-worker.py');p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+child=root/'stamp-child.py';child.write_text('''import json,sys,time
+from pathlib import Path
+time.sleep(float(sys.argv[2]))
+stamp=time.clock_gettime(time.CLOCK_MONOTONIC_RAW)
+Path(sys.argv[1]).write_text(json.dumps(dict(finalStamp=stamp)))
+print('ready-to-exit')
+''')
+rows=[]
+for repetition in range(30):
+ for mode in (['poll','pipe'] if repetition%2==0 else ['pipe','poll']):
+  path=root/f'stamp-{repetition}-{mode}.json';delay=[0,.007,.017,.031,.043][repetition%5]
+  command=[sys.executable,str(child),str(path),str(delay)];begin=p.elapsed_time()
+  if mode=='poll':subprocess.run(command,check=True,stdout=subprocess.DEVNULL,timeout=5)
+  else:p.run_fresh(command,timeout=5)
+  end=p.elapsed_time();stamp=json.loads(path.read_text())['finalStamp']
+  rows.append(dict(mode=mode,repetition=repetition,requestedChildSleepSeconds=delay,parentElapsedSeconds=end-begin,parentReturnedMinusChildFinalStampSeconds=end-stamp))
+summary={m:{'medianObservationIntervalSeconds':statistics.median(r['parentReturnedMinusChildFinalStampSeconds'] for r in rows if r['mode']==m),'minObservationIntervalSeconds':min(r['parentReturnedMinusChildFinalStampSeconds'] for r in rows if r['mode']==m),'maxObservationIntervalSeconds':max(r['parentReturnedMinusChildFinalStampSeconds'] for r in rows if r['mode']==m)} for m in ['poll','pipe']}
+(root/'cpu-control.json').write_text(json.dumps(dict(scope=__doc__,python=sys.version,timingClock=p.TIMING_CLOCK,rows=rows,summary=summary),indent=2)+'\n');print(json.dumps(summary,indent=2))

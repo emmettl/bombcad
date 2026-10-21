@@ -1,0 +1,29 @@
+{
+  "allActualOutputsAndProvenanceVerified": true,
+  "artifactSHA256": {
+    "analyse.py.txt": "36fc6d42e5b7898b4180ad7cc728312fd8dc75fd1f70a5dccddee957dffdc7d9",
+    "analysis.json": "0b29ab92010dd1a736a99f0741d9e3174f26a9777ae8808a488c3ae423ec2244",
+    "check.log": "fc07aecc87290cff976c16f8b9e5ed97090c0a81fad1f607277839e1d6136580",
+    "cpu-control.json": "2c693706c8d5e8054aacb0aaa1063f6b664e7ff3f5da3e5597cbe7746e2c3615",
+    "cpu-control.py.txt": "5db95366c3a193b1dddad97d7c085779dd2571fa80165da682ae1108be3e94c6",
+    "experiment.log": "4ff682ddeb7159173446bba920493f9c0c1f5451051889df45b6aac3b5f8fcec",
+    "final-resource.txt": "1494cfffc26b31a969613ad5ab42e010c76161547d3f2d31bc706299436008fe",
+    "gpu-profile.json": "616d471433252d03c30bdbb4efddd3c89df0d2d1513264593f8565ce1c76d597",
+    "old-profiler.py.txt": "ed9cb547bca0b24654f43ffc9350b74ed00ac86e63456425a8a667c76cc7eaba",
+    "profiler.py.txt": "4a50f0a7ed2a9ea3fcd24d292c42248c9b44ea622254a1b8cff795f52c9c74c5",
+    "summary.md": "4d4aaf574e4f6329f0f768f1823da013de730c0e740e738160763a6c8414fff7",
+    "unit.log": "3c62fed96c0babeef56a8ccad588304f8379e31c819fb9af72ac70b560d66d68",
+    "verification.json": "fdffa442f8c00408a1d4769820040a38ffc997e334248ecdfdbb4dca25b46837",
+    "verify.py.txt": "d1fe7dafd55b4d344d1a745e7e3ccf6dfbadb5947d64e28afbc7b97cc7e5b36a"
+  },
+  "clockServiceSettingsChanged": false,
+  "cpuControlPairs": 30,
+  "format": "bombcad-observer-precision-evidence-1",
+  "measuredProfilerMatchesFinalCode": true,
+  "realSameSourceGPURuns": 18,
+  "solverChanged": false,
+  "sourceSHA256": {
+    "Scripts/cuda/profile-worker.py": "4a50f0a7ed2a9ea3fcd24d292c42248c9b44ea622254a1b8cff795f52c9c74c5",
+    "Scripts/cuda/test_profile_worker.py": "21d5c190ee8a3f4d2beb056a2d5cbd3cdb027f0fbb4ab12abfa0b65aafa03675"
+  }
+}
