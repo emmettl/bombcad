@@ -66,7 +66,7 @@ on the Mac:
 ```bash
 python3 -I Scripts/remote-sweep.py run bombcad-pc sweep.json --cores 16 --wait 30m
 python3 -I Scripts/remote-sweep.py run --here sweep.json
-python3 -I Scripts/remote-sweep.py compare /Volumes/StudioData/bombcad/sweeps/<name>-here /Volumes/StudioData/bombcad/sweeps/<name>-bombcad-pc
+python3 -I Scripts/remote-sweep.py compare $BOMBCAD_DATA/sweeps/<name>-here $BOMBCAD_DATA/sweeps/<name>-bombcad-pc
 ```
 
 - **The sweep** is a JSON list of cases, each one `blastmodel` command's arguments, and the files
@@ -182,7 +182,7 @@ Linux host (emmettl/bombcad-work#48).
 A cloud session ran BlastModel's tests on Linux (Swift 6.4, not CI's 6.4.1 container) under
 AddressSanitizer, ThreadSanitizer and checked exclusivity, and fuzzed the readers of the files a
 user hands BombCAD. Its full report is kept outside the repository, at
-`/Volumes/StudioData/bombcad/cloud-reports/2026-10-20/sanitize-fuzz.md`.
+`$BOMBCAD_DATA/cloud-reports/2026-10-20/sanitize-fuzz.md`.
 
 **The sanitizers found no fault in BombCAD.**
 - AddressSanitizer ran all 823 tests in two halves: no memory error. LeakSanitizer reported 72

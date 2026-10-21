@@ -123,7 +123,7 @@ independent encoder.
 
 All on the Mac Studio, single precision, on the staircase, which was the only surface until cut
 cells (`--staircase` reproduces them now). The runs and their CSV files are in
-`/Volumes/StudioData/bombcad/terrain/`.
+`$BOMBCAD_DATA/terrain/`.
 
 ### A slope: regular and Mach reflection
 

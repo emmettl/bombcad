@@ -124,7 +124,7 @@ fails with its reason instead of writing absent results as zeros.
 For damage estimates on envelope buildings ([built](#damage-for-envelope-buildings-built)),
 `BlastSolver.configureEnvelopeComponents(objects:options:)` records the load on each part of a
 building that responds on its own: stage 1 of that work. The definitions are agreed with the
-damage model that reads them (`/Volumes/StudioData/bombcad/envelope-damage/component-spec.md`, v1.2).
+damage model that reads them (`$BOMBCAD_DATA/envelope-damage/component-spec.md`, v1.2).
 
 **Components** (`BuildingEnvelope.components(owner:cellSize:)`, from the geometry alone):
 
@@ -1013,7 +1013,7 @@ illustrative.
   uniform run's and the inside is 3.69 and 2.45 kPa, 0.90–0.95 of the uniform vented, for 1.08
   times the refined fill's wall time.
 - **The damage references** (`scenebench envelope-damage --representations=vented`, isolated and
-  street, 10–500 kg; outputs in `/Volumes/StudioData/bombcad/envelope-damage/vented/`): the same
+  street, 10–500 kg; outputs in `$BOMBCAD_DATA/envelope-damage/vented/`): the same
   panes' times and inside gauges as the vented runs in the table above, to the printed digit, on
   today's recorder; at 200 and 500 kg on the street the front buildings' gauges read 29.7–29.9 and
   67.6–70.2 kPa and the back ones' 7.3–8.0 and 14.3–15.3.
@@ -1025,7 +1025,7 @@ illustrative.
 
 **Walls that fail, on the damage references** (`scenebench envelope-damage --walls=rc,glass
 --charges=200,500 --representations=vented`, 17 October 2026; outputs in
-`/Volumes/StudioData/bombcad/envelope-damage/vented-walls/`): with concrete walls, at 200 kg no
+`$BOMBCAD_DATA/envelope-damage/vented-walls/`): with concrete walls, at 200 kg no
 wall fails one way and the inside stays at ambient, where the detailed building's rises to 1.6 kPa
 as its walls crack; at 500 kg the wall facing the charge fails in the air at 54.3 ms and the
 inside reads 3.2 kPa at the gauge, 2.8 kPa as the room's mean, against the detailed building's 6.5
@@ -1322,7 +1322,7 @@ and a building's corners and cross walls are taken to.
 | Terraced row's cavity leaf (102.5 mm), alone or sharing the load | fallen to 23 m | fallen to 23 m, as the shells' |
 | The damage references' brick walls, SDOF over detailed rotation (14 past 0.1°, `scenebench envelope-sdof --arching`) | median 1.10 (0.82–2.54) | median 1.06 (0.79–1.30): the 50 kg facing wall from 2.54 to 1.30 |
 | Keys's freestanding brick walls and Alsubaei's walls (`blastbench envelope-walls --from … --arching`) | as [above](#freestanding-walls) | identical: freestanding, so not arched |
-| Beirut's buildings as 0.5 m stone, the walls' chances and #19's band test (`scenebench wall-calibrate --walls stone --bands … --arching`) | heavy or worse (cracked) as before | the same: arching acts after cracking, and the map's façade strips do not arch. Arched as first built, façades included, the counts were the same too, but the buildings with a wall fallen within 1.32 km went from 20 and 65 to 1 and 2 of 2,053 at 0.5 and 0.7 kt (510 to 11 at 1.5 kt), where GEER found 7 of 13 sandstone houses at 0.5–0.75 km partly collapsed and the envelope already finds too few ([Beirut](validation.md#a-district-beirut-2020)) |
+| Beirut's buildings as 0.5 m stone, the walls' chances and emmettl/bombcad-work#19's band test (`scenebench wall-calibrate --walls stone --bands … --arching`) | heavy or worse (cracked) as before | the same: arching acts after cracking, and the map's façade strips do not arch. Arched as first built, façades included, the counts were the same too, but the buildings with a wall fallen within 1.32 km went from 20 and 65 to 1 and 2 of 2,053 at 0.5 and 0.7 kt (510 to 11 at 1.5 kt), where GEER found 7 of 13 sandstone houses at 0.5–0.75 km partly collapsed and the envelope already finds too few ([Beirut](validation.md#a-district-beirut-2020)) |
 
 **Its standing** is illustrative ("Masonry arching between returns"): the detailed shells
 arch as the theory says, but no arching wall has been compared under a blast on its own. **The

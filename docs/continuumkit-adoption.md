@@ -13,7 +13,7 @@ BombCAD contributed ([ContinuumKit#93](https://github.com/emmettl/ContinuumKit/p
 its copy against (`TimberTests`); since alpha.28 the 3D view (`SceneRender`'s `OrbitControlView`)
 is no stop in the window's Tab loop ([ContinuumKit#94](https://github.com/emmettl/ContinuumKit/pull/94)),
 as BombCAD's real-screen review asked (alpha.27 was tagged but never published: its release runs
-met the Mac mini's new Homebrew Python, which #95–#97 keep out of the gate). Source picking and fragment segments use the
+met the Mac mini's new Homebrew Python, which [ContinuumKit#95](https://github.com/emmettl/ContinuumKit/pull/95)–[#97](https://github.com/emmettl/ContinuumKit/pull/97) keep out of the gate). Source picking and fragment segments use the
 shared closed-box query in `SceneModel`; application ownership and mechanical
 coupling remain in BombCAD.
 

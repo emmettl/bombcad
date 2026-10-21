@@ -88,7 +88,7 @@ opening and saving a layout.
 
 When a release retakes the docs' pictures, a run of an hour or more (the office on fin plates at
 3 s, the large-panel street charge) also saves a checkpoint shortly before each picture's time,
-kept under `/Volumes/StudioData/bombcad/checkpoints/<image>/` with a README giving the command and
+kept under `$BOMBCAD_DATA/checkpoints/<image>/` with a README giving the command and
 the commit, so later changes to how things are drawn retake it in minutes ([retaking a doc image
 from a checkpoint](checkpoints.md#retaking-a-doc-image-from-a-checkpoint)).
 

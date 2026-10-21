@@ -5,7 +5,7 @@ well the air model holds at that scale, what it costs on one Mac, which grid and
 choose, and what still stands in the way of running such scenes in the app.
 
 The runner is `blastbench landscape` (`Sources/blastbench/LandscapeBench.swift`); its outputs
-from October 2026 are on `/Volumes/StudioData/bombcad/landscape/`.
+from October 2026 are on `$BOMBCAD_DATA/landscape/`.
 
 ## A big burst costs what a small one does
 

@@ -754,7 +754,7 @@ as they were, add the two canyon terms held at the fine runs' values, and add th
 The rise share's refit with the ground rise read as itself is 5480db20's and lands apart.
 
 A refit of the district terms was tried, on the made-up districts with their clipped strips
-mended from #10's uncapped reruns. It moved the districts' peak scatter by −0.01 to +0.04 and
+mended from emmettl/bombcad-work#10's uncapped reruns. It moved the districts' peak scatter by −0.01 to +0.04 and
 Beirut's glass agreement at 0.5 kt by −0.02, so it was not kept: the branch carries the close-in
 loads instead.
 

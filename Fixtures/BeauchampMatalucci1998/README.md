@@ -4,7 +4,7 @@
 Fracture in Explosions*, SAND98-0598, Sandia National Laboratories, May 1998, 62 pp., OSTI
 [658184](https://www.osti.gov/biblio/658184), doi:10.2172/658184. The user's copy of the OSTI scan,
 fetched on 21 October 2026, is on
-`/Volumes/StudioData/bombcad/sources/beauchamp-glass-fracture-1998/`; it is not in the repository.
+`$BOMBCAD_DATA/sources/beauchamp-glass-fracture-1998/`; it is not in the repository.
 
 Three shots at the Energetic Materials Research and Testing Center, Socorro, each against four
 panes in one window of a reinforced concrete building, and a later test filmed for speed:

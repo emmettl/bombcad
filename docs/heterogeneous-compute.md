@@ -35,7 +35,7 @@ training cases, and scheduling must keep that gate.
 | CUDA worker optimization | Profile cold/warm startup, per-step control readback, dispatches and cooling before changing algorithms. [#60](https://github.com/emmettl/bombcad-work/issues/60). |
 | Separate one-way physics consumers | Replay compact extracted fields for thermal exposure, later damage or other effects. CUDA ports and scientific validation are additional work. Begin with thermal replay economics, [#61](https://github.com/emmettl/bombcad-work/issues/61). |
 | RTX geometric ray queries | OptiX is a candidate for occlusion. Integration through luminous gas remains compute work. Compare against existing Metal rather than assuming NVIDIA wins. |
-| Active selection of training cases | Models select uncertain/failed cases for the numerical solver, which supplies checked targets. Feasible after scheduling; judge held-out layouts and damage outcomes under #33/#35 rather than training loss alone. |
+| Active selection of training cases | Models select uncertain/failed cases for the numerical solver, which supplies checked targets. Feasible after scheduling; judge held-out layouts and damage outcomes under emmettl/bombcad-work#33/emmettl/bombcad-work#35 rather than training loss alone. |
 | Two PCs doing learning | First distribute independent architectures, seeds and evaluations. Multi-host synchronized training needs a measured benefit and link/memory analysis; a second 12 GB card does not automatically give a model 24 GB. Laptop availability and sustained performance are unverified here. |
 | Air on PC, structure on Mac | Requires a structural interface, repeated transfers and coupling stability checks. Strong two-way coupling and structural cost may dominate; not a first port. |
 | One grid split between Metal and CUDA | Requires halo exchange, global CFL coordination, load balancing, supported physics and reproducibility across different arithmetic. Reassess only after quiet link and per-device measurements. |
@@ -112,8 +112,8 @@ Do not run a competing benchmark to estimate how fast an occupied GPU would have
 - [#61 thermal replay feasibility](https://github.com/emmettl/bombcad-work/issues/61):
   transfer/cadence budget before a CUDA/OptiX port; stop if local Metal remains preferable.
 
-These are scoped follow-ups, not commitments to port every subsystem. #47 retains the terrain
-acceptance blocker and dataset generation. #22 retains the thermal model discrepancy; faster
+These are scoped follow-ups, not commitments to port every subsystem. emmettl/bombcad-work#47 retains the terrain
+acceptance blocker and dataset generation. emmettl/bombcad-work#22 retains the thermal model discrepancy; faster
 execution does not repair a model error.
 
 Technical references: [CUDA Graphs](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html)
@@ -122,7 +122,7 @@ provides programmable accelerated ray tracing. Their benefit to these workloads 
 
 ## Experiments 3–5: isolated worker overhead and compilation reuse
 
-The PC became idle after #47's pilots. `Scripts/cuda/profile-worker.py` takes the shared lock
+The PC became idle after emmettl/bombcad-work#47's pilots. `Scripts/cuda/profile-worker.py` takes the shared lock
 for the entire experiment, alternates baseline/candidate order and hashes every raw output,
 NumPy array and timestep history. It refuses an accepted report if any bytes differ. These
 runs used the same generated source, RTX 3080 Ti, driver 617.42 and existing CUDA environment;
@@ -181,8 +181,8 @@ or the timing-instrumented worker without a cache as in the final comparison. Ru
 Keep output/cache directories new to reproduce the cold-miss observation. The helper must be
 the existing `Scripts/ml/remote-train.py`; the benchmark does not bypass that lock. Optional
 remote deployment uses `remote.py --cache-dir bombcad-cuda/ptx-cache`. Default worker deployments
-remain uncached. Next on #60: representative larger-grid/terrain stage timings and allocation,
-control-readback or cooling profiling; retain #47's acceptance gate before bulk generation.
+remain uncached. Next on emmettl/bombcad-work#60: representative larger-grid/terrain stage timings and allocation,
+control-readback or cooling profiling; retain emmettl/bombcad-work#47's acceptance gate before bulk generation.
 
 ## Numerical gate follow-up: first-phase labels
 
@@ -195,7 +195,7 @@ the dataset gate. See [the diagnosis and complete histories](cuda-backend.md#dia
 
 Read-only opt-in tracing and a float32 replay tool are available; diagnostic-only remote retrieval
 avoids transferring large fields. [#62](https://github.com/emmettl/bombcad-work/issues/62) tracks
-justified phase semantics and validation. #47 remains open. Beirut traces demonstrate near-zero closure sensitivity at two more phase
+justified phase semantics and validation. emmettl/bombcad-work#47 remains open. Beirut traces demonstrate near-zero closure sensitivity at two more phase
 points; the direct follow-up now confirms the third. Fast standalone Metal still fails the peak
 gate, so a precision switch is not an established fix. Backend scheduling and performance work
 must preserve those acceptance dependencies.
@@ -210,8 +210,8 @@ isolated. See the [production controls](cuda-backend.md#direct-production-observ
 The paired production safe/unfused experiment makes tiled and full-grid exports bit-identical.
 That isolates arithmetic-mode-sensitive path variation for the Beirut case; it does not prove
 which compiler transformation causes it. Safe production still fails seven peak/six phase
-points against default production, and CUDA still fails against the safe reference. #63 tracks
-the separate peak portability contract; #62 tracks label conditioning. These findings do not
+points against default production, and CUDA still fails against the safe reference. emmettl/bombcad-work#63 tracks
+the separate peak portability contract; emmettl/bombcad-work#62 tracks label conditioning. These findings do not
 enable a full CUDA batch or justify changing the acceptance gate.
 
 Explicit contraction-on **and** contraction-off each make the Beirut tiled/full-grid pairs
@@ -220,10 +220,10 @@ fast options as the cause. Thus an explicit contraction policy removes this case
 variation without proving that fusion must be disabled. None of those variants passes the
 original gate. The six-outcome reference spread and an offline phase-band sweep are retained
 as diagnostics; an analytic weak-wave counterexample shows why a band that repairs selected
-points cannot simply become the target rule. #62/#63 remain policy/validation work, not resolved
+points cannot simply become the target rule. emmettl/bombcad-work#62/emmettl/bombcad-work#63 remain policy/validation work, not resolved
 by a precision switch or larger tolerance. See the backend documentation for full receipts.
 
-A concrete #60 gain is now integrated: bounding the CUDA cooling work preserves complete
+A concrete emmettl/bombcad-work#60 gain is now integrated: bounding the CUDA cooling work preserves complete
 Beirut outputs/timesteps bit for bit while three paired runs reduce median solver time from
 88.90 to 65.90 seconds (worker total 93.20→70.12 seconds, excluding SSH and cold Python startup).
 The integrated default and full-grid fallback also pass luminous/empty controls. This improves
@@ -240,7 +240,7 @@ not proof of exclusive CPU/network use. Setup took 0.460 s. Median tiny-message 
 All bytes matched. The largest echo was slower than the earlier busy-GPU run, so GPU utilization
 alone cannot explain link performance. These are application round trips, not one-way bandwidth.
 
-The transport audit for #61 found that `FrameInput.payload` sends `LuminousCells.binary`,
+The transport audit for emmettl/bombcad-work#61 found that `FrameInput.payload` sends `LuminousCells.binary`,
 not the march's compact directional tiles. Its 32-byte header precedes a voxel box of at most
 1,048,576 cells, at 3, 5 or 7 bytes per cell depending on optional products/absorption channels.
 A full current afterburn frame can therefore be 7 MiB plus header, before shape JSON or result
@@ -248,7 +248,7 @@ traffic. Receiver fluence/peak updates and static scene setup also belong in the
 The older thermal documentation's 1.6 MB maximum was stale and is corrected.
 
 This strengthens the case for measuring saved, representative frames and compression before a
-live CUDA consumer. It does not establish a one-way transfer budget or close #61. The next
+live CUDA consumer. It does not establish a one-way transfer budget or close emmettl/bombcad-work#61. The next
 experiment must capture actual evolving fields, scene and receiver setup, measure extraction,
 encoding, compressed transfer and reconstruction separately, and compare the complete sequence
 with local Metal. A synthetic sphere or echo alone cannot meet that acceptance criterion.
@@ -287,7 +287,7 @@ decode/hash, but no PC thermal computation or result return. All payload hashes 
 snapshots stay idle. The original extraction and recording cost are separately retained.
 
 For this case and route, even zero-cost PC computation cannot recover the measured transfer
-cost versus the local consumer. #61's feasibility decision is therefore **defer live thermal
+cost versus the local consumer. emmettl/bombcad-work#61's feasibility decision is therefore **defer live thermal
 porting**, preserving a reusable recorder/replay fixture. Offline replay remains possible;
 revisit acceleration with a faster route, heavier receiver/ray work or measured Mac contention.
 No claim extends this result to every scene, and no thermal-model validation threshold changes.
@@ -306,7 +306,7 @@ measured on the same observer clock. Caching reduces compilation but does not im
 observed district total. This favors an idle Mac for this case's latency; PC spillover may
 still improve a queue's throughput, which has not yet been measured.
 
-The explicit deployment profiler and timing receipts are reusable for #59 cost decisions.
+The explicit deployment profiler and timing receipts are reusable for emmettl/bombcad-work#59 cost decisions.
 [#64](https://github.com/emmettl/bombcad-work/issues/64) tracks independently reproduced elapsed-clock
 disagreement; worker times must not be directly compared across hosts or subtracted from the
 common-observer deployment total. No new broad CUDA dataset admission is enabled.
@@ -317,7 +317,7 @@ now isolates WSL adjusted monotonic versus raw timing: raw agrees with Windows Q
 paired intervals; changing kernel tick discipline is consistent with the discrepancy. CUDA
 worker/profiler elapsed measurements now use raw time with explicit provenance and a dual-clock
 audit. Existing gates and all numerical outputs/timesteps remain unchanged. This corrects
-measurement, not compute throughput. #64's host discipline investigation remains open; no clock
+measurement, not compute throughput. emmettl/bombcad-work#64's host discipline investigation remains open; no clock
 or service settings were changed, and old receipts must not be normalized by one fixed factor.
 
 
@@ -331,8 +331,8 @@ after controller interruption without relaunching it. Accepted cases are reused 
 
 [Receipts and recovery evidence](../Benchmarks/HeterogeneousCompute/2026-10-21-field-queue/summary.md)
 retain the physical/calibration cases and all outcomes. This is bounded reference replay, not
-bulk generation or a throughput speedup claim. #59 remains open for finer phase accounting and
-larger evaluation; #47/#62/#63 admission remains gated.
+bulk generation or a throughput speedup claim. emmettl/bombcad-work#59 remains open for finer phase accounting and
+larger evaluation; emmettl/bombcad-work#47/emmettl/bombcad-work#62/emmettl/bombcad-work#63 admission remains gated.
 
 
 ### Repeated small queue costs
@@ -342,7 +342,7 @@ repeats Metal-only, automatic and forced split policies three times. Removing ir
 probes reduces Metal-only median controller completion from 3.475 s to 1.360 s. Automatic
 selection keeps all four cases on Metal (3.518 s); the forced split takes 21.142 s. These small
 jobs establish an overhead floor and show why worker solve time is insufficient for scheduling.
-They do not establish a CUDA throughput win. #59 retains larger/repeated representative queues,
+They do not establish a CUDA throughput win. emmettl/bombcad-work#59 retains larger/repeated representative queues,
 finer Metal accounting and complete-cost modelling; synchronous PC probing remained measurable in that controller.
 
 
@@ -355,7 +355,7 @@ mixed process-level results; it is not adopted. The separate API trace confirms 
 wait removal shifts waiting into blocking copies. Full flat and Beirut worker-process medians
 are 47.897/47.612 s and 68.639/68.312 s, baseline/candidate. These exclude deployment/retrieval
 and do not establish a heterogeneous throughput gain. The executed-worker provenance bug is
-fixed, and symmetric-cache profiling is supported. #60 retains pinned control-buffer reuse and
+fixed, and symmetric-cache profiling is supported. emmettl/bombcad-work#60 retains pinned control-buffer reuse and
 further launch/control experiments; numerical and clock-discipline gates remain unchanged.
 
 
@@ -365,8 +365,8 @@ The [pinned host-buffer follow-up](../Benchmarks/HeterogeneousCompute/2026-10-21
 adds 36 baseline/candidate timed runs and 24 identical-worker controls. Allocation counts fall,
 but full-district process times are effectively unchanged and smaller apparent gains overlap
 control variation. The existing synchronization and control storage remain in production;
-#65 concludes without adoption. The candidate patch, complete phase timings, allocation trace,
-file/provenance audit and both failure controls are retained for later work under #60.
+emmettl/bombcad-work#65 concludes without adoption. The candidate patch, complete phase timings, allocation trace,
+file/provenance audit and both failure controls are retained for later work under emmettl/bombcad-work#60.
 
 
 ### WSL clock ownership
@@ -385,8 +385,8 @@ The [corrected profiler](../Benchmarks/HeterogeneousCompute/2026-10-21-observer-
 uses drained stdout/EOF readiness rather than relying solely on timeout polling. A 30-pair CPU
 control measures 8.260/1.914 ms median final-stamp-to-parent-return intervals, including teardown;
 18 same-source GPU runs preserve numerical files and provenance. Distinct cache arguments are
-also routed correctly in fresh processes. This closes #66 as a measurement fix; it does not
-promote the #65 candidate or establish a solver speedup. Historical observations remain intact.
+also routed correctly in fresh processes. This closes emmettl/bombcad-work#66 as a measurement fix; it does not
+promote the emmettl/bombcad-work#65 candidate or establish a solver speedup. Historical observations remain intact.
 
 ### Controlled clock ownership experiment
 
@@ -396,7 +396,7 @@ absolute five-second MONOTONIC/RAW error was 743 ppm with both clients active,
 30 ppm after pausing Ubuntu's client, and 1854 ppm after restoring it. Both
 experimental cycles restored their original service configuration and released
 the shared PC reservation. Longer single-owner validation and its exact final
-policy receipt are retained with the experiment. #64 remains open for reboot
+policy receipt are retained with the experiment. emmettl/bombcad-work#64 remains open for reboot
 persistence and operational stability; worker durations continue to use RAW.
 
 Longer validation passed: maximum absolute MONOTONIC/RAW error was 19.3 ppm
@@ -411,7 +411,7 @@ separate library loading/building, eager pipelines, allocation, initial uniform
 state and scenario loading in opt-in field-export receipts. Across four small
 uniform/terrain cases, both Metal execution and CUDA preparation preserve all
 numerical files in 24 timed/untimed pairs. These nested host timings include
-driver caching and do not establish pure compiler cost or a speedup. #59 retains
+driver caching and do not establish pure compiler cost or a speedup. emmettl/bombcad-work#59 retains
 complete cost calibration and larger queue evaluation.
 
 ### Cached CUDA retries
@@ -423,7 +423,7 @@ still requires Mac capacity, and PC availability/VRAM/locking remain enforced.
 Three real post-preparation deferral/resume controls accept once and reuse their
 accepted objects, with matching numerical files. Optional `cachedCudaCosts` terms
 are pinned separately; the retained one-sample worker-body estimate is functional
-calibration, not a complete scheduling-cost fit. #59 remains open for complete
+calibration, not a complete scheduling-cost fit. emmettl/bombcad-work#59 remains open for complete
 costs and larger representative queues.
 
 ### Eight larger cases with repeated complete-cost calibration
@@ -435,7 +435,7 @@ For these 128 × 128 × 32-cell short trajectories, median completion is 3.854 s
 Metal-only, 11.265 s automatic (all Metal), and 49.690 s forced four-CUDA split.
 The larger grid still does not amortize CUDA deployment. Complete isolated-case
 costs are an approximate model; automatic policy's extra controller time motivates
-a cost-based PC-probe experiment under #59. Longer full-district queues and broader
+a cost-based PC-probe experiment under emmettl/bombcad-work#59. Longer full-district queues and broader
 numerical admission remain separate work.
 
 ### Cost-planned PC probing

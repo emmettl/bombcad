@@ -33,7 +33,7 @@ options.
 
 A picture on these pages whose run takes an hour or more (the office on fin plates at 3 s, the
 large-panel street charge at 1.5 and 4 s) is to keep a checkpoint shortly before its time, under
-`/Volumes/StudioData/bombcad/checkpoints/<image>/`, with a README giving the command and the
+`$BOMBCAD_DATA/checkpoints/<image>/`, with a README giving the command and the
 commit that wrote it. Its run is not repeated for that alone: the checkpoint is saved the next
 time the scene is rerun for a reason of its own (a change to the physics, a release's pictures).
 From then on, after a change that only alters how things are drawn (colours, the camera, what
@@ -161,7 +161,7 @@ What a checkpoint takes, early in a run (128–320 steps), on the mini:
 The raw size is about 66 bytes a coarse cell: two copies of the cells, two of the species, the
 peaks, impulse and masks. Still air compresses to almost nothing, so the stored size follows how
 much of the domain the blast has reached, and the refinement's pools. Saved by default to
-`/Volumes/StudioData/bombcad/checkpoints` for the benchmarks; `checkpointBytes` gives the raw
+`$BOMBCAD_DATA/checkpoints` for the benchmarks; `checkpointBytes` gives the raw
 size beforehand.
 
 Stage 2, on the Studio, also to the bit: the blast wall in solids and in shells, on the default

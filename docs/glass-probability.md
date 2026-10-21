@@ -235,7 +235,7 @@ judge every wall at its nominal strength, so they check the load's scatter, not 
   ([the first look](surrogate-first-look.md#walls-and-roofs-20-october-2026)).
 - **The roofs' factor is a calibration, not physics.** It is rejudged whenever the load terms are
   refitted (the judge is scripted:
-  /Volumes/StudioData/bombcad/surrogate-walls/calibrate/judge19.sh).
+  `$BOMBCAD_DATA/surrogate-walls/calibrate/judge19.sh`).
 
 ## Using it
 

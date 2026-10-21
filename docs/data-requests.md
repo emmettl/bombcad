@@ -237,7 +237,7 @@ down against rebound).
   are paywalled: an accepted manuscript can be asked of the authors, or read through a library.
 
 **Both theses are now reserved for blind test 3** ([Blind tests](blind-tests.md)): downloaded,
-sealed unread in `/Volumes/StudioData/bombcad/blind/reynolds-sealed/` and `vasudevan-sealed/`,
+sealed unread in `$BOMBCAD_DATA/blind/reynolds-sealed/` and `vasudevan-sealed/`,
 and no session opens them, or the contest's high-strength results anywhere, until the judge has
 assessed them. So this request should wait for that assessment, or be sent with whatever comes
 back going straight into the sealed folder unread. It asks for what the theses plot but do not

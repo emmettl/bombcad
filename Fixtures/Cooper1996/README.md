@@ -1,7 +1,7 @@
 # Fragment data from Cooper's *Explosives Engineering*
 
 `fragments.json` holds three things from P. W. Cooper, *Explosives Engineering*, Wiley-VCH, 1996,
-chapter 27 (the user's scanned copy on `/Volumes/StudioData/bombcad/data/Cooper1996/`; book page =
+chapter 27 (the user's scanned copy on `$BOMBCAD_DATA/data/Cooper1996/`; book page =
 PDF page − 16); only these derived numbers are kept, with citation.
 
 - **Table 27.2** (p. 397), transcribed: Mott's coefficient B (lb^(1/2) in^(−7/16)) for mild

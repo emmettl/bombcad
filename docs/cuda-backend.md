@@ -594,7 +594,7 @@ aggregated work counts; deployment provenance still pins the worker files.
 diagnosis. The CUDA worker's default work selection changed; app defaults, arithmetic, labels,
 masks, accepted physics and tolerances did not. Original-reference acceptance failures remain
 exactly the same, so no full training batch is enabled by this optimization. emmettl/bombcad-work#60 retains
-further profiling; emmettl/bombcad-work#47/#62/#63 retain their separate numerical contract work.
+further profiling; emmettl/bombcad-work#47/emmettl/bombcad-work#62/emmettl/bombcad-work#63 retain their separate numerical contract work.
 
 
 ## Resumable field dispatch

@@ -5,7 +5,7 @@ that run on the CPU) out of `BlastCore` into `BlastModel`, a module that imports
 also builds and is tested on Linux. They do the move by script, so that it can be redone on
 whatever `main` is when the window opens, and they stop rather than guess when `main` has changed
 under them. The findings and the numbers are in the cloud report of 19 October 2026
-(kept outside the repository at `/Volumes/StudioData/bombcad/cloud-reports/2026-10-19/blastmodel-split.md`).
+(kept outside the repository at `$BOMBCAD_DATA/cloud-reports/2026-10-19/blastmodel-split.md`).
 
 | File | What it is |
 |---|---|
@@ -45,7 +45,7 @@ which follows Apple's simd bit for bit (but for the 3 × 3 inverse and the quate
 cosines and arc tangents) and whose `SIMDParityTests` check it against Apple's on the
 Mac. The split first installed a shim of its own with a parity test; both moved to ContinuumKit.
 
-# The air solver's split (#21)
+# The air solver's split (emmettl/bombcad-work#21)
 
 `BlastSolver.swift` (4,500 lines) and `Shaders/Solver.metal` (3,700) are cut by subsystem. Each
 member or declaration moves whole, with the comments above it, so kernel names, argument indices
@@ -89,7 +89,7 @@ each old file keeps its name and with it `git log`, and `git blame -C -C` follow
 In the window:
 
 1. On `main` before the cut, with a current release build:
-   `gpu-slot Scripts/split/solver-digests.sh /Volumes/StudioData/bombcad/solver-split/before.txt`.
+   `gpu-slot Scripts/split/solver-digests.sh $BOMBCAD_DATA/solver-split/before.txt`.
 2. Branch, and `python3 Scripts/split/split_solver.py check`. If it fails, `main` has added,
    removed or renamed a member or declaration: `refresh` places each new one with what is above
    it and drops what is gone; read the plan's difference (move a new member to a better file by
@@ -103,7 +103,7 @@ In the window:
    A branch's change to a moved member rebases as a conflict on the old file; apply it to the
    member in its new file.
 
-# Narrowing what the splits widened (#87)
+# Narrowing what the splits widened (emmettl/bombcad-work#87)
 
 `narrow_access.py package` takes each of BlastModel's `package` declarations back to internal,
 builds the package with its tests, and gives `package` back to exactly those the build's errors

@@ -1155,7 +1155,7 @@ An independent review by a cloud session (Linux, the CPU reference only, Belytsc
 paper not in hand, so its checks against the paper are from memory). No gate passes because of a
 bug; the review's probes reproduce stage 1's figures. What the gates show is narrower than the
 text above said, and the text now says so. Its report is kept outside the repository, at
-`/Volumes/StudioData/bombcad/cloud-reports/2026-10-20/review-crackedhex-calib.md`.
+`$BOMBCAD_DATA/cloud-reports/2026-10-20/review-crackedhex-calib.md`.
 - **G1.3 is uniform bending.** Both end faces are turned about mid-depth, so by symmetry the middle
   face stays plane and, with ν = 0, nearly every displacement is prescribed. It checks the points'
   crack histories, the 2 × 2 × 2 quadrature and the bars at their own height, and the shear filter

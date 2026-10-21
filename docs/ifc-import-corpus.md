@@ -8,7 +8,7 @@ fixed, what still cannot import and why, and how to run the corpus again.
 
 ## The corpus
 
-The files live on the Studio at `/Volumes/StudioData/bombcad/data/ifc-corpus/`, not in the
+The files live on the Studio at `$BOMBCAD_DATA/data/ifc-corpus/`, not in the
 repository. Its `SOURCE.md` gives each set's source, revision and licence.
 
 | Set | Files | Licence | What it is |
@@ -24,7 +24,7 @@ IFC files (`IFCRobustnessTests`).
 
 ```sh
 swift build --build-tests
-python3 Scripts/ifc-corpus.py run /Volumes/StudioData/bombcad/data/ifc-corpus OUT --jobs 4
+python3 Scripts/ifc-corpus.py run $BOMBCAD_DATA/data/ifc-corpus OUT --jobs 4
 python3 Scripts/ifc-corpus.py summary OUT --markdown OUT/table.md
 ```
 
@@ -63,7 +63,7 @@ excluded meshes are elements that round 1 never chose: with the higher triangle 
 converts more than one storey, and its bar joists are surfaces, not solids (see "What is
 left"). Its 188 wide-flange beams and columns that also came in open are now closed (item 14).
 
-The full table, per file, is `corpus5-table.md` in `/Volumes/StudioData/bombcad/import-structural/`.
+The full table, per file, is `corpus5-table.md` in `$BOMBCAD_DATA/import-structural/`.
 
 ### Under gravity
 

@@ -78,7 +78,7 @@ variant, with both hashes; a variant unstable at the base (`unstable`, a NaN) is
 change meant to move results goes through `ARGS=--full`, with the reason in its commit message.
 
 The merge base's binary is built once, in a clone of this repository kept at
-`/Volumes/StudioData/bombcad/digest-cache/source` and checked out at each base in turn, so its
+`$BOMBCAD_DATA/digest-cache/source` and checked out at each base in turn, so its
 release build is incremental. The binary and its resource bundles are copied to
 `digest-cache/<commit>/`, with the base's digests on that Mac (`digests-<host>.json`), so the next
 check on the same base runs only its own side. One base is built at a time, under a lock
@@ -208,7 +208,7 @@ functions of `Sources/`:
    export`), and the map records the functions it executed, each by its file and line extent.
    A suite that doesn't pass (or times out, after 90 minutes) gets no coverage, and is always run.
 
-The map goes to `/Volumes/StudioData/bombcad/test-impact/<commit>.json` on the Studio
+The map goes to `$BOMBCAD_DATA/test-impact/<commit>.json` on the Studio
 (`~/bombcad-test-impact/` elsewhere), keyed by the commit it was built at, which must be clean; it
 is never committed. The last three are kept, where they are built and where they are fetched to.
 The nightly builds one on the mini straight after the full check, for the commit that check tested

@@ -33,5 +33,5 @@ Things to know before using them:
   stated anywhere.
 
 The thesis is not in the repository; it was fetched with the user's agreement to
-`/Volumes/StudioData/bombcad/data/Alsubaei2015/`. `blastbench perimeter` runs the model against
+`$BOMBCAD_DATA/data/Alsubaei2015/`. `blastbench perimeter` runs the model against
 these data (see [Validation](../../docs/validation.md#perimeter-walls-under-field-blasts)).

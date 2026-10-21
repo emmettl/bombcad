@@ -88,7 +88,7 @@ Each step is done once on each PC. The user decides on, and makes, any firewall 
    estimate (below):
 
    ```bash
-   python3 -I Scripts/ml/remote-train.py bombcad-pc /Volumes/StudioData/bombcad/ml/datasets/smoke Scripts/ml/train_field.py --job estimate-pc --args --estimate --grid 256,512
+   python3 -I Scripts/ml/remote-train.py bombcad-pc $BOMBCAD_DATA/ml/datasets/smoke Scripts/ml/train_field.py --job estimate-pc --args --estimate --grid 256,512
    ```
 
 Keep the data in WSL's own file system (`~`), not under `/mnt/c`. The Windows file system is slow
@@ -120,7 +120,7 @@ From the Studio, it:
    host's default: 24 h on the desktop, 2 h on the laptop) the host stops the script, and the exit
    status is 124.
 5. **Brings back the job's folder** (`out/`, `log.txt`, `status.json`, the script) to
-   `/Volumes/StudioData/bombcad/ml/<job>/`, and writes `job.json` there. `job.json` records the
+   `$BOMBCAD_DATA/ml/<job>/`, and writes `job.json` there. `job.json` records the
    host, the GPU as `nvidia-smi` names it, the Python, the dataset's hash and whether it was sent,
    the script's hash, the arguments, the start and end times, and the exit status.
 
@@ -243,7 +243,7 @@ the totals.
 ### Running the list
 
 ```bash
-python3 -I Scripts/ml/field-runs.py run --set main --dataset /Volumes/StudioData/bombcad/ml/datasets/fields-v1
+python3 -I Scripts/ml/field-runs.py run --set main --dataset $BOMBCAD_DATA/ml/datasets/fields-v1
 ```
 
 The runs go one after another under gpu-slot, each declaring its memory and limited to 1.5 hours.
@@ -256,7 +256,7 @@ mini's lock. `--only`, `--limit` and `--dry-run` pick and preview. `fit <dataset
 constants from a dataset's runs.
 
 The smoke set, six runs on 256 × 256 cells of 20–100 t (five made-up districts and Beirut 900 m
-south of the port), is in `/Volumes/StudioData/bombcad/ml/datasets/smoke/`. Datasets and model
+south of the port), is in `$BOMBCAD_DATA/ml/datasets/smoke/`. Datasets and model
 weights stay on StudioData and are never committed.
 
 ## Training: `Scripts/ml/train_field.py`
@@ -376,7 +376,7 @@ measurement replaces these figures.
 
 ## The field model against the façade surrogate (20 October 2026)
 
-Judged at held-out runs' ground-floor façades (emmettl/bombcad-work#33, #47), with
+Judged at held-out runs' ground-floor façades (emmettl/bombcad-work#33, emmettl/bombcad-work#47), with
 `Scripts/ml/judge_field.py`. In short: on peak overpressure the field model beats the surrogate
 at Beirut's façades 50–700 m from the charge in every split, even having never seen Beirut. On
 impulse it predicts a different quantity from the one the surrogate and the damage use, so it
@@ -559,16 +559,16 @@ The default is unchanged.
   load ratios.
 
 The judgements, the strips and the four recorder runs are in
-`/Volumes/StudioData/bombcad/ml/judge/`. The Studio model is in `field-unet-studio-layouts/`.
+`$BOMBCAD_DATA/ml/judge/`. The Studio model is in `field-unet-studio-layouts/`.
 
 ```bash
-python -I Scripts/ml/judge_field.py --data /Volumes/StudioData/bombcad/ml/datasets/main \
-    --model unet2=/Volumes/StudioData/bombcad/ml/field-unet-main-2/out/best.pt --out judged.json
+python -I Scripts/ml/judge_field.py --data $BOMBCAD_DATA/ml/datasets/main \
+    --model unet2=$BOMBCAD_DATA/ml/field-unet-main-2/out/best.pt --out judged.json
 ```
 
 ## The first-phase target and glass by side (20 October 2026)
 
-emmettl/bombcad-work#33, #47: the three steps the [judgement above](#what-it-would-take) asked
+emmettl/bombcad-work#33, emmettl/bombcad-work#47: the three steps the [judgement above](#what-it-would-take) asked
 for.
 
 ### The first-phase impulse target
@@ -576,7 +576,7 @@ for.
 `field-export --first-phase` (and `district-compare --export-field … --first-phase`) writes a
 third target, `firstPhaseImpulse`, by the recorder's rule ([above](#what-one-run-gives)). It was
 checked on the four recorder runs of the judgement, run again with it into
-`/Volumes/StudioData/bombcad/ml/judge/compare-first/`:
+`$BOMBCAD_DATA/ml/judge/compare-first/`:
 
 - **Nothing else moved.** Each run's `inputs.npy`, `mask.npy` and its peak and all-phases impulse
   targets are bit-identical to the dataset's. `FirstPhaseColumnsTests` checks the same in the
@@ -601,7 +601,7 @@ checked on the four recorder runs of the judgement, run again with it into
 - **Cost.** The kernel reads two cells a column a step: nothing measurable beside the air.
 
 `train_field.py --impulse first` trains on it. **Update, 21 October:** the overnight job completed
-all 200 stable cases in `/Volumes/StudioData/bombcad/ml/datasets/main-fp`, then trained
+all 200 stable cases in `$BOMBCAD_DATA/ml/datasets/main-fp`, then trained
 `field-unet-fp-strict` (75 whole-layout holdouts, 2,360 s on the PC GPU) and
 `field-unet-fp-byrun` (40 run holdouts, 2,042 s). Both jobs exited successfully. The retained
 record is `ml/overnight-fp/summary.txt`, with each model's `job.json`, split and metrics under
@@ -611,7 +611,7 @@ the by-run round is 1.02 / 0.09. These are field-prediction checks, not wall/roo
 The original Metal regeneration command (about 5 GPU hours estimated) was:
 
 ```bash
-python3 -I Scripts/ml/field-runs.py run --set main --first-phase --dataset /Volumes/StudioData/bombcad/ml/datasets/main-first
+python3 -I Scripts/ml/field-runs.py run --set main --first-phase --dataset $BOMBCAD_DATA/ml/datasets/main-first
 ```
 
 ### The strict round on the PC
@@ -725,7 +725,7 @@ Against the recorder's strips over all 50 Beirut runs (1,446,015 strips), the PC
 - **Limits:** the ground floor only (upper storeys would need the surrogate's terms, or a field
   model at more heights); one city's 50 runs on one map; 4 m runs as the truth.
 
-The judgements are in `/Volumes/StudioData/bombcad/ml/judge/fp47/` (`judge-all.txt`,
+The judgements are in `$BOMBCAD_DATA/ml/judge/fp47/` (`judge-all.txt`,
 `glass/summary.json`, `glass-all.txt`); the strict model is in `field-unet-strict-pc/`.
 
 ### The recommendation (for the user to decide)
@@ -745,7 +745,7 @@ would take, and what it would leave out:
 
 ## The first-phase models at walls and roofs (21 October 2026)
 
-emmettl/bombcad-work#33, #47: the two models trained overnight on the first-phase target
+emmettl/bombcad-work#33, emmettl/bombcad-work#47: the two models trained overnight on the first-phase target
 (`--impulse first`, `datasets/main-fp`), judged where the first phase was meant to matter.
 
 - **`field-unet-fp-strict`** never saw Beirut: it holds out all 50 Beirut runs and each made-up
@@ -798,7 +798,7 @@ What the table shows:
 
 ### Walls and roofs through the envelope SDOF
 
-`scenebench field-walls` draws #19's chances on each held-out run's buildings, as
+`scenebench field-walls` draws emmettl/bombcad-work#19's chances on each held-out run's buildings, as
 `FacadeLoadSurrogate.structureProbabilities` draws them at a known yield:
 
 - a load scatter for each building side, shared by its strips, and one for each roof;
@@ -817,7 +817,7 @@ strength, as `wall-calibrate` judges them. The field model knows nothing above 2
 The loads are triangles with the surrogate's rise. Each one takes:
 
 - **Surrogate**: the surrogate's peak and impulse.
-- **Model peak, surrogate impulse**: what glass uses (#47, 20 October).
+- **Model peak, surrogate impulse**: what glass uses (emmettl/bombcad-work#47, 20 October).
 - **Model peak and first phase**: the model's peak and its first-phase impulse.
 - **Run field's peak** and **run field's peak and first phase**: the run's own field at the strip.
   This is the best a field model could give.
@@ -826,7 +826,7 @@ The pairs judged are load factors 0.8, 1, 1.3 and 1.6, times scatter scales 0, �
 draws. `judge_field.py walls` holds out each of the ten charge points in turn. It takes the pair
 with the least Brier score on the other nine and judges the held-out point's buildings with it.
 
-The test is the protective-design report's, as #19's: the Brier score, its skill against giving
+The test is the protective-design report's, as emmettl/bombcad-work#19's: the Brier score, its skill against giving
 each the mean, and the tenths test. To pass it, every tenth of chance holding 50 or more
 building-runs must be within 0.1 of the share damaged.
 
@@ -918,7 +918,7 @@ and its 0.855 to 0.917 at 0.1–0.3 kt.
   surrogate's 0.72–0.74. With the app's ×1.3, the proxy loses (0.63 against 0.75).
 - **The walls' load factor.** Both the surrogate's and the model's walls chose ×0.8 against the
   app's ×1.0, and at ×1.0 neither passes the tenths test. This is for the user: the walls'
-  calibration is #19's and was not changed.
+  calibration is emmettl/bombcad-work#19's and was not changed.
 - **Limits of this judgement:**
   - ground-floor walls only;
   - one city's 50 runs on one map;
@@ -943,20 +943,20 @@ on the surrogate:
 The model could only reach these with fields at more heights. Nothing changes by default until the
 user says so; the walls' ×0.8 factor is a separate decision.
 
-Everything is in `/Volumes/StudioData/bombcad/ml/judge/fpw/`:
+Everything is in `$BOMBCAD_DATA/ml/judge/fpw/`:
 
 - the façade judgement: `judge-strict.txt`, and `facades.txt` for the recorder tables;
 - the walls: `walls/`, `walls-summary.txt` and `walls/summary.json`;
 - the glass: `glass/`, `glass-all.txt` and `glass-byrun.txt`.
 
 ```bash
-python -I Scripts/ml/judge_field.py --data /Volumes/StudioData/bombcad/ml/datasets/main-fp \
-    --model strict=/Volumes/StudioData/bombcad/ml/field-unet-fp-strict/out/best.pt \
-    --model byrun=/Volumes/StudioData/bombcad/ml/field-unet-fp-byrun/out/best.pt --impulse first \
-    --recorded /Volumes/StudioData/bombcad/ml/judge/compare-first --peaks-out fpw/peaks --out fpw/judge-strict.json
+python -I Scripts/ml/judge_field.py --data $BOMBCAD_DATA/ml/datasets/main-fp \
+    --model strict=$BOMBCAD_DATA/ml/field-unet-fp-strict/out/best.pt \
+    --model byrun=$BOMBCAD_DATA/ml/field-unet-fp-byrun/out/best.pt --impulse first \
+    --recorded $BOMBCAD_DATA/ml/judge/compare-first --peaks-out fpw/peaks --out fpw/judge-strict.json
 python -I Scripts/ml/judge_field.py walls --peaks fpw/peaks --out-dir fpw/walls \
     --variants surrogate,strict:surrogate,strict:strict,byrun:surrogate,byrun:byrun,runField:surrogate,runField:runFieldFirst \
-    --only byrun=/Volumes/StudioData/bombcad/ml/field-unet-fp-byrun/out/split.json
+    --only byrun=$BOMBCAD_DATA/ml/field-unet-fp-byrun/out/split.json
 ```
 
 ## In the app's quick estimate (21 October 2026)
@@ -1002,8 +1002,8 @@ peaks**, under the envelope damage. It is **off by default**, and off it changes
   `ml/field-unet-fp-strict/app/field-unet-fp-strict.bcfw`.
 
 ```bash
-python -I Scripts/ml/export_field_weights.py --model /Volumes/StudioData/bombcad/ml/field-unet-fp-strict/out/best.pt \
-    --out field-unet-fp-strict.bcfw --data /Volumes/StudioData/bombcad/ml/datasets/main-fp \
+python -I Scripts/ml/export_field_weights.py --model $BOMBCAD_DATA/ml/field-unet-fp-strict/out/best.pt \
+    --out field-unet-fp-strict.bcfw --data $BOMBCAD_DATA/ml/datasets/main-fp \
     --reference beirut-p0-1,beirut-p0-3,beirut-p4-1,made-towers-s6-2 --reference-out reference
 ```
 
@@ -1054,15 +1054,15 @@ the other nine (the app's own pair, ×1.0 with the whole scatter, beside it):
 
 So for concrete walls moderate or worse, Brier skill 0.69 and 0.78 with the factor the judge chose
 (×0.8 in every fold), and at the app's own load factor of 1.0, 0.60 and 0.68. The tenths test
-passes only at ×0.8. That factor is the user's to judge again (#19's calibration, not changed
+passes only at ×0.8. That factor is the user's to judge again (emmettl/bombcad-work#19's calibration, not changed
 here). The app gives roofs the surrogate's loads, so the judge's roof proxy does not apply.
 
-The judgements are in `/Volumes/StudioData/bombcad/ml/app67/`: `app/` holds the in-app strips and
+The judgements are in `$BOMBCAD_DATA/ml/app67/`: `app/` holds the in-app strips and
 logs, `merged/` the merged strip files, and `glass/`, `glass-summary.txt`, `walls/` and `walls.txt`
 the judgements.
 
 ```bash
-python3 -I Scripts/ml/app_peaks.py run --data /Volumes/StudioData/bombcad/ml/datasets/main-fp \
+python3 -I Scripts/ml/app_peaks.py run --data $BOMBCAD_DATA/ml/datasets/main-fp \
     --weights field-unet-fp-strict.bcfw --out-dir app67/app
 python3 -I Scripts/ml/app_peaks.py merge --app app67/app --peaks judge/fpw/peaks --out-dir app67/merged
 python3 -I Scripts/ml/app_peaks.py glass --peaks app67/merged --out-dir app67/glass
@@ -1078,7 +1078,7 @@ The test is Beirut's district as the [drag was timed](surrogate-first-look.md#dr
 `scenebench drag-time --drag 0,5,…,100 --weights …`, ten frames and then the full look, on the
 Studio shared with other sessions (load 10–27). The network needs no raster of its own beyond its
 plan: `LearnedField.Plan` holds the heights and the ground for every place of the charge, as
-#34's `Prepared` holds the sight lines' raster. The plan takes 0.02 s to lay out, and the weights
+emmettl/bombcad-work#34's `Prepared` holds the sight lines' raster. The plan takes 0.02 s to lay out, and the weights
 0.05 s to load.
 
 | Colouring | Later frames, off | Later frames, on | The model's share | First frame, on |
@@ -1089,7 +1089,7 @@ plan: `LearnedField.Plan` holds the heights and the ground for every place of th
 
 - **Each frame runs the network again,** since the charge moves: its inputs and the network take
   0.17–0.20 s. The first frame also builds the graph for the plan's size, 1.3–1.7 s, kept after.
-- **#34's bar of a second a frame is still met** with the option on, except the damage's frames
+- **emmettl/bombcad-work#34's bar of a second a frame is still met** with the option on, except the damage's frames
   at 0.86–1.18 s, on a loaded Mac.
 - **The full estimate once let go took 63–78 s either way**, with or without the model. The model
   added 0.18–0.19 s, and 129,772 of the strips took its peak; the glass's 100 draws are most of
@@ -1142,9 +1142,9 @@ The command for the user, run from a checkout once the commit is on main:
 ```bash
 gh release create field-model-1 --repo emmettl/bombcad --target main --latest=false \
     --title "Learned field model 1 (field-unet-fp-strict)" \
-    --notes-file /Volumes/StudioData/bombcad/release-field-model-1/MODEL-NOTES.md \
-    /Volumes/StudioData/bombcad/release-field-model-1/field-unet-fp-strict.bcfw \
-    /Volumes/StudioData/bombcad/release-field-model-1/MODEL-NOTES.md
+    --notes-file $BOMBCAD_DATA/release-field-model-1/MODEL-NOTES.md \
+    $BOMBCAD_DATA/release-field-model-1/field-unet-fp-strict.bcfw \
+    $BOMBCAD_DATA/release-field-model-1/MODEL-NOTES.md
 ```
 
 ### The decision for the user

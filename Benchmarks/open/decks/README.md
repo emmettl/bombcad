@@ -16,14 +16,14 @@ From the repository root, build once, then use the shared GPU scheduler on a Mac
 ```bash
 swift build -c release --product blastbench
 ~/.local/bin/gpu-slot --mem 3 python3 -I Scripts/open-benchmark/run_decks.py run \
-  --binary .build/release/blastbench --out /Volumes/StudioData/bombcad/open-benchmark/my-run \
+  --binary .build/release/blastbench --out $BOMBCAD_DATA/open-benchmark/my-run \
   --code-version MY-BUILD-VERSION --code-commit MY-SOURCE-COMMIT
 python3 -I Scripts/open-benchmark/run_decks.py extract \
-  --histories /Volumes/StudioData/bombcad/open-benchmark/my-run \
-  --out /Volumes/StudioData/bombcad/open-benchmark/my-results.json \
-  --diagnostics /Volumes/StudioData/bombcad/open-benchmark/my-diagnostics.json
+  --histories $BOMBCAD_DATA/open-benchmark/my-run \
+  --out $BOMBCAD_DATA/open-benchmark/my-results.json \
+  --diagnostics $BOMBCAD_DATA/open-benchmark/my-diagnostics.json
 python3 -I Scripts/open-benchmark/score.py \
-  /Volumes/StudioData/bombcad/open-benchmark/my-results.json --strict
+  $BOMBCAD_DATA/open-benchmark/my-results.json --strict
 ```
 
 `--case ID` and `--run ID` select a smaller run. The wrapper refuses an existing output folder.

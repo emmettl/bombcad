@@ -20,12 +20,12 @@ the publishers alike), and its page reader could not resolve any host. Only web 
 what it found are routes, not documents: corrected titles, direct links, open mirrors and prices,
 each seen in search results but not opened. They are in the last column of each table, and in
 full in the session's report, kept outside the repository at
-`/Volumes/StudioData/bombcad/cloud-reports/2026-10-19/data-fetch.md`. Where a row says "not searched", the session's
+`$BOMBCAD_DATA/cloud-reports/2026-10-19/data-fetch.md`. Where a row says "not searched", the session's
 allowance of 200 searches ran out first.
 
 **First**, in this order:
 
-| Document | Link | Blocked here by | Save to `/Volumes/StudioData/bombcad/…` | Unlocks | Found from the cloud, 18 October |
+| Document | Link | Blocked here by | Save to `$BOMBCAD_DATA/…` | Unlocks | Found from the cloud, 18 October |
 |---|---|---|---|---|---|
 | Pre-Dice Throw II: ground motion and the predictions made before the shots, DNA 4363F (1977) | [DTIC ADA048003](https://apps.dtic.mil/sti/pdfs/ADA048003.pdf) | DTIC: "request is blocked", HTTP 403 | `data/PreDiceThrowII/` | A blind ground-shock test ready made: four agencies' predictions beside the motion measured at 305–1,220 m ([3a](data-survey.md#3a-air-induced-ground-shock)) | Title: *Analysis of ground motion data and prediction techniques from the Pre-DICE Throw II events*, General Electric TEMPO for DNA, covering January 1976 to March 1977; a 100 t TNT sphere and a 120 t ANFO domed cylinder, both surface-tangent. Public and indexed by search engines, so the 403 is DTIC refusing the client, not a restriction. DTIC also serves reports at `apps.dtic.mil/sti/tr/pdf/<number>.pdf` and `apps.dtic.mil/sti/html/tr/<number>/index.html`, which may get past the block |
 | Pre-Dice Throw II: the seismic measurements | [DTIC ADA064605](https://apps.dtic.mil/sti/pdfs/ADA064605.pdf) | DTIC, HTTP 403 | `data/PreDiceThrowII/` | The shots' measured motion, to set against the soil column (title not seen here) | Seismic measurements of Pre-Dice Throw II-1 (TNT), II-2 (ANFO) and Dice Throw, by the Environmental Research Institute of Michigan under AFOSR contract F44620-76-C-0077, about 1978: stations, structure from travel times, and amplitudes. The authors' names were garbled in the indexed text |
@@ -47,7 +47,7 @@ impulse from charges on or in soil ([cratering](cratering.md#limitations)), and 
 canyons ([hybrid far field](hybrid-far-field.md#limitations)). It could again only search, not
 open anything (90 searches), so each row below is a route, not a reading. Its ranked list, with
 what each search showed and what was inferred, is kept outside the repository at
-`/Volumes/StudioData/bombcad/cloud-reports/2026-10-20/data-search-4.md`. It changes the order above:
+`$BOMBCAD_DATA/cloud-reports/2026-10-20/data-search-4.md`. It changes the order above:
 - **For glass, Johns and Clubley's panes come first,** not Beauchamp and Matalucci's. Johns's
   trials put panes that held beside panes that broke, at one load in the Shoeburyness tunnel where
   Monk and Clubley's were tested; Beauchamp and Matalucci's abstract describes weakening tempered
@@ -60,7 +60,7 @@ copy seen, or a purchase or request), **restricted** (paywalled, no open version
 compared could be a [blind test](blind-tests.md), sealed by an extractor before its results are
 read; for the glass, that competes with using the panes to pin the calibration's threshold error.
 
-| Document | Link | Status | Save to `/Volumes/StudioData/bombcad/…` | Unlocks |
+| Document | Link | Status | Save to `$BOMBCAD_DATA/…` | Unlocks |
 |---|---|---|---|---|
 | Johns and Clubley's manuscripts (*J. Struct. Eng.* 2017; *IJSS* 2016) and Johns's thesis | Loughborough [2134/34706](https://dspace.lboro.ac.uk/dspace-jspui/handle/2134/34706), [2134/34710](https://dspace.lboro.ac.uk/dspace-jspui/handle/2134/34710); Southampton [381617](https://eprints.soton.ac.uk/381617), [393699](https://eprints.soton.ac.uk/393699) | open: fetch | `envelope-damage/sources/` | The glass threshold: 18 trials and 33 annealed panes at about 14 kPa and 110 ms, some held by elastic edges where clamped ones broke ([3h](data-survey.md#3h-window-glass-breaking-under-a-blast)) |
 | Monk, *Breakage response of glass panels subject to long-duration blast*, PhD, Southampton 2018 | [Southampton 430349](https://eprints.soton.ac.uk/430349) | open: fetch | `envelope-damage/sources/` | The trials beyond the ISIEMS paper's eight, their repeats' scatter, and damage probability curves: the threshold and the break time together |
@@ -77,7 +77,7 @@ read; for the glass, that competes with using the panes to pin the calibration's
 
 **Then**, when convenient:
 
-| Document | Link | Blocked here by | Save to `/Volumes/StudioData/bombcad/…` | Unlocks | Found from the cloud, 18 October |
+| Document | Link | Blocked here by | Save to `$BOMBCAD_DATA/…` | Unlocks | Found from the cloud, 18 October |
 |---|---|---|---|---|---|
 | Cubbage and Marshall (1972), *IChemE Symposium Series* 33; Cubbage and Simmonds (1955), Gas Council GC23 | IChemE archive; Gas Council reports | not found online | `fuels/TownGas/` | The British town gas the model takes and its vented-oven burning velocities, at first hand rather than through Lautkaski (2011) | **Cubbage and Marshall is free** in IChemE's Hazards archive: *Pressures generated in combustion chambers by the ignition of air–gas mixtures*, [iv-paper-05.pdf](https://www.icheme.org/media/10614/iv-paper-05.pdf). Simmonds and Cubbage, *The design of explosion reliefs for industrial drying ovens*, is there too ([i-paper-11.pdf](https://www.icheme.org/media/8402/i-paper-11.pdf), discussion [i-paper-12.pdf](https://www.icheme.org/media/8403/i-paper-12.pdf)); it is the symposium version of the oven work, probably not GC23 itself, which was not found |
 | Bauwens, Chao and Dorofeev, *IJHE* 37 (2012) 17599, and Bauwens and Dorofeev, *IJHE* 39 (2014) | [doi:10.1016/j.ijhydene.2012.04.053](https://doi.org/10.1016/j.ijhydene.2012.04.053) | paywalled (the ICHS 2011 paper was read) | `fuels/FMGlobalHydrogen/` | The journal version of the lean hydrogen vented tests, and their richer mixtures | The 2014 paper is *Effect of initial turbulence on vented explosion overpressures from lean hydrogen–air deflagrations*, *IJHE* 39(35) 20509–20515 (12–15% hydrogen). No price shown. The ICHS versions are on the [H2 Knowledge Centre](https://www.h2knowledgecentre.com/content/conference460). An open review that tabulates these tests: Vendra et al. 2017, [Warwick WRAP 97262](https://wrap.warwick.ac.uk/id/eprint/97262/2/WRAP-Performance-evaluation-empirical-models-Vendra-2017.pdf) |
@@ -178,7 +178,7 @@ it opened).
 
 ## Fetched and used
 
-Each source's files are in `/Volumes/StudioData/bombcad/data/<folder>/` with a `SOURCE.md`, never
+Each source's files are in `$BOMBCAD_DATA/data/<folder>/` with a `SOURCE.md`, never
 in the repository; a comparison commits only small derived fixtures, with their licence. A dash
 means an open paper whose numbers were transcribed into the code. The survey's
 [Downloaded, not yet in use](data-survey.md#downloaded-not-yet-in-use) and
@@ -187,7 +187,7 @@ means an open paper whose numbers were transcribed into the code. The survey's
 Nothing has moved here from the cloud session of 18 October 2026: its network reached none of the
 sources, so nothing was fetched or digitised and no `Fixtures/` folder was added. What it found
 instead, the routes, is under To fetch and To request above and in the session's report, kept outside the repository at
-`/Volumes/StudioData/bombcad/cloud-reports/2026-10-19/data-fetch.md`.
+`$BOMBCAD_DATA/cloud-reports/2026-10-19/data-fetch.md`.
 
 | Source | Folder | Compared in |
 |---|---|---|

@@ -197,7 +197,7 @@ prediction, since the protocol scores the declared mesh; it says the repeated-im
 not converged. Neither mesh punches. The predictor's 4-sample input spread (on 8 elements) puts the
 first impacts' peaks within about ±3–4% of its own centre, far narrower than the error.
 
-Outputs and the scoring script: `/Volumes/StudioData/bombcad/blind-results/hrynyk/`.
+Outputs and the scoring script: `$BOMBCAD_DATA/blind-results/hrynyk/`.
 
 ### What holds the cone, traced
 
@@ -240,7 +240,7 @@ slide out however weak its concrete is made. That is the miss: the cone's kinema
 mechanism's strength. An embedded crack whose jump takes each element's own motion across it was
 then tried and not adopted: it freed the band by three-quarters but softened the slabs' first
 impacts to 1.4–1.7 times the measured peaks
-([record](concrete-model.md#embedded-cracks-tried-and-not-adopted)). Punching stays not predicted. Runs: `/Volumes/StudioData/bombcad/concrete-stages/hrynyk-runs/`.
+([record](concrete-model.md#embedded-cracks-tried-and-not-adopted)). Punching stays not predicted. Runs: `$BOMBCAD_DATA/concrete-stages/hrynyk-runs/`.
 
 ## Blind test 2: Mendonça's slabs under an open-air charge
 
@@ -365,7 +365,7 @@ and by far.
 - **The timing is not bending alone** (added 16 October 2026, after an independent check). The
   meters' first peaks come 15–45 ms after onset, 40–45 ms on four slabs. A hand section and Biggs
   single-degree-of-freedom check by the user's Edgerton session
-  (`/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/edgerton/results.md`) shows why:
+  (`$BOMBCAD_DATA/edgerton-exchange/mendonca-slab4/edgerton/results.md`) shows why:
   - a flexural slab of this section peaks at 3–10 ms for any plausible resistance, from the bars
     alone at the estimated 350 MPa yield (about 50 kPa) to the model's cracked plateau (about
     90 kPa);
@@ -416,7 +416,7 @@ and by far.
   peak, at 3.9 ms, before any of it arrives, barely moves (4.15 to 4.19 mm). Post-reveal Mendonça
   studies use far-field faces with at least 2.5 m of margin. The far-field load, both runs, is
   exported for the Edgerton check
-  (`/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/bombcad-blast-farfield/`). Other
+  (`$BOMBCAD_DATA/edgerton-exchange/mendonca-slab4/bombcad-blast-farfield/`). Other
   copying-face users: the vented rooms moved and now default to far-field faces
   ([deflagration](deflagration.md#vented-rooms-against-the-correlations)); the rigid box is
   closed; the app has used far-field faces since 15 October.
@@ -555,13 +555,13 @@ score, are:
   secondary layout, which gives 4.4 mm.
 - On every setting every slab survives.
 
-Outputs and the scoring scripts: `/Volumes/StudioData/bombcad/blind-results/mendonca/`.
+Outputs and the scoring scripts: `$BOMBCAD_DATA/blind-results/mendonca/`.
 
 **Diagnosis after the reveal** (calibration now, not a re-scoring). Why the model's slabs are several
 times too stiff and too strong, candidate by candidate, on today's model (`8a44a1a`, the 100 µs
 strain-rate window), the air kept awake so that the sleeping-air fault does not enter, slabs 4 and
 2 (2.0 m) and slab 1 (1.3 m), 30–150 ms each, half on the CI mini; `blastbench mendonca` with the
-switches named; outputs in `/Volumes/StudioData/bombcad/mendonca-diagnosis/`. The model's first
+switches named; outputs in `$BOMBCAD_DATA/mendonca-diagnosis/`. The model's first
 peak at 2.0 m is 3.8–4.3 mm at 4 ms against 17–38 mm at 15–45 ms measured:
 
 | Candidate | Change | First peak, slabs 2 and 4 (mm) | Slab 1 at 1.3 m (mm) |
@@ -782,7 +782,7 @@ the bottom layer's centroid (×1.14) and the tensile strength's rate gain.
   100% to 94%. Not proposed as a default.
 - **The blast load, checked independently:** Mendonça's slab 4, its geometry, the model's own load
   (a 5 × 5 grid of zones over the top face) and its static curves went to an independent check, in
-  `/Volumes/StudioData/bombcad/edgerton-exchange/mendonca-slab4/`. A hand section with a Biggs single
+  `$BOMBCAD_DATA/edgerton-exchange/mendonca-slab4/`. A hand section with a Biggs single
   degree of freedom gives 3.2–5.9 mm under the model's load, across 47–90 kPa of resistance. So the
   model's 4.3 mm follows from its load, and Mendonça's gap lies in the load or the measurement (a
   flexural response peaks at 3–10 ms; the records' 15–45 ms suggest the supports or the slab moving
@@ -880,7 +880,7 @@ would hold is calibration, for later.
   slab.
 - **16 elements** move HSCV1 by +4%.
 
-Outputs and the scoring script: `/Volumes/StudioData/bombcad/blind-results/reynolds/`.
+Outputs and the scoring script: `$BOMBCAD_DATA/blind-results/reynolds/`.
 
 **Calibrated after the reveal** (16 October 2026; not the blind result, which stands as scored).
 HSCV4's bars, judged over the model's 100 mm window, reach a plastic strain of about 13.5%: at a
@@ -892,7 +892,7 @@ plastic strain 9.1% at its peak stress and 13% over 8 in, breaks at about 17%. A
 inputs as declared, every slab holds: HSCV4 peaks at 161 mm and is left 132 mm down (0.89 and 0.93
 of 182 and 142), 161.1–161.5 mm across the three roundings, and the other five are unchanged
 (their bars never near rupture), so all six peaks lie within 0.77–1.06 and the geometric means
-are 0.87 at 4 in and 0.90 at 8 in. Outputs: `/Volumes/StudioData/bombcad/rupture/`. 15% has been
+are 0.87 at 4 in and 0.90 at 8 in. Outputs: `$BOMBCAD_DATA/rupture/`. 15% has been
 the default steel's rupture strain since (16 October 2026); test 3's harness keeps the predictor's
 declared steel, so `blastbench reynolds --rupture 0.15` reproduces this.
 
@@ -1016,7 +1016,7 @@ a thirtieth of the cost (`blastbench slab --strip 25 --layers 8,16,32`): 121, 12
 with the present laws on 8 October, still rising by about 5 mm a halving; rerun on the
 defaults of 10 October (here and in [bars that slip, across the tests](#bars-that-slip-across-the-tests)),
 121, 127 and 278 mm, the 32-element hinge running away (233 elements failed, still going at
-80 ms; outputs in `/Volumes/StudioData/bombcad/review/`). So under the default laws the slab's
+80 ms; outputs in `$BOMBCAD_DATA/review/`). So under the default laws the slab's
 bending has not converged, and the finest mesh fails. Before the bars took their strain rate over their debonded length (see
 the [concrete model](concrete-model.md#strain-rate-effects)), the CEB's law for the bars let
 the strip's mid-span hinge run away on 16 and 32 elements (180 mm and 153 mm, still going at
@@ -1314,7 +1314,7 @@ been found. The band is left as it is until that record, or the RSCR series' fir
 (Thiagarajan and Johnson, ACI Structural Journal 111(6), 2014, which may hold the histories), is
 in hand.
 
-Outputs: `/Volumes/StudioData/bombcad/reynolds-prediction/rscr/`.
+Outputs: `$BOMBCAD_DATA/reynolds-prediction/rscr/`.
 
 ### Its cracks
 
@@ -4198,7 +4198,7 @@ envelopes](building-envelopes.md#one-way-damage-single-degree-of-freedom)). UFC 
 openings in the front wall puts on the inside of each wall, and §2-15.5 the mean pressure in a room
 filling through small openings. Its charts are taken from the UFC's own DPlot data (the WBDG zip
 `ufc_3_340_02_dplot_v2.zip`, Plots/02_203 to 02_235 and 02_015, in
-`/Volumes/StudioData/bombcad/envelope-damage/sources/`), not read off the figures: the back-wall
+`$BOMBCAD_DATA/envelope-damage/sources/`), not read off the figures: the back-wall
 curves (Figures 2-230 and 2-231), the inside of the front wall's (2-204, for W/H = 3/2), the side
 walls' equations 2-15 to 2-21, the wave length of Figure 2-15 and the leakage coefficient of
 Figure 2-235 (`UFCInteriorLoads`, `EnvelopeDamageAssessment.leakageFill`, 17 October 2026).
@@ -4266,7 +4266,7 @@ gauges), against the UFC's, at 0.125 m (psi):
   air's room mean, and 0.15 to 0.42 of the UFC's back-wall load. The UFC itself keeps §2-15.5 for
   vents and ducts too small for a shock to form inside, and uses §2-15.4 for windows and doors.
 - **Cost**: 2 to 3 s a case at 0.25 m, 20 to 40 s at 0.125 m, on the M4 Max shared with other work.
-  Results in `/Volumes/StudioData/bombcad/envelope-damage/ufc-openings/`.
+  Results in `$BOMBCAD_DATA/envelope-damage/ufc-openings/`.
 
 So for a window that has gone, the air the vented envelope keeps gives the UFC's load on the wall
 behind it, and the one-way fill gives a third to a sixth of it. What this does not show: the UFC
@@ -5982,7 +5982,7 @@ rule's domain by default. For the slabs at their harnesses' cells it would take 
 cells (Wang, Yao, Mendonça), so those benches keep their boxes, and late responses should be
 quoted from `--roomy` runs on 50 mm air refined by 2. That air reproduced Yao's and Wang's box
 results within 1% and 2%. The runs and their outputs are on
-`/Volumes/StudioData/bombcad/roomy/`.
+`$BOMBCAD_DATA/roomy/`.
 
 ### On the mapped start
 
@@ -6118,7 +6118,7 @@ sequence of meshes, three levels or more, with the structure's time step halved 
 `e4b43dc` (11 October 2026), plus a harness-only change that lets `--step-divisor` reach the
 impact, close-in and chamber benches (`54dff3e`; no model code or default touched). The case
 matrix's commands are used (`Scripts/concrete-matrix.py`), with `--layers` or `--h` for the
-mesh; outputs are in `/Volumes/StudioData/bombcad/convergence/`. Where three meshes change
+mesh; outputs are in `$BOMBCAD_DATA/convergence/`. Where three meshes change
 monotonically, the observed order and a Richardson estimate follow I. B. Celik et al.'s
 procedure for unequal refinement ratios (*J. Fluids Eng.* 130, 078001, 2008;
 `convergence/richardson.py`). None of these tests was repeated, so the measured scatter is not

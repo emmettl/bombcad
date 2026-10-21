@@ -194,6 +194,8 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [RoomCAD](https://github.com/emmettl/RoomCAD) | Independent room acoustics app, now in its own repository     |
 
 Each model document lists its sources, its limitations and the work that would address them.
+Paths written `$BOMBCAD_DATA/…` are the maintainers' data and scratch folder outside the
+repository (source papers, full run outputs, datasets); they are not in this repository.
 
 ## Code layout
 

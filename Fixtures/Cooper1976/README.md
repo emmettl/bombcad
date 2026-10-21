@@ -4,7 +4,7 @@
 Near-Surface Explosions of Nuclear and High-Explosive Sources*, RDA-TR-2604-001, R&D Associates
 for Lawrence Livermore Laboratory, September 1976 (report date October 1976), 53 pp., OSTI
 [6696719](https://www.osti.gov/biblio/6696719). The user's copy of the OSTI scan, fetched on
-21 October 2026, is on `/Volumes/StudioData/bombcad/sources/cooper-craters-1976/`; it is not in
+21 October 2026, is on `$BOMBCAD_DATA/sources/cooper-craters-1976/`; it is not in
 the repository.
 
 - **Table 1** (p. 22): the cratering efficiency V₀ (ft³ of apparent crater per ton) at zero height

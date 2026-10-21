@@ -5,7 +5,7 @@ simulation contest's normal-strength slabs, read off Figure 4 of L. E. Schwer, "
 simulation: a validation effort assessment", *Transactions, SMiRT-23*, Manchester, 2015, Division
 III, Paper ID 015: the central displacement of the unloaded face (mm) against time (ms), under
 load 1a (slab 2, the slab `blastbench slab` compares), its repeat 1aa (slab 4), and the lower
-load 1b (slab 6). The user's copy is on `/Volumes/StudioData/bombcad/data/Schwer2015/`; only
+load 1b (slab 6). The user's copy is on `$BOMBCAD_DATA/data/Schwer2015/`; only
 these derived numbers are kept, with citation.
 
 **How.** The figure is a 621 × 605 pixel image in three colours. Per pixel column, the median

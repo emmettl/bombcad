@@ -27,7 +27,7 @@ give the tests' own scatter.
 
 - **Every measured response**: displacements, pressures, accelerations, crack patterns,
   photographs, and whether each slab survived. They are in
-  `/Volumes/StudioData/bombcad/blind/mendonca-sealed/`, off the repository, with the records
+  `$BOMBCAD_DATA/blind/mendonca-sealed/`, off the repository, with the records
   and the papers.
 - **The papers' account of the series** beyond the set-up: its order and reasons, which refer
   to results.
@@ -55,5 +55,5 @@ the records by `seal_measured.py` before any prediction) and that script. `SEALE
 checks that nothing changed between sealing and the reveal:
 
 ```bash
-cd /Volumes/StudioData/bombcad/blind/mendonca-sealed && shasum -a 256 -c "$OLDPWD/Samples/Mendonca2020/SEALED.sha256"
+cd $BOMBCAD_DATA/blind/mendonca-sealed && shasum -a 256 -c "$OLDPWD/Samples/Mendonca2020/SEALED.sha256"
 ```

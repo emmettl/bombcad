@@ -2,7 +2,7 @@
 
 Charts from UFC 3-340-02, *Structures to Resist the Effects of Accidental Explosions*, US
 Department of Defense, 5 December 2008, digitised by `Scripts/digitise-sources`. The user's copy
-is on `/Volumes/StudioData/bombcad/data/UFC-3-340-02/`; only these derived numbers are kept here,
+is on `$BOMBCAD_DATA/data/UFC-3-340-02/`; only these derived numbers are kept here,
 with citation. Units are the manual's own (psi, ms, ft, lb); W is the TNT charge weight in lb.
 
 | File | Figures (PDF pages) | What | How read | Error |

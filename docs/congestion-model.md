@@ -183,7 +183,7 @@ is lit in. That cell burns almost at constant volume as its kernel grows to its 
 MERGE's gauge 5 cm from ignition reads as the others do.
 
 **Results** (the model's peak over the measured, methane / propane; outputs in
-`/Volumes/StudioData/bombcad/merge/`):
+`$BOMBCAD_DATA/merge/`):
 
 | Cells (A, C; E, C*) | A | C | E | C* |
 |---|---|---|---|---|
@@ -259,7 +259,7 @@ model that gets the pitch's effect would have to share the obstacles between wha
 and what it models, as the cells shrink.
 
 **Tried again and not kept** (19 October 2026; branch `congestion-placed`, outputs in
-`/Volumes/StudioData/bombcad/merge2/`). Each pipe was placed in the cell its centreline crosses,
+`$BOMBCAD_DATA/merge2/`). Each pipe was placed in the cell its centreline crosses,
 symmetric about the rig's middle, and counted over the cell as PDRsetFields counts. A cell holding
 one pipe then has no Schelkin term (n^¼ − 1 is nought) and folds the flame only by its own pipe,
 D over the cell, so nothing modelled is counted twice. The obstacle turbulence also took PDRFoam's

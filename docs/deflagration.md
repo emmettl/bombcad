@@ -478,7 +478,7 @@ Six tests in that chamber, near-stoichiometric methane, nearly quiescent (u′ a
 vent covered by a 0.02 mm polypropylene sheet. The model treats the vent as open, as their LES did.
 The peaks are plotted only (the back wall's pressure, P1, filtered at 80 Hz, and the flame's speed
 along the vent's axis), and were digitised here from the PDF's vector paths
-(`/Volumes/StudioData/bombcad/data/Bauwens2008/digitised/`, calibrated on 5–11 labelled ticks an
+(`$BOMBCAD_DATA/data/Bauwens2008/digitised/`, calibrated on 5–11 labelled ticks an
 axis, to 0.01 kPa). `blastbench deflagration vented --vent 5.4 --percent 9.0 --speeds` and so on,
 0.1 m cells, far-field faces (the copying faces' runs alongside):
 
@@ -532,7 +532,7 @@ and far-field faces. Tests 1 and 5 are lit in the middle, test 4 at the back wal
 test 6 is run for the stop rule. The cells are 0.1 m. The flame's arrival is taken every quarter
 metre along the vent's axis, and every 50 ms the run prints the back front's position and the
 gas's velocity just beyond it (`blastbench deflagration vented --speeds --arrival-spacing 0.25
---back-front`). The runs are in `/Volumes/StudioData/bombcad/deflagration/stall-matrix/`. Peaks are
+--back-front`). The runs are in `$BOMBCAD_DATA/deflagration/stall-matrix/`. Peaks are
 given over the measured ones; the closed sphere is the 48-cell one [above](#a-closed-sphere),
 `vessel --accelerated --cells 48`.
 

@@ -2,7 +2,7 @@
 
 `make_fixtures.py DATA OUT` rebuilds `Fixtures/UFC-3-340-02`, `Fixtures/Schwer2015`,
 `Fixtures/XuLu2016` and `Fixtures/Cooper1996` from the PDFs in DATA
-(`/Volumes/StudioData/bombcad/data/`). It needs numpy and Pillow (a venv:
+(`$BOMBCAD_DATA/data/`). It needs numpy and Pillow (a venv:
 `python3 -m venv v && v/bin/pip install numpy pillow`) and poppler's pdftocairo, pdftoppm,
 pdfimages and pdftotext.
 
@@ -18,4 +18,4 @@ pdfimages and pdftotext.
   eye; they only steer the traces where lines cross).
 
 Each fixture's README gives its method and error. Intermediate files are under
-`/Volumes/StudioData/bombcad/digitise-sources/`.
+`$BOMBCAD_DATA/digitise-sources/`.

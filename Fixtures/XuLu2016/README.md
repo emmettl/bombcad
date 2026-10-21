@@ -4,7 +4,7 @@
 "Numerical modelling for reinforced concrete response to blast load: understanding the demands
 on material models", ACI SP-306 (2016): the experiment's central deflection (mm, every 0.5 ms)
 and the blast force they applied to their quarter-slab model (kN, every 0.25 ms). The user's copy
-is on `/Volumes/StudioData/bombcad/data/XuLu2016/`; only these derived numbers are kept.
+is on `$BOMBCAD_DATA/data/XuLu2016/`; only these derived numbers are kept.
 
 **Read on the right-hand axes.** The figure's two axes do not agree (its left axis tops at 140 mm
 where its right reads 4.5 in, 114 mm; 120 kN against 30 kip, 133 kN). Read on the left, the

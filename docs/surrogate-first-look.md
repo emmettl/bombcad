@@ -256,7 +256,7 @@ So the coefficients the app uses keep the fitted rise share for now, its standin
 refitted rise terms go in with the next refit of the load terms (the shielding and near-field
 refit), which must bring the far impulses down with them; judged against the glass chances'
 test before they are taken. The refitted terms, the judgements and the calibration are in
-/Volumes/StudioData/bombcad/rise-fix.
+`$BOMBCAD_DATA/rise-fix`.
 
 ### Shielding, streets and the close-in branch (20 October 2026)
 
@@ -294,7 +294,7 @@ Fitted and judged on fine runs at 1 t (emmettl/bombcad-work#4; the numbers in
     1.1 kt.
 
   So it is held, not landed. Its coefficients are in
-  `/Volumes/StudioData/bombcad/protective/refit/fit-sq.json` (`gate/` holds its judgements) and
+  `$BOMBCAD_DATA/protective/refit/fit-sq.json` (`gate/` holds its judgements) and
   its term in `terms` at nothing
   ([protective design](protective-design.md#stage-5-the-refit-and-what-it-changes-for-a-plan)).
 - **Two limitations found.**
@@ -318,7 +318,7 @@ October; the terms were fitted on the balloon start. Three causes were traced wi
   band of scaled distance.
 - **Not the comparison.** The judge took ground-floor strips only. Upper storeys read higher still
   (1.38 against 1.20 at Z 3–5 for the 355 t charge).
-- **The close-in branch on shielded façades.** The branch (#4, Z 1.5–4.6) puts Kingery–Bulmash
+- **The close-in branch on shielded façades.** The branch (emmettl/bombcad-work#4, Z 1.5–4.6) puts Kingery–Bulmash
   times the open façades' ratio in place of every fitted term but the street's. That drops the
   shielding, and a street raises it further. Peak, the surrogate's over the run's, at Z under 5:
 
@@ -336,7 +336,7 @@ October; the terms were fitted on the balloon start. Three causes were traced wi
     its reach to the side are alike for both.
 - **Keeping the shielding terms in the branch does little** (1.72 → 1.65 behind buildings in
   Beirut's streets). The fitted terms take only a few per cent off for shielding.
-- **#4's held refit (option B, fit-sq.json) is no different here**: 1.62 against 1.63 at Z 3–5
+- **emmettl/bombcad-work#4's held refit (option B, fit-sq.json) is no different here**: 1.62 against 1.63 at Z 3–5
   in Beirut's streets.
 
 **A candidate, not proposed for adoption: the branch for components in sight of the charge only**
@@ -369,7 +369,7 @@ October; the terms were fitted on the balloon start. Three causes were traced wi
 - **Caveats.** The strength draws were keyed by envelope ids that are new each time a scene is
   laid out (fixed since), so the before and after differ by sampling as well. That is in the third
   decimal, far less than the concrete chances' failure. The data, scripts and judgements are in
-  /Volumes/StudioData/bombcad/start-bias.
+  `$BOMBCAD_DATA/start-bias`.
 
 ### Dragging the charge (20 October 2026)
 
@@ -532,7 +532,7 @@ threshold-refine`; the Studio shared):
 The close calls' refined runs called walls damaged at 400–600 m of 0.5 kt, on 9 of 16 buildings,
 where the estimate gave 0.21–0.52. At the scene's exact yield the estimate still gives 0.03–0.48,
 so the yield's spread is not the cause. The question was whether the refined runs are right, or
-whether they overshoot (`scenebench wall-convergence`, emmettl/bombcad-work#19 and #34).
+whether they overshoot (`scenebench wall-convergence`, emmettl/bombcad-work#19 and emmettl/bombcad-work#34).
 
 **Five of those buildings, 494–603 m** (Beirut's 4 m layout, the threshold refinement's cut scene).
 Each front wall's median peak, positive-phase impulse (the most its running integral reaches) and
@@ -575,7 +575,7 @@ two mirror planes, 320 m up, the open faces 4 m/kg^(1/3) beyond):
   level, which the block does not have.
 
 **So the 4 m runs' wall loads are biased low at 400–600 m of 0.5 kt.** Their peaks are 13–19% low
-on Beirut's façades and 27% low in the open. The walls' chances (#19) were calibrated on those
+on Beirut's façades and 27% low in the open. The walls' chances (emmettl/bombcad-work#19) were calibrated on those
 runs. The proposal, not made here: run `wall-calibrate`'s reference again on air refined to 2 m
 near the walls. The interim alternative is a wall peak factor of about ×1.15 with the impulse
 ×0.95, in place of ×1.0 on both.

@@ -26,9 +26,9 @@ For the planned first-phase dataset, with a built `scenebench` on the Mac:
 
 ```sh
 python3 Scripts/cuda/field-runs.py bombcad-pc \
-  --dataset /Volumes/StudioData/bombcad/ml/datasets/main-fp-cuda \
-  --scratch /Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch \
-  --reference /Volumes/StudioData/bombcad/ml/datasets/main-fp \
+  --dataset $BOMBCAD_DATA/ml/datasets/main-fp-cuda \
+  --scratch $BOMBCAD_DATA/cuda-dataset-backend/field-batch \
+  --reference $BOMBCAD_DATA/ml/datasets/main-fp \
   --scenebench .build/release/scenebench
 ```
 

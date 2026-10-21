@@ -12,7 +12,7 @@ The historical entry is unchanged.
   transcribed from its six retained logs. These budget figures are diagnostics, not references.
 
 Raw histories, logs and the 25 MB runtime snapshot are retained on StudioData at
-`/Volumes/StudioData/bombcad/open-benchmark/control-32a3583a/`; they are not bundled in this
+`$BOMBCAD_DATA/open-benchmark/control-32a3583a/`; they are not bundled in this
 repository. The receipt identifies their bytes, but cannot make them available on another host.
 Reproduce them with the run command in the protocol, using a fresh output directory and the
 source/build revision recorded here. Another GPU/compiler may differ in its last bits: retain

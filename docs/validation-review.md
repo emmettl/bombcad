@@ -90,7 +90,7 @@ validation.
 - The bold "**The peak has converged at 105 to 107 mm**" is also under the earlier laws, in a
   paragraph a reader can take as current.
 - **Rerun with this review** (`blastbench slab --strip 25 --layers 8,16,32`, outputs in
-  `/Volumes/StudioData/bombcad/review/slab-strip-8-16-32.txt`): **121, 127 and 278 mm**, the
+  `$BOMBCAD_DATA/review/slab-strip-8-16-32.txt`): **121, 127 and 278 mm**, the
   32-element strip still going at 80 ms with 233 elements failed (RMS 7.2, 10.9 and 61.1 mm). The
   10 October table stands; the 131 mm is stale. On today's defaults the finest strip fails.
 

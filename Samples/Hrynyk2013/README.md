@@ -23,7 +23,7 @@ dynamic loads*, PhD thesis, 2013, TSpace 1807/35851, CC BY 2.5 Canada): 1.8 m sq
 
 - **Every measured response**: displacements, reactions, impact forces, accelerations, strains,
   crack widths, penetration, damage descriptions and photographs. They are in
-  `/Volumes/StudioData/bombcad/blind/hrynyk-sealed/`, off the repository, with the raw
+  `$BOMBCAD_DATA/blind/hrynyk-sealed/`, off the repository, with the raw
   records and the thesis.
 - **How many impacts each slab took.** The data's file names (one spreadsheet per impact) and
   the thesis's slab-by-slab chapter give it, and a slab's last impact is when it was judged
@@ -54,5 +54,5 @@ processing scripts. `SEALED.sha256` lets anyone check that nothing in it changed
 sealing and the reveal:
 
 ```bash
-cd /Volumes/StudioData/bombcad/blind/hrynyk-sealed && shasum -a 256 -c "$OLDPWD/Samples/Hrynyk2013/SEALED.sha256"
+cd $BOMBCAD_DATA/blind/hrynyk-sealed && shasum -a 256 -c "$OLDPWD/Samples/Hrynyk2013/SEALED.sha256"
 ```

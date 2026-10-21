@@ -98,7 +98,7 @@ blown-out share at the large one. It does worse at 0.5 kt, and beyond 2.5 km it 
 broken above the full run's at the larger yields (0.41–0.44 against 0.18 at 0.5 kt; 0.96 against
 0.65 at 1.1 kt), where the held match already ran over. No fading length gains overall, so the app
 holds the match (`FarFieldSet.trendDamping` nil). The results are in
-/Volumes/StudioData/bombcad/hybrid-damp (`compare.py`).
+`$BOMBCAD_DATA/hybrid-damp` (`compare.py`).
 
 Beyond about 2.2 km the full run's own side faces lie near the buildings
 ([Beirut](beirut-2020.md#what-the-model-can-and-cannot-represent)), so its far bands are the less
@@ -251,7 +251,7 @@ puts 85% of the 146 wall gauges within 1.2× leaving one run out (the form above
 charge were run too. See [the surrogate](surrogate-first-look.md#shielding-streets-and-the-close-in-branch-20-october-2026)
 and [protective design](protective-design.md#stage-4-streets).
 
-The results are in /Volumes/StudioData/bombcad/canyon:
+The results are in `$BOMBCAD_DATA/canyon/`:
 
 - `canyon-m1000-dx4.00_2.00_1.00_0.50.csv`: 15 m walls on 4, 2, 1 and 0.5 m cells;
 - `h7`, `h30` and `kt-scaled`: the other heights;

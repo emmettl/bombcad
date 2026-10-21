@@ -891,7 +891,7 @@ form of the rate: the existing eddy viscosity is zero in the expanding fireball 
 late rising one. A rate keyed to the products' own interface, such as a mixture fraction's
 gradient or a k_sgs without the shock sensor, might behave as the plan meant; that would be a
 new stage, and it needs the user's say. Runs and scripts (`judge.py`, `governs.py`, `kbsum.py`) are
-in `/Volumes/StudioData/bombcad/fireball-ebu/`.
+in `$BOMBCAD_DATA/fireball-ebu/`.
 
 ## Output
 

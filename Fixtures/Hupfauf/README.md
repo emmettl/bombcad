@@ -25,5 +25,5 @@ assigned to shots only where the thesis names them. The slabs with steel fibres 
 layer (SN81, SN148–SN155, SN161–SN164, SN171–SN173) are left out.
 
 The original PDFs are not in the repository; they were fetched with the user's agreement to
-`/Volumes/StudioData/bombcad/data/Hupfauf/`. `blastbench contact` runs the model against these
+`$BOMBCAD_DATA/data/Hupfauf/`. `blastbench contact` runs the model against these
 data (see [Validation](../../docs/validation.md#slabs-under-contact-charges)).

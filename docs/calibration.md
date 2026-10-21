@@ -237,7 +237,7 @@ digits given at 3,000 steps and seed 1, and the 0.1 column of the prior's table.
 leave-one-out errors are as stated, and their rms matches their predicted spread (0.020 against
 0.020 for Saatci's peak, 0.065 against 0.057 for its residual). The likelihood and the sampler
 are correct as written. Its report is kept outside the repository, at
-`/Volumes/StudioData/bombcad/cloud-reports/2026-10-20/review-crackedhex-calib.md`. What it found:
+`$BOMBCAD_DATA/cloud-reports/2026-10-20/review-crackedhex-calib.md`. What it found:
 - **The glass threshold regime is a model against a model.** Its four "measurements" are E1300's
   load resistances, and its outputs BombCAD's own Beason–Morgan flaw model with the whole pane at
   its largest stress; E1300's charts are the same flaw model with the risk integrated over the

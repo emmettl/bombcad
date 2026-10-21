@@ -29,7 +29,7 @@ hdl:10355/48353; no rights statement in the record, so only numbers are given he
 
 - **Every measured response:** deflection and strain histories, peak and residual
   deflections, times, damage photographs and descriptions, and whether any slab failed. They
-  are in `/Volumes/StudioData/bombcad/blind/reynolds-sealed/`, off the repository, with the
+  are in `$BOMBCAD_DATA/blind/reynolds-sealed/`, off the repository, with the
   thesis.
 - **The thesis's account of the series' order** and why each load was chosen, which refers to
   results.
@@ -64,5 +64,5 @@ The sealed folder holds the thesis and its source note (in `raw.tar`, unpacked b
 `SEALED.sha256` checks that nothing changed between sealing and the reveal:
 
 ```bash
-cd /Volumes/StudioData/bombcad/blind/reynolds-sealed && shasum -a 256 -c "$OLDPWD/Samples/Reynolds2015/SEALED.sha256"
+cd $BOMBCAD_DATA/blind/reynolds-sealed && shasum -a 256 -c "$OLDPWD/Samples/Reynolds2015/SEALED.sha256"
 ```
