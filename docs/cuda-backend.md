@@ -477,6 +477,30 @@ ground-floor strips, so this result cannot justify their admission or establish 
 bound. The study retains that coverage limitation, exact sampling controls and full outcomes.
 Its real CLI control also fixes `field-walls` numeric CSV reading for CRLF as well as LF.
 
+### Receiver-fixture sensitivity
+
+The follow-up applies all eight rejected Beirut/terrain receiver peak/first-phase pairs, plus
+the legal arithmetic variants and isolated CUDA substitutions, to four predeclared uniform-load
+fixtures: RC wall/roof, masonry wall and glass pane. `blastmodel receiver-fixtures` runs both
+raw-pair and existing 3% product triangles. Across three bin widths and both Mac/Linux CPUs,
+the 1,920 assessments per host have no variant-induced damage-level changes. Continuous
+responses do change: a masonry fixture still below the failed category shifts about 0.080°
+(19.5%). A larger 4.025° shift occurs after both alternatives are already classified failed;
+it is not a credible post-collapse deformation prediction. No categorical changes across these
+bin widths establish convergence or an error bound.
+
+These are hypothetical uniform component loads, not inferred building-area loads or the actual
+pressure histories. Both host outputs agree within the existing sweep comparison's `1e-9`
+numeric tolerance. No phase definition or admission rule changes. The
+[full receiver-fixture evidence](../Benchmarks/CUDAAcceptance/2026-10-21-receiver-fixtures/summary.md)
+retains the declarations, source pairs, response ranges, controls and limitations.
+
+The CPU runner's source transfer currently precedes its host lock; emmettl/bombcad-work#68
+tracks protection of active source/input snapshots. Ownership checks and coordination used in
+this study are advisory controls, not a fix for that race.
+
+### Independent geometry and grid controls
+
 [Independent geometry/grid controls](../Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/summary.md)
 extend the arithmetic/path study to synthetic flat and terrain geometries, each at 4 m and 8 m
 with fixed physical domains. All 16 explicit-policy tiled/full-grid pairs are bit-identical;
@@ -488,6 +512,8 @@ No arithmetic setting resolves that terrain case. These are within-grid sensitiv
 not convergence, physical validation or a revised reference/admission policy. Retained arrays,
 localized failures and exact scripts support the remaining product/label work in
 emmettl/bombcad-work#62 and emmettl/bombcad-work#63.
+
+### Whole-field reference spread
 
 [The full-field spread study](../Benchmarks/CUDAAcceptance/2026-10-21-reference-spread/study.json)
 uses six distinct reference outcomes (default tiled/full plus four explicit policies), with

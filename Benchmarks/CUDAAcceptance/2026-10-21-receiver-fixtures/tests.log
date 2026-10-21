@@ -1,0 +1,110 @@
+Building for debugging...
+[Computing dependencies]
+[Provisioning 3 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+[6 / 54] BlastModel
+[10 / 60] BlastModel
+[12 / 62] BlastModel
+[20 / 63] BlastModel
+[23 / 69] BombCAD_RigidBoxDemo
+[29 / 68] BlastCore
+[42 / 83] BlastCore
+[42 / 84] BlastModelTests-product
+[45 / 99] BlastModelTests-product
+[48 / 99] BlastModelTests-product
+[52 / 99] BlastModelTests-product
+[55 / 99] BlastModelTests-product
+[56 / 99] BlastModelTests-product
+[57 / 99] BlastModelTests-product
+[59 / 99] BlastModelTests-product
+[60 / 99] BlastModelTests-product
+[61 / 99] BlastModelTests-product
+[61 / 99] BlastCore
+[63 / 105] rigidboxdemo-product
+[64 / 105] BlastRender
+[64 / 105] rigidboxdemo-product
+[67 / 116] BlastRender
+[68 / 116] rigidboxdemo-product
+[71 / 115] BlastModelTests-product
+[77 / 115] BlastRender
+[81 / 120] blastbench-product
+[82 / 135] BlastRender
+[86 / 150] blastbench-product
+[88 / 150] scenebench-product
+[89 / 150] scenebench-product
+[91 / 165] BombCAD-product
+[95 / 165] scenebench-product
+[96 / 180] BombCAD
+[100 / 180] scenebench-product
+[104 / 180] blastbench-product
+[106 / 180] blastbench-product
+[109 / 180] scenebench-product
+[111 / 180] blastbench-product
+[113 / 180] blastbench-product
+[114 / 180] blastbench-product
+[118 / 180] BombCAD-product
+[120 / 180] BombCAD-product
+[122 / 180] BombCAD-product
+[124 / 180] BombCAD-product
+[125 / 180] BombCAD-product
+[126 / 180] BombCAD-product
+[129 / 180] BombCAD-product
+[132 / 180] BombCAD-product
+[133 / 180] BombCAD
+[134 / 180] BombCAD
+[135 / 180] BombCAD
+[137 / 180] BombCAD
+[138 / 180] BombCAD
+[139 / 180] BombCAD
+[140 / 180] BombCAD
+[142 / 180] BombCAD-product
+[143 / 180] BombCAD-product
+[144 / 182] BombCAD
+[147 / 182] BombCAD
+[148 / 182] BombCAD
+[149 / 187] BombCAD
+[152 / 187] BlastRender
+[157 / 187] BlastCore
+[161 / 187] BlastCoreTests-product
+[161 / 187] BlastModelTests-product
+[167 / 188] BlastModelTests-product
+[168 / 188] BlastModelTests-product
+[169 / 187] blastmodel-product
+[176 / 205] blastbench-product
+[178 / 205] BlastCoreTests-product
+[179 / 205] BlastCoreTests-product
+[181 / 205] BlastCoreTests-product
+[182 / 205] BlastCoreTests-product
+[183 / 205] BlastCoreTests-product
+[184 / 205] BlastCoreTests-product
+[186 / 205] BlastCoreTests-product
+[190 / 205] blastbench-product
+[194 / 210] rigidboxdemo-product
+[195 / 212] BombCAD-product
+[196 / 214] BombCAD-product
+[197 / 214] BlastCoreTests-product
+[197 / 214] BombCAD
+[200 / 209] BlastCoreTests-product
+[216 / 224] BombCADTests-product
+[217 / 224] BombCADTests-product
+[217 / 224] BlastCoreTests-product
+[219 / 226] BlastCoreTests-product
+[219 / 225] BombCADTests-product
+[221 / 225] BombCADTests-product
+[223 / 225] BombCADTests-product
+[225 / 227] BombCADTests-product
+Build complete! (33.92 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Receiver load fixtures" started.
+◇ Test "CLI refuses an existing output without changing its bytes" started.
+◇ Test "Invalid and oversized declarations refuse the whole study" started.
+◇ Test "Raw binned triangles conserve the declared impulse, including limiting rises" started.
+✔ Test "Invalid and oversized declarations refuse the whole study" passed after 0.001 seconds.
+✔ Test "CLI refuses an existing output without changing its bytes" passed after 0.002 seconds.
+✔ Test "Raw binned triangles conserve the declared impulse, including limiting rises" passed after 0.007 seconds.
+✔ Suite "Receiver load fixtures" passed after 0.007 seconds.
+✔ Test run with 3 tests in 1 suite passed after 0.007 seconds.

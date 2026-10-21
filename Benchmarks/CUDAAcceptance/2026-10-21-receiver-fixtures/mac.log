@@ -1,0 +1,8 @@
+remote-sweep: building blastmodel in /Users/louisemmett/Developer/Projects/bombcad
+remote-sweep: built in 106 s
+remote-sweep: case bin-0.0002: receiver-fixtures --input /Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/input-0.0002.json --out /Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/results/receiver-fixtures-20261021-here/bin-0.0002/results.json
+remote-sweep: case bin-0.0002: exit 0 in 0.4 s
+remote-sweep: case bin-0.0001: receiver-fixtures --input /Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/input-0.0001.json --out /Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/results/receiver-fixtures-20261021-here/bin-0.0001/results.json
+remote-sweep: case bin-0.0001: exit 0 in 0.1 s
+remote-sweep: case bin-5e-05: receiver-fixtures --input /Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/input-5e-05.json --out /Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/results/receiver-fixtures-20261021-here/bin-5e-05/results.json
+remote-sweep: case bin-5e-05: exit 0 in 0.1 s

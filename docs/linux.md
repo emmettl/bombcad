@@ -22,10 +22,22 @@ swift build -c release --product blastmodel
 | `infer-charge` | The charge's yield and place from arrivals, and glass ([charge inference](charge-inference.md)) | `scenebench infer-charge` |
 | `soil-column` | The layered soil column against its closed form, and its cost | `blastbench soilcolumn` |
 | `halfspace-calibrate` | The half-space's direct source against UFC's peak particle velocity | `blastbench groundmotion --calibrate` |
+| `receiver-fixtures` | Declared peak/first-phase pairs on hypothetical uniform panel/pane loads ([portability study](cuda-backend.md#receiver-fixture-sensitivity)) | CPU-only diagnostic |
 
 Each takes the same options as the bench beside it. Both run the same code, which lives in
 `Sources/BlastModel/Studies/`: on this Mac `blastmodel protect` gives the same plans as `scenebench
 protect`, byte for byte.
+
+`receiver-fixtures --input declared.json --out NEW.json` instead reads explicit fixtures and
+positive peak/impulse pairs, with format `bombcad-receiver-fixtures-1`. The request specifies
+`binS`, `riseShare`, `loads` (`id`, `peakPa`, `impulsePaS`) and `fixtures` (`id`, `kind`,
+`material`, `widthM`, `heightM`, `thicknessM`). Kinds are wall, roof or pane; structural material
+uses `EnvelopeConstruction.Kind`. Panes use the declared glass thickness and ordinary glass
+assumptions, regardless of the structural material field. All four edges are supported; other
+construction assumptions retain their defaults. Results retain both raw-pair binned triangles
+and the existing 3% product pulses, integrated impulse, response ranges and damage levels.
+They do not infer area loads from point receivers or admit datasets. Existing outputs, invalid
+dimensions/IDs/steps and oversized pulses are refused.
 
 **What it needs.**
 - A district run's saved loads (`district-compare --save-loads`) for the judges.

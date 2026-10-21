@@ -1,0 +1,11 @@
+remote-sweep: sending this worktree to bombcad-pc:~/bombcad-sweeps/src
+remote-sweep: sending 3 inputs
+remote-sweep: building blastmodel in /home/lemme/bombcad-sweeps/src
+remote-sweep: built in 141 s
+remote-sweep: case bin-0.0002: receiver-fixtures --input /home/lemme/bombcad-sweeps/inputs/receiver-fixtures-20261021/input-0.0002.json --out /home/lemme/bombcad-sweeps/runs/receiver-fixtures-20261021/bin-0.0002/results.json
+remote-sweep: case bin-0.0002: exit 0 in 0.1 s
+remote-sweep: case bin-0.0001: receiver-fixtures --input /home/lemme/bombcad-sweeps/inputs/receiver-fixtures-20261021/input-0.0001.json --out /home/lemme/bombcad-sweeps/runs/receiver-fixtures-20261021/bin-0.0001/results.json
+remote-sweep: case bin-0.0001: exit 0 in 0.1 s
+remote-sweep: case bin-5e-05: receiver-fixtures --input /home/lemme/bombcad-sweeps/inputs/receiver-fixtures-20261021/input-5e-05.json --out /home/lemme/bombcad-sweeps/runs/receiver-fixtures-20261021/bin-5e-05/results.json
+remote-sweep: case bin-5e-05: exit 0 in 0.2 s
+remote-sweep: exit 0; results in /Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/results/receiver-fixtures-20261021-bombcad-pc

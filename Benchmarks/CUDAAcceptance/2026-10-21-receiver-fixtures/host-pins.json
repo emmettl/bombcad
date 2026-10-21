@@ -1,0 +1,9 @@
+{
+  "status": "complete",
+  "sourceFilesVerified": 286,
+  "inputsVerified": 3,
+  "binary": "/home/lemme/bombcad-sweeps/src/.build/out/Products/Release-linux-x86_64/blastmodel",
+  "binarySHA256": "5d811a514e5f9b0bb3a431b8fb0a5c3215767776e0914de716e8b1d45f6b11cf",
+  "sweepLockExists": false,
+  "scope": "Read-only source/input/binary audit after completed sweep; not continuous source observation"
+}

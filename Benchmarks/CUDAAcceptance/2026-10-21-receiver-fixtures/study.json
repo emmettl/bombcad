@@ -1,0 +1,591 @@
+{
+  "status": "complete",
+  "scope": "Actual rejected point peak/first-phase pairs applied uniformly to predeclared component fixtures. Hypothetical sensitivity, not inferred area loads, full histories, physical validation or dataset admission.",
+  "revisionObserved": "0e135ad4fe873b9c295912db22b4c51c9dbef0ba",
+  "points": [
+    {
+      "id": "beirut-159267",
+      "case": "beirut",
+      "columnIndex": 159267,
+      "failedChannels": [
+        0
+      ],
+      "loads": {
+        "default": "beirut-159267-default",
+        "full": "beirut-159267-full",
+        "fast-on": "beirut-159267-fast-on",
+        "fast-off": "beirut-159267-fast-off",
+        "safe-on": "beirut-159267-safe-on",
+        "safe-off": "beirut-159267-safe-off",
+        "cuda": "beirut-159267-cuda",
+        "repeat": "beirut-159267-repeat",
+        "cudaPeak": "beirut-159267-cudaPeak",
+        "cudaPhase": "beirut-159267-cudaPhase"
+      }
+    },
+    {
+      "id": "beirut-159777",
+      "case": "beirut",
+      "columnIndex": 159777,
+      "failedChannels": [
+        0
+      ],
+      "loads": {
+        "default": "beirut-159777-default",
+        "full": "beirut-159777-full",
+        "fast-on": "beirut-159777-fast-on",
+        "fast-off": "beirut-159777-fast-off",
+        "safe-on": "beirut-159777-safe-on",
+        "safe-off": "beirut-159777-safe-off",
+        "cuda": "beirut-159777-cuda",
+        "repeat": "beirut-159777-repeat",
+        "cudaPeak": "beirut-159777-cudaPeak",
+        "cudaPhase": "beirut-159777-cudaPhase"
+      }
+    },
+    {
+      "id": "beirut-159779",
+      "case": "beirut",
+      "columnIndex": 159779,
+      "failedChannels": [
+        0
+      ],
+      "loads": {
+        "default": "beirut-159779-default",
+        "full": "beirut-159779-full",
+        "fast-on": "beirut-159779-fast-on",
+        "fast-off": "beirut-159779-fast-off",
+        "safe-on": "beirut-159779-safe-on",
+        "safe-off": "beirut-159779-safe-off",
+        "cuda": "beirut-159779-cuda",
+        "repeat": "beirut-159779-repeat",
+        "cudaPeak": "beirut-159779-cudaPeak",
+        "cudaPhase": "beirut-159779-cudaPhase"
+      }
+    },
+    {
+      "id": "beirut-164452",
+      "case": "beirut",
+      "columnIndex": 164452,
+      "failedChannels": [
+        2
+      ],
+      "loads": {
+        "default": "beirut-164452-default",
+        "full": "beirut-164452-full",
+        "fast-on": "beirut-164452-fast-on",
+        "fast-off": "beirut-164452-fast-off",
+        "safe-on": "beirut-164452-safe-on",
+        "safe-off": "beirut-164452-safe-off",
+        "cuda": "beirut-164452-cuda",
+        "repeat": "beirut-164452-repeat",
+        "cudaPeak": "beirut-164452-cudaPeak",
+        "cudaPhase": "beirut-164452-cudaPhase"
+      }
+    },
+    {
+      "id": "beirut-200270",
+      "case": "beirut",
+      "columnIndex": 200270,
+      "failedChannels": [
+        2
+      ],
+      "loads": {
+        "default": "beirut-200270-default",
+        "full": "beirut-200270-full",
+        "fast-on": "beirut-200270-fast-on",
+        "fast-off": "beirut-200270-fast-off",
+        "safe-on": "beirut-200270-safe-on",
+        "safe-off": "beirut-200270-safe-off",
+        "cuda": "beirut-200270-cuda",
+        "repeat": "beirut-200270-repeat",
+        "cudaPeak": "beirut-200270-cudaPeak",
+        "cudaPhase": "beirut-200270-cudaPhase"
+      }
+    },
+    {
+      "id": "beirut-255969",
+      "case": "beirut",
+      "columnIndex": 255969,
+      "failedChannels": [
+        2
+      ],
+      "loads": {
+        "default": "beirut-255969-default",
+        "full": "beirut-255969-full",
+        "fast-on": "beirut-255969-fast-on",
+        "fast-off": "beirut-255969-fast-off",
+        "safe-on": "beirut-255969-safe-on",
+        "safe-off": "beirut-255969-safe-off",
+        "cuda": "beirut-255969-cuda",
+        "repeat": "beirut-255969-repeat",
+        "cudaPeak": "beirut-255969-cudaPeak",
+        "cudaPhase": "beirut-255969-cudaPhase"
+      }
+    },
+    {
+      "id": "terrain-134058",
+      "case": "terrain",
+      "columnIndex": 134058,
+      "failedChannels": [
+        2
+      ],
+      "loads": {
+        "default": "terrain-134058-default",
+        "full": "terrain-134058-full",
+        "cuda": "terrain-134058-cuda",
+        "fast-on": "terrain-134058-fast-on",
+        "fast-off": "terrain-134058-fast-off",
+        "safe-on": "terrain-134058-safe-on",
+        "safe-off": "terrain-134058-safe-off",
+        "repeat": "terrain-134058-repeat",
+        "cudaPeak": "terrain-134058-cudaPeak",
+        "cudaPhase": "terrain-134058-cudaPhase"
+      }
+    },
+    {
+      "id": "terrain-250097",
+      "case": "terrain",
+      "columnIndex": 250097,
+      "failedChannels": [
+        2
+      ],
+      "loads": {
+        "default": "terrain-250097-default",
+        "full": "terrain-250097-full",
+        "cuda": "terrain-250097-cuda",
+        "fast-on": "terrain-250097-fast-on",
+        "fast-off": "terrain-250097-fast-off",
+        "safe-on": "terrain-250097-safe-on",
+        "safe-off": "terrain-250097-safe-off",
+        "repeat": "terrain-250097-repeat",
+        "cudaPeak": "terrain-250097-cudaPeak",
+        "cudaPhase": "terrain-250097-cudaPhase"
+      }
+    }
+  ],
+  "sourcePairs": {
+    "beirut-159267-default": [
+      5839.73974609375,
+      1000.5726928710938
+    ],
+    "beirut-159267-full": [
+      5812.5751953125,
+      1000.3526611328125
+    ],
+    "beirut-159267-fast-on": [
+      5807.5546875,
+      1000.3036499023438
+    ],
+    "beirut-159267-fast-off": [
+      5808.93994140625,
+      1000.3237915039062
+    ],
+    "beirut-159267-safe-on": [
+      5820.1904296875,
+      1000.4157104492188
+    ],
+    "beirut-159267-safe-off": [
+      5823.29541015625,
+      1000.44189453125
+    ],
+    "beirut-159267-cuda": [
+      5826.72119140625,
+      1000.4713134765625
+    ],
+    "beirut-159267-repeat": [
+      5839.73974609375,
+      1000.5726928710938
+    ],
+    "beirut-159267-cudaPeak": [
+      5826.72119140625,
+      1000.5726928710938
+    ],
+    "beirut-159267-cudaPhase": [
+      5839.73974609375,
+      1000.4713134765625
+    ],
+    "beirut-159777-default": [
+      5763.1171875,
+      990.2112426757812
+    ],
+    "beirut-159777-full": [
+      5729.666015625,
+      989.9022827148438
+    ],
+    "beirut-159777-fast-on": [
+      5718.05615234375,
+      989.7474975585938
+    ],
+    "beirut-159777-fast-off": [
+      5721.52587890625,
+      989.8031005859375
+    ],
+    "beirut-159777-safe-on": [
+      5742.677734375,
+      990.0372314453125
+    ],
+    "beirut-159777-safe-off": [
+      5747.0322265625,
+      990.0751953125
+    ],
+    "beirut-159777-cuda": [
+      5750.7314453125,
+      990.1138916015625
+    ],
+    "beirut-159777-repeat": [
+      5763.1171875,
+      990.2112426757812
+    ],
+    "beirut-159777-cudaPeak": [
+      5750.7314453125,
+      990.2112426757812
+    ],
+    "beirut-159777-cudaPhase": [
+      5763.1171875,
+      990.1138916015625
+    ],
+    "beirut-159779-default": [
+      5842.79150390625,
+      998.5888061523438
+    ],
+    "beirut-159779-full": [
+      5814.7568359375,
+      998.3731079101562
+    ],
+    "beirut-159779-fast-on": [
+      5807.5048828125,
+      998.3323364257812
+    ],
+    "beirut-159779-fast-off": [
+      5809.40087890625,
+      998.3507080078125
+    ],
+    "beirut-159779-safe-on": [
+      5823.87158203125,
+      998.4419555664062
+    ],
+    "beirut-159779-safe-off": [
+      5826.9462890625,
+      998.4661254882812
+    ],
+    "beirut-159779-cuda": [
+      5830.46240234375,
+      998.4940795898438
+    ],
+    "beirut-159779-repeat": [
+      5842.79150390625,
+      998.5888061523438
+    ],
+    "beirut-159779-cudaPeak": [
+      5830.46240234375,
+      998.5888061523438
+    ],
+    "beirut-159779-cudaPhase": [
+      5842.79150390625,
+      998.4940795898438
+    ],
+    "beirut-164452-default": [
+      9272.37109375,
+      1345.8580322265625
+    ],
+    "beirut-164452-full": [
+      9272.19140625,
+      1345.8558349609375
+    ],
+    "beirut-164452-fast-on": [
+      9272.29296875,
+      1345.8560791015625
+    ],
+    "beirut-164452-fast-off": [
+      9272.12890625,
+      1345.8536376953125
+    ],
+    "beirut-164452-safe-on": [
+      9272.421875,
+      1244.8006591796875
+    ],
+    "beirut-164452-safe-off": [
+      9272.36328125,
+      1244.7987060546875
+    ],
+    "beirut-164452-cuda": [
+      9272.3046875,
+      1244.7979736328125
+    ],
+    "beirut-164452-repeat": [
+      9272.37109375,
+      1345.8580322265625
+    ],
+    "beirut-164452-cudaPeak": [
+      9272.3046875,
+      1345.8580322265625
+    ],
+    "beirut-164452-cudaPhase": [
+      9272.37109375,
+      1244.7979736328125
+    ],
+    "beirut-200270-default": [
+      6979.0546875,
+      1032.393310546875
+    ],
+    "beirut-200270-full": [
+      6979.09521484375,
+      1024.859619140625
+    ],
+    "beirut-200270-fast-on": [
+      6978.91357421875,
+      1032.392578125
+    ],
+    "beirut-200270-fast-off": [
+      6978.7734375,
+      1032.39306640625
+    ],
+    "beirut-200270-safe-on": [
+      6978.8154296875,
+      1032.391845703125
+    ],
+    "beirut-200270-safe-off": [
+      6978.8876953125,
+      1032.393798828125
+    ],
+    "beirut-200270-cuda": [
+      6978.8525390625,
+      1024.8563232421875
+    ],
+    "beirut-200270-repeat": [
+      6979.0546875,
+      1032.393310546875
+    ],
+    "beirut-200270-cudaPeak": [
+      6978.8525390625,
+      1032.393310546875
+    ],
+    "beirut-200270-cudaPhase": [
+      6979.0546875,
+      1024.8563232421875
+    ],
+    "beirut-255969-default": [
+      3924.125,
+      634.6305541992188
+    ],
+    "beirut-255969-full": [
+      3924.53125,
+      684.0610961914062
+    ],
+    "beirut-255969-fast-on": [
+      3925.359375,
+      684.0664672851562
+    ],
+    "beirut-255969-fast-off": [
+      3924.3515625,
+      684.0606689453125
+    ],
+    "beirut-255969-safe-on": [
+      3924.60546875,
+      684.059814453125
+    ],
+    "beirut-255969-safe-off": [
+      3924.44140625,
+      684.0601196289062
+    ],
+    "beirut-255969-cuda": [
+      3924.375,
+      684.0570678710938
+    ],
+    "beirut-255969-repeat": [
+      3924.125,
+      634.6305541992188
+    ],
+    "beirut-255969-cudaPeak": [
+      3924.375,
+      634.6305541992188
+    ],
+    "beirut-255969-cudaPhase": [
+      3924.125,
+      684.0570678710938
+    ],
+    "terrain-134058-default": [
+      3326.26904296875,
+      426.4053649902344
+    ],
+    "terrain-134058-full": [
+      3326.22705078125,
+      426.4052429199219
+    ],
+    "terrain-134058-cuda": [
+      3326.237548828125,
+      417.13818359375
+    ],
+    "terrain-134058-fast-on": [
+      3326.255859375,
+      426.4049987792969
+    ],
+    "terrain-134058-fast-off": [
+      3326.279296875,
+      426.40447998046875
+    ],
+    "terrain-134058-safe-on": [
+      3326.25048828125,
+      426.404052734375
+    ],
+    "terrain-134058-safe-off": [
+      3326.263671875,
+      426.4043273925781
+    ],
+    "terrain-134058-repeat": [
+      3326.26904296875,
+      426.4053649902344
+    ],
+    "terrain-134058-cudaPeak": [
+      3326.237548828125,
+      426.4053649902344
+    ],
+    "terrain-134058-cudaPhase": [
+      3326.26904296875,
+      417.13818359375
+    ],
+    "terrain-250097-default": [
+      1757.6978759765625,
+      225.71926879882812
+    ],
+    "terrain-250097-full": [
+      1757.712158203125,
+      186.43516540527344
+    ],
+    "terrain-250097-cuda": [
+      1757.6978759765625,
+      186.43394470214844
+    ],
+    "terrain-250097-fast-on": [
+      1757.7220458984375,
+      186.43429565429688
+    ],
+    "terrain-250097-fast-off": [
+      1757.6922607421875,
+      186.4337615966797
+    ],
+    "terrain-250097-safe-on": [
+      1757.6900634765625,
+      186.43472290039062
+    ],
+    "terrain-250097-safe-off": [
+      1757.6986083984375,
+      186.43414306640625
+    ],
+    "terrain-250097-repeat": [
+      1757.6978759765625,
+      225.71926879882812
+    ],
+    "terrain-250097-cudaPeak": [
+      1757.6978759765625,
+      225.71926879882812
+    ],
+    "terrain-250097-cudaPhase": [
+      1757.6978759765625,
+      186.43394470214844
+    ]
+  },
+  "fixtures": [
+    {
+      "id": "rc-wall-6x4",
+      "kind": "wall",
+      "material": "reinforcedConcrete",
+      "widthM": 6,
+      "heightM": 4,
+      "thicknessM": 0.2
+    },
+    {
+      "id": "brick-wall-6x3",
+      "kind": "wall",
+      "material": "unreinforcedMasonry",
+      "widthM": 6,
+      "heightM": 3,
+      "thicknessM": 0.215
+    },
+    {
+      "id": "glass-1.5x1.25",
+      "kind": "pane",
+      "material": "reinforcedConcrete",
+      "widthM": 1.5,
+      "heightM": 1.25,
+      "thicknessM": 0.006
+    },
+    {
+      "id": "rc-roof-6x4",
+      "kind": "roof",
+      "material": "reinforcedConcrete",
+      "widthM": 6,
+      "heightM": 4,
+      "thicknessM": 0.2
+    }
+  ],
+  "sourceSHA256": {
+    "/Volumes/StudioData/bombcad/ml/judge/compare-first/beirut-p0-1/field/targets.npy": "47b294f960e3d617d7508ba0ca74839ca9249d01e2806d543715f076ff893dc9",
+    "/Volumes/StudioData/bombcad/ml/judge/compare-first/beirut-p0-1/field/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "/Volumes/StudioData/bombcad/ml/judge/compare-first/beirut-p0-1/field/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "/Volumes/StudioData/bombcad/ml/judge/compare-first/beirut-p0-1/field/meta.json": "b41799c29c2804c77a46928ab5ae29d0d8f42b315ee1c25e9afe1631a4f743c9",
+    "/private/tmp/bombcad-production-phase/beirut-p0-1-full/targets.npy": "3cc12e20b6dda3fcb533b07396fba06c70c94041b9364a38f6d9ee5b3e101d8b",
+    "/private/tmp/bombcad-production-phase/beirut-p0-1-full/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "/private/tmp/bombcad-production-phase/beirut-p0-1-full/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "/private/tmp/bombcad-production-phase/beirut-p0-1-full/meta.json": "4b2662e6f60ff0e4678b44deb2dd475125b43ec5a9278fcc6bbc9959f2e2e93e",
+    "/private/tmp/bombcad-explicit-math/fast-on-tiled/targets.npy": "1765fcedad19ca10a2f8e5939a55fbbd91d08d2981087b51f236af4826690364",
+    "/private/tmp/bombcad-explicit-math/fast-on-tiled/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "/private/tmp/bombcad-explicit-math/fast-on-tiled/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "/private/tmp/bombcad-explicit-math/fast-on-tiled/meta.json": "c799dd11d07cc6d3761e4ec6d9060ed160b352c5c7fa960bc4796e63a048a12f",
+    "/private/tmp/bombcad-explicit-math/fast-off-tiled/targets.npy": "070a080ef425a7c8a41e4e0d8b45ccdb2b71d1a361f5a8539124f01a20871af1",
+    "/private/tmp/bombcad-explicit-math/fast-off-tiled/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "/private/tmp/bombcad-explicit-math/fast-off-tiled/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "/private/tmp/bombcad-explicit-math/fast-off-tiled/meta.json": "16be74415a324600b75ecce9f064a65ebe54960f045cdc5742886a6bbb9f11c5",
+    "/private/tmp/bombcad-explicit-math/safe-on-tiled/targets.npy": "89f5c51614fb2477c7e859ab9280a1b1171ddffc926822bd40d44e17b33761bd",
+    "/private/tmp/bombcad-explicit-math/safe-on-tiled/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "/private/tmp/bombcad-explicit-math/safe-on-tiled/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "/private/tmp/bombcad-explicit-math/safe-on-tiled/meta.json": "dc6b1cf445a4569779481ac79e987546fa311876dce267ac9db1f5d2d3fffa46",
+    "/private/tmp/bombcad-explicit-math/safe-off-tiled/targets.npy": "1601acb265c5c8d3f4dfbf582ca564216c3b13bae2d7f0e0505e03612a64eae1",
+    "/private/tmp/bombcad-explicit-math/safe-off-tiled/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "/private/tmp/bombcad-explicit-math/safe-off-tiled/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "/private/tmp/bombcad-explicit-math/safe-off-tiled/meta.json": "efc083ff61a7b3a46b94478ec8935d8aa79d281ac76068eeb49fde34965ca9df",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/beirut-p0-1-1792566332868976000/result/dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/beirut-p0-1-1792566332868976000/result/dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/beirut-p0-1-1792566332868976000/result/dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/beirut-p0-1-1792566332868976000/result/dataset/meta.json": "8a262dc2b059e847486f67b20e0022dc328aa2b697888457112715cc3b759abb",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/plain-reference/targets.npy": "1e6b6ea2a36cc3d1567aa8132dd5771e7ed7f4084f34abd3e7e48f56bad9b54a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/plain-reference/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/plain-reference/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/plain-reference/meta.json": "3e63824495484f9072b76d7c966804d3908bed3f4aa90ba2f3a30269bb19f0f1",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/default-full/targets.npy": "45b718ef5be11e8d3e79a9dfa9a95d3acaa913185bcaafa1a2b576fd06c97d03",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/default-full/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/default-full/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/default-full/meta.json": "825800d825c8c5f8d3e12b5e44b016738484a5da967addc777e487de62b58188",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/cuda-result/dataset/targets.npy": "3d11b12754d5a120fd0e9230fcaa45016f447e2220ca2f426f6da0f8f63e9329",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/cuda-result/dataset/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/cuda-result/dataset/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/cuda-result/dataset/meta.json": "aea0ab40436732fd111f76128f08c4e3679bc93498672e7198f608c0017e71e1",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-on-tiled/targets.npy": "42d45e186af2836a580bf4fac3b8de4675cee62ff4c328f256a0c688d8053c1c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-on-tiled/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-on-tiled/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-on-tiled/meta.json": "6b9be81f5e6424965f74b72f0b0692e8868476fa47ede7557539b93b4d6d554d",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-off-tiled/targets.npy": "b06d3e4faf854b612d816b7f644dc30d22e8045a4f243b8c02a13e64d4923107",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-off-tiled/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-off-tiled/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/fast-off-tiled/meta.json": "d1556c6cc712841ebe6bb2eedf150fa08370e37b07b49bbbaf00b120277d3e18",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-on-tiled/targets.npy": "16c3d89653a3f466e076c5c6a484a465b3eea568af2262d10ab27aa9d2421ba0",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-on-tiled/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-on-tiled/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-on-tiled/meta.json": "6677c1ff106dfb91412c8f8d3d9bb11ab7c72b0f0de07be597c022950bad9804",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-off-tiled/targets.npy": "ff9fe228fab793d0df198c4013f98ea5c72ddeef297292db28467dc3bf2755a8",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-off-tiled/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-off-tiled/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx4/safe-off-tiled/meta.json": "934239643844df2f6ec12d0ccc7787db5c34a75e1ea47ab46ae41396f00db71d"
+  },
+  "bins": [
+    0.0002,
+    0.0001,
+    5e-05
+  ],
+  "riseShare": 0.2,
+  "assumptions": "All four edges supported, ordinary construction defaults including reinforcement ratio .003; pane material follows glass thickness, material field is unused for panes. Fixed/simple support response ranges retained. No tuned load factor or strength.",
+  "completion": "Both original sweep handles returned zero; all six cases exit zero; saved-output/source audits complete. No rerun of assessments.",
+  "localExecutableSHA256": "dae8acd812abf0c47a1064fef89cd88eef45eadbed8bbdadabb304a03e359354",
+  "localExecutable": "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastmodel"
+}

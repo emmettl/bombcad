@@ -8,6 +8,10 @@ enum BlastModelTool {
     /// Each subcommand: what it runs, in a line, and the study that runs it.
     static let commands: [(name: String, summary: String, run: @Sendable ([String]) throws -> Void)] = [
         (
+            "receiver-fixtures", "declared receiver peak/impulse pairs on uniform component fixtures",
+            ReceiverLoadStudy.run
+        ),
+        (
             "surrogate-judge", "the façade load surrogate against a district run's saved loads",
             SurrogateBench.judge
         ),

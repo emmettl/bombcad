@@ -1,0 +1,7 @@
+bin-0.0002/log.txt: the same bytes
+bin-0.0002/results.json: agrees within 1e-09
+bin-0.0001/log.txt: the same bytes
+bin-0.0001/results.json: agrees within 1e-09
+bin-5e-05/log.txt: the same bytes
+bin-5e-05/results.json: agrees within 1e-09
+0 file(s) disagree

@@ -1,0 +1,158 @@
+{
+  "status": "complete",
+  "scope": "Actual rejected point peak/first-phase pairs applied uniformly to predeclared component fixtures. Hypothetical sensitivity, not inferred area loads, full histories, physical validation or dataset admission.",
+  "hosts": {
+    "here": {
+      "assessments": 1920,
+      "comparisons": 1536,
+      "levelChanges": 0,
+      "maxRotationDeltaDeg": 4.025001782166079,
+      "maxRawImpulseRelativeError": 9.35918009759007e-14
+    },
+    "bombcad-pc": {
+      "assessments": 1920,
+      "comparisons": 1536,
+      "levelChanges": 0,
+      "maxRotationDeltaDeg": 4.025001782166079,
+      "maxRawImpulseRelativeError": 9.35918009759007e-14
+    }
+  },
+  "binWidthSensitivity": [
+    {
+      "binS": 0.0002,
+      "levelsDifferentFromFinest": 0,
+      "maxRotationDeltaFromFinestDeg": 0.015950914985268128
+    },
+    {
+      "binS": 0.0001,
+      "levelsDifferentFromFinest": 0,
+      "maxRotationDeltaFromFinestDeg": 0.005251140668200094
+    },
+    {
+      "binS": 5e-05,
+      "levelsDifferentFromFinest": 0,
+      "maxRotationDeltaFromFinestDeg": 0.0
+    }
+  ],
+  "duplicateControlsIdentical": true,
+  "crossHostNumericTolerance": 1e-09,
+  "hostAudit": {
+    "status": "complete",
+    "sourceFilesVerified": 286,
+    "inputsVerified": 3,
+    "binary": "/home/lemme/bombcad-sweeps/src/.build/out/Products/Release-linux-x86_64/blastmodel",
+    "binarySHA256": "5d811a514e5f9b0bb3a431b8fb0a5c3215767776e0914de716e8b1d45f6b11cf",
+    "sweepLockExists": false,
+    "scope": "Read-only source/input/binary audit after completed sweep; not continuous source observation"
+  },
+  "highlights": {
+    "largestNotFailedRotationChange": {
+      "point": "beirut-255969",
+      "fixture": "brick-wall-6x3",
+      "variant": "full",
+      "policy": "product-3pct",
+      "binS": 5e-05,
+      "referenceLevels": [
+        2,
+        2
+      ],
+      "candidateLevels": [
+        2,
+        2
+      ],
+      "rotationDeltaDeg": 0.07961312266669224,
+      "rotationRelative": 0.1954083576982484,
+      "referenceRotationDeg": [
+        0.40741923019296666,
+        0.40741923019296666
+      ],
+      "candidateRotationDeg": [
+        0.4870323528596589,
+        0.4870323528596589
+      ],
+      "referenceFailedAtS": null,
+      "candidateFailedAtS": null
+    },
+    "largestRotationChange": {
+      "point": "beirut-164452",
+      "fixture": "brick-wall-6x3",
+      "variant": "safe-on",
+      "policy": "product-3pct",
+      "binS": 0.0002,
+      "referenceLevels": [
+        4,
+        4
+      ],
+      "candidateLevels": [
+        4,
+        4
+      ],
+      "rotationDeltaDeg": 4.025001782166079,
+      "rotationRelative": 0.14394858848232656,
+      "referenceRotationDeg": [
+        27.961384162236875,
+        27.961384162236875
+      ],
+      "candidateRotationDeg": [
+        23.936382380070796,
+        23.936382380070796
+      ],
+      "referenceFailedAtS": 0.1835,
+      "candidateFailedAtS": 0.1827
+    },
+    "largestCUDAChange": {
+      "point": "beirut-164452",
+      "fixture": "brick-wall-6x3",
+      "variant": "cuda",
+      "policy": "product-3pct",
+      "binS": 0.0002,
+      "referenceLevels": [
+        4,
+        4
+      ],
+      "candidateLevels": [
+        4,
+        4
+      ],
+      "rotationDeltaDeg": 4.025001782166079,
+      "rotationRelative": 0.14394858848232656,
+      "referenceRotationDeg": [
+        27.961384162236875,
+        27.961384162236875
+      ],
+      "candidateRotationDeg": [
+        23.936382380070796,
+        23.936382380070796
+      ],
+      "referenceFailedAtS": 0.1835,
+      "candidateFailedAtS": 0.1827
+    },
+    "largestFailureTimeShift": {
+      "point": "beirut-159777",
+      "fixture": "brick-wall-6x3",
+      "variant": "fast-on",
+      "policy": "raw",
+      "binS": 0.0002,
+      "referenceLevels": [
+        4,
+        4
+      ],
+      "candidateLevels": [
+        4,
+        4
+      ],
+      "rotationDeltaDeg": 0.15731363881890736,
+      "rotationRelative": 0.011440981966694436,
+      "referenceRotationDeg": [
+        13.75001195499296,
+        13.75001195499296
+      ],
+      "candidateRotationDeg": [
+        13.592698316174053,
+        13.592698316174053
+      ],
+      "referenceFailedAtS": 0.3015,
+      "candidateFailedAtS": 0.30510000000000004
+    }
+  }
+}

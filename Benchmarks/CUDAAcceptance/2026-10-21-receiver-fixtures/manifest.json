@@ -1,0 +1,48 @@
+{
+  "status": "complete",
+  "baseRevisionObserved": "0e135ad4fe873b9c295912db22b4c51c9dbef0ba",
+  "producingCode": "Recorded base plus ReceiverLoadStudy, CLI registration and tests; actual source/binary hashes retained, not a clean-base binary claim",
+  "producingMacBinarySHA256": "dae8acd812abf0c47a1064fef89cd88eef45eadbed8bbdadabb304a03e359354",
+  "producingSourcesSHA256": {
+    "Sources/BlastModel/Studies/ReceiverLoadStudy.swift": "45345094ca7f6d3bef40a7b110b8d7bb2d2908ef28259d964ab491482dcd6a0a",
+    "Sources/BlastModelCLI/BlastModelTool.swift": "75c3720ace3fcc997ab0d333411684d1ca3071de2e3a7133e022e0cd428176bb"
+  },
+  "assessmentsPerHost": 1920,
+  "totalAssessments": 3840,
+  "levelChanges": 0,
+  "crossHostNumericTolerance": 1e-09,
+  "archive": {
+    "status": "complete",
+    "filesVerified": 23,
+    "archiveBytes": 243124
+  },
+  "validation": "make check-affected passed: strict build, lint/scripts/docs, 71 CUDA/queue tests (4 local Torch skips), 18 selected Mac and 57 PC tests; three diagnostic tests also passed separately on Mac",
+  "relatedIssues": [
+    "emmettl/bombcad-work#62",
+    "emmettl/bombcad-work#63",
+    "emmettl/bombcad-work#68"
+  ],
+  "artifactsSHA256": {
+    "analyse.py": "4a7b7763a0ab5fbfb739c9ab18bbf4d23f366f2752b35aab12e23b3d3abeb29c",
+    "analysis.log": "f3e8509f3b6cf0e70ad7380c28ab4a4e8d25fcea6ae65fb2cbac45823927e4d2",
+    "archive-audit.json": "ea755b7b029268faf24a78b2a5825ef725ef5c3b23b4af63081074bc731475fd",
+    "archive-files.json": "b1134f7a134469816cf5f96e50e7c4098dbdc4e84b2bc9164446acb6d1f2c0d5",
+    "audit.json": "17a7d60cd6b33ab7181451b099a68a8f5f1a35505cfd3271afa5f0eaeeb7d4fa",
+    "check.log": "cb9d674e3f56416c292c42b4a5638dcf3cc738913260a688dfc86847e97d6a0b",
+    "compare.log": "6aa1a5bc6514a6bcd505d90c6278227dded7148e08173750ddf624f090dc267c",
+    "host-pins.json": "83a4c2ca21d5c39bccfed95f98541b3ff550230e7e6f2d1cab9bb36f1d472c2e",
+    "host-pins.py": "92c25b3cb42100c4f5a980db43bfd3de02249ac6e376fd93240b0ed0dc41c48a",
+    "mac.log": "714d36dce919553cc2a1509a8f00ea3dc1a051eb780b0b572b480dafde1f083e",
+    "package.log": "653e8bc85b04335d1bd293037962e803e31decd8c5edea34f86f20e9228576bf",
+    "package.py": "fcd65ac16cbd1886878eb84d8b1745f196b7de5259b5367e47047d7b8ff43069",
+    "pc.log": "fe6c49626efdbfd3573f0c75c4cb549ca4e6eef019b3bde5d8b606b0e751a897",
+    "prepare.log": "cfd1282335d6c5cf0063932bba646a232500e4c1007503ff0ce151444a0e4213",
+    "prepare.py": "76b10523e6aec6efb07c6594aa2014b4c24175b8d901f2aad7f2c70512217257",
+    "runtime-pins.json": "39782aa998981bae9e8a15315d6f7d970eae4fb59e742d83519b27721d975783",
+    "state.tar.gz": "4a7b8374bee75d64c658d20fe8464952835771b576ec921078facb2f27b0f524",
+    "study.json": "829c140fa4f6623750a5910df8293b8ae510b1b73896dc30e2cc8dd86d83f6dd",
+    "summary.md": "9d4772e54327d4bc2a716a2bdaf12328d0a41aba424a90e15557f94fd0529aa5",
+    "sweep-lock-issue.md": "15dd2b3256a872b0f3e02d9c8992540c1993f949c477f5d630e0bab50531da9a",
+    "tests.log": "a4e3f6004256053fe7142ec22063c6732f04ad9b7b83788591e795922908188b"
+  }
+}
