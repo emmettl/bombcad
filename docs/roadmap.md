@@ -287,6 +287,10 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 
 ### Distributed computing
 
+- **Mac/PC follow-up:** [heterogeneous compute](heterogeneous-compute.md), with initial SSH and
+  lossless-compression measurements. Independent job scheduling (#59), CUDA profiling (#60)
+  and thermal replay feasibility (#61) are scoped next steps; #47 owns CUDA dataset acceptance.
+
 - **Done:** sweeps and ensembles shared across Macs by measured speed; the effects beside the
   blast placed on other Macs by cost
   ([several consumers](distributed-computing.md#several-consumers-on-several-machines)); Macs

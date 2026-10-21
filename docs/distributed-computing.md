@@ -6,6 +6,13 @@ Studio on a Thunderbolt cable. It began as an analysis, its figures estimates fr
 single-GPU speeds in [Performance](performance.md) and the machines' published specifications;
 what has since been built, and measured, is said where it comes up.
 
+## NVIDIA PC follow-up
+
+The desktop CUDA worker now runs a supported subset of air simulations as well as training.
+The Mac/mini estimates below are not measurements of that pairing. See
+[Heterogeneous compute](heterogeneous-compute.md) for current capabilities, busy-host SSH and
+compression experiments, acceptance limits and tracking issues.
+
 ## Short answer
 
 - **Splitting one run across the Studio and the mini would not help.** The mini is too small a

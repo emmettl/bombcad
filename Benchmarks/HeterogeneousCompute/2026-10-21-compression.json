@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-21T07:08:36.304610+00:00",
+  "scope": "Local CPU zlib buffer experiment; not SSH compression or an end-to-end transfer benchmark",
+  "samples": [
+    {
+      "file": "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/made-perimeter-s3-1-1792566189119473000/input/state.bin",
+      "sha256": "81b37ac766ea15abf03d4201c7fbdeeea1dce5cf224ee985c62d25989ffd547f",
+      "bytes": 262144000,
+      "level": 1,
+      "compressedBytes": 1814232,
+      "ratio": 144.49309680349592,
+      "encodeSeconds": [
+        0.21185770800000003,
+        0.211973709,
+        0.211833791
+      ],
+      "medianEncodeSeconds": 0.21185770800000003,
+      "decodeSeconds": 0.03169537500000008
+    },
+    {
+      "file": "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/made-perimeter-s3-1-1792566189119473000/input/state.bin",
+      "sha256": "81b37ac766ea15abf03d4201c7fbdeeea1dce5cf224ee985c62d25989ffd547f",
+      "bytes": 262144000,
+      "level": 6,
+      "compressedBytes": 636086,
+      "ratio": 412.12037366016546,
+      "encodeSeconds": [
+        0.441058583,
+        0.4385342499999998,
+        0.43971662499999997
+      ],
+      "medianEncodeSeconds": 0.43971662499999997,
+      "decodeSeconds": 0.057270041999999854
+    },
+    {
+      "file": "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/made-perimeter-s3-1-1792566189119473000/result/dataset/targets.npy",
+      "sha256": "3d11b12754d5a120fd0e9230fcaa45016f447e2220ca2f426f6da0f8f63e9329",
+      "bytes": 3145856,
+      "level": 1,
+      "compressedBytes": 1744049,
+      "ratio": 1.803765834560841,
+      "encodeSeconds": [
+        0.036041791999999795,
+        0.03530954099999972,
+        0.03543291599999998
+      ],
+      "medianEncodeSeconds": 0.03543291599999998,
+      "decodeSeconds": 0.004185583000000381
+    },
+    {
+      "file": "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/made-perimeter-s3-1-1792566189119473000/result/dataset/targets.npy",
+      "sha256": "3d11b12754d5a120fd0e9230fcaa45016f447e2220ca2f426f6da0f8f63e9329",
+      "bytes": 3145856,
+      "level": 6,
+      "compressedBytes": 1695434,
+      "ratio": 1.8554871496029925,
+      "encodeSeconds": [
+        0.04762645799999987,
+        0.04836020800000007,
+        0.04817483300000003
+      ],
+      "medianEncodeSeconds": 0.04817483300000003,
+      "decodeSeconds": 0.003937999999999775
+    }
+  ]
+}

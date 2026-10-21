@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-21T07:07:49.069862+00:00",
+  "host": "bombcad-pc",
+  "context": "Other session running CUDA dataset generation; shared GPU lock respected; no GPU kernels launched by probe",
+  "scope": "SSH application echo, one persistent connection, no compression requested; Python and local pipes included",
+  "setupSeconds": 0.6107938749999999,
+  "before": "{\"pid\": 42871, \"since\": 1792566386.765985, \"what\": \"CUDA dataset bombcad-cuda/c58f4f0a7ab5563b/jobs/31e85fa23c2146838624751711f6217d/input\", \"boot\": \"2740bd46-3a3b-49e0-b5db-e5dd54507ade\"}name, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 3178 MiB, 99 %\n",
+  "after": "{\"pid\": 42871, \"since\": 1792566386.765985, \"what\": \"CUDA dataset bombcad-cuda/c58f4f0a7ab5563b/jobs/31e85fa23c2146838624751711f6217d/input\", \"boot\": \"2740bd46-3a3b-49e0-b5db-e5dd54507ade\"}name, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 3178 MiB, 99 %\n",
+  "samples": [
+    {
+      "bytesEachDirection": 1,
+      "seconds": [
+        0.024349458999999962,
+        0.021653499999999992,
+        0.023685791000000123,
+        0.02596541600000002,
+        0.021598958,
+        0.027967834000000025,
+        0.022759540999999883,
+        0.023609375000000155,
+        0.02287483400000001,
+        0.02388354200000009,
+        0.024799041999999938,
+        0.026893542000000048,
+        0.021540499999999962,
+        0.03687766699999995,
+        0.04488887500000005,
+        0.022000208999999993,
+        0.0231885839999999,
+        0.04371779200000003,
+        0.022224250000000056,
+        0.024444375000000074
+      ],
+      "medianSeconds": 0.023784666500000107,
+      "aggregateEchoMiBPerSecond": 8.019236396745322e-05
+    },
+    {
+      "bytesEachDirection": 65536,
+      "seconds": [
+        0.14884445800000012,
+        0.08640766700000002,
+        0.07149570899999991,
+        0.06336341600000006,
+        0.07844600000000024
+      ],
+      "medianSeconds": 0.07844600000000024,
+      "aggregateEchoMiBPerSecond": 1.5934528210488696
+    },
+    {
+      "bytesEachDirection": 1048576,
+      "seconds": [
+        0.95631325,
+        1.0331947910000001,
+        1.11919725
+      ],
+      "medianSeconds": 1.0331947910000001,
+      "aggregateEchoMiBPerSecond": 1.9357434023300257
+    },
+    {
+      "bytesEachDirection": 4194304,
+      "seconds": [
+        3.804595375,
+        3.339260875000001,
+        3.3410917090000005
+      ],
+      "medianSeconds": 3.3410917090000005,
+      "aggregateEchoMiBPerSecond": 2.394426940885866
+    }
+  ]
+}
