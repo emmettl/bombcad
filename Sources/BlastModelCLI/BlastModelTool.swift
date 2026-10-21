@@ -35,6 +35,10 @@ enum BlastModelTool {
             "craters-cooper", "the crater against H. F. Cooper's 1976 HE craters by height and ground",
             CraterStudies.cooper1976
         ),
+        (
+            "glass-sandia", "the envelope's glass against Sandia's 1998 windows and their speeds",
+            SandiaGlassStudy.run
+        ),
     ]
 
     static func main() {

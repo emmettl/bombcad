@@ -642,7 +642,9 @@ one way as the run goes, at most once a second and again when it stops:
     [laminated glass](#laminated-glass)); the tests' counts of fragments and perforations are not
     told apart, and skylights are not graded. The building's line
     gives its worst pane. Criteria as Graham's summary of GSA-TS01 (2003) and ASTM F1642 gives
-    them; no test's fragments are compared. A cased charge's fragments that hole a pane first break
+    them. The speed the glass is thrown at is compared with one filmed test, Sandia's windows:
+    0.81–1.03 of four panes' measured speeds ([validation](validation.md#sandias-windows)). Where
+    the fragments land is not compared. A cased charge's fragments that hole a pane first break
     it then, before the blast if they arrive first, and the building's line counts them and the
     fragments striking its walls ([Fragments](fragments.md#what-fragments-do-to-what-they-strike)).
     With glazing vented, the panes they hole open in the air when they do.

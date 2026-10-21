@@ -78,7 +78,7 @@ swift run -c release blastbench perimeter --study wall
 | Foundations          | One footing rocked slowly on dry sand (centrifuge, FoRCy SSG02_03): moment within 11% to 14 mrad of rotation (against the larger of its two directions), 5–14% low beyond; settlement 1.3–1.7 times that measured. The same footing shaken (FoRDy, eight events on three structures): settlement 0.4–1.3 times (0.6–1.3 but for the embedded footing's first event), the surface footing's peak rotation within 10% where the test did not lurch one way (the embedded footing's first event a quarter); energy a cycle 0.5–1.2 times slowly and 0.3–1.2 times shaken, damping ratios 10–27% against 17–32%. Both on sand of 80 MPa, an estimate, twice the default's; the sand's heave set on the slow test | Rocking moment either way to 14 mrad and 5–14% low beyond (moderate); settlement within a factor of 1.7 (moderate); energy too little, a sixth to two thirds of a shaken event's (low), as for a footing that lurches; on a sand twice the default's |
 | Held out (blind)     | Hrynyk's three plain slabs struck repeatedly by a falling weight, predicted on frozen defaults before the measurements were unsealed: first impacts 1.15–1.29 times the measured peak (too flexible, as the calibrated beams were); later impacts 0.56–0.83, residuals a seventh to a third, and none of the three slabs' punching failures predicted. Mendonça's seven slabs under an open-air charge: the two nearest the charge collapsed, the model leaving them standing; the declared peaks 0.31–1.23 of measured on the survivors, those near 1 made by an artefact of the sleeping air as the slabs landed after the blast threw them up; the blast's own peak a tenth to a quarter of the meters'. Reynolds's six high-strength slabs in the contest slab's rig (v0.3.0): peaks 0.77–1.06 of measured on the five that held in the model, 0.87 on average at 4 in; the sixth, the lightly reinforced slab under the larger load, broken through where the test held at 182 mm; the blast face never crushed where four of the standing slabs' tests were | Hrynyk: between, by the protocol's rule, the calibrated error on undamaged slabs, much worse and on the unsafe side once they are damaged. Mendonça: worse, by the rule, far too stiff and too strong, the unsafe side. Reynolds: worse, by the rule, on the one broken slab (the safe side); the others within the calibrated band, a little stiff |
 | Collapse and debris  | Debris off six slabs under contact charges (Hupfauf, 2024): the far face thrown 1.1–1.7 times as fast as the debris at first, its cover cracked loose over about the spall crater on the thinner slabs, but the loose layer held back rather than thrown, and no slab holed where four of these were; the charge's impulse about twice the products' own. [Brick walls](#brick-walls-debris) (Keys, 2016): loads within 15%, but the walls break into too few pieces, falling at full length in the open (means of 1.6–1.8 m against 0.2 to 0.6 m) and thrown half as far as measured in a shock tube. Collapse once, blind: [Mendonça's slabs](#blind-test-2-mendonças-slabs-under-an-open-air-charge), the two that collapsed left standing; brick houses against wartime surveys right at 0.1 s, toppling too far after ([terraced houses](#terraced-houses-against-wartime-bomb-damage)). Collapse reads illustrative, a result apart from the members' damage ([standing](standing.md#collapse)) | Unsafe side for debris: held back rather than thrown, slabs never holed, brick walls thrown short in the tunnel (low); in the open the brick walls' debris lies 1.0–1.5 m beyond the measured, the safe side for its reach, though the walls fall as one column where the tests' folded; collapse missed in both slabs that collapsed (blind) |
-| Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72 | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured |
+| Window glass         | Monk and Clubley's annealed windows in the Shoeburyness tunnel (4 mm, 0.89 m², four aspect ratios, about 33 kPa reflected for longer than they lasted): the app's large-deflection panes (Moore's plate, E1300's flaw model) break every pane, as every pane broke, at 0.82–1.07 of the twelve measured times and 0.69–1.15 of the deflection (the small-deflection panes before them at 0.40–0.46). Against ASTM E1300: its stresses within 8%, its load resistance 0.57–0.72. [Sandia's windows](#sandias-windows) (1998): broken panes fly at 0.81–1.03 of four filmed speeds (0.57–0.72 on the report's nominal load; not measured), and its one held pane holds | Either way within about 20% for timing under a strong load (moderate); the threshold a third under E1300's design resistance, the safe side, not measured; the speed of broken glass an approximation (one test) |
 | Inside buildings     | [UFC 3-340-02 §2-15](#inside-buildings-against-ufc-3-340-02s-loads-through-openings), its own charts' data: through an open window the air's back-wall load 0.74–1.22 of the UFC's, the side walls and the front's inside 0.31–0.67; the one-way fill 0.95–1.35 of the UFC's leakage fill and 0.15–0.42 of its back-wall load | A design method, not measurement; head-on, rigid, open windows |
 | Fragments            | [Cooper (1996)](#fragments-against-coopers-data): his worked Mott and Gurney examples to rounding; one counted cast-iron bomb within a factor of 1.36 (rms) by Mott's form, 1.12 by Grady's; drag now the measured curve for tumbling cubes, 5% from the previous law. Hazard distance 0.58–1.02 of DoD 4145.26-M's test-derived distances for two items, in flight; TP-12's own procedure 1.05–1.21 times it on the same fragments; Mott's scaling 1.00–1.36 times the masses of Sternberg's cylinders (TP-12 Table 1) |  Masses either way within a factor of 1.4 (moderate, one test); hazard distance up to two-fifths short (the unsafe side; moderate); launch speeds untested (low) |
 | Ground shock         | Xia et al. (2022), 1 t of TNT on the ground, accelerations 0.5 m deep at 21 and 42 m: the vertical velocity from the manuals' relation and the layered soil column 20 to 30 times the measured accelerations' integral at 21 m and 50 to 80 times at 42 m, within three times a velocity gauge that clipped; the measured motion mostly horizontal, at ranges near and past where the ground's wave outruns the air; the soil not measured. An elastic half-space about the charge, with a direct source calibrated against UFC 3-340-01: the horizontal within 1.5 times at 21 m but 18 times at 42 m, the vertical still 15 to 60 times. With soil that yields (compaction and a Mohr–Coulomb cone, the source the crater's energy): the horizontal 2.1 to 2.4 times at 21 m and 10 to 11 times at 42 m, the vertical 16 to 90 times, the fall-off R^(−1.5) against the measured R^(−3.3) to R^(−3.8). [Prairie Flat](ground-shock.md#against-prairie-flat) (Murrell 1972), 500 t of TNT, 84 to 1,150 ft out and 1.5 to 17 ft deep on two measured layers: inside the outrunning limit every model within a factor of two at under two-thirds of 34 vertical records (the column 13–14, the half-space at best 21), a fifth to a third of the measured 1.5 ft down and twice it at 17 ft, the column's arrivals within 10% at 18–20 of 24; past it the elastic half-space within three times at all 16 records (geometric mean 1.15); the outrunning limit found by arrival where Murrell found it. On the soil measured at Watching Hill (Jackson 1972) the peaks pass, 26 of 34 within two times, but the stress arrives late, 6–9 of 24 arrivals within 10% | Xia: far too high in the vertical, the safe side; the horizontal not modelled, the unsafe side. Prairie Flat: too low near the surface, the unsafe side; the half-space's motion ahead of the blast within two times. Illustrative |
@@ -4091,6 +4091,82 @@ degree of freedom on each):
   panes held 5–7 ms longer, their fragments interlocking and the cracks taking time to run, which
   fragments carrying nothing and spreading at once leave out.
 
+### Sandia's windows
+
+On 21 October 2026 the envelope's glass was set against Beauchamp and Matalucci's windows at
+EMRTC, Socorro (SAND98-0598, 1998; [Fixtures/BeauchampMatalucci1998](../Fixtures/BeauchampMatalucci1998/README.md),
+`blastmodel glass-sandia`, `GlassSandia1998Tests`). It is the first comparison of the speed that
+broken glass flies at.
+
+**The tests.**
+- **Window.** Four panes, each with a 16 × 22 in open area, in soft putty in a window of a
+  concrete building, facing small charges on its axis.
+- **Shots.** 0.22 lb of C4 at 12 ft, and 25 and 13 lb of ANFO at 20 ft.
+- **Speeds.** A later test under the third shot's conditions filmed two 1/8 in and two 1/4 in
+  annealed panes. Their central clusters flew at a constant speed from the window to 5 ft.
+
+**The model.**
+- **Pane.** The app's: Moore's plate at E1300's median strength, toughened glass four times as
+  strong.
+- **Load.** Kingery–Bulmash's reflected peak and impulse as a triangle, the charge on the
+  ground, C4 at 1.37 and ANFO at 0.82 of TNT.
+- **Speed.** Once gone, the glass flies at its speed then plus what the load gives it after, as
+  the [glazing hazard](building-envelopes.md) takes it.
+
+| Filmed pane | Measured | Model | Ratio | On the report's nominal load |
+|---|---|---|---|---|
+| 1/8 in, upper | 56.4 m/s | 45.8 m/s | 0.81 | 32.1 m/s, 0.57 |
+| 1/8 in, lower | 44.5 m/s | 45.8 m/s | 1.03 | 0.72 |
+| 1/4 in, upper | 22.8 m/s | 22.0 m/s | 0.97 | 15.0 m/s, 0.66 |
+| 1/4 in, lower | 24.9 m/s | 22.0 m/s | 0.89 | 0.60 |
+
+- **Speed: 0.81–1.03 of measured**, and inverse to the thickness as measured (2.1 times as fast
+  at half the thickness; measured, 2.1 on the means, 1.8–2.5 pane by pane). The pane takes the load as a free mass once out of its
+  frame. The whole reflected impulse over the glass's mass alone gives 38.7 and 19.3 m/s. The
+  model's centre is faster than that, carrying the speed it had in the frame, as the
+  measurement's is.
+- **The load is the doubt.** This shot's pressure was not measured, and the report's nominal
+  values are 0.65–0.71 of Kingery–Bulmash's for a hemisphere on the ground. They are perhaps free
+  air, the charge raised to the window. On loads scaled to them the speeds are 0.57–0.72 of
+  measured. Where the test's flow behind the broken glass pushed on more than the reflected
+  impulse, the model, which takes the reflected wave alone, reads low.
+- **Time.** The filmed lines cross the window at 15–16 ms after the detonation. Kingery–Bulmash's
+  arrival is 8.2 ms, and the model's pane leaves 0.8 ms later. The film's time zero or the load
+  differs. The speed does not depend on it.
+
+**Which broke.** Of twelve panes in the three shots, eleven broke and one held: shot 1's 1/2 in
+annealed sheet, at a measured 4 psi. Most were weakened on purpose, with indents or annealed spots.
+- **Shot 1.** On Kingery–Bulmash's load (53 kPa reflected) the model holds the 1/2 in sheet (27 MPa
+  at most), as measured. It throws the 3.95 and 5.56 mm annealed sheets, as measured.
+  - **At the measured 4 psi** it holds all four unflawed. Its stress in the two thin sheets, 53 and
+    42 MPa, is past what the indented sheets broke at by their fracture surfaces (39–40 and 32 MPa,
+    table 3).
+  - **The tempered sheet** reaches 53 MPa, where its 30 kg indent broke it at 54 MPa. Unflawed, the
+    model's tempered glass holds, as the report expects of tempered glass without the indent.
+- **Shots 2 and 3** (12.7 and 8.22 psi nominal). Every sheet broke, from its corners (the report
+  puts this down to membrane action and to the indents' tips blunting in the days before). The
+  model loses every one.
+- **Leaving the frame uncracked.** The model's 4–6 mm panes of this small size, 0.41 m across,
+  reach ten thicknesses of deflection, where UFC's edges let go, before the flaw model cracks them.
+  The tests' panes cracked first, so the model's are thrown whole where the tests' shattered. That
+  changes nothing for the hazard, which throws the glass as one piece either way. It also matches
+  the film: a central cluster flying flat as one, a 2 in strip round its edge left behind.
+
+**Fragments** (not compared, for the [hazards](hazards.md#debris-from-failed-envelope-components)):
+- **Annealed.** The edge band's shards were 0.2–2 in long and 0.1–0.8 in wide. The centre broke
+  into much larger pieces, so the envelope debris's 50 mm shards sit at the top of the edge's
+  range.
+- **Tempered.** It did not dice apart: its fragments held together in clusters of 2–3 in and went
+  as deep into the foam as annealed glass.
+- **Crack speed.** The report quotes 5,000 ft/s for tempered glass, which loses its strength in
+  under a millisecond. It does not measure it.
+
+**Standing:** one filmed test, four panes, and its load not measured. Speeds within 0.81–1.03 on
+Kingery–Bulmash's load and 0.57–0.72 on the nominal one: an approximation for the speed broken
+glass flies at, no longer unjudged. Thresholds for weakened panes are not in the report. Its
+stresses at fracture agree with the model's plate on the one measured shot, and its one held pane
+is held. The report is not the threshold series the [calibration](calibration.md) hoped for.
+
 ### What this does and does not show
 
 It shows that the app's glass breaks when it should under a strong long-duration wave, within
@@ -4098,10 +4174,12 @@ about 20% of the measured time, and that its plate gives E1300's stresses within
 threshold is the flaw model's with the whole pane stressed, a third lower than E1300's design
 resistance: more panes broken at a distance, the safe side. Measured thresholds, panes that held
 beside panes that broke, are still wanted (see the [data
-survey](data-survey.md#3h-window-glass-breaking-under-a-blast)), and tempered or laminated glass,
-fixed or yielding frames and short-duration waves have no comparison. The load is read off a
-figure, 5–7% under the impulses table 2 gives at the break. One facility and one glass, with
-intrinsic strength scatter the paper puts above the aspect ratio's effect.
+survey](data-survey.md#3h-window-glass-breaking-under-a-blast)). Laminated glass is compared
+above; fixed or yielding frames are not, and tempered glass and short-duration waves only through
+Sandia's windows, mostly weakened panes that broke. The load is read off a figure, 5–7% under the
+impulses table 2 gives at the break. One facility and one glass, with intrinsic strength scatter
+the paper puts above the aspect ratio's effect. Sandia's windows add the speed broken glass flies
+at: within 0.81–1.03 of measured on one filmed test whose load was not measured.
 
 ## Inside buildings, against UFC 3-340-02's loads through openings
 

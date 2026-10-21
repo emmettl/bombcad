@@ -278,6 +278,10 @@ judge every wall at its nominal strength, so they check the load's scatter, not 
 - The yield posterior: [charge inference](charge-inference.md).
 - G. W. Brier, "Verification of forecasts expressed in terms of probability", *Monthly Weather
   Review* 78, 1950 (the score).
+- E. K. Beauchamp and R. V. Matalucci, *Dynamics of Window Glass Fracture in Explosions*,
+  SAND98-0598, Sandia, 1998 (OSTI 658184; obtained 21 October 2026). Not used for the chances:
+  eleven of its twelve panes broke, most weakened on purpose, so it gives no threshold. Its
+  filmed speeds are compared in [validation](validation.md#sandias-windows).
 
 ## Future work
 

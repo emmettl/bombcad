@@ -1,0 +1,37 @@
+{
+ "source": "E. K. Beauchamp and R. V. Matalucci, Dynamics of Window Glass Fracture in Explosions, SAND98-0598, Sandia National Laboratories, May 1998 (OSTI 658184). See README.md.",
+ "opening": {"widthM": 0.4064, "heightM": 0.5588, "note": "Each pane's open area, 16 by 22 in, of four panes 17.5 by 23.5 in in an angle-iron frame in a 36 by 48 in opening of a 12 in reinforced concrete wall, held with soft putty over a 1 in by 1/8 in strip of foam (section 3.0)."},
+ "shots": [
+  {"name": "1", "explosive": "C4", "massLb": 0.22, "standoffFt": 12, "nominalPeakPsi": 2.52, "nominalImpulsePsiMs": 2.09, "measuredPeakPsi": 4.0, "note": "Table 2; 4 psi measured by two gauges at the front of the window (section 4.1)."},
+  {"name": "2", "explosive": "ANFO", "massLb": 25, "standoffFt": 20, "nominalPeakPsi": 12.7, "nominalImpulsePsiMs": 20.22, "note": "Table 2; 'peak incident overpressure was predicted to be 12.7 psi' (section 5.1)."},
+  {"name": "3", "explosive": "ANFO", "massLb": 13, "standoffFt": 20, "nominalPeakPsi": 8.22, "nominalImpulsePsiMs": 13.41, "note": "Table 2; pressure not monitored."},
+  {"name": "film", "explosive": "ANFO", "massLb": 13, "standoffFt": 20, "nominalPeakPsi": 8.22, "nominalImpulsePsiMs": 13.41, "note": "The later, non-Sandia test filmed for velocity: 'the same explosive materials and blast conditions as those in Experiment No. 3' (section 7.0)."}
+ ],
+ "panes": [
+  {"shot": "1", "glass": "annealed", "thicknessMM": 3.95, "flaws": "Vickers indents at the centre, 3 kg", "broke": true, "failureStressKsi": [5.87, 5.6], "failurePressurePsi": [1.31, 1.25], "note": "Table 3 (mirror radius; Mecholsky plot); the pressure by the authors' linear plate formula."},
+  {"shot": "1", "glass": "annealed", "thicknessMM": 5.56, "flaws": "Vickers indents of 1, 3 and 10 kg", "broke": true, "failureStressKsi": [4.7], "failurePressurePsi": [2.07], "note": "0.219 in; a 10 kg indent propagated; taped, it stayed in the frame."},
+  {"shot": "1", "glass": "annealed", "thicknessMM": 12.7, "flaws": "Vickers indents of 3, 10 and 30 kg", "broke": false, "note": "1/2 in nominal; 'the unfractured 1/2-inch sheet remained in the frame'."},
+  {"shot": "1", "glass": "tempered", "thicknessMM": 3.95, "flaws": "Vickers indents at the centre, 30 kg", "broke": true, "centralTensionKsi": 8.3, "failureStressKsi": [7.8], "failurePressurePsi": [1.74], "note": "Surface compression 16.6 ksi (parabolic profile)."},
+  {"shot": "2", "glass": "tempered", "thicknessMM": 4, "flaws": "flame-annealed spot at the centre", "broke": true, "note": "Every sheet of shot 2 broke from a corner, not from its flaws."},
+  {"shot": "2", "glass": "tempered", "thicknessMM": 4, "flaws": "Vickers indent at the centre, 30 kg", "broke": true},
+  {"shot": "2", "glass": "annealed", "thicknessMM": 4, "flaws": "Vickers indents at the centre, 3 kg", "broke": true},
+  {"shot": "2", "glass": "tempered", "thicknessMM": 4, "flaws": "as received", "broke": true, "appliedStressMPa": {"centre": [42, 58, 0], "lowerLeft": 198, "upperLeft": 221}},
+  {"shot": "3", "glass": "tempered", "thicknessMM": 4, "flaws": "Vickers indents at the corners and centre, 30 kg", "broke": true},
+  {"shot": "3", "glass": "tempered", "thicknessMM": 4, "flaws": "laser-annealed spots at the corners and centre", "broke": true, "note": "Local stress at failure 1.64-3.8 ksi near the spots (Table 4)."},
+  {"shot": "3", "glass": "tempered", "thicknessMM": 4, "flaws": "as received", "broke": true, "note": "Table 4: 10.3 ksi at the centre, 16.9-23.4 ksi at the corners."},
+  {"shot": "3", "glass": "annealed", "thicknessMM": 4, "flaws": "Vickers indents at the corners and centre, 3 kg", "broke": true}
+ ],
+ "speeds": [
+  {"shot": "film", "glass": "annealed", "thicknessMM": 3.175, "label": "3 mm (upper)", "ftPerS": 185},
+  {"shot": "film", "glass": "annealed", "thicknessMM": 3.175, "label": "3 mm (lower)", "ftPerS": 146},
+  {"shot": "film", "glass": "annealed", "thicknessMM": 6.35, "label": "6 mm (upper)", "ftPerS": 74.7},
+  {"shot": "film", "glass": "annealed", "thicknessMM": 6.35, "label": "6 mm (lower)", "ftPerS": 81.6}
+ ],
+ "speedsNote": "Figure 20's legend: the horizontal speed of the central cluster of each pane, from high-speed film against a 1 ft grid, constant from the window to 5 ft. The text calls the sheets 1/8 and 1/4 in. No glass moved until 0.015 s after the detonation; the 3 mm lines cross zero at about 0.015-0.016 s, the 6 mm at about 0.016 and 0.022 s (read off the figure). A strip about 2 in wide round each edge left slower, rotating, and spread in the plane.",
+ "fragments": {
+  "annealedEdgeLengthIn": [0.2, 2], "annealedEdgeWidthIn": [0.1, 0.8],
+  "temperedClusterIn": [2, 3], "temperedDiceSpacingIn": [0.2, 0.4],
+  "capturedShare": 0.05,
+  "note": "Section 5.2.3 (shot 2's annealed sheet's 4 in edge band; its centre broke into much larger pieces, in bending of the opposite sign) and 8.1 (the tempered sheets held together as clusters of dice, 2-3 in, that penetrated the foam as deeply as annealed glass). About 5% of shot 2's annealed and as-received tempered glass, the sheets weighing about 2.34 kg, was caught in the backstop (129 g and 100 g)."
+ }
+}
