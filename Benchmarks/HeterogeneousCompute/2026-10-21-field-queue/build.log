@@ -1,0 +1,22 @@
+Building for production...
+[Pre-planning 1 / 448]
+[Planning deferred tasks]
+[11 / 60] ContinuumKit_ContactSearchMetal
+[11 / 61]
+[19 / 68] SceneModel
+[29 / 73] SceneModel
+[35 / 78] ContactSearch
+[43 / 79] CompressibleFlow
+[45 / 75] GeometryImport
+[47 / 71] ContactSearchMetal
+[49 / 67] Numerics
+[51 / 63] RadialBlast
+[54 / 65] BlastModel
+[56 / 66] BlastModel
+[60 / 69] BlastCore
+[62 / 70] BlastCore
+[68 / 74] BlastRender
+[72 / 75] scenebench-product
+[74 / 75] scenebench-product
+[75 / 75] scenebench-product
+Build complete! (158.82 secs)

@@ -30,7 +30,7 @@ training cases, and scheduling must keep that gate.
 
 | Option | Status and next useful experiment |
 |---|---|
-| Independent field jobs, sweeps and uncertainty cases | Highest immediate priority. Route only supported cases to CUDA, keep coupled/refined cases on Metal; measure total job cost. [#59](https://github.com/emmettl/bombcad-work/issues/59). |
+| Independent field jobs, sweeps and uncertainty cases | A [bounded replay queue](field-queue.md) now handles explicit recommended uniform/terrain field cases with per-case gates and total-cost estimates. Other physics stays in existing Metal workflows; broader evaluation remains open. [#59](https://github.com/emmettl/bombcad-work/issues/59). |
 | Simulation/training pipeline | Both stages exist. Use separate machines concurrently or alternate bounded batches on one PC; never bypass the shared lock. Add automated generate/train/judge only after acceptance and resumable scheduling work. |
 | CUDA worker optimization | Profile cold/warm startup, per-step control readback, dispatches and cooling before changing algorithms. [#60](https://github.com/emmettl/bombcad-work/issues/60). |
 | Separate one-way physics consumers | Replay compact extracted fields for thermal exposure, later damage or other effects. CUDA ports and scientific validation are additional work. Begin with thermal replay economics, [#61](https://github.com/emmettl/bombcad-work/issues/61). |
@@ -106,7 +106,7 @@ setup, transfers and solve separately; report contended observations separately 
 Do not run a competing benchmark to estimate how fast an occupied GPU would have been.
 
 - [#59 capability-aware independent job scheduling](https://github.com/emmettl/bombcad-work/issues/59):
-  resumability, busy-worker handling, memory/physics checks, accepted outputs and total cost.
+  a bounded reference-replay queue is implemented and recovery-tested; finer Metal phase accounting and larger queue evaluation remain.
 - [#60 CUDA profiling and dispatch/control experiments](https://github.com/emmettl/bombcad-work/issues/60):
   quiet repetitions and full correctness gates before a performance claim.
 - [#61 thermal replay feasibility](https://github.com/emmettl/bombcad-work/issues/61):
@@ -319,3 +319,17 @@ worker/profiler elapsed measurements now use raw time with explicit provenance a
 audit. Existing gates and all numerical outputs/timesteps remain unchanged. This corrects
 measurement, not compute throughput. #64's host discipline investigation remains open; no clock
 or service settings were changed, and old receipts must not be normalized by one fixed factor.
+
+
+## Resumable mixed field queue
+
+The [field queue](field-queue.md) now freezes explicit case/reference/code identities, selects
+backends with cost/memory/availability checks, respects existing GPU/training locks and publishes
+gated content-addressed objects. A real three-case run includes static-terrain CUDA and uniform
+Metal work, survives a busy PC, retries a terminated attempt, and resumes an active CUDA worker
+after controller interruption without relaunching it. Accepted cases are reused exactly once.
+
+[Receipts and recovery evidence](../Benchmarks/HeterogeneousCompute/2026-10-21-field-queue/summary.md)
+retain the physical/calibration cases and all outcomes. This is bounded reference replay, not
+bulk generation or a throughput speedup claim. #59 remains open for finer phase accounting and
+larger evaluation; #47/#62/#63 admission remains gated.

@@ -1,0 +1,30 @@
+"""Actual small production Metal references and eligible CUDA replays for queue integration."""
+import hashlib,json,os,subprocess,sys,time
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/'Scripts/cuda'))
+from generate import generate
+from remote import deploy
+from compare_dataset import compare
+root=Path('/private/tmp/bombcad-field-queue-final');exe=Path('.build/release/scenebench').resolve();slot=str(Path.home()/'.local/bin/gpu-slot')
+source=root/'solver.cu';source.write_text(generate());osm=Path('Samples/MapBuildings/synthetic-neighbourhood.geojson').resolve()
+report={'status':'running','scope':__doc__+' Single calibration samples per case, not a speedup study.','observerClock':'Mac time.perf_counter','executableSHA256':hashlib.sha256(exe.read_bytes()).hexdigest(),'cases':{}}
+def save():(root/'costs.json').write_text(json.dumps(report,indent=2)+'\n')
+env=dict(os.environ)
+for k in ('BOMBCAD_KERNEL_MATH','BOMBCAD_KERNEL_CONTRACT','BOMBCAD_STATE_PADDING','BOMBCAD_STATE_PADDING_AT','BOMBCAD_KERNEL_PERTURB'):env.pop(k,None)
+save()
+try:
+ for mass in (5,10,20):
+  name='queue-m'+str(mass);args=['--osm',str(osm),'--centre','0.00045,51.50028','--radius','48','--dx','2','--height','32','--mass',str(mass),'--until','0.08','--above','1','--ground','saturated','--id',name,'--first-phase']
+  ref=root/(name+'-reference');prepared=root/(name+'-input')
+  start=time.perf_counter()
+  with (root/(name+'-metal.log')).open('w') as log:subprocess.run([slot,'--mem','1',str(exe),'field-export',*args,'--phase-timings','--out',str(ref)],check=True,stdout=log,stderr=subprocess.STDOUT,env=env,timeout=120)
+  metal=time.perf_counter()-start;start=time.perf_counter()
+  with (root/(name+'-prepare.log')).open('w') as log:subprocess.run([slot,'--mem','1',str(exe),'field-export',*args,'--phase-timings','--cuda-job','--cuda-source',str(source),'--out',str(prepared)],check=True,stdout=log,stderr=subprocess.STDOUT,env=env,timeout=120)
+  prepare=time.perf_counter()-start;out=root/(name+'-cuda')
+  result=deploy('bombcad-pc',prepared,out,dataset_only=True,cache_dir='bombcad-cuda/ptx-cache')
+  start=time.perf_counter();gate=compare(ref,out/'dataset');comparison=time.perf_counter()-start
+  report['cases'][name]={'arguments':args,'reference':str(ref),'metalSeconds':metal,'prepareSeconds':prepare,'deploymentSeconds':json.load(open(out/'deployment.json'))['totalSecondsBeforeReceipt'],'compareSeconds':comparison,'comparison':gate,'worker':result}
+  save();print(name,'gate',gate['passed'],'metal',metal,flush=True)
+  if not gate['passed']:raise RuntimeError('calibration CUDA target gate failed')
+ report['status']='complete';save()
+except BaseException as e:report['status']='failed';report['error']=repr(e);save();raise

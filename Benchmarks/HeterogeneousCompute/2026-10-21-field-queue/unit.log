@@ -1,0 +1,18 @@
+python3 -I Scripts/cuda/test_backend.py
+............ssss.........................{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+...
+----------------------------------------------------------------------
+Ran 50 tests in 7.032s
+
+OK (skipped=4)

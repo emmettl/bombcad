@@ -1,0 +1,20 @@
+"""Add a small static-terrain case to the mixed queue's physical coverage."""
+import hashlib,json,os,subprocess,sys,time
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/'Scripts/cuda'))
+from compare_dataset import compare
+from remote import deploy
+root=Path('/private/tmp/bombcad-field-queue-final');report=json.load(open(root/'costs.json'));name='queue-terrain-m10'
+dem=root/'slope.asc';rows=['ncols 20','nrows 20','xllcorner -0.0005','yllcorner 51.4995','cellsize 0.0001','NODATA_value -9999']
+for y in reversed(range(20)):rows.append(' '.join(str(.4*x+.1*y) for x in range(20)))
+dem.write_text('\n'.join(rows)+'\n')
+args=list(report['cases']['queue-m10']['arguments']);args[args.index('--id')+1]=name;args+=['--dem',str(dem)]
+exe=str(Path('.build/release/scenebench').resolve());slot=str(Path.home()/'.local/bin/gpu-slot');ref=root/(name+'-reference');job=root/(name+'-input');source=root/'solver.cu';env=dict(os.environ)
+for k in ('BOMBCAD_KERNEL_MATH','BOMBCAD_KERNEL_CONTRACT','BOMBCAD_STATE_PADDING','BOMBCAD_STATE_PADDING_AT','BOMBCAD_KERNEL_PERTURB'):env.pop(k,None)
+start=time.perf_counter()
+with (root/(name+'-metal.log')).open('w') as log:subprocess.run([slot,'--mem','1',exe,'field-export',*args,'--phase-timings','--out',str(ref)],check=True,stdout=log,stderr=subprocess.STDOUT,env=env,timeout=120)
+metal=time.perf_counter()-start;start=time.perf_counter()
+with (root/(name+'-prepare.log')).open('w') as log:subprocess.run([slot,'--mem','1',exe,'field-export',*args,'--phase-timings','--cuda-job','--cuda-source',str(source),'--out',str(job)],check=True,stdout=log,stderr=subprocess.STDOUT,env=env,timeout=120)
+prepare=time.perf_counter()-start;out=root/(name+'-cuda');result=deploy('bombcad-pc',job,out,dataset_only=True,cache_dir='bombcad-cuda/ptx-cache');start=time.perf_counter();gate=compare(ref,out/'dataset');comparison=time.perf_counter()-start
+report['cases'][name]={'arguments':args,'reference':str(ref),'metalSeconds':metal,'prepareSeconds':prepare,'deploymentSeconds':json.load(open(out/'deployment.json'))['totalSecondsBeforeReceipt'],'compareSeconds':comparison,'comparison':gate,'worker':result}
+(root/'costs.json').write_text(json.dumps(report,indent=2)+'\n');print('terrain gate',gate['passed'], 'cut cells',result['terrainCutCells'])

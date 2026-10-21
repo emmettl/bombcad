@@ -1,0 +1,96 @@
+"""Real mixed queue recovery/busy-worker integration; no throughput claim."""
+import hashlib,importlib.util,json,os,shlex,signal,subprocess,sys,time
+from pathlib import Path
+root=Path('/private/tmp/bombcad-field-queue-final');queue=root/'queue-final';tool=Path('Scripts/cuda/field-queue.py').resolve()
+sys.path.insert(0,str(tool.parent));spec=importlib.util.spec_from_file_location('queue_api',tool);q=importlib.util.module_from_spec(spec);spec.loader.exec_module(q)
+cost=q.read(root/'costs.json');assert cost['status']=='complete'
+jobs=[]
+for name,modes in [('queue-m5',['metal']),('queue-terrain-m10',['cuda']),('queue-m20',['metal','cuda'])]:
+ entry=cost['cases'][name];meta=q.read(Path(entry['reference'])/'meta.json')
+ terms=lambda *keys:[{'report':str(root/'costs.json'),'keys':['cases',name,k]} for k in keys]
+ jobs.append({'id':name,'arguments':entry['arguments'],'reference':entry['reference'],'physics':'recommended-static-terrain' if '--dem' in entry['arguments'] else 'recommended-uniform',
+  'backends':modes,'metalGB':1,'cudaBytes':77*meta['cells']+36*meta['rows']*meta['columns']+1048576+sum(f.stat().st_size for f in (root/(name+'-input')).glob('cut-*.bin')),
+  'costs':{m:terms('metalSeconds') if m=='metal' else terms('prepareSeconds','deploymentSeconds','compareSeconds') for m in modes},'timeoutSeconds':120})
+plan={'format':q.FORMAT,'purpose':'reference-replay','scenebench':str(Path('.build/release/scenebench').resolve()),
+      'cuda':{'host':'bombcad-pc','cacheDir':'bombcad-cuda/ptx-cache'},'jobs':jobs}
+q.atomic(root/'plan.json',plan);contract=q.init(plan,queue);byid={j['id']:j for j in contract['jobs']}
+record={'status':'running','scope':__doc__,'contract':contract['key'],'events':[]}
+def save():q.atomic(root/'integration.json',record)
+def event(name,**data):record['events'].append({'event':name,'at':time.time(),**data});save();print(name,flush=True)
+def until(test,timeout=150):
+ end=time.time()+timeout
+ while time.time()<end:
+  value=test()
+  if value:return value
+  time.sleep(.01)
+ raise TimeoutError('integration condition timed out')
+def attempts(name):return list((queue/'cases'/byid[name]['key']/'attempts').iterdir())
+def worker_process(name):
+ for a in attempts(name):
+  if (a/'process.json').exists():
+   p=q.read(a/'process.json')
+   if q.group_alive(p['pgid']):return a,p
+ return None
+def own_group(p):
+ cmd=subprocess.check_output(['ps','-p',str(p['pid']),'-o','command='],text=True)
+ assert str(queue) in cmd and '_worker' in cmd,cmd
+ return p['pgid']
+controller=None;resumed=None;busy=None
+try:
+ # The existing lock helper owns a live bounded process; never replace another owner.
+ dep=q.read(root/'queue-m10-cuda/deployment.json')['directory'];helper=dep+'/worker/remote-train.py'
+ remote=f'''import importlib.util,json,os,time
+s=importlib.util.spec_from_file_location('lock',{helper!r});m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+p='bombcad-ml/lock'
+if not m.acquire(p,'field queue integration bounded busy-window',m.boot_id()):raise RuntimeError('real GPU owner busy; abort test')
+try:
+ print(json.dumps(dict(ready=True,pid=os.getpid())),flush=True);time.sleep(12)
+finally:m.release(p)
+'''
+ busy=subprocess.Popen(['ssh','-T','-o','BatchMode=yes','bombcad-pc','python3 -u -c '+shlex.quote(remote)],stdout=subprocess.PIPE)
+ ready=json.loads(busy.stdout.readline());assert ready['ready'] and busy.poll() is None;event('busy-owner-live',**ready)
+ log=(root/'controller-first.log').open('w')
+ controller=subprocess.Popen([sys.executable,str(tool),'run','--queue',str(queue),'--poll','.25','--max-seconds','180'],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+ found=until(lambda:worker_process('queue-m5'));a,p=found
+ assert busy.poll() is None and not attempts('queue-terrain-m10')
+ event('busy-PC-yielded',cudaAttempts=0,metalAttempt=a.name)
+ pgid=own_group(p);os.killpg(pgid,signal.SIGSTOP);os.killpg(pgid,signal.SIGTERM);os.killpg(pgid,signal.SIGCONT)
+ until(lambda:not q.group_alive(pgid));event('owned-Metal-attempt-terminated',pid=p['pid'],attempt=a.name)
+ # Wait for CUDA dispatch after the busy owner's real process exits.
+ until(lambda:busy.poll() is not None);assert busy.returncode==0;event('busy-owner-terminal')
+ def deploying():
+  found=worker_process('queue-terrain-m10')
+  if not found:return None
+  a,p=found
+  return (a,p) if (a/'progress.json').exists() and q.read(a/'progress.json')['phase']=='deploy' else None
+ a,p=until(deploying);own_group(p);before_attempts=len(attempts('queue-terrain-m10'))
+ os.kill(controller.pid,signal.SIGINT);assert controller.wait(timeout=15)==130;log.close()
+ assert q.group_alive(p['pgid']);event('controller-interrupted-worker-still-live',pid=p['pid'],attempt=a.name)
+ log=(root/'controller-resume.log').open('w')
+ resumed=subprocess.Popen([sys.executable,str(tool),'run','--queue',str(queue),'--poll','.25','--max-seconds','180'],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+ assert resumed.wait(timeout=180)==0;log.close();event('resumed-controller-completed')
+ # Confirm all case groups terminal, not merely the existence of accepted pointers.
+ until(lambda:all(not q.group_alive(q.read(f)['pgid']) for f in queue.glob('cases/*/attempts/*/process.json')))
+ states=q.snapshot_states(queue,contract);assert all(s['status']=='accepted' for s in states.values())
+ assert len(attempts('queue-terrain-m10'))==before_attempts==1
+ assert len(attempts('queue-m5'))==2
+ objects=list((queue/'objects').iterdir());assert len(objects)==3
+ receipts={j['id']:q.object_receipt(queue,states[j['key']]['object'],contract,j) for j in contract['jobs']}
+ assert receipts['queue-terrain-m10']['backend']=='cuda' and receipts['queue-m20']['backend']=='metal'
+ before={j['id']:len(attempts(j['id'])) for j in contract['jobs']}
+ subprocess.run([sys.executable,str(tool),'run','--queue',str(queue),'--once'],check=True,stdout=subprocess.DEVNULL)
+ assert before=={j['id']:len(attempts(j['id'])) for j in contract['jobs']}
+ record.update(status='complete',states=states,receipts=receipts,objects=[p.name for p in objects],
+  exactlyOneAcceptedObjectPerCase=True,acceptedResumeDoesNotRecompute=True,failedAttemptRetried=True,
+  liveCUDAWorkerNotRestarted=True,allOwnedProcessGroupsTerminal=True)
+ save();event('final-acceptance-verified')
+except BaseException as error:
+ record.update(status='failed',error=repr(error));save();raise
+finally:
+ # Only stop owned controllers here; case workers are reported/observed separately.
+ for child in (controller,resumed):
+  if child is not None and child.poll() is None:
+   child.send_signal(signal.SIGINT)
+   try:child.wait(timeout=10)
+   except subprocess.TimeoutExpired:child.terminate();child.wait(timeout=10)
+ if busy is not None and busy.poll() is None:busy.wait(timeout=20)

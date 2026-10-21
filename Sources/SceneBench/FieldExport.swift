@@ -6,7 +6,7 @@ import simd
 
 /// `scenebench field-export <district-scene's inputs> [--radius 1024] [--dx 4] [--height m]
 /// [--until s] [--above 2] [--edge 4] [--ground saturated] [--balloon] [--first-phase] [--id name]
-/// [--layout name] [--cuda-job --cuda-source generated.cu] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
+/// [--layout name] [--phase-timings] [--cuda-job --cuda-source generated.cu] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
 /// district is laid out as `district-scene` lays it out, the air is run on the recommended
 /// configuration until the blast has passed the domain's corners, and the run's own peak
 /// overpressure and positive impulse fields are read at a fixed height above the ground on the
@@ -93,6 +93,24 @@ enum FieldExport {
         func value(_ name: String) -> String? {
             args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
         }
+        let timingStart = ContinuousClock.now
+        var phaseSeconds: [String: Double] = [:]
+        func writeTimings(folder: URL, mode: String, solve: Double, outputStart: ContinuousClock.Instant)
+            throws
+        {
+            guard args.contains("--phase-timings") else { return }
+            phaseSeconds["solveSeconds"] = solve
+            phaseSeconds["outputSeconds"] = (ContinuousClock.now - outputStart) / .seconds(1)
+            let report: [String: Any] = [
+                "format": "bombcad-field-phases-1", "mode": mode, "clock": "Swift ContinuousClock",
+                "seconds": phaseSeconds,
+                "totalSecondsBeforeTimingReceipt": (ContinuousClock.now - timingStart) / .seconds(1),
+                "scope":
+                    "Scene preparation; solver setup including shader compilation, allocation and initial state; recorder setup; solve; output. Excludes process startup, gpu-slot waiting and this receipt write. Compilation is included in solver setup, not isolated.",
+            ]
+            try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
+                .write(to: folder.appending(path: "phase-timings.json"), options: .withoutOverwriting)
+        }
         setvbuf(stdout, nil, _IOLBF, 0)
         guard let out = value("out"), let device = MTLCreateSystemDefaultDevice() else {
             throw BlastError.allocationFailed("--out folder and a Metal device")
@@ -139,8 +157,13 @@ enum FieldExport {
             throw BlastError.allocationFailed(
                 "production --trace-columns requires --first-phase and excludes --cuda-job")
         }
+        let solverSetupStart = ContinuousClock.now
+        phaseSeconds["scenePreparationSeconds"] = (solverSetupStart - timingStart) / .seconds(1)
         let solver = try BlastSolver(
             device: device, scenario: scene, cellSize: dx, configuration: configuration)
+        let recorderSetupStart = ContinuousClock.now
+        phaseSeconds["solverSetupIncludingCompileSeconds"] =
+            (recorderSetupStart - solverSetupStart) / .seconds(1)
         if args.contains("--all-tiles-diagnostic") { try solver.activateAllAirTilesForDiagnostics() }
         let above = Float(value("above").flatMap(Double.init) ?? 2)
         if args.contains("--first-phase") || args.contains("--cuda-job") {
@@ -157,12 +180,14 @@ enum FieldExport {
         } else {
             traceIndices = []
         }
+        phaseSeconds["recorderSetupSeconds"] = (ContinuousClock.now - recorderSetupStart) / .seconds(1)
         print(
             String(
                 format: "%d × %d × %d cells (%.1f M), %.0f m top, %.0f kg, to %.2f s", solver.grid.nx,
                 solver.grid.ny, solver.grid.nz, Double(solver.grid.cellCount) / 1e6, scene.domainSize.z, mass,
                 until))
         if args.contains("--cuda-job") {
+            let outputStart = ContinuousClock.now
             guard let shader = value("cuda-source") else {
                 throw BlastError.allocationFailed("--cuda-source generated.cu is required with --cuda-job")
             }
@@ -200,6 +225,7 @@ enum FieldExport {
             print(
                 "CUDA job ready at \(folder.path); no grid simulation or training targets generated on this Mac"
             )
+            try writeTimings(folder: folder, mode: "cuda-prepare", solve: 0, outputStart: outputStart)
             return
         }
         let start = ContinuousClock.now
@@ -224,6 +250,7 @@ enum FieldExport {
             }
         }
         let wall = DistrictBenchmark.seconds(start)
+        let outputStart = ContinuousClock.now
         print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
         let folder = URL(filePath: out)
         try write(
@@ -255,6 +282,7 @@ enum FieldExport {
             try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
                 .write(to: folder.appending(path: "production-trace.json"))
         }
+        try writeTimings(folder: folder, mode: "metal", solve: wall, outputStart: outputStart)
         guard stable else { throw BlastError.allocationFailed("a stable run (written with stable: false)") }
     }
 

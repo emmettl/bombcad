@@ -11,7 +11,9 @@ what has since been built, and measured, is said where it comes up.
 The desktop CUDA worker now runs a supported subset of air simulations as well as training.
 The Mac/mini estimates below are not measurements of that pairing. See
 [Heterogeneous compute](heterogeneous-compute.md) for current capabilities, busy-host SSH and
-compression experiments, acceptance limits and tracking issues.
+compression experiments, acceptance limits and tracking issues. A [bounded field queue](field-queue.md)
+now dispatches explicit reference replays between local Metal and the CUDA PC, preserving
+per-case gates, resource locks and resume/publication state.
 
 ## Short answer
 

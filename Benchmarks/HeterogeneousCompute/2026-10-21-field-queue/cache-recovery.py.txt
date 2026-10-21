@@ -1,0 +1,42 @@
+"""Confirm cached CUDA preparation is reused after a stopped pre-deployment worker."""
+import importlib.util,json,os,signal,subprocess,sys,time
+from pathlib import Path
+root=Path('/private/tmp/bombcad-field-queue-final');queue=root/'cache-queue';tool=Path('Scripts/cuda/field-queue.py').resolve();sys.path.insert(0,str(tool.parent))
+spec=importlib.util.spec_from_file_location('queue_cache_audit',tool);q=importlib.util.module_from_spec(spec);spec.loader.exec_module(q)
+plan=q.read(root/'plan.json');plan['jobs']=[j for j in plan['jobs'] if j['id']=='queue-terrain-m10'];contract=q.init(plan,queue);job=contract['jobs'][0];folder=queue/'cases'/job['key']
+report={'status':'running','scope':__doc__,'contract':contract['key']}
+def save():q.atomic(root/'cache-recovery.json',report)
+def until(test,seconds=180):
+ end=time.time()+seconds
+ while time.time()<end:
+  value=test()
+  if value:return value
+  time.sleep(.005)
+ raise TimeoutError('cache recovery observation deadline')
+save();log=(root/'cache-controller.log').open('w');controller=subprocess.Popen([sys.executable,str(tool),'run','--queue',str(queue),'--poll','.25','--max-seconds','180'],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+try:
+ def prepared_window():
+  if not (folder/'prepared/queue-prepared.json').exists():return None
+  for attempt in (folder/'attempts').iterdir():
+   if (attempt/'process.json').exists() and (attempt/'progress.json').exists() and q.read(attempt/'progress.json')['phase']=='prepare':return attempt,q.read(attempt/'process.json')
+ attempt,p=until(prepared_window);cmd=subprocess.check_output(['ps','-ww','-p',str(p['pid']),'-o','command='],text=True);assert str(queue) in cmd and '_worker' in cmd
+ os.killpg(p['pgid'],signal.SIGSTOP)
+ assert q.read(attempt/'progress.json')['phase']=='prepare','stop window advanced; do not assume remote work stopped'
+ assert not (attempt/'cuda-result').exists()
+ report['stoppedBeforeDeployment']=True;report['stoppedAttempt']=attempt.name;report['preparedIdentityBefore']=q.verify_prepared(folder/'prepared',contract,job);save()
+ os.killpg(p['pgid'],signal.SIGTERM);os.killpg(p['pgid'],signal.SIGCONT);until(lambda:not q.group_alive(p['pgid']))
+ assert controller.wait(timeout=180)==0
+ until(lambda:all(not q.group_alive(q.read(f)['pgid']) for f in folder.glob('attempts/*/process.json')))
+ state=q.case_state(queue,contract,job);receipt=q.object_receipt(queue,state['object'],contract,job)
+ assert state['status']=='accepted' and state['attempts']==2 and receipt['timings']['preparationCacheHit']
+ assert receipt['provenance']['preparedObject']==report['preparedIdentityBefore']
+ report.update(status='complete',state=state,receipt=receipt,preparationCacheHit=True,allOwnedGroupsTerminal=True)
+ save();print('cache recovery passed',flush=True)
+finally:
+ # Resume a stopped owned group before any cleanup signal so no stopped worker is abandoned.
+ if 'p' in locals() and q.group_alive(p['pgid']):
+  try:os.killpg(p['pgid'],signal.SIGCONT)
+  except ProcessLookupError:pass
+ if controller.poll() is None:
+  controller.send_signal(signal.SIGINT);controller.wait(timeout=15)
+ log.close()

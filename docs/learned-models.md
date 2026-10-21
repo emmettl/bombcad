@@ -190,6 +190,11 @@ The export is off unless asked for, and it only reads fields the solver already 
 targets are unchanged: `blastbench digest --recommended` was the same before and after, on release
 builds (see [testing](#what-was-tested-where)).
 
+`field-export --phase-timings` additionally writes a local phase receipt for preparation,
+solver setup including compilation, recorder setup, solve and output. It leaves the numerical
+arrays unchanged. The [resumable field queue](field-queue.md) uses these observations and
+existing Metal references for bounded replay admission; it does not publish a training index.
+
 **`--first-phase`** (to `field-export`, or to `district-compare --export-field`) adds a third
 target, `firstPhaseImpulse`: the first positive phase's impulse, by the façade recorder's rule
 (from the start until the overpressure first falls below nothing after reaching half its peak).

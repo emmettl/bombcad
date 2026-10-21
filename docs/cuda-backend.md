@@ -208,7 +208,8 @@ An independent [clock-calibration issue #64](https://github.com/emmettl/bombcad-
 records reproducible Mac/WSL interval disagreement and an apparent PC wall-clock step. Until
 resolved, use a common observer for cross-host latency and keep worker-clock diagnostics
 separate. No time or clocksource settings were changed. Per-step control/dispatch profiling
-and capability-aware scheduling remain #60/#59 follow-ups.
+remain #60 follow-ups. A [bounded field replay queue](field-queue.md) now covers #59
+resumability and per-case admission; finer accounting and larger evaluation remain open.
 
 ### Raw elapsed-clock correction
 
@@ -525,3 +526,14 @@ diagnosis. The CUDA worker's default work selection changed; app defaults, arith
 masks, accepted physics and tolerances did not. Original-reference acceptance failures remain
 exactly the same, so no full training batch is enabled by this optimization. #60 retains
 further profiling; #47/#62/#63 retain their separate numerical contract work.
+
+
+## Resumable field dispatch
+
+[The mixed Metal/CUDA queue](field-queue.md) runs explicit, bounded reference replays with
+immutable inputs/code, per-case production Metal gates and content-addressed accepted objects.
+It preserves gpu-slot and the training/CUDA lock; controller interruption does not relaunch live
+case workers. A small real static-terrain CUDA case passes alongside uniform Metal cases in
+the recovery experiment. This changes neither the larger terrain/Beirut failures nor bulk
+dataset admission. The CLI's optional `--phase-timings` records local field initialization,
+setup including compilation, solve and output without changing numerical arrays.

@@ -1,0 +1,12 @@
+{
+  "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "torch": "2.11.0+cu128",
+  "cuda": "12.8",
+  "clocksource": "tsc",
+  "nvidia": "NVIDIA GeForce RTX 3080 Ti, 617.42, 0 %, 876 MiB\n",
+  "gpuLockPresent": false,
+  "scope": "Post-integration read-only snapshot; no GPU computation or package changes",
+  "macPython": "3.9.6 (default, Aug 17 2026, 12:07:42) \n[Clang 21.0.0 (clang-2100.3.34.1)]",
+  "macPlatform": "macOS-27.0.1-arm64-arm-64bit"
+}
