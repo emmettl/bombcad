@@ -5,7 +5,7 @@ that run on the CPU) out of `BlastCore` into `BlastModel`, a module that imports
 also builds and is tested on Linux. They do the move by script, so that it can be redone on
 whatever `main` is when the window opens, and they stop rather than guess when `main` has changed
 under them. The findings and the numbers are in the cloud report of 19 October 2026
-(`CLOUD-REPORT.md` on the branch `cloud/blastmodel-split`).
+(kept outside the repository at `/Volumes/StudioData/bombcad/cloud-reports/2026-10-19/blastmodel-split.md`).
 
 | File | What it is |
 |---|---|
