@@ -23,6 +23,17 @@ smaller (the same district and charge, the same top by the open-face rule).
 
 Each is the median of fine over coarse and the standard deviation of its logarithm, for the peak and
 the first phase's impulse.
+
+    python3 -I Scripts/ml/field_bias.py profile --out /Volumes/StudioData/bombcad/ml/bias/profile
+        [--mass 50000] [--dx 4,2]
+
+`profile` checks the fields' shape with height in the open against Alsubaei 2015's columns with no
+wall (Fixtures/Alsubaei2015: four gauges up each, 8.2–16.4 m from 2.4–125 kg of ANFO). One charge
+of `--mass` kg of TNT on flat rigid ground, nothing else near it, is exported with a level at each
+gauge's height scaled by the cube root of the charges (Hopkinson), on each cell size of `--dx`; at
+each shot's scaled distance the ring of cells there gives the incident peak at each level, reflected
+square-on by Rankine–Hugoniot as the gauges face the charge. The test is the shape: each gauge's
+peak over the lowest's, against the measured.
 """
 import argparse
 import csv
@@ -345,6 +356,95 @@ def analyse(args):
     return 0
 
 
+# MARK: - The profile with height, against Alsubaei 2015's open columns
+
+ALSUBAEI = os.path.join(REPOSITORY, "Fixtures", "Alsubaei2015", "walls.json")
+
+
+def alsubaei_shots():
+    """[(label, TNT kg, charge to column m, gauge heights m, measured peaks kPa)] with no wall."""
+    with open(ALSUBAEI) as handle:
+        data = json.load(handle)
+    factor = data["explosive"]["tntFactor"]
+    shots = []
+    for key in ("halfScale", "halfScaleStreet"):
+        part = data[key]
+        for shot in part["noWall"]["shots"]:
+            shots.append(("%g kg at %g m" % (shot["anfo_kg"], shot["chargeToColumn_m"]), shot["anfo_kg"] * factor,
+                          shot["chargeToColumn_m"], part["gaugeHeights_m"], shot["peak_kPa"]))
+    full = data["fullScaleCanopied"]
+    shots.append(("%g kg at %g m" % (full["anfo_kg"], full["chargeToColumn_m"]), full["tnt_kg"],
+                  full["chargeToColumn_m"], full["gaugeHeights_m"], full["noWallPeak_kPa"]))
+    return shots
+
+
+def reflected(incident, ambient=101_325.0):
+    """Rankine–Hugoniot's square-on reflection of an incident overpressure (Pa), gamma 1.4."""
+    return 2 * incident * (7 * ambient + 4 * incident) / (7 * ambient + incident)
+
+
+def profile(args):
+    import numpy as np
+    shots = alsubaei_shots()
+    root = args.mass ** (1 / 3)
+    heights = sorted({max(1, int(round(h / tnt ** (1 / 3) * root))) for _, tnt, _, gauges, _ in shots
+                      for h in gauges})
+    os.makedirs(args.out, exist_ok=True)
+    # Flat rigid ground with one small shed far off (the layout wants a building).
+    osm = os.path.join(args.out, "open.osm")
+    m = 6_371_008.8 * math.pi / 180
+    with open(osm, "w") as handle:
+        handle.write('<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="BombCAD ml">\n')
+        corners = [(0.0, 0.0), (0.0, 8.0), (8.0, 8.0), (8.0, 0.0)]
+        for n, (x, y) in enumerate(corners, 1):
+            handle.write('  <node id="%d" lat="%.8f" lon="%.8f"/>\n' % (n, y / m, x / m))
+        handle.write('  <way id="1">' + "".join('<nd ref="%d"/>' % n for n in (1, 2, 3, 4, 1)) +
+                     '<tag k="building" v="yes"/><tag k="height" v="4"/></way>\n</osm>\n')
+    centre = "%.8f,%.8f" % (-(args.radius - 40) / m, -(args.radius - 40) / m)
+    top = int(math.ceil((max(heights) + 4 * root) / 8) * 8)
+    fields = {}
+    for dx in [float(d) for d in args.dx.split(",")]:
+        out = os.path.join(args.out, "dx%g" % dx)
+        if not os.path.exists(os.path.join(out, "meta.json")):
+            cells = (2 * args.radius / dx) ** 2 * top / dx
+            command = [GPU_SLOT, "--mem", str(max(4, int(math.ceil(cells * 73 * 1.3 / 1e9 + 1)))),
+                       os.path.abspath(args.scenebench), "field-export", "--osm", osm, "--centre", centre,
+                       "--radius", str(args.radius), "--dx", "%g" % dx, "--height", str(top), "--mass",
+                       "%g" % args.mass, "--ground", "rigid", "--first-phase", "--levels",
+                       ",".join(str(h) for h in heights), "--id", "open-profile", "--out", out]
+            print(" ".join(command), flush=True)
+            with open(out + ".log", "w") as log:
+                subprocess.run(command, check=True, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
+        fields[dx] = load(out)
+    print("%g kg of TNT; levels %s m (each gauge's height scaled); incident at the ring of each shot's "
+          "scaled distance, reflected square-on; each gauge over the lowest" % (args.mass, heights))
+    head = "  %-18s %-24s" % ("shot", "measured") + "".join("  %-24s" % ("%g m cells" % dx) for dx in fields)
+    print(head)
+    result = []
+    for label, tnt, distance, gauges, measured in shots:
+        scale = root / tnt ** (1 / 3)
+        want = distance * scale
+        row = {"shot": label, "scaledDistance": distance / tnt ** (1 / 3),
+               "measured": [m_ / measured[0] for m_ in measured]}
+        for dx, f in fields.items():
+            z = np.exp(f["inputs"][3]) * root
+            ring = np.abs(z - want) < max(dx, 0.02 * want)
+            peaks = []
+            for h in gauges:
+                level = "h%d" % max(1, int(round(h * scale)))
+                li = next(n for n, lv in enumerate(f["levels"]) if lv[0] == level)
+                inside = ring & f["masks"][li]
+                peaks.append(reflected(float(np.median(f["targets"][li][0][inside]))))
+            row["%gm" % dx] = [p_ / peaks[0] for p_ in peaks]
+            row["%gm reflected kPa" % dx] = [p_ / 1000 for p_ in peaks]
+        result.append(row)
+        print("  %-18s %-24s" % (label, " ".join("%.2f" % v for v in row["measured"])) + "".join(
+            "  %-24s" % " ".join("%.2f" % v for v in row["%gm" % dx]) for dx in fields))
+    with open(os.path.join(args.out, "profile.json"), "w") as handle:
+        json.dump(result, handle, indent=1)
+    return 0
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -364,8 +464,14 @@ def main(argv):
     a.add_argument("--tag", default="")
     a.add_argument("--strips", default=STRIPS)
     a.add_argument("--json")
+    q = sub.add_parser("profile")
+    q.add_argument("--out", required=True)
+    q.add_argument("--mass", type=float, default=50000)
+    q.add_argument("--dx", default="4,2")
+    q.add_argument("--radius", type=int, default=512)
+    q.add_argument("--scenebench", default=os.path.join(REPOSITORY, ".build", "release", "scenebench"))
     args = parser.parse_args(argv)
-    return run(args) if args.command == "run" else analyse(args)
+    return {"run": run, "analyse": analyse, "profile": profile}[args.command](args)
 
 
 if __name__ == "__main__":
