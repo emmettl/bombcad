@@ -259,9 +259,10 @@ enum FieldWalls {
                         let loads = ratios.enumerated().map { v, ratio -> (peak: Double, impulse: Double) in
                             // The roof's own load where the roofs' file gives the variant's, else
                             // the proxy (or, with a roofs' file, the surrogate's own for that part).
-                            guard let own, !roofHead.isEmpty else {
+                            guard !roofHead.isEmpty else {
                                 return (p.peakPa * ratio.x, p.impulsePaS * ratio.y)
                             }
+                            guard let own else { return (p.peakPa, p.impulsePaS) }
                             let c = roofColumns[v]
                             return (
                                 c.peak.map { own[$0] } ?? p.peakPa, c.impulse.map { own[$0] } ?? p.impulsePaS
