@@ -1299,7 +1299,17 @@ corrections to Kingery–Bulmash's incident logs at the cell's distance, each ov
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
 - **Fields at more heights**, for roofs and upper storeys: the first-phase models leave both on
-  the surrogate ([above](#the-first-phase-models-at-walls-and-roofs-21-october-2026)).
+  the surrogate ([above](#the-first-phase-models-at-walls-and-roofs-21-october-2026)). Measured
+  heights to judge them on (emmettl/bombcad-work#69; routes, not readings, from the search of
+  21 October in [data wanted](data-wanted.md#to-fetch)):
+  - first, at no fetch cost, Alsubaei 2015's gauges at 1.5–10.5 m up the pipe columns, already in
+    the fixture ([validation](validation.md#perimeter-walls-under-field-blasts)), peaks only;
+  - Ma Long et al. 2026 (*Explosion and Shock Waves* 46(4)): front and rear faces against height
+    from a surface burst, if it proves measured, not numerical;
+  - Sheffield's clearing tests (Rigby's 2014 thesis, Rigby and Sielicki 2014, Bogosian, Rigby and
+    Powell 2016), for how much of the 4 m cells' wall under-read is clearing smeared;
+  - Cranfield's open 1:50 city (Burrows, Forth and Sheldon 2021, CC BY dataset): 11 gauges'
+    histories among buildings, peaks and arrivals clean.
 - **The user's decision** on making the quick estimate's learned field option the default, and
   on how its weights ship ([above](#the-decision-for-the-user)); then the same peak in the
   [hybrid far field](hybrid-far-field.md).
