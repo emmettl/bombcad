@@ -97,6 +97,7 @@ ci-test:
 	python3 Scripts/protective/test-protective.py
 	python3 Scripts/test-analytic-oracles.py
 	python3 -I Scripts/open-benchmark/test_score.py
+	python3 -I Scripts/open-benchmark/test_decks.py
 	python3 -I Scripts/ml/test-remote-train.py
 	python3 -I Scripts/ml/test-field-runs.py
 	python3 Scripts/check-doc-links.py

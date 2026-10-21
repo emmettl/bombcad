@@ -6,6 +6,7 @@ import Foundation
 /// Every command, by the name it is run as: main.swift looks the first argument up here. A
 /// command's code is in its own file (`SlabBench.swift` for `slab`, and so on).
 let commands: [String: @Sendable () throws -> Void] = [
+    "open-benchmark": { try runOpenBenchmark() },
     "digest": { try runDigest() },
     "capture-cost": { try runCaptureCost() },
     "checkpoint-check": { try runCheckpointCheck(device: device) },

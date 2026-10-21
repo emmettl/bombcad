@@ -199,44 +199,26 @@ median strength where eight held, and the vertical ground motion twenty to sixty
 measured. Several of these comparisons helped choose BombCAD's defaults, so its entry is partly a
 calibration result ([validation](validation.md#summary)).
 
-## Running two cases with another code
+## Reproducible two-case controls, 21 October 2026
 
-What a second code, for instance an open finite-volume Euler solver, would do for the two
-simplest scenes. Neither has been tried.
+The [versioned input decks](../Benchmarks/open/decks/README.md) now specify KB's free-field
+case and the UFC room as `ideal-gas-balloon-v1`: exact sparse initial states, an EOS, boundaries,
+meshes, time origin, sampling and algorithmic read rules. The source is a constant-volume ideal
+gas with afterburning off, deliberately distinct from BombCAD's recommended models and from a
+physical TNT detonation. The references and historical entry have not changed. The room control
+will lack combustion energy relevant to the UFC curve; its score measures that approximation too.
 
-**`kb-surface-burst-free-field`.** The scene is axisymmetric: a 100 kg hemisphere of TNT on
-a reflecting plane, which is half of a 200 kg sphere in free air.
+`blastbench open-benchmark` runs these decks without the application charge depositor.
+`Scripts/open-benchmark/run_decks.py` runs or imports histories, checks their provenance and
+coverage, and extracts the existing scorer format. The portable Python extractor uses only the
+standard library. It refuses truncated positive phases, missing gauges, undersampled records,
+changed decks and history hash mismatches. Raw histories remain available, with the code version,
+source commit, executable hash and initial-budget logs, separately from their scalar scores.
 
-1. Set up a 2-D axisymmetric (or 1-D spherical, using the symmetry) domain out past 28 m with
-   non-reflecting far boundaries far enough out not to return a wave inside the 27.85 m gauge's
-   positive phase.
-2. Start the charge as the code does (JWL products, or an energy-equivalent balloon of 4.18 MJ/kg),
-   and say which in `configuration`; whether the products burn in the air is the code's choice too,
-   and moves the impulse.
-3. Put probes on the ground at the eight positions in the case (`position_m`), record pressure
-   against time from detonation, and take the peak above 101.325 kPa, the positive phase's
-   integral (kPa·ms) and the time the shock arrives.
-4. Write 24 predictions (run `100kg`, gauges `Z0.75` … `Z6`) and score them.
-
-**`ufc-closed-room-gas-pressure`.** A closed rigid 6 m cube with the charge at its centre,
-54 to 864 kg (0.25 to 4 kg/m³).
-
-1. Model an eighth of the room with three symmetry planes, rigid adiabatic walls and no vent.
-2. Fire the charge, run until the reverberations have decayed (tens of milliseconds), and read the
-   room's mean pressure above ambient. Say when it was read, and whether the products burn in the
-   room's oxygen: at the light charges the curve is about twice what detonation energy alone gives.
-3. Write five predictions (runs `0.25kg-m3` … `4kg-m3`, gauge `room`, `quasi_static_gas_pressure`)
-   and score them.
-
-What would hold a second code up, found in writing these:
-
-- **The source model is left open.** The cases give the charge, not how to start it; codes that
-  differ only there will score differently, and the `configuration` text is the only record of it.
-- **Read times and positive phases are not defined beyond the words above.** Two codes could read
-  the room at different times, or end a positive phase differently on a noisy record; the case
-  gives no algorithm.
-- **No input decks or meshes.** Geometry is boxes and prose; a structure's supports, bars and
-  materials are words a person has to turn into a model.
+A second code can implement the documented initial states and CSV contract, then use the same
+import, extraction and scoring commands. **No second code has done so yet.** The handoff no longer
+leaves the source and read rules open for these two controls; translation to another solver,
+mesh/time-window convergence and a real independent comparison are still outstanding.
 
 ## What this doesn't yet do
 
@@ -244,8 +226,10 @@ What would hold a second code up, found in writing these:
   run will find what is missing.
 - **Three of the ten are curves, not tests**: Kingery–Bulmash's two and UFC 3-340-02's, each a
   fit or design chart with little or no stated scatter, labelled as such.
-- **Peaks and integrals only**: no pressure or displacement histories are scored, so a code can
+- **Peaks and integrals only**: the two controls retain raw pressure histories, but no pressure or displacement histories are scored, so a code can
   pass with the wrong shape of pulse.
+- **Eight cases still lack runnable decks and fixed read rules.** Their source and observation choices
+  remain the runner's responsibility; structure inputs still include prose.
 - **Positions are approximate where the papers are**: the direction of Wu's gauge from the slab's
   centre, the side Yao's 1 m gauge sat on, how Alsubaei's columns stood relative to one another,
   Nian's ground, Wang's plate size. Each case's notes say which.
