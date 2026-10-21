@@ -118,7 +118,8 @@ coverage. A missing sample, duplicate time, wrong unit/header or truncated recor
   that crossing (interpolate its zero if negative), and end at the first non-positive sample
   after the peak, again interpolating the zero. Integrate the piecewise-linear positive phase
   by trapezoids. Pa s equals kPa ms numerically. A zero between the half-peak crossing and the
-  largest peak is refused as a later-pulse ambiguity; a phase not ended by the stop is refused.
+  largest peak is refused as a later-pulse ambiguity, as is an earlier positive pulse before
+  the selected phase (even if below half peak); a phase not ended by the stop is refused.
   Diagnostics record the chosen phase boundaries. This fixes an observation rule; it does not
   make noisy or under-resolved waveforms physically accurate.
 - **Room:** at every sample, compute the volume mean of pressure over **all gas cells**, not the

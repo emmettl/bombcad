@@ -220,6 +220,16 @@ import, extraction and scoring commands. **No second code has done so yet.** The
 leaves the source and read rules open for these two controls; translation to another solver,
 mesh/time-window convergence and a real independent comparison are still outstanding.
 
+### First control run
+
+The [record](../Benchmarks/open/records/ideal-gas-balloon-v1/README.md) at source `32a3583a`
+contains 29 predictions from all six shots, with receipts and diagnostics. KB free field passes
+12/24 quantities and the room 3/5, with complete coverage. These deliberately simpler controls
+are separate from the recommended model and historical entry; they are not a replacement score
+for the ten-case benchmark. All input and extraction choices stayed fixed. The full pressure
+histories and runtime snapshot are retained on StudioData, rather than committed; the record
+states where they are and how to reproduce them. **A second-solver run is still needed.**
+
 ## What this doesn't yet do
 
 - **No other code has run it.** The format is untested by anyone but its author; the first outside

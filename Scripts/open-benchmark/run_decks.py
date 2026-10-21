@@ -118,6 +118,8 @@ def incident(trace):
     if any(p <= 0 for _, p in trace[crossing+1:peak_i+1]):
         raise ValueError('Largest peak is not in the first arriving pulse')
     start_i = max(i for i in range(crossing+1) if trace[i][1] <= 0)
+    if any(p > 0 for _, p in trace[:start_i]):
+        raise ValueError('Earlier positive pulse precedes the dominant peak')
     a, b = trace[start_i], trace[start_i+1]
     first = a[0] if a[1] == 0 else a[0]-a[1]*(b[0]-a[0])/(b[1]-a[1])
     end_i = next((i for i in range(peak_i+1, len(trace)) if trace[i][1] <= 0), None)

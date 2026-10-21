@@ -1,0 +1,32 @@
+{
+  "kb-surface-burst-free-field--100kg": {
+    "initial_excess_energy_J": 104599999.93554688,
+    "initial_excess_mass_kg": 24.980858609080315,
+    "relative_total_energy_change": -7.709998994798184e-08
+  },
+  "ufc-closed-room-gas-pressure--0.25kg-m3": {
+    "initial_excess_energy_J": 225935999.93554688,
+    "initial_excess_mass_kg": 53.95865707099438,
+    "relative_total_energy_change": 5.197518593291761e-08
+  },
+  "ufc-closed-room-gas-pressure--0.5kg-m3": {
+    "initial_excess_energy_J": 451872015.9355469,
+    "initial_excess_mass_kg": 107.91730956733227,
+    "relative_total_energy_change": 5.8101694566659035e-09
+  },
+  "ufc-closed-room-gas-pressure--1kg-m3": {
+    "initial_excess_energy_J": 903743999.7421875,
+    "initial_excess_mass_kg": 215.83462446928024,
+    "relative_total_energy_change": -6.654558670771138e-08
+  },
+  "ufc-closed-room-gas-pressure--2kg-m3": {
+    "initial_excess_energy_J": 1807487972.5488281,
+    "initial_excess_mass_kg": 431.66926081478596,
+    "relative_total_energy_change": -2.9984849270192626e-08
+  },
+  "ufc-closed-room-gas-pressure--4kg-m3": {
+    "initial_excess_energy_J": 3614975955.484375,
+    "initial_excess_mass_kg": 863.3385146856308,
+    "relative_total_energy_change": -2.2260045806632434e-08
+  }
+}

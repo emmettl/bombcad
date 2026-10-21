@@ -1,0 +1,247 @@
+{
+  "format": "open-blast-benchmark-results",
+  "format_version": 1,
+  "code": {
+    "name": "BombCAD",
+    "version": "ideal-gas-balloon-v1-32a3583a",
+    "commit": "32a3583a"
+  },
+  "prepared": "2026-10-21",
+  "notes": [
+    "Frozen ideal-gas balloon control; no afterburning, radiation, gravity or mapped start. Not the historical BombCAD entry.",
+    "Binary sha256 a57e70850a854077ed36ff45ef2d567c1f3b88e34e41ab4d9f8b1c39b138acf1",
+    "Runtime inventory sha256 5823ad180596bda65c61df8ecdc1ee55d4c8f5316ecca6da5f992a5113ee1521"
+  ],
+  "cases": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "configuration": "ideal-gas-balloon-v1",
+      "predictions": [
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 1112.283016037654
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 905.8369982306289
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 1.0053933489964797
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 753.4471058514694
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 978.495682250823
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 1.8154018134756535
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 312.5712924032472
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 665.547352505775
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 3.8124469867140443
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 170.33020451327272
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 508.9078626508714
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 6.837496026368886
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 70.18728489934163
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 364.52970567870636
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 15.10343181253532
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 41.09181435693838
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 286.85672680763815
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 25.416934125058862
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 28.37432374852274
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 235.84978128272252
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 36.70635330029811
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 21.118020325703117
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 199.25742051961834
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 48.49602925106635
+        }
+      ],
+      "notes": [
+        "100kg: deck sha256 2884564266f1efed782bafbeddfb3bb130280c05764c28ba031fe130ce86ea87; history sha256 55470c15540f9fe405310a9a76eb981b639c1f9279b28945c10bd8d462fa2b77"
+      ]
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "configuration": "ideal-gas-balloon-v1",
+      "predictions": [
+        {
+          "run": "0.25kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 418.11719406864785
+        },
+        {
+          "run": "0.5kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 836.4563799366551
+        },
+        {
+          "run": "1kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 1673.1817573589549
+        },
+        {
+          "run": "2kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 3346.5986021922563
+        },
+        {
+          "run": "4kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 6693.300452727407
+        }
+      ],
+      "notes": [
+        "0.25kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 e926daffef2f4bcc5de40b2f4d2499c579b474080b3821181e4b28c690b6b1d1",
+        "0.25kg-m3: fixed 100-120 ms room proxy; relative half-window drift 0.000156315; not an assertion of equilibrium",
+        "0.5kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 40487ee9e6b6fb192f41f0c778d36205d542479b8145868a7bf067c5bb5e208a",
+        "0.5kg-m3: fixed 100-120 ms room proxy; relative half-window drift 6.00183e-05; not an assertion of equilibrium",
+        "1kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 fe3125561316117ef314a0166c5766c2d5c2eec68275cf1b2ef4d34a1b841405",
+        "1kg-m3: fixed 100-120 ms room proxy; relative half-window drift 1.64993e-05; not an assertion of equilibrium",
+        "2kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 714457144ea1ee0f8aaec7c270ceda03479dc869446187ea15fa701f4be427a7",
+        "2kg-m3: fixed 100-120 ms room proxy; relative half-window drift 2.95383e-05; not an assertion of equilibrium",
+        "4kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 6665618a3f9dbdd08c3bcc57e535edb5864d97bb0925e3ce6d061e8b8eea09b5",
+        "4kg-m3: fixed 100-120 ms room proxy; relative half-window drift 1.35402e-05; not an assertion of equilibrium"
+      ]
+    }
+  ]
+}

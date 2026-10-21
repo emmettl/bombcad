@@ -29,6 +29,26 @@ class Decks(unittest.TestCase):
         self.assertEqual(free['source']['represented_charge_kg'], 25)
         self.assertEqual(free['source']['excess_energy_J']*4, 100*4184000)
 
+    def test_published_record_is_complete_and_consistent_with_source_budgets(self):
+        root = p.ROOT/'Benchmarks/open'
+        record = root/'records/ideal-gas-balloon-v1'
+        result = json.loads((root/'results/bombcad-ideal-gas-balloon-v1.json').read_text())
+        receipt = json.loads((record/'receipt.json').read_text())
+        budgets = json.loads((record/'budgets.json').read_text())
+        self.assertEqual(len(receipt['histories']), 6)
+        self.assertEqual(sum(len(c['predictions']) for c in result['cases']), 29)
+        for deck, run in r.selected():
+            cid = deck['case_id']
+            self.assertEqual(receipt['decks'][cid]['sha256'], p.digest(p.DECKS/f'{cid}.json'))
+            budget = budgets[f"{cid}--{run['id']}"]
+            self.assertLess(abs(budget['initial_excess_energy_J']/run['source']['excess_energy_J']-1), 1e-4)
+            self.assertLess(abs(budget['initial_excess_mass_kg']/run['source']['excess_mass_kg']-1), 1e-4)
+            self.assertLess(abs(budget['relative_total_energy_change']), 1e-5)
+        room = next(c for c in result['cases'] if c['case'] == p.IDS[1])
+        for prediction, run in zip(room['predictions'], p.deck(p.IDS[1])['runs']):
+            bound = 0.4*run['source']['excess_energy_J']/216/1000
+            self.assertTrue(.99 <= prediction['value']/bound <= 1.001)
+
     def test_triangle_and_nonuniform_interpolated_zero(self):
         # Piecewise-linear pulse: verify arrival and all trapezoids, including the interpolated end.
         trace = [(0,0), (1,1000), (2,3000), (3,1000), (4,-1000)]
@@ -43,7 +63,8 @@ class Decks(unittest.TestCase):
         self.assertAlmostEqual(r.integral([(0,100),(1,200),(3,400)], .5, 2.5), 500)
 
     def test_missing_phase_end_and_later_larger_pulse(self):
-        for trace in [[(0,0),(1,2000),(2,1000)], [(0,0),(1,1200),(2,0),(3,2000),(4,-1)]]:
+        for trace in [[(0,0),(1,2000),(2,1000)], [(0,0),(1,1200),(2,0),(3,2000),(4,-1)],
+                      [(0,0),(1,100),(2,0),(3,2000),(4,-1)]]:
             with self.assertRaises(ValueError):
                 r.incident(trace)
 

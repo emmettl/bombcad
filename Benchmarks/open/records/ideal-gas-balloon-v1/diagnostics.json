@@ -1,0 +1,69 @@
+{
+  "kb-surface-burst-free-field/100kg/Z0.75": {
+    "phase_start_s": 0.00029999999878782546,
+    "phase_end_s": 0.0024798297619963404
+  },
+  "kb-surface-burst-free-field/100kg/Z1": {
+    "phase_start_s": 0.0007499999983338057,
+    "phase_end_s": 0.005819814835798516
+  },
+  "kb-surface-burst-free-field/100kg/Z1.5": {
+    "phase_start_s": 0.0020499999982348527,
+    "phase_end_s": 0.00857726869893853
+  },
+  "kb-surface-burst-free-field/100kg/Z2": {
+    "phase_start_s": 0.004199999998490966,
+    "phase_end_s": 0.01268854880989077
+  },
+  "kb-surface-burst-free-field/100kg/Z3": {
+    "phase_start_s": 0.010399999998298881,
+    "phase_end_s": 0.02457783444942959
+  },
+  "kb-surface-burst-free-field/100kg/Z4": {
+    "phase_start_s": 0.019100000000435102,
+    "phase_end_s": 0.03774083083536404
+  },
+  "kb-surface-burst-free-field/100kg/Z5": {
+    "phase_start_s": 0.029549999998380372,
+    "phase_end_s": 0.05099226910416274
+  },
+  "kb-surface-burst-free-field/100kg/Z6": {
+    "phase_start_s": 0.04080000000158179,
+    "phase_end_s": 0.06431726226935229
+  },
+  "ufc-closed-room-gas-pressure/0.25kg-m3/room": {
+    "window_s": [
+      0.1,
+      0.12
+    ],
+    "relative_half_window_drift": 0.0001563152730962857
+  },
+  "ufc-closed-room-gas-pressure/0.5kg-m3/room": {
+    "window_s": [
+      0.1,
+      0.12
+    ],
+    "relative_half_window_drift": 6.001829534844315e-05
+  },
+  "ufc-closed-room-gas-pressure/1kg-m3/room": {
+    "window_s": [
+      0.1,
+      0.12
+    ],
+    "relative_half_window_drift": 1.649925429928309e-05
+  },
+  "ufc-closed-room-gas-pressure/2kg-m3/room": {
+    "window_s": [
+      0.1,
+      0.12
+    ],
+    "relative_half_window_drift": 2.9538296820406647e-05
+  },
+  "ufc-closed-room-gas-pressure/4kg-m3/room": {
+    "window_s": [
+      0.1,
+      0.12
+    ],
+    "relative_half_window_drift": 1.3540159172953949e-05
+  }
+}
