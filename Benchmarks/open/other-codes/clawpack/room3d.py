@@ -176,7 +176,7 @@ def main(argv=None):
             writer = csv.writer(stream, lineterminator='\n')
             writer.writerow(['case', 'run', 'gauge', 'time_s', 'overpressure_Pa'])
             for t, value in samples:
-                writer.writerow([CASE_ID, args.run, 'room', repr(t), repr(value)])
+                writer.writerow([CASE_ID, args.run, 'room', repr(float(t)), repr(float(value))])
     print(f'{args.label}: done, {solver.status["numsteps"]} steps, {wall:.0f} s, window mean {mean / 1000:.1f} kPa',
           flush=True)
     return 0

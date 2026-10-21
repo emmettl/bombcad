@@ -320,7 +320,7 @@ def main(argv=None):
             writer = csv.writer(stream)
             writer.writerow(['time_s'] + probe.ids)
             for t, values in steps:
-                writer.writerow([repr(t)] + [repr(v) for v in values])
+                writer.writerow([repr(float(t))] + [repr(float(v)) for v in values])
     if args.history_dir:
         args.history_dir.mkdir(parents=True, exist_ok=True)
         with (args.history_dir / f'{CASE_ID}--{RUN_ID}.csv').open('x', newline='') as stream:
@@ -328,7 +328,7 @@ def main(argv=None):
             writer.writerow(['case', 'run', 'gauge', 'time_s', 'overpressure_Pa'])
             for t, values in samples:
                 for gid, value in zip(probe.ids, values):
-                    writer.writerow([CASE_ID, RUN_ID, gid, repr(t), repr(value)])
+                    writer.writerow([CASE_ID, RUN_ID, gid, repr(float(t)), repr(float(value))])
     print(f'{args.label}: done, {solver.status["numsteps"]} steps, {wall:.0f} s', flush=True)
     return 0
 
