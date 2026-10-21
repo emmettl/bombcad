@@ -1,0 +1,6 @@
+#< CLIXML
+windows 0.0 0 0.08142395800000002 0.05744227199465968 0.0031793
+wsl 0.0 0 0.023596915999999912 0.0007817919977242127 0.0004386
+windows 60.0 0 60.086769458 60.00862147800217 60.0084165
+wsl 60.0 0 60.028320791 60.00113395501103 60.0011372
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04"><Obj S="progress" RefId="0"><TN RefId="0"><T>System.Management.Automation.PSCustomObject</T><T>System.Object</T></TN><MS><I64 N="SourceId">1</I64><PR N="Record"><AV>Preparing modules for first use.</AV><AI>0</AI><Nil /><PI>-1</PI><PC>-1</PC><T>Completed</T><SR>-1</SR><SD> </SD></PR></MS></Obj></Objs>

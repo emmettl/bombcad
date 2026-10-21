@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/private/tmp/bombcad-clock-pause/restored-probe.py", line 15, in <module>
+    p=phase();(out/'paired-restored-after.json').write_text(json.dumps(dict(phase=p)));assert p=='restored',p
+AssertionError: complete

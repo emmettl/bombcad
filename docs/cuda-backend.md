@@ -599,3 +599,15 @@ now passes each worker's selected cache argument, fixing the distinct/baseline-o
 earlier symmetric-cache studies used equal paths and remain valid. Reports record observer
 scope and profiler source hash. Historical values are retained, not rescaled. This is a
 measurement correction, not a CUDA speedup or numerical-admission change; #65 remains unadopted.
+
+The subsequent [controlled clock-ownership experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-normalization/summary.md)
+reproduces improvement when Ubuntu's time client is paused and renewed instability
+when restored, while WSL's PHC0 agent remains active. It therefore adds mechanism
+evidence beyond the earlier setter trace. See the transaction receipts for the
+longer single-owner validation and final service policy. #64 stays open for reboot
+and operational validation. Keep RAW elapsed measurements and all numerical gates.
+
+Longer validation passed: maximum absolute MONOTONIC/RAW error was 19.3 ppm
+for 5/15-second checks and 9.3 ppm for 60-second checks. Ubuntu-24.04
+systemd-timesyncd is now inactive/masked, with WSL PHC0 retained as clock owner.
+The rollback timer was removed and the shared reservation released.

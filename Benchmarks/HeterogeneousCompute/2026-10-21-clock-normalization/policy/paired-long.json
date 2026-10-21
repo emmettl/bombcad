@@ -1,0 +1,134 @@
+{
+  "status": "complete",
+  "date": "2026-10-21T13:36:12.027425+00:00",
+  "host": "bombcad-pc",
+  "context": "Single host-time owner validation; guest client paused under restore guard and shared compute lock",
+  "scope": "Read-only paired Mac/WSL/Windows clock observations over persistent SSH.\n\nNo remote files, GPU work, or clock settings changes. Native Windows Stopwatch/UTC\nare bracketed by WSL clock observations and a Mac request/ack interval. Zero-duration\nsamples retain IPC/network overhead rather than assuming it away. No clock is declared\nan absolute reference by this tool.\n",
+  "localClocks": {
+    "time": {
+      "implementation": "clock_gettime(CLOCK_REALTIME)",
+      "monotonic": false,
+      "adjustable": true,
+      "resolution": 1.0000000000000002e-06
+    },
+    "monotonic": {
+      "implementation": "mach_absolute_time()",
+      "monotonic": true,
+      "adjustable": false,
+      "resolution": 4.166666666666667e-08
+    },
+    "perf_counter": {
+      "implementation": "mach_absolute_time()",
+      "monotonic": true,
+      "adjustable": false,
+      "resolution": 4.166666666666667e-08
+    }
+  },
+  "rows": [
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.05744227199465968,
+        "CLOCK_MONOTONIC_RAW": 0.057441006996668875,
+        "CLOCK_BOOTTIME": 0.05744048200722318,
+        "CLOCK_REALTIME": 0.05744051933288574
+      },
+      "windows": {
+        "utcEnd": 639281865727901760,
+        "utcStart": 639281865727871759,
+        "qpcStart": 2285771704879,
+        "utcSeconds": 0.0030001,
+        "qpcEnd": 2285771736672,
+        "qpcSeconds": 0.0031793,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 0.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 0.08142395800000002,
+      "macWallRoundTripSeconds": 0.08142304420471191
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.0007817919977242127,
+        "CLOCK_MONOTONIC_RAW": 0.0007815690041752532,
+        "CLOCK_BOOTTIME": 0.0007815619901521131,
+        "CLOCK_REALTIME": 0.0007815361022949219
+      },
+      "windows": {
+        "qpcSeconds": 0.0004386,
+        "utcSeconds": 0.0010015,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 0.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 0.023596915999999912,
+      "macWallRoundTripSeconds": 0.023598194122314453
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 60.00862147800217,
+        "CLOCK_MONOTONIC_RAW": 60.00917926100374,
+        "CLOCK_BOOTTIME": 60.00862382800551,
+        "CLOCK_REALTIME": 60.00862383842468
+      },
+      "windows": {
+        "utcEnd": 639281866329015520,
+        "utcStart": 639281865728933110,
+        "qpcStart": 2285772767083,
+        "utcSeconds": 60.008241,
+        "qpcEnd": 2286372851248,
+        "qpcSeconds": 60.0084165,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 60.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 60.086769458,
+      "macWallRoundTripSeconds": 60.08705806732178
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 60.00113395501103,
+        "CLOCK_MONOTONIC_RAW": 60.00169127000845,
+        "CLOCK_BOOTTIME": 60.00113441499707,
+        "CLOCK_REALTIME": 60.001134395599365
+      },
+      "windows": {
+        "qpcSeconds": 60.0011372,
+        "utcSeconds": 60.0005773,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 60.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 60.028320791,
+      "macWallRoundTripSeconds": 60.02861213684082
+    }
+  ],
+  "remote": {
+    "ready": true,
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "clocksource": "tsc",
+    "clocks": {
+      "time": {
+        "implementation": "clock_gettime(CLOCK_REALTIME)",
+        "monotonic": false,
+        "adjustable": true,
+        "resolution": 1e-09
+      },
+      "monotonic": {
+        "implementation": "clock_gettime(CLOCK_MONOTONIC)",
+        "monotonic": true,
+        "adjustable": false,
+        "resolution": 1e-09
+      },
+      "perf_counter": {
+        "implementation": "clock_gettime(CLOCK_MONOTONIC)",
+        "monotonic": true,
+        "adjustable": false,
+        "resolution": 1e-09
+      }
+    }
+  }
+}

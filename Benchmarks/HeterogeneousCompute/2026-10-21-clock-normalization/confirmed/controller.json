@@ -1,0 +1,68 @@
+{
+  "status": "complete",
+  "phases": [
+    {
+      "phase": "baseline",
+      "before": {
+        "status": "running",
+        "phase": "baseline",
+        "pid": 87766,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "1fe4d9c2fbd740f4ab339e20a500c250",
+        "phaseStart": 1.8926502170070307,
+        "lastSample": 2.087685461010551
+      },
+      "after": {
+        "status": "running",
+        "phase": "baseline",
+        "pid": 87766,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "1fe4d9c2fbd740f4ab339e20a500c250",
+        "phaseStart": 1.8926502170070307,
+        "lastSample": 33.47098483699665
+      }
+    },
+    {
+      "phase": "paused",
+      "before": {
+        "status": "running",
+        "phase": "paused",
+        "pid": 87766,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "1fe4d9c2fbd740f4ab339e20a500c250",
+        "phaseStart": 42.011257553007454,
+        "lastSample": 150.78680713001813
+      },
+      "after": {
+        "status": "running",
+        "phase": "paused",
+        "pid": 87766,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "1fe4d9c2fbd740f4ab339e20a500c250",
+        "phaseStart": 42.011257553007454,
+        "lastSample": 181.930117099997
+      }
+    },
+    {
+      "phase": "restored",
+      "before": {
+        "status": "running",
+        "phase": "restored",
+        "pid": 87766,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "1fe4d9c2fbd740f4ab339e20a500c250",
+        "phaseStart": 185.0006834550004,
+        "lastSample": 185.1851163579995
+      },
+      "after": {
+        "status": "running",
+        "phase": "restored",
+        "pid": 87766,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "1fe4d9c2fbd740f4ab339e20a500c250",
+        "phaseStart": 185.0006834550004,
+        "lastSample": 216.2724048700038
+      }
+    }
+  ]
+}

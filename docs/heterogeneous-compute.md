@@ -387,3 +387,19 @@ control measures 8.260/1.914 ms median final-stamp-to-parent-return intervals, i
 18 same-source GPU runs preserve numerical files and provenance. Distinct cache arguments are
 also routed correctly in fresh processes. This closes #66 as a measurement fix; it does not
 promote the #65 candidate or establish a solver speedup. Historical observations remain intact.
+
+### Controlled clock ownership experiment
+
+The [phase-acknowledged pause/restore experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-normalization/summary.md)
+supports duplicate clock controllers as the present feedback mechanism: median
+absolute five-second MONOTONIC/RAW error was 743 ppm with both clients active,
+30 ppm after pausing Ubuntu's client, and 1854 ppm after restoring it. Both
+experimental cycles restored their original service configuration and released
+the shared PC reservation. Longer single-owner validation and its exact final
+policy receipt are retained with the experiment. #64 remains open for reboot
+persistence and operational stability; worker durations continue to use RAW.
+
+Longer validation passed: maximum absolute MONOTONIC/RAW error was 19.3 ppm
+for 5/15-second checks and 9.3 ppm for 60-second checks. Ubuntu-24.04
+systemd-timesyncd is now inactive/masked, with WSL PHC0 retained as clock owner.
+The rollback timer was removed and the shared reservation released.

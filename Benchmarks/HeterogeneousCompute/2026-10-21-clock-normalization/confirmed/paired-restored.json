@@ -1,0 +1,294 @@
+{
+  "status": "complete",
+  "date": "2026-10-21T13:19:00.301089+00:00",
+  "host": "bombcad-pc",
+  "context": "Controller-acknowledged A/B/A restored under shared compute lock; no direct clock writes",
+  "scope": "Read-only paired Mac/WSL/Windows clock observations over persistent SSH.\n\nNo remote files, GPU work, or clock settings changes. Native Windows Stopwatch/UTC\nare bracketed by WSL clock observations and a Mac request/ack interval. Zero-duration\nsamples retain IPC/network overhead rather than assuming it away. No clock is declared\nan absolute reference by this tool.\n",
+  "localClocks": {
+    "time": {
+      "implementation": "clock_gettime(CLOCK_REALTIME)",
+      "monotonic": false,
+      "adjustable": true,
+      "resolution": 1.0000000000000002e-06
+    },
+    "monotonic": {
+      "implementation": "mach_absolute_time()",
+      "monotonic": true,
+      "adjustable": false,
+      "resolution": 4.166666666666667e-08
+    },
+    "perf_counter": {
+      "implementation": "mach_absolute_time()",
+      "monotonic": true,
+      "adjustable": false,
+      "resolution": 4.166666666666667e-08
+    }
+  },
+  "rows": [
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.056677344007766806,
+        "CLOCK_MONOTONIC_RAW": 0.057408385997405276,
+        "CLOCK_BOOTTIME": 0.05667298998741899,
+        "CLOCK_REALTIME": 0.05667304992675781
+      },
+      "windows": {
+        "utcEnd": 639281855411845894,
+        "utcStart": 639281855411825842,
+        "qpcStart": 2275455556174,
+        "utcSeconds": 0.0020052,
+        "qpcEnd": 2275455586577,
+        "qpcSeconds": 0.0030403,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 0.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 0.08470108399999998,
+      "macWallRoundTripSeconds": 0.08470296859741211
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.000812714992207475,
+        "CLOCK_MONOTONIC_RAW": 0.0008225960045820102,
+        "CLOCK_BOOTTIME": 0.0008118270052364096,
+        "CLOCK_REALTIME": 0.0008113384246826172
+      },
+      "windows": {
+        "qpcSeconds": 0.0004535,
+        "utcSeconds": 0.0,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 0.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 0.03598970800000001,
+      "macWallRoundTripSeconds": 0.03599071502685547
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.0003408560005482286,
+        "CLOCK_MONOTONIC_RAW": 0.00034498599416110665,
+        "CLOCK_BOOTTIME": 0.00034046999644488096,
+        "CLOCK_REALTIME": 0.00034046173095703125
+      },
+      "windows": {
+        "utcEnd": 639281855413053738,
+        "utcStart": 639281855413053738,
+        "qpcStart": 2275456787702,
+        "utcSeconds": 0,
+        "qpcEnd": 2275456787720,
+        "qpcSeconds": 1.8e-06,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 0.0,
+      "repetition": 1,
+      "macPerfCounterRoundTripSeconds": 0.02704933300000001,
+      "macWallRoundTripSeconds": 0.027050018310546875
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.0008202199969673529,
+        "CLOCK_MONOTONIC_RAW": 0.0008306370000354946,
+        "CLOCK_BOOTTIME": 0.0008199639996746555,
+        "CLOCK_REALTIME": 0.0008199214935302734
+      },
+      "windows": {
+        "qpcSeconds": 0.0005004,
+        "utcSeconds": 0.0,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 0.0,
+      "repetition": 1,
+      "macPerfCounterRoundTripSeconds": 0.028890917000000016,
+      "macWallRoundTripSeconds": 0.02889108657836914
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.00033888100006151944,
+        "CLOCK_MONOTONIC_RAW": 0.00034316600067541003,
+        "CLOCK_BOOTTIME": 0.0003387420001672581,
+        "CLOCK_REALTIME": 0.0003387928009033203
+      },
+      "windows": {
+        "utcEnd": 639281855413666234,
+        "utcStart": 639281855413666234,
+        "qpcStart": 2275457398937,
+        "utcSeconds": 0,
+        "qpcEnd": 2275457398956,
+        "qpcSeconds": 1.9e-06,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 0.0,
+      "repetition": 2,
+      "macPerfCounterRoundTripSeconds": 0.027608958000000072,
+      "macWallRoundTripSeconds": 0.027609825134277344
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 0.0006699619989376515,
+        "CLOCK_MONOTONIC_RAW": 0.0006780010007787496,
+        "CLOCK_BOOTTIME": 0.0006690729933325201,
+        "CLOCK_REALTIME": 0.0006690025329589844
+      },
+      "windows": {
+        "qpcSeconds": 0.000375,
+        "utcSeconds": 0.0,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 0.0,
+      "repetition": 2,
+      "macPerfCounterRoundTripSeconds": 0.03522237500000003,
+      "macWallRoundTripSeconds": 0.035224199295043945
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 4.965152595003019,
+        "CLOCK_MONOTONIC_RAW": 5.012868421006715,
+        "CLOCK_BOOTTIME": 4.9651539719925495,
+        "CLOCK_REALTIME": 4.96515417098999
+      },
+      "windows": {
+        "utcEnd": 639281855464455372,
+        "utcStart": 639281855414325825,
+        "qpcStart": 2275458067183,
+        "utcSeconds": 5.0129547,
+        "qpcEnd": 2275508189062,
+        "qpcSeconds": 5.0121879,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 5.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 5.073632916999999,
+      "macWallRoundTripSeconds": 5.073659181594849
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 5.001505546999397,
+        "CLOCK_MONOTONIC_RAW": 5.025908301002346,
+        "CLOCK_BOOTTIME": 5.001504498999566,
+        "CLOCK_REALTIME": 5.001504421234131
+      },
+      "windows": {
+        "qpcSeconds": 5.0251408,
+        "utcSeconds": 5.0248551,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 5.0,
+      "repetition": 0,
+      "macPerfCounterRoundTripSeconds": 5.1117402919999995,
+      "macWallRoundTripSeconds": 5.111767053604126
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 4.999494509000215,
+        "CLOCK_MONOTONIC_RAW": 5.011855014992761,
+        "CLOCK_BOOTTIME": 4.999493586001336,
+        "CLOCK_REALTIME": 4.999493360519409
+      },
+      "windows": {
+        "utcEnd": 639281855566388227,
+        "utcStart": 639281855516278877,
+        "qpcStart": 2275560012564,
+        "utcSeconds": 5.010935,
+        "qpcEnd": 2275610122678,
+        "qpcSeconds": 5.0110114,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 5.0,
+      "repetition": 1,
+      "macPerfCounterRoundTripSeconds": 5.1166365,
+      "macWallRoundTripSeconds": 5.1166627407073975
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 5.0011358490010025,
+        "CLOCK_MONOTONIC_RAW": 5.0073559140000725,
+        "CLOCK_BOOTTIME": 5.001136788996519,
+        "CLOCK_REALTIME": 5.001137018203735
+      },
+      "windows": {
+        "qpcSeconds": 5.0067911,
+        "utcSeconds": 5.0067785,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 5.0,
+      "repetition": 1,
+      "macPerfCounterRoundTripSeconds": 5.1161586670000005,
+      "macWallRoundTripSeconds": 5.116185188293457
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 5.0115159540000604,
+        "CLOCK_MONOTONIC_RAW": 5.014626263000537,
+        "CLOCK_BOOTTIME": 5.011516562997713,
+        "CLOCK_REALTIME": 5.011516332626343
+      },
+      "windows": {
+        "utcEnd": 639281855668774435,
+        "utcStart": 639281855618633403,
+        "qpcStart": 2275662370861,
+        "utcSeconds": 5.0141032,
+        "qpcEnd": 2275712509886,
+        "qpcSeconds": 5.0139025,
+        "qpcFrequency": 10000000
+      },
+      "target": "windows",
+      "requestedSeconds": 5.0,
+      "repetition": 2,
+      "macPerfCounterRoundTripSeconds": 5.123497458999999,
+      "macWallRoundTripSeconds": 5.123522043228149
+    },
+    {
+      "wslSeconds": {
+        "CLOCK_MONOTONIC": 5.001734748992021,
+        "CLOCK_MONOTONIC_RAW": 4.996168500001659,
+        "CLOCK_BOOTTIME": 5.00173405300302,
+        "CLOCK_REALTIME": 5.001734256744385
+      },
+      "windows": {
+        "qpcSeconds": 4.9954537,
+        "utcSeconds": 4.9952846,
+        "qpcFrequency": 10000000
+      },
+      "target": "wsl",
+      "requestedSeconds": 5.0,
+      "repetition": 2,
+      "macPerfCounterRoundTripSeconds": 5.022153167000003,
+      "macWallRoundTripSeconds": 5.022178649902344
+    }
+  ],
+  "remote": {
+    "ready": true,
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "clocksource": "tsc",
+    "clocks": {
+      "time": {
+        "implementation": "clock_gettime(CLOCK_REALTIME)",
+        "monotonic": false,
+        "adjustable": true,
+        "resolution": 1e-09
+      },
+      "monotonic": {
+        "implementation": "clock_gettime(CLOCK_MONOTONIC)",
+        "monotonic": true,
+        "adjustable": false,
+        "resolution": 1e-09
+      },
+      "perf_counter": {
+        "implementation": "clock_gettime(CLOCK_MONOTONIC)",
+        "monotonic": true,
+        "adjustable": false,
+        "resolution": 1e-09
+      }
+    }
+  }
+}

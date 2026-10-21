@@ -1,0 +1,10 @@
+{"name": "armed", "rawSeconds": 0.7000870769988978}
+{"name": "phase-start", "rawSeconds": 27.163633561998722, "phase": "baseline", "durationRawSeconds": 60}
+{"name": "phase-end", "rawSeconds": 87.1639072120015, "phase": "baseline"}
+{"name": "guest-client-paused", "rawSeconds": 87.23732149900752}
+{"name": "phase-start", "rawSeconds": 87.23757942400698, "phase": "paused", "durationRawSeconds": 240}
+{"name": "phase-end", "rawSeconds": 327.23795790900476, "phase": "paused"}
+{"name": "guest-client-restored", "rawSeconds": 327.2752881250053}
+{"name": "phase-start", "rawSeconds": 327.2757739439985, "phase": "restored", "durationRawSeconds": 90}
+{"name": "phase-end", "rawSeconds": 417.2762950210017, "phase": "restored"}
+{"status": "complete", "configurationRestored": true, "lockReleased": true}

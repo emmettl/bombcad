@@ -1,0 +1,55 @@
+{
+  "status": "complete",
+  "validation": [
+    {
+      "probe": "paired-normalized",
+      "maxAbsoluteAdjustedRawPPM": 19.240266245668103,
+      "maxRawNativeBracketingSeconds": 0.006791617003435668,
+      "maxNativeUTCQPCDifferenceSeconds": 0.0008536999999995132,
+      "fileSHA256": "cb4ed1daa1a2ea50dac5779d0b1e3e72f418c05149755b651ebc926f7d312dcc",
+      "before": {
+        "status": "running",
+        "phase": "validation",
+        "pid": 91360,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "837354b4a06547848c060454d679a6e6",
+        "validationStart": 2.0287439020030433,
+        "lastSample": 126.92629207400023
+      },
+      "after": {
+        "status": "running",
+        "phase": "validation",
+        "pid": 91360,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "837354b4a06547848c060454d679a6e6",
+        "validationStart": 2.0287439020030433,
+        "lastSample": 343.032238314001
+      }
+    },
+    {
+      "probe": "paired-long",
+      "maxAbsoluteAdjustedRawPPM": 9.2949613448301,
+      "maxRawNativeBracketingSeconds": 0.0007627610037346244,
+      "maxNativeUTCQPCDifferenceSeconds": 0.0005598999999989474,
+      "fileSHA256": "fe2519add73200104e7583137763bafcd28fcd8da222515bee0cbbc5169e4888",
+      "before": {
+        "status": "running",
+        "phase": "validation",
+        "pid": 91360,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "837354b4a06547848c060454d679a6e6",
+        "validationStart": 2.0287439020030433,
+        "lastSample": 343.032238314001
+      },
+      "after": {
+        "status": "running",
+        "phase": "validation",
+        "pid": 91360,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "token": "837354b4a06547848c060454d679a6e6",
+        "validationStart": 2.0287439020030433,
+        "lastSample": 466.60165814000356
+      }
+    }
+  ]
+}

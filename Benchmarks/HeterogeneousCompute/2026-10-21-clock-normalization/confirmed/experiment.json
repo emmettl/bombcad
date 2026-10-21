@@ -1,0 +1,471 @@
+{
+  "status": "complete",
+  "scope": "Bounded A/B/A clock-controller test; pause guest client only and restore its state.",
+  "pid": 87766,
+  "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+  "token": "1fe4d9c2fbd740f4ab339e20a500c250",
+  "restoreUnit": "bombcad-clock-restore-0edd2a34b65d",
+  "samples": [
+    {
+      "phase": "baseline",
+      "rawSeconds": 2.087685461010551,
+      "rawClock": 80114.887071485,
+      "monotonicClock": 81029.063103127,
+      "realtimeClock": 1792588555.934089,
+      "clockReadHalfWidthSeconds": 1.1049996828660369e-06,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10062,
+        "frequencyScaledPPM": 1177548,
+        "frequencyPPM": 17.967956543,
+        "offset": -29516,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:15:49 2026\nSystem time     : 0.007181131 seconds slow of NTP time\nLast offset     : -0.035288583 seconds\nRMS offset      : 0.023515174 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -2152.977 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.033924915 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "active"
+    },
+    {
+      "phase": "baseline",
+      "rawSeconds": 17.990388037011144,
+      "rawClock": 80130.789774061,
+      "monotonicClock": 81045.025697772,
+      "realtimeClock": 1792588571.8966837,
+      "clockReadHalfWidthSeconds": 1.0449948604218662e-06,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10001,
+        "frequencyScaledPPM": -642329,
+        "frequencyPPM": -9.80116272,
+        "offset": -10509,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:16:06 2026\nSystem time     : 0.000023853 seconds fast of NTP time\nLast offset     : -0.042997226 seconds\nRMS offset      : 0.026483515 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -3234.296 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.030515339 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "active"
+    },
+    {
+      "phase": "baseline",
+      "rawSeconds": 33.47098483699665,
+      "rawClock": 80146.27037086099,
+      "monotonicClock": 81060.500056878,
+      "realtimeClock": 1792588587.3710427,
+      "clockReadHalfWidthSeconds": 6.599948392249644e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10001,
+        "frequencyScaledPPM": -735553,
+        "frequencyPPM": -11.223648071,
+        "offset": -3991,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:16:19 2026\nSystem time     : 0.000303733 seconds fast of NTP time\nLast offset     : -0.002264055 seconds\nRMS offset      : 0.023868827 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -1782.473 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.023746004 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "active"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 42.1986262275168,
+      "rawClock": 80154.99801225151,
+      "monotonicClock": 81069.221749926,
+      "realtimeClock": 1792588596.0927358,
+      "clockReadHalfWidthSeconds": 5.304973456077278e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 8193,
+        "tickMicroseconds": 9992,
+        "frequencyScaledPPM": -1108576,
+        "frequencyPPM": -16.915527344,
+        "offset": -137646912,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:16:26 2026\nSystem time     : 0.000792639 seconds fast of NTP time\nLast offset     : +0.004750957 seconds\nRMS offset      : 0.022693744 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -777.238 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.014429223 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 57.71827761399618,
+      "rawClock": 80170.51766363799,
+      "monotonicClock": 81084.700789263,
+      "realtimeClock": 1792588611.5717752,
+      "clockReadHalfWidthSeconds": 6.550035323016346e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10098,
+        "frequencyScaledPPM": -1329804,
+        "frequencyPPM": -20.29119873,
+        "offset": -49012,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:16:45 2026\nSystem time     : 0.000001746 seconds fast of NTP time\nLast offset     : -0.037527569 seconds\nRMS offset      : 0.023739059 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -2007.124 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.026370727 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 73.62298000800365,
+      "rawClock": 80186.422366032,
+      "monotonicClock": 81100.639929018,
+      "realtimeClock": 1792588627.5109148,
+      "clockReadHalfWidthSeconds": 4.899993655271828e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10001,
+        "frequencyScaledPPM": -641974,
+        "frequencyPPM": -9.79574585,
+        "offset": -17452,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:17:01 2026\nSystem time     : 0.000003984 seconds fast of NTP time\nLast offset     : -0.026922137 seconds\nRMS offset      : 0.025709627 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -3009.480 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.028079690 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 89.07246701901022,
+      "rawClock": 80201.871853043,
+      "monotonicClock": 81116.096124547,
+      "realtimeClock": 1792588642.9671106,
+      "clockReadHalfWidthSeconds": 6.100017344579101e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10001,
+        "frequencyScaledPPM": 2057798,
+        "frequencyPPM": 31.399505615,
+        "offset": -6628,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:17:16 2026\nSystem time     : 0.001601567 seconds slow of NTP time\nLast offset     : -0.001745611 seconds\nRMS offset      : 0.023670960 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -1860.702 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.020089408 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 104.37000880100823,
+      "rawClock": 80217.169394825,
+      "monotonicClock": 81131.392200931,
+      "realtimeClock": 1792588658.263187,
+      "clockReadHalfWidthSeconds": 5.749971023760736e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10001,
+        "frequencyScaledPPM": 511245,
+        "frequencyPPM": 7.800979614,
+        "offset": -2517,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:17:30 2026\nSystem time     : 0.000691304 seconds slow of NTP time\nLast offset     : +0.000736984 seconds\nRMS offset      : 0.021307932 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -776.239 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.011724299 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 119.8540355820005,
+      "rawClock": 80232.653421606,
+      "monotonicClock": 81146.874883209,
+      "realtimeClock": 1792588673.7458692,
+      "clockReadHalfWidthSeconds": 4.999965312890708e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9990,
+        "frequencyScaledPPM": -680288,
+        "frequencyPPM": -10.380371094,
+        "offset": -896,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:17:47 2026\nSystem time     : 0.001022941 seconds fast of NTP time\nLast offset     : +0.003243825 seconds\nRMS offset      : 0.019210134 seconds\nFrequency       : 284.263 ppm slow\nResidual freq   : +0.075 ppm\nSkew            : 557.326 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.004664959 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 135.32896852299746,
+      "rawClock": 80248.12835454699,
+      "monotonicClock": 81162.348193469,
+      "realtimeClock": 1792588689.2191792,
+      "clockReadHalfWidthSeconds": 6.349946488626301e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9996,
+        "frequencyScaledPPM": 269224,
+        "frequencyPPM": 4.108032227,
+        "offset": -340,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:18:04 2026\nSystem time     : 0.000851132 seconds fast of NTP time\nLast offset     : +0.001668801 seconds\nRMS offset      : 0.017313177 seconds\nFrequency       : 106.791 ppm slow\nResidual freq   : +8.906 ppm\nSkew            : 253.271 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.001665765 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 150.78680713001813,
+      "rawClock": 80263.58619315401,
+      "monotonicClock": 81177.804903213,
+      "realtimeClock": 1792588704.675889,
+      "clockReadHalfWidthSeconds": 4.899993655271828e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9999,
+        "frequencyScaledPPM": -3247427,
+        "frequencyPPM": -49.551803589,
+        "offset": -121,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:18:19 2026\nSystem time     : 0.000358940 seconds fast of NTP time\nLast offset     : +0.000558325 seconds\nRMS offset      : 0.015586174 seconds\nFrequency       : 35.189 ppm slow\nResidual freq   : +1.501 ppm\nSkew            : 73.751 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.000596727 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 166.44721659400966,
+      "rawClock": 80279.246602618,
+      "monotonicClock": 81193.464804783,
+      "realtimeClock": 1792588720.3357904,
+      "clockReadHalfWidthSeconds": 5.699985194951296e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9999,
+        "frequencyScaledPPM": -3710741,
+        "frequencyPPM": -56.621414185,
+        "offset": -46,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:18:35 2026\nSystem time     : 0.000191694 seconds fast of NTP time\nLast offset     : +0.000305350 seconds\nRMS offset      : 0.014028315 seconds\nFrequency       : 5.659 ppm slow\nResidual freq   : +1.036 ppm\nSkew            : 29.731 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.000247297 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "paused",
+      "rawSeconds": 181.930117099997,
+      "rawClock": 80294.72950312399,
+      "monotonicClock": 81208.947368384,
+      "realtimeClock": 1792588735.8183541,
+      "clockReadHalfWidthSeconds": 5.399997462518513e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9999,
+        "frequencyScaledPPM": 6450042,
+        "frequencyPPM": 98.419830322,
+        "offset": -16,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:18:51 2026\nSystem time     : 0.000068346 seconds fast of NTP time\nLast offset     : +0.000073314 seconds\nRMS offset      : 0.012625588 seconds\nFrequency       : 4.890 ppm fast\nResidual freq   : +0.266 ppm\nSkew            : 9.377 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.000085584 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "inactive"
+    },
+    {
+      "phase": "restored",
+      "rawSeconds": 185.1851163579995,
+      "rawClock": 80297.984502382,
+      "monotonicClock": 81212.201109076,
+      "realtimeClock": 1792588739.0720947,
+      "clockReadHalfWidthSeconds": 4.7000503400340676e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9999,
+        "frequencyScaledPPM": 6233147,
+        "frequencyPPM": 95.110275269,
+        "offset": -13,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:18:51 2026\nSystem time     : 0.000000007 seconds slow of NTP time\nLast offset     : +0.000073314 seconds\nRMS offset      : 0.012625588 seconds\nFrequency       : 4.890 ppm fast\nResidual freq   : +0.266 ppm\nSkew            : 9.377 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.000120484 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "active"
+    },
+    {
+      "phase": "restored",
+      "rawSeconds": 200.76953549400787,
+      "rawClock": 80313.568921518,
+      "monotonicClock": 81227.6684254,
+      "realtimeClock": 1792588754.5394108,
+      "clockReadHalfWidthSeconds": 4.6000059228390455e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9999,
+        "frequencyScaledPPM": 6259329,
+        "frequencyPPM": 95.509780884,
+        "offset": -15789,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:19:07 2026\nSystem time     : 0.000103894 seconds slow of NTP time\nLast offset     : -0.000115543 seconds\nRMS offset      : 0.011363088 seconds\nFrequency       : 5.026 ppm fast\nResidual freq   : -2.992 ppm\nSkew            : 15.416 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.002641559 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "active"
+    },
+    {
+      "phase": "restored",
+      "rawSeconds": 216.2724048700038,
+      "rawClock": 80329.071790894,
+      "monotonicClock": 81243.160672182,
+      "realtimeClock": 1792588770.031658,
+      "clockReadHalfWidthSeconds": 4.699977580457926e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10017,
+        "frequencyScaledPPM": -1670015,
+        "frequencyPPM": -25.482406616,
+        "offset": -2130,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:19:23 2026\nSystem time     : 0.018534543 seconds slow of NTP time\nLast offset     : -0.021660289 seconds\nRMS offset      : 0.012311078 seconds\nFrequency       : 5.026 ppm fast\nResidual freq   : -563.540 ppm\nSkew            : 15.416 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.029594140 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+      "guestActive": "active"
+    },
+    {
+      "phase": "restored",
+      "rawSeconds": 232.16251989900775,
+      "rawClock": 80344.961905923,
+      "monotonicClock": 81259.201296436,
+      "realtimeClock": 1792588786.072282,
+      "clockReadHalfWidthSeconds": 5.449983291327953e-07,
+      "discipline": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 9960,
+        "frequencyScaledPPM": 1141690,
+        "frequencyPPM": 17.420806885,
+        "offset": -2319,
+        "timeConstant": 2,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      },
+      "tracking": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:19:40 2026\nSystem time     : 0.012202593 seconds fast of NTP time\nLast offset     : +0.020625588 seconds\nRMS offset      : 0.045308724 seconds\nFrequency       : 5.026 ppm fast\nResidual freq   : -1340.766 ppm\nSkew            : 15.416 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.017779123 seconds\nUpdate interval : 8.1 seconds\nLeap status     : Normal\n",
+      "guestActive": "active"
+    }
+  ],
+  "events": [
+    {
+      "name": "armed",
+      "rawSeconds": 0.49670930800493807
+    },
+    {
+      "name": "phase-start",
+      "rawSeconds": 1.8926502170070307,
+      "phase": "baseline",
+      "durationRawSeconds": 90
+    },
+    {
+      "name": "phase-end",
+      "rawSeconds": 41.97841419800534,
+      "phase": "baseline"
+    },
+    {
+      "name": "guest-client-paused",
+      "rawSeconds": 42.01102729899867
+    },
+    {
+      "name": "phase-start",
+      "rawSeconds": 42.011257553007454,
+      "phase": "paused",
+      "durationRawSeconds": 240
+    },
+    {
+      "name": "phase-end",
+      "rawSeconds": 184.9319353200117,
+      "phase": "paused"
+    },
+    {
+      "name": "guest-client-restored",
+      "rawSeconds": 185.0003071579995
+    },
+    {
+      "name": "phase-start",
+      "rawSeconds": 185.0006834550004,
+      "phase": "restored",
+      "durationRawSeconds": 120
+    },
+    {
+      "name": "phase-end",
+      "rawSeconds": 245.1802715780068,
+      "phase": "restored"
+    }
+  ],
+  "initial": {
+    "active": "active",
+    "enabled": "enabled",
+    "clocksource": "tsc"
+  },
+  "gpuBefore": {
+    "returncode": 0,
+    "stdout": "0, 920\n",
+    "stderr": ""
+  },
+  "hostAgentBefore": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 13:15:49 2026\nSystem time     : 0.016991816 seconds slow of NTP time\nLast offset     : -0.035288583 seconds\nRMS offset      : 0.023515174 seconds\nFrequency       : 90.204 ppm slow\nResidual freq   : -2152.977 ppm\nSkew            : 472.353 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.029719723 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+  "phase": "complete",
+  "watchdogCreate": {
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "Running timer as unit: bombcad-clock-restore-0edd2a34b65d.timer\nWill run service as unit: bombcad-clock-restore-0edd2a34b65d.service\n"
+  },
+  "restoreCommand": {
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "watchdogStop": {
+    "returncode": 5,
+    "stdout": "",
+    "stderr": "Failed to stop bombcad-clock-restore-0edd2a34b65d.service: Unit bombcad-clock-restore-0edd2a34b65d.service not loaded.\n"
+  },
+  "watchdogTimerAfter": {
+    "returncode": 0,
+    "stdout": "LoadState=not-found\nActiveState=inactive\n",
+    "stderr": ""
+  },
+  "final": {
+    "active": "active",
+    "enabled": "enabled",
+    "clocksource": "tsc"
+  },
+  "configurationRestored": true,
+  "lockReleased": true,
+  "rawTotalSeconds": 245.2021909670002
+}
