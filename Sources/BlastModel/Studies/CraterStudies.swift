@@ -35,13 +35,16 @@ package enum CraterStudies {
             let under = C.bombcadRadius(ground: ground, centreHeight: 1, datum: .underside)
             let centre = C.bombcadRadius(ground: ground, centreHeight: 1, datum: .centre)
             print(
-                "\(medium.title): H \(f(h, 3)), Cooper \(f(cooper, 1)); BombCAD \(f(under, 1)) to the underside "
-                    + "(Cooper's \(f(cooper / under))), \(f(centre, 1)) to the centre (\(f(cooper / centre)))"
+                "\(medium.title): H \(f(h, 3)), Cooper \(f(cooper, 1)); BombCAD \(f(centre, 1)) to the centre "
+                    + "(Cooper's \(f(cooper / centre))), \(f(under, 1)) to the underside as before 22 October "
+                    + "(\(f(cooper / under)))"
             )
         }
 
         for datum in C.Datum.allCases {
-            print("\nCooper's points over BombCAD's, height to the charge's \(datum.rawValue):")
+            print(
+                "\nCooper's points over BombCAD's, height to the charge's \(datum.rawValue)"
+                    + (datum == .centre ? " (BombCAD's since 22 October 2026):" : " (before 22 October):"))
             print(
                 "medium (BombCAD's ground) | band | n | radius: geometric mean (range), within ±1/3 | volume: mean"
             )
@@ -94,6 +97,31 @@ package enum CraterStudies {
             print(
                 "\(event.name): H \(f(h, 3)), \(f(diameter, 0)) m; measured \(f(mid, 0)), \(f(mid / diameter))"
             )
+        }
+
+        // The same six as BombCAD digs them now: the spheres resting on the ground (their centres a
+        // charge radius up), the rest centred on it.
+        print("\nThe six measured craters as BombCAD digs them (diameter, m, and its band):")
+        let digs: [(name: String, kg: Float, ground: GroundType, resting: Bool, measured: Double)] = [
+            ("Prairie Flat", 500 * 907.185, .glacialSoil, true, 85.5),
+            ("Dial Pack", 500 * 907.185, .glacialSoil, true, 70.1),
+            ("Snowball", 500 * 907.185, .glacialSoil, false, 73),
+            ("Sailor Hat Bravo", 500 * 907.185, .rock, false, 69),
+            ("Minor Scale", 4_000_000, .playa, false, 105),
+            ("Beirut", 500_000, .saturated, false, 120.5),
+        ]
+        for dig in digs {
+            let z = dig.resting ? CraterEstimate.chargeRadius(mass: dig.kg) : 0
+            guard
+                let crater = CraterEstimate(
+                    charge: Charge(mass: dig.kg, position: SIMD3(0, 0, z)), groundHeight: 0,
+                    ground: dig.ground)
+            else { continue }
+            let d = Double(crater.apparentDiameter)
+            let band = (2 * Double(crater.radiusRange.lowerBound), 2 * Double(crater.radiusRange.upperBound))
+            print(
+                "\(dig.name) (\(dig.ground.rawValue)): \(f(d, 1)) m (\(f(band.0, 0))–\(f(band.1, 0))); "
+                    + "measured \(f(dig.measured, 1)), \(f(dig.measured / d))")
         }
 
         print(

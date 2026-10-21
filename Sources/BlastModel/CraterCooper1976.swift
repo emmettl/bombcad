@@ -89,16 +89,16 @@ public enum CooperCraters1976 {
 
     /// Where BombCAD measures the height of burst from.
     public enum Datum: String, Sendable, CaseIterable {
-        /// The charge's underside, as `CraterEstimate.heightOfBurst` does.
+        /// The charge's underside, as `CraterEstimate.heightOfBurst` did until 22 October 2026.
         case underside
-        /// Its centre, as Cooper and P. W. Cooper's example 29.2 do.
+        /// Its centre, as Cooper, P. W. Cooper's example 29.2 and BombCAD since then do.
         case centre
     }
 
     /// BombCAD's apparent radius, ft per ton^(1/3), for a ton of TNT on `ground` whose centre is
     /// `centreHeight` charge radii above the surface (negative below it, which BombCAD counts as on
     /// it).
-    public static func bombcadRadius(ground: GroundType, centreHeight: Double, datum: Datum = .underside)
+    public static func bombcadRadius(ground: GroundType, centreHeight: Double, datum: Datum = .centre)
         -> Double
     {
         let height = max(datum == .underside ? centreHeight - 1 : centreHeight, 0)
@@ -128,7 +128,7 @@ public enum CooperCraters1976 {
     }
 
     public static func pairs(
-        _ fixture: Fixture, datum: Datum = .underside, ground: ((Medium) -> GroundType)? = nil
+        _ fixture: Fixture, datum: Datum = .centre, ground: ((Medium) -> GroundType)? = nil
     )
         -> [Pair]
     {

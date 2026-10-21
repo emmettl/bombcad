@@ -29,7 +29,7 @@ struct CraterCooper1976Tests {
         }
     }
 
-    @Test("Surface bursts read as measured; above the ground, heights to the underside read too wide")
+    @Test("Surface bursts read as measured; raised ones 0.90 to the centre (today's), 0.57 to the underside")
     func againstPoints() throws {
         let fixture = try fixture()
         func summary(_ datum: C.Datum, _ band: C.Band) throws -> C.Summary {
@@ -56,5 +56,10 @@ struct CraterCooper1976Tests {
         // 0.97 (2 × 0.5 × 2,000)^(1/3) ft on the surface; e^(−1.457 / 3) less a radius up.
         #expect(abs(under - 0.97 * cbrt(2000.0)) < 1e-3)
         #expect(abs(centre / under - exp(-1.457 / 3)) < 1e-4)
+        // The centre is BombCAD's own datum since 22 October 2026: a ton resting on alluvium.
+        let mass = Float(C.tonKilograms)
+        let resting = Charge(mass: mass, position: SIMD3(0, 0, CraterEstimate.chargeRadius(mass: mass)))
+        let crater = CraterEstimate(charge: resting, groundHeight: 0, ground: .alluvium)
+        #expect(abs(Double(crater?.apparentRadius ?? 0) / 0.3048 - centre) < 1e-3)
     }
 }

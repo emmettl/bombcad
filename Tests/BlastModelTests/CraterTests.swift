@@ -50,26 +50,56 @@ struct CraterTests {
             CraterEstimate(charge: Charge(mass: 0, position: .zero), groundHeight: 0, ground: .clay) == nil)
     }
 
-    @Test("Height of burst is to the charge's underside, in charge radii; high bursts dig nothing")
+    @Test("Height of burst is to the charge's centre, in charge radii; high bursts dig nothing")
     func heightOfBurst() throws {
         let radius = CraterEstimate.chargeRadius(mass: 1000)
         // A sphere of 1,600 kg/m³: 0.5304 m for a tonne.
         #expect(abs(radius - 0.5304) < 1e-4)
-        // Resting on the ground, or centred on it: a surface burst.
-        let resting = Charge(mass: 1000, position: SIMD3(0, 0, 5 + radius))
-        #expect(CraterEstimate.heightOfBurst(resting, groundHeight: 5) == 0)
+        // Centred on the ground, or below it: a surface burst. Resting on it: a radius up.
+        let centred = Charge(mass: 1000, position: SIMD3(0, 0, 5))
+        #expect(CraterEstimate.heightOfBurst(centred, groundHeight: 5) == 0)
         #expect(
-            CraterEstimate.heightOfBurst(Charge(mass: 1000, position: SIMD3(0, 0, 5)), groundHeight: 5) == 0)
-        // Its underside a radius up: the crater's energy e^(−1.457) of a surface burst's.
-        let raised = Charge(mass: 1000, position: SIMD3(0, 0, 5 + 2 * radius))
-        #expect(abs(CraterEstimate.heightOfBurst(raised, groundHeight: 5) - 1) < 1e-5)
-        let up = try #require(CraterEstimate(charge: raised, groundHeight: 5, ground: .alluvium))
-        let down = try #require(CraterEstimate(charge: resting, groundHeight: 5, ground: .alluvium))
+            CraterEstimate.heightOfBurst(Charge(mass: 1000, position: SIMD3(0, 0, 4)), groundHeight: 5) == 0)
+        let resting = Charge(mass: 1000, position: SIMD3(0, 0, 5 + radius))
+        #expect(abs(CraterEstimate.heightOfBurst(resting, groundHeight: 5) - 1) < 1e-5)
+        // A radius up, the crater's energy is e^(−1.457) of a surface burst's.
+        let up = try #require(CraterEstimate(charge: resting, groundHeight: 5, ground: .alluvium))
+        let down = try #require(CraterEstimate(charge: centred, groundHeight: 5, ground: .alluvium))
         #expect(abs(up.apparentRadius / down.apparentRadius - exp(-1.457 / 3)) < 1e-4)
         #expect(up.centre.z == 5)
-        // Above 3.2 radii, an air burst.
-        let high = Charge(mass: 1000, position: SIMD3(0, 0, 5 + 4.3 * radius))
+        // The air's share still tapers from the underside: resting, its ground share is a surface
+        // burst's.
+        #expect(CraterEstimate.couplingHeight(resting, groundHeight: 5) == 0)
+        #expect(abs(up.groundShare - 0.333) < 1e-6)
+        // Above 3.2 radii to the centre, an air burst.
+        let high = Charge(mass: 1000, position: SIMD3(0, 0, 5 + 3.3 * radius))
         #expect(CraterEstimate(charge: high, groundHeight: 5, ground: .alluvium) == nil)
+    }
+
+    @Test("Glacial soil digs H. F. Cooper's wet-soil crater: Suffield's resting 500-ton spheres in the band")
+    func glacialSoil() throws {
+        let mass: Float = 500 * 907.185
+        // Centred: 1.2 (4,000 × 500)^(1/3) ft = 151.2 ft, 46.09 m.
+        let centred = try #require(
+            CraterEstimate(charge: Charge(mass: mass, position: .zero), groundHeight: 0, ground: .glacialSoil)
+        )
+        #expect(abs(centred.apparentRadius - 46.09) < 0.02)
+        // Resting, its centre a radius up: H solves at 0.134, 73.1 m across. Prairie Flat's 85.5 m
+        // and Dial Pack's 70.1 m are 1.17 and 0.96 of it, inside the band.
+        let lifted = Charge(mass: mass, position: SIMD3(0, 0, CraterEstimate.chargeRadius(mass: mass)))
+        let resting = try #require(CraterEstimate(charge: lifted, groundHeight: 0, ground: .glacialSoil))
+        #expect(abs(resting.apparentDiameter - 73.1) < 0.1)
+        for measured: Float in [85.5, 70.1] {
+            #expect(
+                2 * resting.radiusRange.lowerBound < measured && measured < 2 * resting.radiusRange.upperBound
+            )
+        }
+        // ANFO scales it as P. W. Cooper's K does.
+        let anfo = try #require(
+            CraterEstimate(
+                charge: Charge(mass: mass, position: .zero), groundHeight: 0, ground: .glacialSoil,
+                explosive: .anfo))
+        #expect(abs(anfo.apparentRadius / centred.apparentRadius - 0.6085 / 0.97) < 1e-4)
     }
 
     @Test("On earth a charge keeps 0.9 of its mass for the air, less so with height; rigid ground none")
@@ -131,17 +161,20 @@ struct CraterTests {
         "Below a shallow water table the walls slump to 10–15°: a fifth as deep; deep water changes nothing")
     func waterTable() throws {
         // 500 short tons of TNT resting on Suffield's glacial soil.
-        let charge = Charge(mass: 500 * 907.185, position: .zero)
+        let mass: Float = 500 * 907.185
+        let charge = Charge(mass: mass, position: SIMD3(0, 0, CraterEstimate.chargeRadius(mass: mass)))
         let dry = try #require(CraterEstimate(charge: charge, groundHeight: 0, ground: .glacialSoil))
-        #expect(abs(dry.apparentRadius - 33.85) < 0.02 && abs(dry.apparentDepth - 16.93) < 0.01)
+        #expect(
+            abs(dry.apparentRadius - 36.55) < 0.05 && abs(dry.apparentDepth - dry.apparentRadius / 2) < 1e-4)
         #expect(dry.waterTable == nil && dry.depthRange == nil)
-        // The water 1.5 m down: R tan 12.5° / 2, 3.75 m (2.98 to 4.53 for 10 to 15°).
+        // The water 1.5 m down: R tan 12.5° / 2, 4.05 m (3.22 to 4.90 for 10 to 15°).
         let wet = try #require(
             CraterEstimate(charge: charge, groundHeight: 0, ground: .glacialSoil, waterTable: 1.5))
-        #expect(abs(wet.apparentDepth - 3.752) < 0.005)
+        func slumped(_ degrees: Float) -> Float { dry.apparentRadius * tan(degrees * .pi / 180) / 2 }
+        #expect(abs(wet.apparentDepth - slumped(12.5)) < 1e-3 && abs(wet.apparentDepth - 4.05) < 0.01)
         #expect(
-            abs(wet.depthRange!.lowerBound - 2.984) < 0.005 && abs(wet.depthRange!.upperBound - 4.535) < 0.005
-        )
+            abs(wet.depthRange!.lowerBound - slumped(10)) < 1e-3
+                && abs(wet.depthRange!.upperBound - slumped(15)) < 1e-3)
         #expect(wet.apparentRadius == dry.apparentRadius && wet.waterTable == 1.5)
         #expect(abs(wet.lipHeight - wet.apparentDepth / 4) < 1e-6)
         #expect(wet.summary.contains("slumped below the water table 1.5 m down"))

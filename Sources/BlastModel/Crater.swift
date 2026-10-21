@@ -21,7 +21,8 @@ public enum GroundType: String, Codable, CaseIterable, Sendable {
     case alluvium
     /// Clay soil over shale (Middle Gust, south-eastern Colorado).
     case clay
-    /// Glacial soil (Suffield, Alberta, where Dial Pack was fired).
+    /// Glacial soil (Suffield, Alberta, where Dial Pack was fired). Its crater is H. F. Cooper's
+    /// wet soil's (`usesWetSoilVolumeLaw`): Suffield's craters flooded from a high water table.
     case glacialSoil
     /// Clay soil over shale and claystone (Diamond Ore, Montana).
     case clayShale
@@ -58,6 +59,14 @@ public enum GroundType: String, Codable, CaseIterable, Sendable {
         case .saturated: 2.00
         }
     }
+
+    /// Whether the crater is H. F. Cooper's for wet soil (RDA-TR-2604-001, 1976): an apparent
+    /// volume of 4,000 ft³ a short ton at zero height (his table 1), falling as e^(−5.2 H) with
+    /// H = HOB / V^(1/3) (his equation 6), and a radius of 1.2 V^(1/3) (his equation 14). Since
+    /// 22 October 2026 for glacial soil only: with the height to the charge's centre, P. W. Cooper's
+    /// law and E_CR 0.75 put Suffield's resting 500-ton spheres at half their measured craters,
+    /// where this law gives 0.96 and 1.17 of them (docs/cratering.md#height-of-burst).
+    public var usesWetSoilVolumeLaw: Bool { self == .glacialSoil }
 
     /// The subgrade modulus, Pa/m, the structures' debris lands on (`SolverConfiguration
     /// .groundStiffness`) when this ground is chosen; nil for rigid ground. Rough, within the
@@ -109,11 +118,13 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
     public var ground: GroundType
     public var explosive: CraterExplosive
     /// The charge's TNT-equivalent mass, kg, and its height of burst in charge radii, from the
-    /// ground to the charge's underside: 0 for a charge resting on the ground, sphere or
-    /// hemisphere, or centred on it (see `heightOfBurst(_:groundHeight:)`).
+    /// ground to the charge's centre, as Cooper measures it: 1 for a sphere resting on the ground,
+    /// 0 for a charge centred on it or below it (see `heightOfBurst(_:groundHeight:)`).
     public var mass: Float
     public var heightOfBurst: Float
-    /// The share of the charge's energy that goes into the ground, by Cooper's figure 29.7.
+    /// The share of the charge's energy that goes into the ground, by Cooper's figure 29.7, at the
+    /// height the air's share is tapered on (`couplingHeight`, to the underside), so that it is
+    /// the share the air lost.
     public var groundShare: Float
     /// The apparent crater, the hole left after fallback and slough have filled back the true
     /// crater the charge dug, as its radius at the original ground's level and its depth below
@@ -170,15 +181,36 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
         cbrt(3 * mass / (4 * .pi * 1600))
     }
 
-    /// The charge's height of burst in charge radii, from the ground to its underside, so that a
-    /// sphere resting on the ground is a surface burst. Cooper's example 29.2 measures to the
-    /// centre instead; but the 500-ton TNT spheres fired resting on the ground at Suffield dug
-    /// craters within the scatter of his surface-burst law, and half again as wide as it gives
-    /// with their centres a radius up (docs/cratering.md#height-of-burst).
+    /// The charge's height of burst for its crater, in charge radii, from the ground to its centre,
+    /// as both Coopers measure it (P. W. Cooper's example 29.2; H. F. Cooper, 1976): 1 for a sphere
+    /// resting on the ground, 0 for one centred on it or below it. Until 22 October 2026 it ran to
+    /// the underside; H. F. Cooper's 40 raised charges read 0.57 of the craters that gave, and 0.90
+    /// of these (docs/cratering.md#against-cooper-1976).
     public static func heightOfBurst(_ charge: Charge, groundHeight: Float) -> Float {
         let radius = chargeRadius(mass: charge.mass)
         guard radius > 0 else { return 0 }
+        return max(charge.position.z - groundHeight, 0) / radius
+    }
+
+    /// The height, in charge radii, that the air's share on soft ground tapers on
+    /// (`Charge.coupled`) and `groundShare` is taken at: to the charge's underside, so that a
+    /// sphere resting on the ground acts on the air as a surface burst. The crater's datum moved to
+    /// the centre on 22 October 2026; the air's was left, so no blast moved.
+    public static func couplingHeight(_ charge: Charge, groundHeight: Float) -> Float {
+        let radius = chargeRadius(mass: charge.mass)
+        guard radius > 0 else { return 0 }
         return max(charge.position.z - groundHeight - radius, 0) / radius
+    }
+
+    /// H. F. Cooper's wet-soil crater (`GroundType.usesWetSoilVolumeLaw`): the apparent radius, m,
+    /// of `mass` kg of TNT with its centre `centreHeight` m above the ground. The scaled height
+    /// H = HOB / V^(1/3) is solved with the volume it gives.
+    public static func wetSoilRadius(mass: Float, centreHeight: Float) -> Float {
+        let tons = Double(mass) / 907.185
+        let height = Double(max(centreHeight, 0)) / 0.3048
+        var volume = 4000 * tons
+        for _ in 0..<60 { volume = 4000 * tons * exp(-5.2 * height / cbrt(volume)) }
+        return Float(1.2 * cbrt(volume) * 0.3048)
     }
 
     /// Cooper's equation 29.7: the apparent crater's radius, feet, for `pounds` of TNT equivalent in
@@ -190,8 +222,8 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
         radiusConstant * cbrt(2 * efficiency * pounds * exp(-1.457 * max(heightOfBurst, 0)))
     }
 
-    /// Bursts higher than this, in charge radii, are air bursts that dig no crater worth the name:
-    /// under 1% of the energy couples into the ground (Cooper, figure 29.7).
+    /// Bursts higher than this, in charge radii to the centre, are air bursts that dig no crater
+    /// worth the name: under 1% of the energy couples into the ground (Cooper, figure 29.7).
     public static let highestBurst: Float = 3.2
 
     /// The crater `charge` digs in `ground` whose surface is at `groundHeight` under it, or nil on
@@ -203,16 +235,25 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
         guard let efficiency = ground.crateringEfficiency, charge.mass > 0 else { return nil }
         let height = Self.heightOfBurst(charge, groundHeight: groundHeight)
         guard height <= Self.highestBurst else { return nil }
-        let feet = Self.cooperRadius(
-            pounds: charge.mass * 2.204_62, efficiency: efficiency, radiusConstant: explosive.radiusConstant,
-            heightOfBurst: height)
-        let radius = feet * 0.3048
+        let radius: Float
+        if ground.usesWetSoilVolumeLaw {
+            // H. F. Cooper's law is for TNT; another explosive scales as P. W. Cooper's K does.
+            radius =
+                Self.wetSoilRadius(
+                    mass: charge.mass, centreHeight: height * Self.chargeRadius(mass: charge.mass))
+                * explosive.radiusConstant / CraterExplosive.tnt.radiusConstant
+        } else {
+            radius =
+                Self.cooperRadius(
+                    pounds: charge.mass * 2.204_62, efficiency: efficiency,
+                    radiusConstant: explosive.radiusConstant, heightOfBurst: height) * 0.3048
+        }
         centre = SIMD3(charge.position.x, charge.position.y, groundHeight)
         self.ground = ground
         self.explosive = explosive
         mass = charge.mass
         heightOfBurst = height
-        groundShare = Self.groundShare(heightOfBurst: height)
+        groundShare = Self.groundShare(heightOfBurst: Self.couplingHeight(charge, groundHeight: groundHeight))
         apparentRadius = radius
         // Depth about half the radius (Cooper, p. 430; Kinney and Graham: a quarter of the diameter).
         apparentDepth = radius * shape.depthRatio
@@ -293,7 +334,7 @@ extension Charge {
     /// 29.7).
     public func coupled(to ground: GroundType, groundHeight: Float) -> Charge {
         guard ground != .rigid, mass > 0 else { return self }
-        let height = CraterEstimate.heightOfBurst(self, groundHeight: groundHeight)
+        let height = CraterEstimate.couplingHeight(self, groundHeight: groundHeight)
         let loss = 1 - ground.surfaceYieldRatio.central / 2
         var charge = self
         charge.mass = mass * (1 - loss * exp(-1.457 * height))

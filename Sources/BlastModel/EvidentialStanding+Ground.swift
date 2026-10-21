@@ -50,15 +50,20 @@ extension StandingScene {
     func crater() -> ResultStanding {
         result(
             .crater, .approximation,
-            "Cooper's cube-root scaling for the apparent crater's radius by soil and height of burst, with "
-                + "Kinney and Graham's one-sigma scatter of a third; the depth is a rule of thumb, slumped below a "
-                + "shallow water table.",
+            "Cooper's cube-root scaling for the apparent crater's radius by soil and height of burst (to the "
+                + "charge's centre; glacial soil by H. F. Cooper's wet-soil volume law), with Kinney and Graham's "
+                + "one-sigma scatter of a third; the depth is a rule of thumb, slumped below a shallow water table.",
             evidence: [
                 StandingEvidence(
                     "Six measured craters: three 500-ton TNT shots at Suffield, Sailor Hat, Minor Scale and Beirut",
-                    "Five of six apparent diameters within a third (the Suffield shots 1.04–1.26); the three wet "
-                        + "sites' depths 0.84–1.41 of the estimate with the water table near the surface",
-                    "cratering.md#against-measured-craters")
+                    "Five of six apparent diameters within a third (the Suffield shots 0.79–1.17); the three wet "
+                        + "sites' depths 0.84–1.31 of the estimate with the water table near the surface",
+                    "cratering.md#against-measured-craters"),
+                StandingEvidence(
+                    "H. F. Cooper's 135 high-explosive craters (1976) by medium and height of burst",
+                    "Surface bursts 1.01 of the radius (20 of 21 within a third); raised charges 0.90 (30 of 40); "
+                        + "buried ones, counted as on the surface, 1.72",
+                    "cratering.md#against-cooper-1976"),
             ],
             assumptions: [
                 "The crater does not act on the blast: it forms after the blast has gone, so the air keeps the "
