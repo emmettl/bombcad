@@ -3,8 +3,8 @@ import Foundation
 import simd
 
 /// `scenebench field-walls <district-compare's inputs> --loads folder --peaks peaks.csv
-/// [--variants surrogate,a:b,…] [--factors 0.8,1,1.3] [--scales 0,0.5,1] [--draws 50] [--inside 0.85]
-/// [--out judged.json]`: the walls' and roofs' chances (`FacadeLoadSurrogate.structureProbabilities`,
+/// [--roof-peaks roofs.csv] [--variants surrogate,a:b,…] [--factors 0.8,1,1.3] [--scales 0,0.5,1]
+/// [--draws 50] [--inside 0.85] [--out judged.json]`: the walls' and roofs' chances (`FacadeLoadSurrogate.structureProbabilities`,
 /// emmettl/bombcad-work#19) with the learned field model's loads in place of the surrogate's, against
 /// the run's own histories (Scripts/ml/judge_field.py, docs/learned-models.md).
 ///
@@ -20,6 +20,12 @@ import simd
 /// side. The field model knows nothing of roofs either, so a roof's variant is a proxy: the roof's
 /// own surrogate pulse (on the roofs' terms) scaled by the building's geometric mean of the
 /// variant's over the surrogate's peak and impulse at its ground-floor strips.
+///
+/// With `--roof-peaks` (judge_field.py `--roofs-out`, a field model trained on the roof level,
+/// emmettl/bombcad-work#69), a roof listed there takes a variant's peak and impulse from its columns
+/// where it has them (`peak:<name>`, `impulse:<name>`), in place of the proxy; the surrogate's
+/// roof pulse for the rest. The strips of `peaks.csv` may then be of any storey: each building's
+/// walls are its worst over the strips listed.
 ///
 /// The chances are drawn as `structureProbabilities` draws them at a known yield: a load scatter for
 /// each building side (shared by its strips) and each roof, the surrogate's leave-one-out scatter
@@ -81,6 +87,30 @@ enum FieldWalls {
         let scales = (value("scales") ?? "1").split(separator: ",").compactMap { Double($0) }
         let grid = factors.flatMap { f in scales.map { [f, $0] } }
         let names = (value("variants") ?? "surrogate").split(separator: ",").map(String.init)
+        // The roofs' own loads, by box, where a model knows the roof level.
+        var roofHead: [String] = []
+        var roofRows: [[Int32]: [Double]] = [:]
+        if let path = value("roof-peaks") {
+            let lines = try String(contentsOfFile: path, encoding: .utf8).split(whereSeparator: \.isNewline)
+            roofHead =
+                lines.first?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } ?? []
+            for line in lines.dropFirst() {
+                let cells = line.split(separator: ",", omittingEmptySubsequences: false).map {
+                    $0.trimmingCharacters(in: .whitespaces)
+                }
+                let box = cells.prefix(6).compactMap { Float($0) }
+                guard cells.count == roofHead.count, box.count == 6 else { continue }
+                roofRows[[2, 1] + box.map { Int32(($0 * 10).rounded()) }] = cells.map { Double($0) ?? 0 }
+            }
+        }
+        /// Each variant's roof columns: its peak's and its impulse's, where the roofs' file has them.
+        let roofColumns: [(peak: Int?, impulse: Int?)] = names.map { name in
+            let parts = name.split(separator: ":").map(String.init)
+            func column(_ part: String, _ q: String) -> Int? {
+                part == "surrogate" ? nil : roofHead.firstIndex(of: q + ":" + part)
+            }
+            return (column(parts[0], "peak"), column(parts.count > 1 ? parts[1] : "surrogate", "impulse"))
+        }
 
         // The judged strips' columns, by box (to a tenth of a metre, as judge_field.py keys them).
         let lines = try String(contentsOfFile: peaksPath, encoding: .utf8).split(whereSeparator: \.isNewline)
@@ -217,11 +247,30 @@ enum FieldWalls {
                             component, owner: n, charge: charge, raster: reference.raster)
                         let p = FacadeLoadSurrogate.predict(
                             f, mass: mass, cellSize: cell, coefficients: .roofs)
+                        // By the saved box, as judge_field.py lists the roofs.
+                        let saved = reference.others!.strips[s]
+                        let own = (saved.low.flatMap { low in saved.high.map { (low, $0) } }).flatMap { box in
+                            roofRows[
+                                [2, 1]
+                                    + [box.0.x, box.0.y, box.0.z, box.1.x, box.1.y, box.1.z].map {
+                                        Int32(($0 * 10).rounded())
+                                    }]
+                        }
+                        let loads = ratios.enumerated().map { v, ratio -> (peak: Double, impulse: Double) in
+                            // The roof's own load where the roofs' file gives the variant's, else
+                            // the proxy (or, with a roofs' file, the surrogate's own for that part).
+                            guard let own, !roofHead.isEmpty else {
+                                return (p.peakPa * ratio.x, p.impulsePaS * ratio.y)
+                            }
+                            let c = roofColumns[v]
+                            return (
+                                c.peak.map { own[$0] } ?? p.peakPa, c.impulse.map { own[$0] } ?? p.impulsePaS
+                            )
+                        }
                         roofs.append(
                             Part(
                                 id: 100_000 + roofs.count, component: component, prediction: p, group: 6,
-                                scatter: scatter(f),
-                                loads: ratios.map { (p.peakPa * $0.x, p.impulsePaS * $0.y) }))
+                                scatter: scatter(f), loads: loads))
                     }
                     // A part's level under variant v's load times (peak, impulse).
                     // The pulse rounds its peak and impulse to `quantum`, so its level is

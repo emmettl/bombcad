@@ -41,6 +41,14 @@ predictor's peak and impulse there (`peak:<name>`, `impulse:<name>`, the run's o
 `--impulse first` judges impulse against the runs' first-phase target (`field-export
 --first-phase`; the default is the first model's own target).
 
+Models trained on more levels (train_field.py `--levels`, emmettl/bombcad-work#69) are judged with
+`--storeys all` at every strip whose storey spans one of their heights over the ground, each at its
+own level, against the run's field there (the dataset's `levels-targets.npy`) and the recorder's
+strip; `--storeys ground` (the default) keeps to the ground floor. All the models must share their
+levels. `--roofs-out FOLDER` writes FOLDER/<id>.csv for each run with a recorder run: each recorded
+roof's box with the run's field and each model's peak and impulse over it, the mean over the roof
+level's cells whose centres it covers, for `scenebench field-walls --roof-peaks`.
+
     python judge_field.py walls --peaks FOLDER --recorded FOLDER --out-dir FOLDER
         [--variants surrogate,strict:surrogate,strict:strict,…] [--only name=split.json] [--match beirut]
 
@@ -172,14 +180,15 @@ def front_cells(strip, dx, shape):
 def load_model(path, device):
     state = torch.load(path, map_location="cpu", weights_only=False)
     args = argparse.Namespace(**state["args"])
-    model = train_field.build(args.model, args)
+    model = train_field.build(args.model, args, outputs=2 * len(state.get("levels") or [None]))
     model.load_state_dict(state["model"])
     model.to(device).eval()
     return model, state
 
 
 def predict(model, state, run, device):
-    """The model's log peak and log impulse over the run's whole plan, (2, H, W)."""
+    """The model's log peak and log impulse over the run's whole plan, (2, H, W), or for each of its
+    levels in turn, (2L, H, W)."""
     stats = state["stats"]
     mean = torch.tensor(stats["mean"]).view(1, -1, 1, 1)
     std = torch.tensor(stats["std"]).view(1, -1, 1, 1)
@@ -189,7 +198,42 @@ def predict(model, state, run, device):
     x = F.pad(x, (0, (-w) % multiple, 0, (-h) % multiple), mode="replicate").to(device)
     with torch.no_grad():
         out = model(x).float()[0, :, :h, :w].cpu().numpy()
-    return out + (run["kb"] if state.get("residual", True) else 0)
+    return out + (train_field.base(run) if state.get("residual", True) else 0)
+
+
+def recorded_roofs(run_id, folder):
+    """The recorder's roofs of run `run_id` (`folder`/<id>/loads/components.json, the roofs among the
+    other components): [(box, peak Pa, first-phase impulse Pa s)]; None without them."""
+    loads = os.path.join(folder, run_id, "loads")
+    if not os.path.exists(os.path.join(loads, "components.json")):
+        return None
+    with open(os.path.join(loads, "components.json")) as handle:
+        index = json.load(handle)
+    values = np.fromfile(os.path.join(loads, "components.f16"), dtype="<f2").astype(np.float64) * (
+        index.get("scalePa") or 1)
+    found = []
+    for strip in index["strips"]:
+        if strip.get("kind") != "roof" or strip.get("low") is None:
+            continue
+        net = values[strip["first"]:strip["first"] + strip["count"]]
+        found.append((strip["low"] + strip["high"], float(net.max()) if net.size else 0.0,
+                      first_impulse(net, strip["binS"])))
+    return found
+
+
+def roof_cells(box, dx, shape):
+    """The plan cells (rows, columns) whose centres a roof's box covers (its middle one if none)."""
+    x0, y0, _, x1, y1, _ = box
+    a, b = int(math.ceil(x0 / dx - 0.5)), int(math.ceil(x1 / dx - 0.5)) - 1
+    c, d = int(math.ceil(y0 / dx - 0.5)), int(math.ceil(y1 / dx - 0.5)) - 1
+    if b < a:
+        a = b = int(math.floor(0.5 * (x0 + x1) / dx))
+    if d < c:
+        c = d = int(math.floor(0.5 * (y0 + y1) / dx))
+    rows, columns = np.meshgrid(np.arange(c, d + 1), np.arange(a, b + 1), indexing="ij")
+    rows, columns = rows.ravel(), columns.ravel()
+    keep = (rows >= 0) & (rows < shape[0]) & (columns >= 0) & (columns < shape[1])
+    return rows[keep], columns[keep]
 
 
 # MARK: - Judging
@@ -264,6 +308,9 @@ def main(argv):
     parser.add_argument("--impulse", choices=("all", "first"),
                         help="the runs' impulse target judged against (default: the first model's)")
     parser.add_argument("--peaks-out", help="folder for each run's judged strips with the predictors' peaks")
+    parser.add_argument("--storeys", choices=("ground", "all"), default="ground",
+                        help="the ground floor's strips only, or every storey at a level the models know")
+    parser.add_argument("--roofs-out", help="folder for each run's recorded roofs with the models' loads over them")
     parser.add_argument("--out")
     args = parser.parse_args(argv)
 
@@ -283,18 +330,29 @@ def main(argv):
     impulse = args.impulse or getattr(argparse.Namespace(**models[0][2]["args"]), "impulse", "all")
     if args.peaks_out:
         os.makedirs(args.peaks_out, exist_ok=True)
+    if args.roofs_out:
+        os.makedirs(args.roofs_out, exist_ok=True)
+    levels = models[0][2].get("levels")
+    if any(m[2].get("levels") != levels for m in models):
+        raise SystemExit("judge_field: the models' levels differ: %s" % [m[2].get("levels") for m in models])
+    roof_rows = []
 
     rows = []
     began = time.time()
     for run_id in held:
-        run = train_field.load_run(os.path.join(args.data, "runs", run_id), impulse)
+        run = train_field.load_run(os.path.join(args.data, "runs", run_id), impulse, levels)
         if run is None:
             print("judge_field: %s is not in the dataset, or was unstable; left out" % run_id)
             continue
         meta = run["meta"]
         dx = meta["cellSizeM"]
         targets = np.exp(run["y"])
-        mask = run["mask"]
+        masks = run["mask"] if levels else run["mask"][None]
+        mask = masks[0]
+        # Each level's height over the ground (none for the roof's), in the models' order.
+        heights = {n: (meta["heightAboveGroundM"] if n == "ground" else next(
+            (lv["metres"] for lv in meta["levels"] if lv["name"] == n and lv["over"] == "ground"), None))
+            for n in (levels or ["ground"])}
         fields = {name: np.exp(predict(model, state, run, torch.device(args.device))) for name, model, state in models}
         strips = strips_for(run_id, args.strips, args.scenebench, plan, fr)
         cx, cy = meta["charge"]["positionM"][:2]
@@ -312,9 +370,14 @@ def main(argv):
                 first_phase = np.load(os.path.join(exported, "targets.npy"))[names.index("firstPhaseImpulse")]
         used = 0
         for s in strips:
-            # The ground-floor strip: its storey spans the field's 2 m over the ground.
-            if not (s["z0"] <= s["ground"] + meta["heightAboveGroundM"] <= s["z1"]):
+            # The level whose height over the ground the strip's storey spans (the ground floor's
+            # 2 m unless `--storeys all`).
+            li = next((n for n, name in enumerate(levels or ["ground"])
+                       if heights[name] is not None and (args.storeys == "all" or name == "ground")
+                       and s["z0"] <= s["ground"] + heights[name] <= s["z1"]), None)
+            if li is None:
                 continue
+            mask = masks[li]
             centre = (0.5 * (s["x0"] + s["x1"]), 0.5 * (s["y0"] + s["y1"]))
             if max(abs(centre[0] - middle[0]), abs(centre[1] - middle[1])) > args.inside * half:
                 continue
@@ -324,15 +387,18 @@ def main(argv):
                 continue
             r, c = r[keep], c[keep]
             row = {"run": run_id, "layout": run["layout"], "kind": kind_of(run["layout"]),
+                   "level": (levels or ["ground"])[li],
                    "z": s["distance"] / root, "distance": s["distance"], "cos": s["cos"],
                    "crossed": s["crossed"], "canyon": s["canyon"], "outside": s["outside"], "cells": int(r.size),
-                   "truth": {"peak": float(targets[0, r, c].mean()), "impulse": float(targets[1, r, c].mean())},
+                   "truth": {"peak": float(targets[2 * li, r, c].mean()),
+                             "impulse": float(targets[2 * li + 1, r, c].mean())},
                    "surrogate": {"peak": s["peak"], "impulse": s["impulse"]},
                    "kb": {"peak": s["kbpeak"], "impulse": s["kbimpulse"]},
                    "kbFacing": {"peak": s["basepeak"], "impulse": s["baseimpulse"]}}
             for name, field in fields.items():
-                row[name] = {"peak": float(field[0, r, c].mean()), "impulse": float(field[1, r, c].mean())}
-            if first_phase is not None:
+                row[name] = {"peak": float(field[2 * li, r, c].mean()),
+                             "impulse": float(field[2 * li + 1, r, c].mean())}
+            if first_phase is not None and li == 0:
                 row["runFieldFirst"] = {"peak": row["truth"]["peak"], "impulse": float(first_phase[r, c].mean())}
             if recorded is not None:
                 # The recorder's strip of the same box: its peak of the mean over its faces and its
@@ -345,13 +411,38 @@ def main(argv):
                 row["box"] = [int(s["axis"]), int(s["outward"]), s["x0"], s["y0"], s["z0"], s["x1"], s["y1"], s["z1"]]
                 rows.append(row)
                 used += 1
+        if args.roofs_out and levels and "roof" in levels:
+            roofs = recorded_roofs(run_id, args.recorded) if args.recorded else None
+            li = levels.index("roof")
+            names = [m[0] for m in models] + ["runField"]
+            lines = []
+            for box, peak, first in roofs or []:
+                centre = (0.5 * (box[0] + box[3]), 0.5 * (box[1] + box[4]))
+                if max(abs(centre[0] - middle[0]), abs(centre[1] - middle[1])) > args.inside * half:
+                    continue
+                r, c = roof_cells(box, dx, masks[li].shape)
+                keep = masks[li][r, c]
+                if not keep.any():
+                    continue
+                r, c = r[keep], c[keep]
+                values = {"runField": (targets[2 * li, r, c].mean(), targets[2 * li + 1, r, c].mean())}
+                for name, field in fields.items():
+                    values[name] = (field[2 * li, r, c].mean(), field[2 * li + 1, r, c].mean())
+                distance = math.hypot(centre[0] - cx, centre[1] - cy)
+                roof_rows.append({"run": run_id, "z": distance / root, "distance": distance,
+                                  "recorded": (peak, first), **values})
+                lines.append(",".join(["%.2f" % v for v in box] + ["%.6g,%.6g" % values[n] for n in names]))
+            with open(os.path.join(args.roofs_out, run_id + ".csv"), "w") as handle:
+                handle.write("x0,y0,z0,x1,y1,z1," + ",".join("%s:%s" % (q, n) for n in names
+                                                            for q in ("peak", "impulse")) + "\n")
+                handle.write("".join(line + "\n" for line in lines))
         if args.peaks_out:
             names = [m[0] for m in models] + ["runField"] + (["runFieldFirst"] if first_phase is not None else [])
             with open(os.path.join(args.peaks_out, run_id + ".csv"), "w") as handle:
                 handle.write("axis,outward,x0,y0,z0,x1,y1,z1," + ",".join(
                     "%s:%s" % (q, n) for n in names for q in ("peak", "impulse")) + "\n")
                 for row in rows[len(rows) - used:]:
-                    values = [row["truth" if n == "runField" else n] for n in names]
+                    values = [row["truth" if n == "runField" else n if n in row else "truth"] for n in names]
                     handle.write(",".join(["%d" % row["box"][0], "%d" % row["box"][1]] + [
                         "%.2f" % v for v in row["box"][2:]] + ["%.6g,%.6g" % (v["peak"], v["impulse"]) for v in values])
                         + "\n")
@@ -378,6 +469,8 @@ def main(argv):
             matters, predictors, lambda r: band_of(r["distance"], DISTANCES, " m"), dbands),
         "faceOnOpen": group_table([r for r in rows if r["cos"] > 0.7 and r["crossed"] == 0], predictors,
                                   lambda r: band_of(r["z"], BANDS), zbands),
+        "byLevel": group_table(rows, predictors, lambda r: r["level"], ["all"] + (levels or ["ground"])),
+        "beirut50to700ByLevel": group_table(matters, predictors, lambda r: r["level"], ["all"] + (levels or ["ground"])),
     }
     # Against the recorder's strips, where a district-compare run of the same district gives them:
     # the field's own value at the strip (the run's cells in front of it) beside the predictors, to
@@ -393,6 +486,24 @@ def main(argv):
         result["recordedBeirut50to700"] = group_table(
             [r for r in against if r["kind"] == "beirut" and 50 <= r["distance"] < 700],
             predictors + ["runField"], sight_of, ["all"] + sights)
+        result["recordedByLevel"] = group_table(
+            against, predictors + ["runField"], lambda r: r["level"], ["all"] + (levels or ["ground"]))
+        result["recordedBeirut50to700ByLevel"] = group_table(
+            [r for r in against if r["kind"] == "beirut" and 50 <= r["distance"] < 700],
+            predictors + ["runField"], lambda r: r["level"], ["all"] + (levels or ["ground"]))
+    if roof_rows:
+        roof_names = [m[0] for m in models] + ["runField"]
+        result["roofsAgainstRecorder"] = []
+        for label, lo, hi in [("all", 0, float("inf"))] + [
+                (band_of(0.5 * (a + b), BANDS), a, b) for a, b in zip(BANDS, BANDS[1:])]:
+            chosen = [r for r in roof_rows if lo <= r["z"] < hi and r["recorded"][0] > 0 and r["recorded"][1] > 0]
+            if not chosen:
+                continue
+            entry = {"group": label, "roofs": len(chosen)}
+            for n in roof_names:
+                entry[n] = {q: stats([math.log(r[n][k] / r["recorded"][k]) for r in chosen if r[n][k] > 0])
+                            for k, q in ((0, "peak"), (1, "impulse"))}
+            result["roofsAgainstRecorder"].append(entry)
     print("\nRatio / log-SD of predicted over the run, peak then impulse, for: " + ", ".join(predictors))
     print_table("By scaled distance, Z m/kg^(1/3)", result["byScaledDistance"], predictors)
     print_table("By distance", result["byDistance"], predictors)
@@ -401,6 +512,8 @@ def main(argv):
     print_table("Beirut, 50-700 m, by sight", result["beirut50to700"], predictors)
     print_table("Beirut, 50-700 m, by distance", result["beirut50to700ByDistance"], predictors)
     print_table("In sight and facing it (cos > 0.7), by Z", result["faceOnOpen"], predictors)
+    print_table("By level", result["byLevel"], predictors)
+    print_table("Beirut, 50-700 m, by level", result["beirut50to700ByLevel"], predictors)
     if against:
         print("\nAgainst the recorder's strips (%d, runs %s): runField is the run's own field there" % (
             len(against), ", ".join(result["recordedRuns"])))
@@ -408,6 +521,16 @@ def main(argv):
         print_table("By sight of the charge", result["recordedBySight"], predictors + ["runField"])
         print_table("By layout kind", result["recordedByKind"], predictors + ["runField"])
         print_table("Beirut, 50-700 m, by sight", result["recordedBeirut50to700"], predictors + ["runField"])
+        print_table("By level", result["recordedByLevel"], predictors + ["runField"])
+        print_table("Beirut, 50-700 m, by level", result["recordedBeirut50to700ByLevel"], predictors + ["runField"])
+    if roof_rows:
+        print("\nRoofs against the recorder (%d): ratio / log-SD of the roof level's mean over the roof, peak then "
+              "first-phase impulse" % len(roof_rows))
+        for entry in result["roofsAgainstRecorder"]:
+            print("  %-10s %7d" % (entry["group"], entry["roofs"]) + "".join(
+                "  %s %.2f/%.2f %.2f/%.2f" % (n, entry[n]["peak"]["ratio"], entry[n]["peak"]["logSD"],
+                                              entry[n]["impulse"]["ratio"], entry[n]["impulse"]["logSD"])
+                for n in [m[0] for m in models] + ["runField"] if entry[n]["peak"]))
     if args.out:
         with open(args.out, "w") as handle:
             json.dump(result, handle, indent=1)

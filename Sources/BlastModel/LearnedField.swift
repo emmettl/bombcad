@@ -8,6 +8,11 @@ import simd
 /// surrogate's, its impulse and rise kept. Roofs, upper storeys and every other component stay on
 /// the surrogate, as the judge left them (`scenebench field-glass`, `field-walls`).
 ///
+/// A model trained on more levels (emmettl/bombcad-work#69: its weights' header lists them) gives
+/// the peak at every façade strip whose storey spans one of its heights over the ground, and over
+/// the roofs from its roof level, as far as its `reach` lets it; the ground-floor model's weights
+/// reach the ground floor alone, as before.
+///
 /// This file is what needs no GPU: the weights' file, the network's inputs laid out from a scene
 /// exactly as `scenebench field-export` lays out its training inputs, the peak map and its cells in
 /// front of a strip. The network itself runs on the GPU (BlastCore's `LearnedFieldNetwork`, behind
@@ -63,6 +68,20 @@ public enum LearnedField {
                 public var offset: Int
                 public var count: Int
             }
+            /// A level the network predicts (`field-export --levels`, `--roof`): its name, what it
+            /// is over ("ground", the ground under the cell, or "roof", the top of its building)
+            /// and how far, m.
+            public struct Level: Codable, Sendable, Equatable {
+                public var name: String
+                public var over: String
+                public var metres: Double
+
+                public init(name: String, over: String, metres: Double) {
+                    self.name = name
+                    self.over = over
+                    self.metres = metres
+                }
+            }
             public var format: String
             public var model: String
             public var width: Int
@@ -78,7 +97,17 @@ public enum LearnedField {
             public var sourceSHA256: String?
             public var epoch: Int?
             public var holdout: String?
+            /// The levels whose log peak and log impulse the head gives in turn; nil for the 2 m
+            /// field alone (the first model's weights).
+            public var levels: [Level]?
             public var tensors: [Entry]
+
+            /// The levels, the 2 m field alone without any.
+            public var predicted: [Level] {
+                levels ?? [
+                    Level(name: "ground", over: "ground", metres: Double(LearnedField.heightAboveGround))
+                ]
+            }
         }
 
         public var header: Header
@@ -245,6 +274,21 @@ public enum LearnedField {
         /// standardised inputs, channels × rows × columns in C order, already padded to a multiple
         /// of `header.multiple` each way.
         func peakChannel(inputs: [Float], rows: Int, columns: Int) throws -> [Float]
+        /// The same for each of `header.predicted`'s levels in turn: the outputs 0, 2, 4….
+        func peakChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]]
+    }
+
+    /// Which components a model with more levels gives its peak to (`PeakMap.reach`).
+    public struct Reach: OptionSet, Sendable, Hashable {
+        public let rawValue: Int
+        public init(rawValue: Int) { self.rawValue = rawValue }
+        /// Ground-floor façade strips, at the 2 m field.
+        public static let groundFloor = Reach(rawValue: 1)
+        /// Façade strips of the storeys above, at the height level each spans.
+        public static let upperStoreys = Reach(rawValue: 2)
+        /// Roofs, at the roof level over them.
+        public static let roofs = Reach(rawValue: 4)
+        public static let all: Reach = [.groundFloor, .upperStoreys, .roofs]
     }
 
     // MARK: - The plan
@@ -392,31 +436,65 @@ public enum LearnedField {
     // MARK: - The peak map
 
     /// The network's peak over a plan for one charge: its log, Pa, and where it is to be read (no
-    /// building over the cell's centre, away from the plan's sides, above `smallestPeakPa`).
+    /// building over the cell's centre, away from the plan's sides, above `smallestPeakPa`); with
+    /// more levels, the same at each (`logPeaks`, `opens`): over a cell whose building, if any, is
+    /// no taller than a height level, and over a cell with a building for the roof's.
     public struct PeakMap: Sendable {
         public let columns: Int
         public let rows: Int
         public let cell: Float
+        /// The 2 m field's: `logPeaks[0]` and `opens[0]`.
         public let logPeak: [Float]
         public let open: [Bool]
+        /// The levels, and the log peak and where to read it at each, in the levels' order.
+        public let levels: [Weights.Header.Level]
+        public let logPeaks: [[Float]]
+        public let opens: [[Bool]]
+        /// The components given the network's peak.
+        public var reach: Reach = .groundFloor
         let terrain: Terrain?
+        let height: [Float]
         /// How long the network took, s, and its inputs before it.
         public var seconds: (inputs: Double, network: Double) = (0, 0)
 
         public init(plan: Plan, logPeak: [Float]) {
-            precondition(logPeak.count == plan.columns * plan.rows, "a peak for every cell")
+            self.init(
+                plan: plan, logPeaks: [logPeak],
+                levels: [
+                    .init(name: "ground", over: "ground", metres: Double(LearnedField.heightAboveGround))
+                ])
+        }
+
+        public init(
+            plan: Plan, logPeaks: [[Float]], levels: [Weights.Header.Level], reach: Reach = .groundFloor
+        ) {
+            precondition(
+                logPeaks.count == levels.count && levels.first?.name == "ground"
+                    && logPeaks.allSatisfy { $0.count == plan.columns * plan.rows },
+                "a peak for every cell at every level, the 2 m field's first")
             columns = plan.columns
             rows = plan.rows
             cell = plan.cell
-            self.logPeak = logPeak
+            self.levels = levels
+            self.logPeaks = logPeaks
+            self.reach = reach
             terrain = plan.terrain
+            height = plan.height
             let edge = LearnedField.edgeCells
             let smallest = log(LearnedField.smallestPeakPa)
-            open = (0..<(plan.columns * plan.rows)).map { n in
-                let (i, j) = (n % plan.columns, n / plan.columns)
-                return plan.height[n] == 0 && i >= edge && j >= edge && i < plan.columns - edge
-                    && j < plan.rows - edge && logPeak[n] > smallest
+            opens = zip(levels, logPeaks).map { level, logPeak in
+                (0..<(plan.columns * plan.rows)).map { n in
+                    let (i, j) = (n % plan.columns, n / plan.columns)
+                    let air =
+                        level.name == "ground"
+                        ? plan.height[n] == 0
+                        : level.over == "roof" ? plan.height[n] > 0 : Double(plan.height[n]) <= level.metres
+                    return air && i >= edge && j >= edge && i < plan.columns - edge && j < plan.rows - edge
+                        && logPeak[n] > smallest
+                }
             }
+            logPeak = logPeaks[0]
+            open = opens[0]
         }
 
         /// The plan's cells of air beside `component`'s outer face, along its width: the first
@@ -455,14 +533,63 @@ public enum LearnedField {
             return component.region.min.z <= level + 0.01 && level - 0.01 <= component.region.max.z
         }
 
-        /// The network's peak at `component`, Pa: the mean over its front cells that are open;
-        /// nil unless it is a ground-floor façade strip with one.
+        /// The level a façade strip's storey spans above the ground floor: the first height level
+        /// whose height over the ground under its outer face's middle the storey spans, within a
+        /// centimetre; nil for none.
+        public func upperLevel(_ component: EnvelopeComponent) -> Int? {
+            guard component.kind == .facade, component.axis < 2, !isGroundFloor(component) else { return nil }
+            let ground = terrain?.height(at: FacadeLoadSurrogate.outerFace(component).centre) ?? 0
+            return levels.indices.dropFirst().first { l in
+                let level = levels[l]
+                guard level.over == "ground" else { return false }
+                let at = ground + Float(level.metres)
+                return component.region.min.z <= at + 0.01 && at - 0.01 <= component.region.max.z
+            }
+        }
+
+        /// The plan cells whose centres a roof's region covers (its middle one if none).
+        public func roofCells(_ component: EnvelopeComponent) -> [Int] {
+            let region = component.region
+            func span(_ axis: Int) -> ClosedRange<Int> {
+                let a = Int((region.min[axis] / cell - 0.5).rounded(.up))
+                let b = Int((region.max[axis] / cell - 0.5).rounded(.up)) - 1
+                if b < a {
+                    let m = Int((0.5 * (region.min[axis] + region.max[axis]) / cell).rounded(.down))
+                    return m...m
+                }
+                return a...b
+            }
+            var cells: [Int] = []
+            for row in span(1) where row >= 0 && row < rows {
+                for column in span(0) where column >= 0 && column < columns {
+                    cells.append(column + columns * row)
+                }
+            }
+            return cells
+        }
+
+        /// The network's peak at `component`, Pa: the mean over its cells that are open at its
+        /// level, the front cells of a façade strip, the roof level's cells under a roof; nil where
+        /// `reach` leaves it to the surrogate (by default all but the ground floor's façade strips)
+        /// or there is none.
         public func peak(at component: EnvelopeComponent) -> Double? {
-            guard isGroundFloor(component) else { return nil }
+            let level: Int
+            let cells: [Int]
+            if reach.contains(.groundFloor), isGroundFloor(component) {
+                (level, cells) = (0, frontCells(component))
+            } else if reach.contains(.upperStoreys), let l = upperLevel(component) {
+                (level, cells) = (l, frontCells(component))
+            } else if reach.contains(.roofs), component.kind == .roof,
+                let l = levels.firstIndex(where: { $0.over == "roof" })
+            {
+                (level, cells) = (l, roofCells(component))
+            } else {
+                return nil
+            }
             var sum = 0.0
             var count = 0
-            for n in frontCells(component) where open[n] {
-                sum += Double(exp(logPeak[n]))
+            for n in cells where opens[level][n] {
+                sum += Double(exp(logPeaks[level][n]))
                 count += 1
             }
             return count > 0 ? sum / Double(count) : nil
@@ -492,13 +619,17 @@ public enum LearnedField {
     public final class Estimator: Sendable {
         public let plan: Plan
         public let network: any Network
+        /// The components given the network's peak: the ground floor's façade strips for the
+        /// first model's weights, and with more levels what `reach` allows of them.
+        public let reach: Reach
         /// How long laying out the plan took, s.
         public let seconds: Double
 
-        public init(scene: Scenario, network: any Network) {
+        public init(scene: Scenario, network: any Network, reach: Reach = .all) {
             let start = ContinuousClock.now
             plan = Plan(scene: scene)
             self.network = network
+            self.reach = network.header.levels == nil ? .groundFloor : reach
             let took = start.duration(to: .now)
             seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
         }
@@ -516,18 +647,27 @@ public enum LearnedField {
                 exportChannels: raw, rows: plan.rows, columns: plan.columns, header: header)
             let inputsS = since(clock)
             clock = .now
-            let out = try network.peakChannel(inputs: inputs, rows: rows, columns: columns)
-            guard out.count == rows * columns else {
-                throw LearnedFieldError.network("\(out.count) outputs for \(rows) × \(columns)")
+            let levels = header.predicted
+            // The first model's weights: its first output alone, as before.
+            let outs =
+                header.levels == nil
+                ? [try network.peakChannel(inputs: inputs, rows: rows, columns: columns)]
+                : try network.peakChannels(inputs: inputs, rows: rows, columns: columns)
+            guard outs.count == levels.count, outs.allSatisfy({ $0.count == rows * columns }) else {
+                throw LearnedFieldError.network(
+                    "\(outs.map(\.count)) outputs for \(levels.count) levels of \(rows) × \(columns)")
             }
-            var logPeak = [Float](repeating: 0, count: plan.rows * plan.columns)
-            for j in 0..<plan.rows {
-                for i in 0..<plan.columns {
-                    let n = i + plan.columns * j
-                    logPeak[n] = out[i + columns * j] + (header.residual ? kb[n] : 0)
+            let logPeaks = outs.map { out in
+                var logPeak = [Float](repeating: 0, count: plan.rows * plan.columns)
+                for j in 0..<plan.rows {
+                    for i in 0..<plan.columns {
+                        let n = i + plan.columns * j
+                        logPeak[n] = out[i + columns * j] + (header.residual ? kb[n] : 0)
+                    }
                 }
+                return logPeak
             }
-            var map = PeakMap(plan: plan, logPeak: logPeak)
+            var map = PeakMap(plan: plan, logPeaks: logPeaks, levels: levels, reach: reach)
             map.seconds = (inputsS, since(clock))
             return map
         }
@@ -601,6 +741,13 @@ public enum LearnedField {
             FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(filePath: NSHomeDirectory()).appending(path: "Library/Application Support")
         return support.appending(path: "BombCAD/LearnedModels").appending(path: fileName)
+    }
+}
+
+extension LearnedField.Network {
+    /// A network of the 2 m field alone: its first output.
+    public func peakChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]] {
+        [try peakChannel(inputs: inputs, rows: rows, columns: columns)]
     }
 }
 

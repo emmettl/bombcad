@@ -248,6 +248,53 @@ struct LearnedFieldTests {
         #expect(network.calls == 3)
     }
 
+    @Test(
+        "With more levels, upper storeys read their height's level and roofs the roof's, as far as the reach")
+    func levels() throws {
+        let scene = try FacadeGlassProbabilityTests.row()
+        let plan = LearnedField.Plan(scene: scene)
+        let area = plan.columns * plan.rows
+        let levels: [LearnedField.Weights.Header.Level] = [
+            .init(name: "ground", over: "ground", metres: 2), .init(name: "h6", over: "ground", metres: 6),
+            .init(name: "h10", over: "ground", metres: 10), .init(name: "roof", over: "roof", metres: 2),
+        ]
+        let logPeaks = (0..<4).map { [Float](repeating: 8 + Float($0), count: area) }
+        func component(_ kind: EnvelopeComponent.Kind, _ axis: Int, _ low: SIMD3<Float>, _ high: SIMD3<Float>)
+            -> EnvelopeComponent
+        {
+            EnvelopeComponent(
+                id: "s", owner: UUID(), kind: kind, region: Box(min: low, max: high), axis: axis,
+                outward: axis == 2 ? 1 : -1, source: 0, panel: 0, supportEdges: [true, true, true, true])
+        }
+        // The first block (x 30–40, y 25–35, 9 m): its west face's storeys, and its roof.
+        let ground = component(.facade, 0, SIMD3(30, 25, 0), SIMD3(30.3, 35, 3))
+        let second = component(.facade, 0, SIMD3(30, 25, 3), SIMD3(30.3, 35, 6))
+        let third = component(.facade, 0, SIMD3(30, 25, 6.5), SIMD3(30.3, 35, 9))
+        let roof = component(.roof, 2, SIMD3(30, 25, 8.7), SIMD3(40, 35, 9))
+        let all = LearnedField.PeakMap(plan: plan, logPeaks: logPeaks, levels: levels, reach: .all)
+        #expect(all.peak(at: ground).map { abs($0 / exp(8) - 1) < 1e-6 } == true)
+        #expect(all.upperLevel(second) == 1)
+        #expect(all.peak(at: second).map { abs($0 / exp(9) - 1) < 1e-6 } == true)
+        // A storey spanning no level keeps the surrogate's.
+        #expect(all.upperLevel(third) == nil && all.peak(at: third) == nil)
+        // The roof's cells: columns 7–9 and rows 6–8, all under the block, at the roof level.
+        #expect(all.roofCells(roof).count == 9)
+        #expect(all.peak(at: roof).map { abs($0 / exp(11) - 1) < 1e-6 } == true)
+        // The 9 m block stands above the 6 m level and under the 10 m one.
+        let n = 8 + plan.columns * 7
+        #expect(!all.opens[1][n] && all.opens[2][n] && all.opens[3][n] && !all.opens[0][n])
+        let groundOnly = LearnedField.PeakMap(plan: plan, logPeaks: logPeaks, levels: levels)
+        #expect(groundOnly.peak(at: ground) == all.peak(at: ground))
+        #expect(groundOnly.peak(at: second) == nil && groundOnly.peak(at: roof) == nil)
+        // The first model's map is the 2 m field's alone, read as before.
+        let first = LearnedField.PeakMap(plan: plan, logPeak: logPeaks[0])
+        #expect(first.levels.count == 1 && first.peak(at: ground) == all.peak(at: ground))
+        #expect(first.peak(at: second) == nil && first.peak(at: roof) == nil)
+        // And an estimator whose weights have no levels reaches the ground floor only.
+        let estimator = LearnedField.Estimator(scene: scene, network: StandIn(), reach: .all)
+        #expect(estimator.reach == .groundFloor)
+    }
+
     @Test("The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support")
     func weightsURL() {
         #expect(

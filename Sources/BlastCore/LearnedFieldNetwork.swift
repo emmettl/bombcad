@@ -7,15 +7,17 @@ import MetalPerformanceShadersGraph
 /// convolutions each followed by a group norm (8 groups) and the exact GELU, max-pooled down,
 /// bilinearly upsampled (half-pixel centres, as PyTorch's `align_corners=False`) and joined to
 /// the skip, then a 1 × 1 head. Only the head's first output, the log peak's correction, is
-/// worked out (emmettl/bombcad-work#67). In float32, as PyTorch on the CPU, so that it matches
+/// worked out (emmettl/bombcad-work#67), or with more levels each level's log peak, the head's
+/// outputs 0, 2, 4… (emmettl/bombcad-work#69). In float32, as PyTorch on the CPU, so that it matches
 /// PyTorch's prediction to float rounding (`LearnedFieldNetworkTests`).
 public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendable {
     public let header: LearnedField.Weights.Header
     private let device: MTLDevice
     private let queue: MTLCommandQueue
     private let weights: [String: (shape: [Int], values: [Float])]
-    /// The graph for each padded plan, kept: dragging the charge asks for the same one each frame.
-    private var graphs: [SIMD2<Int>: (graph: MPSGraph, input: MPSGraphTensor, output: MPSGraphTensor)] = [:]
+    /// The graph for each padded plan and number of outputs, kept: dragging the charge asks for the
+    /// same one each frame.
+    private var graphs: [SIMD3<Int>: (graph: MPSGraph, input: MPSGraphTensor, output: MPSGraphTensor)] = [:]
     private let lock = NSLock()
 
     public init(weights: LearnedField.Weights, device: MTLDevice) throws {
@@ -37,14 +39,27 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
     }
 
     public func peakChannel(inputs: [Float], rows: Int, columns: Int) throws -> [Float] {
+        try run(inputs: inputs, rows: rows, columns: columns, heads: [0])
+    }
+
+    public func peakChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]] {
+        let count = header.predicted.count
+        let values = try run(
+            inputs: inputs, rows: rows, columns: columns, heads: Array(stride(from: 0, to: 2 * count, by: 2)))
+        let plan = rows * columns
+        return (0..<count).map { Array(values[($0 * plan)..<(($0 + 1) * plan)]) }
+    }
+
+    /// The head's outputs `heads` over the plan, one after another.
+    private func run(inputs: [Float], rows: Int, columns: Int, heads: [Int]) throws -> [Float] {
         let multiple = max(1, header.multiple)
         guard rows % multiple == 0, columns % multiple == 0, inputs.count == 6 * rows * columns else {
             throw LearnedFieldError.network("inputs of \(inputs.count) for 6 × \(rows) × \(columns)")
         }
         lock.lock()
         defer { lock.unlock() }
-        let key = SIMD2(rows, columns)
-        let built = graphs[key] ?? build(rows: rows, columns: columns)
+        let key = SIMD3(rows, columns, heads.count)
+        let built = graphs[key] ?? build(rows: rows, columns: columns, heads: heads)
         graphs[key] = built
         let shape: [NSNumber] = [1, 6, rows as NSNumber, columns as NSNumber]
         let data = inputs.withUnsafeBufferPointer { Data(buffer: $0) }
@@ -55,12 +70,12 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
                 with: queue, feeds: [built.input: feed], targetTensors: [built.output], targetOperations: nil)
         }
         guard let out = results[built.output] else { throw LearnedFieldError.network("no output") }
-        var values = [Float](repeating: 0, count: rows * columns)
+        var values = [Float](repeating: 0, count: heads.count * rows * columns)
         values.withUnsafeMutableBytes { out.mpsndarray().readBytes($0.baseAddress!, strideBytes: nil) }
         return values
     }
 
-    private func build(rows: Int, columns: Int) -> (
+    private func build(rows: Int, columns: Int, heads: [Int]) -> (
         graph: MPSGraph, input: MPSGraphTensor, output: MPSGraphTensor
     ) {
         let graph = MPSGraph()
@@ -146,16 +161,34 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
             x = graph.concatTensors([x, skip], dimension: 1, name: nil)
             x = block(x, "up.\(n)", size: skipSize)
         }
-        // The head's first output alone.
+        // The head's outputs `heads` alone: the first, the log peak's, as before; with more levels,
+        // each level's log peak.
         let head = weights["head.weight"]!
         let inner = head.shape[1]
-        let first = Array(head.values[0..<inner])
-        let headWeight = graph.constant(
-            first.withUnsafeBufferPointer { Data(buffer: $0) }, shape: [1, inner as NSNumber, 1, 1],
-            dataType: .float32)
-        var output = graph.convolution2D(x, weights: headWeight, descriptor: pointwise, name: nil)
-        output = graph.addition(
-            output, graph.constant(Double(weights["head.bias"]!.values[0]), dataType: .float32), name: nil)
+        var output: MPSGraphTensor
+        if heads == [0] {
+            let first = Array(head.values[0..<inner])
+            let headWeight = graph.constant(
+                first.withUnsafeBufferPointer { Data(buffer: $0) }, shape: [1, inner as NSNumber, 1, 1],
+                dataType: .float32)
+            output = graph.convolution2D(x, weights: headWeight, descriptor: pointwise, name: nil)
+            output = graph.addition(
+                output, graph.constant(Double(weights["head.bias"]!.values[0]), dataType: .float32), name: nil
+            )
+        } else {
+            let chosen = heads.flatMap { Array(head.values[($0 * inner)..<(($0 + 1) * inner)]) }
+            let bias = heads.map { weights["head.bias"]!.values[$0] }
+            let headWeight = graph.constant(
+                chosen.withUnsafeBufferPointer { Data(buffer: $0) },
+                shape: [heads.count as NSNumber, inner as NSNumber, 1, 1], dataType: .float32)
+            output = graph.convolution2D(x, weights: headWeight, descriptor: pointwise, name: nil)
+            output = graph.addition(
+                output,
+                graph.constant(
+                    bias.withUnsafeBufferPointer { Data(buffer: $0) },
+                    shape: [1, heads.count as NSNumber, 1, 1],
+                    dataType: .float32), name: nil)
+        }
         return (graph, input, output)
     }
 

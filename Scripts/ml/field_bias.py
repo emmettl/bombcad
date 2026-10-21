@@ -30,6 +30,7 @@ import importlib.util
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 
@@ -67,9 +68,10 @@ def run(args):
             arguments = fr.field_arguments(case, layout, fr.inputs_for(r["layout"], layout, make=False), out)
             arguments[arguments.index("--dx") + 1] = "%g" % dx
             arguments += ["--first-phase", "--roof"] + (["--levels", args.levels] if args.levels else [])
-            # The 4 m run's memory, by the cells.
+            # The solver's memory, by the cells at this size (73 bytes each), with room to spare.
             estimate = fr.estimate(case, plan["layouts"])
-            memory = max(4, int(math.ceil(estimate["memGB"] * (4 / dx) ** 3 * 1.1)))
+            cells = estimate["cells"] * (4 / dx) ** 3
+            memory = max(4, int(math.ceil(cells * 73 * 1.3 / 1e9 + (2 if layout["kind"] == "beirut" else 1))))
             command = [GPU_SLOT, "--mem", str(memory), scenebench] + arguments
             print("%s at %g m: %s" % (name, dx, " ".join(command)), flush=True)
             if args.dry_run:
@@ -184,7 +186,7 @@ def analyse(args):
         base = os.path.join(args.out, name)
         if args.tag and not name.endswith("-" + args.tag):
             continue
-        if not args.tag and any(name.endswith(s) for s in ("-r512",)):
+        if not args.tag and re.search(r"-r[0-9]+$", name):
             continue
         coarse_dir = os.path.join(base, "dx%g" % args.coarse)
         fine_dir = os.path.join(base, "dx%g" % args.fine)

@@ -59,10 +59,28 @@ def load(path):
     args = argparse.Namespace(**state["args"])
     if args.model != "unet":
         raise SystemExit("export_field_weights: only the U-Net is exported (%s is %s)" % (path, args.model))
-    model = train_field.build("unet", args)
+    model = train_field.build("unet", args, outputs=2 * len(state.get("levels") or [None]))
     model.load_state_dict(state["model"])
     model.eval()
     return model, state, args
+
+
+def header_levels(names):
+    """A model's levels as the weights' header gives them (emmettl/bombcad-work#69): each its name,
+    what it is over (the ground under the cell, or its building's top) and how far, m, as
+    field-export's `--levels` and `--roof` name them (`ground` is the 2 m field, `roof` 2 m over the
+    roof, `hN` N m over the ground)."""
+    levels = []
+    for name in names:
+        if name == "ground":
+            levels.append({"name": name, "over": "ground", "metres": 2.0})
+        elif name == "roof":
+            levels.append({"name": name, "over": "roof", "metres": 2.0})
+        elif name.startswith("h"):
+            levels.append({"name": name, "over": "ground", "metres": float(name[1:])})
+        else:
+            raise SystemExit("export_field_weights: level %r is not ground, roof or hN" % name)
+    return levels
 
 
 def write(path, model, state, args, source, dtype):
@@ -75,7 +93,8 @@ def write(path, model, state, args, source, dtype):
     header = {
         "format": "bombcad-field-weights-1", "model": "unet", "width": args.width, "depth": args.depth,
         "inputs": state.get("inputs", train_field.INPUTS), "stats": state["stats"],
-        "residual": bool(state.get("residual", True)), "outputs": ["logPeakOverpressure", "logImpulse"],
+        "residual": bool(state.get("residual", True)),
+        "outputs": ["logPeakOverpressure", "logImpulse"] * len(state.get("levels") or [None]),
         "impulse": getattr(args, "impulse", "all"), "multiple": 2 ** args.depth,
         "groupNormGroups": 8, "groupNormEpsilon": 1e-5,
         "dtype": "float16" if dtype == np.float16 else "float32",
@@ -83,6 +102,9 @@ def write(path, model, state, args, source, dtype):
         "holdout": getattr(args, "holdout_layouts", "") or getattr(args, "holdout_runs", ""),
         "tensors": tensors,
     }
+    if state.get("levels"):
+        # Each level's log peak and log impulse in turn, in this order.
+        header["levels"] = header_levels(state["levels"])
     text = json.dumps(header, indent=1).encode("utf-8")
     text += b" " * ((-len(text)) % 16)
     with open(path + ".tmp", "wb") as handle:
@@ -105,6 +127,19 @@ def predict_log_peak(model, stats, run):
     with torch.no_grad():
         out = model(x).float()[0, 0, :h, :w].numpy()
     return (out + run["kb"][0]).astype(np.float32)
+
+
+def predict_log_peaks(model, stats, run):
+    """With more levels, each level's log peak over the run's plan, (L, H, W): the outputs 0, 2, 4…."""
+    mean = torch.tensor(stats["mean"]).view(1, -1, 1, 1)
+    std = torch.tensor(stats["std"]).view(1, -1, 1, 1)
+    x = (torch.from_numpy(run["x"])[None] - mean) / std
+    h, w = x.shape[-2:]
+    multiple = model.multiple
+    x = torch.nn.functional.pad(x, (0, (-w) % multiple, 0, (-h) % multiple), mode="replicate")
+    with torch.no_grad():
+        out = model(x).float()[0, 0::2, :h, :w].numpy()
+    return (out + run["kb"][0][None]).astype(np.float32)
 
 
 def main(argv):
@@ -131,7 +166,7 @@ def main(argv):
         parser.error("--reference needs --data and --reference-out")
     os.makedirs(args.reference_out, exist_ok=True)
     # The network as exported: its weights rounded to the file's type.
-    rounded = train_field.build("unet", margs)
+    rounded = train_field.build("unet", margs, outputs=2 * len(state.get("levels") or [None]))
     rounded.load_state_dict({k: torch.from_numpy(v.detach().numpy().astype(dtype).astype(np.float32))
                              for k, v in model.state_dict().items()})
     rounded.eval()
@@ -144,6 +179,9 @@ def main(argv):
         exported = predict_log_peak(rounded, state["stats"], run)
         original = predict_log_peak(model, state["stats"], run)
         np.save(os.path.join(args.reference_out, run_id + ".logpeak.npy"), exported)
+        if state.get("levels"):
+            np.save(os.path.join(args.reference_out, run_id + ".logpeaks.npy"),
+                    predict_log_peaks(rounded, state["stats"], run))
         shutil.copyfile(os.path.join(args.data, "runs", run_id, "inputs.npy"),
                         os.path.join(args.reference_out, run_id + ".inputs.npy"))
         difference = np.abs(exported - original)

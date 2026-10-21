@@ -49,6 +49,23 @@ enum FieldApp {
                 out = try network.peakChannel(inputs: inputs, rows: paddedRows, columns: paddedColumns)
                 times.append(DistrictBenchmark.seconds(clock))
             }
+            // With more levels, every level's log peak against PyTorch's (`<id>.logpeaks.npy`).
+            let levelsFile = root.appending(path: "\(id).logpeaks.npy")
+            if network.header.levels != nil, FileManager.default.fileExists(atPath: levelsFile.path) {
+                let (all, _) = try LearnedField.readNPY(levelsFile)
+                let outs = try network.peakChannels(inputs: inputs, rows: paddedRows, columns: paddedColumns)
+                for (l, level) in network.header.predicted.enumerated() {
+                    var most: Float = 0
+                    for j in 0..<rows {
+                        for i in 0..<columns {
+                            let n = i + columns * j
+                            let mine = outs[l][i + paddedColumns * j] + (network.header.residual ? kb[n] : 0)
+                            most = max(most, abs(mine - all[l * rows * columns + n]))
+                        }
+                    }
+                    print(String(format: "  %@ level %@: log peak within %.2e", id, level.name, most))
+                }
+            }
             var largest: Float = 0
             var sum = 0.0
             for j in 0..<rows {
