@@ -527,6 +527,60 @@ threshold-refine`; the Studio shared):
   either way. For a car bomb, or under a glass colouring, it is.
 
 
+### Walls at 400–600 m against finer air (21 October 2026)
+
+The close calls' refined runs called walls damaged at 400–600 m of 0.5 kt, on 9 of 16 buildings,
+where the estimate gave 0.21–0.52. At the scene's exact yield the estimate still gives 0.03–0.48,
+so the yield's spread is not the cause. The question was whether the refined runs are right, or
+whether they overshoot (`scenebench wall-convergence`, emmettl/bombcad-work#19 and #34).
+
+**Five of those buildings, 494–603 m** (Beirut's 4 m layout, the threshold refinement's cut scene).
+Each front wall's median peak, positive-phase impulse (the most its running integral reaches) and
+SDOF support rotation:
+
+| Air | Peak, × 4 m | Impulse, × 4 m | Front walls' median rotation | Worst wall's rotation |
+|---|---|---|---|---|
+| 4 m | 32–47 kPa | 4.2–4.5 kPa s | 0.11–0.19° | 0.17–0.78° |
+| 2 m corridors | ×1.07–1.19 | ×0.89–0.96 | 0.16–0.62° | 0.33–2.02° |
+| 1 m corridors | ×1.00–1.19 | ×0.79–0.85 | 0.18–0.63° | 0.33–1.75° |
+| 2 m corridors, whole scene (no cut) | as the cut, to 0.3% | as the cut | as the cut | as the cut |
+
+**One block in the open, its front 500 m from 0.5 kt** (a quarter model: the charge in a corner on
+two mirror planes, 320 m up, the open faces 4 m/kg^(1/3) beyond):
+
+| Air | Incident at 500 m, no block | Front wall's peak | Front walls' median rotation |
+|---|---|---|---|
+| 4 m | 26.0 kPa, 4.18 kPa s | 50.0 kPa | 0.19° |
+| 2 m | 28.1 kPa, 4.00 kPa s | 58.5 kPa | 0.49° |
+| 4 m, 2 m and 1 m corridors | | 65.0 kPa | 1.91° |
+| 2 m, 1 m and 0.5 m corridors | 30.8 kPa, 4.06 kPa s | 68.2 kPa | 1.16° |
+| Kingery–Bulmash | 29.4 kPa, 3.81 kPa s | 65.4 kPa reflected | |
+
+- **The finer runs do not overshoot.** On 0.5 m the incident peak is within 5% of
+  Kingery–Bulmash. The reflected peak is 2% under the Rankine–Hugoniot reflection of that
+  incident (69.3 kPa) and 4% over Kingery–Bulmash's reflected value.
+- **4 m reads the reflected peak low.** It is 27% low for the block in the open and 13–19% low
+  against 1–2 m in the district, whose fronts are partly shielded. The incident peak is 8–12% low.
+  The impulse holds within about 5% in the open.
+- **These walls go by the peak.** 0.5 kt's positive phase (about 0.3 s) is long against a wall's
+  period, so the rotation follows the peak. The 13–19% higher peak multiplies the rotations 1.3–3
+  and takes the run's wall chances from 0.43–0.74 to 0.98–1.00.
+- **Converged at 2 m in the district.** 1 m changes the peaks by −6% to +3% against 2 m, the front
+  walls' rotations by −5% to +13% and the worst wall's by −13% to +10%. The block in the open still gains 4% in peak from 1 m to 0.5 m. Its strips are cut by the coarse cells, so its rotations are compared only on the same coarse cells.
+- **Neither the cut nor the corridors bend the incident wave.** The cut and whole scenes read the
+  same at every gauge, to the digit. The corridors take the incident peak toward Kingery–Bulmash.
+- **One thing left open.** In the district the 1 m level reads the incident positive-phase impulse
+  12–17% below 4 m and Kingery–Bulmash; the block's 1 m and 0.5 m levels do not. That would lower
+  the refined loads, not raise them. It may come from the terrain's cut cells on a second refined
+  level, which the block does not have.
+
+**So the 4 m runs' wall loads are biased low at 400–600 m of 0.5 kt.** Their peaks are 13–19% low
+on Beirut's façades and 27% low in the open. The walls' chances (#19) were calibrated on those
+runs. The proposal, not made here: run `wall-calibrate`'s reference again on air refined to 2 m
+near the walls. The interim alternative is a wall peak factor of about ×1.15 with the impulse
+×0.95, in place of ×1.0 on both.
+
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
