@@ -827,3 +827,12 @@ and all 39 derived inputs. The strong spherical free-field and room-volume-mean 
 validate weak loads or local 3-D reflections. emmettl/bombcad-work#62 remains open for a
 justified target definition and independent weak/reflected/multiphase/resolution validation.
 No recorder behavior, default, tolerance, mask or training admission changes here.
+
+The [weak acoustic matrix](../Benchmarks/CUDAAcceptance/2026-10-22-weak-acoustic/summary.md)
+adds an independent linear reference for 1/10/100 Pa direct and rigid-wall-reflected pulses
+at three resolutions. All 36 runs finish, with exact plain/observed and full-grid/tiled
+parity and exact fused recorder replay. No phase-definition mismatch appears in these
+two-pulse histories. At 1 Pa the finest direct/wall-cell impulse errors are −0.69%/−0.96%,
+but the resolution trend is nonmonotonic and the wall-cell peak stays 6.14% low. This is
+Metal ideal-gas-core evidence, not CUDA/hot-air/terrain acceptance or an exact finite-amplitude
+Euler reference. `blastbench acoustic-phase --out NEW-DIRECTORY` exposes the fixed diagnostic.

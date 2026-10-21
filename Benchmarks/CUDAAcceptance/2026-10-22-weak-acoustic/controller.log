@@ -1,0 +1,25 @@
+{
+  "status": "complete",
+  "scope": "Run the predeclared 36-case acoustic matrix once, retaining partial output on failure.",
+  "command": [
+    "/Users/louisemmett/.local/bin/gpu-slot",
+    "--mem",
+    "2",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+    "acoustic-phase",
+    "--rounding",
+    "default",
+    "--out",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-weak-acoustic/matrix"
+  ],
+  "pid": 33352,
+  "revision": "f6554fd17c55c1cebd850cf84405f8ee5f25e556",
+  "worktreeDirty": true,
+  "returncode": 0,
+  "terminalProcess": {
+    "pid": 33360,
+    "pgid": 33360,
+    "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+    "birth": "Wed Oct 21 22:53:42 2026"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "auditSourceSHA256": {
+    "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-weak-acoustic/audit.py": "6c51a3293b40722bb916e990118e00ad36e530638bb6e45c89a35d9c8f5e65b9",
+    "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/diagnose-phase.py": "baad1bca47201c94b6ced179de843f0fa5328627acccf73aebadefd9d63d550b",
+    "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/compare_dataset.py": "cae0ce0a6c5ca085523fe5d7cab025beedbc5fa3e0b3a3b4e3c27f60998ee05b",
+    "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/trace_columns.py": "e62515bf87cea72146e23222ee62860b37b73343f3050391d82a43bb76bb31da"
+  },
+  "status": "complete",
+  "scope": "Read-only acoustic matrix audit; report all outcomes without selecting a numerical gate.",
+  "runs": 36,
+  "tiledFullPairs": [
+    {
+      "amplitudePa": 1,
+      "nx": 128,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 1,
+      "nx": 256,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 1,
+      "nx": 512,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 10,
+      "nx": 128,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 10,
+      "nx": 256,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 10,
+      "nx": 512,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 100,
+      "nx": 128,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 100,
+      "nx": 256,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    },
+    {
+      "amplitudePa": 100,
+      "nx": 512,
+      "sameInitialHashes": true,
+      "sameFinalHashes": true,
+      "sameStepsAndTime": true,
+      "sameRecords": true
+    }
+  ],
+  "allObservationParity": true,
+  "allExactReplay": true,
+  "semanticMismatchColumns": 0,
+  "allTiledFullParity": true,
+  "limits": "Linear acoustic reference, ideal-gas core, planar rigid reflection; not finite-amplitude exact Euler, local 3-D terrain/reflection, hot-air product, CUDA validation or an admission decision."
+}
+a1-n128-full 32 peak% -18.75 I% -3.221833706794397 semantic 0.0 open 0
+a1-n128-full 0 peak% -25.920329911426865 I% -10.123978532063349 semantic 0.0 open 0
+a1-n128-tiled 32 peak% -18.75 I% -3.221833706794397 semantic 0.0 open 0
+a1-n128-tiled 0 peak% -25.920329911426865 I% -10.123978532063349 semantic 0.0 open 0
+a1-n256-full 64 peak% -6.25 I% 0.33302772611476517 semantic 0.0 open 0
+a1-n256-full 0 peak% -8.151474243727785 I% -0.09938531479825041 semantic 0.0 open 0
+a1-n256-tiled 64 peak% -6.25 I% 0.33302772611476517 semantic 0.0 open 0
+a1-n256-tiled 0 peak% -8.151474243727785 I% -0.09938531479825041 semantic 0.0 open 0
+a1-n512-full 128 peak% -3.125 I% -0.6851431919034479 semantic 0.0 open 0
+a1-n512-full 0 peak% -6.13693783090069 I% -0.9619858707280216 semantic 0.0 open 0
+a1-n512-tiled 128 peak% -3.125 I% -0.6851431919034479 semantic 0.0 open 0
+a1-n512-tiled 0 peak% -6.13693783090069 I% -0.9619858707280216 semantic 0.0 open 0
+a10-n128-full 32 peak% -20.390624999999996 I% -3.4830920581955693 semantic 0.0 open 0
+a10-n128-full 0 peak% -27.951546671920003 I% -9.999555978420528 semantic 0.0 open 0
+a10-n128-tiled 32 peak% -20.390624999999996 I% -3.4830920581955693 semantic 0.0 open 0
+a10-n128-tiled 0 peak% -27.951546671920003 I% -9.999555978420528 semantic 0.0 open 0
+a10-n256-full 64 peak% -6.796875000000002 I% -0.1364920665274827 semantic 0.0 open 0
+a10-n256-full 0 peak% -9.250516432264389 I% -0.3514846020691298 semantic 0.0 open 0
+a10-n256-tiled 64 peak% -6.796875000000002 I% -0.1364920665274827 semantic 0.0 open 0
+a10-n256-tiled 0 peak% -9.250516432264389 I% -0.3514846020691298 semantic 0.0 open 0
+a10-n512-full 128 peak% -2.578124999999998 I% -0.050607775229849494 semantic 0.0 open 0
+a10-n512-full 0 peak% -3.1646075288792264 I% -0.10794159864807584 semantic 0.0 open 0
+a10-n512-tiled 128 peak% -2.578124999999998 I% -0.050607775229849494 semantic 0.0 open 0
+a10-n512-tiled 0 peak% -3.1646075288792264 I% -0.10794159864807584 semantic 0.0 open 0
+a100-n128-full 32 peak% -20.273437500000004 I% -3.344508305520877 semantic 0.0 open 0
+a100-n128-full 0 peak% -27.816132221220467 I% -9.549041606817765 semantic 0.0 open 0
+a100-n128-tiled 32 peak% -20.273437500000004 I% -3.344508305520877 semantic 0.0 open 0
+a100-n128-tiled 0 peak% -27.816132221220467 I% -9.549041606817765 semantic 0.0 open 0
+a100-n256-full 64 peak% -7.062500000000005 I% -0.12435516053492801 semantic 0.0 open 0
+a100-n256-full 0 peak% -9.493875774011773 I% -0.13196806916303538 semantic 0.0 open 0
+a100-n256-tiled 64 peak% -7.062500000000005 I% -0.12435516053492801 semantic 0.0 open 0
+a100-n256-tiled 0 peak% -9.493875774011773 I% -0.13196806916303538 semantic 0.0 open 0
+a100-n512-full 128 peak% -2.507812499999995 I% -0.05038275958142435 semantic 0.0 open 0
+a100-n512-full 0 peak% -3.2584705910483125 I% -0.011174380582834598 semantic 0.0 open 0
+a100-n512-tiled 128 peak% -2.507812499999995 I% -0.05038275958142435 semantic 0.0 open 0
+a100-n512-tiled 0 peak% -3.2584705910483125 I% -0.011174380582834598 semantic 0.0 open 0

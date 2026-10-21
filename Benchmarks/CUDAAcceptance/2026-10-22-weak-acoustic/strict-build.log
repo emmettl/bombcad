@@ -1,0 +1,29 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Constructing description]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[5 / 74] GeometryImport
+[11 / 106]
+[20 / 106] SceneModel
+[34 / 115] SceneModel
+[48 / 106] ContactSearchMetal
+[55 / 97] BlastModel
+[57 / 99] BlastModel
+[63 / 105]
+[67 / 102] BlastCore
+[70 / 104] BlastModelTests-product
+[73 / 106] blastmodel-product
+[76 / 109] BlastCore
+[83 / 108] BlastRender
+[85 / 109] BlastCoreTests-product
+[93 / 105] BlastRender-product
+[93 / 105] scenebench-product
+[95 / 107] BombCAD-product
+[99 / 103] BombCADTests-product
+[104 / 106] BombCADTests-product
+[104 / 106] blastbench-product
+[108 / 108] scenebench-product
+Build complete! (7.69 secs)
+build-strict: no warnings

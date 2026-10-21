@@ -512,3 +512,9 @@ An analytical three-phase control yields 2.6 Pa·s offline versus 5.6 Pa·s stre
 All 39 comparisons on the receipted independent histories agree, with 15 right-censored
 room-mean comparisons; these data do not settle weak/local-reflection semantics.
 emmettl/bombcad-work#62 remains open; CUDA admission and defaults are unchanged.
+
+The [weak acoustic experiment](../Benchmarks/CUDAAcceptance/2026-10-22-weak-acoustic/summary.md)
+now supplies independent linear direct/reflected-pulse references at 1/10/100 Pa and three
+resolutions. All 36 Metal runs have exact observation and tiled/full parity. The 1 Pa
+impulse trend is nonmonotonic and its finest wall-cell peak is 6.14% low; no broader accuracy
+or CUDA-admission claim follows. The fixed opt-in CLI and all histories are retained.

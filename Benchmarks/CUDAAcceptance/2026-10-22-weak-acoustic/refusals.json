@@ -1,0 +1,28 @@
+[
+  {
+    "name": "missing-out",
+    "command": [
+      "/Users/louisemmett/.local/bin/gpu-slot",
+      "--mem",
+      "1",
+      "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+      "acoustic-phase"
+    ],
+    "returncode": 1,
+    "output": "Error: Could not allocate acoustic-phase requires --out NEW-DIRECTORY\n"
+  },
+  {
+    "name": "existing-out",
+    "command": [
+      "/Users/louisemmett/.local/bin/gpu-slot",
+      "--mem",
+      "1",
+      "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+      "acoustic-phase",
+      "--out",
+      "/Volumes/StudioData/bombcad/experiments/2026-10-22-weak-acoustic/matrix"
+    ],
+    "returncode": 1,
+    "output": "Error: Could not allocate acoustic-phase refuses to overwrite output\n"
+  }
+]
