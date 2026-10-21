@@ -58,5 +58,22 @@ struct PeopleInSceneTests {
         let codes = model.peopleCodes()
         #expect(codes.count == 2)
         #expect(codes.values.allSatisfy { $0 >= EnvelopeChanceColour.first })
+
+        // Pinned at night, then the evening: the change against it, with what changed.
+        #expect(model.peopleComparisonLine == nil)
+        model.pinPeopleBaseline()
+        #expect(model.peopleBaseline?.assumptions.time == .night)
+        let unchanged = try #require(model.peopleComparison)
+        #expect(unchanged.hurt == 0)
+        #expect(model.peopleComparisonLine?.hasSuffix("nothing changed.") == true)
+        model.occupancy.time = .evening
+        let line = try #require(model.peopleComparisonLine)
+        #expect(line.contains("evening (5 pm)"))
+        let change = try #require(model.peopleComparison)
+        let expected = (model.peopleEstimate?.expected ?? 0) / night.expected - 1
+        #expect(abs(change.hurt - expected) < 1e-9)
+        #expect(change.sameBuildings)
+        model.peopleBaseline = nil
+        #expect(model.peopleComparison == nil)
     }
 }

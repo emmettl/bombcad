@@ -86,12 +86,19 @@ public enum OccupantInjury {
     /// How the figures are judged: illustrative, whatever the estimate under them.
     public static let level = EvidenceLevel.illustrative
 
-    /// What the planner says first, wherever the figures are shown (docs/people-in-the-scene.md,
-    /// "Judged against Beirut").
+    /// What the planner says first: its figures are relative (docs/people-in-the-scene.md).
+    public static let relativeNote =
+        "Illustrative, not a casualty estimate: where people are hurt, as shares, and how a place of the charge, "
+        + "the time of day or a protection changes it against a pinned baseline. The shares read high as the "
+        + "counts do; compare them with each other."
+
+    /// What the counts say first, behind their disclosure (docs/people-in-the-scene.md, "Judged
+    /// against Beirut").
     public static let warning =
-        "Illustrative, not a casualty estimate. On Beirut 2020 (0.5 kt at 5 pm) it expects about 78,000 hurt "
-        + "and 900 killed within 2.5 km, where about 6,500 injured and 218 killed were recorded across the city: "
-        + "its counts read 4 to 12 times high. Compare places of the charge and protections with it, not counts."
+        "These counts read 4 to 12 times Beirut's record. On Beirut 2020 (0.5 kt at 5 pm) they give about 78,000 "
+        + "hurt and 900 killed within 2.5 km, where about 6,500 injured and 218 killed were recorded across the "
+        + "city. Glass is nearly all of it: inside 1.5 km the estimate breaks 80–98% of panes, where Kummer's "
+        + "injury curve is steep, and the injury rates come from other events and hazards, fitted to none here."
 
     /// Its standing, worded from docs/people-in-the-scene.md.
     public static let standing: [String] = [
@@ -101,6 +108,12 @@ public enum OccupantInjury {
             + "which inside 1.5 km of Beirut breaks nearly every pane; by the walls at Hazus's earthquake casualty "
             + "rates for moderate and extensive damage, borrowed; by the blast by Eisenberg's eardrum and lung "
             + "probits on the free field. No collapse, fragments, envelope debris or falling glass outdoors.",
+        "A change against the pinned baseline is the ratio of the two, draw by draw over the same draws of the "
+            + "assumptions, so what they share cancels; the look's own doubt (the yield's) does not.",
+    ]
+
+    /// The counts' standing, shown with them.
+    public static let countsStanding: [String] = [
         "Against Beirut: 12 times the injured recorded, severely hurt or killed about as many as all the injured "
             + "recorded, 4 times the killed; 80% of the hurt 0.5–1.7 km out where 71% of a hospital sample were, "
             + "and nearly all indoors where 81% were. No open record gives injuries by place to fit it to.",
@@ -268,6 +281,8 @@ public enum OccupantInjury {
         public var blast: Double
         /// The share of its panes the estimate expects broken.
         public var broken: Double
+        /// From the charge to its middle, across the ground, m.
+        public var distanceM: Double = 0
 
         public var id: UUID { owner }
         /// The share of its people expected hurt.
@@ -301,6 +316,13 @@ public enum OccupantInjury {
         /// Whether the walls' and roofs' chances were in the look (a preview of the glass has none).
         public var hasStructure: Bool
         public var seconds: Double
+        /// The hurt and the severely hurt or killed in each draw of the assumptions, in the draws'
+        /// order: the same seed gives every estimate the same draws, so two estimates compare draw
+        /// by draw (`compare`).
+        public var totals: [Double] = []
+        public var severeTotals: [Double] = []
+        /// The charge's cube root, kg^(1/3), for bands by scaled distance.
+        public var scale: Double = 1
 
         public static let empty = Estimate(
             buildings: [], assumptions: Assumptions(), people: 0, expected: 0, low: 0, high: 0, severe: 0,
@@ -410,6 +432,8 @@ public enum OccupantInjury {
                 owner: object.id, use: use, useAssumed: construction.use == nil, floorAreaM2: area,
                 occupants: inside, outdoors: outdoors, expected: 0, low: 0, high: 0, severe: 0, glass: 0,
                 structure: 0, blast: 0, broken: 0)
+            building.distanceM = Double(
+                simd_length(SIMD2(bounds.centre.x - charge.x, bounds.centre.y - charge.y)))
             guard present > 0 else {
                 people.append((building, []))
                 continue
@@ -540,6 +564,9 @@ public enum OccupantInjury {
             buildings.append(result)
         }
         estimate.buildings = buildings
+        estimate.totals = totals
+        estimate.severeTotals = severeTotals
+        estimate.scale = scale
         estimate.expected = totals.reduce(0, +) / Double(n)
         (estimate.low, estimate.high) = percentiles(totals)
         estimate.severe = severeTotals.reduce(0, +) / Double(n)
@@ -547,6 +574,73 @@ public enum OccupantInjury {
         let took = start.duration(to: .now)
         estimate.seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
         return estimate
+    }
+
+    /// How one estimate's people hurt compare with a pinned one's: the relative change in the hurt
+    /// and in the severely hurt or killed, means' ratio less one, and the 5% and 95% points of the
+    /// change draw by draw. The assumptions' draws are the same in both (one seed), so what they
+    /// share largely cancels: the band is narrower than either estimate's own.
+    public struct Comparison: Sendable, Equatable {
+        public var hurt: Double
+        public var low: Double
+        public var high: Double
+        public var severe: Double
+        /// Whether the two are for the same buildings; when not, the change is for the district as a
+        /// whole, not like for like.
+        public var sameBuildings: Bool
+
+        /// "−38% hurt (−41% to −35%)".
+        public var summary: String {
+            func percent(_ x: Double) -> String {
+                let p = (x * 100).rounded()
+                return p == 0 ? "0%" : String(format: "%@%.0f%%", p > 0 ? "+" : "−", abs(p))
+            }
+            return
+                "\(percent(hurt)) hurt (\(percent(low)) to \(percent(high))), \(percent(severe)) severely hurt or killed"
+        }
+    }
+
+    /// `now` against `base`, draw by draw over the draws both have (a preview's are the first of a
+    /// full estimate's); nil when the base expects no one hurt.
+    public static func compare(_ now: Estimate, against base: Estimate) -> Comparison? {
+        let n = min(now.totals.count, base.totals.count)
+        func change(_ a: [Double], _ b: [Double]) -> Double {
+            let (x, y) = (a.prefix(n).reduce(0, +), b.prefix(n).reduce(0, +))
+            return y > 0 ? x / y - 1 : 0
+        }
+        guard n > 0, base.totals.prefix(n).reduce(0, +) > 0 else { return nil }
+        let changes = (0..<n).compactMap { d in base.totals[d] > 0 ? now.totals[d] / base.totals[d] - 1 : nil
+        }
+        let (low, high) = changes.isEmpty ? (0, 0) : percentiles(changes)
+        return Comparison(
+            hurt: change(now.totals, base.totals), low: low, high: high,
+            severe: change(now.severeTotals, base.severeTotals),
+            sameBuildings: Set(now.buildings.map(\.owner)) == Set(base.buildings.map(\.owner)))
+    }
+
+    /// The people and the share of them hurt by distance from the charge, in bands of scaled
+    /// distance (m/kg^(1/3)) shown in metres.
+    public struct Band: Sendable, Equatable, Identifiable {
+        public var fromM: Double
+        public var toM: Double
+        public var people: Double
+        public var hurt: Double
+        public var id: Double { fromM }
+        public var share: Double { people > 0 ? hurt / people : 0 }
+    }
+
+    /// The bands' edges, m/kg^(1/3).
+    public static let bandEdges: [Double] = [0, 5, 10, 15, 20, 30]
+
+    public static func bands(_ estimate: Estimate) -> [Band] {
+        let edges = bandEdges.map { $0 * estimate.scale } + [.infinity]
+        return (0..<(edges.count - 1)).compactMap { k in
+            let mine = estimate.buildings.filter { $0.distanceM >= edges[k] && $0.distanceM < edges[k + 1] }
+            let people = mine.reduce(0) { $0 + $1.occupants + $1.outdoors }
+            guard people > 0 else { return nil }
+            return Band(
+                fromM: edges[k], toM: edges[k + 1], people: people, hurt: mine.reduce(0) { $0 + $1.expected })
+        }
     }
 
     /// Each envelope's construction, the last recorded for it (`Scenario.envelopeConstruction`),

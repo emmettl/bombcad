@@ -691,6 +691,9 @@ final class SimulationModel {
     /// Whether the walls' and roofs' chances shown are the look's own (a preview of the glass
     /// alone leaves the last full look's, for another place of the charge).
     @ObservationIgnored var peopleUsesStructure = true
+    /// The people's estimate pinned to compare others with, and what it was for: the charge, the
+    /// assumptions and the buildings' constructions (`SimulationModel+People.swift`).
+    var peopleBaseline: PeopleBaseline?
     /// How far the quick estimate's charge may be off: its yield within this factor either way,
     /// nine times in ten; 1 for exactly the scene's.
     var quickEstimateYieldWithin = 1.5

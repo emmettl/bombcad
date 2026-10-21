@@ -125,6 +125,47 @@ struct OccupantInjuryTests {
         #expect(away.blast < 1e-3)
     }
 
+    @Test("Against a pinned baseline: no change against itself, less glass broken a fall, draw by draw")
+    func comparison() throws {
+        let (scene, id) = try scene(distance: 300)
+        func estimate(_ broken: Double, draws: Int = 200) -> OccupantInjury.Estimate {
+            OccupantInjury.estimate(
+                scene: scene, glass: sides(id, broken: broken, distance: 300), structure: [],
+                charge: scene.charge.position, mass: 100, draws: draws)
+        }
+        let base = estimate(0.8)
+        let same = try #require(OccupantInjury.compare(base, against: base))
+        #expect(same.hurt == 0 && same.low == 0 && same.high == 0 && same.sameBuildings)
+        // A preview's draws are the first of a full estimate's: the same inputs, no change.
+        let preview = try #require(OccupantInjury.compare(estimate(0.8, draws: 40), against: base))
+        #expect(abs(preview.hurt) < 1e-12 && abs(preview.low) < 1e-12 && abs(preview.high) < 1e-12)
+        // Half as much glass broken: Kummer's curve falls more than half.
+        let less = try #require(OccupantInjury.compare(estimate(0.4), against: base))
+        #expect(less.hurt < -0.5)
+        #expect(less.low <= less.hurt && less.hurt <= less.high && less.high < 0)
+        // The draws' shared factors cancel: the change's band is narrower than either estimate's.
+        let width = less.high - less.low
+        let now = estimate(0.4)
+        #expect(width < (now.high - now.low) / now.expected)
+        #expect(less.summary.hasPrefix("−"))
+        // A baseline that hurts no one gives no ratio.
+        #expect(OccupantInjury.compare(base, against: estimate(0)) == nil)
+    }
+
+    @Test("Bands by scaled distance hold everyone placed")
+    func bands() throws {
+        let (scene, id) = try scene(distance: 30)
+        let estimate = OccupantInjury.estimate(
+            scene: scene, glass: sides(id, broken: 0.5, distance: 30), structure: [],
+            charge: scene.charge.position,
+            mass: 100)
+        let bands = OccupantInjury.bands(estimate)
+        #expect(abs(bands.reduce(0) { $0 + $1.people } - estimate.people) < 1e-9)
+        #expect(abs(bands.reduce(0) { $0 + $1.hurt } - estimate.expected) < 1e-9)
+        // 40 m out (the block's middle) from 100 kg: 8.6 m/kg^(1/3), the 5–10 band.
+        #expect(bands.count == 1 && abs(bands[0].fromM - 5 * cbrt(100)) < 1e-9)
+    }
+
     @Test("Map placement keeps a building's use from its tags")
     func placement() throws {
         var scene = Scenario(

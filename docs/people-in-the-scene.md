@@ -17,9 +17,10 @@ emmettl/bombcad-work#41, "Injury and evacuation planning".
 events or other hazards: glass from explosives-safety risk work, walls from earthquakes, the
 blast from animal tests. None has been fitted to the scenes it is used on. Against Beirut 2020,
 the one event in reach, the counts read 4 to 12 times high. Where the people hurt are found agrees
-better than how many. The planner says so before it shows a number. Use it to compare places of
-the charge, and protections, with each other. It does not give a count, and it is not for triage
-or casualty planning.
+better than how many. So the planner shows relative figures: shares, and changes against a
+baseline you pin. The counts are behind **Show counts**, with that warning. Use it to compare
+places of the charge, times of day and protections with each other. It is not for triage or
+casualty planning.
 
 ## What holds and what does not (21 October 2026)
 
@@ -39,17 +40,33 @@ or casualty planning.
 ## Where to see it
 
 - **In the app**, once a quick estimate has the glass's chances, the sidebar's **People in the
-  scene** section (under Envelope building damage) shows:
-  - the warning;
+  scene** section (under Envelope building damage) shows relative figures only:
+  - first, a note that the figures are illustrative and relative;
   - the time of day: night (2 am), working day (2 pm) or evening (5 pm);
   - the use given to untagged buildings, residential by default;
   - a factor on the density;
-  - the totals with their band, and the buildings with the most people hurt.
+  - **against a pinned baseline**: **Pin as Baseline** keeps the full estimate shown. After that,
+    the section gives the change in the people hurt and in the severely hurt or killed, for
+    example "−38% hurt (−40% to −36%) against the pinned baseline: the charge 60 m from the
+    pinned one". It also names what changed: the charge's place or size, the time of day, the
+    density, the untagged use, or the buildings' constructions (a protection);
+  - where people are hurt: the share of those placed, the share hurt in each band of distance
+    and that band's part of the hurt, and the five buildings with the largest share hurt.
+
+  **Show counts** opens the absolute counts and their band, the buildings with the most people
+  hurt, and the judge against Beirut. Its first line is the warning that the counts read 4 to 12
+  times Beirut's record, and why.
 
   **Colour Buildings by People Hurt** colours each building by the share of its people expected
-  hurt, on the chances' scale. With that colouring, dragging the charge previews the people
-  hurt from the glass's chances alone, on 10 draws, and 40 draws of the assumptions. The walls
-  and roofs follow when you let go. Elsewhere, the figures stay those of the last full estimate.
+  hurt, on the chances' scale. With that colouring, dragging the charge previews the people hurt
+  from the glass's chances alone, on 10 draws of the glass and 40 of the assumptions, and the
+  change against the baseline follows. The walls and roofs follow when you let go. Elsewhere,
+  the figures stay those of the last full estimate.
+
+  The change is the ratio of the two estimates draw by draw, over the same draws of the
+  assumptions (one seed; a preview's 40 are the first of a full estimate's 200). So the
+  assumptions shared by both largely cancel, and the change's band is narrower than either
+  estimate's own. The look's own doubts, such as the yield's, are not in it.
 - **Headless**, `scenebench people <a district's inputs> [--time evening|workday|night]
   [--density 1] [--untagged residential] [--look kept.json] [--csv out.csv]` runs the full look
   and the people on it. It prints the totals, a table by distance band and by use, and the CIA
@@ -211,12 +228,31 @@ It expects 881 killed.
 - By time of day, on the same look: at 2 am, 834,000 people and 192,000 hurt; at 2 pm, 449,000
   and 82,000.
 
-**Why it reads high.** Glass is nearly all of it, and the share of panes broken is the estimate's
-weakest part close in. Inside 1.5 km it breaks 80–98% of panes. GEER found 17–77% of façades with
-their openings blown out there, and the estimate breaks 3.8 times the army's count of broken glass
-([beirut-2020.md](beirut-2020.md#what-holds-and-what-does-not)). Kummer's curve is steep near
-full breakage: 80% broken gives 0.48 hurt, while half broken gives 0.1. So the over-breaking is
-multiplied. The density, unchecked (above), may add to it.
+**Why it reads high.** Glass is nearly all of it. Inside 1.5 km the estimate breaks 80–98% of
+panes, and Kummer's curve is steep near full breakage: 80% broken gives 0.48 hurt, while half
+broken gives 0.1. Whether that breakage is too high is not settled (below). The density,
+unchecked (above), may add to it.
+
+**The breakage against the survey (21 October 2026).** The 80–98% is the model's own: the runs
+break 0.96–1.00 of panes on sides above 7 kPa ([the 19 October trace](glass-probability.md#why-it-over-breaks-against-geer-19-october-2026)),
+and the quick estimate's chances follow the runs. Against GEER it looks high:
+- GEER's W1 or worse is 0.84–0.35 at 0.5–1.5 km;
+- its W3 is 0.76–0.17.
+
+That trace found the comparison is not like for like. GEER classed openings, frames and doors with
+the windows, from photographs taken two months on, after repairs. Its W1 carries 10–20% of windows
+broken, and 17% of façades at 20–30 kPa showed nothing, where every pane breaks. Stronger glass
+could not fit both W1 and W3, and the loads were not too high. So the survey does not show that
+the glass over-breaks.
+
+The one count of glass, the army's 0.69 million m² broken, is 3.8 times below the model's
+([beirut-2020.md](beirut-2020.md#glass-as-a-mix-of-panes)). But it multiplies the share broken by
+a glazed share that is assumed, and the two cannot be separated.
+
+So the breakage is consistent with the model's runs and not shown wrong by the survey, and the
+one count suggests it, or the glazed share, is high. Kummer's curve takes the share broken, not
+the area, so the glazed share does not enter the injuries. Glass breaking that ran high would.
+The glass model is unchanged.
 
 **A cross-check on the walls.** The Chemical Industries Association's siting curves (1998, as
 DNV's Phast documents them) give the probability of death inside a building against side-on
@@ -236,21 +272,21 @@ design, for siting plants, and the estimate does not use them.
 The kill criterion for emmettl/bombcad-work#41's first step was a standing so weak that only
 illustrative numbers could be shown. Then they must be labelled so prominently that the tool
 misleads less than it helps. On the one event in reach the absolute counts are 4 to 12 times
-high. They are therefore shown only beneath a warning that says so with Beirut's numbers. The
-colouring shows shares, and the section's first line is the warning.
+high. On 21 October the user decided:
+- the planner shows relative figures: shares by building and by band, the colouring, and
+  changes against a pinned baseline;
+- the counts and their band go behind **Show counts**, with the warning;
+- `scenebench people` keeps the counts.
 
 **The counts are not to be calibrated on Beirut.** One event's two totals, of a different
 definition, would fix a factor and hide the over-breaking that causes it. The next stage needs:
 
 - injuries by place: AZF's tables by zone, Mallonee's per-building table, or the full Al-Hajj
   (2025) paper;
-- the glass breaking closer to GEER's survey close in.
+- a count of broken glass whose glazed share is known, to say whether the breakage close in is high.
 
-Until then this step stops here: the feature is in the app as illustrative, and the counts are
-not for use.
-
-Whether to keep the counts visible, or to show only the shares and the comparison between two
-places of the charge, is the user's decision. The default here shows both, beneath the warning.
+Until then this step stops here: the feature is in the app as illustrative and relative, and the
+counts are not for use.
 
 ## Limitations
 
