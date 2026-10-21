@@ -63,11 +63,11 @@ def room(case):
     gains = [c['budget']['excess_energy_final_over_initial'] - 1 for c in configs.values()]
     case['configuration'] = (
         f"Clawpack {s['code']['version']} PyClaw ClassicClaw 3-D, unsplit wave propagation with transverse "
-        f"increment and correction waves, Roe solver with entropy fix (riemann.euler_3D), MC limiter, CFL "
+        f"increment and correction waves, Roe solver with entropy fix (riemann.euler_3D), {p['limiter']} limiter, CFL "
         f"{p['cfl_desired']:g} (rejected above {p['cfl_max']:g}); the deck's density and pressure floors. The "
         f"deck's mesh (the whole 6 m cube, 24 cells a side), walls on all six faces, the deck's initial_cells "
         f"as given, its volume-mean observable, 50 us samples to 120 ms, and its 100-120 ms window. Differs from "
-        f"the deck only in the numerics it names for BombCAD's adapter (Roe and MC, not HLLC with limiter "
+        f"the deck only in the numerics it names for BombCAD's adapter (Roe and {p['limiter']}, not HLLC with limiter "
         f"theta 1.5; no startup steps).")
     case['recorded_in'] = 'Benchmarks/open/other-codes/clawpack/outputs/room-n24-*.json'
     case['notes'] = [
