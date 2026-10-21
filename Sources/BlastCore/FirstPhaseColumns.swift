@@ -29,9 +29,14 @@ public struct FirstPhaseDiagnosticSample: Sendable {
 /// and when a later sample's overpressure is more than twice it, that sample's phase takes over,
 /// counting the impulse of everything before it as the rule does. This is the rule exactly unless
 /// a phase in between would have had half the final peak without being the largest so far.
+///
+/// The columns may come in several layers of the plan (`layers`, the field export's heights,
+/// emmettl/bombcad-work#69): each its own plan of columns, records and flags, one after another in
+/// the same buffers, swept by the same kernel at the layer's offset. One layer is the plan alone.
 final class FirstPhaseColumns {
     let nx: Int
     let ny: Int
+    let layers: Int
     /// Per column: `k0`, `k1`, the share of `k1`, and 1 to record (0 for none).
     let columns: MTLBuffer
     /// Per column: the peak, the impulse of every positive phase, the first phase's impulse and
@@ -46,8 +51,9 @@ final class FirstPhaseColumns {
     init(device: MTLDevice, library: MTLLibrary, grid: Grid, columns cells: [SIMD4<Float>]) throws {
         nx = grid.nx
         ny = grid.ny
-        let count = nx * ny
-        guard cells.count == count,
+        let count = cells.count
+        layers = count / max(1, nx * ny)
+        guard layers >= 1, count == layers * nx * ny,
             cells.allSatisfy({
                 $0.w == 0
                     || ($0.x >= 0 && $0.y >= 0 && Int($0.x) < grid.nz && Int($0.y) < grid.nz && $0.z >= 0
@@ -78,39 +84,45 @@ final class FirstPhaseColumns {
     /// The peak and impulse `blast`, a one-dimensional solution about `centre`, left at the columns'
     /// points within `radius` of it, before the grid takes over: the first phase still going.
     func seed(_ blast: SphericalBlast, centre: SIMD3<Float>, radius: Float, cellSize: Float) {
-        let cells = columns.contents().bindMemory(to: SIMD4<Float>.self, capacity: nx * ny)
-        let record = records.contents().bindMemory(to: SIMD4<Float>.self, capacity: nx * ny)
-        let going = open.contents().bindMemory(to: Float.self, capacity: nx * ny)
-        for j in 0..<ny {
-            for i in 0..<nx {
-                let n = i + nx * j
-                let column = cells[n]
-                guard column.w != 0 else { continue }
-                let z = ((1 - column.z) * (column.x + 0.5) + column.z * (column.y + 0.5)) * cellSize
-                let point = SIMD3((Float(i) + 0.5) * cellSize, (Float(j) + 0.5) * cellSize, z)
-                let r = simd_distance(point, centre)
-                guard r < radius else { continue }
-                let extremes = blast.extremes(at: Double(r))
-                let peak = Float(extremes.x)
-                let impulse = Float(extremes.y)
-                record[n] = SIMD4(peak, impulse, impulse, peak)
-                going[n] = 1
+        let count = layers * nx * ny
+        let cells = columns.contents().bindMemory(to: SIMD4<Float>.self, capacity: count)
+        let record = records.contents().bindMemory(to: SIMD4<Float>.self, capacity: count)
+        let going = open.contents().bindMemory(to: Float.self, capacity: count)
+        for layer in 0..<layers {
+            for j in 0..<ny {
+                for i in 0..<nx {
+                    let n = i + nx * j + nx * ny * layer
+                    let column = cells[n]
+                    guard column.w != 0 else { continue }
+                    let z = ((1 - column.z) * (column.x + 0.5) + column.z * (column.y + 0.5)) * cellSize
+                    let point = SIMD3((Float(i) + 0.5) * cellSize, (Float(j) + 0.5) * cellSize, z)
+                    let r = simd_distance(point, centre)
+                    guard r < radius else { continue }
+                    let extremes = blast.extremes(at: Double(r))
+                    let peak = Float(extremes.x)
+                    let impulse = Float(extremes.y)
+                    record[n] = SIMD4(peak, impulse, impulse, peak)
+                    going[n] = 1
+                }
             }
         }
     }
 
-    /// The records, x-fast: the peak (Pa), every positive phase's impulse and the first phase's
-    /// (Pa s), and the first phase's peak; zero where a column records nothing.
+    /// The records, x-fast, layer after layer: the peak (Pa), every positive phase's impulse and
+    /// the first phase's (Pa s), and the first phase's peak; zero where a column records nothing.
     func snapshot() -> [SIMD4<Float>] {
-        let record = records.contents().bindMemory(to: SIMD4<Float>.self, capacity: nx * ny)
-        return Array(UnsafeBufferPointer(start: record, count: nx * ny))
+        let count = layers * nx * ny
+        let record = records.contents().bindMemory(to: SIMD4<Float>.self, capacity: count)
+        return Array(UnsafeBufferPointer(start: record, count: count))
     }
 }
 
 extension BlastSolver {
     /// Records the first positive phase's impulse over each plan cell (`FirstPhaseColumns`) as the
     /// run goes, before stepping. `columns`, x-fast over the plan, gives each column's two cells,
-    /// the share of the second and 1 to record it (0 for none). Does not change the air solution.
+    /// the share of the second and 1 to record it (0 for none); a whole number of plans after one
+    /// another records that many layers (`FirstPhaseColumns.layers`). Does not change the air
+    /// solution.
     public func configureFirstPhaseColumns(_ columns: [SIMD4<Float>]) throws {
         precondition(!batchInFlight && stepCount == 0, "Configure the columns before stepping")
         let recorder = try FirstPhaseColumns(device: device, library: library, grid: grid, columns: columns)
@@ -125,7 +137,8 @@ extension BlastSolver {
         firstPhaseNeedsInitialSample = true
     }
 
-    /// Each plan cell's record, x-fast (`FirstPhaseColumns.snapshot`); nil unless configured.
+    /// Each plan cell's record, x-fast, layer after layer (`FirstPhaseColumns.snapshot`); nil
+    /// unless configured.
     public func firstPhaseSnapshot() -> [SIMD4<Float>]? {
         precondition(!batchInFlight, "Cannot read the columns while a batch is in flight")
         return firstPhaseColumns?.snapshot()
@@ -201,13 +214,18 @@ extension BlastSolver {
         encoder.setComputePipelineState(recorder.pipeline)
         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
         encoder.setBuffer(controlBuffer, offset: 0, index: 1)
-        encoder.setBuffer(recorder.columns, offset: 0, index: 2)
-        encoder.setBuffer(recorder.records, offset: 0, index: 3)
-        encoder.setBuffer(recorder.open, offset: 0, index: 4)
         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
         encoder.setBytes(&parameters, length: 16, index: 6)
-        encoder.dispatchThreads(
-            MTLSize(width: recorder.nx, height: recorder.ny, depth: 1),
-            threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+        let plan = recorder.nx * recorder.ny
+        for layer in 0..<recorder.layers {
+            encoder.setBuffer(
+                recorder.columns, offset: layer * plan * MemoryLayout<SIMD4<Float>>.stride, index: 2)
+            encoder.setBuffer(
+                recorder.records, offset: layer * plan * MemoryLayout<SIMD4<Float>>.stride, index: 3)
+            encoder.setBuffer(recorder.open, offset: layer * plan * MemoryLayout<Float>.stride, index: 4)
+            encoder.dispatchThreads(
+                MTLSize(width: recorder.nx, height: recorder.ny, depth: 1),
+                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+        }
     }
 }

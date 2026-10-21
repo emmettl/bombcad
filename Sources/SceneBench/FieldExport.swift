@@ -22,6 +22,13 @@ import simd
 /// recorder's rule (`FirstPhaseColumns`), recorded at the same height as the run goes. It is off
 /// unless asked for, and it only observes: the run is the same to the bit either way.
 ///
+/// `--levels 6,10,14,20` and `--roof` add the same targets at more heights (emmettl/bombcad-work#69):
+/// each level that many metres over the ground, and the roof level `--above` over the top of each
+/// cell's building, in `levels-targets.npy` (levels × targets × rows × columns) and
+/// `levels-mask.npy` (levels × rows × columns), named in `meta.json`'s `levels`. A height level's
+/// mask is air there over a cell whose building, if any, is lower; the roof's, air over a cell with
+/// a building. The 2 m files are as they were, and without either flag nothing else is written.
+///
 /// `district-compare --export-field folder` writes the same files from its own run.
 enum FieldExport {
     /// The channels of `inputs.npy`, in order, with their units.
@@ -43,6 +50,31 @@ enum FieldExport {
         units:
             "Pa s, the first positive phase's impulse at the height, by the façade recorder's rule: from the start until the overpressure first falls below nothing after reaching half its peak"
     )
+
+    /// A level of `--levels` or `--roof`: metres over the ground, or `--above` over the roof.
+    struct Level: Codable, Equatable {
+        var name: String
+        /// "ground" (metres over the ground under the cell) or "roof" (over its building's top).
+        var over: String
+        var metres: Float
+
+        static func parse(_ args: [String], above: Float) throws -> [Level] {
+            var levels: [Level] = []
+            if let i = args.firstIndex(of: "--levels") {
+                guard args.indices.contains(i + 1) else {
+                    throw BlastError.allocationFailed("--levels m,m,…")
+                }
+                for part in args[i + 1].split(separator: ",") {
+                    guard let m = Float(part), m > 0 else {
+                        throw BlastError.allocationFailed("--levels: heights over the ground in metres")
+                    }
+                    levels.append(Level(name: "h" + part, over: "ground", metres: m))
+                }
+            }
+            if args.contains("--roof") { levels.append(Level(name: "roof", over: "roof", metres: above)) }
+            return levels
+        }
+    }
 
     struct Meta: Codable {
         struct Channel: Codable {
@@ -69,6 +101,8 @@ enum FieldExport {
         /// The solver's memory, bytes: for sizing the runs' memory declarations.
         var solverBytes: Int
         var heightAboveGroundM: Float
+        /// `--levels` and `--roof`: the levels of `levels-targets.npy`, in order (absent without).
+        var levels: [Level]?
         var edgeCells: Int
         var charge: ChargeInfo
         var buildings: Int
@@ -192,8 +226,12 @@ enum FieldExport {
             (recorderSetupStart - solverSetupStart) / .seconds(1)
         if args.contains("--all-tiles-diagnostic") { try solver.activateAllAirTilesForDiagnostics() }
         let above = Float(value("above").flatMap(Double.init) ?? 2)
+        let levels = try Level.parse(args, above: above)
+        guard levels.isEmpty || !args.contains("--cuda-job") else {
+            throw BlastError.allocationFailed("--levels and --roof are for Metal runs, not --cuda-job")
+        }
         if args.contains("--first-phase") || args.contains("--cuda-job") {
-            try recordFirstPhase(solver: solver, scene: scene, above: above)
+            try recordFirstPhase(solver: solver, scene: scene, above: above, levels: levels)
         }
         let traceIndices: [Int]
         if let text = value("trace-columns") {
@@ -307,7 +345,8 @@ enum FieldExport {
             configuration: (args.contains("--balloon") ? "recommended, balloon start" : "recommended")
                 + (args.contains("--full-grid-diagnostic") ? "; full-grid diagnostic" : "")
                 + (args.contains("--all-tiles-diagnostic") ? "; all-tiles diagnostic" : ""),
-            ground: value("ground"), steps: steps, wallS: wall, stable: stable, arguments: args)
+            ground: value("ground"), steps: steps, wallS: wall, stable: stable, arguments: args,
+            levels: levels)
         if !traceIndices.isEmpty {
             let samples = solver.firstPhaseDiagnosticSamples()
             try NPY.write(
@@ -391,26 +430,70 @@ enum FieldExport {
     }
 
     /// Sets `solver` to record the first positive phase's impulse `above` m over the ground in every
-    /// plan cell's column, between the cells `write` reads the fields from (`--first-phase`).
-    static func recordFirstPhase(solver: BlastSolver, scene: Scenario, above: Float) throws {
+    /// plan cell's column, between the cells `write` reads the fields from (`--first-phase`), and
+    /// at each of `levels` as a layer after it.
+    static func recordFirstPhase(solver: BlastSolver, scene: Scenario, above: Float, levels: [Level] = [])
+        throws
+    {
         let grid = solver.grid
-        var columns = [SIMD4<Float>](repeating: .zero, count: grid.nx * grid.ny)
-        for j in 0..<grid.ny {
-            for i in 0..<grid.nx {
-                let height = groundAt(scene, i, j, cellSize: grid.cellSize) + above
-                if let cells = readCells(solver: solver, i: i, j: j, height: height) {
-                    columns[i + grid.nx * j] = SIMD4(Float(cells.k0), Float(cells.k1), cells.share, 1)
+        let plan = grid.nx * grid.ny
+        let tops = levels.isEmpty ? [] : buildingTops(scene, grid: grid)
+        let all = [Level(name: "ground", over: "ground", metres: above)] + levels
+        var columns = [SIMD4<Float>](repeating: .zero, count: plan * all.count)
+        for (layer, level) in all.enumerated() {
+            for j in 0..<grid.ny {
+                for i in 0..<grid.nx {
+                    let n = i + grid.nx * j
+                    let g = groundAt(scene, i, j, cellSize: grid.cellSize)
+                    let height: Float
+                    if layer == 0 {
+                        height = g + above
+                    } else if let h = levelHeight(level, ground: g, top: tops[n]) {
+                        height = h
+                    } else {
+                        continue
+                    }
+                    if let cells = readCells(solver: solver, i: i, j: j, height: height) {
+                        columns[n + plan * layer] = SIMD4(Float(cells.k0), Float(cells.k1), cells.share, 1)
+                    }
                 }
             }
         }
         try solver.configureFirstPhaseColumns(columns)
     }
 
+    /// The height a level reads over a cell of ground `ground` whose tallest block's top is `top`
+    /// (below the ground for none): nil where the level is not air there (a height level inside a
+    /// building, or the roof level over open ground).
+    static func levelHeight(_ level: Level, ground: Float, top: Float) -> Float? {
+        if level.over == "roof" { return top > ground ? top + level.metres : nil }
+        return top > ground + level.metres ? nil : ground + level.metres
+    }
+
+    /// The buildings' tops over the cells whose centres their blocks cover, as the air holds them,
+    /// x-fast; -greatestFiniteMagnitude where there is none.
+    static func buildingTops(_ scene: Scenario, grid: Grid) -> [Float] {
+        let (nx, ny, dx) = (grid.nx, grid.ny, grid.cellSize)
+        var top = [Float](repeating: -.greatestFiniteMagnitude, count: nx * ny)
+        let blocks = scene.envelopeObjects.flatMap { $0.envelope?.blocks ?? [] } + scene.boxes
+        for block in blocks {
+            let i0 = max(0, Int((block.min.x / dx - 0.5).rounded(.up)))
+            let i1 = min(nx - 1, Int((block.max.x / dx - 0.5).rounded(.up)) - 1)
+            let j0 = max(0, Int((block.min.y / dx - 0.5).rounded(.up)))
+            let j1 = min(ny - 1, Int((block.max.y / dx - 0.5).rounded(.up)) - 1)
+            guard i0 <= i1, j0 <= j1 else { continue }
+            for j in j0...j1 {
+                for i in i0...i1 { top[i + nx * j] = max(top[i + nx * j], block.max.z) }
+            }
+        }
+        return top
+    }
+
     /// Writes the training pair for `solver`'s run of `scene` into `folder`.
     static func write(
         solver: BlastSolver, scene: Scenario, folder: URL, id: String, layout: String?, buildings: Int,
         above: Float, edgeCells: Int, configuration: String, ground: String?, steps: Int, wallS: Double,
-        stable: Bool, arguments: [String]?
+        stable: Bool, arguments: [String]?, levels: [Level] = []
     ) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let grid = solver.grid
@@ -426,18 +509,7 @@ enum FieldExport {
             for i in 0..<nx { groundMap[i + nx * j] = groundAt(scene, i, j, cellSize: dx) }
         }
         // The buildings' tops over the cells whose centres their blocks cover, as the air holds them.
-        var top = [Float](repeating: -.greatestFiniteMagnitude, count: plan)
-        let blocks = scene.envelopeObjects.flatMap { $0.envelope?.blocks ?? [] } + scene.boxes
-        for block in blocks {
-            let i0 = max(0, Int((block.min.x / dx - 0.5).rounded(.up)))
-            let i1 = min(nx - 1, Int((block.max.x / dx - 0.5).rounded(.up)) - 1)
-            let j0 = max(0, Int((block.min.y / dx - 0.5).rounded(.up)))
-            let j1 = min(ny - 1, Int((block.max.y / dx - 0.5).rounded(.up)) - 1)
-            guard i0 <= i1, j0 <= j1 else { continue }
-            for j in j0...j1 {
-                for i in i0...i1 { top[i + nx * j] = max(top[i + nx * j], block.max.z) }
-            }
-        }
+        let top = buildingTops(scene, grid: grid)
         // `--first-phase`: the first phase's impulse, recorded between the same cells.
         let firstPhase = solver.firstPhaseSnapshot()
         let targetNames = targetChannels + (firstPhase == nil ? [] : [firstPhaseChannel])
@@ -492,12 +564,50 @@ enum FieldExport {
         try NPY.write(inputs, shape: [inputChannels.count, ny, nx], to: folder.appending(path: "inputs.npy"))
         try NPY.write(targets, shape: [targetNames.count, ny, nx], to: folder.appending(path: "targets.npy"))
         try NPY.write(mask, shape: [ny, nx], to: folder.appending(path: "mask.npy"))
+        if !levels.isEmpty {
+            // The same targets at each level, read as the 2 m ones are; the first phase from the
+            // recorder's layer after the ground's.
+            let count = targetNames.count
+            var levelTargets = [Float](repeating: 0, count: levels.count * count * plan)
+            var levelMask = [Float](repeating: 0, count: levels.count * plan)
+            for (l, level) in levels.enumerated() {
+                for j in edgeCells..<max(edgeCells, ny - edgeCells) {
+                    for i in edgeCells..<max(edgeCells, nx - edgeCells) {
+                        let n = i + nx * j
+                        guard let height = levelHeight(level, ground: groundMap[n], top: top[n]),
+                            let (k0, k1, t, both) = readCells(solver: solver, i: i, j: j, height: height)
+                        else { continue }
+                        let a = solver.peakOverpressure(i, j, k0)
+                        let b = solver.impulse(i, j, k0)
+                        let peak = both ? (1 - t) * a + t * solver.peakOverpressure(i, j, k1) : a
+                        let impulse = both ? (1 - t) * b + t * solver.impulse(i, j, k1) : b
+                        guard peak.isFinite, impulse.isFinite else { continue }
+                        let base = l * count * plan
+                        if let firstPhase {
+                            let first = firstPhase[n + plan * (l + 1)].z
+                            guard first.isFinite else { continue }
+                            levelTargets[base + 2 * plan + n] = first
+                        }
+                        levelTargets[base + n] = peak
+                        levelTargets[base + plan + n] = impulse
+                        levelMask[l * plan + n] = 1
+                    }
+                }
+            }
+            try NPY.write(
+                levelTargets, shape: [levels.count, count, ny, nx],
+                to: folder.appending(path: "levels-targets.npy"))
+            try NPY.write(
+                levelMask, shape: [levels.count, ny, nx], to: folder.appending(path: "levels-mask.npy"))
+        }
         let ci = Int(charge.x / dx)
         let cj = Int(charge.y / dx)
         let meta = Meta(
             id: id, layout: layout, cellSizeM: dx, rows: ny, columns: nx,
             domainM: [scene.domainSize.x, scene.domainSize.y, scene.domainSize.z], cells: grid.cellCount,
-            solverBytes: solver.memoryFootprint, heightAboveGroundM: above, edgeCells: edgeCells,
+            solverBytes: solver.memoryFootprint, heightAboveGroundM: above,
+            levels: levels.isEmpty ? nil : levels,
+            edgeCells: edgeCells,
             charge: Meta.ChargeInfo(
                 massKg: mass, yieldKt: mass / 1e6, positionM: [charge.x, charge.y, charge.z], cell: [ci, cj]),
             buildings: buildings,

@@ -3,7 +3,7 @@
 
     python train_field.py --data DATASET --out OUT [--model unet|fno] [--epochs 40] [--batch 8]
         [--crop 256] [--holdout 0.2 | --holdout-runs id,id | --holdout-layouts pattern,pattern]
-        [--split-by run|layout] [--impulse all|first] [--device auto]
+        [--split-by run|layout] [--impulse all|first] [--levels ground|all|ground,h6,…,roof] [--device auto]
         [--amp auto|on|off] [--resume auto|PATH|none] [--width 32] [--depth 4] [--modes 24]
     python train_field.py --estimate [--grid 256,512] [--batch 8] [--model unet,fno] [--gpu rtx3080ti]
 
@@ -16,6 +16,12 @@ Kingery–Bulmash's (`--no-residual` predicts them outright). The impulse is eve
 (`--impulse all`, the default) or the first phase's (`--impulse first`, the façade recorder's rule:
 the runs' `firstPhaseImpulse` target, exported with `field-export --first-phase`). The loss is the squared error of the
 logs over the mask (air at that height, away from the side faces).
+
+`--levels` (emmettl/bombcad-work#69) trains on the fields at more heights as well, from runs exported
+with `field-export --levels … --roof`: `all` takes the 2 m field (`ground`) and every level the runs
+have, or a list names them. The network then predicts a log peak and log impulse for each level, in
+the order given, each as a correction to Kingery–Bulmash's incident logs at the cell's distance,
+each judged over its own mask. Without it only the 2 m field is learned, as before.
 
 Training draws random crops from the training runs, each turned by one of the eight flips and
 rotations of the square (the plan has no preferred direction). Runs are held out whole, chosen by
@@ -60,7 +66,7 @@ INPUTS = ["height", "footprint", "ground", "logScaledDistance", "logKingeryBulma
 
 # MARK: - Data
 
-def load_runs(folder, only=None, impulse="all"):
+def load_runs(folder, only=None, impulse="all", levels=None):
     """[{id, layout, x (C, H, W) float32 features before standardising, y (2, H, W) log targets,
     kb (2, H, W) log Kingery–Bulmash, mask (H, W), z (H, W) scaled distance}] of a dataset (the
     runs named in `only`, if given); the impulse every positive phase's or, `impulse="first"`, the
@@ -70,16 +76,37 @@ def load_runs(folder, only=None, impulse="all"):
     for name in sorted(os.listdir(root)):
         if only is not None and name not in only:
             continue
-        run = load_run(os.path.join(root, name), impulse)
+        run = load_run(os.path.join(root, name), impulse, levels)
         if run:
             runs.append(run)
     return runs
 
 
-def load_run(path, impulse="all"):
+def level_names(folder, levels):
+    """`--levels` as names: None for the 2 m field alone (`ground`, the files of every export), else
+    `ground` and the levels of the dataset's first finished run for `all`, or the names given."""
+    if not levels or levels == "ground":
+        return None
+    if levels != "all":
+        return levels.split(",")
+    root = os.path.join(folder, "runs")
+    for name in sorted(os.listdir(root)):
+        try:
+            with open(os.path.join(root, name, "meta.json")) as handle:
+                meta = json.load(handle)
+        except (OSError, ValueError):
+            continue
+        if meta.get("stable") and meta.get("levels"):
+            return ["ground"] + [level["name"] for level in meta["levels"]]
+    raise SystemExit("train_field: no run of %s has levels (field-export --levels … --roof)" % folder)
+
+
+def load_run(path, impulse="all", levels=None):
     """One run of a dataset (as `load_runs`), or None if it is unfinished or was unstable. With
     `impulse="first"` a run without the first-phase target (`field-export --first-phase`) is an
-    error, not left out."""
+    error, not left out. With `levels` (names, `ground` the 2 m field) the targets are a peak and an
+    impulse for each level in turn, (2L, H, W), the mask one for each, (L, H, W), and `levels` the
+    names; a run without them is an error."""
     try:
         with open(os.path.join(path, "meta.json")) as handle:
             meta = json.load(handle)
@@ -96,6 +123,28 @@ def load_run(path, impulse="all"):
             path, wanted))
     targets = np.stack([targets[target_names.index("peakOverpressure")], targets[target_names.index(wanted)]])
     mask = np.load(os.path.join(path, "mask.npy")) > 0
+    if levels:
+        exported = [level["name"] for level in meta.get("levels") or []]
+        missing = [n for n in levels if n != "ground" and n not in exported]
+        if missing:
+            raise SystemExit("train_field: %s has no level %s (field-export --levels … --roof)" % (
+                path, ", ".join(missing)))
+        stacked_targets, stacked_masks = [], []
+        if exported:
+            level_targets = np.load(os.path.join(path, "levels-targets.npy"))
+            level_masks = np.load(os.path.join(path, "levels-mask.npy")) > 0
+        for n in levels:
+            if n == "ground":
+                stacked_targets.append(targets)
+                stacked_masks.append(mask)
+            else:
+                k = exported.index(n)
+                t = level_targets[k]
+                stacked_targets.append(np.stack([t[target_names.index("peakOverpressure")],
+                                                 t[target_names.index(wanted)]]))
+                stacked_masks.append(level_masks[k])
+        targets = np.concatenate(stacked_targets)
+        mask = np.stack(stacked_masks)
     names = [c["name"] for c in meta["inputs"]]
     channel = {n: raw[names.index(n)] for n in names}
     height = channel["height"]
@@ -104,11 +153,21 @@ def load_run(path, impulse="all"):
     x = np.stack([height, (height > 0).astype(np.float32), channel["ground"], channel["logScaledDistance"],
                   kb[0], kb[1]]).astype(np.float32)
     # Peaks under 10 Pa and impulses under 1 mPa s are noise, not targets.
-    mask &= (targets[0] > 10) & (targets[1] > 1e-3)
+    if levels:
+        mask &= (targets[0::2] > 10) & (targets[1::2] > 1e-3)
+    else:
+        mask &= (targets[0] > 10) & (targets[1] > 1e-3)
     y = np.log(np.maximum(targets, 1e-6)).astype(np.float32)
     return {"id": meta["id"], "layout": meta.get("layout") or meta["id"], "x": x, "y": y,
             "kb": kb.astype(np.float32), "mask": mask, "z": np.exp(channel["logScaledDistance"]),
-            "meta": meta}
+            "meta": meta, "levels": levels}
+
+
+def base(run, window=(slice(None),) * 3):
+    """Kingery–Bulmash's logs under `run`'s targets (over `window`): once for the 2 m field, once for
+    each level with `levels`."""
+    kb = run["kb"][window]
+    return np.tile(kb, (len(run["levels"]), 1, 1)) if run.get("levels") else kb
 
 
 def split(runs, holdout, holdout_runs, by, seed, holdout_layouts=None):
@@ -172,13 +231,22 @@ class Crops:
         j = self.rng.randint(0, w - c)
         window = (slice(None), slice(i, i + c), slice(j, j + c))
         x = (torch.from_numpy(run["x"][window]) - self.mean) / self.std
-        y = torch.from_numpy(run["y"][window] - (run["kb"][window] if self.residual else 0))
-        m = torch.from_numpy(run["mask"][i:i + c, j:j + c].astype(np.float32))
+        y = torch.from_numpy(run["y"][window] - (base(run, window) if self.residual else 0))
+        m = torch.from_numpy(run["mask"][..., i:i + c, j:j + c].astype(np.float32))
         return dihedral([x, y, m], self.rng.randrange(4), self.rng.random() < 0.5)
 
     def batch(self, size):
         samples = [self.sample() for _ in range(size)]
         return [torch.stack([s[n] for s in samples]) for n in range(3)]
+
+
+def masked_loss(out, y, m):
+    """The mean squared error of the logs over the mask: one mask (B, H, W) for both outputs, or one
+    for each level (B, L, H, W) for its peak and impulse."""
+    if m.dim() == 3:
+        return (((out.float() - y) ** 2) * m[:, None]).sum() / (2 * m.sum().clamp(min=1))
+    both = m.repeat_interleave(2, dim=1)
+    return (((out.float() - y) ** 2) * both).sum() / both.sum().clamp(min=1)
 
 
 # MARK: - Models
@@ -273,11 +341,11 @@ class FNO(nn.Module):
         return self.project(x[..., :h, :w])
 
 
-def build(name, args, inputs=len(INPUTS)):
+def build(name, args, inputs=len(INPUTS), outputs=2):
     if name == "unet":
-        return UNet(inputs, width=args.width, depth=args.depth)
+        return UNet(inputs, outputs=outputs, width=args.width, depth=args.depth)
     if name == "fno":
-        return FNO(inputs, width=args.width, modes=args.modes, layers=args.layers)
+        return FNO(inputs, outputs=outputs, width=args.width, modes=args.modes, layers=args.layers)
     raise ValueError("--model unet or fno, not %r" % name)
 
 
@@ -314,7 +382,11 @@ def judge(model, runs, stats, residual, device, autocast, dtype, multiple):
     model.eval()
     mean = torch.tensor(stats["mean"]).view(1, -1, 1, 1)
     std = torch.tensor(stats["std"]).view(1, -1, 1, 1)
-    errors, baseline, distances = [], [], []
+    names = runs[0].get("levels") if runs else None
+    count = len(names) if names else 1
+    errors = [[] for _ in range(count)]
+    baseline = [[] for _ in range(count)]
+    distances = [[] for _ in range(count)]
     loss_sum, loss_count = 0.0, 0
     with torch.no_grad():
         for run in runs:
@@ -325,40 +397,61 @@ def judge(model, runs, stats, residual, device, autocast, dtype, multiple):
             with torch.autocast(device_type=device.type, dtype=dtype, enabled=autocast):
                 out = model(x)
             out = out.float()[0, :, :h, :w].cpu().numpy()
-            prediction = out + (run["kb"] if residual else 0)
-            mask = run["mask"]
-            error = (prediction - run["y"])[:, mask]
-            loss_sum += float((error ** 2).sum())
-            loss_count += error.size
-            errors.append(error)
-            baseline.append((run["kb"] - run["y"])[:, mask])
-            distances.append(run["z"][mask])
+            under = base(run)
+            prediction = out + (under if residual else 0)
+            for level in range(count):
+                mask = run["mask"][level] if names else run["mask"]
+                pair = slice(2 * level, 2 * level + 2)
+                error = (prediction[pair] - run["y"][pair])[:, mask]
+                loss_sum += float((error ** 2).sum())
+                loss_count += error.size
+                errors[level].append(error)
+                baseline[level].append((under[pair] - run["y"][pair])[:, mask])
+                distances[level].append(run["z"][mask])
     model.train()
-    if not errors:
+    if not runs:
         return None
-    error = np.concatenate(errors, axis=1)
-    base = np.concatenate(baseline, axis=1)
-    z = np.concatenate(distances)
-    table = []
-    for lo, hi in [(0, float("inf"))] + list(zip(BANDS, BANDS[1:])):
-        inside = (z >= lo) & (z < hi)
-        if inside.sum() == 0:
-            continue
-        row = {"band": "all" if lo == 0 and hi == float("inf") else "Z %g-%g" % (lo, hi), "cells": int(inside.sum())}
-        for n, quantity in enumerate(("peak", "impulse")):
-            e = error[n, inside]
-            b = base[n, inside]
-            row[quantity] = {"ratio": float(np.exp(np.median(e))), "logSD": float(e.std()),
-                             "kbRatio": float(np.exp(np.median(b))), "kbLogSD": float(b.std())}
-        table.append(row)
-    return {"loss": loss_sum / max(loss_count, 1), "kbLoss": float((base ** 2).mean()), "bands": table}
+    tables = []
+    squared_base, base_count = 0.0, 0
+    for level in range(count):
+        error = np.concatenate(errors[level], axis=1)
+        under = np.concatenate(baseline[level], axis=1)
+        z = np.concatenate(distances[level])
+        squared_base += float((under ** 2).sum())
+        base_count += under.size
+        table = []
+        for lo, hi in [(0, float("inf"))] + list(zip(BANDS, BANDS[1:])):
+            inside = (z >= lo) & (z < hi)
+            if inside.sum() == 0:
+                continue
+            row = {"band": "all" if lo == 0 and hi == float("inf") else "Z %g-%g" % (lo, hi),
+                   "cells": int(inside.sum())}
+            for n, quantity in enumerate(("peak", "impulse")):
+                e = error[n, inside]
+                b = under[n, inside]
+                row[quantity] = {"ratio": float(np.exp(np.median(e))), "logSD": float(e.std()),
+                                 "kbRatio": float(np.exp(np.median(b))), "kbLogSD": float(b.std())}
+            table.append(row)
+        tables.append(table)
+    result = {"loss": loss_sum / max(loss_count, 1), "kbLoss": squared_base / max(base_count, 1),
+              "bands": tables[0]}
+    if names:
+        result["levels"] = {name: table for name, table in zip(names, tables)}
+    return result
 
 
 def print_table(result, label):
     print("  %s: held-out loss %.4f (mean squared log error; Kingery-Bulmash alone %.4f)" % (
         label, result["loss"], result["kbLoss"]))
+    for name, bands in (result.get("levels") or {"": result["bands"]}).items():
+        print_bands(bands, name)
+
+
+def print_bands(bands, name=""):
+    if name:
+        print("    level %s" % name)
     print("    %-10s %9s  %-23s  %-23s" % ("band", "cells", "peak ratio / log-SD (KB)", "impulse ratio / log-SD (KB)"))
-    for row in result["bands"]:
+    for row in bands:
         p, i = row["peak"], row["impulse"]
         print("    %-10s %9d  %.2f / %.2f (%.2f / %.2f)  %.2f / %.2f (%.2f / %.2f)" % (
             row["band"], row["cells"], p["ratio"], p["logSD"], p["kbRatio"], p["kbLogSD"],
@@ -375,7 +468,8 @@ def train(args):
     device = device_for(args.device)
     autocast, dtype, scaled = precision(device, args.amp)
     os.makedirs(args.out, exist_ok=True)
-    runs = load_runs(args.data, impulse=args.impulse)
+    levels = level_names(args.data, args.levels)
+    runs = load_runs(args.data, impulse=args.impulse, levels=levels)
     if len(runs) < 2:
         raise SystemExit("train_field: %d usable runs in %s; at least 2 are needed" % (len(runs), args.data))
     checkpoint_path = os.path.join(args.out, "checkpoint.pt")
@@ -403,9 +497,9 @@ def train(args):
     with open(os.path.join(args.out, "split.json"), "w") as handle:
         json.dump({"training": [r["id"] for r in training], "heldOut": held,
                    "by": "layouts " + args.holdout_layouts if args.holdout_layouts else args.split_by,
-                   "impulse": args.impulse,
+                   "impulse": args.impulse, "levels": levels,
                    "seed": args.seed, "stats": stats, "inputs": INPUTS}, handle, indent=1)
-    model = build(args.model, args).to(device)
+    model = build(args.model, args, outputs=2 * (len(levels) if levels else 1)).to(device)
     parameters = sum(p.numel() for p in model.parameters())
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler(device.type, enabled=scaled)
@@ -450,7 +544,7 @@ def train(args):
             x, y, m = (t.to(device, non_blocking=True) for t in crops.batch(args.batch))
             with torch.autocast(device_type=device.type, dtype=dtype, enabled=autocast):
                 out = model(x)
-            loss = (((out.float() - y) ** 2) * m[:, None]).sum() / (2 * m.sum().clamp(min=1))
+            loss = masked_loss(out, y, m)
             optimizer.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -471,12 +565,12 @@ def train(args):
         best = min(best, result["loss"])
         checkpoint = {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "scaler": scaler.state_dict() if scaled else None,
                       "epoch": epoch + 1, "best": best, "history": history, "args": vars(args), "stats": stats,
-                      "heldOut": held, "inputs": INPUTS, "residual": not args.no_residual,
+                      "heldOut": held, "inputs": INPUTS, "residual": not args.no_residual, "levels": levels,
                       "random": random.getstate(), "torch": torch.get_rng_state()}
         torch.save(checkpoint, checkpoint_path + ".tmp")
         os.replace(checkpoint_path + ".tmp", checkpoint_path)
         if improved:
-            torch.save({k: checkpoint[k] for k in ("model", "epoch", "args", "stats", "inputs", "residual")},
+            torch.save({k: checkpoint[k] for k in ("model", "epoch", "args", "stats", "inputs", "residual", "levels")},
                        os.path.join(args.out, "best.pt"))
         with open(os.path.join(args.out, "metrics.json"), "w") as handle:
             json.dump({"model": args.model, "parameters": parameters, "device": str(device),
@@ -653,6 +747,8 @@ def main(argv):
     parser.add_argument("--split-by", choices=("run", "layout"), default="run")
     parser.add_argument("--impulse", choices=("all", "first"), default="all",
                         help="the impulse target: every positive phase's, or the first phase's (field-export --first-phase)")
+    parser.add_argument("--levels", default="ground",
+                        help="ground (the 2 m field), all (it and every exported level), or names: ground,h6,…,roof")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--amp", choices=("auto", "on", "off"), default="auto")

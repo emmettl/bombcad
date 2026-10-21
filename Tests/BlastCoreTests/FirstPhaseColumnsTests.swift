@@ -129,6 +129,28 @@ struct FirstPhaseColumnsTests {
         #expect(result.sweptFraction == 1)
     }
 
+    @Test("Layers of columns each record as that layer alone would, and leave the run as it was")
+    func layers() throws {
+        let low = try solver()
+        let high = try solver()
+        let both = try solver()
+        let upper = Array(repeating: SIMD4<Float>(3, 4, 0.5, 1), count: both.grid.nx * both.grid.ny)
+        try low.configureFirstPhaseColumns(columns(low))
+        try high.configureFirstPhaseColumns(upper)
+        try both.configureFirstPhaseColumns(columns(both) + upper)
+        for solver in [low, high, both] {
+            let result = solver.advance(until: 0.006)
+            #expect(result.isStable && result.steps > 0)
+        }
+        #expect(low.stateDigest() == both.stateDigest())
+        let plan = both.grid.nx * both.grid.ny
+        let records = try #require(both.firstPhaseSnapshot())
+        #expect(records.count == 2 * plan)
+        #expect(Array(records[..<plan]) == low.firstPhaseSnapshot())
+        #expect(Array(records[plan...]) == high.firstPhaseSnapshot())
+        #expect(records[plan...].contains { $0.z > 0 })
+    }
+
     @Test("Recording the columns leaves the run as it was, to the bit")
     func unchanged() throws {
         let plain = try solver()

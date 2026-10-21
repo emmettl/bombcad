@@ -203,6 +203,17 @@ def field_arguments(run, layout, inputs, out, relative=None):
     return arguments
 
 
+def extra_arguments(arguments):
+    """The optional targets asked of every run: the first phase's impulse, and the fields at more
+    heights and over the roofs (emmettl/bombcad-work#69)."""
+    extra = ["--first-phase"] if arguments.first_phase else []
+    if getattr(arguments, "levels", None):
+        extra += ["--levels", arguments.levels]
+    if getattr(arguments, "roof", False):
+        extra.append("--roof")
+    return extra
+
+
 def done(folder):
     try:
         with open(os.path.join(folder, "meta.json")) as handle:
@@ -254,7 +265,7 @@ def run_here(data, runs, arguments):
         layout = data["layouts"][run["layout"]]
         command = [GPU_SLOT, "--mem", str(run["estimate"]["memGB"]), scenebench] + \
             field_arguments(run, layout, inputs_for(run["layout"], layout, make=not arguments.dry_run), out) + \
-            (["--first-phase"] if arguments.first_phase else [])
+            extra_arguments(arguments)
         print("%s: %s" % (run["id"], " ".join(command)), flush=True)
         if arguments.dry_run:
             continue
@@ -299,7 +310,7 @@ def run_there(data, runs, arguments):
                 inputs[key] = target
         cases.append({"id": run["id"], "seconds": run["estimate"]["seconds"],
                       "arguments": field_arguments(run, layout, inputs, "OUT", relative=stage)
-                      + (["--first-phase"] if arguments.first_phase else [])})
+                      + extra_arguments(arguments)})
     with open(os.path.join(stage, "cases.json"), "w") as handle:
         json.dump(cases, handle, indent=1)
     job = "fields-%s-%s" % (arguments.on.split(".")[0], time.strftime("%Y%m%d-%H%M%S", time.gmtime()))
@@ -357,6 +368,8 @@ def main(argv):
     r.add_argument("--dry-run", action="store_true")
     r.add_argument("--first-phase", action="store_true",
                    help="export the first positive phase's impulse as a third target (field-export --first-phase)")
+    r.add_argument("--levels", help="heights over the ground, m, to export the fields at as well (field-export --levels)")
+    r.add_argument("--roof", action="store_true", help="export the fields over the roofs as well (field-export --roof)")
     arguments = parser.parse_args(argv)
     if arguments.command == "plan":
         cost = dict(COST)

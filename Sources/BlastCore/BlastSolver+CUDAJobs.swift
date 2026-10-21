@@ -34,6 +34,7 @@ extension BlastSolver {
         guard let phase = firstPhaseColumns else {
             try refuse("configure first-phase receiver columns first")
         }
+        guard phase.layers == 1 else { try refuse("first-phase columns in more than one layer") }
         guard !FileManager.default.fileExists(atPath: folder.appendingPathComponent("job.json").path) else {
             try refuse("job already exists")
         }
