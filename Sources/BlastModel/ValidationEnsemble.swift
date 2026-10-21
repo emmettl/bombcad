@@ -190,10 +190,14 @@ public enum ValidationEnsemble {
     package static let wallCell: Float = 0.25
 
     /// The repeats' coefficient of variation from their range: the range over d₂ (1.128 for two,
-    /// 1.693 for three) over the mean.
+    /// 1.693 for three, 2.059 for four, to 3.078 for ten: the mean range of that many normal
+    /// draws in standard deviations) over the mean. Nil for one value or more than ten.
     package static func scatter(_ values: [Double]) -> Double? {
-        guard values.count > 1, let low = values.min(), let high = values.max() else { return nil }
-        let d2 = values.count == 2 ? 1.128 : 1.693
+        let d2Table = [1.128, 1.693, 2.059, 2.326, 2.534, 2.704, 2.847, 2.970, 3.078]
+        guard values.count > 1, values.count <= 10, let low = values.min(), let high = values.max() else {
+            return nil
+        }
+        let d2 = d2Table[values.count - 2]
         let mean = values.reduce(0, +) / Double(values.count)
         return (high - low) / d2 / mean
     }

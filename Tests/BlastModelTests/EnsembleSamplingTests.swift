@@ -42,6 +42,21 @@ struct EnsembleSamplingTests {
         #expect(EnsembleStatistics([]) == nil)
     }
 
+    @Test("The repeats' scatter from their range uses d₂ for their own count")
+    func scatterFromRange() throws {
+        // d₂ is 1.128 for two repeats, 1.693 for three and 2.059 for four (the mean range of n
+        // standard normal draws). Monk and Clubley's 1:2 panes, four repeats, read 0.176, not 0.214.
+        let two = try #require(ValidationEnsemble.scatter([9, 11]))
+        #expect(abs(two - 2 / 1.128 / 10) < 1e-12)
+        let three = try #require(ValidationEnsemble.scatter([9, 10, 11]))
+        #expect(abs(three - 2 / 1.693 / 10) < 1e-12)
+        let four = try #require(ValidationEnsemble.scatter([9, 10, 10, 11]))
+        #expect(abs(four - 2 / 2.059 / 10) < 1e-12)
+        let monk = try #require(ValidationEnsemble.scatter([3.52, 3.18, 2.78, 2.44]))
+        #expect(abs(monk - 0.176) < 0.001)
+        #expect(ValidationEnsemble.scatter([1]) == nil)
+    }
+
     @Test(
         "Varying the concrete moves its stiffness, tensile strength and fracture energy by their correlations"
     )
