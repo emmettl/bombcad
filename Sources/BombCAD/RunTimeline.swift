@@ -443,7 +443,7 @@ final class RunTimelineRecorder {
 
 /// Encodes, compresses and writes frames on a queue of its own, one at a time, so that the run
 /// waits for none of it.
-private final class TimelineWriter: @unchecked Sendable {
+final class TimelineWriter: @unchecked Sendable {
     private let queue = DispatchQueue(label: "dev.bombcad.timeline", qos: .utility)
     private let lock = NSLock()
     private var sizes: [String: Int] = [:]

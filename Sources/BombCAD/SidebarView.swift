@@ -66,6 +66,7 @@ struct SidebarView: View {
                     .frame(maxWidth: 80)
                     Text("m")
                 }
+                RunOnPicker(model: model)
                 if let grid = model.grid {
                     LabeledContent("Cells", value: cellSummary(grid))
                     LabeledContent(

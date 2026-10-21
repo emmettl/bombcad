@@ -186,6 +186,9 @@ enum NearbyWorkers {
     /// What a session asks for before its worker starts, and the answer.
     struct SessionRequest: Codable, Sendable {
         var gate: RemoteGate?
+        /// A watched run the sharing Mac kept going after an earlier session's connection dropped,
+        /// to take up again (`SessionRelay`); the gate is not asked again.
+        var resume: UUID?
     }
 
     struct SessionAnswer: Codable, Sendable {
@@ -195,10 +198,12 @@ enum NearbyWorkers {
 
     /// A worker on the paired Mac `host` names (`nearby:<name>`), over the fastest link it is seen
     /// on. With `gate`, that Mac first decides whether it should take work now, as an SSH worker
-    /// does. Waits up to `discovery` for the Mac to be found.
+    /// does. With `resume`, the session takes up that watched run, which the Mac kept going when
+    /// an earlier session's connection dropped (`SweepWorkerClient.resumeWatch`). Waits up to
+    /// `discovery` for the Mac to be found.
     @MainActor
     static func connect(
-        host: String, gate: RemoteGate? = nil, store: PairingStore = NearbyWorkers.store,
+        host: String, gate: RemoteGate? = nil, resume: UUID? = nil, store: PairingStore = NearbyWorkers.store,
         discovery: Duration = .seconds(10), resolve: Resolve = NearbyBrowser.find, limits: Limits = .app
     ) async throws -> SweepWorkerClient {
         let name = name(of: host)
@@ -217,11 +222,13 @@ enum NearbyWorkers {
         let channel = ConnectionChannel(connection, peer: name, limits: limits)
         do {
             try await channel.start()
-            try await channel.sendFrame(JSONEncoder().encode(SessionRequest(gate: gate)))
+            try await channel.sendFrame(JSONEncoder().encode(SessionRequest(gate: gate, resume: resume)))
             let answer = try JSONDecoder().decode(SessionAnswer.self, from: try await channel.receiveFrame())
             guard answer.accepted else {
                 throw NearbyError.refused(
-                    "\(name) is not taking work now: \(answer.reason ?? "no reason given").")
+                    resume == nil
+                        ? "\(name) is not taking work now: \(answer.reason ?? "no reason given")."
+                        : answer.reason ?? "\(name) no longer holds that run.")
             }
         } catch {
             connection.cancel()
@@ -236,6 +243,13 @@ enum NearbyWorkers {
             name: "\(name) over \(link)", input: fromWorker.fileHandleForReading,
             output: toWorker.fileHandleForWriting
         ) {
+            // What was written, `shutdown` last, goes before the connection ends: the bridge sends
+            // it and then the end, and the sharing Mac closes the connection once its worker exits.
+            // A held run is let go only on `shutdown`, so it must not be cut off.
+            try? toWorker.fileHandleForWriting.close()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30) { connection.cancel() }
+        }
+        client.onDrop = {
             try? toWorker.fileHandleForWriting.close()
             connection.cancel()
         }
@@ -625,6 +639,8 @@ final class NearbyServer {
     private let startWorker: StartWorker
     private var pairingListener: NWListener?
     private var sessionListener: NWListener?
+    /// The sessions' relays, by identity, those holding runs whose connection dropped among them.
+    private var relays: [ObjectIdentifier: SessionRelay] = [:]
     private let queue = DispatchQueue(label: "dev.bombcad.nearby.server")
     /// Told what happens, for a log.
     var log: (String) -> Void = { _ in }
@@ -669,7 +685,12 @@ final class NearbyServer {
         sessionListener?.cancel()
         pairingListener = nil
         sessionListener = nil
+        for relay in relays.values { relay.stop() }
+        relays = [:]
     }
+
+    /// How many sessions it is relaying now, those holding a run for a Mac gone among them.
+    var sessionCount: Int { relays.count }
 
     /// The port `service` listens on, once it is ready, waiting up to the connect limit.
     func port(of service: String) async throws -> NWEndpoint.Port {
@@ -756,6 +777,24 @@ final class NearbyServer {
                 try await channel.start()
                 let request = try JSONDecoder().decode(
                     NearbyWorkers.SessionRequest.self, from: try await channel.receiveFrame())
+                if let id = request.resume {
+                    guard let relay = relays.values.first(where: { $0.holds(id) }) else {
+                        try await channel.sendFrame(
+                            JSONEncoder().encode(
+                                NearbyWorkers.SessionAnswer(
+                                    accepted: false,
+                                    reason:
+                                        "\(name) no longer holds that run: it was collected or stopped, or BombCAD there stopped sharing."
+                                )))
+                        connection.cancel()
+                        return
+                    }
+                    try await channel.sendFrame(
+                        JSONEncoder().encode(NearbyWorkers.SessionAnswer(accepted: true)))
+                    relay.resume(connection)
+                    log("Session resumed a held run.")
+                    return
+                }
                 if let reason = request.gate?.refusal() {
                     try await channel.sendFrame(
                         JSONEncoder().encode(NearbyWorkers.SessionAnswer(accepted: false, reason: reason)))
@@ -766,15 +805,27 @@ final class NearbyServer {
                 let fromWorker = Pipe()
                 try startWorker(toWorker.fileHandleForReading, fromWorker.fileHandleForWriting, request.gate)
                 try await channel.sendFrame(JSONEncoder().encode(NearbyWorkers.SessionAnswer(accepted: true)))
-                StreamBridge.attach(
-                    connection, sending: fromWorker.fileHandleForReading,
-                    receiving: toWorker.fileHandleForWriting)
+                relay(
+                    connection, toWorker: toWorker.fileHandleForWriting,
+                    fromWorker: fromWorker.fileHandleForReading)
                 log("Session started.")
             } catch {
                 log("Session refused: \(error.localizedDescription)")
                 connection.cancel()
             }
         }
+    }
+
+    /// Relays a session's messages between its connection and its worker, message by message, so
+    /// that a watched run can outlive its connection (`SessionRelay`).
+    private func relay(_ connection: NWConnection, toWorker: FileHandle, fromWorker: FileHandle) {
+        let relay = SessionRelay(toWorker: toWorker, fromWorker: fromWorker)
+        relay.log = { [weak self] line in Task { @MainActor in self?.log(line) } }
+        relay.onEnd = { [weak self] ended in
+            Task { @MainActor in self?.relays[ObjectIdentifier(ended)] = nil }
+        }
+        relays[ObjectIdentifier(relay)] = relay
+        relay.start(connection)
     }
 
     /// A `BombCAD worker` process of this executable, as an SSH session starts one.

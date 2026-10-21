@@ -19,7 +19,7 @@ struct ContentView: View {
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(model: model)
-                .disabled(model.sweep.isActive)
+                .disabled(model.sweep.isActive || model.remoteRun?.isActive == true)
                 .frame(width: 310)
             Divider()
             VStack(spacing: 0) {
@@ -56,6 +56,11 @@ struct ContentView: View {
                         }
                     }
                     .overlay(alignment: .topLeading) { StatusOverlay(model: model).padding(12) }
+                    .overlay(alignment: .top) {
+                        if let remote = model.remoteRun {
+                            RemoteRunOverlay(model: model, remote: remote).padding(12)
+                        }
+                    }
                     .overlay(alignment: .bottomLeading) {
                         ImportSelectionHint(model: model).padding(12).allowsHitTesting(false)
                     }
@@ -116,14 +121,23 @@ struct ContentView: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
                     .help("Click the ground in the view to move the charge")
-                Button(
-                    model.isRunning ? "Pause" : "Run",
-                    systemImage: model.isRunning ? "pause.fill" : "play.fill"
-                ) {
-                    model.toggleRun()
+                if let remote = model.remoteRun, remote.isActive {
+                    Button("Stop", systemImage: "stop.fill") { model.stopRemoteRun() }
+                        .help("Stop the run on \(remote.macName)")
+                } else {
+                    Button(
+                        model.isRunning ? "Pause" : "Run",
+                        systemImage: model.isRunning ? "pause.fill" : "play.fill"
+                    ) {
+                        model.toggleRun()
+                    }
+                    .disabled(model.isLoadingInputs || model.isPreparingImports || model.sweep.isActive)
+                    .help(
+                        model.runHost.map {
+                            "Run the simulation on \(NearbyWorkers.name(of: $0)) and watch it here (Space)"
+                        }
+                            ?? "Run or pause the simulation (Space)")
                 }
-                .disabled(model.isLoadingInputs || model.isPreparingImports || model.sweep.isActive)
-                .help("Run or pause the simulation (Space)")
                 Button("Reset", systemImage: "arrow.counterclockwise") { model.reset() }
                     .help("Return to the moment before detonation (⌘R)")
                 Button("Help", systemImage: "questionmark.circle") { openWindow(id: "help") }
@@ -239,6 +253,7 @@ private struct StatusOverlay: View {
     }
 
     private var statusLine: String {
+        if let remote = model.remoteRun, remote.isActive { return "Running on \(remote.macName)" }
         if model.isRunning, model.stats.slowMotion > 0 {
             return "\(Int(model.stats.slowMotion.rounded()))× slower than real time"
         }

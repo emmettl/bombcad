@@ -145,8 +145,9 @@ first connection for a build includes copying it.
 A Mac on the same network can share its GPU without SSH, found by Bonjour and paired once.
 
 1. **On the Mac that will run the work**, turn on **Share this Mac's GPU with Macs nearby** in
-   Settings, under This Mac. macOS asks once whether BombCAD may accept incoming connections;
-   allow it. (Headless, `BombCAD serve` does the same until stopped.)
+   Settings, under This Mac. If macOS asks whether BombCAD may accept incoming connections, allow
+   it; a signed BombCAD is let in without asking where the firewall allows signed software, as it
+   does unless changed. (Headless, `BombCAD serve` does the same until stopped.)
 2. **On the Mac that sends the work**, the sharing Mac appears under **Macs nearby**, with its GPU
    and the links it is seen on. Choose **Pair…**.
 3. **Both Macs show a six-digit code.** Choose **Allow** on the sharing Mac only if the code is the
@@ -170,6 +171,34 @@ Mac reached by SSH is: shared sweeps, the models fed alongside a run (**Run on**
   `~/.config/bombcad/remote.json`) applies to nearby sessions too.
 
 How it works and what it was measured to do: [Macs nearby](distributed-computing.md#macs-nearby-without-ssh).
+
+### Running the blast on a Mac nearby
+
+A laptop can edit the scene and watch while a Studio's GPU runs the blast.
+
+1. Pair the two as above, sharing on the Mac that will run it.
+2. **On the Mac you work on**, choose that Mac under **Run on** in the Run tab's Scenario
+   section (it appears once a Mac is paired), then **Run**.
+3. The viewport draws the run as the other Mac sends it: the blast's field, every few cells, and
+   every structure's mesh, as fast as the link carries them. A note over the viewport says which
+   Mac and link it is on, how far it has got and how many frames have arrived. The sidebar is
+   locked while it runs; **Stop** (or Reset) stops it there.
+4. When it finishes, the run comes back and is kept, named "On <that Mac>", with the frames that
+   arrived as its recording: it opens at its last frame, to scrub and replay like a run made here,
+   its gauges and deflection are on the charts, and it can be compared with any other run. The
+   note gives what crossing the link cost (frame size, how often frames came, and the other Mac's
+   cost per frame); select it to copy it.
+
+**If the link drops**, the note says so and the run carries on on the other Mac. **Keep
+Watching** connects again and picks it up where it has got to; **Fetch Result Later** goes back to
+this Mac's scene and leaves a **Fetch Result** button to connect again later, whether the run has
+finished or not. The other Mac holds the run, and its result, until this Mac collects it or
+stops it, or it stops sharing (quitting BombCAD there, or `BombCAD serve`, loses it).
+
+What the other Mac runs is the blast and the structures. The fragments, the thermal radiation,
+the ground points and the envelope damage run only on the Mac showing the scene for now, so they
+are left out of a run sent elsewhere. Pause, edits mid-run and **Continue from here** are not
+offered for a run elsewhere yet.
 
 ## Measurements and interpretation
 

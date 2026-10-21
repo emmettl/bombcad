@@ -231,7 +231,7 @@ extension SimulationModel {
         restoreLiveView()
     }
 
-    private func restoreLiveView() {
+    func restoreLiveView() {
         guard let renderer, let solver else { return }
         renderer.setScene(scenario, solver: solver)
         // The scene drew every panel closed again: show those opened, however many.

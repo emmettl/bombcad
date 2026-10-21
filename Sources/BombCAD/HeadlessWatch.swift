@@ -18,6 +18,10 @@ struct WatchJob: Codable, Equatable, Sendable {
     var frameInterval = 1
     /// What to send; nil to run unwatched, for comparison.
     var view: ViewSpec?
+    /// Whether a Mac nearby relaying the session keeps the run going should the connection drop,
+    /// for the app to watch again or fetch the result later (`SessionRelay`); a run asked for over
+    /// SSH, or by `BombCAD watch`, stops with its connection.
+    var keepsRunning = false
 }
 
 struct ViewSpec: Codable, Equatable, Sendable {
@@ -601,6 +605,12 @@ enum HeadlessWatch {
             lines.append(scene.summary(stride: options.view?.sceneStride ?? 1))
         }
         return lines
+    }
+
+    /// The median, or nil for none.
+    nonisolated static func median(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        return values.sorted()[values.count / 2]
     }
 
     /// Median, 95th percentile and largest.

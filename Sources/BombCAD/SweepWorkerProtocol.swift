@@ -62,7 +62,7 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 15
+    static let protocolVersion = 16
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String
@@ -167,6 +167,51 @@ enum SweepWorkerFrame {
             }
             thread.start()
         }
+    }
+
+    /// The next frame from `handle` as it was written, and its message, or nil at the end: for a
+    /// relay, which passes frames on unchanged and keeps some (`SessionRelay`).
+    static func rawPacket(from handle: FileHandle) throws -> (raw: Data, message: SweepWorkerMessage)? {
+        guard let count = try readLength(from: handle, atStart: true) else { return nil }
+        guard let body = try read(count, from: handle) else {
+            throw ProjectFileError.invalid("A worker message was cut short.")
+        }
+        guard let size = try readLength(from: handle, atStart: false) else {
+            throw ProjectFileError.invalid("A worker message was cut short.")
+        }
+        var payload = Data()
+        if size > 0 {
+            guard let data = try read(size, from: handle) else {
+                throw ProjectFileError.invalid("A worker message was cut short.")
+            }
+            payload = data
+        }
+        let message = try JSONDecoder().decode(SweepWorkerMessage.self, from: body)
+        return (length(count) + body + length(size) + payload, message)
+    }
+
+    /// The first whole frame in `buffer`, taken out of it, as written and with its message; nil
+    /// until one has arrived whole.
+    static func rawPacket(from buffer: inout Data) throws -> (raw: Data, message: SweepWorkerMessage)? {
+        func length(at offset: Int) -> Int? {
+            guard buffer.count >= offset + 4 else { return nil }
+            let start = buffer.startIndex + offset
+            return buffer[start..<start + 4].reduce(0) { $0 << 8 | Int($1) }
+        }
+        guard let count = length(at: 0) else { return nil }
+        guard count <= maximumBytes else {
+            throw ProjectFileError.invalid("A worker message of \(count) bytes is too large.")
+        }
+        guard let size = length(at: 4 + count) else { return nil }
+        guard size <= maximumBytes else {
+            throw ProjectFileError.invalid("A worker message of \(size) bytes is too large.")
+        }
+        let total = 8 + count + size
+        guard buffer.count >= total else { return nil }
+        let raw = Data(buffer.prefix(total))
+        buffer = Data(buffer.dropFirst(total))
+        let message = try JSONDecoder().decode(SweepWorkerMessage.self, from: raw[4..<4 + count])
+        return (raw, message)
     }
 
     /// The messages alone.

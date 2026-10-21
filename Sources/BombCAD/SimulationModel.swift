@@ -383,6 +383,20 @@ final class SimulationModel {
     var recentTimeline: URL?
     /// A run being replayed in the view in place of the solver's state, or nil.
     var playback: TimelinePlayback?
+    /// Where Run sends the blast: nil for this Mac, or a paired Mac nearby, `nearby:<name>`
+    /// (emmettl/bombcad-work#73).
+    var runHost: String?
+    /// The blast running on another Mac and watched here, or the last one, until put away.
+    var remoteRun: RemoteRun?
+    /// How a remote run reaches its Mac, given the host and a held run to resume; tests reach a
+    /// server in their own process.
+    @ObservationIgnored var remoteConnect: @MainActor (String, UUID?) async throws -> SweepWorkerClient =
+        SimulationModel.connectRemote
+    /// How long a remote run may go without a word from its Mac before its connection is taken as
+    /// dropped (the link can fail without either end hearing); nil waits, as the tests ask.
+    @ObservationIgnored var remoteSilenceLimit: Duration? = .seconds(60)
+    /// Told each time a remote run's frame is drawn, for tests.
+    @ObservationIgnored var onRemoteFrame: ((RemoteRun) -> Void)?
     /// What recording the last run cost: its frames, the main thread's seconds capturing them, and
     /// the bytes kept; and the run's wall-clock seconds.
     @ObservationIgnored var timelineCost:

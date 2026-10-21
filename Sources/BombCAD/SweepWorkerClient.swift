@@ -18,6 +18,9 @@ final class SweepWorkerClient {
     /// Consumer sessions waiting for their result.
     private var outcomeWaiters: [UUID: CheckedContinuation<Data, Error>] = [:]
     private let onClose: () -> Void
+    /// What letting the connection go at once does, without waiting for what was written to be
+    /// sent (`drop`); `onClose` if not given.
+    var onDrop: (() -> Void)?
     private var reader: Task<Void, Never>?
     private var helloWaiter: CheckedContinuation<SweepWorkerHello, Error>?
     private var waiting: [UUID: CheckedContinuation<SweepWorkerArchive, Error>] = [:]
@@ -167,19 +170,39 @@ final class SweepWorkerClient {
     /// Runs a project on the worker, handing each frame sent to `frame`, which must acknowledge
     /// it (`viewAck`) for more to come, and a scene view's setup, before its first frame, to
     /// `setup`.
+    /// `progress` is told the fraction of its simulated time the run has reached, now and then.
     func watch(
         _ job: WatchJob, setup: @escaping (Data) -> Void = { _ in },
+        progress: @escaping (Double) -> Void = { _ in },
         frame: @escaping (WatchFrame.Header, Data) -> Void
     ) async throws
         -> WatchResult
     {
+        try await follow(job.id, setup: setup, progress: progress, frame: frame, send: .watch(job))
+    }
+
+    /// Takes up a watched run that a Mac nearby kept going after an earlier connection dropped
+    /// (`NearbyWorkers.connect(resume:)`): its view's setup again, its latest progress, then its
+    /// frames, if it is still running, and its result, as `watch` hands them.
+    func resumeWatch(
+        _ id: UUID, setup: @escaping (Data) -> Void = { _ in },
+        progress: @escaping (Double) -> Void = { _ in },
+        frame: @escaping (WatchFrame.Header, Data) -> Void
+    ) async throws -> WatchResult {
+        try await follow(id, setup: setup, progress: progress, frame: frame, send: nil)
+    }
+
+    private func follow(
+        _ id: UUID, setup: @escaping (Data) -> Void, progress: @escaping (Double) -> Void,
+        frame: @escaping (WatchFrame.Header, Data) -> Void, send message: SweepWorkerMessage?
+    ) async throws -> WatchResult {
         let writer = self.writer
-        viewers[job.id] = frame
-        viewSetups[job.id] = setup
+        viewers[id] = frame
+        viewSetups[id] = setup
         defer {
-            viewers[job.id] = nil
-            viewSetups[job.id] = nil
-            viewStats[job.id] = nil
+            viewers[id] = nil
+            viewSetups[id] = nil
+            viewStats[id] = nil
         }
         let archive: SweepWorkerArchive = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation {
@@ -188,19 +211,33 @@ final class SweepWorkerClient {
                     continuation.resume(throwing: closedError)
                     return
                 }
-                waiting[job.id] = continuation
+                waiting[id] = continuation
+                self.progress[id] = progress
+                guard let message else { return }
                 do {
-                    try writer.send(.watch(job))
+                    try writer.send(message)
                 } catch {
-                    waiting[job.id] = nil
+                    waiting[id] = nil
                     continuation.resume(throwing: error)
                 }
             }
         } onCancel: {
-            try? writer.send(.cancel(job.id))
+            try? writer.send(.cancel(id))
         }
-        let stats = viewStats[job.id]
+        let stats = viewStats[id]
         return WatchResult(archive: archive, stats: stats?.0, statsArrived: stats?.1, finished: .now)
+    }
+
+    /// Whether the connection has closed, or failed: a job that fails then failed with it, not on
+    /// the worker.
+    var isClosed: Bool { closedError != nil }
+
+    /// Lets the connection go without telling the worker to finish, as a dropped link does: a run
+    /// a Mac nearby keeps going (`WatchJob.keepsRunning`) carries on there.
+    func drop() {
+        closed(NearbyError.closed)
+        reader?.cancel()
+        (onDrop ?? onClose)()
     }
 
     /// Tells the worker to finish, and lets it go.

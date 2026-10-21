@@ -644,9 +644,10 @@ drawing it over Wi-Fi:
 **What it means for the app.** A thin client is practical over ordinary Wi-Fi for everything
 drawn on surfaces, live, at the run's own pace, for about 1% of the run, and for the air as a
 volume at about every second cell, and for the scene as the app draws it at every 2nd to 4th
-cell of the field. What is left is the app's side: a **Run on** for the blast, the viewport fed
+cell of the field. What was left was the app's side: a **Run on** for the blast, the viewport fed
 from the frames that arrive rather than from a solver here, and edits and playback going the
-other way.
+other way. The first two were built on 21 October 2026
+([The thin client in the app](#the-thin-client-in-the-app-21-october-2026)).
 
 ## Macs nearby, without SSH
 
@@ -717,9 +718,9 @@ little. The city block with every 2nd cell of the air as a volume, 1.7 MB a fram
   process: with the mini at loads near 100 that would starve it where the kernel's sockets are not,
   but it is not yet shown. **Open**: measure again in the mini's quiet window; if it holds, carry a
   session's bulk on a plain socket keyed by the pairing.
-- **Not measured here:** the Studio as the sharing Mac, the thin client's own direction. The
-  Studio's firewall is on and asks, for each new build started from a shell, whether it may accept
-  connections, which wants someone at the Studio; the signed app asks once.
+- **The Studio as the sharing Mac**, the thin client's own direction, waited on the Studio's
+  firewall until 21 October 2026, when a signed build turned out to need no one at the Studio
+  ([below](#the-thin-client-in-the-app-21-october-2026)).
 
 **Tests** pair two stores in one process over a pair of queues (codes agree; declined on either
 side; a key revealed other than the one committed to; a Mac in the middle), and run a real
@@ -737,6 +738,97 @@ only that it never comes early. The other tests connect with no deadlines (`Near
 on both ends): on a loaded Studio (19 October 2026) a test process stalled for a minute, longer
 than any step's limit, so a stall there is the ten-minute hang limit's to catch. A three-minute
 limit on these tests (`.networkLimit`) went for the same reason.
+
+### The thin client in the app, 21 October 2026
+
+emmettl/bombcad-work#73: the blast run on the Studio from the app on another Mac, the viewport fed
+from what arrives. Using it is in
+[Running the blast on a Mac nearby](run-comparison.md#running-the-blast-on-a-mac-nearby).
+
+**The Studio's firewall needs no one, for a signed build.** The firewall is on, with
+"Automatically allow downloaded signed software" also on (`socketfilterfw --getallowsigned`, read
+only; nothing was changed). A build signed with the project's Developer ID identity
+(`codesign --sign "Developer ID Application: …" --options runtime --timestamp`, as
+`Scripts/release.py` signs, but not notarized) and started from a shell took the mini's
+connections at once, with no prompt; the firewall listed it as allowed by itself. A second build,
+rebuilt from changed code, copied to another folder and signed the same way, was let in too, again
+with no one at the Studio. So a build signed this way needs no approval at all, across rebuilds;
+an ad hoc build (`make app`, `swift build`), whose identity is its hash, is asked about anew each
+build, which wants someone at the Studio. To serve from a fresh build, sign it first.
+
+**Measured, the Studio serving.** `BombCAD serve` (signed) on the Studio under a GPU slot; on the
+mini, over Wi-Fi (`BOMBCAD_NEARBY_LINK=wifi`), `BombCAD watch --on nearby:… --scene <stride>
+--render`, which draws every frame with the app's renderer as the app would. Four scenes, twice
+each, with the old bridge (bytes as they come) and the new relay (a message at a time, below),
+which measured alike; the Studio at load averages 10 to 66, the mini 3 to 14. Ranges over the four
+runs of each:
+
+| Scene, field | A frame sent | Shown | Update, median | Lag, median (95%) | Held the Studio's run, a frame |
+|---|---|---|---|---|---|
+| street canyon, every 2nd cell | 2.7 to 3.3 MB | 35 to 61 of 171 | 190 to 410 ms | 190 to 680 ms (1.7 to 1.9 s) | 3.5 to 4.2 ms |
+| city block, every 4th cell | 0.95 to 1.24 MB | 130 to 171 of 171 | 110 to 260 ms | 140 to 180 ms (0.42 to 0.60 s) | 4.0 to 5.9 ms |
+| city block, every 2nd cell | 4.1 to 5.4 MB | 28 to 84 of 171 | 270 to 450 ms | 310 to 670 ms (3.4 to 3.9 s) | 10.9 to 16.6 ms |
+| three-storey building, every 2nd cell | 4.6 to 4.7 MB | 9 to 19 of 50 | 470 to 620 ms | 0.86 to 1.08 s (1.2 to 1.7 s) | 1.6 to 3.8 ms |
+
+- **Every 4th cell of the city block is the thin client's setting**, as on 17 October: nearly
+  every frame crossed, an update every 0.1 to 0.26 s, about 0.15 s behind the run, for 4 to 6 ms of
+  the Studio's time a frame (2 to 3% of its run). Drawing it on the mini took 11 to 13 ms a frame
+  to decompress, and 3 to 4 ms to decode and upload. The app takes the field's stride as its recordings do, which comes to
+  every 4th cell on the city block and every cell on small scenes.
+- **The link carried 4 to 7 MB/s at most**, every larger frame skipped past that, where SSH over
+  the same Wi-Fi, the same minutes, carried 34 MB/s Studio to mini (200 MB in 5.9 s), and SSH's
+  pipe carried 35 MB/s of these frames on 17 October. So it is not Wi-Fi but Network.framework on
+  the mini, now receiving as well as sending, in a process its SSH started
+  ([the mini's slow sending](#macs-nearby-without-ssh), emmettl/bombcad-work#29). A laptop running
+  the app is the real test; until it is measured, every 4th cell is the size that fits.
+- **Frames the Studio stopped at** make a watched run 4 to 5% longer in steps, as before.
+
+**Built: the app's side.**
+
+- **Run on.** The Run tab's Scenario section lists the paired Macs once one is paired (from the
+  pairings, not Bonjour); Run then sends the project as `BombCAD watch` does (`WatchJob`, the field
+  at `RunTimelineRecorder.stride`, at most half a million texels, lz4, a window of 2), instead of
+  stepping a solver here. The laptop still builds its own solver for the scene it shows before the
+  run, but the run does not need it: a grid too large for the laptop runs on the Studio all the
+  same.
+- **The viewport** draws each arriving frame as a replay does: the setup into a `ViewUpload`, the
+  renderer pointed at its view (`SceneRenderer.setScene(_:view:)`), each `ViewFrame` uploaded once
+  the GPU has finished the last, and acknowledged after it is drawn, so that the window paces the
+  Studio to this Mac. A note over the viewport gives the Mac, the link, its GPU, the share of the run
+  reached (the worker's progress, now passed to the watcher) and the frames shown; the sidebar is
+  locked and Run becomes Stop.
+- **Back, after.** The frames that arrived are written as the run's recording as they come
+  (`StreamedTimeline`: the timeline folder and codec of emmettl/bombcad-work#7, at most one frame
+  each 1/240 of the run and the last), so the returned run, checked against its inputs'
+  fingerprint as a sweep case is, is kept with a recording: it opens at its last frame to scrub,
+  its gauges and deflection go on the charts, and it compares like any other. The note ends with
+  what the link cost, here and on the Studio.
+- **A dropped link.** A session to a Mac nearby is now relayed a message at a time
+  (`SessionRelay`, NearbyRelay.swift) rather than as bytes. A run the app sends asks to be kept
+  going (`WatchJob.keepsRunning`, protocol 16): if its connection drops, the sharing Mac keeps the
+  worker, acknowledges its frames itself (and those in flight when the link went), and keeps the
+  run's greeting, view setup, latest progress and its end. A new session asking to resume it
+  (`SessionRequest.resume`) is handed those and then the live frames. The app says the link
+  dropped, and offers **Keep Watching** (resume now) and **Fetch Result Later** (back to this Mac's
+  scene, with a Fetch Result button); a minute without a word from the Studio counts as a drop,
+  since a link can fail without either end hearing. What is held is let go when the app says it is
+  done (`shutdown`, which a client's close now lets reach the Studio before the connection ends),
+  or when the Studio stops sharing; quitting BombCAD there loses it. Any other session, sweeps and
+  `BombCAD watch` among them, still ends with its connection.
+- **Tests** (RemoteRunTests) drive it all through a sharing Mac in the test process found at its
+  port: a run dropped at its first frame and resumed in another session, its setup sent again and
+  its result whole, then let go; a run not asked to be kept stopping with its link; the app's Run
+  on, its frames drawn and the run kept with a recording that replays, and the same job watched
+  through a worker here, with no relay, giving the same gauges and steps; the link dropped at the
+  first frame, then the result fetched later; and Stop.
+
+**Not yet (stage 3).** Pause, edits and a new charge mid-run, and rerunning with edits on the
+Studio. Pause needs the worker's run to wait between batches on a message; edits mean a new job,
+which the app can already send once the old one stops. The models fed alongside (fragments,
+thermal radiation, ground points) and the envelope damage are left out of a run elsewhere, since
+the worker's watched run does not feed them; carrying them on the Studio, as `--consumer` does
+for a headless run, and sending their state back is the next step for them. Nor is a laptop
+measured yet: that needs the user's MacBook, paired with the Studio, running the app.
 
 ## Better first
 
