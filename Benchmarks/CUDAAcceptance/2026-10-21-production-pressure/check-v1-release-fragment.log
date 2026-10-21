@@ -1,0 +1,541 @@
+python3 Scripts/check-affected.py 
+check-affected: 137 changed file(s), tier: core
+  map 5b94640b3b97 (20 commits behind the merge base, built 2026-10-21 20:47 UTC on Louiss-Mac-mini)
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/audit-cuda.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/audit-cuda.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/audit.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/audit.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/build-host.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/build.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/cpu-tests-host.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/cuda-flat-controller.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/cuda-flat.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/audit.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut-legacy.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut-plain.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut-pressure.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/legacy/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/legacy/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/legacy/production-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/legacy/production-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/plain/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/plain/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/pressure/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/pressure/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/pressure/pressure-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/pressure/pressure-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/pressure/replay.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/beirut/validation.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/candidate.patch: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/cuda-audit.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/cuda-flat-numeric-proof.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/cuda-flat.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/cuda-flat.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half-legacy.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half-plain.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half-pressure.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/cuda-trace/deployment.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/cuda-trace/replay.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/cuda-trace/result.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/cuda-trace/trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/cuda-trace/trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/legacy/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/legacy/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/legacy/production-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/legacy/production-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/plain/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/plain/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/pressure/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/pressure/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/pressure/pressure-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/pressure/pressure-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/pressure/replay.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/validation.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/phase-decision.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/refused-budget-overflow.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/refused-missing-budget.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/refused-missing-columns.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers-legacy.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers-plain.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers-pressure.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/legacy/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/legacy/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/legacy/production-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/legacy/production-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/plain/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/plain/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/pressure/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/pressure/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/pressure/pressure-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/pressure/pressure-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/pressure/replay.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/small-layers/validation.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/study.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain-legacy.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain-plain.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain-pressure.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/legacy/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/legacy/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/legacy/production-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/legacy/production-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/plain/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/plain/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/pressure/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/pressure/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/pressure/pressure-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/pressure/pressure-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/pressure/replay.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/terrain/validation.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused-audit.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/plain.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/plain/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/plain/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/pressure.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/pressure/diagnostic-state-hashes.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/pressure/meta.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/pressure/pressure-trace.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/pressure/pressure-trace.npy: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/unfused/pressure/replay.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/gpu-tests-v1-nonfused-replay.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/gpu-tests-v2.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/gpu-tests-v3.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/linux-phase-tests.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/metadata-files.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/package-audit.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/package.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/phase-cpu.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/phase-decision.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/phase-decision.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/release-build-v2.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/release-build.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/retained-files.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/seed-json-smoke.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/seed-json-smoke.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source-snapshot.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source/Scripts/cuda/diagnose-phase.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source/Scripts/cuda/test_backend.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source/Scripts/cuda/test_phase_pressure.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source/Sources/BlastCore/FirstPhaseColumns.swift: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source/Sources/BlastCore/StructureTypes+GPU.swift: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source/Sources/SceneBench/FieldExport.swift: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/source/Tests/BlastCoreTests/FirstPhaseColumnsTests.swift: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/study-v1-init.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/study-v1.py.txt: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/study.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/study.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/unfused-controller.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/unfused.py: not code the map covers; by name
+  Scripts/cuda/diagnose-phase.py: not code the map covers; by name
+  Scripts/cuda/test_backend.py: not code the map covers; by name
+  Scripts/cuda/test_phase_pressure.py: not code the map covers; by name
+  Sources/BlastCore/FirstPhaseColumns.swift: 105 suites (a change outside any function: the whole file)
+  Sources/BlastCore/StructureTypes+GPU.swift: 179 suites (a change outside any function: the whole file)
+  Sources/SceneBench/FieldExport.swift: not in the map; by name
+  191 of 432 suites, about 79% of the suites' time in the map:
+    AfterburnLimitTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    AfterburningTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    AirModelTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    AirSolverGapTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    AnchorageTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    AppPreferencesTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    AutomaticCompanionPlacementTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    BareBarTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    BatchTimingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    BeamBenchmarkTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    BlastValidationTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    BodyContactTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    BondSlipTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    BoxGridDrawingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    BucklingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    BuildingEnvelopeTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CachedAddressGapTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ChamberTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ChargeDragTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CloseInSlabTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CloudOverlayTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CommandBufferTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CompanionPlacementTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CompletedRunCaptureTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ConcreteModelTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    CongestionTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ConsumerFanOutTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ConsumerPlacementTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CrackedHexGPUTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    CraterAppTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    CraterCooper1976Tests: not in the map
+    CraterTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    DeflagrationTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    DelayedChargeTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    DiscreteBarTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    DistrictChargeRunTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    EmbedmentTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopeComponentHistoryTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopeDoubtAppTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopeImportStudyTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopeInspectionTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopePaneCellTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopePickingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopeProjectTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopeVentingAppTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    EnvelopeVentingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ErrorBandTests: always
+    EvidentialStandingTests: always
+    ExperimentalRigidBoxTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ExperimentalRigidCarTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ExperimentalRigidStructureTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ExperimentalRigidWorldTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ExposurePlaneTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    FarFieldFacesTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    FireballRiseTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    FireballShapeTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    FirstPhaseColumnsTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file) …
+    FootingSlopeTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    FootingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    FragmentCloudTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    FragmentOverlayTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    FragmentStreamingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    FragmentVentingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    FrameConsumerTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    FrameExtractionTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    FrameTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    FreestandingObjectsTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    GaugeSolidCellTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    GlassSandia1998Tests: not in the map
+    GlazedOpeningTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    GravityTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    GroundShockOverlayTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    GroundShockRunTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    GroundShockTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    HeadlessRunOptionTests: reads Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/cuda-trace/result.json
+    HeadlessRunTests: reads Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/evidence/flat-half/cuda-trace/result.json; FirstPhaseColumns.swift: (outside any function: the whole file) …
+    IFCBatchReviewTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    IFCStructureImportTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    IFCStructureTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ImpactBenchmarkTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ImportedPartTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ImportedProjectSessionTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    InclinedJointTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    InclinedShellTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    InjuryFieldTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    InterfaceTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    KennyImpactTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    KernelRoundingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    LaminatedShellTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    LearnedFieldEncodingTests: not in the map
+    LearnedFieldOptionTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    LearnedFieldWeightsTests: not in the map
+    LocalCouplingRunFailureTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    MappedChargeTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    MappedStartGapTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    MasonryDebrisTestsTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    MasonryTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    MaterialRenderingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    MixedAfterburningTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    MixedStructureTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    MixingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ModelImportTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    MultiBodyEditorTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    MultiBodyProjectTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    MultiBodyTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    NassrSteelTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    NearbyWorkerTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    NeighborhoodProjectTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    NewDistrictTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    NonlocalCrackingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ObjectsBesideStructureTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    OccupantInjuryTests: not in the map
+    ParameterSweepExecutionTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    PartConnectionTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    PeopleInSceneTests: not in the map
+    PortalWarehouseTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    PrecastSeatTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ProfiledSheetTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ProjectDocumentTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ProjectSessionTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ProtectionPlannerTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    PunchingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    RadiativeCoolingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    RefinementCeilingGapTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    RefinementGapTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    RefinementLevelsTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    RefinementOwnStepsTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    RefinementTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    RemoteRunTests: not in the map
+    RenderExportTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    RenderLayoutTests: always
+    RubbleParticleTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    RunTimelineTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SavedRunRenameTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ScenarioTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SceneObjectTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SceneOwnershipEditingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SceneViewCodecTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SceneViewStateTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SectionalShearTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SettleTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ShearBeamBenchmarkTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ShellCouplingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ShellJointTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ShellPairsTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ShellResetTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ShellSolverGapTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ShellTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SimulationModelTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SlabBenchmarkTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SoftGroundConfigurationTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SoftGroundTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SolverCheckpointTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SolverMemoryTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    SolverVerificationTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    StabilityTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    StaleSafeBindingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    StandingFingerprintTests: always
+    StandingRunTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file) …
+    SteelConnectionTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    StillAirTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    StrainRateWindowTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    StructuralEditorWorkflowTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    StructureCouplingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    StructureCutCellsTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    StructureOnTerrainTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    StructureSolverGapTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    StructureSurfaceTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    StructureVerificationTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SupportConnectionTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    SweepWorkerTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    TerracedHousesTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    TerrainContactTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    TerrainCutCellTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    TerrainDrawingTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    TerrainGroundTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    TerrainTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ThermalOverlayTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ThermalRadiationTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ThicknessRuleTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ThinBlockTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    ThresholdRefinementRunTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    TiledCouplingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    TimberTests: StructureTypes+GPU.swift: (outside any function: the whole file)
+    TransportHubTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    UniformCUDAJobTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ViewportDrawingTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    VolumeGridsTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    WatchTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    WedgeReflectionTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+    ZeroLengthStepTests: FirstPhaseColumns.swift: (outside any function: the whole file); StructureTypes+GPU.swift: (outside any function: the whole file)
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 17 GB declared by the 2 held and the waiting against a budget of 26 GB
+  digests: 6 sets of blastbench digest (plain, recommended, mapped, refined, refined twice, terrain) on this branch's release build against the base f936940ccabe's, bit for bit, here under gpu-slot; the base's binary is to build (/Volumes/StudioData/bombcad/digest-cache/f936940ccabe8fab0d11e1f007e267525ba3303b)
+  BlastModel's 60 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+..........{"one": "pending"}
+.......ssss...............................job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 baseline 1.0
+.job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+....[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "running"}
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+.{"spill0": "pending", "spill1": "pending", "spill2": "pending", "spill3": "pending", "spill4": "pending", "spill5": "pending"}
+...
+----------------------------------------------------------------------
+Ran 75 tests in 11.471s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.072s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpn_rvmbjv/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmppt3erknr/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.005s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.033s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.663s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (18e5cf02d7), newest first:
+- 82b20a8 Third (A)
+- 2f35667 Second (A)
+
+### Full check: passed
+
+On 82b20a8806, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp5i5vxs95/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp5i5vxs95/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp5i5vxs95/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpry3vlnvi/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpry3vlnvi/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.302s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 1.048s
+
+OK
+python3 Scripts/test-ship.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 18.446s
+
+OK
+python3 Scripts/test-release-notes.py
+....E
+======================================================================
+ERROR: test_the_repository_fragments_are_well_formed (__main__.FragmentTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-release-notes.py", line 56, in test_the_repository_fragments_are_well_formed
+    notes.parse(path)
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/release-notes.py", line 29, in parse
+    raise ValueError(f"{path.name}: the first line must be 'kind: ' and one of {', '.join(KINDS)}")
+ValueError: production-pressure-traces.md: the first line must be 'kind: ' and one of added, changed, fixed, limitation
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.008s
+
+FAILED (errors=1)
+make[1]: *** [ci-test] Error 1
+check-affected: FAILED at make ci-test
+make: *** [check-affected] Error 2

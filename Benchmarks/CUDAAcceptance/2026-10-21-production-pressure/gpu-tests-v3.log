@@ -1,0 +1,29 @@
+Building for debugging...
+[Computing dependencies]
+[1 / 46] BombCAD-product
+[2 / 8] BlastCoreTests-product
+[4 / 10] BlastCoreTests-product
+[9 / 11] BlastCoreTests-product
+Build complete! (4.38 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "First-phase columns" started.
+◇ Test "Each column's first phase is the recorder's rule over its whole history" started.
+✔ Test "Each column's first phase is the recorder's rule over its whole history" passed after 0.108 seconds.
+◇ Test "Production diagnostics preserve batches, fields and recorder values to the bit" started.
+✔ Test "Production diagnostics preserve batches, fields and recorder values to the bit" passed after 0.054 seconds.
+◇ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" started.
+✔ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" passed after 2.562 seconds.
+◇ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" started.
+✔ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" passed after 0.036 seconds.
+◇ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" started.
+✔ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" passed after 0.018 seconds.
+◇ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" started.
+✔ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" passed after 0.021 seconds.
+◇ Test "Layers of columns each record as that layer alone would, and leave the run as it was" started.
+✔ Test "Layers of columns each record as that layer alone would, and leave the run as it was" passed after 0.063 seconds.
+◇ Test "Recording the columns leaves the run as it was, to the bit" started.
+✔ Test "Recording the columns leaves the run as it was, to the bit" passed after 0.044 seconds.
+✔ Suite "First-phase columns" passed after 2.910 seconds.
+✔ Test run with 8 tests in 1 suite passed after 2.910 seconds.

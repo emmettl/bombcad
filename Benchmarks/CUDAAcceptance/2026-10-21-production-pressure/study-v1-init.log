@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/private/tmp/bombcad-pressure/study.py", line 8, in <module>
+    exe=Path('.build/release/scenebench').resolve();slot=str(Path.home()/'.local/bin/gpu-slot');env=q.clean_env(dict(slotEnvironment={}))
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/field-queue.py", line 141, in clean_env
+    env['BOMBCAD_SOURCE_REVISION']=contract['revisionObservedAtInit']+('-dirty' if contract['worktreeDirtyAtInit'] else '')
+KeyError: 'revisionObservedAtInit'

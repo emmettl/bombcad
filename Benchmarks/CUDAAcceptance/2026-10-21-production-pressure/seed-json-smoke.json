@@ -1,0 +1,68 @@
+{
+  "status": "complete",
+  "scope": "Short JSON decimal seeds round back to float32 before replay; no GPU/solver experiment.",
+  "report": {
+    "columns": [
+      {
+        "column": 0,
+        "final": [
+          0.0,
+          0.10000000149011612,
+          0.10000000149011612,
+          0.10000000149011612,
+          0.10000000149011612,
+          1.0,
+          0.125,
+          0.125
+        ],
+        "transitions": [
+          {
+            "sample": 0,
+            "time": 0,
+            "values": [
+              0.0,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.10000000149011612,
+              0.10000000149011612,
+              1.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "float32Replay": {
+          "finalFirstPhaseImpulse": 0.10000000149011612,
+          "recorderValuesDifferent": 0,
+          "maxRecorderDifference": 0.0,
+          "closingSamples": []
+        },
+        "float32FusedReplay": {
+          "finalFirstPhaseImpulse": 0.10000000149011612,
+          "recorderValuesDifferent": 0,
+          "maxRecorderDifference": 0.0,
+          "closingSamples": []
+        },
+        "exactAccumulationPolicies": [
+          "separate",
+          "fused"
+        ],
+        "counterfactualAccumulation": "separate; fused replay is separately reported, not an instruction attestation",
+        "closingWindows": [],
+        "oneSampleZeroCounterfactuals": [],
+        "specifiedCounterfactual": null
+      }
+    ],
+    "samples": 2,
+    "fields": [
+      "overpressure",
+      "peak",
+      "allPositiveImpulse",
+      "firstPhaseImpulse",
+      "phasePeak",
+      "open",
+      "dt",
+      "batchTime"
+    ]
+  }
+}

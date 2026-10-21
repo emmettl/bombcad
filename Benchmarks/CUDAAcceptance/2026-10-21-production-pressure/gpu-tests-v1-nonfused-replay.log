@@ -1,0 +1,78 @@
+Another instance of SwiftPM (PID: 64781) is already running using '/Users/louisemmett/Developer/Projects/bombcad/.build', waiting until that process has finished execution...Building for debugging...
+[Computing dependencies]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[Starting]
+[1 / 1]
+[9 / 19] BlastModelTests-product
+[12 / 18] BlastCoreTests-product
+[14 / 20] BlastCoreTests-product
+[20 / 22] BlastCoreTests-product
+[22 / 24] BlastCoreTests-product
+Build complete! (5.68 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "First-phase columns" started.
+◇ Test "Each column's first phase is the recorder's rule over its whole history" started.
+✔ Test "Each column's first phase is the recorder's rule over its whole history" passed after 0.153 seconds.
+◇ Test "Production diagnostics preserve batches, fields and recorder values to the bit" started.
+✔ Test "Production diagnostics preserve batches, fields and recorder values to the bit" passed after 0.056 seconds.
+◇ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" started.
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [0.1171875, 4.1135958e-05, 4.1135958e-05, 0.1171875, 1.0]
+↳   Array(row[1...5]) → [0.1171875, 4.113596e-05, 4.113596e-05, 0.1171875, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [0.515625, 0.00019300633, 0.00019300633, 0.515625, 1.0]
+↳   Array(row[1...5]) → [0.515625, 0.00019300634, 0.00019300634, 0.515625, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [1831.9062, 0.91523445, 0.91523445, 1831.9062, 1.0]
+↳   Array(row[1...5]) → [1831.9062, 0.9152344, 0.9152344, 1831.9062, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [3747.2656, 1.91507, 1.91507, 3747.2656, 1.0]
+↳   Array(row[1...5]) → [3747.2656, 1.9150699, 1.9150699, 3747.2656, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [152.95312, 0.06570837, 0.06570837, 152.95312, 1.0]
+↳   Array(row[1...5]) → [152.95312, 0.06570838, 0.06570838, 152.95312, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [7154.539, 4.4832335, 4.4832335, 7154.539, 1.0]
+↳   Array(row[1...5]) → [7154.539, 4.483234, 4.483234, 7154.539, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [10373.219, 7.4929667, 7.4929667, 10373.219, 1.0]
+↳   Array(row[1...5]) → [10373.219, 7.492967, 7.492967, 10373.219, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [1.21875, 0.00045384283, 0.00045384283, 1.21875, 1.0]
+↳   Array(row[1...5]) → [1.21875, 0.0004538428, 0.0004538428, 1.21875, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [14.625, 0.006071627, 0.006071627, 14.625, 1.0]
+↳   Array(row[1...5]) → [14.625, 0.0060716267, 0.0060716267, 14.625, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:174:21: Expectation failed: record == Array(row[1...5])
+↳ record == Array(row[1...5]) → false
+↳   record → [693.6875, 0.3465355, 0.3465355, 693.6875, 1.0]
+↳   Array(row[1...5]) → [693.6875, 0.34653547, 0.34653547, 693.6875, 1.0]
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" failed after 4.626 seconds with 10 issues.
+◇ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" started.
+✔ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" passed after 0.023 seconds.
+◇ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" started.
+✔ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" passed after 0.019 seconds.
+◇ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" started.
+✔ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" passed after 0.023 seconds.
+◇ Test "Layers of columns each record as that layer alone would, and leave the run as it was" started.
+✔ Test "Layers of columns each record as that layer alone would, and leave the run as it was" passed after 0.085 seconds.
+◇ Test "Recording the columns leaves the run as it was, to the bit" started.
+✔ Test "Recording the columns leaves the run as it was, to the bit" passed after 0.057 seconds.
+✘ Suite "First-phase columns" failed after 5.047 seconds with 10 issues.
+↳ /// The first positive phase's impulse over each plan cell (`FirstPhaseColumns`, the field export's
+↳ /// `--first-phase` target).
+✘ Test run with 8 tests in 1 suite failed after 5.047 seconds with 10 issues.
+Note: Some test targets reported failures:
+  - BlastCoreTests (Swift Testing)

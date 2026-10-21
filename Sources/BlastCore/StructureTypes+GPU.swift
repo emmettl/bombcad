@@ -16,7 +16,7 @@ extension KernelMathMode {
 }
 
 extension ShaderLibrary {
-    static func make(device: MTLDevice) throws -> MTLLibrary {
+    static func make(device: MTLDevice, firstPhasePressure: Bool = false) throws -> MTLLibrary {
         let files = [
             "Solver", "SolverSweep", "SolverCutCells", "SolverCongestion", "SolverStep", "SolverEnvelopes",
             "SolverVenting", "SolverVisualization", "Refine", "Structure", "Rubble", "Shell", "BodyContact",
@@ -42,6 +42,7 @@ extension ShaderLibrary {
         // Contact's table and search are ContinuumKit's (`ContactSearchMetal`), compiled ahead of
         // the kernels that use them.
         source = try MetalContactSearch.functionSource() + "\n" + source
+        if firstPhasePressure { source = try addingFirstPhasePressureCapture(to: source) }
         if probe.statePadding > 0 {
             // Unused floats in the element state: a change to the source that alters no
             // arithmetic, to see what results a rebuild moves.
@@ -94,6 +95,46 @@ extension ShaderLibrary {
         let options = MTLCompileOptions()
         options.mathMode = mathMode.metal
         return try device.makeLibrary(source: source, options: options)
+    }
+
+    /// Only the explicit pressure diagnostic compiles this sibling. The ordinary source is unchanged.
+    /// A store can change compiler arithmetic; callers must verify plain/observed numerical parity.
+    static func addingFirstPhasePressureCapture(to source: String) throws -> String {
+        guard let start = source.range(of: "kernel void sampleFirstPhase("),
+            let end = source.range(of: "\n}", range: start.upperBound..<source.endIndex)
+        else { throw BlastError.missingShader("sampleFirstPhase for pressure capture") }
+        var kernel = String(source[start.lowerBound..<end.upperBound])
+        let position = "                             uint2 tid [[thread_position_in_grid]]) {"
+        guard kernel.components(separatedBy: position).count == 2 else {
+            throw BlastError.missingShader("sampleFirstPhase pressure diagnostic signature")
+        }
+        kernel = kernel.replacingOccurrences(
+            of: "kernel void sampleFirstPhase(", with: "kernel void sampleFirstPhasePressure(")
+        kernel = kernel.replacingOccurrences(
+            of: position,
+            with: """
+                                             const device uint *slots [[buffer(7)]],
+                                             device float *trace [[buffer(8)]],
+                """ + position)
+        kernel =
+            String(kernel.dropLast(2)) + """
+
+                    // Record the actual consumed p and resulting state, never a second pressure calculation.
+                    uint slot = slots[n];
+                    if (slot != 0) {
+                        uint offset = (slot - 1) * 16 + (parameters.z != 0 ? 0 : 8);
+                        trace[offset] = p;
+                        trace[offset + 1] = record.x;
+                        trace[offset + 2] = record.y;
+                        trace[offset + 3] = record.z;
+                        trace[offset + 4] = record.w;
+                        trace[offset + 5] = going;
+                        trace[offset + 6] = dt;
+                        trace[offset + 7] = control.batchTime;
+                    }
+                }
+                """
+        return source + "\n" + kernel + "\n"
     }
 
     /// `constants` with the terrain's cut cells compiled in.

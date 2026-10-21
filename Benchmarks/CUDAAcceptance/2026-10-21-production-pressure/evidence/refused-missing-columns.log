@@ -1,0 +1,4 @@
+Read 14 buildings in 0.00 s
+13 buildings placed (7 by height, 4 by levels, 2 assumed), 1 left out
+Swift/ErrorType.swift:254: Fatal error: Error raised at top level: Could not allocate --trace-pressure requires --trace-columns
+time: command terminated abnormally

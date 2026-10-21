@@ -224,5 +224,6 @@ The fixed set therefore stops before mixed-backlog calibration/timing. It is not
 by a selected passing subset, and concurrent Mac workloads make its incidental durations
 unsuitable as benchmarks. The earlier 12.5% queue result remains a repeated-reference
 backlog result. emmettl/bombcad-work#59 stays open for distinct-case integration;
-emmettl/bombcad-work#62 and emmettl/bombcad-work#79 track phase validation and the missing
-actual signed-pressure diagnostic. No training index, gate or default changes.
+emmettl/bombcad-work#79 now supplies the [controlled consumed-pressure diagnostic](../Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/summary.md).
+The new flat-case trace identifies closing-decision sensitivity, while emmettl/bombcad-work#62
+retains the phase-validation work. No training index, gate or default changes.

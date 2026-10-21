@@ -1,0 +1,59 @@
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": false,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2666,
+  "startTime": 0.004435765873659738,
+  "elapsedSimulationTime": 4.505564234103076,
+  "wallSeconds": 44.377994645008584,
+  "shape": [
+    512,
+    512,
+    59
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+    "trace_columns.py": "e62515bf87cea72146e23222ee62860b37b73343f3050391d82a43bb76bb31da"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "traceColumns": [
+    62902
+  ],
+  "diagnosticSourceSHA256": "8b48bac9aecb6d2458dae18ecc8b06314dc751400632211ca3fc330d7aa99746",
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 666,
+    "emptyIntervals": 0,
+    "minBoxCells": 144,
+    "maxBoxCells": 113400,
+    "meanBoxCells": 76814.07957957959
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 48.13373961301113,
+    "adjustedMonotonicSeconds": 48.133074586992734
+  },
+  "timings": {
+    "importsAndValidationSeconds": 2.278847843001131,
+    "compileSeconds": 0.19819987899973057,
+    "deviceSetupAndUploadSeconds": 0.6751751609990606,
+    "solverSeconds": 44.377994645008584,
+    "validationAndOutputSeconds": 0.6033725620072801,
+    "workerSecondsBeforeManifests": 48.13359540000965
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}

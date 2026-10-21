@@ -1,0 +1,41 @@
+{
+  "status": "complete",
+  "scope": "Offline single-sample closing-decision sensitivity; changes no flow, label policy or accepted dataset.",
+  "column": 62902,
+  "metal": {
+    "closingSample": 1558,
+    "time": 2.5300621522146685,
+    "consumedPressurePa": -0.0078125,
+    "finalFirstPhaseImpulse": 703.286865234375
+  },
+  "cuda": {
+    "pressureAtMetalClosingSample": 0.0078125,
+    "timeAtThatSample": 2.5300625132769534,
+    "closingSamples": [
+      1584
+    ],
+    "closingTimes": [
+      2.5759221820300633
+    ],
+    "closingPressures": [
+      -9.265625
+    ],
+    "finalFirstPhaseImpulse": 705.982666015625,
+    "pressureObservation": "Existing CUDA diagnostic recomputation with exact full-recorder replay and all12 baseline numeric files/dt byte-identical, not the new Metal in-kernel store."
+  },
+  "offlineCounterfactual": {
+    "sample": 1558,
+    "replacementPressure": -0.0078125,
+    "offlineOnly": true,
+    "finalFirstPhaseImpulse": 703.2847290039062,
+    "recorderValuesDifferent": 1135,
+    "maxRecorderDifference": 2.69793701171875,
+    "closingSamples": [
+      1558
+    ]
+  },
+  "originalImpulseDifference": 2.69580078125,
+  "counterfactualImpulseDifference": 0.00213623046875,
+  "unchangedGateTolerance": 1.45657373046875,
+  "admissionUnchanged": "The actual CUDA result stays rejected. This targeted sensitivity explains a closing-decision effect; it is neither a new threshold nor proof of the specific underlying floating-point instruction/physical phase."
+}

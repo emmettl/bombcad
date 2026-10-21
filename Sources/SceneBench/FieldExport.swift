@@ -6,7 +6,7 @@ import simd
 
 /// `scenebench field-export <district-scene's inputs> [--radius 1024] [--dx 4] [--height m]
 /// [--until s] [--above 2] [--edge 4] [--ground saturated] [--balloon] [--first-phase] [--id name]
-/// [--layout name] [--phase-timings] [--cuda-job --cuda-source generated.cu] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
+/// [--layout name] [--trace-columns indices --trace-pressure] [--phase-timings] [--cuda-job --cuda-source generated.cu] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
 /// district is laid out as `district-scene` lays it out, the air is run on the recommended
 /// configuration until the blast has passed the domain's corners, and the run's own peak
 /// overpressure and positive impulse fields are read at a fixed height above the ground on the
@@ -215,6 +215,26 @@ enum FieldExport {
             throw BlastError.allocationFailed(
                 "production --trace-columns requires --first-phase and excludes --cuda-job")
         }
+        let tracePressure = args.contains("--trace-pressure")
+        let diagnosticStateHashes = args.contains("--diagnostic-state-hashes")
+        guard !diagnosticStateHashes || !args.contains("--cuda-job") else {
+            throw BlastError.allocationFailed("--diagnostic-state-hashes requires a production run")
+        }
+        guard !tracePressure || value("trace-columns") != nil else {
+            throw BlastError.allocationFailed("--trace-pressure requires --trace-columns")
+        }
+        let pressureBudget: Int
+        if args.contains("--trace-pressure-max-samples") {
+            guard tracePressure, let text = value("trace-pressure-max-samples"), let count = Int(text),
+                (2...32768).contains(count)
+            else {
+                throw BlastError.allocationFailed(
+                    "--trace-pressure-max-samples needs --trace-pressure and 2–32768")
+            }
+            pressureBudget = count
+        } else {
+            pressureBudget = 32768
+        }
         let solverSetupStart = ContinuousClock.now
         phaseSeconds["scenePreparationSeconds"] = (solverSetupStart - timingStart) / .seconds(1)
         let solver = try BlastSolver(
@@ -240,7 +260,8 @@ enum FieldExport {
             guard traceIndices.count == parts.count else {
                 throw BlastError.allocationFailed("comma-separated integer trace columns")
             }
-            try solver.configureFirstPhaseDiagnostics(traceIndices)
+            try solver.configureFirstPhaseDiagnostics(
+                traceIndices, capturePressure: tracePressure, maxPressureSamples: pressureBudget)
         } else {
             traceIndices = []
         }
@@ -313,6 +334,8 @@ enum FieldExport {
             try writeTimings(folder: folder, mode: "cuda-prepare", solve: 0, outputStart: outputStart)
             return
         }
+        let initialStateHashes = diagnosticStateHashes ? solver.firstPhaseDiagnosticStateHashes() : nil
+        let initialDiagnosticTime = solver.time
         let start = ContinuousClock.now
         var steps = 0
         var stable = true
@@ -337,6 +360,7 @@ enum FieldExport {
         let wall = DistrictBenchmark.seconds(start)
         let outputStart = ContinuousClock.now
         print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
+        let pressureTrace = tracePressure ? try solver.firstPhasePressureTrace() : nil
         let folder = URL(filePath: out)
         try write(
             solver: solver, scene: scene, folder: folder, id: value("id") ?? folder.lastPathComponent,
@@ -347,7 +371,7 @@ enum FieldExport {
                 + (args.contains("--all-tiles-diagnostic") ? "; all-tiles diagnostic" : ""),
             ground: value("ground"), steps: steps, wallS: wall, stable: stable, arguments: args,
             levels: levels)
-        if !traceIndices.isEmpty {
+        if !traceIndices.isEmpty && !tracePressure {
             let samples = solver.firstPhaseDiagnosticSamples()
             try NPY.write(
                 samples.flatMap { $0.values.flatMap { $0 } },
@@ -367,6 +391,41 @@ enum FieldExport {
             ]
             try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
                 .write(to: folder.appending(path: "production-trace.json"))
+        }
+        if let initialStateHashes {
+            let info: [String: Any] = [
+                "format": "bombcad-field-state-hashes-1", "algorithm": "SHA256",
+                "scope":
+                    "complete coarse fluid, optional species, accumulated peak/impulse, mask and all first-phase buffers; excludes refinement/structural state",
+                "initial": initialStateHashes, "final": solver.firstPhaseDiagnosticStateHashes(),
+                "initialTime": initialDiagnosticTime, "finalTime": solver.time, "steps": solver.stepCount,
+            ]
+            try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
+                .write(to: folder.appending(path: "diagnostic-state-hashes.json"))
+        }
+        if let pressureTrace {
+            let samples = pressureTrace.samples
+            try NPY.write(
+                samples.flatMap { $0.values.flatMap { $0 } },
+                shape: [samples.count, traceIndices.count, 8],
+                to: folder.appending(path: "pressure-trace.npy"))
+            let info: [String: Any] = [
+                "format": "bombcad-production-pressure-trace-1",
+                "columns": pressureTrace.columns, "seedRecords": pressureTrace.seedRecords,
+                "steps": samples.map(\.step), "times": samples.map(\.time),
+                "fields": [
+                    "overpressure", "peak", "allPositiveImpulse", "firstPhaseImpulse",
+                    "phasePeak", "open", "dt", "batchTime",
+                ],
+                "sampling":
+                    "actual consumed pressure in an instrumented recorder; zero-dt initialization and active steps; normal logical batches preserved; verify plain/observer parity",
+                "maxSamples": pressureBudget, "complete": true,
+                "planShape": [solver.grid.ny, solver.grid.nx],
+                "layers": levels.isEmpty ? 1 : levels.count + 1,
+                "skipStillAir": configuration.skipStillAir,
+            ]
+            try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
+                .write(to: folder.appending(path: "pressure-trace.json"))
         }
         try writeTimings(folder: folder, mode: "metal", solve: wall, outputStart: outputStart)
         guard stable else { throw BlastError.allocationFailed("a stable run (written with stable: false)") }

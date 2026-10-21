@@ -1,0 +1,658 @@
+diff --git a/Scripts/cuda/diagnose-phase.py b/Scripts/cuda/diagnose-phase.py
+index 4b77ba41..6a382166 100644
+--- a/Scripts/cuda/diagnose-phase.py
++++ b/Scripts/cuda/diagnose-phase.py
+@@ -6,6 +6,8 @@ changes neither solver state nor an accepted target and is not a proposed rule.
+ """
+ import argparse
+ import array
++import ctypes
++import ctypes.util
+ import gzip
+ import json
+ import math
+@@ -19,10 +21,25 @@ def f32(value):
+     return struct.unpack('<f',struct.pack('<f',value))[0]
+ 
+ 
++def fused_sum(a,b,c):
++    # Native IEEE float32 FMA, not a double intermediate or a tolerance approximation.
++    if not hasattr(fused_sum,'function'):
++        library=ctypes.CDLL(ctypes.util.find_library('m'))
++        function=library.fmaf;function.argtypes=[ctypes.c_float]*3;function.restype=ctypes.c_float
++        fused_sum.function=function
++    return fused_sum.function(a,b,c)
++
++
+ def load(folder):
+-    folder=Path(folder);meta=json.loads((folder/'trace.json').read_text())
+-    if (folder/'trace.npy').exists():
+-        shape,data=npy(folder/'trace.npy')
++    folder=Path(folder)
++    pressure=(folder/'pressure-trace.json').exists()
++    if not pressure and not (folder/'trace.json').exists() and (folder/'production-trace.json').exists():
++        raise ValueError('recorder-only production trace has no consumed pressure to replay')
++    meta=json.loads((folder/('pressure-trace.json' if pressure else 'trace.json')).read_text())
++    if pressure and (meta.get('format')!='bombcad-production-pressure-trace-1' or meta.get('complete') is not True):
++        raise ValueError('complete versioned consumed-pressure trace required')
++    if pressure or (folder/'trace.npy').exists():
++        shape,data=npy(folder/('pressure-trace.npy' if pressure else 'trace.npy'))
+         if shape!=(len(meta['times']),len(meta['columns']),8):
+             raise ValueError('trace dimensions do not match metadata')
+     else:
+@@ -35,6 +52,24 @@ def load(folder):
+         raise ValueError('invalid or non-finite trace metadata/data')
+     if len(data)!=len(meta['times'])*len(meta['columns'])*8:
+         raise ValueError('trace data length mismatch')
++    if pressure:
++        seeds=meta.get('seedRecords')
++        if not isinstance(seeds,list) or len(seeds)!=len(meta['columns']) or any(
++                not isinstance(row,list) or len(row)!=5 or not all(isinstance(v,(int,float)) and math.isfinite(v) for v in row)
++                for row in seeds):
++            raise ValueError('finite five-field seeded recorder state required for each column')
++        try:meta['seedRecords']=[[f32(v) for v in row] for row in seeds]
++        except (OverflowError,struct.error) as error:raise ValueError('seed state must fit float32') from error
++        if not 1<=len(meta['columns'])<=64 or any(type(v) is not int or v<0 for v in meta['columns']) or len(meta['times'])>32768:
++            raise ValueError('bounded nonnegative consumed-pressure column indices and sample count required')
++        if meta.get('steps')!=list(range(len(meta['times']))) or len(set(meta['columns']))!=len(meta['columns']):
++            raise ValueError('distinct columns and consecutive initialized pressure samples required')
++        if any(data[q*8+6]!=0 for q in range(len(meta['columns']))) or any(
++                data[(step*len(meta['columns'])+q)*8+6]<=0
++                for step in range(1,len(meta['times'])) for q in range(len(meta['columns']))):
++            raise ValueError('zero-dt initialization followed by positive active dt required')
++        if any(b<=a for a,b in zip(meta['times'],meta['times'][1:])):
++            raise ValueError('pressure sample times must increase')
+     return meta,data
+ 
+ 
+@@ -48,13 +83,15 @@ def summarize(meta,data, overrides=None):
+             if r[5]!=last:
+                 transitions.append({'sample':step,'time':t,'values':r});last=r[5]
+         initial=row(0)
+-        def replay(zero_at=None, replacement=0.):
+-            x,y,z,w=initial[1:5];going=initial[5];different=0;maximum=0.
++        def replay(zero_at=None, replacement=0., fused=False):
++            consumed=meta.get('format')=='bombcad-production-pressure-trace-1'
++            x,y,z,w,going=meta['seedRecords'][q] if consumed else initial[1:6]
++            different=0;maximum=0.
+             closing=[]
+-            for step in range(1,len(meta['times'])):
++            for step in range(0 if consumed else 1,len(meta['times'])):
+                 r=row(step);p=replacement if step==zero_at else r[0];dt=r[6]
+-                if dt>0:
+-                    y=f32(y+f32(max(p,0.)*dt));x=max(x,p)
++                if dt>0 or (consumed and step==0):
++                    y=fused_sum(max(p,0.),dt,y) if fused else f32(y+f32(max(p,0.)*dt));x=max(x,p)
+                     if going:
+                         if p<0: going=0.;closing.append(step)
+                         else: z=y;w=max(w,p)
+@@ -64,6 +101,7 @@ def summarize(meta,data, overrides=None):
+             return {'finalFirstPhaseImpulse':z,'recorderValuesDifferent':different,
+                     'maxRecorderDifference':maximum,'closingSamples':closing}
+         normal=replay()
++        fused_normal=replay(fused=True) if meta.get('format')=='bombcad-production-pressure-trace-1' else None
+         windows=[];counterfactuals=[]
+         for t in transitions:
+             if t['sample'] and t['values'][5]==0:
+@@ -78,7 +116,11 @@ def summarize(meta,data, overrides=None):
+                 raise ValueError('invalid offline counterfactual sample/pressure')
+             specified={'sample':sample,'replacementPressure':pressure,'offlineOnly':True,**replay(sample,pressure)}
+         result.append({'column':column,'final':row(len(meta['times'])-1),'transitions':transitions,
+-                       'float32Replay':normal,'closingWindows':windows,
++                       'float32Replay':normal,'float32FusedReplay':fused_normal,
++                       'exactAccumulationPolicies':[name for name,value in [('separate',normal),('fused',fused_normal)]
++                                                    if value is not None and value['recorderValuesDifferent']==0],
++                       'counterfactualAccumulation':'separate; fused replay is separately reported, not an instruction attestation',
++                       'closingWindows':windows,
+                        'oneSampleZeroCounterfactuals':counterfactuals,'specifiedCounterfactual':specified})
+     return {'columns':result,'samples':len(meta['times']),'fields':meta['fields']}
+ 
+diff --git a/Scripts/cuda/test_backend.py b/Scripts/cuda/test_backend.py
+index 95c6930b..8e0b320e 100644
+--- a/Scripts/cuda/test_backend.py
++++ b/Scripts/cuda/test_backend.py
+@@ -10,6 +10,7 @@ import sys
+ from unittest.mock import patch
+ sys.path.insert(0,str(Path(__file__).resolve().parent))
+ from generate import generate
++from test_phase_pressure import PhasePressureTests
+ from fixtures import make
+ from job import validate,scalar_layout
+ from compare import compare
+diff --git a/Sources/BlastCore/FirstPhaseColumns.swift b/Sources/BlastCore/FirstPhaseColumns.swift
+index 09182410..9f1e611c 100644
+--- a/Sources/BlastCore/FirstPhaseColumns.swift
++++ b/Sources/BlastCore/FirstPhaseColumns.swift
+@@ -1,11 +1,12 @@
+ import BlastModel
++import CryptoKit
+ import Foundation
+ import Metal
+ import RadialBlast
+ import simd
+ 
+ /// Read-only production recorder and accumulated-field samples after an active step.
+-/// Diagnostic observation changes command-buffer splitting, never the batch boundaries or shaders.
++/// Recorder-only observation changes command-buffer splitting and preserves batches and shaders.
+ public struct FirstPhaseDiagnosticSample: Sendable {
+     public let step: Int
+     public let time: Double
+@@ -15,6 +16,45 @@ public struct FirstPhaseDiagnosticSample: Sendable {
+     public let values: [[Float]]
+ }
+ 
++/// Actual pressure consumed by an instrumented production recorder, followed by its resulting state.
++/// Fields: pressure, peak, all-positive impulse, first-phase impulse, phase peak, open, dt, batch time.
++public struct FirstPhasePressureSample: Sendable {
++    public let step: Int
++    public let time: Double
++    public let values: [[Float]]
++}
++
++public struct FirstPhasePressureTrace: Sendable {
++    public let columns: [Int]
++    /// Recorder peak, all-positive impulse, first-phase impulse, phase peak and open before initialization.
++    public let seedRecords: [[Float]]
++    /// Includes the zero-dt initialization, followed by active steps.
++    public let samples: [FirstPhasePressureSample]
++}
++
++final class FirstPhasePressureCapture {
++    let slots: MTLBuffer
++    let output: MTLBuffer
++    let pipeline: MTLComputePipelineState
++    let seeds: [[Float]]
++    let initialTime: Double
++    let maxSamples: Int
++    var samples: [FirstPhasePressureSample] = []
++    var overflow = false
++
++    init(
++        slots: MTLBuffer, output: MTLBuffer, pipeline: MTLComputePipelineState,
++        seeds: [[Float]], initialTime: Double, maxSamples: Int
++    ) {
++        self.slots = slots
++        self.output = output
++        self.pipeline = pipeline
++        self.seeds = seeds
++        self.initialTime = initialTime
++        self.maxSamples = maxSamples
++    }
++}
++
+ /// The first positive phase's impulse at a point over each plan cell, recorded as the run goes, by
+ /// the façade recorder's rule (`SurrogateBench.firstImpulse`, `HybridFarField.firstImpulse`): the
+ /// positive overpressure summed from the start until it first falls below nothing after reaching
+@@ -47,6 +87,7 @@ final class FirstPhaseColumns {
+     var diagnosticIndices: [Int] = []
+     var diagnosticSamples: [FirstPhaseDiagnosticSample] = []
+     let pipeline: MTLComputePipelineState
++    var pressureCapture: FirstPhasePressureCapture?
+ 
+     init(device: MTLDevice, library: MTLLibrary, grid: Grid, columns cells: [SIMD4<Float>]) throws {
+         nx = grid.nx
+@@ -73,9 +114,13 @@ final class FirstPhaseColumns {
+         reset()
+     }
+ 
+-    var memoryFootprint: Int { columns.length + records.length + open.length }
++    var memoryFootprint: Int {
++        columns.length + records.length + open.length
++            + (pressureCapture.map { $0.slots.length + $0.output.length } ?? 0)
++    }
+ 
+     func reset() {
++        pressureCapture = nil
+         diagnosticSamples.removeAll(keepingCapacity: true)
+         memset(records.contents(), 0, records.length)
+         memset(open.contents(), 0, open.length)
+@@ -154,18 +199,51 @@ extension BlastSolver {
+ 
+     /// Enables bounded-column host observation in the synchronous `advance` path. Each normal
+     /// batch is split into one-step command buffers; its control and clock are not reset between
+-    /// parts. No shader is added or recompiled. Samples may include sensitive model output.
+-    public func configureFirstPhaseDiagnostics(_ indices: [Int]) throws {
++    /// parts. `capturePressure` additionally compiles an instrumented recorder and retains at most
++    /// `maxPressureSamples` including initialization; overflow refuses a trace rather than truncating it.
++    /// Indices are flattened across export layers. Samples may include sensitive model output.
++    public func configureFirstPhaseDiagnostics(
++        _ indices: [Int], capturePressure: Bool = false, maxPressureSamples: Int = 32768
++    ) throws {
+         precondition(!batchInFlight && stepCount == 0, "Configure diagnostics before stepping")
+         guard let recorder = firstPhaseColumns, !indices.isEmpty, indices.count <= 64,
+             Set(indices).count == indices.count,
+-            indices.allSatisfy({ $0 >= 0 && $0 < recorder.nx * recorder.ny })
++            indices.allSatisfy({
++                $0 >= 0 && $0 < (capturePressure ? recorder.layers : 1) * recorder.nx * recorder.ny
++            })
+         else { throw BlastError.allocationFailed("1–64 distinct configured first-phase columns") }
+         let columns = recorder.columns.contents().bindMemory(
+-            to: SIMD4<Float>.self, capacity: recorder.nx * recorder.ny)
++            to: SIMD4<Float>.self, capacity: recorder.layers * recorder.nx * recorder.ny)
+         guard indices.allSatisfy({ columns[$0].w != 0 }) else {
+             throw BlastError.allocationFailed("diagnostics require enabled first-phase columns")
+         }
++        var capture: FirstPhasePressureCapture?
++        if capturePressure {
++            guard (2...32768).contains(maxPressureSamples),
++                let slots = device.makeBuffer(
++                    length: recorder.layers * recorder.nx * recorder.ny * MemoryLayout<UInt32>.stride,
++                    options: .storageModeShared),
++                let output = device.makeBuffer(
++                    length: indices.count * 16 * MemoryLayout<Float>.stride, options: .storageModeShared)
++            else { throw BlastError.allocationFailed("pressure trace buffers and a 2–32768 sample budget") }
++            memset(slots.contents(), 0, slots.length)
++            memset(output.contents(), 0, output.length)
++            let mapping = slots.contents().bindMemory(to: UInt32.self, capacity: slots.length / 4)
++            let count = recorder.layers * recorder.nx * recorder.ny
++            let records = recorder.records.contents().bindMemory(to: SIMD4<Float>.self, capacity: count)
++            let going = recorder.open.contents().bindMemory(to: Float.self, capacity: count)
++            let seeds = indices.enumerated().map { q, n -> [Float] in
++                mapping[n] = UInt32(q + 1)
++                let r = records[n]
++                return [r.x, r.y, r.z, r.w, going[n]]
++            }
++            let observedLibrary = try ShaderLibrary.make(device: device, firstPhasePressure: true)
++            capture = FirstPhasePressureCapture(
++                slots: slots, output: output,
++                pipeline: try ShaderLibrary.pipeline("sampleFirstPhasePressure", in: observedLibrary),
++                seeds: seeds, initialTime: time, maxSamples: maxPressureSamples)
++        }
++        recorder.pressureCapture = capture
+         recorder.diagnosticIndices = indices
+         recorder.diagnosticSamples.removeAll(keepingCapacity: true)
+     }
+@@ -175,6 +253,40 @@ extension BlastSolver {
+         return firstPhaseColumns?.diagnosticSamples ?? []
+     }
+ 
++    /// Explicit diagnostic readback of complete coarse fluid and first-phase buffers; no GPU pass.
++    /// Excludes refinement/structural state. Ordinary runs never call this or allocate hash storage.
++    public func firstPhaseDiagnosticStateHashes() -> [String: String] {
++        precondition(!batchInFlight, "Wait for the batch before hashing diagnostic state")
++        var buffers = [
++            "state": stateBuffers[current], "peak": peakBuffer,
++            "impulse": impulseBuffer, "mask": maskBuffer,
++        ]
++        if hasSpecies { buffers["species"] = speciesBuffers[current] }
++        if let recorder = firstPhaseColumns {
++            buffers["firstPhaseColumns"] = recorder.columns
++            buffers["firstPhaseRecords"] = recorder.records
++            buffers["firstPhaseOpen"] = recorder.open
++        }
++        return buffers.mapValues { buffer in
++            var hash = SHA256()
++            hash.update(bufferPointer: UnsafeRawBufferPointer(start: buffer.contents(), count: buffer.length))
++            return hash.finalize().map { String(format: "%02x", $0) }.joined()
++        }
++    }
++
++    public func firstPhasePressureTrace() throws -> FirstPhasePressureTrace {
++        precondition(!batchInFlight, "Wait for the batch before reading pressure diagnostics")
++        guard let recorder = firstPhaseColumns, let capture = recorder.pressureCapture else {
++            throw BlastError.allocationFailed("pressure capture was not configured")
++        }
++        guard !capture.overflow, !capture.samples.isEmpty else {
++            throw BlastError.allocationFailed("a complete pressure trace within its sample budget")
++        }
++        return FirstPhasePressureTrace(
++            columns: recorder.diagnosticIndices,
++            seedRecords: capture.seeds, samples: capture.samples)
++    }
++
+     /// Called only after a command buffer completed; a logical batch may still be in flight.
+     func collectFirstPhaseDiagnostics() {
+         guard let recorder = firstPhaseColumns, !recorder.diagnosticIndices.isEmpty else { return }
+@@ -182,18 +294,44 @@ extension BlastSolver {
+         guard control.dt > 0 else { return }
+         let step = stepCount + Int(control.activeSteps)
+         guard recorder.diagnosticSamples.last?.step != step else { return }
++        if let capture = recorder.pressureCapture {
++            if capture.samples.count >= capture.maxSamples {
++                capture.overflow = true
++                return
++            }
++            let output = capture.output.contents().bindMemory(
++                to: Float.self,
++                capacity: recorder.diagnosticIndices.count * 16)
++            func values(_ offset: Int) -> [[Float]] {
++                recorder.diagnosticIndices.indices.map { q in
++                    Array(UnsafeBufferPointer(start: output + q * 16 + offset, count: 8))
++                }
++            }
++            if capture.samples.isEmpty {
++                capture.samples.append(
++                    FirstPhasePressureSample(step: 0, time: capture.initialTime, values: values(0)))
++            }
++            if capture.samples.count >= capture.maxSamples {
++                capture.overflow = true
++                return
++            }
++            capture.samples.append(
++                FirstPhasePressureSample(
++                    step: step, time: Double(control.clock) / 1_099_511_627_776, values: values(8)))
++        }
+         let records = recorder.records.contents().bindMemory(
+-            to: SIMD4<Float>.self, capacity: recorder.nx * recorder.ny)
+-        let open = recorder.open.contents().bindMemory(to: Float.self, capacity: recorder.nx * recorder.ny)
++            to: SIMD4<Float>.self, capacity: recorder.layers * recorder.nx * recorder.ny)
++        let open = recorder.open.contents().bindMemory(
++            to: Float.self, capacity: recorder.layers * recorder.nx * recorder.ny)
+         let columns = recorder.columns.contents().bindMemory(
+-            to: SIMD4<Float>.self, capacity: recorder.nx * recorder.ny)
++            to: SIMD4<Float>.self, capacity: recorder.layers * recorder.nx * recorder.ny)
+         let peak = peakBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+         let impulse = impulseBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+         let plan = recorder.nx * recorder.ny
+         let values = recorder.diagnosticIndices.map { n -> [Float] in
+             let c = columns[n]
+-            let lo = n + plan * Int(c.x)
+-            let hi = n + plan * Int(c.y)
++            let lo = n % plan + plan * Int(c.x)
++            let hi = n % plan + plan * Int(c.y)
+             let r = records[n]
+             return [
+                 r.x, r.y, r.z, r.w, open[n],
+@@ -211,13 +349,17 @@ extension BlastSolver {
+         guard let recorder = firstPhaseColumns else { return }
+         var uniforms = makeUniforms()
+         var parameters = SIMD4<UInt32>(UInt32(recorder.nx), UInt32(recorder.ny), initial ? 1 : 0, 0)
+-        encoder.setComputePipelineState(recorder.pipeline)
++        encoder.setComputePipelineState(recorder.pressureCapture?.pipeline ?? recorder.pipeline)
+         encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+         encoder.setBuffer(controlBuffer, offset: 0, index: 1)
+         encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
+         encoder.setBytes(&parameters, length: 16, index: 6)
+         let plan = recorder.nx * recorder.ny
+         for layer in 0..<recorder.layers {
++            if let capture = recorder.pressureCapture {
++                encoder.setBuffer(capture.slots, offset: layer * plan * MemoryLayout<UInt32>.stride, index: 7)
++                encoder.setBuffer(capture.output, offset: 0, index: 8)
++            }
+             encoder.setBuffer(
+                 recorder.columns, offset: layer * plan * MemoryLayout<SIMD4<Float>>.stride, index: 2)
+             encoder.setBuffer(
+diff --git a/Sources/BlastCore/StructureTypes+GPU.swift b/Sources/BlastCore/StructureTypes+GPU.swift
+index 9a711ed2..e990a388 100644
+--- a/Sources/BlastCore/StructureTypes+GPU.swift
++++ b/Sources/BlastCore/StructureTypes+GPU.swift
+@@ -16,7 +16,7 @@ extension KernelMathMode {
+ }
+ 
+ extension ShaderLibrary {
+-    static func make(device: MTLDevice) throws -> MTLLibrary {
++    static func make(device: MTLDevice, firstPhasePressure: Bool = false) throws -> MTLLibrary {
+         let files = [
+             "Solver", "SolverSweep", "SolverCutCells", "SolverCongestion", "SolverStep", "SolverEnvelopes",
+             "SolverVenting", "SolverVisualization", "Refine", "Structure", "Rubble", "Shell", "BodyContact",
+@@ -42,6 +42,7 @@ extension ShaderLibrary {
+         // Contact's table and search are ContinuumKit's (`ContactSearchMetal`), compiled ahead of
+         // the kernels that use them.
+         source = try MetalContactSearch.functionSource() + "\n" + source
++        if firstPhasePressure { source = try addingFirstPhasePressureCapture(to: source) }
+         if probe.statePadding > 0 {
+             // Unused floats in the element state: a change to the source that alters no
+             // arithmetic, to see what results a rebuild moves.
+@@ -96,6 +97,46 @@ extension ShaderLibrary {
+         return try device.makeLibrary(source: source, options: options)
+     }
+ 
++    /// Only the explicit pressure diagnostic compiles this sibling. The ordinary source is unchanged.
++    /// A store can change compiler arithmetic; callers must verify plain/observed numerical parity.
++    static func addingFirstPhasePressureCapture(to source: String) throws -> String {
++        guard let start = source.range(of: "kernel void sampleFirstPhase("),
++            let end = source.range(of: "\n}", range: start.upperBound..<source.endIndex)
++        else { throw BlastError.missingShader("sampleFirstPhase for pressure capture") }
++        var kernel = String(source[start.lowerBound..<end.upperBound])
++        let position = "                             uint2 tid [[thread_position_in_grid]]) {"
++        guard kernel.components(separatedBy: position).count == 2 else {
++            throw BlastError.missingShader("sampleFirstPhase pressure diagnostic signature")
++        }
++        kernel = kernel.replacingOccurrences(
++            of: "kernel void sampleFirstPhase(", with: "kernel void sampleFirstPhasePressure(")
++        kernel = kernel.replacingOccurrences(
++            of: position,
++            with: """
++                                             const device uint *slots [[buffer(7)]],
++                                             device float *trace [[buffer(8)]],
++                """ + position)
++        kernel =
++            String(kernel.dropLast(2)) + """
++
++                    // Record the actual consumed p and resulting state, never a second pressure calculation.
++                    uint slot = slots[n];
++                    if (slot != 0) {
++                        uint offset = (slot - 1) * 16 + (parameters.z != 0 ? 0 : 8);
++                        trace[offset] = p;
++                        trace[offset + 1] = record.x;
++                        trace[offset + 2] = record.y;
++                        trace[offset + 3] = record.z;
++                        trace[offset + 4] = record.w;
++                        trace[offset + 5] = going;
++                        trace[offset + 6] = dt;
++                        trace[offset + 7] = control.batchTime;
++                    }
++                }
++                """
++        return source + "\n" + kernel + "\n"
++    }
++
+     /// `constants` with the terrain's cut cells compiled in.
+     static func withCutCells(_ constants: MTLFunctionConstantValues) -> MTLFunctionConstantValues {
+         var on = true
+diff --git a/Sources/SceneBench/FieldExport.swift b/Sources/SceneBench/FieldExport.swift
+index 0a2112ca..ff8aca61 100644
+--- a/Sources/SceneBench/FieldExport.swift
++++ b/Sources/SceneBench/FieldExport.swift
+@@ -6,7 +6,7 @@ import simd
+ 
+ /// `scenebench field-export <district-scene's inputs> [--radius 1024] [--dx 4] [--height m]
+ /// [--until s] [--above 2] [--edge 4] [--ground saturated] [--balloon] [--first-phase] [--id name]
+-/// [--layout name] [--phase-timings] [--cuda-job --cuda-source generated.cu] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
++/// [--layout name] [--trace-columns indices --trace-pressure] [--phase-timings] [--cuda-job --cuda-source generated.cu] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
+ /// district is laid out as `district-scene` lays it out, the air is run on the recommended
+ /// configuration until the blast has passed the domain's corners, and the run's own peak
+ /// overpressure and positive impulse fields are read at a fixed height above the ground on the
+@@ -215,6 +215,26 @@ enum FieldExport {
+             throw BlastError.allocationFailed(
+                 "production --trace-columns requires --first-phase and excludes --cuda-job")
+         }
++        let tracePressure = args.contains("--trace-pressure")
++        let diagnosticStateHashes = args.contains("--diagnostic-state-hashes")
++        guard !diagnosticStateHashes || !args.contains("--cuda-job") else {
++            throw BlastError.allocationFailed("--diagnostic-state-hashes requires a production run")
++        }
++        guard !tracePressure || value("trace-columns") != nil else {
++            throw BlastError.allocationFailed("--trace-pressure requires --trace-columns")
++        }
++        let pressureBudget: Int
++        if args.contains("--trace-pressure-max-samples") {
++            guard tracePressure, let text = value("trace-pressure-max-samples"), let count = Int(text),
++                (2...32768).contains(count)
++            else {
++                throw BlastError.allocationFailed(
++                    "--trace-pressure-max-samples needs --trace-pressure and 2–32768")
++            }
++            pressureBudget = count
++        } else {
++            pressureBudget = 32768
++        }
+         let solverSetupStart = ContinuousClock.now
+         phaseSeconds["scenePreparationSeconds"] = (solverSetupStart - timingStart) / .seconds(1)
+         let solver = try BlastSolver(
+@@ -240,7 +260,8 @@ enum FieldExport {
+             guard traceIndices.count == parts.count else {
+                 throw BlastError.allocationFailed("comma-separated integer trace columns")
+             }
+-            try solver.configureFirstPhaseDiagnostics(traceIndices)
++            try solver.configureFirstPhaseDiagnostics(
++                traceIndices, capturePressure: tracePressure, maxPressureSamples: pressureBudget)
+         } else {
+             traceIndices = []
+         }
+@@ -313,6 +334,8 @@ enum FieldExport {
+             try writeTimings(folder: folder, mode: "cuda-prepare", solve: 0, outputStart: outputStart)
+             return
+         }
++        let initialStateHashes = diagnosticStateHashes ? solver.firstPhaseDiagnosticStateHashes() : nil
++        let initialDiagnosticTime = solver.time
+         let start = ContinuousClock.now
+         var steps = 0
+         var stable = true
+@@ -337,6 +360,7 @@ enum FieldExport {
+         let wall = DistrictBenchmark.seconds(start)
+         let outputStart = ContinuousClock.now
+         print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
++        let pressureTrace = tracePressure ? try solver.firstPhasePressureTrace() : nil
+         let folder = URL(filePath: out)
+         try write(
+             solver: solver, scene: scene, folder: folder, id: value("id") ?? folder.lastPathComponent,
+@@ -347,7 +371,7 @@ enum FieldExport {
+                 + (args.contains("--all-tiles-diagnostic") ? "; all-tiles diagnostic" : ""),
+             ground: value("ground"), steps: steps, wallS: wall, stable: stable, arguments: args,
+             levels: levels)
+-        if !traceIndices.isEmpty {
++        if !traceIndices.isEmpty && !tracePressure {
+             let samples = solver.firstPhaseDiagnosticSamples()
+             try NPY.write(
+                 samples.flatMap { $0.values.flatMap { $0 } },
+@@ -368,6 +392,41 @@ enum FieldExport {
+             try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
+                 .write(to: folder.appending(path: "production-trace.json"))
+         }
++        if let initialStateHashes {
++            let info: [String: Any] = [
++                "format": "bombcad-field-state-hashes-1", "algorithm": "SHA256",
++                "scope":
++                    "complete coarse fluid, optional species, accumulated peak/impulse, mask and all first-phase buffers; excludes refinement/structural state",
++                "initial": initialStateHashes, "final": solver.firstPhaseDiagnosticStateHashes(),
++                "initialTime": initialDiagnosticTime, "finalTime": solver.time, "steps": solver.stepCount,
++            ]
++            try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
++                .write(to: folder.appending(path: "diagnostic-state-hashes.json"))
++        }
++        if let pressureTrace {
++            let samples = pressureTrace.samples
++            try NPY.write(
++                samples.flatMap { $0.values.flatMap { $0 } },
++                shape: [samples.count, traceIndices.count, 8],
++                to: folder.appending(path: "pressure-trace.npy"))
++            let info: [String: Any] = [
++                "format": "bombcad-production-pressure-trace-1",
++                "columns": pressureTrace.columns, "seedRecords": pressureTrace.seedRecords,
++                "steps": samples.map(\.step), "times": samples.map(\.time),
++                "fields": [
++                    "overpressure", "peak", "allPositiveImpulse", "firstPhaseImpulse",
++                    "phasePeak", "open", "dt", "batchTime",
++                ],
++                "sampling":
++                    "actual consumed pressure in an instrumented recorder; zero-dt initialization and active steps; normal logical batches preserved; verify plain/observer parity",
++                "maxSamples": pressureBudget, "complete": true,
++                "planShape": [solver.grid.ny, solver.grid.nx],
++                "layers": levels.isEmpty ? 1 : levels.count + 1,
++                "skipStillAir": configuration.skipStillAir,
++            ]
++            try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
++                .write(to: folder.appending(path: "pressure-trace.json"))
++        }
+         try writeTimings(folder: folder, mode: "metal", solve: wall, outputStart: outputStart)
+         guard stable else { throw BlastError.allocationFailed("a stable run (written with stable: false)") }
+     }
+diff --git a/Tests/BlastCoreTests/FirstPhaseColumnsTests.swift b/Tests/BlastCoreTests/FirstPhaseColumnsTests.swift
+index c419ad1c..43cbfc88 100644
+--- a/Tests/BlastCoreTests/FirstPhaseColumnsTests.swift
++++ b/Tests/BlastCoreTests/FirstPhaseColumnsTests.swift
+@@ -108,6 +108,93 @@ struct FirstPhaseColumnsTests {
+         #expect(plain.firstPhaseDiagnosticSamples().isEmpty)
+     }
+ 
++    @Test("Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids")
++    func consumedPressure() throws {
++        for mapped in [false, true] {
++            func make() throws -> BlastSolver {
++                let scenario = Scenario(
++                    name: "Pressure trace", domainSize: SIMD3(7.5, 8.5, 4.5),
++                    boxes: [], charge: Charge(mass: 1, position: SIMD3(2, 4, 0)))
++                return try BlastSolver(
++                    device: #require(MTLCreateSystemDefaultDevice()), scenario: scenario,
++                    cellSize: 0.5,
++                    configuration: mapped ? .recommended : .recommended.balloonStart)
++            }
++            let plain = try make()
++            let legacy = try make()
++            let observed = try make()
++            let plan = plain.grid.nx * plain.grid.ny
++            let cells =
++                Array(repeating: SIMD4<Float>(1, 2, 0.25, 1), count: plan)
++                + Array(repeating: SIMD4<Float>(3, 4, 0.5, 1), count: plan)
++            for solver in [plain, legacy, observed] { try solver.configureFirstPhaseColumns(cells) }
++            let nearCharge = 4 + plain.grid.nx * 8
++            let indices = [nearCharge, plan - 1, plan + nearCharge, 2 * plan - 1]
++            try legacy.configureFirstPhaseDiagnostics(Array(indices.prefix(2)))
++            try observed.configureFirstPhaseDiagnostics(indices, capturePressure: true)
++            #expect(plain.firstPhaseColumns?.pressureCapture == nil)
++            #expect(legacy.firstPhaseColumns?.pressureCapture == nil)
++            for solver in [plain, legacy, observed] {
++                let result = solver.advance(until: 0.006)
++                #expect(result.isStable && result.steps > 0)
++            }
++            #expect(plain.stateDigest() == observed.stateDigest())
++            #expect(plain.firstPhaseDiagnosticStateHashes() == observed.firstPhaseDiagnosticStateHashes())
++            #expect(plain.firstPhaseDiagnosticStateHashes() == legacy.firstPhaseDiagnosticStateHashes())
++            #expect(plain.stateDigest() == legacy.stateDigest())
++            #expect(plain.firstPhaseSnapshot() == observed.firstPhaseSnapshot())
++            #expect(plain.firstPhaseSnapshot() == legacy.firstPhaseSnapshot())
++            let trace = try observed.firstPhasePressureTrace()
++            #expect(trace.columns == indices)
++            if mapped { #expect(trace.seedRecords.contains { $0[1] > 0 }) }
++            #expect(trace.samples.count == observed.stepCount + 1)
++            #expect(trace.samples.first?.step == 0)
++            #expect(trace.samples.first?.values.allSatisfy { $0[6] == 0 } == true)
++            let old = legacy.firstPhaseDiagnosticSamples()
++            let new = observed.firstPhaseDiagnosticSamples()
++            #expect(old.map(\.step) == new.map(\.step))
++            #expect(old.map(\.values) == new.map { Array($0.values.prefix(2)) })
++            for (q, _) in indices.enumerated() {
++                var record = trace.seedRecords[q]
++                for sample in trace.samples {
++                    let row = sample.values[q]
++                    let pressure = row[0]
++                    let dt = row[6]
++                    record[1] = record[1].addingProduct(max(pressure, 0), dt)
++                    record[0] = max(record[0], pressure)
++                    if record[4] != 0 {
++                        if pressure < 0 {
++                            record[4] = 0
++                        } else {
++                            record[2] = record[1]
++                            record[3] = max(record[3], pressure)
++                        }
++                    }
++                    if pressure > 0 && record[3] < 0.5 * record[0] {
++                        record[2] = record[1]
++                        record[3] = pressure
++                        record[4] = 1
++                    }
++                    #expect(record == Array(row[1...5]))
++                }
++            }
++        }
++    }
++
++    @Test("Pressure capture refuses budget overflow and never exposes a truncated complete trace")
++    func pressureBudget() throws {
++        let observed = try solver()
++        try observed.configureFirstPhaseColumns(columns(observed))
++        #expect(throws: BlastError.self) {
++            try observed.configureFirstPhaseDiagnostics([17], capturePressure: true, maxPressureSamples: 1)
++        }
++        try observed.configureFirstPhaseDiagnostics([17], capturePressure: true, maxPressureSamples: 2)
++        let result = observed.advance(steps: 3)
++        #expect(result.isStable && result.steps == 3)
++        #expect(observed.firstPhaseColumns?.pressureCapture?.samples.count == 2)
++        #expect(throws: BlastError.self) { try observed.firstPhasePressureTrace() }
++    }
++
+     @Test("Disabled columns cannot expose invalid cell indices to host diagnostics")
+     func disabledDiagnosticColumn() throws {
+         let observed = try solver()

@@ -1,0 +1,11 @@
+"""Offline single-sample closing-decision sensitivity; changes no flow, label policy or accepted dataset."""
+from pathlib import Path
+import importlib.util,json,sys
+repo=Path.cwd();sys.path.insert(0,str(repo/'Scripts/cuda'));s=importlib.util.spec_from_file_location('phase',repo/'Scripts/cuda/diagnose-phase.py');phase=importlib.util.module_from_spec(s);s.loader.exec_module(phase)
+root=Path('/Volumes/StudioData/bombcad/experiments/2026-10-21-production-pressure-v2');mm,md=phase.load(root/'flat-half/pressure');cm,cd=phase.load(root/'flat-half/cuda-trace')
+m=phase.summarize(mm,md)['columns'][0];c=phase.summarize(cm,cd)['columns'][0]
+assert mm['columns']==cm['columns']==[62902];assert m['float32FusedReplay']['recorderValuesDifferent']==0 and c['float32Replay']['recorderValuesDifferent']==0
+sample=m['float32FusedReplay']['closingSamples'][0];pressure=md[sample*8];counter=phase.summarize(cm,cd,{62902:(sample,pressure)})['columns'][0]['specifiedCounterfactual']
+original=m['float32FusedReplay']['finalFirstPhaseImpulse'];cuda=c['float32Replay']['finalFirstPhaseImpulse']
+report=dict(status='complete',scope=__doc__,column=62902,metal=dict(closingSample=sample,time=mm['times'][sample],consumedPressurePa=pressure,finalFirstPhaseImpulse=original),cuda=dict(pressureAtMetalClosingSample=cd[sample*8],timeAtThatSample=cm['times'][sample],closingSamples=c['float32Replay']['closingSamples'],closingTimes=[cm['times'][i] for i in c['float32Replay']['closingSamples']],closingPressures=[cd[i*8] for i in c['float32Replay']['closingSamples']],finalFirstPhaseImpulse=cuda,pressureObservation='Existing CUDA diagnostic recomputation with exact full-recorder replay and all12 baseline numeric files/dt byte-identical, not the new Metal in-kernel store.'),offlineCounterfactual=counter,originalImpulseDifference=abs(cuda-original),counterfactualImpulseDifference=abs(counter['finalFirstPhaseImpulse']-original),unchangedGateTolerance=.05+.002*abs(original),admissionUnchanged='The actual CUDA result stays rejected. This targeted sensitivity explains a closing-decision effect; it is neither a new threshold nor proof of the specific underlying floating-point instruction/physical phase.')
+(root/'phase-decision.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))

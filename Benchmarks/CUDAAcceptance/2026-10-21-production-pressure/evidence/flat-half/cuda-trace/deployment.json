@@ -1,0 +1,20 @@
+{
+  "host": "bombcad-pc",
+  "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/2f48aad6c37b4130838d61c7d354a2d4",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "retrievalMode": "diagnostics",
+  "inputFileBytes": 589043160,
+  "returnedFileBytes": 151128,
+  "timings": {
+    "generateAndValidateSeconds": 0.495808625,
+    "remoteDirectorySeconds": 0.47494933299999986,
+    "workerUploadSeconds": 1.4635280419999999,
+    "inputUploadSeconds": 23.193430125,
+    "remoteProcessSeconds": 49.473092957999995,
+    "retrievalSeconds": 3.862955332999988,
+    "returnedProvenanceValidationSeconds": 0.0037229999999937036
+  },
+  "totalSecondsBeforeReceipt": 79.295116666,
+  "otherLocalSeconds": 0.3276292500000153,
+  "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+}

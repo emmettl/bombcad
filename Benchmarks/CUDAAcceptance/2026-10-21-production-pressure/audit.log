@@ -1,0 +1,320 @@
+{
+  "status": "complete",
+  "scope": "Independent post-run file, state, history and arithmetic audit; no GPU execution.",
+  "allOwnedCommandGroupsTerminal": true,
+  "successfulCommands": 12,
+  "expectedRefusals": 3,
+  "datasetArrayInstancesVerified": 42,
+  "datasetArrayBytesVerified": 94985472,
+  "defaultGeneratedCUDASourceUnchanged": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "allCasesPassParity": true,
+  "allThreeHistoricalReferencesMatch": true,
+  "bothArchivedRecorderHistoriesMatch": true,
+  "cases": [
+    {
+      "case": "small-layers",
+      "archivedRecorderTraceBytesAndClocksMatch": null,
+      "arraysBitIdentical": true,
+      "initialFinalCompleteCoarseStateHashesMatch": true,
+      "recorderHistoryBitIdentical": true,
+      "historicalArraysBitIdentical": null,
+      "activeSteps": 55,
+      "pressureColumns": [
+        830,
+        1505,
+        3482,
+        5778,
+        7956
+      ],
+      "wholeTraceExactAccumulationPolicies": [
+        "fused"
+      ],
+      "closures": [
+        {
+          "column": 830,
+          "events": [],
+          "finalFirstPhaseImpulse": 100.18814086914062
+        },
+        {
+          "column": 1505,
+          "events": [
+            {
+              "sample": 45,
+              "time": 0.0662653197068721,
+              "actualConsumedPressurePa": -401.7734375,
+              "recorder": [
+                8052.6875,
+                147.24465942382812,
+                147.24465942382812,
+                8052.6875,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 147.24465942382812
+        },
+        {
+          "column": 3482,
+          "events": [
+            {
+              "sample": 21,
+              "time": 0.02960133191663772,
+              "actualConsumedPressurePa": -1560.171875,
+              "recorder": [
+                20943.71875,
+                289.10723876953125,
+                289.10723876953125,
+                20943.71875,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 289.10723876953125
+        },
+        {
+          "column": 5778,
+          "events": [
+            {
+              "sample": 31,
+              "time": 0.045055614435113966,
+              "actualConsumedPressurePa": -219.359375,
+              "recorder": [
+                7828.5,
+                104.25440979003906,
+                104.25440979003906,
+                7828.5,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 104.25440979003906
+        },
+        {
+          "column": 7956,
+          "events": [],
+          "finalFirstPhaseImpulse": 43.881614685058594
+        }
+      ]
+    },
+    {
+      "case": "terrain",
+      "archivedRecorderTraceBytesAndClocksMatch": true,
+      "arraysBitIdentical": true,
+      "initialFinalCompleteCoarseStateHashesMatch": true,
+      "recorderHistoryBitIdentical": true,
+      "historicalArraysBitIdentical": true,
+      "activeSteps": 2708,
+      "pressureColumns": [
+        134058,
+        250097
+      ],
+      "wholeTraceExactAccumulationPolicies": [
+        "fused"
+      ],
+      "closures": [
+        {
+          "column": 134058,
+          "events": [
+            {
+              "sample": 1259,
+              "time": 2.0381508487917017,
+              "actualConsumedPressurePa": -13.109375,
+              "recorder": [
+                3326.1640625,
+                426.4053649902344,
+                426.4053649902344,
+                3326.1640625,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 426.4053649902344
+        },
+        {
+          "column": 250097,
+          "events": [
+            {
+              "sample": 1650,
+              "time": 2.702128566306783,
+              "actualConsumedPressurePa": -27.28125,
+              "recorder": [
+                1757.6640625,
+                225.71926879882812,
+                225.71926879882812,
+                1757.6640625,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 225.71926879882812
+        }
+      ]
+    },
+    {
+      "case": "beirut",
+      "archivedRecorderTraceBytesAndClocksMatch": true,
+      "arraysBitIdentical": true,
+      "initialFinalCompleteCoarseStateHashesMatch": true,
+      "recorderHistoryBitIdentical": true,
+      "historicalArraysBitIdentical": true,
+      "activeSteps": 2477,
+      "pressureColumns": [
+        159267,
+        159777,
+        159779,
+        164452,
+        200270,
+        255969
+      ],
+      "wholeTraceExactAccumulationPolicies": [
+        "fused"
+      ],
+      "closures": [
+        {
+          "column": 159267,
+          "events": [
+            {
+              "sample": 1449,
+              "time": 2.5989041647844715,
+              "actualConsumedPressurePa": -4.4765625,
+              "recorder": [
+                5835.109375,
+                1000.5726928710938,
+                1000.5726928710938,
+                5835.109375,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 1000.5726928710938
+        },
+        {
+          "column": 159777,
+          "events": [
+            {
+              "sample": 1463,
+              "time": 2.6247793013899354,
+              "actualConsumedPressurePa": -4.859375,
+              "recorder": [
+                5730.8671875,
+                990.2112426757812,
+                990.2112426757812,
+                5730.8671875,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 990.2112426757812
+        },
+        {
+          "column": 159779,
+          "events": [
+            {
+              "sample": 1450,
+              "time": 2.600751406906056,
+              "actualConsumedPressurePa": -7.1640625,
+              "recorder": [
+                5827.1171875,
+                998.5888061523438,
+                998.5888061523438,
+                5827.1171875,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 998.5888061523438
+        },
+        {
+          "column": 164452,
+          "events": [
+            {
+              "sample": 1071,
+              "time": 1.9077660151961027,
+              "actualConsumedPressurePa": -27.1640625,
+              "recorder": [
+                9269.921875,
+                1345.8580322265625,
+                1345.8580322265625,
+                9269.921875,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 1345.8580322265625
+        },
+        {
+          "column": 200270,
+          "events": [
+            {
+              "sample": 1416,
+              "time": 2.538027097514714,
+              "actualConsumedPressurePa": -1.15625,
+              "recorder": [
+                6979.0546875,
+                1032.393310546875,
+                1032.393310546875,
+                6979.0546875,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 1032.393310546875
+        },
+        {
+          "column": 255969,
+          "events": [
+            {
+              "sample": 2022,
+              "time": 3.656500318364124,
+              "actualConsumedPressurePa": -0.078125,
+              "recorder": [
+                3923.65625,
+                634.6305541992188,
+                634.6305541992188,
+                3923.65625,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 634.6305541992188
+        }
+      ]
+    },
+    {
+      "case": "flat-half",
+      "archivedRecorderTraceBytesAndClocksMatch": null,
+      "arraysBitIdentical": true,
+      "initialFinalCompleteCoarseStateHashesMatch": true,
+      "recorderHistoryBitIdentical": true,
+      "historicalArraysBitIdentical": true,
+      "activeSteps": 2666,
+      "pressureColumns": [
+        62902
+      ],
+      "wholeTraceExactAccumulationPolicies": [
+        "fused"
+      ],
+      "closures": [
+        {
+          "column": 62902,
+          "events": [
+            {
+              "sample": 1558,
+              "time": 2.5300621522146685,
+              "actualConsumedPressurePa": -0.0078125,
+              "recorder": [
+                5102.265625,
+                703.286865234375,
+                703.286865234375,
+                5102.265625,
+                0.0
+              ]
+            }
+          ],
+          "finalFirstPhaseImpulse": 703.286865234375
+        }
+      ]
+    }
+  ],
+  "limits": "Hashes cover complete coarse fluid/species, accumulated fields, mask and first-phase buffers; not structural/refinement state. Compatible arithmetic is not emitted-instruction attestation. Instrumented consumed pressure with matched outputs is not a proof that every unobserved intermediate of an uninstrumented binary is identical. No physical validation or admission-policy change."
+}

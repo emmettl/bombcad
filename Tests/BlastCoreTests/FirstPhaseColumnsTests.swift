@@ -108,6 +108,93 @@ struct FirstPhaseColumnsTests {
         #expect(plain.firstPhaseDiagnosticSamples().isEmpty)
     }
 
+    @Test("Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids")
+    func consumedPressure() throws {
+        for mapped in [false, true] {
+            func make() throws -> BlastSolver {
+                let scenario = Scenario(
+                    name: "Pressure trace", domainSize: SIMD3(7.5, 8.5, 4.5),
+                    boxes: [], charge: Charge(mass: 1, position: SIMD3(2, 4, 0)))
+                return try BlastSolver(
+                    device: #require(MTLCreateSystemDefaultDevice()), scenario: scenario,
+                    cellSize: 0.5,
+                    configuration: mapped ? .recommended : .recommended.balloonStart)
+            }
+            let plain = try make()
+            let legacy = try make()
+            let observed = try make()
+            let plan = plain.grid.nx * plain.grid.ny
+            let cells =
+                Array(repeating: SIMD4<Float>(1, 2, 0.25, 1), count: plan)
+                + Array(repeating: SIMD4<Float>(3, 4, 0.5, 1), count: plan)
+            for solver in [plain, legacy, observed] { try solver.configureFirstPhaseColumns(cells) }
+            let nearCharge = 4 + plain.grid.nx * 8
+            let indices = [nearCharge, plan - 1, plan + nearCharge, 2 * plan - 1]
+            try legacy.configureFirstPhaseDiagnostics(Array(indices.prefix(2)))
+            try observed.configureFirstPhaseDiagnostics(indices, capturePressure: true)
+            #expect(plain.firstPhaseColumns?.pressureCapture == nil)
+            #expect(legacy.firstPhaseColumns?.pressureCapture == nil)
+            for solver in [plain, legacy, observed] {
+                let result = solver.advance(until: 0.006)
+                #expect(result.isStable && result.steps > 0)
+            }
+            #expect(plain.stateDigest() == observed.stateDigest())
+            #expect(plain.firstPhaseDiagnosticStateHashes() == observed.firstPhaseDiagnosticStateHashes())
+            #expect(plain.firstPhaseDiagnosticStateHashes() == legacy.firstPhaseDiagnosticStateHashes())
+            #expect(plain.stateDigest() == legacy.stateDigest())
+            #expect(plain.firstPhaseSnapshot() == observed.firstPhaseSnapshot())
+            #expect(plain.firstPhaseSnapshot() == legacy.firstPhaseSnapshot())
+            let trace = try observed.firstPhasePressureTrace()
+            #expect(trace.columns == indices)
+            if mapped { #expect(trace.seedRecords.contains { $0[1] > 0 }) }
+            #expect(trace.samples.count == observed.stepCount + 1)
+            #expect(trace.samples.first?.step == 0)
+            #expect(trace.samples.first?.values.allSatisfy { $0[6] == 0 } == true)
+            let old = legacy.firstPhaseDiagnosticSamples()
+            let new = observed.firstPhaseDiagnosticSamples()
+            #expect(old.map(\.step) == new.map(\.step))
+            #expect(old.map(\.values) == new.map { Array($0.values.prefix(2)) })
+            for (q, _) in indices.enumerated() {
+                var record = trace.seedRecords[q]
+                for sample in trace.samples {
+                    let row = sample.values[q]
+                    let pressure = row[0]
+                    let dt = row[6]
+                    record[1] = record[1].addingProduct(max(pressure, 0), dt)
+                    record[0] = max(record[0], pressure)
+                    if record[4] != 0 {
+                        if pressure < 0 {
+                            record[4] = 0
+                        } else {
+                            record[2] = record[1]
+                            record[3] = max(record[3], pressure)
+                        }
+                    }
+                    if pressure > 0 && record[3] < 0.5 * record[0] {
+                        record[2] = record[1]
+                        record[3] = pressure
+                        record[4] = 1
+                    }
+                    #expect(record == Array(row[1...5]))
+                }
+            }
+        }
+    }
+
+    @Test("Pressure capture refuses budget overflow and never exposes a truncated complete trace")
+    func pressureBudget() throws {
+        let observed = try solver()
+        try observed.configureFirstPhaseColumns(columns(observed))
+        #expect(throws: BlastError.self) {
+            try observed.configureFirstPhaseDiagnostics([17], capturePressure: true, maxPressureSamples: 1)
+        }
+        try observed.configureFirstPhaseDiagnostics([17], capturePressure: true, maxPressureSamples: 2)
+        let result = observed.advance(steps: 3)
+        #expect(result.isStable && result.steps == 3)
+        #expect(observed.firstPhaseColumns?.pressureCapture?.samples.count == 2)
+        #expect(throws: BlastError.self) { try observed.firstPhasePressureTrace() }
+    }
+
     @Test("Disabled columns cannot expose invalid cell indices to host diagnostics")
     func disabledDiagnosticColumn() throws {
         let observed = try solver()

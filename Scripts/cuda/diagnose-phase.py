@@ -6,6 +6,8 @@ changes neither solver state nor an accepted target and is not a proposed rule.
 """
 import argparse
 import array
+import ctypes
+import ctypes.util
 import gzip
 import json
 import math
@@ -19,10 +21,25 @@ def f32(value):
     return struct.unpack('<f',struct.pack('<f',value))[0]
 
 
+def fused_sum(a,b,c):
+    # Native IEEE float32 FMA, not a double intermediate or a tolerance approximation.
+    if not hasattr(fused_sum,'function'):
+        library=ctypes.CDLL(ctypes.util.find_library('m'))
+        function=library.fmaf;function.argtypes=[ctypes.c_float]*3;function.restype=ctypes.c_float
+        fused_sum.function=function
+    return fused_sum.function(a,b,c)
+
+
 def load(folder):
-    folder=Path(folder);meta=json.loads((folder/'trace.json').read_text())
-    if (folder/'trace.npy').exists():
-        shape,data=npy(folder/'trace.npy')
+    folder=Path(folder)
+    pressure=(folder/'pressure-trace.json').exists()
+    if not pressure and not (folder/'trace.json').exists() and (folder/'production-trace.json').exists():
+        raise ValueError('recorder-only production trace has no consumed pressure to replay')
+    meta=json.loads((folder/('pressure-trace.json' if pressure else 'trace.json')).read_text())
+    if pressure and (meta.get('format')!='bombcad-production-pressure-trace-1' or meta.get('complete') is not True):
+        raise ValueError('complete versioned consumed-pressure trace required')
+    if pressure or (folder/'trace.npy').exists():
+        shape,data=npy(folder/('pressure-trace.npy' if pressure else 'trace.npy'))
         if shape!=(len(meta['times']),len(meta['columns']),8):
             raise ValueError('trace dimensions do not match metadata')
     else:
@@ -35,6 +52,24 @@ def load(folder):
         raise ValueError('invalid or non-finite trace metadata/data')
     if len(data)!=len(meta['times'])*len(meta['columns'])*8:
         raise ValueError('trace data length mismatch')
+    if pressure:
+        seeds=meta.get('seedRecords')
+        if not isinstance(seeds,list) or len(seeds)!=len(meta['columns']) or any(
+                not isinstance(row,list) or len(row)!=5 or not all(isinstance(v,(int,float)) and math.isfinite(v) for v in row)
+                for row in seeds):
+            raise ValueError('finite five-field seeded recorder state required for each column')
+        try:meta['seedRecords']=[[f32(v) for v in row] for row in seeds]
+        except (OverflowError,struct.error) as error:raise ValueError('seed state must fit float32') from error
+        if not 1<=len(meta['columns'])<=64 or any(type(v) is not int or v<0 for v in meta['columns']) or len(meta['times'])>32768:
+            raise ValueError('bounded nonnegative consumed-pressure column indices and sample count required')
+        if meta.get('steps')!=list(range(len(meta['times']))) or len(set(meta['columns']))!=len(meta['columns']):
+            raise ValueError('distinct columns and consecutive initialized pressure samples required')
+        if any(data[q*8+6]!=0 for q in range(len(meta['columns']))) or any(
+                data[(step*len(meta['columns'])+q)*8+6]<=0
+                for step in range(1,len(meta['times'])) for q in range(len(meta['columns']))):
+            raise ValueError('zero-dt initialization followed by positive active dt required')
+        if any(b<=a for a,b in zip(meta['times'],meta['times'][1:])):
+            raise ValueError('pressure sample times must increase')
     return meta,data
 
 
@@ -48,13 +83,15 @@ def summarize(meta,data, overrides=None):
             if r[5]!=last:
                 transitions.append({'sample':step,'time':t,'values':r});last=r[5]
         initial=row(0)
-        def replay(zero_at=None, replacement=0.):
-            x,y,z,w=initial[1:5];going=initial[5];different=0;maximum=0.
+        def replay(zero_at=None, replacement=0., fused=False):
+            consumed=meta.get('format')=='bombcad-production-pressure-trace-1'
+            x,y,z,w,going=meta['seedRecords'][q] if consumed else initial[1:6]
+            different=0;maximum=0.
             closing=[]
-            for step in range(1,len(meta['times'])):
+            for step in range(0 if consumed else 1,len(meta['times'])):
                 r=row(step);p=replacement if step==zero_at else r[0];dt=r[6]
-                if dt>0:
-                    y=f32(y+f32(max(p,0.)*dt));x=max(x,p)
+                if dt>0 or (consumed and step==0):
+                    y=fused_sum(max(p,0.),dt,y) if fused else f32(y+f32(max(p,0.)*dt));x=max(x,p)
                     if going:
                         if p<0: going=0.;closing.append(step)
                         else: z=y;w=max(w,p)
@@ -64,6 +101,7 @@ def summarize(meta,data, overrides=None):
             return {'finalFirstPhaseImpulse':z,'recorderValuesDifferent':different,
                     'maxRecorderDifference':maximum,'closingSamples':closing}
         normal=replay()
+        fused_normal=replay(fused=True) if meta.get('format')=='bombcad-production-pressure-trace-1' else None
         windows=[];counterfactuals=[]
         for t in transitions:
             if t['sample'] and t['values'][5]==0:
@@ -78,7 +116,11 @@ def summarize(meta,data, overrides=None):
                 raise ValueError('invalid offline counterfactual sample/pressure')
             specified={'sample':sample,'replacementPressure':pressure,'offlineOnly':True,**replay(sample,pressure)}
         result.append({'column':column,'final':row(len(meta['times'])-1),'transitions':transitions,
-                       'float32Replay':normal,'closingWindows':windows,
+                       'float32Replay':normal,'float32FusedReplay':fused_normal,
+                       'exactAccumulationPolicies':[name for name,value in [('separate',normal),('fused',fused_normal)]
+                                                    if value is not None and value['recorderValuesDifferent']==0],
+                       'counterfactualAccumulation':'separate; fused replay is separately reported, not an instruction attestation',
+                       'closingWindows':windows,
                        'oneSampleZeroCounterfactuals':counterfactuals,'specifiedCounterfactual':specified})
     return {'columns':result,'samples':len(meta['times']),'fields':meta['fields']}
 

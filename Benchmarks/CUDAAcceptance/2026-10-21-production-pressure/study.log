@@ -1,0 +1,4 @@
+small-layers parity True replay ['fused']
+terrain parity True replay ['fused']
+beirut parity True replay ['fused']
+flat-half parity True replay ['fused']

@@ -10,6 +10,7 @@ import sys
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from generate import generate
+from test_phase_pressure import PhasePressureTests
 from fixtures import make
 from job import validate,scalar_layout
 from compare import compare

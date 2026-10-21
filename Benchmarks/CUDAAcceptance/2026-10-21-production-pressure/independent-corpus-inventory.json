@@ -1,0 +1,273 @@
+{
+  "status": "complete",
+  "scope": "Read-only corpus availability/provenance inventory; not weak-load or physical phase validation.",
+  "histories": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/kb-surface-burst-free-field--100kg.csv",
+      "exists": true,
+      "sha256": "c1259d9740407318daea5bcc4d3195772f53ec53c37d6b05da17bf00a9fe1c49",
+      "receiptMatches": true,
+      "header": [
+        "case",
+        "run",
+        "gauge",
+        "time_s",
+        "overpressure_Pa"
+      ],
+      "firstRow": [
+        "kb-surface-burst-free-field",
+        "100kg",
+        "Z0.75",
+        "0.0",
+        "1.4551915228366852e-11"
+      ],
+      "rowsAfterHeader": 82672,
+      "gauges": {
+        "Z0.75": {
+          "samples": 10334,
+          "minPressurePa": -100521.19299568167,
+          "peakPressurePa": 2832021.7312410935,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 8180
+        },
+        "Z1": {
+          "samples": 10334,
+          "minPressurePa": -34939.91693123603,
+          "peakPressurePa": 1601052.6332842764,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 8201
+        },
+        "Z1.5": {
+          "samples": 10334,
+          "minPressurePa": -33691.608161493394,
+          "peakPressurePa": 588584.150778659,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 8134
+        },
+        "Z2": {
+          "samples": 10334,
+          "minPressurePa": -28790.378067094978,
+          "peakPressurePa": 285649.0596003146,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 8046
+        },
+        "Z3": {
+          "samples": 10334,
+          "minPressurePa": -19685.7122046922,
+          "peakPressurePa": 113804.24500503406,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 7541
+        },
+        "Z4": {
+          "samples": 10334,
+          "minPressurePa": -14608.660339860464,
+          "peakPressurePa": 64441.566908469365,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 6253
+        },
+        "Z5": {
+          "samples": 10334,
+          "minPressurePa": -11508.781091924917,
+          "peakPressurePa": 43283.99837951112,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 4931
+        },
+        "Z6": {
+          "samples": 10334,
+          "minPressurePa": -9451.837880021398,
+          "peakPressurePa": 32224.1591828402,
+          "firstTime": 0.0,
+          "lastTime": 0.1,
+          "maxGap": 1.5206478642671752e-05,
+          "negativeSamples": 3581
+        }
+      }
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.25kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--0.25kg-m3.csv",
+      "exists": true,
+      "sha256": "5aed713b0df462bf2754ee7d68309479e5cfa57f9d022f5b5ef9999c3d337d25",
+      "receiptMatches": true,
+      "header": [
+        "case",
+        "run",
+        "gauge",
+        "time_s",
+        "overpressure_Pa"
+      ],
+      "firstRow": [
+        "ufc-closed-room-gas-pressure",
+        "0.25kg-m3",
+        "room",
+        "0.0",
+        "418399.99999999977"
+      ],
+      "rowsAfterHeader": 27316,
+      "gauges": {
+        "room": {
+          "samples": 27316,
+          "minPressurePa": 94928.64443782272,
+          "peakPressurePa": 419370.44124741544,
+          "firstTime": 0.0,
+          "lastTime": 0.12,
+          "maxGap": 1.3032409231786106e-05,
+          "negativeSamples": 0
+        }
+      }
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.5kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--0.5kg-m3.csv",
+      "exists": true,
+      "sha256": "8f9fa2971e2f185fca892c717e465b9d48dba8328df887dc63c1f458c3872352",
+      "receiptMatches": true,
+      "header": [
+        "case",
+        "run",
+        "gauge",
+        "time_s",
+        "overpressure_Pa"
+      ],
+      "firstRow": [
+        "ufc-closed-room-gas-pressure",
+        "0.5kg-m3",
+        "room",
+        "0.0",
+        "836800.0000000002"
+      ],
+      "rowsAfterHeader": 33158,
+      "gauges": {
+        "room": {
+          "samples": 33158,
+          "minPressurePa": 194026.1558396737,
+          "peakPressurePa": 838165.6743527395,
+          "firstTime": 0.0,
+          "lastTime": 0.12,
+          "maxGap": 9.996100561036891e-06,
+          "negativeSamples": 0
+        }
+      }
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "1kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--1kg-m3.csv",
+      "exists": true,
+      "sha256": "dbd8bcdf65bb43b8bd921d0d9dd1d7c3c3ed7436e30d9847914317184d53bb70",
+      "receiptMatches": true,
+      "header": [
+        "case",
+        "run",
+        "gauge",
+        "time_s",
+        "overpressure_Pa"
+      ],
+      "firstRow": [
+        "ufc-closed-room-gas-pressure",
+        "1kg-m3",
+        "room",
+        "0.0",
+        "1673600.0"
+      ],
+      "rowsAfterHeader": 35346,
+      "gauges": {
+        "room": {
+          "samples": 35346,
+          "minPressurePa": 394454.84781290847,
+          "peakPressurePa": 1675828.1660871909,
+          "firstTime": 0.0,
+          "lastTime": 0.12,
+          "maxGap": 7.154970266142055e-06,
+          "negativeSamples": 0
+        }
+      }
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "2kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--2kg-m3.csv",
+      "exists": true,
+      "sha256": "8698b1849114c0d86582fd51f9e1b8d103f57fe69d1470cdc63a3c7b65cc99b5",
+      "receiptMatches": true,
+      "header": [
+        "case",
+        "run",
+        "gauge",
+        "time_s",
+        "overpressure_Pa"
+      ],
+      "firstRow": [
+        "ufc-closed-room-gas-pressure",
+        "2kg-m3",
+        "room",
+        "0.0",
+        "3347200.0000000005"
+      ],
+      "rowsAfterHeader": 33741,
+      "gauges": {
+        "room": {
+          "samples": 33741,
+          "minPressurePa": 799551.7905578172,
+          "peakPressurePa": 3352088.9042901774,
+          "firstTime": 0.0,
+          "lastTime": 0.12,
+          "maxGap": 6.264321163474253e-06,
+          "negativeSamples": 0
+        }
+      }
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "4kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--4kg-m3.csv",
+      "exists": true,
+      "sha256": "bccd956cc604a3d3e086830d4ada302fc6aea358e563b78e9f15f28d96b77393",
+      "receiptMatches": true,
+      "header": [
+        "case",
+        "run",
+        "gauge",
+        "time_s",
+        "overpressure_Pa"
+      ],
+      "firstRow": [
+        "ufc-closed-room-gas-pressure",
+        "4kg-m3",
+        "room",
+        "0.0",
+        "6694399.999999997"
+      ],
+      "rowsAfterHeader": 25543,
+      "gauges": {
+        "room": {
+          "samples": 25543,
+          "minPressurePa": 1606926.2378185557,
+          "peakPressurePa": 6700674.003233514,
+          "firstTime": 0.0,
+          "lastTime": 0.12,
+          "maxGap": 6.737092546440712e-06,
+          "negativeSamples": 0
+        }
+      }
+    }
+  ]
+}

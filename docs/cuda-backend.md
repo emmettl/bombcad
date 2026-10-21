@@ -541,8 +541,9 @@ all input hashes; it does not admit data or select a policy.
 uses the previously recorded pressure histories only. At 101,325 Pa, float32 ambient spacing is
 0.0078125 Pa. A probe band of eight spacings (0.0625 Pa) reduces four large between-backend
 impulse spreads from 9.27, 39.29, 101.06 and 7.54 Pa s to below 0.01 Pa s. Three smaller spreads
-remain. Actual production pressure is absent from the recorder-only fifth-point trace, so its
-new label cannot be reconstructed by this sweep. These columns were preselected because they
+remain. That sweep lacked actual production pressure at the recorder-only fifth point, so
+it could not reconstruct that point’s new label. The consumed-pressure controls below now
+fill the observation gap without selecting a new phase policy. These columns were preselected because they
 disagreed; this is not held-out/full-field validation, and ambient spacing is not a proven total
 pressure-error bound.
 
@@ -752,8 +753,56 @@ controls pass; every peak/total-impulse gate passes. Plain/snapshot exports are 
 portable physical initial buffers agree for all three. This does not diagnose the new
 receiver's mechanism or establish physical correctness of either label.
 
-Production traces currently retain recorder/accumulated fields rather than the actual
-signed pressure consumed inside `sampleFirstPhase`. emmettl/bombcad-work#79 tracks an opt-in
-in-kernel observation with explicit plain/observer parity, initial-state and replay gates.
-Host reconstruction or recorder-only traces cannot substitute for this near-zero pressure
-evidence. emmettl/bombcad-work#62 remains open; no phase definition or admission rule changes.
+The [consumed-pressure controls](../Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/summary.md)
+complete emmettl/bombcad-work#79’s diagnostic prerequisite. Plain/recorder-only/pressure modes
+preserve arrays, initial/final coarse state and histories, including archived terrain/Beirut
+trace bytes. At flat receiver 62902, Metal consumes −0.0078125 Pa and closes at step 1558;
+CUDA’s diagnostic pressure is +0.0078125 Pa and closes at 1584. An offline one-sample
+replacement reduces the impulse discrepancy from 2.6958 to 0.00214 Pa s, without changing
+flow or accepted results. This isolates closing-decision sensitivity, not an emitted
+instruction or a justified replacement rule. emmettl/bombcad-work#62 remains open.
+
+
+## Consumed-pressure diagnostics
+
+`field-export --first-phase --trace-columns INDICES --trace-pressure` records the signed
+pressure actually consumed by an instrumented sibling of `sampleFirstPhase`, with the
+resulting recorder state. This differs from recomputing pressure later from the grid.
+Ordinary exports retain their original shader source and allocate no pressure buffers.
+The diagnostic compiles a sibling from the unchanged recorder body, adds stores for at most
+64 selected receivers, and preserves normal logical batches. Indices in pressure mode are
+flattened across the base plan and any `--levels` / `--roof` layers, in export order.
+
+Pressure mode writes `pressure-trace.json` / `pressure-trace.npy` with format
+`bombcad-production-pressure-trace-1`. Fields are consumed overpressure, peak, all-positive
+impulse, first-phase impulse, phase peak, open, dt and batch time. Metadata includes the
+seeded recorder values before initialization; the first sample is the actual zero-dt
+initialization. Recorder-only `--trace-columns` retains its existing first-layer format.
+`--trace-pressure-max-samples N` sets a 2–32768 budget, including initialization (default
+32768). Exhausting it refuses export before writing a dataset; no truncated history is
+marked complete.
+
+`--diagnostic-state-hashes` separately records initial/final SHA-256 hashes of complete
+coarse fluid/species, peak/impulse, mask and all first-phase buffers, plus times and step
+count. It adds host readback only when explicitly requested and excludes refinement and
+structural state. Use it on ordinary and observed controls alongside exact exported-array
+and recorder-history comparisons. A pressure store may alter compiler arithmetic; a
+complete trace alone does not establish parity with an uninstrumented run.
+
+`python3 Scripts/cuda/diagnose-phase.py EXPORT --out NEW-SUMMARY.json` accepts the new pressure
+format and refuses recorder-only traces as pressure. It normalizes JSON seeds to float32,
+replays zero-dt initialization and every active state, and reports separate multiply/add and
+native float32 fused accumulation independently. `exactAccumulationPolicies` identifies
+models matching every recorded state for each column; use one compatible policy for the
+whole trace. These are arithmetic compatibility checks, not emitted-instruction attestation.
+The existing one-sample counterfactuals remain explicitly separate-accumulation sensitivity
+probes. This diagnostic introduces no phase-rule, comparison or dataset-admission change.
+
+
+The [four-case control matrix](../Benchmarks/CUDAAcceptance/2026-10-21-production-pressure/summary.md)
+verifies exact state/array/history parity and a single compatible fused replay across each
+default history; a small explicit contract-off pair verifies separate-operation replay.
+All three full references and both archived recorder histories match exactly. Beirut receiver
+255969 now has an instrumented consumed-pressure history under those parity controls, closing
+at −0.078125 Pa. Source/trace receipts, refusal controls and the separate CUDA whole-file parity
+check are retained. The actual half-mass CUDA case stays rejected; no new phase rule is adopted.

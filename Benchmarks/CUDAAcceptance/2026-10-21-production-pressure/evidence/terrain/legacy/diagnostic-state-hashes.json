@@ -1,0 +1,28 @@
+{
+  "algorithm" : "SHA256",
+  "final" : {
+    "firstPhaseColumns" : "44f8b5846bbbe9556678f60b8b34d9da9f2836bea1c4a989867b7d846b9787d3",
+    "firstPhaseOpen" : "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+    "firstPhaseRecords" : "1f6338393e823f8749ea5ae49f8a4032059c5ecf43c57a34e5920ba2d4079bca",
+    "impulse" : "a5b6386f8fc24e85985d25c993166db49e439bd9a14c6f8e522c096f7d3812b0",
+    "mask" : "c37f686c3cbf09caf9d0ccb6a3d1fc05d65f8e18f589fdd0a4d9b88bb721cd67",
+    "peak" : "4c10d25bb17d17b95a025ebbded38c2301477cba7bbf15408c20570adcd3c955",
+    "species" : "095257ba69e2bef0387293054b846775031ff92315ce1a7bf1ad4fb94677703d",
+    "state" : "bff81b6f15b6c42fa4da6efb411868c057bdac196875ce7d36975c5c9fecec3e"
+  },
+  "finalTime" : 4.580000000045402,
+  "format" : "bombcad-field-state-hashes-1",
+  "initial" : {
+    "firstPhaseColumns" : "44f8b5846bbbe9556678f60b8b34d9da9f2836bea1c4a989867b7d846b9787d3",
+    "firstPhaseOpen" : "30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
+    "firstPhaseRecords" : "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+    "impulse" : "8565a714dca840f8652c5bae9249ab05f5fb5a4f9f13fbe23304b10f68252da2",
+    "mask" : "c37f686c3cbf09caf9d0ccb6a3d1fc05d65f8e18f589fdd0a4d9b88bb721cd67",
+    "peak" : "8565a714dca840f8652c5bae9249ab05f5fb5a4f9f13fbe23304b10f68252da2",
+    "species" : "e6db26cd27ea83fed9392e286205e4f60c6322ae404eaba49aec7716905d1bf4",
+    "state" : "81b37ac766ea15abf03d4201c7fbdeeea1dce5cf224ee985c62d25989ffd547f"
+  },
+  "initialTime" : 0,
+  "scope" : "complete coarse fluid, optional species, accumulated peak\/impulse, mask and all first-phase buffers; excludes refinement\/structural state",
+  "steps" : 2708
+}

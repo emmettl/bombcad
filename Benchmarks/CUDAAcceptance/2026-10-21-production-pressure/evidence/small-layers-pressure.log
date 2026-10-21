@@ -1,0 +1,5 @@
+Read 14 buildings in 0.00 s
+13 buildings placed (7 by height, 4 by levels, 2 assumed), 1 left out
+48 × 48 × 16 cells (0.0 M), 32 m top, 10 kg, to 0.08 s
+Ran to 0.080 s in 55 steps, 0 s
+Wrote /Volumes/StudioData/bombcad/experiments/2026-10-21-production-pressure-v2/small-layers/pressure: 48 × 48, 57% of cells in the mask, peak 118.9 kPa at most

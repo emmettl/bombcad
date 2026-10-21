@@ -1,0 +1,14 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 1 / 40]
+[2 / 4] BlastCore
+[5 / 7] BlastCore
+[10 / 12] scenebench-product
+[12 / 14] scenebench-product
+[14 / 25] BombCADTests-product
+[15 / 21] BlastCoreTests-product
+[17 / 23] BlastCoreTests-product
+[22 / 24] BlastCoreTests-product
+Build complete! (6.16 secs)
+build-strict: no warnings

@@ -1,0 +1,45 @@
+gpu-slot: waiting for memory: 4 GB wanted, 29 of 26 GB declared by running jobs
+Building for debugging...
+[Computing dependencies]
+[1 / 31] RadialBlast
+[2 / 29] BlastCore
+[4 / 31] BlastCore
+[10 / 30] BlastCore
+[16 / 27] BlastCore-product
+[18 / 29] rigidboxdemo-product
+[19 / 31] blastbench-product
+[23 / 35] BombCAD-product
+[25 / 32] scenebench-product
+[28 / 36] BombCADTests-product
+[31 / 37] scenebench-product
+[34 / 40] BlastCoreTests-product
+[39 / 41] BlastCoreTests-product
+Build complete! (5.93 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "First-phase columns" started.
+◇ Test "Each column's first phase is the recorder's rule over its whole history" started.
+✔ Test "Each column's first phase is the recorder's rule over its whole history" passed after 0.147 seconds.
+◇ Test "Production diagnostics preserve batches, fields and recorder values to the bit" started.
+✔ Test "Production diagnostics preserve batches, fields and recorder values to the bit" passed after 0.055 seconds.
+◇ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" started.
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" recorded an issue at FirstPhaseColumnsTests.swift:146:25: Expectation failed: trace.seedRecords.contains { $0[1] > 0 }
+↳ trace.seedRecords.contains { $0[1] > 0 } → <not evaluated>
+✘ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" failed after 4.101 seconds with 1 issue.
+◇ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" started.
+✔ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" passed after 0.028 seconds.
+◇ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" started.
+✔ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" passed after 0.012 seconds.
+◇ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" started.
+✔ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" passed after 0.014 seconds.
+◇ Test "Layers of columns each record as that layer alone would, and leave the run as it was" started.
+✔ Test "Layers of columns each record as that layer alone would, and leave the run as it was" passed after 0.055 seconds.
+◇ Test "Recording the columns leaves the run as it was, to the bit" started.
+✔ Test "Recording the columns leaves the run as it was, to the bit" passed after 0.041 seconds.
+✘ Suite "First-phase columns" failed after 4.458 seconds with 1 issue.
+↳ /// The first positive phase's impulse over each plan cell (`FirstPhaseColumns`, the field export's
+↳ /// `--first-phase` target).
+✘ Test run with 8 tests in 1 suite failed after 4.458 seconds with 1 issue.
+Note: Some test targets reported failures:
+  - BlastCoreTests (Swift Testing)

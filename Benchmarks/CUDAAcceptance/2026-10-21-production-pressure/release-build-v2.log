@@ -1,0 +1,12 @@
+Building for production...
+[Computing dependencies]
+[1 / 3] ContactSearch
+[2 / 3] BlastCore
+[3 / 4] BlastCore
+[9 / 10] BlastRender
+[10 / 11] BlastRender
+[15 / 16] scenebench-product
+[17 / 18] scenebench-product
+[19 / 21] scenebench-product
+[20 / 21] scenebench-product
+Build complete! (92.04 secs)
