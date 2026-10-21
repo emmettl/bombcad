@@ -1,0 +1,418 @@
+{
+  "date": "2026-10-21",
+  "referenceDevice": "Apple M4 Max",
+  "candidateDevice": "NVIDIA RTX 3080 Ti",
+  "sourceSHA256": "a433ef29504bcf44f14180ad04542e87cda88f51a3660bbe8077f0ac80ea9889",
+  "fixtures": {
+    "still": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 1.225000023841858,
+      "minimumInternalEnergy": 253312.515625
+    },
+    "shock": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 38912,
+        "maxAbsolute": 0.125,
+        "relativeL2": 5.696805354727739e-08
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 4096,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 4.035908662442046e-08
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 13312,
+        "maxAbsolute": 6.103515625e-05,
+        "relativeL2": 5.7302508558278855e-08
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 1024,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 3.0955957764784346e-08
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 1.225000023841858,
+      "minimumInternalEnergy": 253312.51562499994
+    },
+    "blast": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 146034,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.0754085568324547e-07
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 12778,
+        "maxAbsolute": 0.25,
+        "relativeL2": 1.3156660042728366e-07
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 20132,
+        "maxAbsolute": 0.000244140625,
+        "relativeL2": 1.1284310570707905e-07
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 1880,
+        "maxAbsolute": 0.0234375,
+        "relativeL2": 5.731371244486796e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 0.1317487359046936,
+      "minimumInternalEnergy": 229170.16791058172
+    },
+    "obstacle": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 141523,
+        "maxAbsolute": 0.625,
+        "relativeL2": 1.0745551659753075e-07
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 12155,
+        "maxAbsolute": 0.25,
+        "relativeL2": 1.2872506604251905e-07
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 19487,
+        "maxAbsolute": 0.00018310546875,
+        "relativeL2": 1.1025639767792246e-07
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 1933,
+        "maxAbsolute": 0.0234375,
+        "relativeL2": 5.5944983211535126e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 0.14034193754196167,
+      "minimumInternalEnergy": 235191.09155571938,
+      "massRelativeDrift": 1.4235777227444367e-09,
+      "gasPlusChemicalEnergyRelativeDrift": 1.0857143476647884e-09
+    },
+    "hot": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 146737,
+        "maxAbsolute": 0.3125,
+        "relativeL2": 1.0882944459808562e-07
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 14949,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.7710887438295058e-07
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 19830,
+        "maxAbsolute": 0.00018310546875,
+        "relativeL2": 1.2116520131461493e-07
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 1804,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 7.625268362129679e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 0.14293242990970612,
+      "minimumInternalEnergy": 235181.9489301662
+    },
+    "burning": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 146982,
+        "maxAbsolute": 0.3125,
+        "relativeL2": 1.1150100893074217e-07
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 60530,
+        "maxAbsolute": 3.5762786865234375e-07,
+        "relativeL2": 2.7327532804146275e-07
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 15195,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.8045191954576644e-07
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 20010,
+        "maxAbsolute": 0.00018310546875,
+        "relativeL2": 1.2141602480728798e-07
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 1820,
+        "maxAbsolute": 0.0390625,
+        "relativeL2": 8.156062367362415e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 0.1437133252620697,
+      "minimumInternalEnergy": 235181.18122085262,
+      "massRelativeDrift": 8.408185548662569e-10,
+      "gasPlusChemicalEnergyRelativeDrift": 1.8731703592425795e-08
+    },
+    "farfield": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 145506,
+        "maxAbsolute": 0.3125,
+        "relativeL2": 1.0341945503674298e-07
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 12704,
+        "maxAbsolute": 0.25,
+        "relativeL2": 1.305844452925997e-07
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 20047,
+        "maxAbsolute": 0.00018310546875,
+        "relativeL2": 1.0953739784722499e-07
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 2004,
+        "maxAbsolute": 0.03125,
+        "relativeL2": 7.5028083017725245e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 0.13174444437026978,
+      "minimumInternalEnergy": 229159.79783356874
+    },
+    "closed": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 146034,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.0754085568324547e-07
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 0,
+        "maxAbsolute": 0.0,
+        "relativeL2": 0.0
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 12778,
+        "maxAbsolute": 0.25,
+        "relativeL2": 1.3156660042728366e-07
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 20132,
+        "maxAbsolute": 0.000244140625,
+        "relativeL2": 1.1284310570707905e-07
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 1880,
+        "maxAbsolute": 0.0234375,
+        "relativeL2": 5.731371244486796e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 0.1317487359046936,
+      "minimumInternalEnergy": 229170.16791058172,
+      "massRelativeDrift": 2.147892343689255e-09,
+      "gasPlusChemicalEnergyRelativeDrift": 4.729333526513315e-10
+    },
+    "cooling": {
+      "state": {
+        "count": 163840,
+        "outsideTolerance": 0,
+        "differentValues": 146665,
+        "maxAbsolute": 0.3125,
+        "relativeL2": 1.0966526709588965e-07
+      },
+      "species": {
+        "count": 65536,
+        "outsideTolerance": 0,
+        "differentValues": 60487,
+        "maxAbsolute": 3.5762786865234375e-07,
+        "relativeL2": 2.725422424840452e-07
+      },
+      "peak": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 15024,
+        "maxAbsolute": 0.375,
+        "relativeL2": 1.765493517693511e-07
+      },
+      "impulse": {
+        "count": 32768,
+        "outsideTolerance": 0,
+        "differentValues": 20048,
+        "maxAbsolute": 0.00018310546875,
+        "relativeL2": 1.205879094041643e-07
+      },
+      "first-phase": {
+        "count": 4096,
+        "outsideTolerance": 0,
+        "differentValues": 1802,
+        "maxAbsolute": 0.0390625,
+        "relativeL2": 7.85200828820721e-06
+      },
+      "passed": true,
+      "rtol": 0.002,
+      "atol": 0.05,
+      "minimumDensity": 0.14556896686553955,
+      "minimumInternalEnergy": 235181.32195215768
+    }
+  },
+  "productionDistrict": {
+    "0": {
+      "relativeL2": 1.1565136113047953e-06,
+      "maxAbsolute": 0.109375,
+      "outsideTolerance": 0,
+      "medianRelative": 3.0424729219909943e-06,
+      "p99Relative": 0.00014595344085236808
+    },
+    "1": {
+      "relativeL2": 9.385264464594286e-07,
+      "maxAbsolute": 0.0003814697265625,
+      "outsideTolerance": 0,
+      "medianRelative": 2.1084473890418268e-06,
+      "p99Relative": 0.0007679621077379176
+    },
+    "2": {
+      "relativeL2": 9.369599517593831e-07,
+      "maxAbsolute": 0.0003814697265625,
+      "outsideTolerance": 0,
+      "medianRelative": 2.1064439898722174e-06,
+      "p99Relative": 0.0007679621077379176
+    },
+    "passed": true
+  },
+  "allPassed": true,
+  "limits": "Small uniform fixed-geometry cases; not a claim of bit parity or universal accuracy."
+}

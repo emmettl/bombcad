@@ -71,6 +71,7 @@ format:
 # GPU structs' layouts on the Swift and Metal sides (check-shader-mirrors.py), and no wall-clock
 # bounds in the tests (check-test-deadlines.py).
 ci-test:
+	python3 -I Scripts/cuda/test_backend.py
 	python3 Scripts/test-release.py
 	python3 Scripts/test-nightly.py
 	python3 Scripts/test-remote.py

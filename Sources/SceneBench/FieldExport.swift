@@ -1,11 +1,12 @@
 import BlastCore
+import CryptoKit
 import Foundation
 import Metal
 import simd
 
 /// `scenebench field-export <district-scene's inputs> [--radius 1024] [--dx 4] [--height m]
 /// [--until s] [--above 2] [--edge 4] [--ground saturated] [--balloon] [--first-phase] [--id name]
-/// [--layout name] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
+/// [--layout name] [--cuda-job --cuda-source generated.cu] --out folder`: one training pair for the learned field model (docs/learned-models.md). The
 /// district is laid out as `district-scene` lays it out, the air is run on the recommended
 /// configuration until the blast has passed the domain's corners, and the run's own peak
 /// overpressure and positive impulse fields are read at a fixed height above the ground on the
@@ -126,12 +127,54 @@ enum FieldExport {
         let solver = try BlastSolver(
             device: device, scenario: scene, cellSize: dx, configuration: configuration)
         let above = Float(value("above").flatMap(Double.init) ?? 2)
-        if args.contains("--first-phase") { try recordFirstPhase(solver: solver, scene: scene, above: above) }
+        if args.contains("--first-phase") || args.contains("--cuda-job") {
+            try recordFirstPhase(solver: solver, scene: scene, above: above)
+        }
         print(
             String(
                 format: "%d × %d × %d cells (%.1f M), %.0f m top, %.0f kg, to %.2f s", solver.grid.nx,
                 solver.grid.ny, solver.grid.nz, Double(solver.grid.cellCount) / 1e6, scene.domainSize.z, mass,
                 until))
+        if args.contains("--cuda-job") {
+            guard let shader = value("cuda-source") else {
+                throw BlastError.allocationFailed("--cuda-source generated.cu is required with --cuda-job")
+            }
+            let shaderBytes = try Data(contentsOf: URL(filePath: shader))
+            let hash = SHA256.hash(data: shaderBytes).map { String(format: "%02x", $0) }.joined()
+            let folder = URL(filePath: out)
+            guard !FileManager.default.fileExists(atPath: folder.path) else {
+                throw BlastError.allocationFailed("a new output folder for the CUDA job")
+            }
+            // Export first: refusal must not leave an apparently usable training pair.
+            try solver.exportUniformCUDAJob(to: folder, sourceSHA256: hash, until: until, above: above)
+            try write(
+                solver: solver, scene: scene, folder: folder, id: value("id") ?? folder.lastPathComponent,
+                layout: value("layout"), buildings: report.placed.count, above: above,
+                edgeCells: value("edge").flatMap(Int.init) ?? 4, configuration: "recommended; awaiting CUDA",
+                ground: value("ground"), steps: 0, wallS: 0, stable: false, arguments: args)
+            if !args.contains("--first-phase") {
+                let metaURL = folder.appendingPathComponent("meta.json")
+                var meta = try JSONSerialization.jsonObject(with: Data(contentsOf: metaURL)) as! [String: Any]
+                meta["targets"] = Array((meta["targets"] as! [[String: Any]]).prefix(2))
+                try JSONSerialization.data(withJSONObject: meta, options: [.prettyPrinted, .sortedKeys])
+                    .write(to: metaURL)
+            }
+            try FileManager.default.removeItem(at: folder.appendingPathComponent("targets.npy"))
+            let jobURL = folder.appendingPathComponent("job.json")
+            var job = try JSONSerialization.jsonObject(with: Data(contentsOf: jobURL)) as! [String: Any]
+            var templates: [String: String] = [:]
+            for name in ["inputs.npy", "mask.npy", "meta.json"] {
+                let bytes = try Data(contentsOf: folder.appendingPathComponent(name))
+                templates[name] = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+            }
+            job["dataset"] = templates
+            try JSONSerialization.data(withJSONObject: job, options: [.prettyPrinted, .sortedKeys]).write(
+                to: jobURL)
+            print(
+                "CUDA job ready at \(folder.path); no grid simulation or training targets generated on this Mac"
+            )
+            return
+        }
         let start = ContinuousClock.now
         var steps = 0
         var stable = true
