@@ -130,6 +130,10 @@ enum SceneBench {
             try FieldGlass.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "field-walls" {
+            try FieldWalls.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "district-compare" {
             try DistrictComparison.run(Array(args.dropFirst()))
             return

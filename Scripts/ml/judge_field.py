@@ -41,6 +41,18 @@ predictor's peak and impulse there (`peak:<name>`, `impulse:<name>`, the run's o
 `--impulse first` judges impulse against the runs' first-phase target (`field-export
 --first-phase`; the default is the first model's own target).
 
+    python judge_field.py walls --peaks FOLDER --recorded FOLDER --out-dir FOLDER
+        [--variants surrogate,strict:surrogate,strict:strict,…] [--only name=split.json] [--match beirut]
+
+judges the walls' and roofs' chances (emmettl/bombcad-work#19) with the field model's loads: for each
+run with a `--peaks-out` file and a recorder run in `--recorded` (`--save-loads` with its roofs), it
+runs `scenebench field-walls` (cached in `--out-dir`), then chooses each variant's load factor and
+scatter scale on the other charge points and judges the held-out point's chances against the run's
+own ground-floor walls and roofs: the Brier score, its skill against giving each the mean, and the
+tenths test (every tenth of chance holding 50 or more within 0.1 of the share damaged), as
+`wall-calibrate` does. `--only name=split.json` judges variants naming `name` on that split's
+held-out runs only.
+
 CPU only (the network is small); the PyTorch venv's torch and numpy only.
 """
 import argparse
@@ -404,5 +416,165 @@ def main(argv):
     return 0
 
 
+# MARK: - Walls and roofs
+
+WALL_FACTORS = "0.8,1,1.3,1.6"
+WALL_SCALES = "0,0.5,1"
+CONCRETE = ("reinforcedConcrete", "reinforcedBlockwork")
+# The app's own calibration (FacadeLoadSurrogate.structureCalibration): concrete walls ×1.0 with the
+# whole scatter, roofs ×1.3 with half.
+APP_PAIRS = {"walls": (1.0, 1.0), "roofs": (1.3, 0.5)}
+
+
+def reliability(predicted, observed):
+    """Brier score, its skill against each given the mean, and the tenths test, as
+    GlassCalibration.reliability and WallCalibration.show read them."""
+    p, o = np.asarray(predicted, float), np.asarray(observed, float)
+    brier = float(np.mean((p - o) ** 2))
+    climatology = float(np.var(o))
+    bins = []
+    edges = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0001]
+    for a, b in zip(edges, edges[1:]):
+        chosen = (p >= a) & (p < b)
+        if chosen.any():
+            bins.append({"from": a, "to": min(b, 1), "count": int(chosen.sum()),
+                         "predicted": float(p[chosen].mean()), "observed": float(o[chosen].mean())})
+    passes = all(abs(x["predicted"] - x["observed"]) <= 0.1 for x in bins if x["count"] >= 50)
+    return {"count": int(p.size), "damaged": int(o.sum()), "brier": brier, "climatology": climatology,
+            "skill": 1 - brier / climatology if climatology > 0 else float("nan"), "tenths": passes, "bins": bins}
+
+
+def walls_main(argv):
+    parser = argparse.ArgumentParser(description="the walls' and roofs' chances with the field model's loads")
+    parser.add_argument("--peaks", required=True, help="judge_field.py --peaks-out folder")
+    parser.add_argument("--recorded", default="/Volumes/StudioData/bombcad/ml/judge/compare-first")
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--scenebench", default=os.path.join(REPOSITORY, ".build", "release", "scenebench"))
+    parser.add_argument("--variants", default="surrogate,runField:surrogate,runField:runFieldFirst")
+    parser.add_argument("--only", action="append", default=[], help="NAME=split.json: variants naming NAME "
+                        "are judged on that split's held-out runs only")
+    parser.add_argument("--match", default="beirut", help="only runs whose id starts so")
+    parser.add_argument("--draws", type=int, default=50)
+    parser.add_argument("--factors", default=WALL_FACTORS)
+    parser.add_argument("--scales", default=WALL_SCALES)
+    args = parser.parse_args(argv)
+    os.makedirs(args.out_dir, exist_ok=True)
+    variants = args.variants.split(",")
+    only = {}
+    for spec in args.only:
+        name, path = spec.split("=", 1)
+        with open(path) as handle:
+            only[name] = set(json.load(handle)["heldOut"])
+
+    judged = {}
+    for name in sorted(os.listdir(args.peaks)):
+        if not name.endswith(".csv"):
+            continue
+        run_id = name[:-4]
+        if not run_id.startswith(args.match):
+            continue
+        meta_path = os.path.join(args.recorded, run_id, "field", "meta.json")
+        loads = os.path.join(args.recorded, run_id, "loads")
+        if not os.path.exists(meta_path) or not os.path.exists(os.path.join(loads, "components.json")):
+            continue
+        target = os.path.join(args.out_dir, run_id + ".json")
+        if not os.path.exists(target):
+            with open(meta_path) as handle:
+                arguments = json.load(handle)["arguments"]
+            if "--out" in arguments:
+                i = arguments.index("--out")
+                del arguments[i:i + 2]
+            # A variant naming a model held to a split, only on that split's held-out runs.
+            mine = [v for v in variants if not any(n in v.split(":") and run_id not in held
+                                                   for n, held in only.items())]
+            command = [args.scenebench, "field-walls"] + arguments + [
+                "--loads", loads, "--peaks", os.path.join(args.peaks, name), "--variants", ",".join(mine),
+                "--factors", args.factors, "--scales", args.scales, "--draws", str(args.draws),
+                "--out", target + ".tmp"]
+            began = time.time()
+            with open(os.path.join(args.out_dir, run_id + ".log"), "w") as log:
+                code = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL).returncode
+            if code != 0:
+                print("judge_field walls: %s exit %d" % (run_id, code))
+                continue
+            os.replace(target + ".tmp", target)
+            print("judge_field walls: %s, %.0f s" % (run_id, time.time() - began))
+            sys.stdout.flush()
+        with open(target) as handle:
+            judged[run_id] = json.load(handle)
+    if not judged:
+        print("judge_field walls: no runs")
+        return 1
+
+    grid = [tuple(g) for g in next(iter(judged.values()))["grid"]]
+
+    def point(run_id):
+        return run_id.rsplit("-", 1)[0]
+
+    def entries(variant, target, runs):
+        """(run, point, chances by pair, happened) for each building judged for `target`."""
+        found = []
+        for run_id in runs:
+            for b in judged[run_id]["buildings"]:
+                if target == "roofs":
+                    if b.get("roof") is None or variant not in b["roofModerate"]:
+                        continue
+                    found.append((run_id, point(run_id), b["roofModerate"][variant], b["roof"] >= 1))
+                else:
+                    if b["walls"] not in CONCRETE or b.get("wall") is None:
+                        continue
+                    chances = b["wallsModerate" if target == "walls" else "wallsHeavy"][variant]
+                    found.append((run_id, point(run_id), chances, b["wall"] >= (1 if target == "walls" else 2)))
+        return found
+
+    def judge(variant, target, runs):
+        rows = entries(variant, target, runs)
+        points = sorted({r[1] for r in rows})
+        chances = np.array([r[2] for r in rows], float)
+        happened = np.array([r[3] for r in rows], float)
+        where = np.array([r[1] for r in rows])
+        squared = (chances - happened[:, None]) ** 2
+        # Each charge point held out: the pair with the least Brier over the other points.
+        predicted = np.zeros(len(rows))
+        picked = []
+        for p in points:
+            held = where == p
+            best = int(np.argmin(squared[~held].sum(axis=0)))
+            picked.append(grid[best])
+            predicted[held] = chances[held, best]
+        app = grid.index(APP_PAIRS["roofs" if target == "roofs" else "walls"])
+        return {"heldOut": reliability(predicted, happened), "app": reliability(chances[:, app], happened),
+                "picked": [list(g) for g in picked], "points": len(points)}
+
+    every = sorted(judged)
+    result = {"runs": every, "grid": [list(g) for g in grid], "tables": {}}
+    sets = [("all runs", every)] + [("%s's held-out runs" % n, sorted(r for r in every if r in held))
+                                    for n, held in only.items()]
+    for label, runs in sets:
+        names = [v for v in variants if not any(n in v.split(":") for n in only if label == "all runs")]
+        table = result["tables"].setdefault(label, {})
+        print("\n%s (%d): Brier, skill, tenths; each charge point held out (the app's pair beside)" % (label, len(runs)))
+        for target, title in (("walls", "concrete walls, moderate or worse"),
+                              ("heavy", "concrete walls, heavy or worse"), ("roofs", "roofs, moderate or worse")):
+            print("  %s" % title)
+            for v in names:
+                j = judge(v, target, runs)
+                table.setdefault(target, {})[v] = j
+                h, a = j["heldOut"], j["app"]
+                print("    %-30s %6d (%5d damaged)  %.4f  %5.2f  %-4s  | app %.4f  %5.2f  %-4s  picked %s" % (
+                    v, h["count"], h["damaged"], h["brier"], h["skill"], "pass" if h["tenths"] else "fail",
+                    a["brier"], a["skill"], "pass" if a["tenths"] else "fail",
+                    " ".join("%g/%g" % tuple(g) for g in sorted(set(map(tuple, j["picked"]))))))
+                for x in h["bins"]:
+                    if x["count"] >= 50 and abs(x["predicted"] - x["observed"]) > 0.1:
+                        print("        %.1f-%.1f: %d, predicted %.2f, observed %.2f" % (
+                            x["from"], x["to"], x["count"], x["predicted"], x["observed"]))
+    with open(os.path.join(args.out_dir, "summary.json"), "w") as handle:
+        json.dump(result, handle, indent=1)
+    return 0
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["walls"]:
+        sys.exit(walls_main(sys.argv[2:]))
     sys.exit(main(sys.argv[1:]))

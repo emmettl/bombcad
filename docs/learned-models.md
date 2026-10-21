@@ -743,13 +743,228 @@ would take, and what it would leave out:
 - **walls and roofs** stay on the surrogate's impulse until a model is trained on the first
   phase. That needs the re-export above: about 5 GPU hours, and the user's go-ahead.
 
+## The first-phase models at walls and roofs (21 October 2026)
+
+emmettl/bombcad-work#33, #47: the two models trained overnight on the first-phase target
+(`--impulse first`, `datasets/main-fp`), judged where the first phase was meant to matter.
+
+- **`field-unet-fp-strict`** never saw Beirut: it holds out all 50 Beirut runs and each made-up
+  style's sixth layout.
+- **`field-unet-fp-byrun`** holds out 40 runs, 10 of them Beirut's. It saw Beirut's map at the
+  other 40 points and yields, so it is judged on those 10 only.
+
+In short: the models' first-phase impulse is better than the surrogate's at the façades, but it
+changes nothing for walls. Ground-floor concrete walls are decided by the peak, and there the
+model's peak lifts the walls' chances as it lifted the glass's. The model knows nothing of roofs,
+and a proxy from its ground-floor loads does not help them.
+
+### Façades against the recorder
+
+Beirut's ground-floor strips at 50–700 m. The truth is each strip's recorded peak and first-phase
+impulse (`compare-first/`, all 50 runs). The ratio is the median of predicted over recorded, then
+the log-SD:
+
+| Beirut runs | Strips | Predictor | Peak | First-phase impulse |
+|---|---|---|---|---|
+| All 50 | 598,743 | Strict model | 1.07 / 0.27 | 0.94 / 0.18 |
+| | | Surrogate | 1.09 / 0.44 | 0.95 / 0.31 |
+| | | Kingery–Bulmash incident | 1.26 / 0.42 | 0.98 / 0.23 |
+| | | Kingery–Bulmash raised by the facing | 1.56 / 0.49 | 1.14 / 0.34 |
+| | | The run's own field at the strip | 1.00 / 0.05 | 1.00 / 0.02 |
+| By-run's 10 | 130,957 | By-run model | 1.00 / 0.18 | 1.01 / 0.11 |
+| | | Strict model | 1.04 / 0.29 | 0.93 / 0.19 |
+| | | Surrogate | 1.11 / 0.45 | 0.96 / 0.32 |
+| | | Kingery–Bulmash incident | 1.26 / 0.43 | 1.01 / 0.24 |
+
+By distance, all 50 runs:
+
+| Distance | Strips | Strict, peak | Impulse | Surrogate, peak | Impulse | KB incident, peak | Impulse |
+|---|---|---|---|---|---|---|---|
+| 50–100 m | 10,013 | 1.14 / 0.62 | 0.87 / 0.46 | 2.18 / 0.94 | 1.58 / 0.70 | 3.57 / 0.90 | 1.19 / 0.64 |
+| 100–200 m | 39,619 | 1.14 / 0.42 | 0.90 / 0.31 | 1.56 / 0.62 | 1.32 / 0.46 | 1.98 / 0.60 | 1.08 / 0.41 |
+| 200–350 m | 91,761 | 1.15 / 0.31 | 0.94 / 0.19 | 1.35 / 0.46 | 1.08 / 0.34 | 1.52 / 0.41 | 1.01 / 0.25 |
+| 350–500 m | 151,517 | 1.09 / 0.25 | 0.94 / 0.15 | 1.11 / 0.39 | 0.95 / 0.26 | 1.28 / 0.34 | 0.98 / 0.18 |
+| 500–700 m | 305,833 | 1.03 / 0.22 | 0.94 / 0.14 | 0.99 / 0.33 | 0.91 / 0.20 | 1.16 / 0.31 | 0.98 / 0.17 |
+
+What the table shows:
+
+- **The first-phase target did its job at the façades.** The models' impulse is now the
+  recorder's quantity. Never having seen Beirut, the strict model's impulse runs 0.94 times the
+  recorder's, with a log-SD of 0.18. The surrogate's is 0.95 / 0.31, and Kingery–Bulmash's incident
+  impulse 0.98 / 0.23. The all-phases model had run 1.69 times high.
+- **The strict model's peak is a little higher than the all-phases round's.** It runs 1.07 / 0.27,
+  against 1.01 / 0.26 for `field-unet-strict-pc` on the same strips. Within 350 m it runs
+  1.11–1.13 against the field, where that round ran 1.01–1.05.
+
+### Walls and roofs through the envelope SDOF
+
+`scenebench field-walls` draws #19's chances on each held-out run's buildings, as
+`FacadeLoadSurrogate.structureProbabilities` draws them at a known yield:
+
+- a load scatter for each building side, shared by its strips, and one for each roof;
+- the surrogate's leave-one-out scatter by scaled distance, with its correlation;
+- no strength scatter, since the runs have none.
+
+The truth is the run's own histories through the same SDOF, at the constructions' nominal
+strength, as `wall-calibrate` judges them. The field model knows nothing above 2 m, so:
+
+- **Walls** are each building's worst wall over its judged ground-floor strips (the strips of the
+  façade judgement above).
+- **Roofs** are each building's worst roof inside 0.85 of the half side. Each variant gives a roof
+  only a proxy: the roof's own surrogate pulse (on the roofs' terms), scaled by the building's
+  geometric mean of the variant's peak and impulse over the surrogate's at its ground-floor strips.
+
+The loads are triangles with the surrogate's rise. Each one takes:
+
+- **Surrogate**: the surrogate's peak and impulse.
+- **Model peak, surrogate impulse**: what glass uses (#47, 20 October).
+- **Model peak and first phase**: the model's peak and its first-phase impulse.
+- **Run field's peak** and **run field's peak and first phase**: the run's own field at the strip.
+  This is the best a field model could give.
+
+The pairs judged are load factors 0.8, 1, 1.3 and 1.6, times scatter scales 0, ½ and 1, with 50
+draws. `judge_field.py walls` holds out each of the ten charge points in turn. It takes the pair
+with the least Brier score on the other nine and judges the held-out point's buildings with it.
+
+The test is the protective-design report's, as #19's: the Brier score, its skill against giving
+each the mean, and the tenths test. To pass it, every tenth of chance holding 50 or more
+building-runs must be within 0.1 of the share damaged.
+
+All 50 Beirut runs (the strict model never saw Beirut). Each cell is the Brier score / skill /
+tenths test:
+
+| Load | Concrete walls, moderate+ (156,492; 19,492 damaged) | Concrete walls, heavy+ (14,303) | Roofs, moderate+ (155,532; 34,605) |
+|---|---|---|---|
+| Surrogate | 0.0338 / 0.69 / fail | 0.0264 / 0.68 / fail | 0.0480 / 0.72 / fail |
+| Strict peak, surrogate impulse | **0.0236 / 0.78 / pass** | 0.0162 / 0.81 / pass | 0.0465 / 0.73 / fail (proxy) |
+| Strict peak and first phase | 0.0236 / 0.78 / pass | 0.0166 / 0.80 / fail | 0.0453 / 0.74 / fail (proxy) |
+| Run field's peak, surrogate impulse | 0.0078 / 0.93 / pass | 0.0059 / 0.93 / fail | 0.0425 / 0.75 / fail (proxy) |
+| Run field's peak and first phase | 0.0076 / 0.93 / pass | 0.0055 / 0.93 / fail | 0.0405 / 0.77 / fail (proxy) |
+
+By-run's 10 held-out Beirut runs, the same measures:
+
+| Load | Concrete walls, moderate+ (34,745; 6,082) | Heavy+ (4,470) | Roofs, moderate+ (34,556; 10,759) |
+|---|---|---|---|
+| Surrogate | 0.0456 / 0.68 / fail | 0.0351 / 0.69 / fail | 0.0559 / 0.74 / fail |
+| Strict peak, surrogate impulse | 0.0337 / 0.77 / pass | 0.0246 / 0.78 / fail | 0.0656 / 0.69 / fail |
+| Strict peak and first phase | 0.0338 / 0.77 / pass | 0.0239 / 0.79 / fail | 0.0637 / 0.70 / fail |
+| By-run peak, surrogate impulse | 0.0213 / 0.85 / fail | 0.0147 / 0.87 / pass | 0.0528 / 0.75 / fail |
+| By-run peak and first phase | 0.0213 / 0.85 / fail | 0.0141 / 0.87 / pass | 0.0518 / 0.76 / fail |
+| Run field's peak and first phase | 0.0106 / 0.93 / pass | 0.0079 / 0.93 / fail | 0.0521 / 0.76 / fail |
+
+**How the surrogate fails the tenths test.** On walls moderate+ it calls too many: its tenths from
+0.4 to 0.9 hold 0.29–0.54 damaged. **How the field-model roofs fail.** Their tenths from 0.3 to 0.5
+run low by 0.10–0.11; with the run field's proxy, low by up to 0.2.
+
+**What the pairs chose.** The surrogate's and the strict model's walls took load ×0.8 with the
+whole scatter in every fold, against the app's ×1.0. The run field's walls took ×1.0 with no
+scatter. The field-model roofs took ×1.0 with half the scatter, against the app's ×1.3.
+
+**With the app's own pairs** (walls ×1.0 with the whole scatter, roofs ×1.3 with half), on all 50
+runs:
+
+| Load | Walls moderate+ | Roofs moderate+ |
+|---|---|---|
+| Surrogate | 0.0441 / 0.60 | 0.0438 / 0.75 |
+| Strict peak, surrogate impulse | 0.0344 / 0.68 | 0.0634 / 0.63 |
+| Strict peak and first phase | 0.0344 / 0.68 | 0.0627 / 0.64 |
+
+All fail the tenths test.
+
+**How rarely the impulse matters.** With no scatter and at ×1.0, the first-phase impulse in place
+of the surrogate's changes 640 of the 156,492 building-runs' moderate+ wall answers: 306 made
+right, 334 made wrong. The model's peak in place of the surrogate's changes 6,777: 4,953 made
+right, 1,824 made wrong. Even the run's own first phase changes only 731 (386 right, 345 wrong).
+
+### Glass rechecked
+
+`field-glass` as in [glass by side](#glass-by-building-side-the-product-test), all 50 Beirut runs
+and 584,486 sides:
+
+| Load | Exact | Skill | Share broken, mean error |
+|---|---|---|---|
+| Surrogate | 0.916 | 0.62 | 0.043 |
+| All-phases strict peak (`field-unet-strict-pc`, 20 October) | 0.937 | 0.70 | 0.035 |
+| First-phase strict peak, surrogate impulse | **0.942** | **0.72** | **0.034** |
+| First-phase strict peak and first phase | 0.943 | 0.73 | 0.034 |
+| Run field's peak, surrogate impulse | 0.946 | 0.75 | 0.031 |
+| Run field's peak and first phase | 0.946 | 0.76 | 0.031 |
+
+On by-run's 10 runs (128,295 sides), exact / skill:
+
+- surrogate: 0.934 / 0.72;
+- strict peak: 0.943 / 0.76 (0.944 / 0.77 with its first phase);
+- by-run peak: 0.945 / 0.78 (0.944 / 0.78 with its first phase);
+- run field's peak and first phase: 0.962 / 0.84.
+
+Nothing regressed. By yield, the strict peak takes the surrogate's 0.737 to 0.776 at 0.05–0.1 kt
+and its 0.855 to 0.917 at 0.1–0.3 kt.
+
+### What it says
+
+- **The first-phase impulse does not improve walls, on a city the model never saw.** With the
+  strict model's peak, its first phase gives the same Brier score as the surrogate's impulse for
+  concrete walls moderate+ (0.0236 against 0.0236), and slightly worse for heavy+ (0.0166 against
+  0.0162). The run's own first phase gains no more (0.0076 against 0.0078). Ground-floor concrete
+  walls here respond to the peak, not the impulse.
+- **The field model's peak does improve walls**, as it did glass:
+  - concrete walls moderate+ go from skill 0.69 to 0.78, and the chances pass the tenths test,
+    which the surrogate's fail;
+  - heavy+ goes from 0.68 to 0.81;
+  - the by-run model, having seen the map, reaches 0.85–0.87;
+  - the run's own field reaches 0.93.
+- **Roofs gain nothing.** The models know nothing above 2 m. A proxy from the ground-floor ratio
+  moves the roofs' skill by at most 0.02, and the run's own field gives 0.75–0.77 against the
+  surrogate's 0.72–0.74. With the app's ×1.3, the proxy loses (0.63 against 0.75).
+- **The walls' load factor.** Both the surrogate's and the model's walls chose ×0.8 against the
+  app's ×1.0, and at ×1.0 neither passes the tenths test. This is for the user: the walls'
+  calibration is #19's and was not changed.
+- **Limits of this judgement:**
+  - ground-floor walls only;
+  - one city's 50 runs on one map;
+  - 4 m runs as the truth;
+  - the runs' own strength is nominal, so these check the loads' scatter, not the strength's.
+
+### The recommendation (for the user to decide)
+
+Take the field model's **peak only**, and at the **ground floor only**, for glass and for walls,
+keeping the surrogate's impulse and rise:
+
+- **Glass by side**: exact 0.916 → 0.942, skill 0.62 → 0.72, never having seen the city.
+- **Concrete walls moderate+**: skill 0.69 → 0.78, and the chances pass the tenths test.
+
+Its first-phase impulse adds nothing to either, so carrying it would be cost without gain. Leave
+on the surrogate:
+
+- roofs;
+- storeys above the ground floor;
+- any wall above 2 m.
+
+The model could only reach these with fields at more heights. Nothing changes by default until the
+user says so; the walls' ×0.8 factor is a separate decision.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/judge/fpw/`:
+
+- the façade judgement: `judge-strict.txt`, and `facades.txt` for the recorder tables;
+- the walls: `walls/`, `walls-summary.txt` and `walls/summary.json`;
+- the glass: `glass/`, `glass-all.txt` and `glass-byrun.txt`.
+
+```bash
+python -I Scripts/ml/judge_field.py --data /Volumes/StudioData/bombcad/ml/datasets/main-fp \
+    --model strict=/Volumes/StudioData/bombcad/ml/field-unet-fp-strict/out/best.pt \
+    --model byrun=/Volumes/StudioData/bombcad/ml/field-unet-fp-byrun/out/best.pt --impulse first \
+    --recorded /Volumes/StudioData/bombcad/ml/judge/compare-first --peaks-out fpw/peaks --out fpw/judge-strict.json
+python -I Scripts/ml/judge_field.py walls --peaks fpw/peaks --out-dir fpw/walls \
+    --variants surrogate,strict:surrogate,strict:strict,byrun:surrogate,byrun:byrun,runField:surrogate,runField:runFieldFirst \
+    --only byrun=/Volumes/StudioData/bombcad/ml/field-unet-fp-byrun/out/split.json
+```
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **Wall and roof damage validation** using the completed first-phase model. The 200-case Metal
-  dataset and both training rounds are complete; their field scores alone do not establish
-  better structural damage predictions.
+- **Fields at more heights**, for roofs and upper storeys: the first-phase models leave both on
+  the surrogate ([above](#the-first-phase-models-at-walls-and-roofs-21-october-2026)).
 - **The user's decision** on the field model's peak in the quick estimate's ground-floor glass,
   and then in the [hybrid far field](hybrid-far-field.md)
   ([above](#the-recommendation-for-the-user-to-decide)).
