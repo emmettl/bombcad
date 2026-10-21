@@ -258,8 +258,8 @@ matching production's 1345.858 and 1032.393. Offline zeroing of those single CUD
 At column 255969, both standalone paths give about 684.06 Pa s, against production's 634.63.
 A +0.03125 Pa CUDA sample at index 2022 occurs near that accumulated impulse; offline replacing
 it with -0.0078125 Pa gives 634.6302. This supports the same sensitivity hypothesis, but the
-production recorder's closure has **not** been directly traced, so the cause at this point is
-not established to the same standard. `diagnose-phase.py --replace COLUMN:SAMPLE:PA` makes this
+production closure had not yet been captured at that stage; the direct production
+follow-up below now confirms its timing. `diagnose-phase.py --replace COLUMN:SAMPLE:PA` makes this
 counterfactual reproducible and explicitly labels it offline-only.
 
 The peak discrepancy remains separate. CUDA's original three failures are around 5.8 kPa,
@@ -269,6 +269,84 @@ maximum absolute difference 46.87 Pa. The first-phase plane has one failure, at 
 Its very small aggregate peak L2 error does not override those individual failures; neither a
 new math mode nor a global precision switch is a demonstrated acceptance fix.
 
-Next: capture production receiver closure directly without changing its stepping/results;
-isolate standalone/full-grid versus production execution and arithmetic for the peak field;
-then evaluate #62's label definitions. No broad CUDA batch has been enabled.
+The direct production follow-up below resolves the closure question and tests work selection;
+execution-path arithmetic and #62's label definitions remain under investigation. No broad CUDA batch has been enabled.
+
+## Direct production observation and execution-path controls
+
+The production solver now supports opt-in host observation of selected first-phase columns.
+`scenebench field-export --first-phase --trace-columns i,j` accepts up to 64 distinct enabled
+receiver columns and keeps normal logical batches, but
+splits their existing command-buffer parts into single steps and reads the completed recorder
+and accumulated-field buffers. It adds no shaders and does not recompute pressure. The exported
+`production-trace.npy` and `production-trace.json` therefore use a **different format** from the
+CUDA pressure traces: recorder peak, all-positive impulse, first-phase impulse, phase peak,
+open flag, interpolated accumulated peak, interpolated accumulated impulse, and dt. Initial
+samples are omitted; active steps and the fixed-point GPU clock identify every observation.
+
+Ordinary observed production runs of both `made-perimeter-s3-1` and `beirut-p0-1` reproduce
+**all inputs, masks and all three target arrays bit for bit** against the original datasets.
+A smaller GPU regression also checks the full solver digest, recorder arrays, active steps and
+clock with observation enabled. Observed runs perturb timing and are not speed benchmarks.
+The synchronous `advance` path collects these samples; manually encoded asynchronous batches
+do not promise per-step diagnostic collection.
+
+The previously uncertain Beirut closure is now directly confirmed. Column 255969 closes in
+production at active step 2022, t=3.656500318 s, freezing its first-phase impulse at
+634.630554 Pa s. CUDA stays open near that time and reaches 684.057068 Pa s. The production
+trace records the actual open flag, not a reconstructed pressure: its 1→0 transition establishes
+that the recorder took its negative-pressure branch, but does not provide an exact pressure
+value. Terrain production closes at steps 1259/1650 (2.038150849/2.702128566 s); the other two
+Beirut phase columns close at steps 1071/1416 (1.907766015/2.538027098 s).
+
+A further control separates work selection from the tiled versus full-grid execution paths:
+
+| Beirut production variant | Peak values outside the original gate | Total impulse | First-phase impulse |
+|---|---|---|---|
+| Ordinary tiled, observed | 0 | 0 | 0 |
+| Same tiled kernel, every tile active from the start | 0 | 0 | 0 |
+| Full-grid production path, `skipStillAir=false` | 64 | 0 | 2 |
+
+The all-tiles run is bit-identical to ordinary tiled production in **every exported array**.
+Thus skipping dormant tiles does not explain these target differences for this case. The
+full-grid production path differs by up to 33.45 Pa in peak and 49.43 Pa s in first phase;
+CUDA compared to that different reference still fails 34 peak and one phase target. Switching
+references is not an acceptance fix. The paired safe/unfused control below narrows these differences to arithmetic-mode-sensitive
+execution paths; it does not identify one specific compiler transformation.
+
+`--full-grid-diagnostic` selects the existing production full-grid path. The mutually exclusive
+`--all-tiles-diagnostic` keeps the tiled path and marks all tiles active. Neither changes a
+product default; they cannot be combined with CUDA job export. These options, selected-column samples, actual executable/source hashes,
+array hashes and comparisons are retained in
+[the production-trace archive](../Benchmarks/CUDAAcceptance/2026-10-21-production-traces/manifest.json).
+`diagnose-production.py TRACE-DIR REFERENCE --out NEW.json` audits live exports; with archived
+compressed traces, pass `--arrays EXPORTED-ARRAYS` to recompute the gates. It rejects arrays
+whose hashes differ from the archive receipt. Trace artifacts alone are not presented as a
+fresh array-comparison pass.
+
+No phase semantics, dataset mask or acceptance tolerance changed. The full CUDA training batch
+remains gated. Direct production closure resolves the earlier hypothesis; peak-path attribution
+and a justified versioned phase policy remain separate work.
+
+### Safe/unfused production pair
+
+With the existing compiler probes `BOMBCAD_KERNEL_MATH=safe` and
+`BOMBCAD_KERNEL_CONTRACT=off`, production tiled and full-grid Beirut runs are **bit-identical
+in every exported array**, including all three target channels. They each take 2,477 active
+steps. Along with the all-tiles result, this identifies arithmetic-mode-sensitive execution-path
+variation for this case rather than a dormant-tile work-selection error. Both math mode and
+contraction were changed together: fusion alone versus other fast-math transformations has
+not yet been isolated, nor has this result been generalized to every geometry or resolution.
+
+This is not a new reference or an acceptance pass for CUDA. Each safe production variant
+still fails seven peak and six phase targets against original default-math production
+(maximum differences 16.44 Pa and 239.90 Pa s). CUDA versus the safe production reference
+still fails 12 peak and five phase targets, with total impulse passing. Changing arithmetic
+or choosing whichever reference is closer therefore does not resolve the current contract.
+All comparisons and executable/source/environment receipts are in the production archive.
+
+[#63](https://github.com/emmettl/bombcad-work/issues/63) tracks peak-path arithmetic and a
+justified portability contract. Next isolate contraction from other math-mode effects with
+fixed fixtures, and assess localized errors and damage-threshold effects before deciding
+whether to constrain arithmetic or revise a versioned contract. #62 separately owns phase
+label conditioning. No default, mask, label or tolerance changed in these controls.

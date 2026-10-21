@@ -1,0 +1,50 @@
+{
+  "kernelEnvironment": {
+    "BOMBCAD_KERNEL_MATH": "safe",
+    "BOMBCAD_KERNEL_CONTRACT": "off"
+  },
+  "case": "beirut-p0-1",
+  "mode": "safe-tiled",
+  "arguments": [
+    "/Users/louisemmett/.local/bin/gpu-slot",
+    "--mem",
+    "3",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+    "field-export",
+    "--osm",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/OSM/beirut-port-buildings.osm",
+    "--dem",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/DEM/Copernicus_DSM_COG_10_N33_00_E035_00_DEM.tif",
+    "--heights",
+    "/Volumes/StudioData/bombcad/data/Beirut2020/GHSL/GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_4326_3ss_V1_0_R6_C22.tif",
+    "--ground-radius",
+    "100",
+    "--sea",
+    "1",
+    "--centre",
+    "35.51904200,33.90142500",
+    "--radius",
+    "1024",
+    "--dx",
+    "4",
+    "--mass",
+    "196200",
+    "--ground",
+    "saturated",
+    "--id",
+    "beirut-p0-1",
+    "--layout",
+    "beirut",
+    "--out",
+    "/private/tmp/bombcad-production-phase/beirut-p0-1-safe-tiled",
+    "--first-phase",
+    "--trace-columns",
+    "159267,159777,159779,164452,200270,255969"
+  ],
+  "executableSHA256": "fddd4a78f7f41a9c88426d6b43a63488a27a770fa4c7b1139e63723e23b57868",
+  "sourceSHA256": {
+    "Sources/BlastCore/FirstPhaseColumns.swift": "1a92097a7394238205d699e1a41f29d236fe402fbb2b941e86e53bcca327bc83",
+    "Sources/BlastCore/BlastSolver+Stepping.swift": "06dc9a24b82ce5189f5d9697930c07c0762937d9d80ab7586887d7803f530809",
+    "Sources/SceneBench/FieldExport.swift": "ec59de72e6be307e025e0b4f76c45c8f48fb0bc6ce34966dbaf2bb7059da42f5"
+  }
+}

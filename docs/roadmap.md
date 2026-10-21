@@ -290,6 +290,8 @@ One way and separable ([distributed computing](distributed-computing.md#the-long
 - **Mac/PC follow-up:** [heterogeneous compute](heterogeneous-compute.md), with initial SSH and
   lossless-compression measurements. Independent job scheduling (#59), CUDA profiling (#60)
   and thermal replay feasibility (#61) are scoped next steps; #47 owns CUDA dataset acceptance.
+  Phase-label reproducibility (#62) and production peak-path differences (#63) now split the
+  numerical gate into concrete investigations; bulk CUDA generation remains gated.
 
 - **Done:** sweeps and ensembles shared across Macs by measured speed; the effects beside the
   blast placed on other Macs by cost

@@ -1,0 +1,192 @@
+{
+  "case": "made-perimeter-s3-1",
+  "skipStillAir": true,
+  "allTilesInitiallyActive": false,
+  "fields": [
+    "peak",
+    "allPositiveImpulse",
+    "firstPhaseImpulse",
+    "phasePeak",
+    "open",
+    "accumulatedPeak",
+    "accumulatedImpulse",
+    "dt"
+  ],
+  "samples": 2708,
+  "arraysBitIdenticalToOriginal": {
+    "inputs.npy": true,
+    "mask.npy": true,
+    "targets.npy": true
+  },
+  "arraySHA256": {
+    "inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "targets.npy": "1e6b6ea2a36cc3d1567aa8132dd5771e7ed7f4084f34abd3e7e48f56bad9b54a"
+  },
+  "referenceArraySHA256": {
+    "inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "targets.npy": "1e6b6ea2a36cc3d1567aa8132dd5771e7ed7f4084f34abd3e7e48f56bad9b54a"
+  },
+  "comparison": {
+    "0": {
+      "relativeL2": 0.0,
+      "maxAbsolute": 0.0,
+      "outsideTolerance": 0,
+      "medianRelative": 0.0,
+      "p99Relative": 0.0
+    },
+    "1": {
+      "relativeL2": 0.0,
+      "maxAbsolute": 0.0,
+      "outsideTolerance": 0,
+      "medianRelative": 0.0,
+      "p99Relative": 0.0
+    },
+    "2": {
+      "relativeL2": 0.0,
+      "maxAbsolute": 0.0,
+      "outsideTolerance": 0,
+      "medianRelative": 0.0,
+      "p99Relative": 0.0
+    },
+    "passed": true
+  },
+  "columns": [
+    {
+      "column": 134058,
+      "transitions": [
+        {
+          "kind": "initial",
+          "sample": 0,
+          "step": 1,
+          "time": 0.00023362954379990697,
+          "values": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.00023362954379990697
+          ]
+        },
+        {
+          "kind": "opened",
+          "sample": 1048,
+          "step": 1049,
+          "time": 1.6852854739117902,
+          "values": [
+            0.0078125,
+            1.3094210771669168e-05,
+            1.3094210771669168e-05,
+            0.0078125,
+            1.0,
+            0.002596557140350342,
+            4.351983079686761e-06,
+            0.0016760589787736535
+          ]
+        },
+        {
+          "kind": "closed",
+          "sample": 1258,
+          "step": 1259,
+          "time": 2.0381508487917017,
+          "values": [
+            3326.1640625,
+            426.4053649902344,
+            426.4053649902344,
+            3326.1640625,
+            0.0,
+            3326.26904296875,
+            426.769287109375,
+            0.0016859550960361958
+          ]
+        }
+      ],
+      "final": [
+        3326.1640625,
+        833.898681640625,
+        426.4053649902344,
+        3326.1640625,
+        0.0,
+        3326.26904296875,
+        834.2227783203125,
+        0.0011956689413636923
+      ],
+      "accumulatedPeakFirstReached": {
+        "step": 1135,
+        "time": 1.829529326496413
+      }
+    },
+    {
+      "column": 250097,
+      "transitions": [
+        {
+          "kind": "initial",
+          "sample": 0,
+          "step": 1,
+          "time": 0.00023362954379990697,
+          "values": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.00023362954379990697
+          ]
+        },
+        {
+          "kind": "opened",
+          "sample": 1434,
+          "step": 1435,
+          "time": 2.335260568157537,
+          "values": [
+            0.0078125,
+            1.3267119356896728e-05,
+            1.3267119356896728e-05,
+            0.0078125,
+            1.0,
+            0.0078125,
+            1.4476016076514497e-05,
+            0.0016981912776827812
+          ]
+        },
+        {
+          "kind": "closed",
+          "sample": 1649,
+          "step": 1650,
+          "time": 2.702128566306783,
+          "values": [
+            1757.6640625,
+            225.71926879882812,
+            225.71926879882812,
+            1757.6640625,
+            0.0,
+            1757.6978759765625,
+            225.78855895996094,
+            0.0017156606772914529
+          ]
+        }
+      ],
+      "final": [
+        1757.6640625,
+        684.3389282226562,
+        225.71926879882812,
+        1757.6640625,
+        0.0,
+        1757.6978759765625,
+        684.3322143554688,
+        0.0011956689413636923
+      ],
+      "accumulatedPeakFirstReached": {
+        "step": 1520,
+        "time": 2.4799058586067986
+      }
+    }
+  ],
+  "kernelEnvironment": "not separately captured in this earlier receipt"
+}

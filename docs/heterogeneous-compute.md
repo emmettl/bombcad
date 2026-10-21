@@ -196,6 +196,20 @@ the dataset gate. See [the diagnosis and complete histories](cuda-backend.md#dia
 Read-only opt-in tracing and a float32 replay tool are available; diagnostic-only remote retrieval
 avoids transferring large fields. [#62](https://github.com/emmettl/bombcad-work/issues/62) tracks
 justified phase semantics and validation. #47 remains open. Beirut traces demonstrate near-zero closure sensitivity at two more phase
-points; the third needs a direct production trace. Fast standalone Metal still fails the peak
+points; the direct follow-up now confirms the third. Fast standalone Metal still fails the peak
 gate, so a precision switch is not an established fix. Backend scheduling and performance work
 must preserve those acceptance dependencies.
+
+Direct production observation now confirms all five problematic phase closures, including the
+remaining Beirut point, while preserving both original datasets bit for bit. A same-kernel
+all-tiles control also preserves every Beirut export array, while production's full-grid path
+fails 64 peak/two phase targets against its tiled path. Skipping still tiles is therefore not
+the explanation for these differences in this case; kernel/execution arithmetic remains to be
+isolated. See the [production controls](cuda-backend.md#direct-production-observation-and-execution-path-controls).
+
+The paired production safe/unfused experiment makes tiled and full-grid exports bit-identical.
+That isolates arithmetic-mode-sensitive path variation for the Beirut case; it does not prove
+which compiler transformation causes it. Safe production still fails seven peak/six phase
+points against default production, and CUDA still fails against the safe reference. #63 tracks
+the separate peak portability contract; #62 tracks label conditioning. These findings do not
+enable a full CUDA batch or justify changing the acceptance gate.

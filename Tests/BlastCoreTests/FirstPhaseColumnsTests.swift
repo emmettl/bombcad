@@ -79,6 +79,56 @@ struct FirstPhaseColumnsTests {
         #expect(phased > nx * ny / 4, "\(phased) of \(nx * ny) columns past their first phase")
     }
 
+    @Test("Production diagnostics preserve batches, fields and recorder values to the bit")
+    func diagnosticObservation() throws {
+        let plain = try solver()
+        let observed = try solver()
+        try plain.configureFirstPhaseColumns(columns(plain))
+        try observed.configureFirstPhaseColumns(columns(observed))
+        let indices = [17, 100]
+        try observed.configureFirstPhaseDiagnostics(indices)
+        let a = plain.advance(until: 0.006)
+        let b = observed.advance(until: 0.006)
+        #expect(a.steps == b.steps && a.isStable && b.isStable)
+        #expect(plain.stateDigest() == observed.stateDigest())
+        #expect(plain.firstPhaseSnapshot() == observed.firstPhaseSnapshot())
+        let samples = observed.firstPhaseDiagnosticSamples()
+        #expect(samples.count == observed.stepCount)
+        #expect(samples.map(\.step) == Array(1...observed.stepCount))
+        #expect(samples.allSatisfy { $0.dt > 0 && $0.values.count == indices.count })
+        let last = try #require(samples.last)
+        let records = try #require(observed.firstPhaseSnapshot())
+        for (q, index) in indices.enumerated() {
+            #expect(
+                Array(last.values[q].prefix(4)) == [
+                    records[index].x, records[index].y, records[index].z, records[index].w,
+                ])
+        }
+        #expect(abs(last.time - observed.time) < Double(observed.stepCount) * 0x1p-39)
+        #expect(plain.firstPhaseDiagnosticSamples().isEmpty)
+    }
+
+    @Test("Disabled columns cannot expose invalid cell indices to host diagnostics")
+    func disabledDiagnosticColumn() throws {
+        let observed = try solver()
+        var cells = columns(observed)
+        cells[17] = SIMD4(-1, -1, 0, 0)
+        try observed.configureFirstPhaseColumns(cells)
+        #expect(throws: BlastError.self) { try observed.configureFirstPhaseDiagnostics([17]) }
+        #expect(observed.firstPhaseDiagnosticSamples().isEmpty)
+    }
+
+    @Test("All-tiles diagnostics retain the tiled kernel and sweep every tile")
+    func allTilesDiagnostic() throws {
+        let observed = try solver()
+        #expect(observed.tilesEnabled)
+        try observed.activateAllAirTilesForDiagnostics()
+        let result = observed.advance(steps: 1)
+        #expect(result.steps == 1 && result.isStable)
+        #expect(observed.tilesEnabled)
+        #expect(result.sweptFraction == 1)
+    }
+
     @Test("Recording the columns leaves the run as it was, to the bit")
     func unchanged() throws {
         let plain = try solver()

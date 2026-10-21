@@ -4,6 +4,17 @@ import Metal
 import RadialBlast
 import simd
 
+/// Read-only production recorder and accumulated-field samples after an active step.
+/// Diagnostic observation changes command-buffer splitting, never the batch boundaries or shaders.
+public struct FirstPhaseDiagnosticSample: Sendable {
+    public let step: Int
+    public let time: Double
+    public let dt: Float
+    /// Per selected column: recorder peak, all-positive impulse, first-phase impulse, phase peak,
+    /// open flag, interpolated accumulated peak, interpolated accumulated impulse, and dt.
+    public let values: [[Float]]
+}
+
 /// The first positive phase's impulse at a point over each plan cell, recorded as the run goes, by
 /// the façade recorder's rule (`SurrogateBench.firstImpulse`, `HybridFarField.firstImpulse`): the
 /// positive overpressure summed from the start until it first falls below nothing after reaching
@@ -28,6 +39,8 @@ final class FirstPhaseColumns {
     let records: MTLBuffer
     /// Per column: 1 while the first phase is still going.
     let open: MTLBuffer
+    var diagnosticIndices: [Int] = []
+    var diagnosticSamples: [FirstPhaseDiagnosticSample] = []
     let pipeline: MTLComputePipelineState
 
     init(device: MTLDevice, library: MTLLibrary, grid: Grid, columns cells: [SIMD4<Float>]) throws {
@@ -57,6 +70,7 @@ final class FirstPhaseColumns {
     var memoryFootprint: Int { columns.length + records.length + open.length }
 
     func reset() {
+        diagnosticSamples.removeAll(keepingCapacity: true)
         memset(records.contents(), 0, records.length)
         memset(open.contents(), 0, open.length)
     }
@@ -115,6 +129,69 @@ extension BlastSolver {
     public func firstPhaseSnapshot() -> [SIMD4<Float>]? {
         precondition(!batchInFlight, "Cannot read the columns while a batch is in flight")
         return firstPhaseColumns?.snapshot()
+    }
+
+    /// Keeps the tiled production kernel but starts with every air tile active. This isolates
+    /// work selection from the separate full-grid kernel in controlled numerical diagnostics.
+    public func activateAllAirTilesForDiagnostics() throws {
+        precondition(!batchInFlight && stepCount == 0, "Activate tiles before stepping")
+        guard tilesEnabled else { throw BlastError.allocationFailed("tiled air must be enabled") }
+        memset(tileFlagBuffer.contents(), 1, tileFlagBuffer.length)
+    }
+
+    /// Enables bounded-column host observation in the synchronous `advance` path. Each normal
+    /// batch is split into one-step command buffers; its control and clock are not reset between
+    /// parts. No shader is added or recompiled. Samples may include sensitive model output.
+    public func configureFirstPhaseDiagnostics(_ indices: [Int]) throws {
+        precondition(!batchInFlight && stepCount == 0, "Configure diagnostics before stepping")
+        guard let recorder = firstPhaseColumns, !indices.isEmpty, indices.count <= 64,
+            Set(indices).count == indices.count,
+            indices.allSatisfy({ $0 >= 0 && $0 < recorder.nx * recorder.ny })
+        else { throw BlastError.allocationFailed("1–64 distinct configured first-phase columns") }
+        let columns = recorder.columns.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: recorder.nx * recorder.ny)
+        guard indices.allSatisfy({ columns[$0].w != 0 }) else {
+            throw BlastError.allocationFailed("diagnostics require enabled first-phase columns")
+        }
+        recorder.diagnosticIndices = indices
+        recorder.diagnosticSamples.removeAll(keepingCapacity: true)
+    }
+
+    public func firstPhaseDiagnosticSamples() -> [FirstPhaseDiagnosticSample] {
+        precondition(!batchInFlight, "Wait for the batch before reading diagnostics")
+        return firstPhaseColumns?.diagnosticSamples ?? []
+    }
+
+    /// Called only after a command buffer completed; a logical batch may still be in flight.
+    func collectFirstPhaseDiagnostics() {
+        guard let recorder = firstPhaseColumns, !recorder.diagnosticIndices.isEmpty else { return }
+        let control = controlBuffer.contents().load(as: StepControl.self)
+        guard control.dt > 0 else { return }
+        let step = stepCount + Int(control.activeSteps)
+        guard recorder.diagnosticSamples.last?.step != step else { return }
+        let records = recorder.records.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: recorder.nx * recorder.ny)
+        let open = recorder.open.contents().bindMemory(to: Float.self, capacity: recorder.nx * recorder.ny)
+        let columns = recorder.columns.contents().bindMemory(
+            to: SIMD4<Float>.self, capacity: recorder.nx * recorder.ny)
+        let peak = peakBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+        let impulse = impulseBuffer.contents().bindMemory(to: Float.self, capacity: grid.cellCount)
+        let plan = recorder.nx * recorder.ny
+        let values = recorder.diagnosticIndices.map { n -> [Float] in
+            let c = columns[n]
+            let lo = n + plan * Int(c.x)
+            let hi = n + plan * Int(c.y)
+            let r = records[n]
+            return [
+                r.x, r.y, r.z, r.w, open[n],
+                (1 - c.z) * peak[lo] + c.z * peak[hi],
+                (1 - c.z) * impulse[lo] + c.z * impulse[hi], control.dt,
+            ]
+        }
+        recorder.diagnosticSamples.append(
+            FirstPhaseDiagnosticSample(
+                step: step, time: Double(control.clock) / 1_099_511_627_776,
+                dt: control.dt, values: values))
     }
 
     func encodeFirstPhase(_ encoder: MTLComputeCommandEncoder, initial: Bool) {

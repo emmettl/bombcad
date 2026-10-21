@@ -1,0 +1,40 @@
+{
+  "case": "made-perimeter-s3-1",
+  "mode": "tiled",
+  "arguments": [
+    "/Users/louisemmett/.local/bin/gpu-slot",
+    "--mem",
+    "2",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+    "field-export",
+    "--osm",
+    "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s3/district.osm",
+    "--dem",
+    "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s3/ground.asc",
+    "--centre",
+    "0.01274337,0.01183506",
+    "--radius",
+    "1024",
+    "--dx",
+    "4",
+    "--mass",
+    "53500",
+    "--ground",
+    "saturated",
+    "--id",
+    "made-perimeter-s3-1",
+    "--layout",
+    "made-perimeter-s3",
+    "--out",
+    "/private/tmp/bombcad-production-phase/made-perimeter-s3-1-tiled",
+    "--first-phase",
+    "--trace-columns",
+    "134058,250097"
+  ],
+  "executableSHA256": "521fafd84da5e3eb3d6a82f5c8dbe1b6ba886476e73b14eb75b8114a23538893",
+  "sourceSHA256": {
+    "Sources/BlastCore/FirstPhaseColumns.swift": "1410a0fc95fced2d45feac95a85ce383e7084ac74c10fcd199d91be48a73efc5",
+    "Sources/BlastCore/BlastSolver+Stepping.swift": "06dc9a24b82ce5189f5d9697930c07c0762937d9d80ab7586887d7803f530809",
+    "Sources/SceneBench/FieldExport.swift": "8712a2f7b6004709edbb3c62b963d7df71c09a101ba92b1adbab16a51f122c1d"
+  }
+}

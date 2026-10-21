@@ -57,3 +57,10 @@ phase transitions, float32 replay and clearly labelled offline sensitivity exper
 The standalone Metal reference takes the column list as its optional fourth argument and uses
 source augmented by `trace_columns.py`. See the backend documentation for the controlled math
 variants and the diagnosed near-zero label sensitivity. No acceptance tolerance changed.
+
+Production observation uses `scenebench field-export --first-phase --trace-columns i,j`, without
+new shaders or changed logical batches. Its `production-trace` format has recorder states and
+accumulated fields, not recomputed pressure. `diagnose-production.py` compares exported arrays
+and summarizes the actual production transitions; archived gzip traces require `--arrays` for
+a fresh gate computation. `--full-grid-diagnostic` and `--all-tiles-diagnostic` on field-export
+provide mutually exclusive controlled paths. No product defaults or acceptance rules change.

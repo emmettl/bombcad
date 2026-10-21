@@ -685,7 +685,10 @@ extension BlastSolver {
             while encoded < count {
                 makeRefinementRoom()
                 let part = min(
-                    gpuProfiler == nil ? gpuSteps.part(count - encoded) : count - encoded, poolStepLimit)
+                    (firstPhaseColumns?.diagnosticIndices.isEmpty == false)
+                        ? 1
+                        : (gpuProfiler == nil ? gpuSteps.part(count - encoded) : count - encoded),
+                    poolStepLimit)
                 guard
                     let commandBuffer = encodeBatchPart(
                         steps: count, range: encoded..<(encoded + part), timeLimit: timeLimit,
@@ -697,6 +700,7 @@ extension BlastSolver {
                 commandBuffer.commit()
                 commandBuffer.waitUntilCompleted()
                 failed = failed || commandBuffer.error != nil
+                if commandBuffer.error == nil { collectFirstPhaseDiagnostics() }
                 gpuSteps.measure(commandBuffer, steps: part)
                 stepGPUSeconds += max(commandBuffer.gpuEndTime - commandBuffer.gpuStartTime, 0)
                 encoded += part

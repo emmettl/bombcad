@@ -124,11 +124,38 @@ enum FieldExport {
             }
             configuration.ground = type
         }
+        guard !(args.contains("--full-grid-diagnostic") && args.contains("--all-tiles-diagnostic")) else {
+            throw BlastError.allocationFailed("choose full-grid or all-tiles diagnostic, not both")
+        }
+        guard
+            !args.contains("--cuda-job")
+                || !(args.contains("--full-grid-diagnostic") || args.contains("--all-tiles-diagnostic"))
+        else {
+            throw BlastError.allocationFailed(
+                "execution-path diagnostics require a production run, not --cuda-job")
+        }
+        if args.contains("--full-grid-diagnostic") { configuration.skipStillAir = false }
+        if value("trace-columns") != nil && (args.contains("--cuda-job") || !args.contains("--first-phase")) {
+            throw BlastError.allocationFailed(
+                "production --trace-columns requires --first-phase and excludes --cuda-job")
+        }
         let solver = try BlastSolver(
             device: device, scenario: scene, cellSize: dx, configuration: configuration)
+        if args.contains("--all-tiles-diagnostic") { try solver.activateAllAirTilesForDiagnostics() }
         let above = Float(value("above").flatMap(Double.init) ?? 2)
         if args.contains("--first-phase") || args.contains("--cuda-job") {
             try recordFirstPhase(solver: solver, scene: scene, above: above)
+        }
+        let traceIndices: [Int]
+        if let text = value("trace-columns") {
+            let parts = text.split(separator: ",", omittingEmptySubsequences: false)
+            traceIndices = parts.compactMap { Int($0) }
+            guard traceIndices.count == parts.count else {
+                throw BlastError.allocationFailed("comma-separated integer trace columns")
+            }
+            try solver.configureFirstPhaseDiagnostics(traceIndices)
+        } else {
+            traceIndices = []
         }
         print(
             String(
@@ -203,8 +230,31 @@ enum FieldExport {
             solver: solver, scene: scene, folder: folder, id: value("id") ?? folder.lastPathComponent,
             layout: value("layout"), buildings: report.placed.count, above: above,
             edgeCells: value("edge").flatMap(Int.init) ?? 4,
-            configuration: args.contains("--balloon") ? "recommended, balloon start" : "recommended",
+            configuration: (args.contains("--balloon") ? "recommended, balloon start" : "recommended")
+                + (args.contains("--full-grid-diagnostic") ? "; full-grid diagnostic" : "")
+                + (args.contains("--all-tiles-diagnostic") ? "; all-tiles diagnostic" : ""),
             ground: value("ground"), steps: steps, wallS: wall, stable: stable, arguments: args)
+        if !traceIndices.isEmpty {
+            let samples = solver.firstPhaseDiagnosticSamples()
+            try NPY.write(
+                samples.flatMap { $0.values.flatMap { $0 } },
+                shape: [samples.count, traceIndices.count, 8],
+                to: folder.appending(path: "production-trace.npy"))
+            let info: [String: Any] = [
+                "format": "bombcad-production-phase-trace-1",
+                "columns": traceIndices, "steps": samples.map(\.step), "times": samples.map(\.time),
+                "fields": [
+                    "peak", "allPositiveImpulse", "firstPhaseImpulse", "phasePeak", "open",
+                    "accumulatedPeak", "accumulatedImpulse", "dt",
+                ],
+                "sampling":
+                    "after every active step; normal logical batches preserved; no new shaders; initial sample omitted",
+                "skipStillAir": configuration.skipStillAir,
+                "allTilesInitiallyActive": args.contains("--all-tiles-diagnostic"),
+            ]
+            try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
+                .write(to: folder.appending(path: "production-trace.json"))
+        }
         guard stable else { throw BlastError.allocationFailed("a stable run (written with stable: false)") }
     }
 

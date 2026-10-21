@@ -1,0 +1,514 @@
+{
+  "date": "2026-10-21",
+  "purpose": "Direct production closure and work-selection/kernel-entry controls; acceptance unchanged",
+  "sampling": "Host reads after each active step using one-step command-buffer parts; normal logical batches preserved; no observation shaders or equation changes; declared arithmetic probes vary math mode/contract; no pressure is recomputed",
+  "cases": {
+    "beirut-p0-1-all-tiles": {
+      "traceNPYSHA256": "36924d92b742272d1de8dbef1b3869c988633dd61931d410dad63d4dd89921f5",
+      "arraysBitIdenticalToOriginal": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": true
+      },
+      "comparison": {
+        "0": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "1": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "2": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "passed": true
+      },
+      "closureEvents": {
+        "159267": [
+          {
+            "step": 1449,
+            "time": 2.5989041647844715,
+            "firstPhaseImpulse": 1000.5726928710938
+          }
+        ],
+        "159777": [
+          {
+            "step": 1463,
+            "time": 2.6247793013899354,
+            "firstPhaseImpulse": 990.2112426757812
+          }
+        ],
+        "159779": [
+          {
+            "step": 1450,
+            "time": 2.600751406906056,
+            "firstPhaseImpulse": 998.5888061523438
+          }
+        ],
+        "164452": [
+          {
+            "step": 1071,
+            "time": 1.9077660151961027,
+            "firstPhaseImpulse": 1345.8580322265625
+          }
+        ],
+        "200270": [
+          {
+            "step": 1416,
+            "time": 2.538027097514714,
+            "firstPhaseImpulse": 1032.393310546875
+          }
+        ],
+        "255969": [
+          {
+            "step": 2022,
+            "time": 3.656500318364124,
+            "firstPhaseImpulse": 634.6305541992188
+          }
+        ]
+      }
+    },
+    "beirut-p0-1-full": {
+      "traceNPYSHA256": "8a874e9d780cfc7c5a13ebe31faa4295f4dc5b566a68850e7c626a1c588966a0",
+      "arraysBitIdenticalToOriginal": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": false
+      },
+      "comparison": {
+        "0": {
+          "relativeL2": 3.4627264275636203e-07,
+          "maxAbsolute": 33.451171875,
+          "outsideTolerance": 64,
+          "medianRelative": 1.7060415366520845e-06,
+          "p99Relative": 0.00021849902958684955
+        },
+        "1": {
+          "relativeL2": 1.422303543047379e-06,
+          "maxAbsolute": 0.29833984375,
+          "outsideTolerance": 0,
+          "medianRelative": 8.966113024130948e-07,
+          "p99Relative": 2.2242788904561044e-05
+        },
+        "2": {
+          "relativeL2": 2.1004464520628344e-05,
+          "maxAbsolute": 49.4305419921875,
+          "outsideTolerance": 2,
+          "medianRelative": 3.7028972949594683e-07,
+          "p99Relative": 2.7361791508885853e-05
+        },
+        "passed": false
+      },
+      "closureEvents": {
+        "159267": [
+          {
+            "step": 1449,
+            "time": 2.598904314028914,
+            "firstPhaseImpulse": 1000.3526611328125
+          }
+        ],
+        "159777": [
+          {
+            "step": 1463,
+            "time": 2.624779465884785,
+            "firstPhaseImpulse": 989.9022827148438
+          }
+        ],
+        "159779": [
+          {
+            "step": 1450,
+            "time": 2.600751559060882,
+            "firstPhaseImpulse": 998.3731079101562
+          }
+        ],
+        "164452": [
+          {
+            "step": 1071,
+            "time": 1.9077661340561463,
+            "firstPhaseImpulse": 1345.8558349609375
+          }
+        ],
+        "200270": [
+          {
+            "step": 1360,
+            "time": 2.4350759742519585,
+            "firstPhaseImpulse": 1024.859619140625
+          }
+        ],
+        "255969": [
+          {
+            "step": 2093,
+            "time": 3.7884289677458582,
+            "firstPhaseImpulse": 684.0610961914062
+          }
+        ]
+      }
+    },
+    "beirut-p0-1-safe-full": {
+      "traceNPYSHA256": "45b0126ad47b8ff53f73b894bfa628f5d3ebc79b944501f69ce9a1c8f451ac8e",
+      "arraysBitIdenticalToOriginal": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": false
+      },
+      "comparison": {
+        "0": {
+          "relativeL2": 3.138329607851701e-07,
+          "maxAbsolute": 16.4443359375,
+          "outsideTolerance": 7,
+          "medianRelative": 2.417213460494876e-06,
+          "p99Relative": 0.00026278749401054146
+        },
+        "1": {
+          "relativeL2": 1.5313957181147973e-06,
+          "maxAbsolute": 0.25,
+          "outsideTolerance": 0,
+          "medianRelative": 1.3538439400881507e-06,
+          "p99Relative": 2.5887517648108146e-05
+        },
+        "2": {
+          "relativeL2": 0.00014019532692040632,
+          "maxAbsolute": 239.8984375,
+          "outsideTolerance": 6,
+          "medianRelative": 5.630907737238871e-07,
+          "p99Relative": 3.145875454790745e-05
+        },
+        "passed": false
+      },
+      "closureEvents": {
+        "159267": [
+          {
+            "step": 1449,
+            "time": 2.59890404313046,
+            "firstPhaseImpulse": 1000.44189453125
+          }
+        ],
+        "159777": [
+          {
+            "step": 1463,
+            "time": 2.6247791903297184,
+            "firstPhaseImpulse": 990.0751953125
+          }
+        ],
+        "159779": [
+          {
+            "step": 1450,
+            "time": 2.600751284204307,
+            "firstPhaseImpulse": 998.4661254882812
+          }
+        ],
+        "164452": [
+          {
+            "step": 997,
+            "time": 1.772770478084567,
+            "firstPhaseImpulse": 1244.7987060546875
+          }
+        ],
+        "200270": [
+          {
+            "step": 1416,
+            "time": 2.5380270042660413,
+            "firstPhaseImpulse": 1032.393798828125
+          }
+        ],
+        "255969": [
+          {
+            "step": 2093,
+            "time": 3.78842852699745,
+            "firstPhaseImpulse": 684.0601196289062
+          }
+        ]
+      }
+    },
+    "beirut-p0-1-safe-tiled": {
+      "traceNPYSHA256": "45b0126ad47b8ff53f73b894bfa628f5d3ebc79b944501f69ce9a1c8f451ac8e",
+      "arraysBitIdenticalToOriginal": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": false
+      },
+      "comparison": {
+        "0": {
+          "relativeL2": 3.138329607851701e-07,
+          "maxAbsolute": 16.4443359375,
+          "outsideTolerance": 7,
+          "medianRelative": 2.417213460494876e-06,
+          "p99Relative": 0.00026278749401054146
+        },
+        "1": {
+          "relativeL2": 1.5313957181147973e-06,
+          "maxAbsolute": 0.25,
+          "outsideTolerance": 0,
+          "medianRelative": 1.3538439400881507e-06,
+          "p99Relative": 2.5887517648108146e-05
+        },
+        "2": {
+          "relativeL2": 0.00014019532692040632,
+          "maxAbsolute": 239.8984375,
+          "outsideTolerance": 6,
+          "medianRelative": 5.630907737238871e-07,
+          "p99Relative": 3.145875454790745e-05
+        },
+        "passed": false
+      },
+      "closureEvents": {
+        "159267": [
+          {
+            "step": 1449,
+            "time": 2.59890404313046,
+            "firstPhaseImpulse": 1000.44189453125
+          }
+        ],
+        "159777": [
+          {
+            "step": 1463,
+            "time": 2.6247791903297184,
+            "firstPhaseImpulse": 990.0751953125
+          }
+        ],
+        "159779": [
+          {
+            "step": 1450,
+            "time": 2.600751284204307,
+            "firstPhaseImpulse": 998.4661254882812
+          }
+        ],
+        "164452": [
+          {
+            "step": 997,
+            "time": 1.772770478084567,
+            "firstPhaseImpulse": 1244.7987060546875
+          }
+        ],
+        "200270": [
+          {
+            "step": 1416,
+            "time": 2.5380270042660413,
+            "firstPhaseImpulse": 1032.393798828125
+          }
+        ],
+        "255969": [
+          {
+            "step": 2093,
+            "time": 3.78842852699745,
+            "firstPhaseImpulse": 684.0601196289062
+          }
+        ]
+      }
+    },
+    "beirut-p0-1-tiled": {
+      "traceNPYSHA256": "36924d92b742272d1de8dbef1b3869c988633dd61931d410dad63d4dd89921f5",
+      "arraysBitIdenticalToOriginal": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": true
+      },
+      "comparison": {
+        "0": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "1": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "2": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "passed": true
+      },
+      "closureEvents": {
+        "159267": [
+          {
+            "step": 1449,
+            "time": 2.5989041647844715,
+            "firstPhaseImpulse": 1000.5726928710938
+          }
+        ],
+        "159777": [
+          {
+            "step": 1463,
+            "time": 2.6247793013899354,
+            "firstPhaseImpulse": 990.2112426757812
+          }
+        ],
+        "159779": [
+          {
+            "step": 1450,
+            "time": 2.600751406906056,
+            "firstPhaseImpulse": 998.5888061523438
+          }
+        ],
+        "164452": [
+          {
+            "step": 1071,
+            "time": 1.9077660151961027,
+            "firstPhaseImpulse": 1345.8580322265625
+          }
+        ],
+        "200270": [
+          {
+            "step": 1416,
+            "time": 2.538027097514714,
+            "firstPhaseImpulse": 1032.393310546875
+          }
+        ],
+        "255969": [
+          {
+            "step": 2022,
+            "time": 3.656500318364124,
+            "firstPhaseImpulse": 634.6305541992188
+          }
+        ]
+      }
+    },
+    "made-perimeter-s3-1-tiled": {
+      "traceNPYSHA256": "c18ac43585954680c2825c87f15837fbae351be69b1fb0adc784a690e80b1c7d",
+      "arraysBitIdenticalToOriginal": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": true
+      },
+      "comparison": {
+        "0": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "1": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "2": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "passed": true
+      },
+      "closureEvents": {
+        "134058": [
+          {
+            "step": 1259,
+            "time": 2.0381508487917017,
+            "firstPhaseImpulse": 426.4053649902344
+          }
+        ],
+        "250097": [
+          {
+            "step": 1650,
+            "time": 2.702128566306783,
+            "firstPhaseImpulse": 225.71926879882812
+          }
+        ]
+      }
+    }
+  },
+  "safeUnfusedPair": {
+    "safeUnfusedTiledVsFull": {
+      "0": {
+        "relativeL2": 0.0,
+        "maxAbsolute": 0.0,
+        "outsideTolerance": 0,
+        "medianRelative": 0.0,
+        "p99Relative": 0.0
+      },
+      "1": {
+        "relativeL2": 0.0,
+        "maxAbsolute": 0.0,
+        "outsideTolerance": 0,
+        "medianRelative": 0.0,
+        "p99Relative": 0.0
+      },
+      "2": {
+        "relativeL2": 0.0,
+        "maxAbsolute": 0.0,
+        "outsideTolerance": 0,
+        "medianRelative": 0.0,
+        "p99Relative": 0.0
+      },
+      "passed": true
+    },
+    "arraysBitIdentical": {
+      "inputs.npy": true,
+      "mask.npy": true,
+      "targets.npy": true
+    }
+  },
+  "cudaVsSafeProduction": {
+    "0": {
+      "relativeL2": 2.5910324202750686e-07,
+      "maxAbsolute": 15.8857421875,
+      "outsideTolerance": 12,
+      "medianRelative": 2.549591182859948e-06,
+      "p99Relative": 0.00021532766169635794
+    },
+    "1": {
+      "relativeL2": 1.8164132204894205e-06,
+      "maxAbsolute": 0.25,
+      "outsideTolerance": 0,
+      "medianRelative": 3.038307447732932e-06,
+      "p99Relative": 2.077319793239387e-05
+    },
+    "2": {
+      "relativeL2": 0.0001320633964515851,
+      "maxAbsolute": 239.900634765625,
+      "outsideTolerance": 5,
+      "medianRelative": 2.682961556583983e-06,
+      "p99Relative": 2.4942383400012435e-05
+    },
+    "passed": false
+  },
+  "cudaVsFullGridProduction": {
+    "0": {
+      "relativeL2": 3.0283145263004655e-07,
+      "maxAbsolute": 21.0654296875,
+      "outsideTolerance": 34,
+      "medianRelative": 2.5584269116740322e-06,
+      "p99Relative": 0.0001697592260774102
+    },
+    "1": {
+      "relativeL2": 1.8806649959781408e-06,
+      "maxAbsolute": 0.25,
+      "outsideTolerance": 0,
+      "medianRelative": 2.971938062322647e-06,
+      "p99Relative": 2.1335771707242733e-05
+    },
+    "2": {
+      "relativeL2": 4.239719217111724e-05,
+      "maxAbsolute": 101.057861328125,
+      "outsideTolerance": 1,
+      "medianRelative": 2.820548870131516e-06,
+      "p99Relative": 2.62930596631222e-05
+    },
+    "passed": false
+  }
+}
