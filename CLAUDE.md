@@ -52,8 +52,9 @@ Rules for every session and agent. Keep them lean: the aim is throughput with li
   under about 1.5 hours, and send sweeps to the mini. No multi-hour runs for cosmetic output
   (doc images): re-render from checkpoints.
 - Kill only your own processes, by pid or task id. Never `pkill` or `killall` a pattern.
-- Scratch and large outputs go on `/Volumes/StudioData/bombcad/`, not the boot disk. `make`
-  targets point tests' settle cache there; when you run `swift test` yourself, set
+- Scratch and large outputs go on `/Volumes/StudioData/bombcad/`, not the boot disk. The docs
+  write it `$BOMBCAD_DATA`, which `make` exports; export it yourself before pasting a docs command.
+  `make` targets point tests' settle cache there; when you run `swift test` yourself, set
   `BOMBCAD_SETTLE_CACHE=/Volumes/StudioData/bombcad/settle-cache` too.
 
 ## Never
