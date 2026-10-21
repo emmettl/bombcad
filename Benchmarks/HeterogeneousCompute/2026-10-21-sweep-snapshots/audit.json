@@ -1,0 +1,370 @@
+{
+  "status": "complete",
+  "variants": [
+    {
+      "name": "2026-10-21-sweep-snapshots",
+      "runnerSHA256": "25e5acf8dd905b5ee1fe158c0c269fec586c44d3dc8122bea45de859b12ab861",
+      "commands": [
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "run",
+            "bombcad-pc",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots/sweep.json",
+            "--cores",
+            "8",
+            "--wait",
+            "0",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots/initial"
+          ],
+          "label": "run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "b100cfed33bf4ee4857e8925818656b3",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots/recovered"
+          ],
+          "label": "resume-run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "b100cfed33bf4ee4857e8925818656b3",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots/initial"
+          ],
+          "label": "existing-destination",
+          "returncode": 2
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "test",
+            "bombcad-pc",
+            "ReceiverLoadStudyTests",
+            "--cores",
+            "8",
+            "--wait",
+            "0"
+          ],
+          "label": "test",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "508daf6281814149b54cb90eaa5652e0"
+          ],
+          "label": "resume-test",
+          "returncode": 0
+        }
+      ],
+      "runInvocation": "b100cfed33bf4ee4857e8925818656b3",
+      "testInvocation": "508daf6281814149b54cb90eaa5652e0",
+      "payloadNamesPinned": null,
+      "retrievalFilesVerified": null
+    },
+    {
+      "name": "2026-10-21-sweep-snapshots-v2",
+      "runnerSHA256": "731cfe325de12d0d276cbc07ceafa21f07b1a97c607e5a527332ee3b5fde02df",
+      "commands": [
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "run",
+            "bombcad-pc",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-v2/sweep.json",
+            "--cores",
+            "8",
+            "--wait",
+            "0",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-v2/initial"
+          ],
+          "label": "run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "7889cf50fb2949238333a49392fc0e90",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-v2/recovered"
+          ],
+          "label": "resume-run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "7889cf50fb2949238333a49392fc0e90",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-v2/initial"
+          ],
+          "label": "existing-destination",
+          "returncode": 2
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "7889cf50fb2949238333a49392fc0e90",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-v2/corrupt-recovery"
+          ],
+          "label": "corrupt-output",
+          "returncode": 1
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "7889cf50fb2949238333a49392fc0e90",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-v2/restored-recovery"
+          ],
+          "label": "restored-output",
+          "returncode": 0
+        }
+      ],
+      "runInvocation": "7889cf50fb2949238333a49392fc0e90",
+      "testInvocation": null,
+      "payloadNamesPinned": null,
+      "retrievalFilesVerified": true
+    },
+    {
+      "name": "2026-10-21-sweep-snapshots-final",
+      "runnerSHA256": "adf8640e4001b2e9b3b0ef0f7df2d529eef025bcaf5dc758c1dfbe5e9c5e80e0",
+      "commands": [
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "run",
+            "bombcad-pc",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-final/sweep.json",
+            "--cores",
+            "8",
+            "--wait",
+            "0",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-final/initial"
+          ],
+          "label": "run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "492943b3e5e94a6791eb960ec7744b64",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-final/recovered"
+          ],
+          "label": "resume-run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "492943b3e5e94a6791eb960ec7744b64",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-final/initial"
+          ],
+          "label": "existing-destination",
+          "returncode": 2
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "492943b3e5e94a6791eb960ec7744b64",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-final/corrupt-recovery"
+          ],
+          "label": "corrupt-output",
+          "returncode": 1
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "492943b3e5e94a6791eb960ec7744b64",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-final/restored-recovery"
+          ],
+          "label": "restored-output",
+          "returncode": 0
+        }
+      ],
+      "runInvocation": "492943b3e5e94a6791eb960ec7744b64",
+      "testInvocation": null,
+      "payloadNamesPinned": null,
+      "retrievalFilesVerified": true
+    },
+    {
+      "name": "2026-10-21-sweep-snapshots-payload",
+      "runnerSHA256": "88b434691b12678ee1cbd69247e333f278d6844d71832366caf29bd17453e8a5",
+      "commands": [
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "run",
+            "bombcad-pc",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/sweep.json",
+            "--cores",
+            "8",
+            "--wait",
+            "0",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/initial"
+          ],
+          "label": "run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "c6bc9f3ae76d46beae04216abcdb786f",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/recovered"
+          ],
+          "label": "resume-run",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "c6bc9f3ae76d46beae04216abcdb786f",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/initial"
+          ],
+          "label": "existing-destination",
+          "returncode": 2
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "c6bc9f3ae76d46beae04216abcdb786f",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/corrupt-recovery"
+          ],
+          "label": "corrupt-output",
+          "returncode": 1
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "c6bc9f3ae76d46beae04216abcdb786f",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/restored-recovery"
+          ],
+          "label": "restored-output",
+          "returncode": 0
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "c6bc9f3ae76d46beae04216abcdb786f",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/corrupt-input-recovery"
+          ],
+          "label": "corrupt-input",
+          "returncode": 1
+        },
+        {
+          "command": [
+            "python3",
+            "-I",
+            "Scripts/remote-sweep.py",
+            "resume",
+            "bombcad-pc",
+            "c6bc9f3ae76d46beae04216abcdb786f",
+            "--results",
+            "/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-payload/restored-input-recovery"
+          ],
+          "label": "restored-input",
+          "returncode": 0
+        }
+      ],
+      "runInvocation": "c6bc9f3ae76d46beae04216abcdb786f",
+      "testInvocation": null,
+      "payloadNamesPinned": true,
+      "retrievalFilesVerified": true
+    }
+  ],
+  "scope": "Protocol identity/ownership/recovery controls only; repeated CPU fixture work is not independent physical evidence or a performance benchmark."
+}

@@ -1,0 +1,49 @@
+.../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:401: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpmpjeey_l/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:402: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpmpjeey_l/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:403: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpmpjeey_l/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:401: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpmpjeey_l/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:402: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpmpjeey_l/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:403: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpmpjeey_l/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:405: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpmpjeey_l/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.E..one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+remote-sweep: interrupted tests retained; use a fresh invocation to retry
+remote-sweep: cached completion dddddddddddddddddddddddddddddddd exit 0
+....remote-sweep: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp0pah1bes/same-fake already exists
+....remote-sweep: the lock ~/bombcad-sweeps/lock is held (sweep same-name)
+remote-sweep: cached completion aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa exit 0
+....remote-sweep: waiting for the lock (held)
+remote-sweep: the lock ~/bombcad-sweeps/lock is held (held)
+..
+======================================================================
+ERROR: test_activation_copies_same_size_same_mtime_edits_and_keeps_build_cache (__main__.SnapshotTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py", line 65, in test_activation_copies_same_size_same_mtime_edits_and_keeps_build_cache
+    repo, _ = sweep.activate_snapshot(options)
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/remote-sweep.py", line 159, in activate_snapshot
+    raise ValueError("build checkout differs from staged source")
+ValueError: build checkout differs from staged source
+
+----------------------------------------------------------------------
+Ran 21 tests in 0.570s
+
+FAILED (errors=1)

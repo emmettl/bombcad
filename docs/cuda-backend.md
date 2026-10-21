@@ -495,9 +495,12 @@ numeric tolerance. No phase definition or admission rule changes. The
 [full receiver-fixture evidence](../Benchmarks/CUDAAcceptance/2026-10-21-receiver-fixtures/summary.md)
 retains the declarations, source pairs, response ranges, controls and limitations.
 
-The CPU runner's source transfer currently precedes its host lock; emmettl/bombcad-work#68
-tracks protection of active source/input snapshots. Ownership checks and coordination used in
-this study are advisory controls, not a fix for that race.
+The CPU runner now transfers only into invocation-private verified staging. Its reusable
+checkout updates under host ownership, and completion/retrieval receipts bind result bytes.
+The [snapshot ownership evidence](../Benchmarks/HeterogeneousCompute/2026-10-21-sweep-snapshots/summary.md)
+records the fix for emmettl/bombcad-work#68, including stale-child ownership, concurrent-controller
+and recovery controls. Earlier ownership probes were advisory; the revised protocol supplies
+the protection. All clients sharing the host must use it.
 
 ### Independent geometry and grid controls
 

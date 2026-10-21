@@ -1,0 +1,8 @@
+{
+  "status": "complete",
+  "runnerSHA256": "73b83b4002090448e3503c438c016523ac13bd3ae422d8982bc1c76dd6fd9735",
+  "workerReturncode": -9,
+  "lockRetainedAfterForcedStop": true,
+  "staleRecoveryOnlyAfterGroupDeath": true,
+  "scope": "Synthetic PC group only; no production job targeted."
+}

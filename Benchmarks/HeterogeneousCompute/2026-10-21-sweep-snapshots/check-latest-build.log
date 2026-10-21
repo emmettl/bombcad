@@ -1,0 +1,13 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Constructing description]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+[16 / 22] BombCADTests-product
+[16 / 21] scenebench-product
+[19 / 24] scenebench-product
+[22 / 24] scenebench-product
+Build complete! (1.90 secs)
+build-strict: no warnings

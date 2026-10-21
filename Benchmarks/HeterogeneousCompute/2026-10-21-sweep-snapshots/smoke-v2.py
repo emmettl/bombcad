@@ -1,0 +1,52 @@
+"""Bounded real PC run/test/recovery controls; no racing of production jobs."""
+import hashlib,json,subprocess,time
+from pathlib import Path
+repo=Path.cwd();root=Path('/Volumes/StudioData/bombcad/experiments/2026-10-21-sweep-snapshots-v2');root.mkdir(exist_ok=False)
+def digest(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def save():(root/'study.json').write_text(json.dumps(report,indent=2)+'\n')
+original=Path('/Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/input-0.0001.json')
+data=original.read_bytes();(root/'input.json').write_bytes(data);(root/'input-original.json').write_bytes(data)
+sweep=dict(name='snapshot-lock-20261021',inputs=[str(root/'input.json')],cases=[dict(name='fixtures',args=['receiver-fixtures','--input',str(root/'input.json'),'--out','{out}/results.json'])])
+(root/'sweep.json').write_text(json.dumps(sweep,indent=2)+'\n')
+report=dict(status='running',scope=__doc__,baseRevision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),runnerSHA256=digest(repo/'Scripts/remote-sweep.py'),commands=[])
+save()
+def run(args,label,expected=0):
+ p=subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,start_new_session=True)
+ report['liveProcess']=dict(pid=p.pid,pgid=p.pid,label=label,command=args);save()
+ output,_=p.communicate();(root/(label+'.log')).write_bytes(output);report['commands'].append(dict(command=args,label=label,returncode=p.returncode));save()
+ assert p.returncode==expected,(label,p.returncode,output[-3000:])
+ return output.decode(errors='replace')
+try:
+ command=['python3','-I','Scripts/remote-sweep.py']
+ run(command+['run','bombcad-pc',str(root/'sweep.json'),'--cores','8','--wait','0','--results',str(root/'initial')],'run')
+ folder=root/'initial/snapshot-lock-20261021-bombcad-pc';receipt=json.loads((folder/'retrieval.json').read_text());ident=receipt['invocation'];report['runInvocation']=ident;save()
+ expected=Path('/Volumes/StudioData/bombcad/experiments/2026-10-21-receiver-fixtures/results/receiver-fixtures-20261021-bombcad-pc/bin-0.0001/results.json')
+ assert json.loads((folder/'fixtures/results.json').read_text())==json.loads(expected.read_text())
+ report['matchesPreviousCPUStudyExactly']=True
+ # Recovery must not send or use changed local inputs.
+ (root/'input.json').write_text('{"format":"deliberately-changed-after-completion"}\n')
+ run(command+['resume','bombcad-pc',ident,'--results',str(root/'recovered')],'resume-run')
+ recovered=root/'recovered/snapshot-lock-20261021-bombcad-pc'
+ assert digest(folder/'fixtures/results.json')==digest(recovered/'fixtures/results.json')
+ report['recoveryArraysBitIdentical']=True;save()
+ run(command+['resume','bombcad-pc',ident,'--results',str(root/'initial')],'existing-destination',2)
+ assert digest(folder/'fixtures/results.json')==digest(expected)
+ # Deliberately damage only our completed private output; refusal must not become success.
+ remote='bombcad-sweeps/staging/'+ident+'/results/fixtures/results.json'
+ original_output=(folder/'fixtures/results.json').read_bytes()
+ subprocess.run(['ssh','bombcad-pc','cat >> '+remote],input=b'\nCHECKSUM-CONTROL\n',check=True)
+ try:
+  run(command+['resume','bombcad-pc',ident,'--results',str(root/'corrupt-recovery')],'corrupt-output',1)
+  assert not (root/'corrupt-recovery').exists()
+ finally:
+  subprocess.run(['ssh','bombcad-pc','cat > '+remote],input=original_output,check=True)
+ run(command+['resume','bombcad-pc',ident,'--results',str(root/'restored-recovery')],'restored-output')
+ report['corruptedOutputRefused']=True
+ for file in ['manifest.json','request.json','started.json','completion.json']:
+  content=subprocess.check_output(['ssh','bombcad-pc','cat bombcad-sweeps/staging/'+ident+'/'+file]);(root/('run-'+file)).write_bytes(content)
+ completion=json.loads((root/'run-completion.json').read_text());assert completion['invocation']==ident and completion['exitCode']==0 and completion['results']
+ report['retrievalFilesVerified']=all(json.loads((root/name/'snapshot-lock-20261021-bombcad-pc/retrieval.json').read_text())['filesVerified'] for name in ['initial','recovered','restored-recovery'])
+ assert digest(repo/'Scripts/remote-sweep.py')==report['runnerSHA256']
+ report['status']='complete';save();print('Checksum run/recovery controls complete',ident)
+except BaseException as error:
+ report.update(status='failed',error=repr(error));save();raise

@@ -1,0 +1,9 @@
+{
+  "status": "complete",
+  "invocation": "96194e6cffa940de82b28b81eca2a31e",
+  "runnerSHA256": "73b83b4002090448e3503c438c016523ac13bd3ae422d8982bc1c76dd6fd9735",
+  "finalTestCompletionVerified": true,
+  "linuxRunnerControlsPassed": true,
+  "linuxForcedStopPassed": true,
+  "scope": "Synthetic ownership tests only; no production job targeted or numerical/performance policy changed."
+}

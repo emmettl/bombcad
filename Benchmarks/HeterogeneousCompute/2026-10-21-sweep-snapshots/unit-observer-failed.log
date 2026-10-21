@@ -1,0 +1,28 @@
+../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:178: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpz0oudnhi/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:179: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpz0oudnhi/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:180: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpz0oudnhi/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:178: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpz0oudnhi/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:179: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpz0oudnhi/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:180: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpz0oudnhi/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:182: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpz0oudnhi/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+remote-sweep: the lock ~/bombcad-sweeps/lock is held (sweep same-name)

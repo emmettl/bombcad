@@ -73,13 +73,45 @@ python3 -I Scripts/remote-sweep.py compare /Volumes/StudioData/bombcad/sweeps/<n
   they read. `{repo}` and `{out}` stand for the repository's copy and the case's folder, and the
   inputs are sent and their paths rewritten (the script's own help says how).
 - **On the host** it keeps to `~/bombcad-sweeps`:
-  - this worktree in `src`, its release build kept between sweeps;
-  - the inputs, and each sweep's results.
+  - each invocation's verified source, inputs and tools under `staging/<id>`;
+  - the reusable `src` build checkout, updated from that snapshot only under host ownership;
+  - results and completion records private to that invocation, including when names repeat.
 - **One sweep at a time,** under the host's own lock, as `Scripts/ml/remote-train.py` locks
   (`--wait` waits for it). It never touches the training runner's `~/bombcad-ml` or its lock.
 - **Each case is held** to `--cores` of the host's cores, 16 of the PC's 24 by default, so that a
   sweep can share the box with a training job on the GPU.
-- **Every SSH and rsync** reads nothing from standard input.
+- **No command consumes interactive input.** Request/manifest uploads receive explicit JSON bytes.
+
+Both the run and test lanes stage before acquiring the lock, but staging cannot modify an
+active owner's checkout, inputs or tools. The worker verifies the transferred snapshot before
+activating it under the lock. Source inputs and regular file modes, internal links, request and
+tool identity are checked; build/Git/bytecode/cache metadata is excluded only from source/tools.
+Declared input and result payloads retain every entry, including names such as `dist`, `.build`
+and `__pycache__`. Input basenames and
+case names must be distinct, simple paths; external input/source links are refused. A live
+orphaned worker group continues to hold the lock after its parent dies. On TERM/HUP/INT the
+worker drains its own group before releasing ownership. Older clients that still write the
+shared checkout before locking must be updated; they cannot be made safe by a new receiver alone.
+Stale-lease cleanup, acquisition and release are serialized by a short filesystem mutex.
+Waiting uses a monotonic deadline; it does not rely on wall-clock corrections.
+
+The log prints the invocation ID. To recover a retained invocation without sending changed
+local sources or inputs:
+
+```bash
+python3 -I Scripts/remote-sweep.py resume bombcad-pc INVOCATION --wait 30m --results NEW-BASE
+```
+
+A staged invocation that never started can run its original snapshot. A verified completion
+is retrieved without repeating work; interrupted partial work is preserved and refused for
+automatic replay. Start a fresh invocation for an explicit retry of that work. Existing local
+results are never merged; retrieval failure returns failure. Stages are retained for recovery
+and consume storage; cleanup must preserve any active or still-needed invocation.
+Run completion receipts bind every result file's bytes and mode. Cached recovery verifies them
+on the host and after retrieval; a worker's explicit refusal is never replaced by an older
+success receipt. A lost SSH connection can recover a completed result only when its receipted
+files verify. Source/input/result tampering therefore refuses recovery rather than returning
+an apparent pass.
 
 **The first sweep, 21 October 2026** (`cpu-studies-1`), on `bombcad-pc`: WSL2 Ubuntu 24.04 on 24
 cores and 30 GB, Swift 6.4.1 as CI's. BlastModel's 817 tests pass there in 170 s. The sweep has
