@@ -1,0 +1,43 @@
+"""Four-case queue overhead study; three rotated policy trials; fresh prep, warm PTX cache."""
+import copy,importlib.util,json,statistics,subprocess,sys,time
+from pathlib import Path
+repo=Path.cwd();tool=repo/'Scripts/cuda/field-queue.py';sys.path.insert(0,str(tool.parent))
+spec=importlib.util.spec_from_file_location('queue_api',tool);q=importlib.util.module_from_spec(spec);spec.loader.exec_module(q)
+root=Path('/private/tmp/bombcad-queue-cost-study');old=Path('/private/tmp/bombcad-field-queue-final');cost=q.read(old/'costs.json');base=q.read(old/'plan.json')
+names=['queue-m5','queue-m10','queue-m20','queue-terrain-m10'];jobs=[]
+for name in names:
+ e=cost['cases'][name];meta=q.read(Path(e['reference'])/'meta.json')
+ terms=lambda *keys:[{'report':str(old/'costs.json'),'keys':['cases',name,k]} for k in keys]
+ jobs.append(dict(id=name,arguments=e['arguments'],reference=e['reference'],physics='recommended-static-terrain' if '--dem' in e['arguments'] else 'recommended-uniform',backends=['metal','cuda'],metalGB=1,cudaBytes=77*meta['cells']+36*meta['rows']*meta['columns']+1048576+sum(f.stat().st_size for f in (old/(name+'-input')).glob('cut-*.bin')),costs={'metal':terms('metalSeconds'),'cuda':terms('prepareSeconds','deploymentSeconds','compareSeconds')},timeoutSeconds=120))
+report=dict(status='running',scope=__doc__,observerClock='Mac time.perf_counter',rows=[])
+def save():q.atomic(root/'study.json',report)
+def snapshot(contract):return dict(mac=q.mac_snapshot(contract),pc=q.pc_snapshot(contract))
+save()
+try:
+ for repetition in range(3):
+  policies=['metal','auto','split'];policies=policies[repetition:]+policies[:repetition]
+  for policy in policies:
+   plan=copy.deepcopy(base);plan['jobs']=copy.deepcopy(jobs)
+   for i,j in enumerate(plan['jobs']):
+    modes=['metal'] if policy=='metal' else ['metal','cuda'] if policy=='auto' else ['cuda'] if i in (1,3) else ['metal']
+    j['backends']=modes;j['costs']={m:j['costs'][m] for m in modes}
+   name=f'{repetition}-{policy}';queue=root/name;q.atomic(root/(name+'-plan.json'),plan);contract=q.init(plan,queue)
+   before=snapshot(contract)
+   if not before['pc']['available'] or before['mac']['declaredGB'] or before['mac']['waiting'] or before['mac']['pressure']!='1':raise RuntimeError('external workload detected before trial; stop rather than benchmark contention')
+   start=time.perf_counter()
+   with (root/(name+'.log')).open('w') as log:
+    p=subprocess.run([sys.executable,str(tool),'run','--queue',str(queue),'--poll','.25','--max-seconds','180'],stdout=log,stderr=subprocess.STDOUT,timeout=200)
+   elapsed=time.perf_counter()-start
+   if p.returncode:raise RuntimeError(f'{name} controller exit {p.returncode}')
+   q.verify_contract(contract);q.recover(queue,contract);states=q.snapshot_states(queue,contract)
+   assert all(s['status']=='accepted' and s['attempts']==1 for s in states.values())
+   deadline=time.perf_counter()+10
+   while any(q.tracked_alive(q.read(f)) for f in queue.glob('cases/*/attempts/*/process.json')):
+    if time.perf_counter()>deadline:raise RuntimeError('worker remains live after acceptance')
+    time.sleep(.05)
+   receipts={j['id']:q.object_receipt(queue,states[j['key']]['object'],contract,j) for j in contract['jobs']}
+   row=dict(repetition=repetition,policy=policy,queue=str(queue),contract=contract['key'],controllerSeconds=elapsed,before=before,after=snapshot(contract),receipts=receipts,allAcceptedOnce=True,allOwnedGroupsTerminal=True)
+   report['rows'].append(row);save();print(name,round(elapsed,3),[(n,r['backend'],round(r['totalSecondsBeforePublication'],3)) for n,r in receipts.items()],flush=True)
+ report['summary']={p:{'medianControllerSeconds':statistics.median(r['controllerSeconds'] for r in report['rows'] if r['policy']==p),'minControllerSeconds':min(r['controllerSeconds'] for r in report['rows'] if r['policy']==p),'maxControllerSeconds':max(r['controllerSeconds'] for r in report['rows'] if r['policy']==p)} for p in ['metal','auto','split']}
+ report['status']='complete';save()
+except BaseException as e:report.update(status='failed',error=repr(e));save();raise

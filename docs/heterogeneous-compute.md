@@ -333,3 +333,14 @@ after controller interruption without relaunching it. Accepted cases are reused 
 retain the physical/calibration cases and all outcomes. This is bounded reference replay, not
 bulk generation or a throughput speedup claim. #59 remains open for finer phase accounting and
 larger evaluation; #47/#62/#63 admission remains gated.
+
+
+### Repeated small queue costs
+
+The [four-case queue cost study](../Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/summary.md)
+repeats Metal-only, automatic and forced split policies three times. Removing irrelevant PC
+probes reduces Metal-only median controller completion from 3.475 s to 1.360 s. Automatic
+selection keeps all four cases on Metal (3.518 s); the forced split takes 21.142 s. These small
+jobs establish an overhead floor and show why worker solve time is insufficient for scheduling.
+They do not establish a CUDA throughput win. #59 retains larger/repeated representative queues,
+finer Metal accounting and complete-cost modelling; synchronous PC probing remains measurable.

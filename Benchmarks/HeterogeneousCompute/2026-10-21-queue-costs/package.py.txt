@@ -1,0 +1,33 @@
+import hashlib,json,statistics,tarfile,shutil
+from pathlib import Path
+out=Path('Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs');baseline=Path('/private/tmp/bombcad-queue-cost-study');candidate=Path('/private/tmp/bombcad-queue-cost-candidate');repeat=Path('/private/tmp/bombcad-queue-cost-repeat')
+def read(p):return json.loads(p.read_text())
+def write(p,r):p.write_text(json.dumps(r,indent=2,sort_keys=True)+'\n')
+a=read(baseline/'study.json');b=read(candidate/'study.json');c=read(repeat/'study.json');assert all(r['status']=='complete' for r in (a,b,c))
+kept=[r for r in b['rows'] if r['repetition']>0]+c['rows']
+assert len(kept)==9
+for r in a['rows']+kept:
+ assert r['allAcceptedOnce'] and r['allOwnedGroupsTerminal']
+ assert r['before']['pc']['available'] and r['before']['mac']['declaredGB']==0
+ assert all(v['comparison']['passed'] for v in r['receipts'].values())
+ assert all(not v['timings'].get('preparationCacheHit',False) for v in r['receipts'].values())
+report={'format':'bombcad-queue-cost-study-1','status':'complete','scope':a['scope'],'observerClock':a['observerClock'],'baselineRows':a['rows'],'candidateRows':kept,'exclusions':'Candidate repetition 0 overlapped lint/CPU validation; excluded in full and replaced with repeat/study.json. No GPU contention was intentionally introduced. Pre/post snapshots do not rule out every external process during a trial.','summaries':{}}
+for label,rows in [('baseline',a['rows']),('candidate',kept)]:
+ report['summaries'][label]={p:{'medianSeconds':statistics.median(r['controllerSeconds'] for r in rows if r['policy']==p),'minSeconds':min(r['controllerSeconds'] for r in rows if r['policy']==p),'maxSeconds':max(r['controllerSeconds'] for r in rows if r['policy']==p)} for p in ['metal','auto','split']}
+write(out/'study.json',report)
+costs={'format':'bombcad-queue-observed-costs-1','scope':'Accepted candidate worker-body seconds: includes prepare, deployment and compare; excludes controller dispatch/probes/polling, Python startup before worker body and publication. Fresh preparation, persistent warm PTX cache. Four small exact cases only; not an extrapolation or complete queue throughput model.','cases':{}}
+for name in kept[0]['receipts']:
+ costs['cases'][name]={}
+ for backend in ['metal','cuda']:
+  values=[(r,v) for r in kept for n,v in r['receipts'].items() if n==name and v['backend']==backend]
+  if not values:continue
+  seconds=[v['totalSecondsBeforePublication'] for r,v in values]
+  costs['cases'][name][backend]={'samples':len(values),'workerBodyMedianSeconds':statistics.median(seconds),'minSeconds':min(seconds),'maxSeconds':max(seconds),'evidence':[{'queue':r['queue'],'contract':r['contract'],'attempt':v['attempt']} for r,v in values]}
+write(out/'observed-costs.json',costs)
+for src,name in [(baseline/'study.py','baseline-study.py.txt'),(candidate/'study.py','candidate-study.py.txt'),(repeat/'study.py','repeat-study.py.txt'),(baseline/'baseline-field-queue.py.txt','baseline-field-queue.py.txt')]:shutil.copy2(src,out/name)
+for src,name in [(baseline,'baseline'),(candidate,'candidate'),(repeat,'repeat')]:
+ with tarfile.open(out/(name+'-state.tar.gz'),'w:gz') as tar:
+  for p in sorted(src.iterdir()):
+   if p.name=='rejected-poll-queue' or p.name in ['package.py','check.log','unit.log']:continue
+   tar.add(p,arcname=name+'/'+p.name)
+print(json.dumps(report['summaries'],indent=2))

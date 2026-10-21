@@ -1,0 +1,242 @@
+{
+  "cases": {
+    "queue-m10": {
+      "cuda": {
+        "evidence": [
+          {
+            "attempt": "9a0cc30e6b844978ba5029680e634f81",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-split"
+          },
+          {
+            "attempt": "6e7dc8d987564abb8eafc7cc79090ff5",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-split"
+          },
+          {
+            "attempt": "d413bdc3927c4536b8637558ef451ae0",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-split"
+          }
+        ],
+        "maxSeconds": 9.473754708000001,
+        "minSeconds": 9.264764125000001,
+        "samples": 3,
+        "workerBodyMedianSeconds": 9.28302725
+      },
+      "metal": {
+        "evidence": [
+          {
+            "attempt": "196799576eca49beb1a23029b88e8e3b",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-auto"
+          },
+          {
+            "attempt": "72439928ff8441f0bb2969d9d3149353",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-metal"
+          },
+          {
+            "attempt": "3223fdc6390f44459b98ea2516e116e9",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-metal"
+          },
+          {
+            "attempt": "f6dfcada7b6f4d7f9ae18558c807fcdb",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-auto"
+          },
+          {
+            "attempt": "145be34c8e2c48a88bb1f186d6a32591",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-metal"
+          },
+          {
+            "attempt": "793418da6b924d55bc9ceca91e431fed",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-auto"
+          }
+        ],
+        "maxSeconds": 0.183355458,
+        "minSeconds": 0.166916458,
+        "samples": 6,
+        "workerBodyMedianSeconds": 0.171847208
+      }
+    },
+    "queue-m20": {
+      "metal": {
+        "evidence": [
+          {
+            "attempt": "60452a5cd116418d8078272e87e19632",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-auto"
+          },
+          {
+            "attempt": "bb7e0c4d9fd743128a95384c69f00653",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-split"
+          },
+          {
+            "attempt": "05966b0a82ce4ac7b0dbf342d274169f",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-metal"
+          },
+          {
+            "attempt": "b5a5b2865dc043d3a90fa94afef7fc1b",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-split"
+          },
+          {
+            "attempt": "478b7ae1739e4750998d44eb47d3ed8b",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-metal"
+          },
+          {
+            "attempt": "4a05aca249864f828dcea43faa82985c",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-auto"
+          },
+          {
+            "attempt": "bb1ff682d4d8468981777c59a2c0b98c",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-metal"
+          },
+          {
+            "attempt": "6569ec9e157f4d5e9a52f7e0c2de926f",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-auto"
+          },
+          {
+            "attempt": "fb440f92cfd549e59f5f66a08b9ad7e7",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-split"
+          }
+        ],
+        "maxSeconds": 0.186067875,
+        "minSeconds": 0.174172625,
+        "samples": 9,
+        "workerBodyMedianSeconds": 0.180019209
+      }
+    },
+    "queue-m5": {
+      "metal": {
+        "evidence": [
+          {
+            "attempt": "8deb8866c47e4401aad62974bfe1a91d",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-auto"
+          },
+          {
+            "attempt": "4eb3985777324ace890226aadb04464e",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-split"
+          },
+          {
+            "attempt": "1ab2e600cf1d42e58336402a6ec6b5dc",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-metal"
+          },
+          {
+            "attempt": "4d84e543010b41108d8fd9d8decf30c5",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-split"
+          },
+          {
+            "attempt": "fa80f52b85be469193bd6230be7045ae",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-metal"
+          },
+          {
+            "attempt": "bb5caeecbac54aba87b4aed6303ede27",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-auto"
+          },
+          {
+            "attempt": "396c6329c7454209b9a0be6b563d545b",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-metal"
+          },
+          {
+            "attempt": "fe8876595c564471a25180e88d02b3ae",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-auto"
+          },
+          {
+            "attempt": "f3471a3a3ab041a59028e9f676ab4ce8",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-split"
+          }
+        ],
+        "maxSeconds": 0.185718833,
+        "minSeconds": 0.170644458,
+        "samples": 9,
+        "workerBodyMedianSeconds": 0.176148292
+      }
+    },
+    "queue-terrain-m10": {
+      "cuda": {
+        "evidence": [
+          {
+            "attempt": "587e0e79d0c84cad845339538499c1e2",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-split"
+          },
+          {
+            "attempt": "45f6ea5d2f9945c59ee80d0f517d43da",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-split"
+          },
+          {
+            "attempt": "97b1e60e538d4791bbf1c06c33bd4f8e",
+            "contract": "07f7bfb3b90d4f9f122b91a377e4a4252c547e3bfec2f99e595edbe574760868",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-split"
+          }
+        ],
+        "maxSeconds": 10.276240458,
+        "minSeconds": 10.008341957999999,
+        "samples": 3,
+        "workerBodyMedianSeconds": 10.170662125
+      },
+      "metal": {
+        "evidence": [
+          {
+            "attempt": "0ea5865f64404f59bf1e83d28b6b9bf6",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-auto"
+          },
+          {
+            "attempt": "5613e1fe4d154067b0a03c2803ba6ed9",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/1-metal"
+          },
+          {
+            "attempt": "4d8866b866044f07b13f39a9dd6ec65a",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-metal"
+          },
+          {
+            "attempt": "f704c3b488264d458730a68fac11e9e9",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-candidate/2-auto"
+          },
+          {
+            "attempt": "9a17abda2d8a4fc1aa06683c8dd4409b",
+            "contract": "5601c47d37148a71182f99e7523e20bd486ae4de8a1f9a258496016ddd50dc8c",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-metal"
+          },
+          {
+            "attempt": "77e033bc73614aaaa1e77b775e2502f0",
+            "contract": "edb994abbcabc3ca6a4118bad8c7b01386c7aa577c9e0aa684278f2b6b5d9e5f",
+            "queue": "/private/tmp/bombcad-queue-cost-repeat/0-auto"
+          }
+        ],
+        "maxSeconds": 0.18595004199999998,
+        "minSeconds": 0.176863,
+        "samples": 6,
+        "workerBodyMedianSeconds": 0.1797407915
+      }
+    }
+  },
+  "format": "bombcad-queue-observed-costs-1",
+  "scope": "Accepted candidate worker-body seconds: includes prepare, deployment and compare; excludes controller dispatch/probes/polling, Python startup before worker body and publication. Fresh preparation, persistent warm PTX cache. Four small exact cases only; not an extrapolation or complete queue throughput model."
+}

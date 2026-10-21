@@ -1,0 +1,454 @@
+python3 Scripts/check-affected.py 
+check-affected: 13 changed file(s), tier: covered
+  map 90fb60017c15 (40 commits behind the merge base, built 2026-10-20 19:53 UTC on Louiss-Mac-mini)
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/baseline-field-queue.py.txt: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/baseline-state.tar.gz: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/baseline-study.py.txt: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/candidate-state.tar.gz: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/candidate-study.py.txt: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/observed-costs.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/repeat-state.tar.gz: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/repeat-study.py.txt: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/study.json: not code the map covers; by name
+  Scripts/cuda/field-queue.py: not code the map covers; by name
+  Scripts/cuda/test_field_queue.py: not code the map covers; by name
+  5 of 411 suites, under 1% of the suites' time in the map:
+    ErrorBandTests: always
+    EvidentialStandingTests: always
+    RenderLayoutTests: always
+    StandingFingerprintTests: always
+    StandingRunTests: always
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 0 GB declared by the 0 held and the waiting against a budget of 26 GB
+  BlastModel's 4 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+............ssss.........................{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "pending"}
+.{"one": "running"}
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+...
+----------------------------------------------------------------------
+Ran 53 tests in 7.007s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.055s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp6u_iqskj/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxy4ed71j/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.024s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.362s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (9caae0f382), newest first:
+- dfe931e Third (A)
+- 9a59c46 Second (A)
+
+### Full check: passed
+
+On dfe931ee87, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmprdonmyha/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmprdonmyha/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmprdonmyha/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp9f4ir6c5/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp9f4ir6c5/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.256s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 0.843s
+
+OK
+python3 Scripts/test-ship.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 10.289s
+
+OK
+python3 Scripts/test-release-notes.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.005s
+
+OK
+python3 Scripts/test-check-shader-mirrors.py
+.........................
+----------------------------------------------------------------------
+Ran 25 tests in 2.889s
+
+OK
+python3 Scripts/test-check-test-deadlines.py
+/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpjb1ju55v'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpd9ig6qbe'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp6729n5t9'>
+  _warnings.warn(warn_message, ResourceWarning)
+.............
+----------------------------------------------------------------------
+Ran 15 tests in 0.007s
+
+OK
+python3 Scripts/calibration/test-calibration.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 2.975s
+
+OK
+python3 Scripts/test-remote-sweep.py
+../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:38: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp2knc5anz/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:39: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp2knc5anz/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp2knc5anz/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:38: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp2knc5anz/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:39: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp2knc5anz/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp2knc5anz/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:42: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp2knc5anz/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+python3 Scripts/split/test-split.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 1.106s
+
+OK
+python3 Scripts/split/test-solver-split.py
+The plan no longer describes the tree:
+  newOne(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+The plan no longer describes the tree:
+  time is placed twice
+  time cannot leave the class's body (stored property)
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+....The plan no longer describes the tree:
+  added(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+...
+----------------------------------------------------------------------
+Ran 7 tests in 0.408s
+
+OK
+  added(): not in the plan; with what is above it (BlastSolver+Stepping.swift)
+wrote plan.json
+  widened time: set from BlastSolver+Stepping.swift
+  widened steps: set from BlastSolver+Stepping.swift
+  widened cache: used from BlastSolver+Boxes.swift, BlastSolver+Stepping.swift
+  widened uniforms: used from BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Boxes.swift
+  wrote Sources/BlastCore/BlastSolver.swift
+  wrote Sources/BlastCore/Shaders/SolverSweep.metal
+  wrote Sources/BlastCore/Shaders/SolverView.metal
+  wrote Sources/BlastCore/Shaders/Solver.metal
+  wrote Sources/BlastCore/StructureTypes+GPU.swift
+  wrote Scripts/check-affected.py
+  wrote docs/air.md
+already split; nothing to do
+python3 Scripts/split/test-narrow-access.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.007s
+
+OK
+python3 Scripts/reference/test-kingery-bulmash.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.102s
+
+OK
+python3 Scripts/footing-bed/test-bed-replica.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp17qi2wr9.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpeg_7fpix.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmprdy28j6z.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpdcu_q7rf.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.008s
+
+OK
+python3 Scripts/reference/test-sdof.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.307s
+
+OK
+python3 Scripts/reference/test-blast1d.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 4.383s
+
+OK
+python3 Scripts/reference/test-compare.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.165s
+
+OK
+python3 Scripts/protective/test-protective.py
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 3.795s
+
+OK
+python3 Scripts/test-analytic-oracles.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 2.709s
+
+OK
+python3 -I Scripts/open-benchmark/test_score.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 0.029s
+
+OK
+python3 -I Scripts/open-benchmark/test_decks.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 1.649s
+
+OK
+python3 -I Scripts/ml/test-remote-train.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.111s
+
+OK
+python3 -I Scripts/ml/test-field-runs.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.049s
+
+OK
+python3 Scripts/check-doc-links.py
+python3 Scripts/check-shader-mirrors.py
+38 Swift/Metal pairs and 4 shader copies checked; 0 findings, 1 allowed
+python3 Scripts/check-test-deadlines.py
+No wall-clock bounds in 396 test files.
++ /Users/louisemmett/.local/bin/gpu-slot /Applications/Xcode.app/Contents/Developer/usr/bin/python3 Scripts/check-affected.py check-steps
++ make build-strict
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Using on-disk description]
+[1 / 1]
+[1 / 62] BlastCoreTests-product
+[10 / 15] BombCADTests-product
+Build complete! (2.78 secs)
+build-strict: no warnings
++ make ifc-converter
+python3 Scripts/prepare-ifc-converter.py
+/Users/louisemmett/Developer/Projects/bombcad/.build/ifc-converter/IfcConvert
++ swift test --filter \.(StandingRunTests)(/|$)
+Building for debugging...
+[Computing dependencies]
+[Using on-disk description]
+[9 / 16] BlastCoreTests-product
+Build complete! (0.53 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Standing carried with results" started.
+◇ Test "Comparison names the runs whose standing differs from the reference's" started.
+◇ Test "Results files carry their standing beside their own keys, which their readers pass over" started.
+◇ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" started.
+◇ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" started.
+◇ Test "The app's air settings give the standing the solver's configuration" started.
+◇ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" started.
+◇ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" started.
+✔ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" passed after 0.001 seconds.
+✔ Test "The app's air settings give the standing the solver's configuration" passed after 0.014 seconds.
+✔ Test "Results files carry their standing beside their own keys, which their readers pass over" passed after 0.178 seconds.
+✔ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" passed after 0.179 seconds.
+✔ Test "Comparison names the runs whose standing differs from the reference's" passed after 0.197 seconds.
+✔ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" passed after 0.198 seconds.
+✔ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" passed after 0.325 seconds.
+✔ Suite "Standing carried with results" passed after 0.325 seconds.
+✔ Test run with 7 tests in 1 suite passed after 0.325 seconds.
+check-affected: here in 7 s, waiting for gpu-slot included
+remote-sweep: sending this worktree to bombcad-pc:~/bombcad-sweeps/src
+Building for debugging...
+[Provisioning 15 / 17]
+Build complete! (0.67 secs)
+remote-sweep: tests built in 2 s
+◇ Test run started.
+↳ Testing Library Version: 6.4.1 (804dc4530ef3666)
+↳ Target Platform: x86_64-unknown-linux-gnu
+◇ Suite EvidentialStandingTests started.
+◇ Suite "The renderer's copies of the solver's structs" started.
+◇ Suite ErrorBandTests started.
+◇ Suite StandingFingerprintTests started.
+◇ Test everyOptionIsSetBySomeInput() started.
+◇ Test optionsCapTheResultsTheyTouch() started.
+◇ Test afterburningChangesTheImpulsesStanding() started.
+◇ Test modelsRunAlongsideAreIllustrative() started.
+◇ Test closeInLoadingAsksForFinerAir() started.
+◇ Test aDeflagrationDoesNotQuoteTheChargesComparisons() started.
+◇ Test tightOpenFacesAreSaidBesideTheStructure() started.
+◇ Test everyInputHasAStandingEntry() started.
+◇ Test levelsRecordedAsMeasuredStillRead() started.
+◇ Test refinementCountsAsTheFinerGrid() started.
+◇ Test eachPresetHasAStandingForWhatItProduces() started.
+◇ Test linksReachHeadingsInTheDocs() started.
+◇ Test aDeflagrationsBandFollowsItsFuel() started.
+◇ Test "Shell nodes and elements are drawn with the solver's layout" started.
+◇ Test theDocsNameTheLevelsAsTheCodeDoes() started.
+◇ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() started.
+◇ Test coarseCellsForASmallChargeAreAnApproximation() started.
+◇ Test collapseStandsApartFromLocalDamage() started.
+◇ Test radiationAndCloudFollowTheAirTheyWereComparedOn() started.
+◇ Test standingsRoundTripAndCompare() started.
+◇ Test numberedTablesStillReadAndShow() started.
+◇ Test theTextIsCanonical() started.
+◇ Test theIdentityIsAHashOfTheTablesContent() started.
+◇ Test gaugesTakeTheirOwnBands() started.
+◇ Test standingsWithoutBandsStillDecode() started.
+◇ Test aGaugeOnAWallReadsTheReflectedBand() started.
+◇ Test samplesTakeOnlyTheBandsThatFitThem() started.
+◇ Test tablesMirrorTheValidationRecord() started.
+◇ Test readingATableInterpolatesBetweenGridsAndSpansDistances() started.
+◇ Test meshSeriesQuoteTheStudy() started.
+◇ Test figuresQuoteTheRecord() started.
+◇ Test structuresTakeBandsByRegimeMeshAndMaterial() started.
+◇ Test theConfinedRegimesDefaultsAreReported() started.
+◇ Test closeInGaugesOnTodaysAir() started.
+◇ Test groundShockIsBandedOnlyForTheHalfSpace() started.
+◇ Test confinedScenesAreAdvisedOnAfterburning() started.
+✔ Test "Shell nodes and elements are drawn with the solver's layout" passed after 0.238 seconds.
+✔ Test theTextIsCanonical() passed after 0.238 seconds.
+✔ Test numberedTablesStillReadAndShow() passed after 0.240 seconds.
+✔ Suite "The renderer's copies of the solver's structs" passed after 0.240 seconds.
+✔ Test everyOptionIsSetBySomeInput() passed after 0.241 seconds.
+✔ Test everyInputHasAStandingEntry() passed after 0.241 seconds.
+✔ Test levelsRecordedAsMeasuredStillRead() passed after 0.241 seconds.
+✔ Test theDocsNameTheLevelsAsTheCodeDoes() passed after 0.241 seconds.
+✔ Test modelsRunAlongsideAreIllustrative() passed after 0.241 seconds.
+✔ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() passed after 0.241 seconds.
+✔ Test aDeflagrationDoesNotQuoteTheChargesComparisons() passed after 0.241 seconds.
+✔ Test coarseCellsForASmallChargeAreAnApproximation() passed after 0.241 seconds.
+✔ Test closeInLoadingAsksForFinerAir() passed after 0.241 seconds.
+✔ Test afterburningChangesTheImpulsesStanding() passed after 0.241 seconds.
+✔ Test aDeflagrationsBandFollowsItsFuel() passed after 0.241 seconds.
+✔ Test readingATableInterpolatesBetweenGridsAndSpansDistances() passed after 0.241 seconds.
+✔ Test radiationAndCloudFollowTheAirTheyWereComparedOn() passed after 0.241 seconds.
+✔ Test tightOpenFacesAreSaidBesideTheStructure() passed after 0.241 seconds.
+✔ Test refinementCountsAsTheFinerGrid() passed after 0.241 seconds.
+✔ Test standingsRoundTripAndCompare() passed after 0.241 seconds.
+✔ Test gaugesTakeTheirOwnBands() passed after 0.241 seconds.
+✔ Test closeInGaugesOnTodaysAir() passed after 0.241 seconds.
+✔ Test confinedScenesAreAdvisedOnAfterburning() passed after 0.241 seconds.
+✔ Test standingsWithoutBandsStillDecode() passed after 0.243 seconds.
+✔ Test groundShockIsBandedOnlyForTheHalfSpace() passed after 0.242 seconds.
+✔ Test optionsCapTheResultsTheyTouch() passed after 0.243 seconds.
+✔ Test theConfinedRegimesDefaultsAreReported() passed after 0.244 seconds.
+✔ Test aGaugeOnAWallReadsTheReflectedBand() passed after 0.245 seconds.
+✔ Test structuresTakeBandsByRegimeMeshAndMaterial() passed after 0.251 seconds.
+✔ Test meshSeriesQuoteTheStudy() passed after 0.253 seconds.
+✔ Test samplesTakeOnlyTheBandsThatFitThem() passed after 0.331 seconds.
+✔ Test tablesMirrorTheValidationRecord() passed after 0.338 seconds.
+✔ Test collapseStandsApartFromLocalDamage() passed after 0.352 seconds.
+✔ Test theIdentityIsAHashOfTheTablesContent() passed after 0.735 seconds.
+✔ Suite StandingFingerprintTests passed after 0.736 seconds.
+✔ Test figuresQuoteTheRecord() passed after 1.067 seconds.
+✔ Suite ErrorBandTests passed after 1.068 seconds.
+✔ Test eachPresetHasAStandingForWhatItProduces() passed after 1.136 seconds.
+✔ Test linksReachHeadingsInTheDocs() passed after 1.816 seconds.
+✔ Suite EvidentialStandingTests passed after 1.816 seconds.
+✔ Test run with 36 tests in 4 suites passed after 1.817 seconds.
+check-affected: BlastModel's 4 suite(s) on bombcad-pc in 11 s, sending and building included: passed
+check-affected: passed (covered, BlastModel on bombcad-pc)

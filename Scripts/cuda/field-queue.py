@@ -567,11 +567,16 @@ def run_queue(root,once=False,poll=2,max_seconds=600):
                 if summary!=previous:print(json.dumps(summary),flush=True);previous=summary
                 if all(s['status']=='accepted' for s in states.values()):return 0
                 if all(s['status'] in ('accepted','failed') for s in states.values()):return 1
-                mac=mac_snapshot(contract);pc=pc_snapshot(contract)
-                proposals=plan_dispatch(contract,states,mac,pc)
-                atomic(root/'dispatch.json',{'observedAt':time.time(),'mac':mac,'cuda':pc,'proposals':proposals})
-                for proposal in proposals:
-                    if proposal['launchNow']:launch(root,contract,proposal,{'mac':mac,'cuda':pc})
+                runnable=[j for j in contract['jobs'] if states[j['key']]['status']=='pending'
+                          and states[j['key']]['retryAfter']<=time.time()]
+                if runnable:
+                    mac=mac_snapshot(contract)
+                    needs_pc=any('cuda' in states[j['key']]['eligibleBackends'] for j in runnable)
+                    pc=pc_snapshot(contract) if needs_pc else {'available':False,'reason':'no runnable CUDA cases','freeBytes':0}
+                    proposals=plan_dispatch(contract,states,mac,pc)
+                    atomic(root/'dispatch.json',{'observedAt':time.time(),'mac':mac,'cuda':pc,'proposals':proposals})
+                    for proposal in proposals:
+                        if proposal['launchNow']:launch(root,contract,proposal,{'mac':mac,'cuda':pc})
                 _CHILDREN[:]=[p for p in _CHILDREN if p.poll() is None] # Retain live handles across run-once calls.
                 if once or time.perf_counter()-started>=max_seconds:return 75
                 time.sleep(poll)

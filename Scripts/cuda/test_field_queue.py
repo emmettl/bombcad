@@ -197,6 +197,28 @@ class PlannerTests(unittest.TestCase):
 
 
 class PublicationTests(QueueFixture):
+    def test_metal_only_pending_case_never_probes_pc(self):
+        self.init()
+        with patch.object(q,'mac_snapshot',return_value=self.mac), patch.object(q,'pc_snapshot',side_effect=AssertionError('irrelevant SSH')), patch.object(q,'launch') as launch:
+            self.assertEqual(q.run_queue(self.queue,once=True),75)
+            self.assertEqual(launch.call_args.args[2]['backend'],'metal')
+        self.assertEqual(q.read(self.queue/'dispatch.json')['cuda']['reason'],'no runnable CUDA cases')
+
+    def test_running_or_backoff_only_queue_does_not_probe_resources(self):
+        c=self.init();key=c['jobs'][0]['key']
+        for state in ({'status':'running'}, {'status':'pending','retryAfter':time.time()+60}):
+            with self.subTest(state=state), patch.object(q,'snapshot_states',return_value={key:state}), patch.object(q,'mac_snapshot',side_effect=AssertionError('no dispatch possible')), patch.object(q,'pc_snapshot',side_effect=AssertionError('no dispatch possible')), patch.object(q,'launch') as launch:
+                self.assertEqual(q.run_queue(self.queue,once=True),75)
+                launch.assert_not_called()
+
+    def test_runnable_cuda_case_still_probes_pc(self):
+        self.plan['cuda']={'host':'unit-offline'};self.job['backends']=['metal','cuda'];self.job['cudaBytes']=1000
+        self.job['costs']['cuda']=[{'report':str(self.cost),'keys':['cuda']}]
+        self.init()
+        with patch.object(q,'mac_snapshot',return_value=self.mac), patch.object(q,'pc_snapshot',return_value={'available':False,'freeBytes':0}) as pc, patch.object(q,'launch'):
+            self.assertEqual(q.run_queue(self.queue,once=True),75)
+            pc.assert_called_once()
+
     def test_resume_reuses_accepted_object_and_recovers_missing_pointer(self):
         c=self.init();self.assertEqual(self.tick(),75);self.await_attempt(1,'accepted')
         self.assertEqual(self.tick(),0);self.assertEqual(len(list((self.queue/'objects').iterdir())),1)

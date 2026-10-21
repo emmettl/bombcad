@@ -95,6 +95,20 @@ onto the PC. It runs at most one case worker per backend; a CUDA worker's Mac pr
 also uses a real `gpu-slot`, with its own declaration. External waiting jobs and pressure are
 observed conservatively, and actual lock acquisition can still race a preflight observation.
 
+Resource probes run only when a pending case can dispatch. A Metal-only eligible set does
+not query the PC; a queue containing only running cases or cases in retry backoff does not
+probe either host. A runnable CUDA alternative still triggers the PC availability/memory
+check, even when Metal is likely to be cheaper. The latest dispatch receipt retains its own
+observation timestamp; it is not continuously refreshed while no dispatch is possible.
+
+A [three-repeat four-case study](../Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/summary.md)
+measures controller-to-completion time as well as accepted worker-body time. With these tiny
+cases, Metal-only median falls from 3.475 s to 1.360 s after removing irrelevant probes;
+automatic selection uses Metal for every case (3.518 s), while a forced two-Metal/two-CUDA
+split takes 21.142 s. The automatic policy still pays for synchronous PC observations. This
+is a small warm-cache overhead study, not evidence for broader CUDA throughput or a complete
+cost model. Its observed-cost report excludes controller overhead and publication explicitly.
+
 Only the field-export options explicitly recognized by the queue are accepted. Output paths,
 CUDA export flags and phase timing are supplied by the worker. Copy the requested physical
 options from the reference's metadata, removing its output/diagnostic options. Unknown options
