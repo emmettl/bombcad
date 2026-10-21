@@ -1,0 +1,15 @@
+{
+  "path": "/home/lemme/bombcad-ml/experiments/euler-unit-b57e0ead-572e-49e0-94f4-5ae7d258f5f9",
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.069s\n\nOK\n",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "numpy": "2.5.2",
+  "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+  "sourceSHA256": {
+    "planar_euler.py": "c87f89941b6f56f432fc76965dda972fabef01a31dcbf258ca3b5e76d72ab552",
+    "test-planar-euler.py": "49b9d49b3555bc8991e8f57ab109586f18a19577d6464d4c6aa8f45fe8c937fc"
+  },
+  "numpyCoreSHA256": "9369e7ee42af16a2136ec03c7c1d09d5244d028cf327a33b2f072b8893259e11"
+}

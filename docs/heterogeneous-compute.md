@@ -525,3 +525,10 @@ exact observation/tiling parity and shared-baseline reproduction. A default-arit
 1024-cell wall case changes from −0.44% impulse error at CFL0.45 to −16.75% at CFL0.225.
 Initialization transport and recorder accumulation controls do not explain it.
 emmettl/bombcad-work#80 remains open; no CUDA admission or numerical default changes.
+
+The [nonlinear CPU precision study](../Benchmarks/CUDAAcceptance/2026-10-22-euler-precision/summary.md)
+completes 54 independent Euler-model runs without GPU time. Higher precision removes most
+of the model's severe 1 Pa impulse loss at fixed inputs, while the Float32 model is not
+bit-identical to Metal. Four physical/conservation checks pass on Mac and PC NumPy.
+This narrows emmettl/bombcad-work#80 toward update-stage precision controls; production
+GPU causality, operating limits and CUDA admission remain open.

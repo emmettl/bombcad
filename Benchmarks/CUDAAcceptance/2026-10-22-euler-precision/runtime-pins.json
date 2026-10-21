@@ -1,0 +1,17 @@
+{
+  "scope": "Post-run byte copies matching the producing Python/NumPy-core pins; not a self-contained dependency environment.",
+  "files": [
+    {
+      "original": "/Users/louisemmett/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3.12",
+      "snapshot": "/Volumes/StudioData/bombcad/experiments/2026-10-22-euler-precision/runtime-pins/python3.12",
+      "sha256": "b6ea0c2a9bfce48dbf181a53f1ca4f0562d40658b85bf47258e2a88d8f9e3933",
+      "bytes": 18058560
+    },
+    {
+      "original": "/Users/louisemmett/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/numpy/_core/_multiarray_umath.cpython-312-darwin.so",
+      "snapshot": "/Volumes/StudioData/bombcad/experiments/2026-10-22-euler-precision/runtime-pins/_multiarray_umath.cpython-312-darwin.so",
+      "sha256": "5ce247f1236eeab22b0fa115d36648aaf16ba2932057db8f1e9a53f1b4e7f651",
+      "bytes": 3466496
+    }
+  ]
+}

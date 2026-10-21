@@ -850,3 +850,12 @@ Declared Double linear transports of the rounded initial state and native/Double
 accumulation do not account for that discrepancy. No arithmetic/CFL setting or target policy
 is adopted. emmettl/bombcad-work#80 remains open for nonlinear higher-precision/update-level
 analysis; this is Metal ideal-gas evidence, not CUDA or recommended-product admission.
+
+The [54-run nonlinear CPU comparison](../Benchmarks/CUDAAcceptance/2026-10-22-euler-precision/summary.md)
+adds independent MUSCL-Hancock/HLLC Float32/Float64 controls on retained discrete inputs.
+At 1 Pa/nx2048/CFL0.225, wall impulse error is −21.80% in the NumPy Float32 model,
++0.1144% in Float64 from the same initial state, and −0.000076% with analytic Float64
+initialization. The Metal value remains −15.59%; the CPU model is not a GPU replay.
+Model lost-update and boundary-balance diagnostics support a finite-precision mechanism,
+but do not identify an individual GPU stage or a validated operating range.
+emmettl/bombcad-work#80 remains open; no numerical setting or acceptance rule changes.

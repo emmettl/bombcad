@@ -1,0 +1,63 @@
+{
+  "status": "complete",
+  "scope": "Read-only nonlinear Euler precision audit. No numerical gate or GPU replay claim.",
+  "runs": 54,
+  "receiverHistories": 108,
+  "allClosed": true,
+  "fallbacks": 0,
+  "limits": "Independent vectorized NumPy Euler scheme, not a GPU bit/instruction replay, exact PDE solution, full nonlinear error bound or production/default/admission change."
+}
+a1-n512-cfl0.45 float32-retained wall I% -0.36623859079985 peak% -2.6170729995594666 energy absorbed counts 177940 abs absorbed dE 648.7596248134437
+a1-n512-cfl0.45 float64-retained wall I% 0.14476235217446565 peak% -3.2723206719894704 energy absorbed counts 87368 abs absorbed dE 6.03504546904909e-07
+a1-n512-cfl0.45 float64-analytic wall I% -0.03630246108469182 peak% -3.3672232160223414 energy absorbed counts 106055 abs absorbed dE 7.194852165654901e-07
+a1-n1024-cfl0.45 float32-retained wall I% -1.0585175361062071 peak% -4.2680423241722725 energy absorbed counts 719204 abs absorbed dE 2617.3037157855306
+a1-n1024-cfl0.45 float64-retained wall I% 0.07500441314460815 peak% -1.1669601727036794 energy absorbed counts 437164 abs absorbed dE 2.9896851889194263e-06
+a1-n1024-cfl0.45 float64-analytic wall I% -0.0005925959839836459 peak% -1.1796654427773112 energy absorbed counts 499944 abs absorbed dE 3.4295026074919806e-06
+a1-n2048-cfl0.45 float32-retained wall I% -0.7482940448411468 peak% -2.727050525803598 energy absorbed counts 2873231 abs absorbed dE 10528.803367965931
+a1-n2048-cfl0.45 float64-retained wall I% 0.11464217660979159 peak% -0.3650934433466868 energy absorbed counts 1792812 abs absorbed dE 1.25071490703668e-05
+a1-n2048-cfl0.45 float64-analytic wall I% 0.0007355796859176422 peak% -0.4007060446334143 energy absorbed counts 2067011 abs absorbed dE 1.4256538026560335e-05
+a10-n512-cfl0.45 float32-retained wall I% 0.02068701525514971 peak% -2.7735114365079694 energy absorbed counts 169120 abs absorbed dE 617.4232337421852
+a10-n512-cfl0.45 float64-retained wall I% -0.03265866234739567 peak% -3.3794585418223333 energy absorbed counts 17533 abs absorbed dE 1.2503237890756017e-07
+a10-n512-cfl0.45 float64-analytic wall I% -0.03200238587750537 peak% -3.3619254986337777 energy absorbed counts 22763 abs absorbed dE 1.59499727405042e-07
+a10-n1024-cfl0.45 float32-retained wall I% -0.037988409199074535 peak% -1.1421008490432039 energy absorbed counts 695332 abs absorbed dE 2491.3668435800682
+a10-n1024-cfl0.45 float64-retained wall I% 0.011444056674725367 peak% -1.176869173239492 energy absorbed counts 255181 abs absorbed dE 1.7950933386970276e-06
+a10-n1024-cfl0.45 float64-analytic wall I% 0.003380835748356681 peak% -1.1739813621921336 energy absorbed counts 285922 abs absorbed dE 2.0047097473281884e-06
+a10-n2048-cfl0.45 float32-retained wall I% -0.00811387848886902 peak% -1.0081710973439129 energy absorbed counts 2662077 abs absorbed dE 9557.030462252125
+a10-n2048-cfl0.45 float64-retained wall I% 0.005366767608538936 peak% -0.3971914959591816 energy absorbed counts 1585060 abs absorbed dE 1.1015696223861017e-05
+a10-n2048-cfl0.45 float64-analytic wall I% 0.004614287431548014 peak% -0.3951006311723626 energy absorbed counts 1787595 abs absorbed dE 1.2338862598948236e-05
+a100-n512-cfl0.45 float32-retained wall I% 0.005051305892878055 peak% -3.2936692393617184 energy absorbed counts 166924 abs absorbed dE 566.9502765901285
+a100-n512-cfl0.45 float64-retained wall I% 0.0006138687843160184 peak% -3.310252110165268 energy absorbed counts 2199 abs absorbed dE 1.3471533204063288e-08
+a100-n512-cfl0.45 float64-analytic wall I% 0.00022954779628214794 peak% -3.3096033520988777 energy absorbed counts 893 abs absorbed dE 6.375123373342387e-09
+a100-n1024-cfl0.45 float32-retained wall I% 0.03634928746858446 peak% -0.9936186289745685 energy absorbed counts 668285 abs absorbed dE 2442.488060888879
+a100-n1024-cfl0.45 float64-retained wall I% 0.0386634436989608 peak% -1.1189561441793061 energy absorbed counts 16535 abs absorbed dE 1.225865514327355e-07
+a100-n1024-cfl0.45 float64-analytic wall I% 0.0386080724938509 peak% -1.1179897549177142 energy absorbed counts 16947 abs absorbed dE 1.2180352138860663e-07
+a100-n2048-cfl0.45 float32-retained wall I% 0.04280699766794349 peak% -0.31280623764884385 energy absorbed counts 2643037 abs absorbed dE 9668.319363818366
+a100-n2048-cfl0.45 float64-retained wall I% 0.03955533926427446 peak% -0.34003376227274007 energy absorbed counts 282600 abs absorbed dE 2.0075866559118043e-06
+a100-n2048-cfl0.45 float64-analytic wall I% 0.03923546318216342 peak% -0.33922472605101284 energy absorbed counts 292173 abs absorbed dE 2.0669343203771046e-06
+a1-n512-cfl0.225 float32-retained wall I% -5.956616298018192 peak% -6.919130015643193 energy absorbed counts 586387 abs absorbed dE 1651.7342875925006
+a1-n512-cfl0.225 float64-retained wall I% 0.10757023914704789 peak% -3.8636745160645303 energy absorbed counts 1555 abs absorbed dE 9.528004994480125e-09
+a1-n512-cfl0.225 float64-analytic wall I% -0.07314335742930611 peak% -3.979757200989198 energy absorbed counts 4169 abs absorbed dE 2.8454390107056223e-08
+a1-n1024-cfl0.225 float32-retained wall I% -15.647277707617068 peak% -18.334778962253083 energy absorbed counts 2468736 abs absorbed dE 6572.468137650216
+a1-n1024-cfl0.225 float64-retained wall I% 0.06952898024819021 peak% -1.3407585232658947 energy absorbed counts 10071 abs absorbed dE 6.452570288498486e-08
+a1-n1024-cfl0.225 float64-analytic wall I% -0.007415652610609502 peak% -1.3456862163254812 energy absorbed counts 43503 abs absorbed dE 3.0854662176528306e-07
+a1-n2048-cfl0.225 float32-retained wall I% -21.800620798310955 peak% -30.854168446053166 energy absorbed counts 11963328 abs absorbed dE 34193.79004385968
+a1-n2048-cfl0.225 float64-retained wall I% 0.11442887553889669 peak% -0.4085558143619439 energy absorbed counts 112895 abs absorbed dE 8.087877585145991e-07
+a1-n2048-cfl0.225 float64-analytic wall I% -7.603939550238081e-05 peak% -0.43953939316837554 energy absorbed counts 374140 abs absorbed dE 2.6701291769241316e-06
+a10-n512-cfl0.225 float32-retained wall I% -0.19086180196703495 peak% -3.5557036212504722 energy absorbed counts 637304 abs absorbed dE 1748.110194004662
+a10-n512-cfl0.225 float64-retained wall I% -0.07024336775076634 peak% -3.9971695137978824 energy absorbed counts 1158 abs absorbed dE 6.775937990799525e-09
+a10-n512-cfl0.225 float64-analytic wall I% -0.06912411410261443 peak% -3.9823647410820118 energy absorbed counts 1338 abs absorbed dE 7.990916371520236e-09
+a10-n1024-cfl0.225 float32-retained wall I% -1.2501713940755943 peak% -1.6891406071907866 energy absorbed counts 2300538 abs absorbed dE 6304.184595784414
+a10-n1024-cfl0.225 float64-retained wall I% 0.004031214144872841 peak% -1.341037424944791 energy absorbed counts 5055 abs absorbed dE 2.7484902589340497e-08
+a10-n1024-cfl0.225 float64-analytic wall I% -0.004045269661290263 peak% -1.34104429187899 energy absorbed counts 4764 abs absorbed dE 3.0723416032374635e-08
+a10-n2048-cfl0.225 float32-retained wall I% -4.274162889902189 peak% -3.8208828893688707 energy absorbed counts 9872566 abs absorbed dE 27272.756055760994
+a10-n2048-cfl0.225 float64-retained wall I% 0.004136270281840382 peak% -0.43641378120906626 energy absorbed counts 25732 abs absorbed dE 1.803925528281777e-07
+a10-n2048-cfl0.225 float64-analytic wall I% 0.003312827114299033 peak% -0.43402026734762345 energy absorbed counts 86421 abs absorbed dE 6.189562317192834e-07
+a100-n512-cfl0.225 float32-retained wall I% -0.03549311058739235 peak% -3.7043201363515355 energy absorbed counts 637283 abs absorbed dE 1592.7742220236753
+a100-n512-cfl0.225 float64-retained wall I% -0.03197995816285326 peak% -3.9375221545732697 energy absorbed counts 27850 abs absorbed dE 1.666663177694219e-08
+a100-n512-cfl0.225 float64-analytic wall I% -0.03239608240643843 peak% -3.939986425498998 energy absorbed counts 1035 abs absorbed dE 5.7460690255834e-09
+a100-n1024-cfl0.225 float32-retained wall I% 0.042914338549526754 peak% -1.153823129574938 energy absorbed counts 2638406 abs absorbed dE 7337.341092634166
+a100-n1024-cfl0.225 float64-retained wall I% 0.03201237176386762 peak% -1.2890480266563697 energy absorbed counts 2449 abs absorbed dE 1.4447224381684716e-08
+a100-n1024-cfl0.225 float64-analytic wall I% 0.03196079656713202 peak% -1.2883772417793815 energy absorbed counts 2431 abs absorbed dE 1.4004104683103543e-08
+a100-n2048-cfl0.225 float32-retained wall I% 0.07660207549775588 peak% -0.3557782233603368 energy absorbed counts 10703041 abs absorbed dE 29488.465751176773
+a100-n2048-cfl0.225 float64-retained wall I% 0.0388327928757537 peak% -0.378667976063618 energy absorbed counts 14226 abs absorbed dE 8.433534756784307e-08
+a100-n2048-cfl0.225 float64-analytic wall I% 0.03850272855614456 peak% -0.37770833883663535 energy absorbed counts 12115 abs absorbed dE 8.004778675548116e-08

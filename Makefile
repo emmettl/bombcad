@@ -94,6 +94,7 @@ ci-test:
 	python3 Scripts/footing-bed/test-bed-replica.py
 	python3 Scripts/reference/test-sdof.py
 	python3 Scripts/reference/test-blast1d.py
+	python3 Scripts/reference/test-planar-euler.py
 	python3 Scripts/reference/test-compare.py
 	python3 Scripts/protective/test-protective.py
 	python3 Scripts/test-analytic-oracles.py
