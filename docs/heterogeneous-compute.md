@@ -293,3 +293,20 @@ revisit acceleration with a faster route, heavier receiver/ray work or measured 
 No claim extends this result to every scene, and no thermal-model validation threshold changes.
 The probe's optional `--sequence` tests all inputs together, compressed only, with explicit
 length framing; it does not run a remote volume march.
+
+
+## Complete CUDA deployment and current Metal costs
+
+The [retained #60 experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/summary.md)
+compares three primary uncached/primed-cache pairs on each of two cooling fixtures and a flat
+district, including upload, cold process startup and retrieval. All gates pass and complete
+remote numerical outputs/timesteps remain bit-identical. The flat district takes 78.11/78.76 s
+median deployment, before Mac preparation; current full production Metal takes 21.38 s median,
+measured on the same observer clock. Caching reduces compilation but does not improve the
+observed district total. This favors an idle Mac for this case's latency; PC spillover may
+still improve a queue's throughput, which has not yet been measured.
+
+The explicit deployment profiler and timing receipts are reusable for #59 cost decisions.
+[#64](https://github.com/emmettl/bombcad-work/issues/64) tracks independently reproduced elapsed-clock
+disagreement; worker times must not be directly compared across hosts or subtracted from the
+common-observer deployment total. No new broad CUDA dataset admission is enabled.

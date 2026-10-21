@@ -1,0 +1,20 @@
+[
+  {
+    "name": "cooling32",
+    "input": "/private/tmp/bombcad-phase-diagnostic/small",
+    "reference": "/private/tmp/bombcad-phase-diagnostic/metal-small-plain",
+    "retrieval": "all"
+  },
+  {
+    "name": "cooling64",
+    "input": "/private/tmp/bombcad-deployment-profile/cooling64",
+    "reference": "/private/tmp/bombcad-deployment-profile/metal64",
+    "retrieval": "all"
+  },
+  {
+    "name": "flat-district",
+    "input": "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/made-perimeter-s1-1-1792565906169273000/input",
+    "reference": "/Volumes/StudioData/bombcad/ml/datasets/main-fp/runs/made-perimeter-s1-1",
+    "retrieval": "dataset"
+  }
+]

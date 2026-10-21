@@ -1,0 +1,70 @@
+{
+  "above" : 2,
+  "axes" : [
+    0,
+    1,
+    2
+  ],
+  "cooling" : {
+    "absorption" : 0.10000000149011612,
+    "capacity" : 0,
+    "hasSpecies" : 1,
+    "interval" : 4,
+    "largestShare" : 0.25,
+    "luminous" : 1500,
+    "luminousEnergy" : 1203432.625,
+    "sootAbsorption" : 0.1867472380399704
+  },
+  "dataset" : {
+    "inputs.npy" : "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+    "mask.npy" : "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+    "meta.json" : "839d0fab4c689a3ea44ad3b92e1bdb32c5a89bbb86e35ed1e1e6cb1b0ac3bb2f"
+  },
+  "description" : "BombCAD initial grid; mapped start retained where used",
+  "duration" : 4.5060656100132981,
+  "files" : {
+    "columns.bin" : "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+    "impulse.bin" : "a24ddd98e4d056b5b8ff96eb189d601eca3e3cdb797e20a5f7956b3fd8c6b107",
+    "mask.bin" : "f47f4e678aea3bf472c49649a52a63ece09d651a43f036ecdfc64c0fbfdfc780",
+    "open.bin" : "571f6a851b8926e78094aca76ba5743aaddcd31c26ced58324d33a925e04cf62",
+    "peak.bin" : "1469178c51c6c3074477d0102152b109cfd8f3bb2c72d99eff08459fc49ebecb",
+    "records.bin" : "3e90c74f5c12bf0d0a336592c11d3ca951b72b9b2658ecc3ebb6681c52994665",
+    "species.bin" : "343bc4691faa13a404449b320577a9c417ac01497b2a21e634604497b0b0b514",
+    "state.bin" : "6cd2499fe5794627176d758f56f6e5300d02df481a248d57fc68548c0c893d28"
+  },
+  "format" : "bombcad-cuda-job-1",
+  "shape" : [
+    512,
+    512,
+    59
+  ],
+  "sourceSHA256" : "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "startStep" : 0,
+  "startTime" : 0.003934389986701742,
+  "startupSteps" : 6,
+  "steps" : 10000000,
+  "uniforms" : {
+    "afterburnEnergy" : 10000000,
+    "afterburnRate" : 1.768742561340332,
+    "airModel" : 1,
+    "ambientPressure" : 101325,
+    "boundaryFlags" : 80,
+    "cfl" : 0.44999998807907104,
+    "densityFloor" : 9.9999999747524271e-07,
+    "dx" : 4,
+    "gamma" : 1.3999999761581421,
+    "gaugeWalls" : 0,
+    "limiterTheta" : 1.5,
+    "maxStep" : 0,
+    "oxygenPerFuel" : 0.73966449499130249,
+    "pressureFloor" : 0.0010000000474974513,
+    "refineMargin" : 1,
+    "riemannSolver" : 0,
+    "stillEnergy" : 253383.40625,
+    "stillMx" : 0,
+    "stillMy" : 0,
+    "stillMz" : 0,
+    "stillOxygen" : 0.28419998288154602,
+    "stillRho" : 1.2250000238418579
+  }
+}

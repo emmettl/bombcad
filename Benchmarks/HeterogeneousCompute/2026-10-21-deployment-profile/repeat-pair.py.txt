@@ -1,0 +1,48 @@
+"""Repeat the district pair after excluded local-check overlap; keep original report intact."""
+import hashlib,json,statistics,subprocess,sys,time
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/'Scripts/cuda'))
+from remote import deploy
+from compare_dataset import compare
+root=Path('/private/tmp/bombcad-deployment-profile')
+original=json.loads((root/'results/profile.json').read_text())
+assert original['status']=='complete'
+job=next(j for j in original['plan'] if j['name']=='flat-district')
+baseline=next(r['remoteNumericalSHA256'] for r in original['rows'] if r['job']==job['name'])
+report={'status':'running','originalProfileSHA256':hashlib.sha256((root/'results/profile.json').read_bytes()).hexdigest(),
+        'reason':'Third district pair excluded because local lint/script checks overlapped. Check stopped before PC test lane began; no competing PC GPU workload.',
+        'excludedPairs':[{'job':'flat-district','repetition':2}],'rows':[]}
+def save():
+ p=root/'repeat-pair.json';tmp=p.with_suffix('.tmp');tmp.write_text(json.dumps(report,indent=2)+'\n');tmp.replace(p)
+def snapshot():
+ text=subprocess.check_output(['ssh','-o','BatchMode=yes','bombcad-pc',"if test -d bombcad-ml/lock; then echo LOCKED; else echo FREE; fi; nvidia-smi --query-gpu=name,driver_version,utilization.gpu,memory.used --format=csv,noheader,nounits"],text=True,timeout=20)
+ lines=text.strip().splitlines();assert lines[0]=='FREE' and int(lines[-1].split(',')[-2])<=5,text
+ return text
+save()
+try:
+ for mode in ('uncached','cached'):
+  before=snapshot();out=root/f'repeat-{mode}'
+  result=deploy('bombcad-pc',job['input'],out,dataset_only=True,cache_dir=original['cacheDirectory'] if mode=='cached' else None)
+  after=snapshot();deployment=json.loads((out/'deployment.json').read_text());start=time.perf_counter()
+  gate=compare(job['reference'],out/'dataset')
+  raw=subprocess.check_output(['ssh','-o','BatchMode=yes','bombcad-pc','cd '+deployment['directory']+'/out && sha256sum *.bin *.npy'],text=True,timeout=30)
+  hashes={line.split()[1]:line.split()[0] for line in raw.splitlines()};equal=hashes==baseline
+  report['rows'].append({'job':job['name'],'repetition':3,'mode':mode,'before':before,'after':after,
+   'result':result,'deployment':deployment,'comparison':gate,'remoteNumericalSHA256':hashes,
+   'bitIdenticalAcrossModesAndRepeats':equal,'comparisonAndHashSeconds':time.perf_counter()-start})
+  save();print(mode,deployment['totalSecondsBeforeReceipt'],gate['passed'],equal,flush=True)
+  assert gate['passed'] and equal
+ primary=[r for r in original['rows'] if not(r['job']=='flat-district' and r['repetition']==2)]+report['rows']
+ report['medians']={}
+ for j in original['plan']:
+  report['medians'][j['name']]={}
+  for mode in ('uncached','cached'):
+   rows=[r for r in primary if r['job']==j['name'] and r['mode']==mode];assert len(rows)==3
+   report['medians'][j['name']][mode]={'deploymentSeconds':statistics.median(r['deployment']['totalSecondsBeforeReceipt'] for r in rows),
+    'solverSeconds':statistics.median(r['result']['wallSeconds'] for r in rows),
+    'comparisonAndHashSeconds':statistics.median(r['comparisonAndHashSeconds'] for r in rows),
+    'phases':{k:statistics.median(r['deployment']['timings'][k] for r in rows) for k in rows[0]['deployment']['timings']},
+    'workerPhases':{k:statistics.median(r['result']['timings'][k] for r in rows) for k in rows[0]['result']['timings']}}
+ report['status']='complete';save()
+except BaseException as e:
+ report['status']='failed';report['error']=repr(e);save();raise

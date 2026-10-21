@@ -46,7 +46,16 @@ class DeploymentTests(unittest.TestCase):
                 self.assertEqual(remote.deploy('bombcad-pc', job, out, dataset_only=True,cache_dir='bombcad-cuda/ptx-cache',full_grid_cooling=True), report)
             self.assertTrue(any(c[0]=='ssh' and '--cache-dir bombcad-cuda/ptx-cache' in c[-1] for c in commands))
             self.assertTrue(any(c[0]=='ssh' and '--full-grid-cooling' in c[-1] for c in commands))
-            self.assertTrue((out / 'deployment.json').exists())
+            receipt=json.loads((out / 'deployment.json').read_text())
+            self.assertEqual(receipt['retrievalMode'],'dataset')
+            self.assertEqual(receipt['inputFileBytes'],2)
+            self.assertEqual(receipt['returnedFileBytes'],(out/'result.json').stat().st_size)
+            self.assertEqual(set(receipt['timings']),{'generateAndValidateSeconds','remoteDirectorySeconds',
+                'workerUploadSeconds','inputUploadSeconds','remoteProcessSeconds','retrievalSeconds',
+                'returnedProvenanceValidationSeconds'})
+            self.assertGreaterEqual(receipt['otherLocalSeconds'],0)
+            self.assertAlmostEqual(sum(receipt['timings'].values())+receipt['otherLocalSeconds'],
+                receipt['totalSecondsBeforeReceipt'])
             downloads = [c[-2] for c in commands if c[0] == 'scp' and c[-2].startswith('bombcad-pc:')]
             self.assertEqual(len(downloads), 2)
             self.assertTrue(downloads[0].endswith('/out/dataset'))

@@ -162,6 +162,26 @@ kernels, solver, and final validation/array output. `wallSeconds` keeps its exis
 meaning. `workerSecondsBeforeManifests` excludes manifest writes and module unload; SSH deployment
 and retrieval are outside the worker. Timing fields do not alter numerical configuration.
 
+The local `deployment.json` now complements worker timings with generation/validation,
+remote-directory setup, worker and compressed-input upload, remote process lifetime,
+retrieval, and returned-provenance validation. `totalSecondsBeforeReceipt` covers the whole
+`deploy` call through validation/byte counting; `otherLocalSeconds` accounts for staging and
+other local overhead outside named phases. Input/returned byte counts are uncompressed file
+sizes, not wire traffic. The remote process phase includes cold SSH/Python startup and teardown;
+worker timings describe work within it and must not be added again. The two hosts use
+independent clocks; do not derive startup overhead by subtracting worker seconds from the
+local remote-process phase. Caller-side scene preparation, availability probes,
+acceptance comparison and the final receipt write are outside the deployment total.
+
+`profile-deployment.py HOST PLAN.json --out NEW-DIR --cache-dir NEW-REMOTE-PATH --context TEXT`
+measures three alternating uncached/primed-cache pairs for each explicit plan entry. Entries
+specify `name`, `input`, `reference` and `retrieval` (`all` or `dataset`). The first job primes a
+new cache; priming is retained separately. Each run checks the existing Metal gate and compares
+all remote numerical fields/timesteps bit for bit across repetitions and cache modes, even
+when only dataset arrays return. It records before/after cooperative lock/load observations
+and fails on a busy worker or numerical discrepancy. Partial reports remain failed/running,
+never complete. The tool does not publish a training dataset or establish a Metal speedup.
+
 `Scripts/cuda/remote.py --cache-dir bombcad-cuda/ptx-cache` opts into persistent PTX reuse on
 the PC. The same option is available on `run.py`; `compile.py` uses `--cache-dir` too. Entries
 are keyed by source SHA-256, target architecture, every compilation flag and hashes of installed
@@ -174,6 +194,21 @@ Repeated correctness-gated fixture experiments are retained in
 [Heterogeneous compute](heterogeneous-compute.md). They establish useful startup savings for
 small jobs, not faster numerical sweeps or an end-to-end large-district speedup. The full-size
 training acceptance failures above remain open regardless of caching.
+
+The [complete deployment and current Metal experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/summary.md)
+now records three primary uncached/primed-cache pairs for 32³, 64³ and a flat district. Deployment
+medians are 9.18/8.19 s, 15.98/13.83 s and 78.11/78.76 s respectively. All numerical files and
+timesteps are bit-identical across cache modes/repetitions; all existing gates pass for these
+selected cases. The district's current production Metal case takes 21.38 s median on the same
+Mac observer clock; CUDA preparation adds another 2.49 s before deployment. Primed compilation
+is cheaper, but no district deployment speedup is observed. Availability and complete cost,
+not solver-only time, should drive dispatch. This does not resolve the terrain/Beirut gates.
+
+An independent [clock-calibration issue #64](https://github.com/emmettl/bombcad-work/issues/64)
+records reproducible Mac/WSL interval disagreement and an apparent PC wall-clock step. Until
+resolved, use a common observer for cross-host latency and keep worker-clock diagnostics
+separate. No time or clocksource settings were changed. Per-step control/dispatch profiling
+and capability-aware scheduling remain #60/#59 follow-ups.
 
 ## Diagnosing first-phase acceptance: 21 October 2026
 

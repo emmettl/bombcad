@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-21T09:19:55.122261+00:00",
+  "scope": "Reference hashes sampled after first cooling32 pairs, before cooling64/district; rechecked at completion",
+  "references": {
+    "cooling32": {
+      "peak.bin": "52cfd792ae322ecbd81d3d5fe7a8180f3bbfbffc822a9ba30ed38d3b35a51e14",
+      "impulse.bin": "70854b1e3e9d0639ab13faf3fa9d7c3ca01660434cb9528f3698c0eaa8a98dda",
+      "first-phase.bin": "22d104ce321345a0b77a53d854af081c4c6ed44a3cf441e3389ca9f363ac2eea",
+      "species.bin": "436c7108ea81ba80da7aae78daa1ca4a58e960ad2f0e8837942ab31fa56ff7a2",
+      "state.bin": "d2cb6009010efcd0a4aef0b1f5ba1ae57d7a8dfba12e1240877a84adf9fe3ec1",
+      "dt.bin": "8598ab8f22ceebf76760c290e2075f657b9d7a50e57a399a13d59fd1febfedd6"
+    },
+    "cooling64": {
+      "peak.bin": "38abec64644a8821f556c9c5cde95dc5b0b8ab787df7526a9bcd8359e0b8a662",
+      "impulse.bin": "d444b754ea47ad9c135aa424eb4c0f4dff491b632147d69897a9c206ab72ab09",
+      "first-phase.bin": "4527460b05a0dc9cb6ec00a7b9f8e7ecfad00f928e4c5255ad7ea2fb6455b676",
+      "species.bin": "889dbe5dbcf6a4f318a535927e0d7fd200647c8c327a68e8202c927255fddb00",
+      "state.bin": "5be413565411242787b0bf0578a47662fea75bd56572bf932f5ec27eb7d3642b",
+      "dt.bin": "fe56d8a3577555dfc4a6017dcde6d447396bef4b83440c791436213a076b5f96"
+    },
+    "flat-district": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+      "meta.json": "50e801c2b0d0e63d97fd08769cddb4eb380b20533b382237a6860fd968124df6"
+    }
+  }
+}

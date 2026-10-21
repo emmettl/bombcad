@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import time
 import uuid
 from generate import generate
 from job import validate
@@ -23,6 +24,7 @@ def command(args):
 
 
 def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,cache_dir=None,trace_columns=None,diagnostics_only=False,full_grid_cooling=False):
+    started=time.perf_counter(); phases={}
     if diagnostics_only and (dataset_only or not trace_columns):
         raise ValueError('diagnostics-only requires traces and excludes dataset-only')
     if dataset_only and trace_columns:
@@ -36,45 +38,52 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,c
     job=Path(job).resolve();out=Path(out).resolve()
     if out.exists():raise ValueError('local output already exists')
     source=generate();meta,_=validate(job,source)
+    phases['generateAndValidateSeconds']=time.perf_counter()-started
     version=hashlib.sha256(source.encode()).hexdigest()[:16]
     root=f'bombcad-cuda/{version}'
     ident=uuid.uuid4().hex
     remote=f'{root}/jobs/{ident}'
     local=Path(__file__).resolve().parent
-    def ssh(text):command(['ssh','-o','BatchMode=yes',host,text])
+    def measured(phase,args):
+        begin=time.perf_counter()
+        try: command(args)
+        finally: phases[phase]=phases.get(phase,0.0)+time.perf_counter()-begin
+    def ssh(phase,text):measured(phase,['ssh','-o','BatchMode=yes',host,text])
     with tempfile.TemporaryDirectory(prefix='bombcad-cuda-deploy-') as temp:
         staging=Path(temp)/'worker';staging.mkdir()
         for name in ('run.py','job.py','compile.py','trace_columns.py'):
             shutil.copyfile(local/name,staging/name)
         shutil.copyfile(local.parent/'ml/remote-train.py',staging/'remote-train.py')
         (staging/'solver.cu').write_text(source)
-        ssh('mkdir -p '+shlex.quote(remote))
-        command(['scp','-r',str(staging),f'{host}:{remote}/worker'])
+        ssh('remoteDirectorySeconds','mkdir -p '+shlex.quote(remote))
+        measured('workerUploadSeconds',['scp','-r',str(staging),f'{host}:{remote}/worker'])
     # The explicit job directory, and only its manifest-listed files, are transferred.
     with tempfile.TemporaryDirectory(prefix='bombcad-cuda-input-') as temp:
         staging=Path(temp)/'input';staging.mkdir()
         for name in ['job.json',*meta['files'],*meta.get('dataset',{})]:
             shutil.copyfile(job/name,staging/name)
         # Initial fields are mostly still air: compression avoids sending gigabytes of repeats.
-        command(['scp','-C','-r',str(staging),f'{host}:{remote}/input'])
+        input_bytes=sum(p.stat().st_size for p in staging.iterdir())
+        measured('inputUploadSeconds',['scp','-C','-r',str(staging),f'{host}:{remote}/input'])
     worker=f'{remote}/worker/run.py'
     args=[python,worker,f'{remote}/input','--source',f'{remote}/worker/solver.cu','--out',f'{remote}/out',
           '--lock','bombcad-ml/lock']
     if full_grid_cooling: args += ['--full-grid-cooling']
     if trace_columns: args += ['--trace-columns',','.join(str(i) for i in trace_columns)]
     if cache_dir is not None: args += ['--cache-dir',str(cache_dir)]
-    ssh(' '.join(shlex.quote(x) for x in args))
+    ssh('remoteProcessSeconds',' '.join(shlex.quote(x) for x in args))
     out.parent.mkdir(parents=True,exist_ok=True)
     if diagnostics_only:
         out.mkdir()
         for name in ('trace.npy','trace.json','result.json'):
-            command(['scp',f'{host}:{remote}/out/{name}',str(out/name)])
+            measured('retrievalSeconds',['scp',f'{host}:{remote}/out/{name}',str(out/name)])
     elif dataset_only:
         out.mkdir()
-        command(['scp','-r',f'{host}:{remote}/out/dataset',str(out/'dataset')])
-        command(['scp',f'{host}:{remote}/out/result.json',str(out/'result.json')])
+        measured('retrievalSeconds',['scp','-r',f'{host}:{remote}/out/dataset',str(out/'dataset')])
+        measured('retrievalSeconds',['scp',f'{host}:{remote}/out/result.json',str(out/'result.json')])
     else:
-        command(['scp','-r',f'{host}:{remote}/out',str(out)])
+        measured('retrievalSeconds',['scp','-r',f'{host}:{remote}/out',str(out)])
+    begin=time.perf_counter()
     report=json.loads((out/'result.json').read_text())
     if report['sourceSHA256']!=hashlib.sha256(source.encode()).hexdigest():
         raise ValueError('returned worker source hash differs')
@@ -86,7 +95,16 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,c
             raise ValueError('returned diagnostic source or columns differ')
     if report.get('workerFilesSHA256')!=expected:
         raise ValueError('deployed worker files differ from this checkout')
-    (out/'deployment.json').write_text(json.dumps({'host':host,'directory':remote,'sourceSHA256':report['sourceSHA256']},indent=2)+'\n')
+    phases['returnedProvenanceValidationSeconds']=time.perf_counter()-begin
+    returned_bytes=sum(p.stat().st_size for p in out.rglob('*') if p.is_file())
+    elapsed=time.perf_counter()-started
+    receipt={'host':host,'directory':remote,'sourceSHA256':report['sourceSHA256'],
+             'retrievalMode':'diagnostics' if diagnostics_only else 'dataset' if dataset_only else 'all',
+             'inputFileBytes':input_bytes,'returnedFileBytes':returned_bytes,
+             'timings':phases,'totalSecondsBeforeReceipt':elapsed,
+             'otherLocalSeconds':elapsed-sum(phases.values()),
+             'timingScope':'Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes.'}
+    (out/'deployment.json').write_text(json.dumps(receipt,indent=2)+'\n')
     return report
 
 

@@ -1,0 +1,353 @@
+{
+  "status": "complete",
+  "rows": [
+    {
+      "mode": "metal",
+      "repetition": 0,
+      "seconds": 22.423896875,
+      "comparison": {
+        "0": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "1": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "2": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "passed": true
+      },
+      "hashes": {
+        "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "targets.npy": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+        "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "comparisonSeconds": 0.22899245800000045,
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+        "field-export",
+        "--osm",
+        "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s1/district.osm",
+        "--centre",
+        "0.01275236,0.01201492",
+        "--radius",
+        "1024",
+        "--dx",
+        "4",
+        "--mass",
+        "200800",
+        "--ground",
+        "saturated",
+        "--id",
+        "made-perimeter-s1-1",
+        "--layout",
+        "made-perimeter-s1",
+        "--out",
+        "/private/tmp/bombcad-deployment-profile/mac-results/metal-0",
+        "--first-phase"
+      ]
+    },
+    {
+      "mode": "prepare",
+      "repetition": 0,
+      "seconds": 2.4859053330000016,
+      "comparison": {
+        "passed": true,
+        "physicalBuffersAndControlsMatchProfiledInput": true
+      },
+      "hashes": {
+        "columns.bin": "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+        "impulse.bin": "a24ddd98e4d056b5b8ff96eb189d601eca3e3cdb797e20a5f7956b3fd8c6b107",
+        "mask.bin": "f47f4e678aea3bf472c49649a52a63ece09d651a43f036ecdfc64c0fbfdfc780",
+        "open.bin": "571f6a851b8926e78094aca76ba5743aaddcd31c26ced58324d33a925e04cf62",
+        "peak.bin": "1469178c51c6c3074477d0102152b109cfd8f3bb2c72d99eff08459fc49ebecb",
+        "records.bin": "3e90c74f5c12bf0d0a336592c11d3ca951b72b9b2658ecc3ebb6681c52994665",
+        "species.bin": "343bc4691faa13a404449b320577a9c417ac01497b2a21e634604497b0b0b514",
+        "state.bin": "6cd2499fe5794627176d758f56f6e5300d02df481a248d57fc68548c0c893d28"
+      },
+      "comparisonSeconds": 0.2292491659999989,
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+        "field-export",
+        "--osm",
+        "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s1/district.osm",
+        "--centre",
+        "0.01275236,0.01201492",
+        "--radius",
+        "1024",
+        "--dx",
+        "4",
+        "--mass",
+        "200800",
+        "--ground",
+        "saturated",
+        "--id",
+        "made-perimeter-s1-1",
+        "--layout",
+        "made-perimeter-s1",
+        "--out",
+        "/private/tmp/bombcad-deployment-profile/mac-results/prepare-0",
+        "--first-phase",
+        "--cuda-job",
+        "--cuda-source",
+        "/private/tmp/bombcad-deployment-profile/solver.cu"
+      ]
+    },
+    {
+      "mode": "prepare",
+      "repetition": 1,
+      "seconds": 2.408734082999999,
+      "comparison": {
+        "passed": true,
+        "physicalBuffersAndControlsMatchProfiledInput": true
+      },
+      "hashes": {
+        "columns.bin": "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+        "impulse.bin": "a24ddd98e4d056b5b8ff96eb189d601eca3e3cdb797e20a5f7956b3fd8c6b107",
+        "mask.bin": "f47f4e678aea3bf472c49649a52a63ece09d651a43f036ecdfc64c0fbfdfc780",
+        "open.bin": "571f6a851b8926e78094aca76ba5743aaddcd31c26ced58324d33a925e04cf62",
+        "peak.bin": "1469178c51c6c3074477d0102152b109cfd8f3bb2c72d99eff08459fc49ebecb",
+        "records.bin": "3e90c74f5c12bf0d0a336592c11d3ca951b72b9b2658ecc3ebb6681c52994665",
+        "species.bin": "343bc4691faa13a404449b320577a9c417ac01497b2a21e634604497b0b0b514",
+        "state.bin": "6cd2499fe5794627176d758f56f6e5300d02df481a248d57fc68548c0c893d28"
+      },
+      "comparisonSeconds": 0.2323469160000009,
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+        "field-export",
+        "--osm",
+        "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s1/district.osm",
+        "--centre",
+        "0.01275236,0.01201492",
+        "--radius",
+        "1024",
+        "--dx",
+        "4",
+        "--mass",
+        "200800",
+        "--ground",
+        "saturated",
+        "--id",
+        "made-perimeter-s1-1",
+        "--layout",
+        "made-perimeter-s1",
+        "--out",
+        "/private/tmp/bombcad-deployment-profile/mac-results/prepare-1",
+        "--first-phase",
+        "--cuda-job",
+        "--cuda-source",
+        "/private/tmp/bombcad-deployment-profile/solver.cu"
+      ]
+    },
+    {
+      "mode": "metal",
+      "repetition": 1,
+      "seconds": 21.333055834,
+      "comparison": {
+        "0": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "1": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "2": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "passed": true
+      },
+      "hashes": {
+        "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "targets.npy": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+        "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "comparisonSeconds": 0.21783654100000405,
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+        "field-export",
+        "--osm",
+        "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s1/district.osm",
+        "--centre",
+        "0.01275236,0.01201492",
+        "--radius",
+        "1024",
+        "--dx",
+        "4",
+        "--mass",
+        "200800",
+        "--ground",
+        "saturated",
+        "--id",
+        "made-perimeter-s1-1",
+        "--layout",
+        "made-perimeter-s1",
+        "--out",
+        "/private/tmp/bombcad-deployment-profile/mac-results/metal-1",
+        "--first-phase"
+      ]
+    },
+    {
+      "mode": "metal",
+      "repetition": 2,
+      "seconds": 21.380260207999996,
+      "comparison": {
+        "0": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "1": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "2": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "passed": true
+      },
+      "hashes": {
+        "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "targets.npy": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+        "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "comparisonSeconds": 0.22235562499999162,
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+        "field-export",
+        "--osm",
+        "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s1/district.osm",
+        "--centre",
+        "0.01275236,0.01201492",
+        "--radius",
+        "1024",
+        "--dx",
+        "4",
+        "--mass",
+        "200800",
+        "--ground",
+        "saturated",
+        "--id",
+        "made-perimeter-s1-1",
+        "--layout",
+        "made-perimeter-s1",
+        "--out",
+        "/private/tmp/bombcad-deployment-profile/mac-results/metal-2",
+        "--first-phase"
+      ]
+    },
+    {
+      "mode": "prepare",
+      "repetition": 2,
+      "seconds": 2.499133999999998,
+      "comparison": {
+        "passed": true,
+        "physicalBuffersAndControlsMatchProfiledInput": true
+      },
+      "hashes": {
+        "columns.bin": "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+        "impulse.bin": "a24ddd98e4d056b5b8ff96eb189d601eca3e3cdb797e20a5f7956b3fd8c6b107",
+        "mask.bin": "f47f4e678aea3bf472c49649a52a63ece09d651a43f036ecdfc64c0fbfdfc780",
+        "open.bin": "571f6a851b8926e78094aca76ba5743aaddcd31c26ced58324d33a925e04cf62",
+        "peak.bin": "1469178c51c6c3074477d0102152b109cfd8f3bb2c72d99eff08459fc49ebecb",
+        "records.bin": "3e90c74f5c12bf0d0a336592c11d3ca951b72b9b2658ecc3ebb6681c52994665",
+        "species.bin": "343bc4691faa13a404449b320577a9c417ac01497b2a21e634604497b0b0b514",
+        "state.bin": "6cd2499fe5794627176d758f56f6e5300d02df481a248d57fc68548c0c893d28"
+      },
+      "comparisonSeconds": 0.22329312500001208,
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+        "field-export",
+        "--osm",
+        "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s1/district.osm",
+        "--centre",
+        "0.01275236,0.01201492",
+        "--radius",
+        "1024",
+        "--dx",
+        "4",
+        "--mass",
+        "200800",
+        "--ground",
+        "saturated",
+        "--id",
+        "made-perimeter-s1-1",
+        "--layout",
+        "made-perimeter-s1",
+        "--out",
+        "/private/tmp/bombcad-deployment-profile/mac-results/prepare-2",
+        "--first-phase",
+        "--cuda-job",
+        "--cuda-source",
+        "/private/tmp/bombcad-deployment-profile/solver.cu"
+      ]
+    }
+  ],
+  "scope": "Three fresh-process production Metal exports and matching CUDA initial-state exports.",
+  "executableSHA256": "af6f0624dcd72526cd14a40c995d64a234640693a4f81df79c1aac0e49addda5",
+  "inputSHA256": {
+    "osm": "dd08e1d1f7d7a2a213eb9f5fdcc5cc1b77ec5942372c74e0907b32002ec8c168"
+  },
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "runtimeMetalSHA256": {
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Deflagration.metal": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverSweep.metal": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVenting.metal": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Gravity.metal": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Refine.metal": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverEnvelopes.metal": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Shell.metal": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVisualization.metal": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Extract.metal": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Rubble.metal": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Footing.metal": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Thermal.metal": "682d7840de3974906e68a9c62a0e123d5e29782a770fdf19126b9b61a0b275c3",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCutCells.metal": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Solver.metal": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCongestion.metal": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Structure.metal": "6db0090c45fe6a24ba14c40a51711016fe6bb4e1cdfce4b1114513e2aa1a001b",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Mixing.metal": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/BodyContact.metal": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Radiation.metal": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverStep.metal": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchFunctions.metal": "15f9d42d0ac940944a6a4b8c00ebb7bb9dc9531a601d5cb37e3b6ff8be827074",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchKernels.metal": "097ada87a78aa40cdd8b4e02d8f16bc70f94a7fe218df0024e3aec4d4b5151c9",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/BombCAD_BlastRender.bundle/Contents/Resources/Shaders/Render.metal": "c23a8ce065174feefe912e74643b46c98ae4c9d2caec326797afc2f352bbcb3b",
+    "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/ContinuumKit_SceneRender.bundle/Contents/Resources/Shaders/Scene.metal": "fce74c787f047f573563454bfca3fbe56a58c55245503b4770eb9c14964c86d9"
+  },
+  "medians": {
+    "metal": 21.380260207999996,
+    "prepare": 2.4859053330000016
+  }
+}

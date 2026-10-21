@@ -1,0 +1,21 @@
+"""Read-only paired sleep/clock diagnostic; no GPU work or remote files."""
+import datetime,json,shlex,subprocess,time
+from pathlib import Path
+remote='''import sys,time,json
+print('ready',flush=True)
+for line in sys.stdin:
+ a=time.monotonic();b=time.time();time.sleep(5)
+ print(json.dumps(dict(monotonicSeconds=time.monotonic()-a,wallSeconds=time.time()-b)),flush=True)
+'''
+proc=subprocess.Popen(['ssh','-T','-o','BatchMode=yes','bombcad-pc','python3 -u -c '+shlex.quote(remote)],stdin=subprocess.PIPE,stdout=subprocess.PIPE)
+rows=[]
+try:
+ assert proc.stdout.readline()==b'ready\n'
+ for _ in range(3):
+  a=time.perf_counter();b=time.time();proc.stdin.write(b'go\n');proc.stdin.flush();row=json.loads(proc.stdout.readline())
+  row.update(macPerfCounterRoundTripSeconds=time.perf_counter()-a,macWallRoundTripSeconds=time.time()-b);rows.append(row)
+ proc.stdin.close();proc.wait(timeout=10);assert proc.returncode==0
+finally:
+ if proc.poll() is None:proc.kill();proc.wait()
+out={'date':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scope':__doc__,'requestedRemoteSleepSeconds':5,'rows':rows}
+Path('/private/tmp/bombcad-deployment-profile/clock-probe.json').write_text(json.dumps(out,indent=2)+'\n');print(json.dumps(out,indent=2))

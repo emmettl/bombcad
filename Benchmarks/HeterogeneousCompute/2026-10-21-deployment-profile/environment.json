@@ -1,0 +1,22 @@
+{
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "torch": "2.11.0+cu128",
+  "cuda": "12.8",
+  "nvrtcLibrarySHA256": {
+    "/home/lemme/bombcad-ml/venv/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.alt.so.12.8": "9e971f2dcced2628f327ddb037d02c41b834f2c3dbfbff03c9d2c3177f1b9b6d",
+    "/home/lemme/bombcad-ml/venv/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc-builtins.so.12.8": "eccaa824230ee7858a94a3055cb01f1cb634df05d313880d0bdcf195161fcb4e",
+    "/home/lemme/bombcad-ml/venv/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.alt.so.12": "d8260dbfdba5820d0e710dd00f4370285d5ebe18c7d98ba2a6737deedf48d3eb",
+    "/home/lemme/bombcad-ml/venv/lib/python3.12/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12": "43731e24cd89e3749826304f304e8aa11fbecf1188715271b1f5018d6212b5e6"
+  },
+  "cacheEntries": [
+    {
+      "file": "1ffc6bdbe0672047227568993cf545205e406e63219d6364acb0d2e3bbd8ef87.json",
+      "key": "1ffc6bdbe0672047227568993cf545205e406e63219d6364acb0d2e3bbd8ef87",
+      "ptxSHA256": "a40b0356c45fa88dc9d028b99af44a0d0c6107bbcd852cddccde3c83858823a9",
+      "checksumMatches": true
+    }
+  ],
+  "clocksource": "tsc",
+  "scope": "Read-only environment/cache snapshot after experiment and checks; no packages changed."
+}

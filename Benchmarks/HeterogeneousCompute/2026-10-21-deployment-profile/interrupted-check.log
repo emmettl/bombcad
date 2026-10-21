@@ -1,0 +1,110 @@
+python3 Scripts/check-affected.py 
+check-affected: 10 changed file(s), tier: covered
+  map 90fb60017c15 (37 commits behind the merge base, built 2026-10-20 19:53 UTC on Louiss-Mac-mini)
+  Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/cooling32-job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/cooling64-job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/flat-district-job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/plan.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/reference-hashes.json: not code the map covers; by name
+  Scripts/cuda/profile-deployment.py: not code the map covers; by name
+  Scripts/cuda/remote.py: not code the map covers; by name
+  Scripts/cuda/test_backend.py: not code the map covers; by name
+  5 of 411 suites, under 1% of the suites' time in the map:
+    ErrorBandTests: always
+    EvidentialStandingTests: always
+    RenderLayoutTests: always
+    StandingFingerprintTests: always
+    StandingRunTests: always
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 0 GB declared by the 0 held and the waiting against a budget of 26 GB
+  BlastModel's 4 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+..ssss..................
+----------------------------------------------------------------------
+Ran 24 tests in 0.038s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.044s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp5543u6en/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmphvh9v_gj/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.022s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.384s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (2b94a30d0b), newest first:
+- fcd596c Third (A)
+- 16c7101 Second (A)
+
+### Full check: passed
+
+On fcd596c01e, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpe4hf0cl3/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpe4hf0cl3/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpe4hf0cl3/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpykiimsd7/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpykiimsd7/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.324s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 0.865s
+
+OK
+python3 Scripts/test-ship.py
+............make[1]: *** [ci-test] Terminated: 15
+make: *** [check-affected] Terminated: 15

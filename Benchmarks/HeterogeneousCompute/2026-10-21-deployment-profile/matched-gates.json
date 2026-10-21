@@ -1,0 +1,240 @@
+{
+  "currentMetalAgainstCUDA": {
+    "results/flat-district-1-cached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    },
+    "results/flat-district-1-uncached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    },
+    "results/flat-district-0-uncached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    },
+    "results/flat-district-2-uncached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    },
+    "results/flat-district-0-cached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    },
+    "results/flat-district-2-cached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    },
+    "repeat-uncached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    },
+    "repeat-cached/dataset": {
+      "0": {
+        "relativeL2": 8.653548373308e-09,
+        "maxAbsolute": 2.5,
+        "outsideTolerance": 0,
+        "medianRelative": 2.7317378770025916e-06,
+        "p99Relative": 2.22629026170042e-05
+      },
+      "1": {
+        "relativeL2": 1.4437471857944405e-06,
+        "maxAbsolute": 1.388671875,
+        "outsideTolerance": 0,
+        "medianRelative": 1.9032420662783494e-06,
+        "p99Relative": 7.436845008326852e-06
+      },
+      "2": {
+        "relativeL2": 5.321219592109486e-07,
+        "maxAbsolute": 0.0703125,
+        "outsideTolerance": 0,
+        "medianRelative": 2.5258627294641046e-06,
+        "p99Relative": 5.579321484765934e-06
+      },
+      "passed": true
+    }
+  },
+  "metalRepeatedNumericalFilesBitIdentical": true,
+  "localDatasetNumericalSHA256": {
+    "results/flat-district-1-cached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    },
+    "results/flat-district-1-uncached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    },
+    "results/flat-district-0-uncached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    },
+    "results/flat-district-2-uncached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    },
+    "results/flat-district-0-cached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    },
+    "results/flat-district-2-cached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    },
+    "repeat-uncached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    },
+    "repeat-cached/dataset": {
+      "mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+      "inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+    }
+  },
+  "allEightLocalCUDADatasetsBitIdentical": true
+}

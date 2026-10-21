@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-21T09:33:15.637447+00:00",
+  "scope": "Read-only paired sleep/clock diagnostic; no GPU work or remote files.",
+  "requestedRemoteSleepSeconds": 5,
+  "rows": [
+    {
+      "monotonicSeconds": 5.005153428995982,
+      "wallSeconds": 5.00515604019165,
+      "macPerfCounterRoundTripSeconds": 4.900229167,
+      "macWallRoundTripSeconds": 4.900200843811035
+    },
+    {
+      "monotonicSeconds": 5.006652558004134,
+      "wallSeconds": 5.0066540241241455,
+      "macPerfCounterRoundTripSeconds": 4.901401542,
+      "macWallRoundTripSeconds": 4.901418924331665
+    },
+    {
+      "monotonicSeconds": 5.010063914000057,
+      "wallSeconds": 4.151268005371094,
+      "macPerfCounterRoundTripSeconds": 4.9100041669999985,
+      "macWallRoundTripSeconds": 4.910025119781494
+    }
+  ]
+}

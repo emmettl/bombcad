@@ -1,0 +1,31 @@
+{
+  "baseCommit": "e38b75cb4ca53ee84c5871b906216bbc503da322",
+  "sourceHashesMatch": true,
+  "referenceHashesUnchangedSinceSample": true,
+  "metalRunnerSHA256": "bae32c0287d97a2db54ea1535986aae05ae5ffbf1dc0d745c692aa7cbd58bcbf",
+  "generatedSourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "metalReferenceSourceSHA256": "7773d2a7c79a4d9b46ce3e822a25823d8d1c5c63302115e19c37667207662eb1",
+  "localSoftware": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0.1\nBuildVersion:\t\t26A434\n",
+  "runCommand": "python3 Scripts/cuda/profile-deployment.py bombcad-pc plan.json --out NEW-DIR --cache-dir NEW-REMOTE-PATH --context CURRENT-LOAD",
+  "caveat": "Original district pair 2 excluded from primary medians; see repeat-pair.json for replacement pair and audited medians.",
+  "validation": "make check-affected passed: lint, strict build, script/doc checks and selected Mac/PC suites; see check.log. Final document links and diff whitespace checks passed after report additions.",
+  "experimentFilesSHA256": {
+    "profile-mac.py.txt": "7d46ce7125d3c59d5379443b87d8c11b430f905fbae9a1fe9668c4a10aae40ec",
+    "flat-district-job.json": "d87799d31ee0a96c5758b59594938dbbb06670373787fc0f2012dae9a30074a9",
+    "interrupted-check.log": "d73d1feccde1b4dc4cf0764da8ceb9219e6bc2b1e0939a8f4877208bfdb04639",
+    "mac-profile.json": "204fe07c4bd38c7c9407336987323de0bca237f172d1cceac17bcfeba390936c",
+    "plan.json": "0225bda6c7fafb036d8cfea1e7a742f8228bb9e8fa6f251459c3f0ed8eac2b30",
+    "matched-gates.json": "60d3d76d799f5c70dfb8329d5296366fef42ec41223bdf6881170a744a671822",
+    "summary.md": "a5c57ed8880ab52c9f1dd62c1b6b816957dfa1c12a6aa89899d882d170a12c96",
+    "clock-probe.json": "cc7a4feee8d1c6fa4208cbdad7262c0b83ab729b0de85d31688e59ec6472ae59",
+    "repeat-pair.py.txt": "06c3eb78ea4e30af887f6890e53cb49d5e61e2b80ad3cc4f4d8241b9bf81edc2",
+    "cooling32-job.json": "5317b1b003672b7d464272c5d52a8ce0e55536ea27a971b08fa7638f57160a29",
+    "clock-probe.py.txt": "1bbf578cf8108ab24402a3e8b869116954fe98c10673b81009e9437e0fbfbaa2",
+    "check.log": "9acff64bd00b94d8c0b0f3c5aab6739b4a70b1b46f943b2d43445e0ee0340d73",
+    "environment.json": "067c76e8d674540a721d97dfd3ecc75a1c95f7058e5c97eef06a86e2a0b61839",
+    "profile.json": "547b5dfe2441b6cea08fb543c0671e98d404d2e41b2a3bc094b9376fa55a3aa6",
+    "cooling64-job.json": "a087ae03f641d5a95968b383db8107ecda3ff9de77c3e65c7f8d5e1ed92c6975",
+    "repeat-pair.json": "1f676547672623a3eda18037a1f77540be4c30ec4d0e7b08745ef58ffcd066cc",
+    "reference-hashes.json": "8f966e05279d2ce8cef9084a3fd5b17617e08fd3711abb6e97d8557f85473f7f"
+  }
+}

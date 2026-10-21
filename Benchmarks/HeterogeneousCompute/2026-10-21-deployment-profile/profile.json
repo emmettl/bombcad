@@ -1,0 +1,2582 @@
+{
+  "status": "complete",
+  "context": "Coordinated with PC session; GPU lock absent and 0% utilization before setup; sequential fresh SSH/Python deployments; shared worker lock respected. Mac standalone safe Metal gates for cooling fixtures, archived production Metal dataset gate for flat district. No training or full batch generation.",
+  "plan": [
+    {
+      "name": "cooling32",
+      "input": "/private/tmp/bombcad-phase-diagnostic/small",
+      "reference": "/private/tmp/bombcad-phase-diagnostic/metal-small-plain",
+      "retrieval": "all"
+    },
+    {
+      "name": "cooling64",
+      "input": "/private/tmp/bombcad-deployment-profile/cooling64",
+      "reference": "/private/tmp/bombcad-deployment-profile/metal64",
+      "retrieval": "all"
+    },
+    {
+      "name": "flat-district",
+      "input": "/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/made-perimeter-s1-1-1792565906169273000/input",
+      "reference": "/Volumes/StudioData/bombcad/ml/datasets/main-fp/runs/made-perimeter-s1-1",
+      "retrieval": "dataset"
+    }
+  ],
+  "cacheDirectory": "bombcad-cuda/profile-cache-20261021-e2e",
+  "scope": "Profile complete SSH deployments with a primed optional PTX cache and unchanged gates.\n\nPlan JSON is a list of {name, input, reference, retrieval: all|dataset}. Every job runs\nthree alternating uncached/cached pairs. No accepted datasets are published. Outputs\nmust be new; partial reports remain explicitly incomplete after failure/interruption.\n",
+  "rows": [
+    {
+      "job": "cooling32",
+      "repetition": 0,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 26,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.03814260599028785,
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 6,
+          "emptyIntervals": 0,
+          "minBoxCells": 810,
+          "maxBoxCells": 2028,
+          "meanBoxCells": 1476.5
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 0.8062276350101456,
+          "compileSeconds": 1.107623389994842,
+          "deviceSetupAndUploadSeconds": 0.22008374400320463,
+          "solverSeconds": 0.03814260599028785,
+          "validationAndOutputSeconds": 0.045455232000676915,
+          "workerSecondsBeforeManifests": 2.2175370290060528
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/127aa44612064b0687d6ead23bab4959",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 1250903,
+        "returnedFileBytes": 1214631,
+        "timings": {
+          "generateAndValidateSeconds": 0.0093384169999986,
+          "remoteDirectorySeconds": 0.42902287500000114,
+          "workerUploadSeconds": 1.516627957999999,
+          "inputUploadSeconds": 1.8057020000000001,
+          "remoteProcessSeconds": 2.809143583000001,
+          "retrievalSeconds": 2.592695457999998,
+          "returnedProvenanceValidationSeconds": 0.0020141670000022316
+        },
+        "totalSecondsBeforeReceipt": 9.179474499999998,
+        "otherLocalSeconds": 0.014930041999997812,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 163840,
+          "outsideTolerance": 0,
+          "differentValues": 146665,
+          "maxAbsolute": 0.3125,
+          "relativeL2": 1.0966526709588965e-07
+        },
+        "species": {
+          "count": 65536,
+          "outsideTolerance": 0,
+          "differentValues": 60487,
+          "maxAbsolute": 3.5762786865234375e-07,
+          "relativeL2": 2.725422424840452e-07
+        },
+        "peak": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 15024,
+          "maxAbsolute": 0.375,
+          "relativeL2": 1.765493517693511e-07
+        },
+        "impulse": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 20048,
+          "maxAbsolute": 0.00018310546875,
+          "relativeL2": 1.205879094041643e-07
+        },
+        "first-phase": {
+          "count": 4096,
+          "outsideTolerance": 0,
+          "differentValues": 1802,
+          "maxAbsolute": 0.0390625,
+          "relativeL2": 7.85200828820721e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.5991471249999982
+    },
+    {
+      "job": "cooling32",
+      "repetition": 0,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 26,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.02097246299672406,
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 6,
+          "emptyIntervals": 0,
+          "minBoxCells": 810,
+          "maxBoxCells": 2028,
+          "meanBoxCells": 1476.5
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 0.7639750709931832,
+          "compileSeconds": 0.18854631000431255,
+          "deviceSetupAndUploadSeconds": 0.24891020999348257,
+          "solverSeconds": 0.02097246299672406,
+          "validationAndOutputSeconds": 0.0456033060036134,
+          "workerSecondsBeforeManifests": 1.2680113560054451
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/177e29c02cc04bfc8594c9d897ab683d",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 1250903,
+        "returnedFileBytes": 1214630,
+        "timings": {
+          "generateAndValidateSeconds": 0.013576000000000477,
+          "remoteDirectorySeconds": 0.45835750000000175,
+          "workerUploadSeconds": 1.4181030419999985,
+          "inputUploadSeconds": 1.824947666,
+          "remoteProcessSeconds": 1.914880790999998,
+          "retrievalSeconds": 2.3701075829999994,
+          "returnedProvenanceValidationSeconds": 0.0022046249999974066
+        },
+        "totalSecondsBeforeReceipt": 8.019370416000001,
+        "otherLocalSeconds": 0.017193209000005538,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 163840,
+          "outsideTolerance": 0,
+          "differentValues": 146665,
+          "maxAbsolute": 0.3125,
+          "relativeL2": 1.0966526709588965e-07
+        },
+        "species": {
+          "count": 65536,
+          "outsideTolerance": 0,
+          "differentValues": 60487,
+          "maxAbsolute": 3.5762786865234375e-07,
+          "relativeL2": 2.725422424840452e-07
+        },
+        "peak": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 15024,
+          "maxAbsolute": 0.375,
+          "relativeL2": 1.765493517693511e-07
+        },
+        "impulse": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 20048,
+          "maxAbsolute": 0.00018310546875,
+          "relativeL2": 1.205879094041643e-07
+        },
+        "first-phase": {
+          "count": 4096,
+          "outsideTolerance": 0,
+          "differentValues": 1802,
+          "maxAbsolute": 0.0390625,
+          "relativeL2": 7.85200828820721e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.564041790999994
+    },
+    {
+      "job": "cooling32",
+      "repetition": 1,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 26,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.0644890179974027,
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 6,
+          "emptyIntervals": 0,
+          "minBoxCells": 810,
+          "maxBoxCells": 2028,
+          "meanBoxCells": 1476.5
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 0.7998328640096588,
+          "compileSeconds": 0.1840151060023345,
+          "deviceSetupAndUploadSeconds": 0.24238527100533247,
+          "solverSeconds": 0.0644890179974027,
+          "validationAndOutputSeconds": 0.05134054301015567,
+          "workerSecondsBeforeManifests": 1.3420669870101847
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/5be362eb9b3245f5a829c161b5c0af37",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 1250903,
+        "returnedFileBytes": 1214628,
+        "timings": {
+          "generateAndValidateSeconds": 0.013045208000001196,
+          "remoteDirectorySeconds": 0.44497229099999913,
+          "workerUploadSeconds": 1.3772708340000008,
+          "inputUploadSeconds": 1.7856716669999955,
+          "remoteProcessSeconds": 1.977826707999995,
+          "retrievalSeconds": 2.5733835839999983,
+          "returnedProvenanceValidationSeconds": 0.002277792000001
+        },
+        "totalSecondsBeforeReceipt": 8.192403166000005,
+        "otherLocalSeconds": 0.0179550820000145,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 163840,
+          "outsideTolerance": 0,
+          "differentValues": 146665,
+          "maxAbsolute": 0.3125,
+          "relativeL2": 1.0966526709588965e-07
+        },
+        "species": {
+          "count": 65536,
+          "outsideTolerance": 0,
+          "differentValues": 60487,
+          "maxAbsolute": 3.5762786865234375e-07,
+          "relativeL2": 2.725422424840452e-07
+        },
+        "peak": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 15024,
+          "maxAbsolute": 0.375,
+          "relativeL2": 1.765493517693511e-07
+        },
+        "impulse": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 20048,
+          "maxAbsolute": 0.00018310546875,
+          "relativeL2": 1.205879094041643e-07
+        },
+        "first-phase": {
+          "count": 4096,
+          "outsideTolerance": 0,
+          "differentValues": 1802,
+          "maxAbsolute": 0.0390625,
+          "relativeL2": 7.85200828820721e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.5539970840000024
+    },
+    {
+      "job": "cooling32",
+      "repetition": 1,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 26,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.0460781130095711,
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 6,
+          "emptyIntervals": 0,
+          "minBoxCells": 810,
+          "maxBoxCells": 2028,
+          "meanBoxCells": 1476.5
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 0.8078295270097442,
+          "compileSeconds": 1.1069767430017237,
+          "deviceSetupAndUploadSeconds": 0.22205424601270352,
+          "solverSeconds": 0.0460781130095711,
+          "validationAndOutputSeconds": 0.05439277699042577,
+          "workerSecondsBeforeManifests": 2.2373355780000566
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/15de2035a4044dcbb78bd1fc6d983053",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 1250903,
+        "returnedFileBytes": 1214629,
+        "timings": {
+          "generateAndValidateSeconds": 0.012858749999999475,
+          "remoteDirectorySeconds": 0.4364895419999968,
+          "workerUploadSeconds": 1.420714665999995,
+          "inputUploadSeconds": 1.8217871250000002,
+          "remoteProcessSeconds": 2.844088915999997,
+          "retrievalSeconds": 2.3524016660000058,
+          "returnedProvenanceValidationSeconds": 0.00283470800000174
+        },
+        "totalSecondsBeforeReceipt": 8.909233917000002,
+        "otherLocalSeconds": 0.01805854400000584,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 163840,
+          "outsideTolerance": 0,
+          "differentValues": 146665,
+          "maxAbsolute": 0.3125,
+          "relativeL2": 1.0966526709588965e-07
+        },
+        "species": {
+          "count": 65536,
+          "outsideTolerance": 0,
+          "differentValues": 60487,
+          "maxAbsolute": 3.5762786865234375e-07,
+          "relativeL2": 2.725422424840452e-07
+        },
+        "peak": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 15024,
+          "maxAbsolute": 0.375,
+          "relativeL2": 1.765493517693511e-07
+        },
+        "impulse": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 20048,
+          "maxAbsolute": 0.00018310546875,
+          "relativeL2": 1.205879094041643e-07
+        },
+        "first-phase": {
+          "count": 4096,
+          "outsideTolerance": 0,
+          "differentValues": 1802,
+          "maxAbsolute": 0.0390625,
+          "relativeL2": 7.85200828820721e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.5316977499999993
+    },
+    {
+      "job": "cooling32",
+      "repetition": 2,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 26,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.0364643079956295,
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 6,
+          "emptyIntervals": 0,
+          "minBoxCells": 810,
+          "maxBoxCells": 2028,
+          "meanBoxCells": 1476.5
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 0.8010961440013489,
+          "compileSeconds": 1.1008432029921096,
+          "deviceSetupAndUploadSeconds": 0.21835337400261778,
+          "solverSeconds": 0.0364643079956295,
+          "validationAndOutputSeconds": 0.05292697899858467,
+          "workerSecondsBeforeManifests": 2.2096890949906083
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/729c9f5e5e4f48f7a523eff4ac73c11e",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 1250903,
+        "returnedFileBytes": 1214629,
+        "timings": {
+          "generateAndValidateSeconds": 0.013984709000006035,
+          "remoteDirectorySeconds": 0.43612158400000567,
+          "workerUploadSeconds": 1.3766667500000054,
+          "inputUploadSeconds": 1.7523399999999967,
+          "remoteProcessSeconds": 2.7966487079999993,
+          "retrievalSeconds": 2.932097542000001,
+          "returnedProvenanceValidationSeconds": 0.0020369579999979237
+        },
+        "totalSecondsBeforeReceipt": 9.324789167000006,
+        "otherLocalSeconds": 0.014892915999993761,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 163840,
+          "outsideTolerance": 0,
+          "differentValues": 146665,
+          "maxAbsolute": 0.3125,
+          "relativeL2": 1.0966526709588965e-07
+        },
+        "species": {
+          "count": 65536,
+          "outsideTolerance": 0,
+          "differentValues": 60487,
+          "maxAbsolute": 3.5762786865234375e-07,
+          "relativeL2": 2.725422424840452e-07
+        },
+        "peak": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 15024,
+          "maxAbsolute": 0.375,
+          "relativeL2": 1.765493517693511e-07
+        },
+        "impulse": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 20048,
+          "maxAbsolute": 0.00018310546875,
+          "relativeL2": 1.205879094041643e-07
+        },
+        "first-phase": {
+          "count": 4096,
+          "outsideTolerance": 0,
+          "differentValues": 1802,
+          "maxAbsolute": 0.0390625,
+          "relativeL2": 7.85200828820721e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.5389711250000033
+    },
+    {
+      "job": "cooling32",
+      "repetition": 2,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 26,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.03974525800731499,
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 6,
+          "emptyIntervals": 0,
+          "minBoxCells": 810,
+          "maxBoxCells": 2028,
+          "meanBoxCells": 1476.5
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 0.7953524299955461,
+          "compileSeconds": 0.1832766330044251,
+          "deviceSetupAndUploadSeconds": 0.23661761499533895,
+          "solverSeconds": 0.03974525800731499,
+          "validationAndOutputSeconds": 0.05349173599097412,
+          "workerSecondsBeforeManifests": 1.3084877630026313
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/aa3e9fb3b4d4422fa3d4f6eff2dbdacd",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 1250903,
+        "returnedFileBytes": 1214630,
+        "timings": {
+          "generateAndValidateSeconds": 0.013891832999988196,
+          "remoteDirectorySeconds": 0.42971212499999467,
+          "workerUploadSeconds": 1.4311557080000057,
+          "inputUploadSeconds": 1.7554946249999972,
+          "remoteProcessSeconds": 1.9603734580000065,
+          "retrievalSeconds": 2.638364457999998,
+          "returnedProvenanceValidationSeconds": 0.00203675000000203
+        },
+        "totalSecondsBeforeReceipt": 8.246379790999995,
+        "otherLocalSeconds": 0.015350834000003033,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 163840,
+          "outsideTolerance": 0,
+          "differentValues": 146665,
+          "maxAbsolute": 0.3125,
+          "relativeL2": 1.0966526709588965e-07
+        },
+        "species": {
+          "count": 65536,
+          "outsideTolerance": 0,
+          "differentValues": 60487,
+          "maxAbsolute": 3.5762786865234375e-07,
+          "relativeL2": 2.725422424840452e-07
+        },
+        "peak": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 15024,
+          "maxAbsolute": 0.375,
+          "relativeL2": 1.765493517693511e-07
+        },
+        "impulse": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 20048,
+          "maxAbsolute": 0.00018310546875,
+          "relativeL2": 1.205879094041643e-07
+        },
+        "first-phase": {
+          "count": 4096,
+          "outsideTolerance": 0,
+          "differentValues": 1802,
+          "maxAbsolute": 0.0390625,
+          "relativeL2": 7.85200828820721e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.5112267079999953
+    },
+    {
+      "job": "cooling64",
+      "repetition": 0,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 28,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.07241736901050899,
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 8,
+          "emptyIntervals": 0,
+          "minBoxCells": 6859,
+          "maxBoxCells": 12167,
+          "meanBoxCells": 9429.0
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 0.8030568630056223,
+          "compileSeconds": 1.0925061070010997,
+          "deviceSetupAndUploadSeconds": 0.2195972640038235,
+          "solverSeconds": 0.07241736901050899,
+          "validationAndOutputSeconds": 0.04758198099443689,
+          "workerSecondsBeforeManifests": 2.2351645669987192
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/8f3cbdc2ea624bc582920f3c5fcd8eb9",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 9848407,
+        "returnedFileBytes": 9570480,
+        "timings": {
+          "generateAndValidateSeconds": 0.02080570799999748,
+          "remoteDirectorySeconds": 0.44025975000000983,
+          "workerUploadSeconds": 2.0195754579999914,
+          "inputUploadSeconds": 12.877932833999992,
+          "remoteProcessSeconds": 2.8479895830000004,
+          "retrievalSeconds": 7.848774833999997,
+          "returnedProvenanceValidationSeconds": 0.0023150840000027983
+        },
+        "totalSecondsBeforeReceipt": 26.169335833000005,
+        "otherLocalSeconds": 0.11168258200001446,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 1310720,
+          "outsideTolerance": 0,
+          "differentValues": 1176154,
+          "maxAbsolute": 0.625,
+          "relativeL2": 1.1360500461346126e-07
+        },
+        "species": {
+          "count": 524288,
+          "outsideTolerance": 0,
+          "differentValues": 484158,
+          "maxAbsolute": 4.470348358154297e-07,
+          "relativeL2": 2.8797903304773317e-07
+        },
+        "peak": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 112490,
+          "maxAbsolute": 0.5,
+          "relativeL2": 1.6894168079305607e-07
+        },
+        "impulse": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 151845,
+          "maxAbsolute": 0.00048828125,
+          "relativeL2": 1.0005077155522976e-07
+        },
+        "first-phase": {
+          "count": 16384,
+          "outsideTolerance": 0,
+          "differentValues": 7749,
+          "maxAbsolute": 0.03125,
+          "relativeL2": 1.0864773046822376e-05
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 1.1099390420000077
+    },
+    {
+      "job": "cooling64",
+      "repetition": 0,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 28,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.03896037000231445,
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 8,
+          "emptyIntervals": 0,
+          "minBoxCells": 6859,
+          "maxBoxCells": 12167,
+          "meanBoxCells": 9429.0
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 0.8024483199988026,
+          "compileSeconds": 0.1801391019980656,
+          "deviceSetupAndUploadSeconds": 0.23676469599013217,
+          "solverSeconds": 0.03896037000231445,
+          "validationAndOutputSeconds": 0.04816277998907026,
+          "workerSecondsBeforeManifests": 1.3064796899998328
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/dd3823167b344df9a4c3b885b3cabbb0",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 9848407,
+        "returnedFileBytes": 9570480,
+        "timings": {
+          "generateAndValidateSeconds": 0.020234040999994818,
+          "remoteDirectorySeconds": 0.4254020829999945,
+          "workerUploadSeconds": 1.3925786249999987,
+          "inputUploadSeconds": 3.6972214580000013,
+          "remoteProcessSeconds": 1.932484500000001,
+          "retrievalSeconds": 6.33796550000001,
+          "returnedProvenanceValidationSeconds": 0.002348499999996534
+        },
+        "totalSecondsBeforeReceipt": 13.828854375000006,
+        "otherLocalSeconds": 0.020619668000009028,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 1310720,
+          "outsideTolerance": 0,
+          "differentValues": 1176154,
+          "maxAbsolute": 0.625,
+          "relativeL2": 1.1360500461346126e-07
+        },
+        "species": {
+          "count": 524288,
+          "outsideTolerance": 0,
+          "differentValues": 484158,
+          "maxAbsolute": 4.470348358154297e-07,
+          "relativeL2": 2.8797903304773317e-07
+        },
+        "peak": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 112490,
+          "maxAbsolute": 0.5,
+          "relativeL2": 1.6894168079305607e-07
+        },
+        "impulse": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 151845,
+          "maxAbsolute": 0.00048828125,
+          "relativeL2": 1.0005077155522976e-07
+        },
+        "first-phase": {
+          "count": 16384,
+          "outsideTolerance": 0,
+          "differentValues": 7749,
+          "maxAbsolute": 0.03125,
+          "relativeL2": 1.0864773046822376e-05
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 1.0599458749999968
+    },
+    {
+      "job": "cooling64",
+      "repetition": 1,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 28,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.03276845900109038,
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 8,
+          "emptyIntervals": 0,
+          "minBoxCells": 6859,
+          "maxBoxCells": 12167,
+          "meanBoxCells": 9429.0
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 0.8016558160015848,
+          "compileSeconds": 0.1822184409975307,
+          "deviceSetupAndUploadSeconds": 0.2368528360093478,
+          "solverSeconds": 0.03276845900109038,
+          "validationAndOutputSeconds": 0.04854966900893487,
+          "workerSecondsBeforeManifests": 1.3020494670054177
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/4b22d0e7ab704ca7ac8ad505e470e966",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 9848407,
+        "returnedFileBytes": 9570479,
+        "timings": {
+          "generateAndValidateSeconds": 0.018863834000001134,
+          "remoteDirectorySeconds": 0.4409780000000012,
+          "workerUploadSeconds": 1.4111675000000048,
+          "inputUploadSeconds": 3.849082917000004,
+          "remoteProcessSeconds": 1.9352163329999996,
+          "retrievalSeconds": 7.589063207999985,
+          "returnedProvenanceValidationSeconds": 0.0025978330000100414
+        },
+        "totalSecondsBeforeReceipt": 15.26718533399999,
+        "otherLocalSeconds": 0.020215708999984372,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 1310720,
+          "outsideTolerance": 0,
+          "differentValues": 1176154,
+          "maxAbsolute": 0.625,
+          "relativeL2": 1.1360500461346126e-07
+        },
+        "species": {
+          "count": 524288,
+          "outsideTolerance": 0,
+          "differentValues": 484158,
+          "maxAbsolute": 4.470348358154297e-07,
+          "relativeL2": 2.8797903304773317e-07
+        },
+        "peak": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 112490,
+          "maxAbsolute": 0.5,
+          "relativeL2": 1.6894168079305607e-07
+        },
+        "impulse": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 151845,
+          "maxAbsolute": 0.00048828125,
+          "relativeL2": 1.0005077155522976e-07
+        },
+        "first-phase": {
+          "count": 16384,
+          "outsideTolerance": 0,
+          "differentValues": 7749,
+          "maxAbsolute": 0.03125,
+          "relativeL2": 1.0864773046822376e-05
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 1.0714408750000075
+    },
+    {
+      "job": "cooling64",
+      "repetition": 1,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 28,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.041838264995021746,
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 8,
+          "emptyIntervals": 0,
+          "minBoxCells": 6859,
+          "maxBoxCells": 12167,
+          "meanBoxCells": 9429.0
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 0.8035430509917205,
+          "compileSeconds": 1.1309698179975385,
+          "deviceSetupAndUploadSeconds": 0.23680292199424002,
+          "solverSeconds": 0.041838264995021746,
+          "validationAndOutputSeconds": 0.05025286300224252,
+          "workerSecondsBeforeManifests": 2.2634123229945544
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/933ea00dc9aa4ce5bcbb3236049f2e7b",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 9848407,
+        "returnedFileBytes": 9570483,
+        "timings": {
+          "generateAndValidateSeconds": 0.01726291699998228,
+          "remoteDirectorySeconds": 0.4164020419999872,
+          "workerUploadSeconds": 1.4692810829999985,
+          "inputUploadSeconds": 3.71133120799999,
+          "remoteProcessSeconds": 2.8681615419999957,
+          "retrievalSeconds": 5.237276790999999,
+          "returnedProvenanceValidationSeconds": 0.0022291250000137097
+        },
+        "totalSecondsBeforeReceipt": 13.739310042,
+        "otherLocalSeconds": 0.017365334000032817,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 1310720,
+          "outsideTolerance": 0,
+          "differentValues": 1176154,
+          "maxAbsolute": 0.625,
+          "relativeL2": 1.1360500461346126e-07
+        },
+        "species": {
+          "count": 524288,
+          "outsideTolerance": 0,
+          "differentValues": 484158,
+          "maxAbsolute": 4.470348358154297e-07,
+          "relativeL2": 2.8797903304773317e-07
+        },
+        "peak": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 112490,
+          "maxAbsolute": 0.5,
+          "relativeL2": 1.6894168079305607e-07
+        },
+        "impulse": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 151845,
+          "maxAbsolute": 0.00048828125,
+          "relativeL2": 1.0005077155522976e-07
+        },
+        "first-phase": {
+          "count": 16384,
+          "outsideTolerance": 0,
+          "differentValues": 7749,
+          "maxAbsolute": 0.03125,
+          "relativeL2": 1.0864773046822376e-05
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 1.0526447910000059
+    },
+    {
+      "job": "cooling64",
+      "repetition": 2,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 28,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.03725221799686551,
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 8,
+          "emptyIntervals": 0,
+          "minBoxCells": 6859,
+          "maxBoxCells": 12167,
+          "meanBoxCells": 9429.0
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 0.7880866230116226,
+          "compileSeconds": 1.0844288269872777,
+          "deviceSetupAndUploadSeconds": 0.2196445580048021,
+          "solverSeconds": 0.03725221799686551,
+          "validationAndOutputSeconds": 0.049480503002996556,
+          "workerSecondsBeforeManifests": 2.1788972210051725
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/f5f2de1c67cd4e18952641d49068bfbf",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 9848407,
+        "returnedFileBytes": 9570481,
+        "timings": {
+          "generateAndValidateSeconds": 0.021205499999979338,
+          "remoteDirectorySeconds": 0.4395489999999995,
+          "workerUploadSeconds": 1.3968878339999833,
+          "inputUploadSeconds": 3.901586291000001,
+          "remoteProcessSeconds": 2.8143828339999857,
+          "retrievalSeconds": 7.381564416999993,
+          "returnedProvenanceValidationSeconds": 0.0030714590000116004
+        },
+        "totalSecondsBeforeReceipt": 15.978275791999977,
+        "otherLocalSeconds": 0.020028457000023536,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 1310720,
+          "outsideTolerance": 0,
+          "differentValues": 1176154,
+          "maxAbsolute": 0.625,
+          "relativeL2": 1.1360500461346126e-07
+        },
+        "species": {
+          "count": 524288,
+          "outsideTolerance": 0,
+          "differentValues": 484158,
+          "maxAbsolute": 4.470348358154297e-07,
+          "relativeL2": 2.8797903304773317e-07
+        },
+        "peak": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 112490,
+          "maxAbsolute": 0.5,
+          "relativeL2": 1.6894168079305607e-07
+        },
+        "impulse": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 151845,
+          "maxAbsolute": 0.00048828125,
+          "relativeL2": 1.0005077155522976e-07
+        },
+        "first-phase": {
+          "count": 16384,
+          "outsideTolerance": 0,
+          "differentValues": 7749,
+          "maxAbsolute": 0.03125,
+          "relativeL2": 1.0864773046822376e-05
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 1.0907587500000204
+    },
+    {
+      "job": "cooling64",
+      "repetition": 2,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 28,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.05774588300846517,
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 8,
+          "emptyIntervals": 0,
+          "minBoxCells": 6859,
+          "maxBoxCells": 12167,
+          "meanBoxCells": 9429.0
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 0.8143116569990525,
+          "compileSeconds": 0.18327357700036373,
+          "deviceSetupAndUploadSeconds": 0.2463757310033543,
+          "solverSeconds": 0.05774588300846517,
+          "validationAndOutputSeconds": 0.04999617800058331,
+          "workerSecondsBeforeManifests": 1.3517069240042474
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/0d7cb10cc7dd4d919aae62afa6ebb501",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 9848407,
+        "returnedFileBytes": 9570480,
+        "timings": {
+          "generateAndValidateSeconds": 0.020461707999999135,
+          "remoteDirectorySeconds": 0.42308754199999044,
+          "workerUploadSeconds": 1.395817582999996,
+          "inputUploadSeconds": 3.7547162910000225,
+          "remoteProcessSeconds": 1.9867024169999752,
+          "retrievalSeconds": 5.416785417,
+          "returnedProvenanceValidationSeconds": 0.0025285419999931946
+        },
+        "totalSecondsBeforeReceipt": 13.021130124999985,
+        "otherLocalSeconds": 0.02103062500000874,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "state": {
+          "count": 1310720,
+          "outsideTolerance": 0,
+          "differentValues": 1176154,
+          "maxAbsolute": 0.625,
+          "relativeL2": 1.1360500461346126e-07
+        },
+        "species": {
+          "count": 524288,
+          "outsideTolerance": 0,
+          "differentValues": 484158,
+          "maxAbsolute": 4.470348358154297e-07,
+          "relativeL2": 2.8797903304773317e-07
+        },
+        "peak": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 112490,
+          "maxAbsolute": 0.5,
+          "relativeL2": 1.6894168079305607e-07
+        },
+        "impulse": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 151845,
+          "maxAbsolute": 0.00048828125,
+          "relativeL2": 1.0005077155522976e-07
+        },
+        "first-phase": {
+          "count": 16384,
+          "outsideTolerance": 0,
+          "differentValues": 7749,
+          "maxAbsolute": 0.03125,
+          "relativeL2": 1.0864773046822376e-05
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "localNumericalSHA256": {
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 1.1227590839999948
+    },
+    {
+      "job": "flat-district",
+      "repetition": 0,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 2645,
+        "startTime": 0.003934389986701742,
+        "elapsedSimulationTime": 4.506065610017686,
+        "wallSeconds": 45.2075547479908,
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 2,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 662,
+          "emptyIntervals": 0,
+          "minBoxCells": 1,
+          "maxBoxCells": 162000,
+          "meanBoxCells": 113088.88972809668
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 1.331152936007129,
+          "compileSeconds": 1.0838059329980751,
+          "deviceSetupAndUploadSeconds": 0.6849579219997395,
+          "solverSeconds": 45.2075547479908,
+          "validationAndOutputSeconds": 0.6172972770000342,
+          "workerSecondsBeforeManifests": 48.924773785998696
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/f4d8b98fb54e4d50a739f31ecc791a6a",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "dataset",
+        "inputFileBytes": 589043109,
+        "returnedFileBytes": 10492381,
+        "timings": {
+          "generateAndValidateSeconds": 0.2898768329999939,
+          "remoteDirectorySeconds": 0.4416045410000038,
+          "workerUploadSeconds": 1.4577402080000184,
+          "inputUploadSeconds": 20.084288791999995,
+          "remoteProcessSeconds": 48.217069417000005,
+          "retrievalSeconds": 7.437534834000019,
+          "returnedProvenanceValidationSeconds": 0.0024660000000267246
+        },
+        "totalSecondsBeforeReceipt": 78.112701542,
+        "otherLocalSeconds": 0.18212091699993493,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "localNumericalSHA256": {
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.9540563749999933
+    },
+    {
+      "job": "flat-district",
+      "repetition": 0,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 2645,
+        "startTime": 0.003934389986701742,
+        "elapsedSimulationTime": 4.506065610017686,
+        "wallSeconds": 45.415356163997785,
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 2,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 662,
+          "emptyIntervals": 0,
+          "minBoxCells": 1,
+          "maxBoxCells": 162000,
+          "meanBoxCells": 113088.88972809668
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 1.3721560660051182,
+          "compileSeconds": 0.1749352100014221,
+          "deviceSetupAndUploadSeconds": 0.7073118729895214,
+          "solverSeconds": 45.415356163997785,
+          "validationAndOutputSeconds": 0.6432589839969296,
+          "workerSecondsBeforeManifests": 48.31302210599824
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/01b8c11c42354278bd94c6a798959557",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "dataset",
+        "inputFileBytes": 589043109,
+        "returnedFileBytes": 10492389,
+        "timings": {
+          "generateAndValidateSeconds": 0.2570883340000023,
+          "remoteDirectorySeconds": 0.4487836249999759,
+          "workerUploadSeconds": 1.4383664169999975,
+          "inputUploadSeconds": 21.19229045899999,
+          "remoteProcessSeconds": 47.75504162499999,
+          "retrievalSeconds": 8.264598750000005,
+          "returnedProvenanceValidationSeconds": 0.0016023749999476422
+        },
+        "totalSecondsBeforeReceipt": 79.57156408399999,
+        "otherLocalSeconds": 0.21379249900007835,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "localNumericalSHA256": {
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.9472074169999587
+    },
+    {
+      "job": "flat-district",
+      "repetition": 1,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 2645,
+        "startTime": 0.003934389986701742,
+        "elapsedSimulationTime": 4.506065610017686,
+        "wallSeconds": 45.40297241900407,
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 2,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 662,
+          "emptyIntervals": 0,
+          "minBoxCells": 1,
+          "maxBoxCells": 162000,
+          "meanBoxCells": 113088.88972809668
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 1.3677395910053747,
+          "compileSeconds": 0.18115167399810161,
+          "deviceSetupAndUploadSeconds": 0.7302822150086286,
+          "solverSeconds": 45.40297241900407,
+          "validationAndOutputSeconds": 0.6243849689926719,
+          "workerSecondsBeforeManifests": 48.30656630099111
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/9e58599113d04ba595e49d3b6b983b69",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "dataset",
+        "inputFileBytes": 589043109,
+        "returnedFileBytes": 10492386,
+        "timings": {
+          "generateAndValidateSeconds": 0.25489070899999433,
+          "remoteDirectorySeconds": 0.4227830000000381,
+          "workerUploadSeconds": 1.3825930829999606,
+          "inputUploadSeconds": 21.637594666999973,
+          "remoteProcessSeconds": 47.797212375000015,
+          "retrievalSeconds": 7.041489874999968,
+          "returnedProvenanceValidationSeconds": 0.0022260420000179693
+        },
+        "totalSecondsBeforeReceipt": 78.758182417,
+        "otherLocalSeconds": 0.21939266600003293,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "localNumericalSHA256": {
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.9337231249999718
+    },
+    {
+      "job": "flat-district",
+      "repetition": 1,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 2645,
+        "startTime": 0.003934389986701742,
+        "elapsedSimulationTime": 4.506065610017686,
+        "wallSeconds": 45.61956560400722,
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 2,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 662,
+          "emptyIntervals": 0,
+          "minBoxCells": 1,
+          "maxBoxCells": 162000,
+          "meanBoxCells": 113088.88972809668
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 1.3908797740004957,
+          "compileSeconds": 1.2699020820000442,
+          "deviceSetupAndUploadSeconds": 0.6837074409995694,
+          "solverSeconds": 45.61956560400722,
+          "validationAndOutputSeconds": 0.6321832829999039,
+          "workerSecondsBeforeManifests": 49.596243552994565
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/3c784908b9f24a7b87bdafd412c556a9",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "dataset",
+        "inputFileBytes": 589043109,
+        "returnedFileBytes": 10492388,
+        "timings": {
+          "generateAndValidateSeconds": 0.2545162089999735,
+          "remoteDirectorySeconds": 0.4486957919999668,
+          "workerUploadSeconds": 1.3874598749999905,
+          "inputUploadSeconds": 20.841900124999995,
+          "remoteProcessSeconds": 48.96633220900003,
+          "retrievalSeconds": 7.954781708999974,
+          "returnedProvenanceValidationSeconds": 0.00215512500000159
+        },
+        "totalSecondsBeforeReceipt": 80.02147962499998,
+        "otherLocalSeconds": 0.1656385810000529,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "localNumericalSHA256": {
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.96581095800002
+    },
+    {
+      "job": "flat-district",
+      "repetition": 2,
+      "mode": "uncached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 2645,
+        "startTime": 0.003934389986701742,
+        "elapsedSimulationTime": 4.506065610017686,
+        "wallSeconds": 45.6215175390098,
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 2,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 662,
+          "emptyIntervals": 0,
+          "minBoxCells": 1,
+          "maxBoxCells": 162000,
+          "meanBoxCells": 113088.88972809668
+        },
+        "compileCacheEnabled": false,
+        "timings": {
+          "importsAndValidationSeconds": 1.406329707999248,
+          "compileSeconds": 1.1828025269933278,
+          "deviceSetupAndUploadSeconds": 0.6875616559991613,
+          "solverSeconds": 45.6215175390098,
+          "validationAndOutputSeconds": 0.6302394200029084,
+          "workerSecondsBeforeManifests": 49.52845596100087
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/3eede8e721ce4aada39701068da564e9",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "dataset",
+        "inputFileBytes": 589043109,
+        "returnedFileBytes": 10492379,
+        "timings": {
+          "generateAndValidateSeconds": 0.25380579200003694,
+          "remoteDirectorySeconds": 0.42336904100000083,
+          "workerUploadSeconds": 1.427292374999979,
+          "inputUploadSeconds": 20.65059970799996,
+          "remoteProcessSeconds": 48.974113999999986,
+          "retrievalSeconds": 7.546713792999981,
+          "returnedProvenanceValidationSeconds": 0.0003922910000255797
+        },
+        "totalSecondsBeforeReceipt": 79.45458554200002,
+        "otherLocalSeconds": 0.17829854200005002,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "localNumericalSHA256": {
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.9355821670000068
+    },
+    {
+      "job": "flat-district",
+      "repetition": 2,
+      "mode": "cached",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 2645,
+        "startTime": 0.003934389986701742,
+        "elapsedSimulationTime": 4.506065610017686,
+        "wallSeconds": 45.65219386399258,
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 2,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 662,
+          "emptyIntervals": 0,
+          "minBoxCells": 1,
+          "maxBoxCells": 162000,
+          "meanBoxCells": 113088.88972809668
+        },
+        "compileCacheEnabled": true,
+        "timings": {
+          "importsAndValidationSeconds": 1.4298003789881477,
+          "compileSeconds": 0.17652437700598966,
+          "deviceSetupAndUploadSeconds": 0.7148673140036408,
+          "solverSeconds": 45.65219386399258,
+          "validationAndOutputSeconds": 0.6064751960075228,
+          "workerSecondsBeforeManifests": 48.57986600699951
+        },
+        "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/9d706a7240fe4700b469bfb01995f720",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "dataset",
+        "inputFileBytes": 589043109,
+        "returnedFileBytes": 10492386,
+        "timings": {
+          "generateAndValidateSeconds": 0.23470212500001253,
+          "remoteDirectorySeconds": 0.4388999589999685,
+          "workerUploadSeconds": 1.4311532499999657,
+          "inputUploadSeconds": 21.69390445900001,
+          "remoteProcessSeconds": 48.007811999999944,
+          "retrievalSeconds": 6.73229416699985,
+          "returnedProvenanceValidationSeconds": 0.0024237499999344436
+        },
+        "totalSecondsBeforeReceipt": 78.70501583299995,
+        "otherLocalSeconds": 0.16382612300026267,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "localNumericalSHA256": {
+        "dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+        "dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+        "dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308"
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      },
+      "bitIdenticalAcrossModesAndRepeats": true,
+      "comparisonAndHashSeconds": 0.9562370419999979
+    }
+  ],
+  "sourceFilesSHA256": {
+    "profile-deployment.py": "6623e384a353dca7674a951e08cf25643e0c96f325a5ae96a36f3634ead7cf5e",
+    "remote.py": "bdb0b2144e9d52f2f77d09dd105a7e43a571bd3ed40e51df6daaee9c1b049f2b",
+    "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "before": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n",
+  "prime": {
+    "result": {
+      "format": "bombcad-cuda-result-1",
+      "backend": "cuda",
+      "terrainCutCells": false,
+      "device": "NVIDIA GeForce RTX 3080 Ti",
+      "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "steps": 26,
+      "startTime": 0,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "wallSeconds": 0.035848159008310176,
+      "shape": [
+        32,
+        32,
+        32
+      ],
+      "math": "float32, unfused, precise division/sqrt",
+      "workerFilesSHA256": {
+        "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+        "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+        "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+      },
+      "channels": [
+        "peakOverpressure",
+        "impulse"
+      ],
+      "units": [
+        "Pa",
+        "Pa s"
+      ],
+      "above": 0.625,
+      "coolingWorkSelection": "luminous-box",
+      "coolingWork": {
+        "intervals": 6,
+        "emptyIntervals": 0,
+        "minBoxCells": 810,
+        "maxBoxCells": 2028,
+        "meanBoxCells": 1476.5
+      },
+      "compileCacheEnabled": true,
+      "timings": {
+        "importsAndValidationSeconds": 1.8960271300020395,
+        "compileSeconds": 1.3058937460009474,
+        "deviceSetupAndUploadSeconds": 0.28731448399776127,
+        "solverSeconds": 0.035848159008310176,
+        "validationAndOutputSeconds": 0.058455185004277155,
+        "workerSecondsBeforeManifests": 3.5835425770055735
+      },
+      "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+    },
+    "deployment": {
+      "host": "bombcad-pc",
+      "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/1477b3d23e22422ca3078f5a9b47e52d",
+      "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "retrievalMode": "all",
+      "inputFileBytes": 1250903,
+      "returnedFileBytes": 1214633,
+      "timings": {
+        "generateAndValidateSeconds": 0.013300165999999836,
+        "remoteDirectorySeconds": 0.43252837499999996,
+        "workerUploadSeconds": 1.398027458,
+        "inputUploadSeconds": 1.7660135000000001,
+        "remoteProcessSeconds": 4.91030925,
+        "retrievalSeconds": 2.726589292,
+        "returnedProvenanceValidationSeconds": 0.001991249999999667
+      },
+      "totalSecondsBeforeReceipt": 11.266204833,
+      "otherLocalSeconds": 0.017445542000000813,
+      "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+    }
+  },
+  "medians": {
+    "cooling32": {
+      "uncached": {
+        "deploymentSeconds": 9.179474499999998,
+        "solverSeconds": 0.03814260599028785,
+        "phases": {
+          "generateAndValidateSeconds": 0.012858749999999475,
+          "remoteDirectorySeconds": 0.43612158400000567,
+          "workerUploadSeconds": 1.420714665999995,
+          "inputUploadSeconds": 1.8057020000000001,
+          "remoteProcessSeconds": 2.809143583000001,
+          "retrievalSeconds": 2.592695457999998,
+          "returnedProvenanceValidationSeconds": 0.0020369579999979237
+        }
+      },
+      "cached": {
+        "deploymentSeconds": 8.192403166000005,
+        "solverSeconds": 0.03974525800731499,
+        "phases": {
+          "generateAndValidateSeconds": 0.013576000000000477,
+          "remoteDirectorySeconds": 0.44497229099999913,
+          "workerUploadSeconds": 1.4181030419999985,
+          "inputUploadSeconds": 1.7856716669999955,
+          "remoteProcessSeconds": 1.9603734580000065,
+          "retrievalSeconds": 2.5733835839999983,
+          "returnedProvenanceValidationSeconds": 0.0022046249999974066
+        }
+      }
+    },
+    "cooling64": {
+      "uncached": {
+        "deploymentSeconds": 15.978275791999977,
+        "solverSeconds": 0.041838264995021746,
+        "phases": {
+          "generateAndValidateSeconds": 0.02080570799999748,
+          "remoteDirectorySeconds": 0.4395489999999995,
+          "workerUploadSeconds": 1.4692810829999985,
+          "inputUploadSeconds": 3.901586291000001,
+          "remoteProcessSeconds": 2.8479895830000004,
+          "retrievalSeconds": 7.381564416999993,
+          "returnedProvenanceValidationSeconds": 0.0023150840000027983
+        }
+      },
+      "cached": {
+        "deploymentSeconds": 13.828854375000006,
+        "solverSeconds": 0.03896037000231445,
+        "phases": {
+          "generateAndValidateSeconds": 0.020234040999994818,
+          "remoteDirectorySeconds": 0.4254020829999945,
+          "workerUploadSeconds": 1.395817582999996,
+          "inputUploadSeconds": 3.7547162910000225,
+          "remoteProcessSeconds": 1.9352163329999996,
+          "retrievalSeconds": 6.33796550000001,
+          "returnedProvenanceValidationSeconds": 0.0025285419999931946
+        }
+      }
+    },
+    "flat-district": {
+      "uncached": {
+        "deploymentSeconds": 79.45458554200002,
+        "solverSeconds": 45.61956560400722,
+        "phases": {
+          "generateAndValidateSeconds": 0.2545162089999735,
+          "remoteDirectorySeconds": 0.4416045410000038,
+          "workerUploadSeconds": 1.427292374999979,
+          "inputUploadSeconds": 20.65059970799996,
+          "remoteProcessSeconds": 48.96633220900003,
+          "retrievalSeconds": 7.546713792999981,
+          "returnedProvenanceValidationSeconds": 0.00215512500000159
+        }
+      },
+      "cached": {
+        "deploymentSeconds": 78.758182417,
+        "solverSeconds": 45.415356163997785,
+        "phases": {
+          "generateAndValidateSeconds": 0.25489070899999433,
+          "remoteDirectorySeconds": 0.4388999589999685,
+          "workerUploadSeconds": 1.4311532499999657,
+          "inputUploadSeconds": 21.637594666999973,
+          "remoteProcessSeconds": 47.797212375000015,
+          "retrievalSeconds": 7.041489874999968,
+          "returnedProvenanceValidationSeconds": 0.0022260420000179693
+        }
+      }
+    }
+  },
+  "after": "FREE\nNVIDIA GeForce RTX 3080 Ti, 617.42, 0, 876\n"
+}

@@ -1,0 +1,39 @@
+"""Three fresh-process production Metal exports and matching CUDA initial-state exports."""
+import hashlib,importlib.util,json,os,statistics,subprocess,sys,time
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/'Scripts/cuda'))
+from compare_dataset import compare
+from job import validate
+root=Path('/private/tmp/bombcad-deployment-profile');out=root/'mac-results';out.mkdir()
+s=importlib.util.spec_from_file_location('field_plan','Scripts/ml/field-runs.py');plan=importlib.util.module_from_spec(s);s.loader.exec_module(plan)
+data=json.load(open(plan.LIST));run=next(r for r in data['sets']['main'] if r['id']=='made-perimeter-s1-1');layout=data['layouts'][run['layout']];inputs=plan.inputs_for(run['layout'],layout,make=False)
+old=Path('/Volumes/StudioData/bombcad/cuda-dataset-backend/field-batch/made-perimeter-s1-1-1792565906169273000/input');old_meta=json.loads((old/'job.json').read_text())
+reference=Path('/Volumes/StudioData/bombcad/ml/datasets/main-fp/runs/made-perimeter-s1-1')
+exe=Path('.build/release/scenebench').resolve();source=root/'solver.cu'
+env=dict(os.environ)
+for key in ('BOMBCAD_KERNEL_MATH','BOMBCAD_KERNEL_CONTRACT','BOMBCAD_STATE_PADDING','BOMBCAD_STATE_PADDING_AT','BOMBCAD_KERNEL_PERTURB'):env.pop(key,None)
+rows=[];report={'status':'running','rows':rows,'scope':__doc__,'executableSHA256':hashlib.sha256(exe.read_bytes()).hexdigest(),'inputSHA256':{k:hashlib.sha256(Path(v).read_bytes()).hexdigest() for k,v in inputs.items() if isinstance(v,str)},'sourceSHA256':hashlib.sha256(source.read_bytes()).hexdigest(),'runtimeMetalSHA256':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for bundle in exe.parent.glob('*.bundle') for p in bundle.rglob('*.metal')}}
+def save():(root/'mac-profile.json').write_text(json.dumps(report,indent=2)+'\n')
+save()
+try:
+ for rep in range(3):
+  for mode in (('metal','prepare') if rep%2==0 else ('prepare','metal')):
+   target=out/f'{mode}-{rep}'
+   cmd=[str(exe)]+plan.field_arguments(run,layout,inputs,str(target))+['--first-phase']
+   if mode=='prepare':cmd+=['--cuda-job','--cuda-source',str(source)]
+   started=time.perf_counter()
+   with (out/f'{mode}-{rep}.log').open('w') as log:subprocess.run(cmd,check=True,stdout=log,stderr=subprocess.STDOUT,env=env,timeout=300)
+   elapsed=time.perf_counter()-started;start=time.perf_counter()
+   if mode=='metal':
+    gate=compare(reference,target);assert gate['passed'],gate
+    hashes={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in target.glob('*.npy')}
+   else:
+    meta,_=validate(target,source.read_text());assert meta['files']==old_meta['files']
+    for key in ('shape','uniforms','axes','steps','duration','startTime','startStep','above','cooling','startupSteps'):assert meta.get(key)==old_meta.get(key),key
+    gate={'passed':True,'physicalBuffersAndControlsMatchProfiledInput':True};hashes=meta['files']
+   rows.append({'mode':mode,'repetition':rep,'seconds':elapsed,'comparison':gate,'hashes':hashes,'comparisonSeconds':time.perf_counter()-start,'command':cmd});save();print(mode,rep,round(elapsed,3),flush=True)
+   if mode=='prepare':
+    import shutil
+    shutil.rmtree(target) # Only this measured, verified throwaway initial-state export.
+ report['medians']={mode:statistics.median(r['seconds'] for r in rows if r['mode']==mode) for mode in ('metal','prepare')};report['status']='complete';save()
+except BaseException as e:report['status']='failed';report['error']=repr(e);save();raise
