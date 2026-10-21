@@ -151,3 +151,24 @@ dataset and its training have not started, and no tolerance or model default was
 
 Separately, the overnight **Metal** first-phase dataset and both PC training rounds already
 completed; see [learned models](learned-models.md). This stop concerns CUDA generation.
+
+## Measuring worker costs and optional compilation cache
+
+`result.json` and the dataset's CUDA provenance now include host-wall `timings`: imports and
+input validation, NVRTC compilation (including capability query), device setup/upload and initial
+kernels, solver, and final validation/array output. `wallSeconds` keeps its existing solver-only
+meaning. `workerSecondsBeforeManifests` excludes manifest writes and module unload; SSH deployment
+and retrieval are outside the worker. Timing fields do not alter numerical configuration.
+
+`Scripts/cuda/remote.py --cache-dir bombcad-cuda/ptx-cache` opts into persistent PTX reuse on
+the PC. The same option is available on `run.py`; `compile.py` uses `--cache-dir` too. Entries
+are keyed by source SHA-256, target architecture, every compilation flag and hashes of installed
+NVRTC and companion builtins binaries. Each entry checks its key and PTX checksum. Corrupt or
+partial entries are cache misses and rebuilt with an atomic replacement; no pickled objects
+are loaded. Preserve normal user ownership of the cache. A hit still pays compiler hashing
+and driver module loading. Default deployments remain uncached.
+
+Repeated correctness-gated fixture experiments are retained in
+[Heterogeneous compute](heterogeneous-compute.md). They establish useful startup savings for
+small jobs, not faster numerical sweeps or an end-to-end large-district speedup. The full-size
+training acceptance failures above remain open regardless of caching.

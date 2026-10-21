@@ -1,0 +1,293 @@
+{
+  "format": "bombcad-worker-profile-1",
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "torch": "2.11.0+cu128",
+  "cuda": "12.8",
+  "before": {
+    "returncode": 0,
+    "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 876 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "after": {
+    "returncode": 0,
+    "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 1216 MiB, 31 %\n",
+    "stderr": ""
+  },
+  "scope": "one interpreter; alternating order; worker total includes compile/setup/output; solver time excludes them; no cold-process speedup claim",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "workerSHA256": {
+    "baseline": "9a763a8afdf0199fe3594564fb9f3adcf07f1a2621a44f548a80b800e327db0f",
+    "candidate": "1910cb2c9ac18934316048f60c82814989c3c05b541e461a856ad33b6e5bbcb2"
+  },
+  "jobs": {
+    "blast": "70d298f59f9c2551c60edcd22cddfe45f033e48f90fa329bb23995278429ad19",
+    "cooling": "a087ae03f641d5a95968b383db8107ecda3ff9de77c3e65c7f8d5e1ed92c6975"
+  },
+  "rows": [
+    {
+      "job": "blast",
+      "repetition": 0,
+      "worker": "baseline",
+      "totalSeconds": 1.4187406479977653,
+      "solverSeconds": 0.01194011000188766,
+      "steps": 31,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "92a98eba2a41b3428a8934cd5c6e3317a5f86d3c2e4b8c765b29979cf88b8a7d",
+        "first-phase.bin": "d630a09f66bf0f86fd2a48a947f9eaaf85bbdcdc81a63f8df7a9e9029a27e2ec",
+        "peak.bin": "d66a34a8a6e307d6f97b2cfad7b798128d6e2d263ddf474c3d3d0d43c073f87b",
+        "firstPhaseImpulse.npy": "55a41d8f856e4d6452ea307f4d03482425bfd24636e4f9554f975045086c31ac",
+        "state.bin": "a80bfeb138d32225547e545dd5afa644277268527fbc778c19e309204c5bf68a",
+        "impulse.bin": "7e3ddaadace87f2666089dbc6aafc8758a20f8653e78ddd5d7f3152b8e856965",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "2a67131e699c06cb45e76e79c428998d3f4bd51b04864a65a0b588a7b2d9ccdc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "blast",
+      "repetition": 0,
+      "worker": "candidate",
+      "totalSeconds": 1.0222524070049985,
+      "solverSeconds": 0.010483347003173549,
+      "steps": 31,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "92a98eba2a41b3428a8934cd5c6e3317a5f86d3c2e4b8c765b29979cf88b8a7d",
+        "first-phase.bin": "d630a09f66bf0f86fd2a48a947f9eaaf85bbdcdc81a63f8df7a9e9029a27e2ec",
+        "peak.bin": "d66a34a8a6e307d6f97b2cfad7b798128d6e2d263ddf474c3d3d0d43c073f87b",
+        "firstPhaseImpulse.npy": "55a41d8f856e4d6452ea307f4d03482425bfd24636e4f9554f975045086c31ac",
+        "state.bin": "a80bfeb138d32225547e545dd5afa644277268527fbc778c19e309204c5bf68a",
+        "impulse.bin": "7e3ddaadace87f2666089dbc6aafc8758a20f8653e78ddd5d7f3152b8e856965",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "2a67131e699c06cb45e76e79c428998d3f4bd51b04864a65a0b588a7b2d9ccdc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "blast",
+      "repetition": 1,
+      "worker": "candidate",
+      "totalSeconds": 1.00307860099565,
+      "solverSeconds": 0.010467872998560779,
+      "steps": 31,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "92a98eba2a41b3428a8934cd5c6e3317a5f86d3c2e4b8c765b29979cf88b8a7d",
+        "first-phase.bin": "d630a09f66bf0f86fd2a48a947f9eaaf85bbdcdc81a63f8df7a9e9029a27e2ec",
+        "peak.bin": "d66a34a8a6e307d6f97b2cfad7b798128d6e2d263ddf474c3d3d0d43c073f87b",
+        "firstPhaseImpulse.npy": "55a41d8f856e4d6452ea307f4d03482425bfd24636e4f9554f975045086c31ac",
+        "state.bin": "a80bfeb138d32225547e545dd5afa644277268527fbc778c19e309204c5bf68a",
+        "impulse.bin": "7e3ddaadace87f2666089dbc6aafc8758a20f8653e78ddd5d7f3152b8e856965",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "2a67131e699c06cb45e76e79c428998d3f4bd51b04864a65a0b588a7b2d9ccdc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "blast",
+      "repetition": 1,
+      "worker": "baseline",
+      "totalSeconds": 0.997359240995138,
+      "solverSeconds": 0.01044712799921399,
+      "steps": 31,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "92a98eba2a41b3428a8934cd5c6e3317a5f86d3c2e4b8c765b29979cf88b8a7d",
+        "first-phase.bin": "d630a09f66bf0f86fd2a48a947f9eaaf85bbdcdc81a63f8df7a9e9029a27e2ec",
+        "peak.bin": "d66a34a8a6e307d6f97b2cfad7b798128d6e2d263ddf474c3d3d0d43c073f87b",
+        "firstPhaseImpulse.npy": "55a41d8f856e4d6452ea307f4d03482425bfd24636e4f9554f975045086c31ac",
+        "state.bin": "a80bfeb138d32225547e545dd5afa644277268527fbc778c19e309204c5bf68a",
+        "impulse.bin": "7e3ddaadace87f2666089dbc6aafc8758a20f8653e78ddd5d7f3152b8e856965",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "2a67131e699c06cb45e76e79c428998d3f4bd51b04864a65a0b588a7b2d9ccdc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "blast",
+      "repetition": 2,
+      "worker": "baseline",
+      "totalSeconds": 0.9967484079970745,
+      "solverSeconds": 0.01098282999737421,
+      "steps": 31,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "92a98eba2a41b3428a8934cd5c6e3317a5f86d3c2e4b8c765b29979cf88b8a7d",
+        "first-phase.bin": "d630a09f66bf0f86fd2a48a947f9eaaf85bbdcdc81a63f8df7a9e9029a27e2ec",
+        "peak.bin": "d66a34a8a6e307d6f97b2cfad7b798128d6e2d263ddf474c3d3d0d43c073f87b",
+        "firstPhaseImpulse.npy": "55a41d8f856e4d6452ea307f4d03482425bfd24636e4f9554f975045086c31ac",
+        "state.bin": "a80bfeb138d32225547e545dd5afa644277268527fbc778c19e309204c5bf68a",
+        "impulse.bin": "7e3ddaadace87f2666089dbc6aafc8758a20f8653e78ddd5d7f3152b8e856965",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "2a67131e699c06cb45e76e79c428998d3f4bd51b04864a65a0b588a7b2d9ccdc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "blast",
+      "repetition": 2,
+      "worker": "candidate",
+      "totalSeconds": 1.013053012000455,
+      "solverSeconds": 0.009619634998671245,
+      "steps": 31,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "92a98eba2a41b3428a8934cd5c6e3317a5f86d3c2e4b8c765b29979cf88b8a7d",
+        "first-phase.bin": "d630a09f66bf0f86fd2a48a947f9eaaf85bbdcdc81a63f8df7a9e9029a27e2ec",
+        "peak.bin": "d66a34a8a6e307d6f97b2cfad7b798128d6e2d263ddf474c3d3d0d43c073f87b",
+        "firstPhaseImpulse.npy": "55a41d8f856e4d6452ea307f4d03482425bfd24636e4f9554f975045086c31ac",
+        "state.bin": "a80bfeb138d32225547e545dd5afa644277268527fbc778c19e309204c5bf68a",
+        "impulse.bin": "7e3ddaadace87f2666089dbc6aafc8758a20f8653e78ddd5d7f3152b8e856965",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "2a67131e699c06cb45e76e79c428998d3f4bd51b04864a65a0b588a7b2d9ccdc",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "cooling",
+      "repetition": 0,
+      "worker": "baseline",
+      "totalSeconds": 1.0158907790028024,
+      "solverSeconds": 0.02001398700667778,
+      "steps": 28,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "cooling",
+      "repetition": 0,
+      "worker": "candidate",
+      "totalSeconds": 1.0674062199977925,
+      "solverSeconds": 0.0645341740018921,
+      "steps": 28,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "cooling",
+      "repetition": 1,
+      "worker": "candidate",
+      "totalSeconds": 1.129875903003267,
+      "solverSeconds": 0.11943735500244657,
+      "steps": 28,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "cooling",
+      "repetition": 1,
+      "worker": "baseline",
+      "totalSeconds": 1.0721520150036667,
+      "solverSeconds": 0.06770183600019664,
+      "steps": 28,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "cooling",
+      "repetition": 2,
+      "worker": "baseline",
+      "totalSeconds": 1.149639600997034,
+      "solverSeconds": 0.1436512619984569,
+      "steps": 28,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    },
+    {
+      "job": "cooling",
+      "repetition": 2,
+      "worker": "candidate",
+      "totalSeconds": 1.1181469820003258,
+      "solverSeconds": 0.11201721600082237,
+      "steps": 28,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1",
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      }
+    }
+  ],
+  "summaries": [
+    {
+      "job": "blast",
+      "baseline": {
+        "medianTotalSeconds": 0.997359240995138,
+        "medianSolverSeconds": 0.01098282999737421
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.013053012000455,
+        "medianSolverSeconds": 0.010467872998560779
+      }
+    },
+    {
+      "job": "cooling",
+      "baseline": {
+        "medianTotalSeconds": 1.0721520150036667,
+        "medianSolverSeconds": 0.06770183600019664
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.1181469820003258,
+        "medianSolverSeconds": 0.11201721600082237
+      }
+    }
+  ],
+  "allOutputsAndTimestepsBitIdentical": true
+}

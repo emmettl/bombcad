@@ -10,17 +10,22 @@ import time
 from job import scalar_layout, validate
 
 
-def run(folder, source_path, out):
+def run(folder, source_path, out, cache_dir=None):
+    worker_start=time.monotonic();timings={}
     import numpy as np
     import torch
     source=Path(source_path).read_text()
     meta,u=validate(folder,source)
     if Path(out).exists():
         raise ValueError('output folder already exists')
+    timings['importsAndValidationSeconds']=time.monotonic()-worker_start
+    stage_start=time.monotonic()
     spec=importlib.util.spec_from_file_location('cuda_compile',Path(__file__).with_name('compile.py'))
     compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
     capability=torch.cuda.get_device_capability()
-    ptx=compiler.compile_ptx(source,f'compute_{capability[0]}{capability[1]}',cut_cells='terrain' in meta)
+    ptx=compiler.compile_ptx(source,f'compute_{capability[0]}{capability[1]}',cut_cells='terrain' in meta,cache_dir=cache_dir)
+    timings['compileSeconds']=time.monotonic()-stage_start
+    stage_start=time.monotonic()
     required=(77 if 'cooling' in meta else 65)*__import__('math').prod(meta['shape'])+36*meta['shape'][0]*meta['shape'][1]
     if 'terrain' in meta:
         required+=sum((Path(folder)/name).stat().st_size for name in meta['files'] if name.startswith('cut-'))
@@ -97,7 +102,9 @@ def run(folder, source_path, out):
         cut_buffers=[dummy]*5
     launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
     launch('cudaMeasure',[state,mask,speed,uniforms],count)
-    torch.cuda.synchronize();start=time.monotonic()
+    torch.cuda.synchronize()
+    timings['deviceSetupAndUploadSeconds']=time.monotonic()-stage_start
+    start=time.monotonic()
     steps=0;dt_history=[]
     while steps<meta['steps']:
         ramp=min(1.,float(np.float32((meta.get('startStep',0)+steps+1)/meta.get('startupSteps',1))))
@@ -132,6 +139,8 @@ def run(folder, source_path, out):
             control.timeLimit=max(meta['duration']-sum(dt_history),0)
             controls.copy_(blob(control))
     elapsed=time.monotonic()-start
+    timings['solverSeconds']=elapsed
+    stage_start=time.monotonic()
     if steps==meta['steps'] and sum(dt_history) < meta['duration']*(1-1e-4):
         raise RuntimeError('step limit reached before duration; no completed dataset written')
     if not all(torch.isfinite(t).all().item() for t in (state,species,peak,impulse,records)):
@@ -178,6 +187,12 @@ def run(folder, source_path, out):
         details.update(stable=True,steps=steps,untilS=meta.get('startTime',0)+sum(dt_history),wallS=elapsed)
         details['configuration']=details['configuration'].replace('; awaiting CUDA','; CUDA uniform')
         details['cudaProvenance']=report
+    timings['validationAndOutputSeconds']=time.monotonic()-stage_start
+    timings['workerSecondsBeforeManifests']=time.monotonic()-worker_start
+    report['compileCacheEnabled']=cache_dir is not None
+    report['timings']=timings
+    report['timingScope']='Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload'
+    if 'dataset' in meta:
         (dataset/'meta.json').write_text(json.dumps(details,indent=2)+'\n')
     (out/'result.json').write_text(json.dumps(report,indent=2)+'\n')
     check(driver.cuModuleUnload(module))
@@ -188,6 +203,7 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('job',type=Path);p.add_argument('--source',type=Path,required=True);p.add_argument('--out',type=Path,required=True)
     p.add_argument('--lock',type=Path,help='shared remote-train lock directory')
+    p.add_argument('--cache-dir',type=Path,help='opt-in content-addressed NVRTC PTX cache')
     a=p.parse_args()
     lock_module=None
     if a.lock:
@@ -198,6 +214,6 @@ if __name__=='__main__':
         if not lock_module.acquire(str(a.lock),f'CUDA dataset {a.job}',lock_module.boot_id()):
             raise SystemExit('PC GPU is held by another job; retry after it finishes')
     try:
-        print(json.dumps(run(a.job,a.source,a.out),indent=2))
+        print(json.dumps(run(a.job,a.source,a.out,a.cache_dir),indent=2))
     finally:
         if lock_module:lock_module.release(str(a.lock))

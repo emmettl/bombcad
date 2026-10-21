@@ -42,13 +42,50 @@ class DeploymentTests(unittest.TestCase):
             with patch.object(remote, 'generate', return_value=source), \
                     patch.object(remote, 'validate', return_value=({'files': {}}, None)), \
                     patch.object(remote, 'command', side_effect=command):
-                self.assertEqual(remote.deploy('bombcad-pc', job, out, dataset_only=True), report)
+                self.assertEqual(remote.deploy('bombcad-pc', job, out, dataset_only=True,cache_dir='bombcad-cuda/ptx-cache'), report)
+            self.assertTrue(any(c[0]=='ssh' and '--cache-dir bombcad-cuda/ptx-cache' in c[-1] for c in commands))
             self.assertTrue((out / 'deployment.json').exists())
             downloads = [c[-2] for c in commands if c[0] == 'scp' and c[-2].startswith('bombcad-pc:')]
             self.assertEqual(len(downloads), 2)
             self.assertTrue(downloads[0].endswith('/out/dataset'))
             self.assertTrue(downloads[1].endswith('/out/result.json'))
 
+
+    def test_invalid_cache_path_is_rejected_before_deployment(self):
+        with self.assertRaisesRegex(ValueError,'invalid remote cache path'):
+            remote.deploy('bombcad-pc','unused','unused-output',cache_dir='../other')
+
+
+
+class CompileCacheTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location('cuda_compiler_test',Path(__file__).with_name('compile.py'))
+        cls.compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(cls.compiler)
+
+    def test_contract_changes_invalidate_cache_key(self):
+        key=self.compiler.cache_key('source',[b'--fmad=false',b'compute_86'],'compiler')
+        for source,flags,compiler in [('changed',[b'--fmad=false',b'compute_86'],'compiler'),
+                                      ('source',[b'--fmad=true',b'compute_86'],'compiler'),
+                                      ('source',[b'--fmad=false',b'compute_89'],'compiler'),
+                                      ('source',[b'--fmad=false',b'compute_86'],'new compiler')]:
+            self.assertNotEqual(key,self.compiler.cache_key(source,flags,compiler))
+
+    def test_corruption_and_wrong_key_are_misses(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path=Path(temp)/'cache'/'entry.json'
+            self.assertIsNone(self.compiler.cached_ptx(path,'key'))
+            self.compiler.store_ptx(path,'key',b'PTX contents')
+            self.assertEqual(self.compiler.cached_ptx(path,'key'),b'PTX contents')
+            self.assertIsNone(self.compiler.cached_ptx(path,'wrong key'))
+            item=json.loads(path.read_text());item['ptx']='changed';path.write_text(json.dumps(item))
+            self.assertIsNone(self.compiler.cached_ptx(path,'key'))
+            path.write_text('{partial')
+            self.assertIsNone(self.compiler.cached_ptx(path,'key'))
+            self.compiler.store_ptx(path,'key',b'rebuilt')
+            self.assertEqual(self.compiler.cached_ptx(path,'key'),b'rebuilt')
+            self.assertEqual([p.name for p in path.parent.iterdir()],['entry.json'])
 
 class JobTests(unittest.TestCase):
     @classmethod

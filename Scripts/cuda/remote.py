@@ -22,11 +22,13 @@ def command(args):
     subprocess.run(args,check=True,stdin=subprocess.DEVNULL)
 
 
-def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False):
+def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,cache_dir=None):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*',host):
         raise ValueError('use a configured SSH host alias')
     if not re.fullmatch(r'[A-Za-z0-9_./-]+',python) or '..' in Path(python).parts:
         raise ValueError('invalid remote Python path')
+    if cache_dir is not None and (not re.fullmatch(r'[A-Za-z0-9_./-]+',str(cache_dir)) or '..' in Path(cache_dir).parts):
+        raise ValueError('invalid remote cache path')
     job=Path(job).resolve();out=Path(out).resolve()
     if out.exists():raise ValueError('local output already exists')
     source=generate();meta,_=validate(job,source)
@@ -54,6 +56,7 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False):
     worker=f'{remote}/worker/run.py'
     args=[python,worker,f'{remote}/input','--source',f'{remote}/worker/solver.cu','--out',f'{remote}/out',
           '--lock','bombcad-ml/lock']
+    if cache_dir is not None: args += ['--cache-dir',str(cache_dir)]
     ssh(' '.join(shlex.quote(x) for x in args))
     out.parent.mkdir(parents=True,exist_ok=True)
     if dataset_only:
@@ -76,4 +79,5 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('host');p.add_argument('job',type=Path)
     p.add_argument('--out',type=Path,required=True);p.add_argument('--python',default='bombcad-ml/venv/bin/python')
     p.add_argument('--dataset-only',action='store_true',help='retrieve training arrays and provenance; retain raw fields on the PC')
-    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python,a.dataset_only),indent=2))
+    p.add_argument('--cache-dir',help='opt-in remote PTX cache directory, e.g. bombcad-cuda/ptx-cache')
+    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python,a.dataset_only,a.cache_dir),indent=2))

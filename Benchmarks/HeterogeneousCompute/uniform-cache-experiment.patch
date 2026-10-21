@@ -1,0 +1,19 @@
+--- baseline.py
++++ candidate.py
+@@ -98,11 +98,14 @@
+     launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
+     launch('cudaMeasure',[state,mask,speed,uniforms],count)
+     torch.cuda.synchronize();start=time.monotonic()
+-    steps=0;dt_history=[]
++    steps=0;dt_history=[];prepare_cache={}
+     while steps<meta['steps']:
+         ramp=min(1.,float(np.float32((meta.get('startStep',0)+steps+1)/meta.get('startupSteps',1))))
+         prepared=type(u).from_buffer_copy(bytes(u));prepared.cfl=np.float32(u.cfl)*np.float32(ramp)
+-        prepare_uniforms=blob(prepared)
++        prepare_key=bytes(prepared)
++        if prepare_key not in prepare_cache:
++            prepare_cache[prepare_key]=blob(prepared)
++        prepare_uniforms=prepare_cache[prepare_key]
+         launch('cudaPrepare',[controls,speed,prepare_uniforms],1)
+         for variant in variants[(meta.get('startStep',0)+steps)%2]:
+             launch('cudaSweep',[state,other,mask,peak,impulse,controls,speed,variant,species,other_species,*cut_buffers],count)

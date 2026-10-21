@@ -37,3 +37,15 @@ Use `--only id,id` or `--limit N` for pilots. Initial states use compressed SSH 
 on the PC. The batch keeps a per-case comparison and deployment receipt beside `dataset.json`.
 Its comparison requires exact features and masks and the existing per-value target gate
 (`0.05 + 0.002 * abs(reference)`); it does not establish agreement with physical measurements.
+
+For coordinated performance work, `profile-worker.py` compares two isolated worker files under
+the shared GPU lock, alternates order, requires at least three repetitions and rejects any
+change in full output arrays or timestep histories. `--fresh-process` includes Python startup.
+`--candidate-cache-dir` enables a PTX cache only for the candidate. See
+[heterogeneous compute](../../docs/heterogeneous-compute.md) for measurements and limits.
+
+`remote.py --cache-dir bombcad-cuda/ptx-cache` optionally reuses compiled PTX. Cache keys include
+the generated source, architecture, all compiler flags and the installed NVRTC/compiler-builtins
+binaries. A missing, corrupt or mismatched entry is rebuilt and atomically replaced. The default
+remains uncached. Worker reports now separate validation/imports, compilation, GPU setup/upload,
+solve and validation/output wall time; deployment and retrieval remain outside those timings.

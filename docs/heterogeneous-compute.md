@@ -119,3 +119,67 @@ execution does not repair a model error.
 Technical references: [CUDA Graphs](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html)
 can reduce repeated launch setup; [OptiX](https://developer.nvidia.com/designworks/optix/download)
 provides programmable accelerated ray tracing. Their benefit to these workloads remains to be measured.
+
+## Experiments 3–5: isolated worker overhead and compilation reuse
+
+The PC became idle after #47's pilots. `Scripts/cuda/profile-worker.py` takes the shared lock
+for the entire experiment, alternates baseline/candidate order and hashes every raw output,
+NumPy array and timestep history. It refuses an accepted report if any bytes differ. These
+runs used the same generated source, RTX 3080 Ti, driver 617.42 and existing CUDA environment;
+GPU snapshots, source/worker hashes and all individual timings are retained in each JSON.
+Snapshots do not measure all external CPU, power or clock variation.
+
+First, an isolated candidate reused identical prepare-uniform buffers, leaving every equation
+and CFL value unchanged. [Short 64³ trajectories](../Benchmarks/HeterogeneousCompute/2026-10-21-worker-cache-small.json)
+showed no consistent end-to-end gain. With duration extended from 0.002 to 0.05 seconds
+(568 blast steps and 552 cooling steps), [longer trajectories](../Benchmarks/HeterogeneousCompute/2026-10-21-worker-cache-long.json)
+showed modest gains, but a later **timing-only** variant also changed observed solve time.
+The attribution is therefore uncertain. This optimization was **not adopted**. Its
+[experimental patch](../Benchmarks/HeterogeneousCompute/uniform-cache-experiment.patch) is retained
+against the uninstrumented worker at commit 0ae90f53 for reproduction.
+
+Next, [timing instrumentation](../Benchmarks/HeterogeneousCompute/2026-10-21-worker-timing.json)
+showed median NVRTC compilation around 0.98 seconds per run, compared with 0.20 seconds of blast
+solve or 0.36 seconds of cooling solve. All outputs and timestep histories remained bit-identical.
+The timings are now available in production worker reports without per-step instrumentation.
+
+That motivated an **opt-in persistent PTX cache**, keyed by generated source, architecture,
+compiler flags, and hashes of NVRTC and its companion builtins binaries. Entries include a PTX
+checksum; corrupt/partial entries are rebuilt and atomically replaced. The precision flags and
+all numerical kernels remain unchanged. Hashing compiler binaries still costs time on a cache hit.
+
+Three alternating pairs per case were run both
+[in one interpreter](../Benchmarks/HeterogeneousCompute/2026-10-21-worker-ptx-cache.json) and
+[in fresh Python processes](../Benchmarks/HeterogeneousCompute/2026-10-21-worker-ptx-fresh.json).
+The fresh-process results, including Python/PyTorch startup, are:
+
+| 64³ job, 0.05 s simulated | Uncached median worker process | Cache-enabled median worker process |
+|---|---|---|
+| Blast, 568 steps | 2.596 s | 1.540 s |
+| Cooling, 552 steps | 2.666 s | 1.684 s |
+
+The first cache-enabled blast invocation was a cold miss (2.602 s); the subsequent two were hits.
+Cooling used the already populated cache because the generated program/flags were identical.
+Every baseline/candidate pair produced bit-identical complete arrays and timestep histories.
+Compilation is cached, not solution state. Solver time is effectively unchanged in this test.
+These totals exclude SSH deployment and retrieval. They do not establish a speedup for a full
+training-scale district, a larger grid, a different compiler or thermal model, or the full app.
+
+To reproduce on an isolated PC experiment folder, copy the worker, `job.py`, `compile.py` and
+lock helper beside both variants; generate matched 64³ blast/cooling fixtures with `fixtures.py`,
+and set `duration` to 0.05 in each job manifest. Use `run.py` from 0ae90f53 as the original baseline,
+or the timing-instrumented worker without a cache as in the final comparison. Run:
+
+```sh
+~/bombcad-ml/venv/bin/python profile-worker.py \
+  --baseline baseline.py --candidate candidate.py --source solver.cu \
+  --jobs blast-long cooling-long --out NEW-RESULTS \
+  --lock ~/bombcad-ml/lock --lock-helper remote-train.py \
+  --candidate-cache-dir NEW-CACHE --fresh-process
+```
+
+Keep output/cache directories new to reproduce the cold-miss observation. The helper must be
+the existing `Scripts/ml/remote-train.py`; the benchmark does not bypass that lock. Optional
+remote deployment uses `remote.py --cache-dir bombcad-cuda/ptx-cache`. Default worker deployments
+remain uncached. Next on #60: representative larger-grid/terrain stage timings and allocation,
+control-readback or cooling profiling; retain #47's acceptance gate before bulk generation.
