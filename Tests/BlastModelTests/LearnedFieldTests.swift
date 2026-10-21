@@ -47,23 +47,24 @@ struct LearnedFieldTests {
 
     @Test("A weights file reads back its header and tensors, and one short of a tensor is refused")
     func weightsFile() throws {
-        func file(dropping: String? = nil) throws -> Data {
+        func file(dropping: String? = nil, levels: [[String: Any]]? = nil, outputs: Int = 2) throws -> Data {
             var entries: [[String: Any]] = []
             var values: [UInt16] = []
-            let shapes = LearnedField.Weights.tensorShapes(width: 2, depth: 1)
+            let shapes = LearnedField.Weights.tensorShapes(width: 2, depth: 1, outputs: outputs)
             for name in LearnedField.Weights.tensorNames(depth: 1) where name != dropping {
                 let shape = shapes[name]!
                 let count = shape.reduce(1, *)
                 entries.append(["name": name, "shape": shape, "offset": values.count, "count": count])
                 values += (0..<count).map { $0 % 2 == 0 ? 0x3C00 : 0xC000 }
             }
-            let header: [String: Any] = [
+            var header: [String: Any] = [
                 "format": "bombcad-field-weights-1", "model": "unet", "width": 2, "depth": 1,
                 "inputs": LearnedField.Weights.inputs,
                 "stats": ["mean": [0, 1, 2, 3, 4, 5], "std": [1, 1, 1, 1, 1, 2]], "residual": true,
                 "multiple": 2, "groupNormGroups": 8, "groupNormEpsilon": 1e-5, "dtype": "float16",
                 "tensors": entries,
             ]
+            if let levels { header["levels"] = levels }
             var text = try JSONSerialization.data(withJSONObject: header)
             text.append(contentsOf: [UInt8](repeating: 0x20, count: (16 - text.count % 16) % 16))
             var data = Data("BCFW".utf8)
@@ -83,6 +84,22 @@ struct LearnedFieldTests {
         }
         #expect(throws: LearnedFieldError.self) {
             try LearnedField.Weights(data: Data("nothing at all".utf8))
+        }
+        // With levels (emmettl/bombcad-work#69): a head of a peak and an impulse for each, the 2 m
+        // field's first; a head of another size, or levels not led by the 2 m field, refused.
+        let levels: [[String: Any]] = [
+            ["name": "ground", "over": "ground", "metres": 2], ["name": "h6", "over": "ground", "metres": 6],
+            ["name": "roof", "over": "roof", "metres": 2],
+        ]
+        let leveled = try LearnedField.Weights(data: file(levels: levels, outputs: 6))
+        #expect(leveled.header.predicted.map(\.name) == ["ground", "h6", "roof"])
+        #expect(leveled.tensors["head.bias"]?.shape == [6])
+        #expect(weights.header.predicted.map(\.name) == ["ground"])
+        #expect(throws: LearnedFieldError.self) {
+            try LearnedField.Weights(data: file(levels: levels, outputs: 2))
+        }
+        #expect(throws: LearnedFieldError.self) {
+            try LearnedField.Weights(data: file(levels: Array(levels.dropFirst()), outputs: 4))
         }
     }
 

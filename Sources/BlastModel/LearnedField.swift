@@ -189,7 +189,16 @@ public enum LearnedField {
             self.tensors = tensors
             // The U-Net's own tensors (train_field.py's `UNet`): each level's two convolutions and
             // their norms, down then up, and the head, each of the shape its width and depth give.
-            let shapes = Self.tensorShapes(width: header.width, depth: header.depth)
+            // With more levels, a log peak and a log impulse for each, the 2 m field's first.
+            if let levels = header.levels {
+                guard (1...64).contains(levels.count), levels[0].name == "ground", levels[0].over == "ground",
+                    levels.allSatisfy({
+                        ["ground", "roof"].contains($0.over) && $0.metres.isFinite && $0.metres > 0
+                    })
+                else { throw fail("levels \(levels.map(\.name))") }
+            }
+            let shapes = Self.tensorShapes(
+                width: header.width, depth: header.depth, outputs: 2 * header.predicted.count)
             for name in Self.tensorNames(depth: header.depth) {
                 guard let tensor = tensors[name] else { throw fail("no tensor \(name)") }
                 guard tensor.shape == shapes[name] else {
@@ -210,10 +219,10 @@ public enum LearnedField {
             return count
         }
 
-        /// The shape of each tensor of train_field.py's `UNet(6, 2, width, depth)`, by name: level
+        /// The shape of each tensor of train_field.py's `UNet(6, outputs, width, depth)`, by name: level
         /// n's blocks have `width` × 2^n channels, the up blocks take the level below's joined to
         /// the skip, and `up.0` is the deepest.
-        public static func tensorShapes(width: Int, depth: Int) -> [String: [Int]] {
+        public static func tensorShapes(width: Int, depth: Int, outputs: Int = 2) -> [String: [Int]] {
             let widths = (0...depth).map { width << $0 }
             var shapes: [String: [Int]] = [:]
             func block(_ prefix: String, _ input: Int, _ output: Int) {
@@ -228,8 +237,8 @@ public enum LearnedField {
                 let n = depth - 1 - k
                 block("up.\(k)", widths[n + 1] + widths[n], widths[n])
             }
-            shapes["head.weight"] = [2, widths[0], 1, 1]
-            shapes["head.bias"] = [2]
+            shapes["head.weight"] = [outputs, widths[0], 1, 1]
+            shapes["head.bias"] = [outputs]
             return shapes
         }
 
