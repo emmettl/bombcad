@@ -17,6 +17,10 @@ extension SimulationModel {
         if case .gauge = selection { return false }
         guard let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else { return false }
         isDraggingCharge = true
+        // A refinement under way is for where the charge was.
+        cancelCloseCalls(status: "")
+        closeCallRefined = nil
+        refinedBuildings = []
         estimateFollowsCharge = envelopeDamageIsEstimate && !envelopeDamage.isEmpty
         moveDraggedCharge(to: point)
         return true
@@ -117,6 +121,7 @@ extension SimulationModel {
             {
                 self.followedLook = (self.settings.scenario, look, parts)
                 self.applyLook(look, parts: parts)
+                if !waiting.preview { self.refineCloseCalls(look) }
             } else if !waiting.preview, self.lookWaiting == nil {
                 self.envelopeDamageStatus = ""
             }
@@ -153,6 +158,8 @@ extension SimulationModel {
                         " %d of %d components lie nearer or further than the distances it was fitted over: their loads are extrapolated.",
                     look.estimate.outsideFit, look.estimate.loads.count)
             }
+            // The close calls refined for this scene, back in place over it.
+            mergeRefinedCloseCalls()
         }
         applyEnvelopeDamageColours()
     }

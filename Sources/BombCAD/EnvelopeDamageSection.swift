@@ -61,6 +61,11 @@ struct EnvelopeDamageSection: View {
                         "For Quick Estimate's glass chances: the charge's yield within this factor either way, nine times in ten."
                     )
                 }
+                if model.envelopeDamageIsEstimate || model.isRefiningCloseCalls
+                    || !model.closeCallStatus.isEmpty
+                {
+                    CloseCallsRow(model: model)
+                }
                 if !model.envelopeVentingStatus.isEmpty {
                     Text(model.envelopeVentingStatus).font(.caption).foregroundStyle(.orange)
                 }
@@ -130,6 +135,12 @@ struct EnvelopeDamageSection: View {
                                     .overlay(Circle().stroke(.secondary.opacity(0.5)))
                                     .frame(width: 9, height: 9)
                                 Text(model.settings.scenario.object(id: building.id)?.name ?? "Building")
+                                if model.refinedBuildings.contains(building.id) {
+                                    Text("refined").font(.caption).foregroundStyle(.green)
+                                        .help(
+                                            "The solver's result, run on this building's close call, in place of the estimate's."
+                                        )
+                                }
                                 Spacer()
                                 Text(Self.levels(building.structuralLevels))
                             }
@@ -561,6 +572,38 @@ struct InspectedEnvelopeSection: View {
                 }
             }
             .monospacedDigit()
+        }
+    }
+}
+
+/// The quick estimate's close calls refined by the solver: whether, within what budget, and how far
+/// it has got, with a way to stop it (emmettl/bombcad-work#34).
+private struct CloseCallsRow: View {
+    @Bindable var model: SimulationModel
+
+    var body: some View {
+        Toggle("Refine close calls with the solver", isOn: $model.refinesCloseCalls)
+            .help(
+                "Once the full estimate is in, run the air on the buildings whose chances lie between 0.2 and 0.8, "
+                    + "nearest the charge first, on a scene cut down round them with finer air along the way to each; "
+                    + "their results replace the estimate's as they come, outlined in the view.")
+        if model.refinesCloseCalls {
+            Picker("Up to", selection: $model.closeCallBudgetS) {
+                ForEach(SimulationModel.closeCallBudgets, id: \.self) { seconds in
+                    Text(seconds < 60 ? "\(Int(seconds)) s" : "\(Int(seconds / 60)) min").tag(seconds)
+                }
+            }
+            .help("The wall-clock time the refinement may take; what it has refined by then stays.")
+        }
+        if model.isRefiningCloseCalls {
+            HStack {
+                ProgressView(value: model.closeCallProgress)
+                Button("Cancel") { model.cancelCloseCalls(status: nil) }
+            }
+        }
+        if !model.closeCallStatus.isEmpty {
+            Text(model.closeCallStatus).font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

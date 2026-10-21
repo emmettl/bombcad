@@ -257,6 +257,7 @@ extension SimulationModel {
             strikes: strikes, vented: vented)
         envelopeDamageIsEstimate = false
         envelopeEstimateIsPreview = false
+        refinedBuildings = []
         envelopeGlassChances = []
         envelopeStructureChances = []
         envelopeLoads = loads

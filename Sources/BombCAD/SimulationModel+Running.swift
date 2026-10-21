@@ -21,6 +21,7 @@ extension SimulationModel {
     }
 
     func requestRebuild() {
+        refinedBuildings = []
         envelopeExposure = []
         envelopeDamage = []
         envelopeDamageIsEstimate = false
@@ -86,6 +87,7 @@ extension SimulationModel {
         envelopeExposureStatus = ""
         envelopeVentingStatus = ""
         envelopeEstimateIsPreview = false
+        refinedBuildings = []
         restoreFollowedLook()
         stopThermal()
         stopCloud()

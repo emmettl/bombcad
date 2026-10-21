@@ -67,6 +67,8 @@ struct ChargeDragTests {
         var document = ProjectDocument(scenario: scene)
         document.runSettings?.resolution = "coarse"
         let model = SimulationModel(document: document)
+        // The estimate alone: its close calls are refined in `closeCalls`.
+        model.refinesCloseCalls = false
         func settle() async throws {
             while model.estimatingEnvelopeDamage || model.isLoadingInputs {
                 try await Task.sleep(for: .milliseconds(20))
@@ -114,5 +116,48 @@ struct ChargeDragTests {
         #expect(model.envelopeDamage.map(\.panesBroken) == expected.map(\.panesBroken))
         #expect(model.envelopeLoads.map(\.outerPa) == estimate.loads.map(\.outerPa))
         #expect(model.envelopeLoads.map(\.outerPa) != before)
+    }
+
+    @Test("Once the full estimate is in, its close calls are run in the air and their results shown in place")
+    func closeCalls() async throws {
+        var scene = Scenario(
+            name: "Close calls", domainSize: SIMD3(160, 60, 20), boxes: [],
+            charge: Charge(mass: 50, position: SIMD3(20, 30, 0.5)))
+        for x: Float in [40, 60, 90, 120] {
+            let id = try scene.addEnvelopeObject(
+                BuildingEnvelope(solids: [Box(min: SIMD3(x, 22, 0), max: SIMD3(x + 10, 38, 9))]))
+            var construction = EnvelopeConstruction(objectID: id, source: .user, detail: "glazed")
+            construction.glazing = .apartments
+            scene.setEnvelopeConstruction(construction)
+        }
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        while model.isLoadingInputs { try await Task.sleep(for: .milliseconds(20)) }
+        model.showsEnvelopeDamage = true
+        // Coloured by the chance some glass breaks, with the yield known only to within ×3.
+        model.envelopeColouring = .someBroken
+        model.quickEstimateYieldWithin = 3
+        model.quickEstimate()
+        while model.estimatingEnvelopeDamage { try await Task.sleep(for: .milliseconds(20)) }
+        let estimated = model.envelopeGlassChances
+        #expect(model.isRefiningCloseCalls, "\(model.closeCallStatus)")
+        while model.isRefiningCloseCalls { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(model.closeCallStatus.contains("refined by the solver"), "\(model.closeCallStatus)")
+        let refined = try #require(model.closeCallRefined)
+        #expect(!refined.buildings.isEmpty && model.refinedBuildings == Set(refined.buildings))
+        // The refined buildings' sides are the run's; the rest still the estimate's.
+        for side in model.envelopeGlassChances {
+            let from = model.refinedBuildings.contains(side.owner) ? refined.glass : estimated
+            #expect(from.contains(side))
+        }
+        #expect(Set(model.envelopeDamage.map(\.id)) == Set(scene.envelopeObjects.map(\.id)))
+        #expect(model.refinedOutlines().count == 8 * refined.buildings.count)
+        // A new drag is for somewhere else: the refined results go.
+        model.isPlacingCharge = true
+        model.camera = OrbitCamera(target: SIMD3(22, 30, 0), distance: 80, azimuth: -1.57, elevation: 1.5)
+        #expect(model.beginDrag(ndc: .zero, aspectRatio: 1, modifiers: []))
+        #expect(model.refinedBuildings.isEmpty && model.refinedOutlines().isEmpty)
+        model.endDrag()
     }
 }

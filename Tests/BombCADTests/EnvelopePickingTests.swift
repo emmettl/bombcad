@@ -30,6 +30,7 @@ struct EnvelopePickingTests {
             buildings: [.init(id: farID, name: "Far", envelope: try BuildingEnvelope(solids: [farBox]))],
             constructions: [], terrain: nil)
         let model = SimulationModel(document: document)
+        model.refinesCloseCalls = false
         // The view zooms out far enough to see the far building: three times its square about the domain.
         #expect(model.farthestZoom >= 3 * 2 * (160 - 50))
         func click(at target: SIMD3<Float>) {

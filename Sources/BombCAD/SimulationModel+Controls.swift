@@ -26,6 +26,7 @@ extension SimulationModel {
             rebuild()
         }
         completedRunSettings = nil
+        if isRefiningCloseCalls { cancelCloseCalls(status: "Close-call refinement stopped: a run began.") }
         // Before the first step (a mapped start's clock starts at its solution's time).
         if solver?.stepCount == 0, lastSampleTime == nil {
             // The structures at rest under their own weight first, so that the first sample, and

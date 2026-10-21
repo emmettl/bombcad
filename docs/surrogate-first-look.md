@@ -470,6 +470,63 @@ chances to the bit (`EstimateReproducibilityTests`).
 At a load of 112 the glass's later frames took 0.31–0.44 s and the whole frame at most 0.70 s. So
 every colouring now meets the second's bar, loaded or not.
 
+### Close calls refined by the solver (21 October 2026)
+
+Once the full estimate is in, after a drag is let go or Quick Estimate is pressed, the app can run
+the air on the buildings where the estimate is least sure (emmettl/bombcad-work#34). Their run
+results then replace the estimate's, outlined in green in the view and marked *refined* in the
+sidebar's list. It hooks in after the estimate and changes nothing in how the estimate is made.
+
+**What it runs** (`ThresholdRefinement`, `ThresholdRefinementRun`):
+- **The close calls.** These are the buildings with a chance between 0.2 and 0.8, where a threshold
+  falls within what the estimate does not know: the yield, the surrogate's scatter and the
+  strengths. The chance judged is the one the view is coloured by. Under the damage colouring it
+  is the walls' (moderate, heavy), the roof's and the windows blown out; glass merely broken is
+  left out, since nearly every building has some side near even on it. The nearest eight are taken.
+- **A scene cut round them.** This is a square about the charge, out to the farthest of them and
+  4 m/kg^(1/3) beyond, as the hybrid near run takes its clearance
+  ([hybrid far field](hybrid-far-field.md)). It is on the scene's own cells, so every building
+  voxelises as it does in the whole scene. Buildings wholly inside are kept, blocks are clipped,
+  and the terrain is cut with them. Scenes with structures, gas clouds, vents, free objects or more
+  than one charge are not offered it.
+- **Finer air along the way to each.** The air is refined to half the cells in corridors from the
+  charge to each building ([refine toward buildings](refinement-steering.md)), with the scene's air
+  settings and the mapped start.
+- **Each building judged as the blast passes it.** A building is ready at Kingery–Bulmash's arrival
+  at its far corner, a tenth later for the streets, plus a hold of 6 ms/kg^(1/3) (at least 30 ms).
+  Its recorded loads are judged on a queue of their own while the air steps on:
+  - its damage, as a run judges it;
+  - its sides' glass chances and its walls' and roof's, drawn as the estimate draws them over each
+    building's strength, on the same draws (`SceneObject.drawKey`).
+
+  These are at the scene's charge, so neither the yield's spread nor the surrogate's scatter is
+  drawn.
+- **Within a budget.** The budget is 30 s to 10 min of wall-clock time, 2 min by default, shown with
+  a progress bar and a Cancel button. A building passed by then keeps its run result; the rest keep
+  the estimate's. A new drag, an edit or a run stops it.
+
+**Beirut, 0.5 kt** (the 4 m layout within 1 km, 1,554 buildings, yield within ×1.5; `scenebench
+threshold-refine`; the Studio shared):
+
+| Run | Near scene | Close calls refined | First answer | All answers | Settled (no chance left at 0.2–0.8) |
+|---|---|---|---|---|---|
+| 8 nearest, refined corridors | 1,512 m square, 11.4 M cells, 607 buildings, to 1.74 s | 8 of 1,051 | 12.5 s | **22 s** | 5 of 8 |
+| 16 nearest, refined corridors | 1,632 m, 13.3 M cells, 834 buildings, to 1.90 s | 16 | 15 s | **43 s** | 8 of 16 |
+| 8 nearest, 4 m air only | as the first | 8 | 4 s | 14 s | 2 of 8 |
+
+- **Judging away from the stepping** took the eight from 91 s to 22 s. Judged in line, the glass's
+  draws on every strip held the GPU idle for several seconds a building.
+- **The refined corridors matter.** At 4 m alone, five of the eight walls' chances stayed between
+  0.43 and 0.87. With the corridors at 2 m, seven were 0.98–1.00. That matches what refining toward
+  buildings found: the coarse air got two of three buildings wrong.
+- **The estimate's walls read low against the refined runs at 400–600 m.** It gave 0.21–0.52
+  where the refined runs gave 0.98–1.00, on 9 of the 16. The walls' chances were calibrated
+  against Beirut's runs on 4 m air ("Walls and roofs" above); against air twice as fine they would
+  need a larger load factor. This is recorded here, and nothing has been refitted.
+- **The glass is not where the doubt lies** within 600 m of 0.5 kt: every side's glass was 1.00
+  either way. For a car bomb, or under a glass colouring, it is.
+
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings

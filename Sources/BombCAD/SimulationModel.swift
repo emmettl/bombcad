@@ -689,6 +689,18 @@ final class SimulationModel {
     @ObservationIgnored var followedLook:
         (scene: Scenario, look: FacadeLoadSurrogate.Prepared.Look, parts: FacadeLoadSurrogate.Prepared.Parts)?
     @ObservationIgnored var restoresFollowedLook = false
+    /// Whether a full look's close calls are refined by the solver in the background, within
+    /// `closeCallBudgetS` of wall-clock time (`refineCloseCalls`); the refinement's state, how far
+    /// it has got, and the buildings whose results are the run's.
+    var refinesCloseCalls = true
+    var closeCallBudgetS = 120.0
+    var isRefiningCloseCalls = false
+    var closeCallProgress = 0.0
+    var closeCallStatus = ""
+    var refinedBuildings: Set<UUID> = []
+    @ObservationIgnored var closeCallRun: ThresholdRefinementRun?
+    @ObservationIgnored var closeCallScene: Scenario?
+    @ObservationIgnored var closeCallRefined: ThresholdRefinement.Refined?
 
     @ObservationIgnored var lastEnvelopeDamage = ContinuousClock.now
     /// How long the last judgement took: a district's runs into seconds, so while running it is

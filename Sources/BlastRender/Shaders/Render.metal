@@ -860,7 +860,8 @@ fragment float4 paintFragment(PaintOut in [[stage_in]],
 
 // Lines of a fixed width on screen, depth-tested along their length: where the fireball's cloud
 // went. Each is two vectors, one end and its kind (0 the centre's track, 1 an outline along it,
-// 2 the cloud where it stopped rising, 3 its track across the ground), and the other end.
+// 2 the cloud where it stopped rising, 3 its track across the ground; 5 to 9 the hazards'; 10 a
+// building the solver refined), and the other end.
 struct LineOut {
     float4 position [[position]];
     float across;
@@ -901,7 +902,7 @@ vertex LineOut lineVertex(uint vertexID [[vertex_id]],
     const float2 corners[6] = {float2(0, -1), float2(1, -1), float2(1, 1),
                                float2(0, -1), float2(1, 1), float2(0, 1)};
     float2 corner = corners[vertexID];
-    const float widths[10] = {3.0f, 1.6f, 3.0f, 1.6f, 1.6f, 3.0f, 2.0f, 2.0f, 2.2f, 2.6f};
+    const float widths[11] = {3.0f, 1.6f, 3.0f, 1.6f, 1.6f, 3.0f, 2.0f, 2.0f, 2.2f, 2.6f, 2.4f};
     // Half the width in pixels, and half a pixel more to smooth its edge.
     float halfWidth = 0.5f * widths[kind] * viewport.z + 0.5f;
     float4 clip = corner.x > 0.5f ? cb : ca;
@@ -909,11 +910,12 @@ vertex LineOut lineVertex(uint vertexID [[vertex_id]],
     out.position = clip;
     out.across = corner.y * halfWidth;
     out.edge = halfWidth;
-    const float3 colours[10] = {float3(0.97f, 0.97f, 0.95f), float3(0.92f, 0.93f, 0.95f),
+    const float3 colours[11] = {float3(0.97f, 0.97f, 0.95f), float3(0.92f, 0.93f, 0.95f),
                                 float3(1.00f, 0.62f, 0.12f), float3(0.16f, 0.18f, 0.22f),
                                 float3(0.36f, 0.80f, 0.86f), float3(0.86f, 0.10f, 0.24f),
                                 float3(1.00f, 0.42f, 0.52f), float3(0.35f, 0.55f, 1.00f),
-                                float3(1.00f, 0.78f, 0.20f), float3(0.62f, 0.05f, 0.10f)};
+                                float3(1.00f, 0.78f, 0.20f), float3(0.62f, 0.05f, 0.10f),
+                                float3(0.30f, 0.95f, 0.50f)};
     out.colour = colours[kind];
     return out;
 }
