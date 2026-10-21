@@ -672,12 +672,24 @@ final class SimulationModel {
     /// Whether the quick estimate takes the learned field model's peak at the ground-floor façade
     /// strips, for their damage, glass and walls (emmettl/bombcad-work#67; `LearnedField`). Off
     /// unless chosen, and remembered; without its weights the estimate is the surrogate's alone.
+    /// Turned on through `setLearnedPeaks`, which offers to download the weights when they are not
+    /// there (`SimulationModel+LearnedField.swift`).
     var quickEstimateLearnedPeaks = UserDefaults.standard.bool(forKey: SimulationModel.learnedPeaksKey) {
         didSet {
-            UserDefaults.standard.set(quickEstimateLearnedPeaks, forKey: Self.learnedPeaksKey)
+            learnedDefaults.set(quickEstimateLearnedPeaks, forKey: Self.learnedPeaksKey)
             if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
         }
     }
+    /// Where the option and the weights' path are kept (a test's own store in tests).
+    @ObservationIgnored var learnedDefaults = UserDefaults.standard
+    /// Where downloaded weights are kept: Application Support (a test's own folder in tests).
+    @ObservationIgnored var learnedHome = LearnedField.defaultWeightsURL
+    /// While the user is asked whether to download the weights; while they download; what the
+    /// download last said (kept until the option is next asked for).
+    var offersLearnedDownload = false
+    var learnedDownloadInFlight = false
+    var learnedDownloadStatus = ""
+    @ObservationIgnored var learnedDownloadTask: Task<Void, Never>?
     static let learnedPeaksKey = "quickEstimate.learnedFieldPeaks"
     /// A path for the learned field model's weights other than the default
     /// (`LearnedField.weightsURL`; `BOMBCAD_FIELD_MODEL` comes first).

@@ -66,15 +66,43 @@ struct EnvelopeDamageSection: View {
                 {
                     CloseCallsRow(model: model)
                 }
-                Toggle("Learned field model for ground-floor peaks", isOn: $model.quickEstimateLearnedPeaks)
-                    .help(
-                        "For Quick Estimate: a network trained on BombCAD's own 4 m district runs gives the peak at "
-                            + "each ground-floor façade strip, for its damage, glass and walls; the impulse, roofs and "
-                            + "upper storeys stay on the surrogate. Illustrative. Its weights are read from "
-                            + LearnedField.weightsURL(
-                                setting: UserDefaults.standard.string(
-                                    forKey: SimulationModel.learnedWeightsKey)
-                            ).path + ".")
+                Toggle(
+                    "Learned field model for ground-floor peaks",
+                    isOn: Binding(
+                        get: { model.quickEstimateLearnedPeaks }, set: { model.setLearnedPeaks($0) })
+                )
+                .disabled(model.learnedDownloadInFlight)
+                .help(
+                    "For Quick Estimate: a network trained on BombCAD's own 4 m district runs gives the peak at "
+                        + "each ground-floor façade strip, for its damage, glass and walls; the impulse, roofs and "
+                        + "upper storeys stay on the surrogate. Illustrative. Its weights are read from "
+                        + model.learnedWeightsURL.path
+                        + "; without them, turning it on offers to download them."
+                )
+                .confirmationDialog(
+                    "Download the learned field model?",
+                    isPresented: Binding(
+                        get: { model.offersLearnedDownload },
+                        set: { if !$0, model.offersLearnedDownload { model.declineLearnedDownload() } }),
+                    titleVisibility: .visible
+                ) {
+                    Button(
+                        String(format: "Download %.1f MB", Double(LearnedField.Release.bytes) / 1e6)
+                    ) { model.downloadLearnedWeights() }
+                    Button("Cancel", role: .cancel) { model.declineLearnedDownload() }
+                } message: {
+                    Text(LearnedField.Release.offer)
+                }
+                if model.learnedDownloadInFlight {
+                    HStack {
+                        ProgressView().controlSize(.small)
+                        Button("Cancel Download") { model.cancelLearnedDownload() }
+                    }
+                }
+                if !model.learnedDownloadStatus.isEmpty {
+                    Text(model.learnedDownloadStatus).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if model.quickEstimateLearnedPeaks {
                     if !model.learnedPeaksStatus.isEmpty {
                         Text(model.learnedPeaksStatus).font(.caption).foregroundStyle(.orange)

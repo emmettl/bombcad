@@ -1097,23 +1097,55 @@ plan: `LearnedField.Plan` holds the heights and the ground for every place of th
 - **On the 512² and 640² runs**, the network alone takes 14–23 ms after its first run (0.7–1.2 s
   to build the graph).
 
-### How the weights could ship (a proposal; nothing is published)
+### How the weights ship (21 October 2026)
 
-The file is 15.7 MB, and the app runs without it. The proposal:
+The user decided that the weights ship as a release asset, downloaded on first use. The release
+is prepared and handed over. The user publishes it; no session does.
 
-- **Publish it as a release asset** of a release that holds only models, on the public repository
-  or a models repository. Pin its SHA-256 in the app (`LearnedField`).
-- **Fetch it on first use.** Turning the option on without the file would offer to download it,
-  saying its size and source. The app would check the hash and keep the file in Application
-  Support. A file that fails the check would not be used.
-- **Name each model by its training round** (`field-unet-fp-strict`), so that a retrained model is
-  a new file and a new pin, and a run's standing can say which file it used.
-- **Before publishing**, settle the licence and attribution. The model is trained on runs over
-  OpenStreetMap (ODbL), Copernicus DEM and GHSL inputs ([Beirut, 2020](beirut-2020.md)).
-  Whether the weights count as a produced work that needs attribution is the user's call.
+- **The release:** `field-model-1` on emmettl/bombcad, kept off "latest" so that it never stands
+  in for the app's own releases. It has two assets, `field-unet-fp-strict.bcfw`
+  (15,716,144 bytes) and `MODEL-NOTES.md`, which is also the release's text. Both are on
+  StudioData in `release-field-model-1/`. The header no longer carries a local path: the export
+  writes only the round's last path parts (`field-unet-fp-strict/out/best.pt`).
+- **Pinned in the app:** `LearnedField.Release` holds the tag, the file, its size and its SHA-256,
+  `d544d80f…370440`.
+- **The download asks first.** Turning the option on without the file asks "Download the learned
+  field model?", with its size, the URL
+  (`https://github.com/emmettl/bombcad/releases/download/field-model-1/field-unet-fp-strict.bcfw`)
+  and what it is for. Nothing is fetched until the user clicks Download.
+  `LearnedFieldDownload.install` then fetches it to a temporary file, checks the SHA-256, reads it
+  as weights, and only then moves it into Application Support. Only after that is the option
+  turned on.
+- **Failure and cancel.** A failed, cancelled or mismatched download keeps nothing, and the option
+  stays off with a message saying why. A path set by hand (the setting, or `BOMBCAD_FIELD_MODEL`)
+  that holds nothing is reported, never filled.
+- **Tests.** `LearnedFieldDownloadTests` and `LearnedFieldOptionTests` use `file://` stand-ins and
+  fetch nothing real.
+- **A retrained model** is a new file name, a new tag (`field-model-2`) and a new pin.
 
-The alternatives are bundling the file in the app and the Homebrew cask, which costs every
-download 16 MB, or leaving it to be copied by hand, as now.
+**Attribution.** The weights were trained only on BombCAD's own runs of made-up districts:
+125 runs of 25 layouts invented by `Scripts/ml/make_district.py`, with Kingery–Bulmash's
+published fits as inputs. No map data went into their values, nor into the input standardisation.
+Real data did play a part in two ways:
+
+- **The checkpoint.** It is epoch 59 of 300, kept because it had the least loss on the 75
+  held-out runs. 50 of those are Beirut's: OpenStreetMap buildings (ODbL 1.0), GHS-BUILT-H heights
+  (CC BY 4.0) and Copernicus DEM GLO-30 ground.
+- **The standing.** It was judged on those same runs.
+
+Our reading is that the weights are not a derived database of those sources. `MODEL-NOTES.md`
+credits all three anyway, in their own required wording, and says this is not legal advice. It
+also records the training round, the held-out standing and that the model is illustrative.
+
+The command for the user, run from a checkout once the commit is on main:
+
+```bash
+gh release create field-model-1 --repo emmettl/bombcad --target main --latest=false \
+    --title "Learned field model 1 (field-unet-fp-strict)" \
+    --notes-file /Volumes/StudioData/bombcad/release-field-model-1/MODEL-NOTES.md \
+    /Volumes/StudioData/bombcad/release-field-model-1/field-unet-fp-strict.bcfw \
+    /Volumes/StudioData/bombcad/release-field-model-1/MODEL-NOTES.md
+```
 
 ### The decision for the user
 
@@ -1126,15 +1158,16 @@ Whether to make the option the default. For it:
 
 Against it, or what to settle first:
 
-- **The weights do not ship yet.** With the option on by default and no file, every estimate
-  would say the model is missing. A default needs the distribution above.
+- **The weights are a download.** Until the release is published, the download fails, and the
+  option stays off. As a default it would have to ask for the download before the first
+  estimate.
 - **Its reach is one city and made-up districts, on 4 m cells.** Ground-floor façades only, a
   charge on the ground.
 - **The walls' tenths test passes only at ×0.8.** At the app's ×1.0 it fails, with the model or
   without. That is the factor the user is to judge again now that this is in.
 
-The recommendation: keep it off until the weights ship. Then make it the default for glass and
-walls together, and settle the walls' factor (×0.8 against ×1.0) on its own numbers above.
+The recommendation: keep it off until the release is published and the download has been tried.
+Then make it the default for glass and walls together, and settle the walls' factor (×0.8 against ×1.0) on its own numbers above.
 Nothing has been changed by default.
 
 ## Not done yet

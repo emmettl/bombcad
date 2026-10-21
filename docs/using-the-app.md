@@ -63,10 +63,13 @@ then gives the peak at each ground-floor façade strip, for the strip's damage, 
 walls' chances. The impulse, the roofs and the storeys above stay on the surrogate. Its standing
 is shown with it: illustrative, judged on Beirut's runs it never saw
 ([in the app's quick estimate](learned-models.md#in-the-apps-quick-estimate-21-october-2026)). It
-needs its weights, a 16 MB file that is not part of the app yet:
-`~/Library/Application Support/BombCAD/LearnedModels/field-unet-fp-strict.bcfw`, or the path in
-`BOMBCAD_FIELD_MODEL`, or `defaults write dev.bombcad.BombCAD quickEstimate.learnedFieldWeights <path>`.
-Without them, the sidebar says so and the estimate is the surrogate's alone. With the option on,
+needs its weights, a 15.7 MB file. The first time you turn it on, the app asks whether to download
+them, giving their size and source (the repository's `field-model-1` release), and fetches nothing
+unless you click **Download**. It checks the file against the hash it expects and keeps it in
+`~/Library/Application Support/BombCAD/LearnedModels/`. If the download fails or you cancel it,
+the option stays off and the sidebar says why. To use a file you have already, set
+`BOMBCAD_FIELD_MODEL` or
+`defaults write dev.bombcad.BombCAD quickEstimate.learnedFieldWeights <path>`. With the option on,
 a drag's preview runs the network again at each place of the charge.
 
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.

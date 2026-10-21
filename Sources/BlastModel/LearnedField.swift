@@ -528,13 +528,14 @@ public enum LearnedField {
     /// The weights' file: `BOMBCAD_FIELD_MODEL` if set, else `setting` if given, else
     /// `~/Library/Application Support/BombCAD/LearnedModels/field-unet-fp-strict.bcfw`.
     public static func weightsURL(
-        setting: String? = nil, environment: [String: String] = ProcessInfo.processInfo.environment
+        setting: String? = nil, environment: [String: String] = ProcessInfo.processInfo.environment,
+        fallback: URL = defaultWeightsURL
     ) -> URL {
         if let path = environment[environmentKey], !path.isEmpty {
             return URL(filePath: (path as NSString).expandingTildeInPath)
         }
         if let setting, !setting.isEmpty { return URL(filePath: (setting as NSString).expandingTildeInPath) }
-        return defaultWeightsURL
+        return fallback
     }
 
     public static var defaultWeightsURL: URL {
@@ -548,11 +549,40 @@ public enum LearnedField {
 public enum LearnedFieldError: Error, CustomStringConvertible {
     case badWeights(String)
     case network(String)
+    case download(String)
+    case checksum(expected: String, found: String)
+    case cancelled
 
     public var description: String {
         switch self {
         case .badWeights(let why): "The learned field model's weights could not be read: \(why)."
         case .network(let why): "The learned field model could not be run: \(why)."
+        case .download(let why): "The learned field model could not be downloaded: \(why)."
+        case .checksum(let expected, let found):
+            "The downloaded learned field model is not the file the app expects (SHA-256 \(found.prefix(12))…, not \(expected.prefix(12))…), so it was not kept."
+        case .cancelled: "The learned field model's download was cancelled."
+        }
+    }
+}
+
+extension LearnedField {
+    /// The weights' release: the file the app offers to download the first time the option is
+    /// turned on (never without the user's click), from the repository's release `tag`, checked
+    /// against `sha256` before it is kept (emmettl/bombcad-work#67; docs/learned-models.md).
+    public enum Release {
+        public static let tag = "field-model-1"
+        public static let file = LearnedField.fileName
+        public static let bytes = 15_716_144
+        public static let sha256 = "d544d80f5a3985c56e0035475b4ebf95f8b16ffc2057619a7f7b621935370440"
+        public static var url: URL {
+            URL(string: "https://github.com/emmettl/bombcad/releases/download/\(tag)/\(file)")!
+        }
+        /// What the download is for, in the words the app asks with.
+        public static var offer: String {
+            "The learned field model gives the quick estimate its peak at ground-floor façades, for their "
+                + "damage, glass and walls (illustrative). Its weights, "
+                + String(format: "%.1f", Double(bytes) / 1e6) + " MB, are downloaded once from "
+                + url.absoluteString + " and kept in Application Support."
         }
     }
 }

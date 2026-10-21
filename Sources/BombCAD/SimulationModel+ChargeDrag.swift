@@ -87,8 +87,7 @@ extension SimulationModel {
         // The learned field model, if asked for: its network loaded once, its plan of the district
         // laid out once for every place of the charge.
         let learnedWanted = quickEstimateLearnedPeaks
-        let weightsURL = LearnedField.weightsURL(
-            setting: UserDefaults.standard.string(forKey: Self.learnedWeightsKey))
+        let weightsURL = learnedWeightsURL
         let knownNetwork = learnedNetwork.flatMap { $0.url == weightsURL ? $0.network : nil }
         let knownEstimator = learnedEstimator.flatMap {
             $0.scene == layout && $0.estimator.network === knownNetwork ? $0.estimator : nil

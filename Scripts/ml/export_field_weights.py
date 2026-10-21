@@ -11,7 +11,8 @@ weights in a form Swift reads without PyTorch: one file, `.bcfw`, little-endian 
 - the header, UTF-8 JSON, padded with spaces to a multiple of 16 bytes: the architecture (`model`,
   `width`, `depth`, `inputs`), the input channels' standardisation (`stats`), whether the network
   predicts corrections to Kingery–Bulmash's logs (`residual`), its outputs, its training target
-  (`impulse`), the held-out runs, the source checkpoint's SHA-256 and epoch, and `tensors`: each
+  (`impulse`), the held-out runs, the source checkpoint's last three path parts, SHA-256 and epoch (no
+  local path, since the file is published), and `tensors`: each
   state-dict entry's name, shape, and offset and count of values in the payload;
 - the payload, every tensor's values in C order as `dtype` (float16 by default, about 16 MB for
   the 7.9 M-parameter U-Net; float32 doubles it).
@@ -78,7 +79,7 @@ def write(path, model, state, args, source, dtype):
         "impulse": getattr(args, "impulse", "all"), "multiple": 2 ** args.depth,
         "groupNormGroups": 8, "groupNormEpsilon": 1e-5,
         "dtype": "float16" if dtype == np.float16 else "float32",
-        "source": os.path.abspath(source), "sourceSHA256": sha256(source), "epoch": state.get("epoch"),
+        "source": "/".join(os.path.abspath(source).split(os.sep)[-3:]), "sourceSHA256": sha256(source), "epoch": state.get("epoch"),
         "holdout": getattr(args, "holdout_layouts", "") or getattr(args, "holdout_runs", ""),
         "tensors": tensors,
     }
