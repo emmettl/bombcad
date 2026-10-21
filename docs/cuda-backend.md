@@ -467,6 +467,16 @@ python3 Scripts/cuda/math-matrix.py --case beirut-p0-1 \
 
 ## Whole-field spread and phase-conditioning probes
 
+[A bounded product-consequence study](../Benchmarks/CUDAAcceptance/2026-10-21-product-portability/summary.md)
+passes the seven existing Beirut fields through the declared wall/roof judging model, with
+peak-only, phase-only and combined substitutions and shared uncertainty draws. All 20
+substitutions have identical assessed probabilities across six factor/scatter pairs on 1,081
+reinforced-concrete buildings (1,071 roof proxies). Some nominal 3% pulse bins change; outcomes
+do not. None of the currently rejected field receivers contributes to those 10,013 sampled
+ground-floor strips, so this result cannot justify their admission or establish a physical error
+bound. The study retains that coverage limitation, exact sampling controls and full outcomes.
+Its real CLI control also fixes `field-walls` numeric CSV reading for CRLF as well as LF.
+
 [Independent geometry/grid controls](../Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/summary.md)
 extend the arithmetic/path study to synthetic flat and terrain geometries, each at 4 m and 8 m
 with fixed physical domains. All 16 explicit-policy tiled/full-grid pairs are bit-identical;

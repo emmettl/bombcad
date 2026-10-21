@@ -1,0 +1,4128 @@
+{
+  "status": "complete",
+  "scope": "Saved CPU product-model outcomes only; no new solver or judgement launch.",
+  "buildings": 1081,
+  "variants": {
+    "default:default": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "repeat:repeat": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "full:default": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "default:full": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "full:full": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "fast-on:default": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "default:fast-on": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "fast-on:fast-on": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "fast-off:default": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "default:fast-off": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "fast-off:fast-off": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "safe-on:default": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "default:safe-on": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "safe-on:safe-on": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "safe-off:default": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "default:safe-off": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "safe-off:safe-off": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "cuda:default": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "default:cuda": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    },
+    "cuda:cuda": {
+      "wallsModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "wallsHeavy": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1081,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ],
+      "roofModerate": [
+        {
+          "pair": [
+            1,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            0.5
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        },
+        {
+          "pair": [
+            1.3,
+            1
+          ],
+          "buildings": 1071,
+          "changed": 0,
+          "maxAbsolute": 0.0,
+          "meanAbsolute": 0.0,
+          "locations": []
+        }
+      ]
+    }
+  },
+  "identicalControl": true
+}

@@ -1,0 +1,10 @@
+{
+  "status": "complete",
+  "buildings": 1081,
+  "pair": [
+    1,
+    0
+  ],
+  "allNominalOutcomesIdentical": true,
+  "scope": "Standard CRLF versus LF CSV at the same full-precision loads; one deterministic draw, no scatter."
+}

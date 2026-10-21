@@ -1,0 +1,9 @@
+{
+  "status": "complete",
+  "filesVerified": 52,
+  "payloadLinks": 12,
+  "archiveBytes": 27040004,
+  "originalFieldHashesMatchPublishedSpread": true,
+  "allProductDifferencesZero": true,
+  "notArchived": "Original map raster/OSM assets and recorded strip/component histories are hash-pinned local prerequisites; full field arrays, sampled loads and judged outcomes are retained."
+}

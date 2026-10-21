@@ -1,0 +1,69 @@
+{
+  "baseRevisionObserved": "d918af14c65912e44a40a47a3948af91e901ecde",
+  "worktreeDirtyAtMeasurement": true,
+  "producingExecutableSHA256": "b919092e53e24c008863a83c535e1a860f94191ae8ab015d80eca069e2c6138f",
+  "producingFieldWallsSHA256": "83aef0c7d5584f16310b431b045ec0861e0f9b5b0b2a8ee7b95cd859e110ccb2",
+  "originalFullFieldGate": {
+    "0": {
+      "relativeL2": 2.3345044825070764e-07,
+      "maxAbsolute": 16.0,
+      "outsideTolerance": 3,
+      "medianRelative": 2.5939563411208225e-06,
+      "p99Relative": 0.0001604531600597384
+    },
+    "1": {
+      "relativeL2": 1.7335533224143104e-06,
+      "maxAbsolute": 0.1875,
+      "outsideTolerance": 0,
+      "medianRelative": 2.9395241615868188e-06,
+      "p99Relative": 1.8228568451773384e-05
+    },
+    "2": {
+      "relativeL2": 4.728914245918789e-05,
+      "maxAbsolute": 101.06005859375,
+      "outsideTolerance": 3,
+      "medianRelative": 2.8334958685187568e-06,
+      "p99Relative": 1.9991739636000554e-05
+    },
+    "passed": false
+  },
+  "status": "complete",
+  "strips": 10013,
+  "wallBuildings": 1081,
+  "roofProxyBuildings": 1071,
+  "totalSubstitutionsIncludingControls": 20,
+  "identicalProductProbabilities": true,
+  "rejectedReceiversSampled": false,
+  "LFCRLFNominalControl": "passed",
+  "validation": "make check-affected passed: strict build, lint/scripts/docs, 71 CUDA/queue tests (4 local Torch skips), 7 Mac tests, 36 PC tests",
+  "artifactsSHA256": {
+    "analyse.py": "dd56487099a1afc251df650f1558bb374790191199f0ae9cdad9a5719a240ca1",
+    "analysis.json": "0291a9916ecdd85c0dbf87cd536e6bdff36f2f355437b16d4d3c29e7d5978ad8",
+    "analysis.log": "94a640425a4d39dca431f83119d4cb6c58b93a1e543a11b0238a4aec927a3709",
+    "archive-audit.json": "4eb6096a6d1ea01377d1ad80474783775699904fc5db2717a91e1ddf4d61ac5d",
+    "archive-files.json": "9058fea93d45cfc68c2db0b53c304424a13990b3f2b4a7a31ebb0d4c1f5f680d",
+    "build-crlf.log": "be54d8ee31206f93c069eb8ad1d7dbd2c237f449273f6c53802278956a7ee93c",
+    "build-initial.log": "e967fad99851609857e5ff0199238041fd3a919f9ab310083f40be4d7326b5b6",
+    "build-newline.log": "9d08d2aee147f6dc415f62d6a8ec9a2a3e55b138a26dd655821c52acd540a21f",
+    "check.log": "27ff0fd923b3d7ffe278707a10d85b9b548681936a828af3c22d23011cd081a1",
+    "finish.py": "a1a0af689ba7975da33fc3a9785b053de9d03462691f3e73707fd59b1d12bb86",
+    "lf-control.json": "645a6a8ea5a36c4f5130e26c3f860509444dfe2a045b737d5e2df1ba5ee3a0d1",
+    "lf-control.log": "32519a0af4733e1f1ff3f64fc4d49066fc684560f91433d6febccb9aa8960b62",
+    "lf-control.py": "4bc72eee2f86138e849f81b341f3049c2e91c880635d1c6592b15ea26b70759f",
+    "newline-control.log": "63161b6d8a593c0ff0d0ac62a591c1db464a4053c9f6e1f8346b4caf00405661",
+    "package.log": "dd57cfb8d049465b7af8f3883186b49a95b0a97344f6379ca28408656f28eb5b",
+    "package.py": "a0157dd378df35c7a4917f902ca1b369319c209369bcae023bafc772d983b0be",
+    "preflight-initial.log": "c0e01c5f8fb50e00e5058bc6edac756a55ccac998ca6e23a79c4a61927a0c217",
+    "preflight-initial.py.txt": "4d83f22dbf389eecfd7fa55173003a3ea383b2c16645416bfe578ab1e001f54d",
+    "preflight-v2.log": "fd0a1b286e663b8cd329726dc91b2897ba73c17cf5b757501a9981141b35b119",
+    "preflight-v2.py.txt": "05690af2db80ff73a309537b137f1844a3550d397aa11005f98b6cf70a4b1ea3",
+    "preflight-v3.log": "fd0a1b286e663b8cd329726dc91b2897ba73c17cf5b757501a9981141b35b119",
+    "preflight-v3.py.txt": "e4c13282a38003e65eca8a58090badce7547bb4c154f92f0f1efafedd92e6ad7",
+    "run.py": "e8fa0f49adf263380dfcce4c1532dea09719056f551874e9e098a4734fc8f6e2",
+    "state.tar.gz": "e577166ffe6475b7f7aa4e64928c96cf6cfca617d8545e257a2f007890f4cf50",
+    "study-v4.log": "93f98727c97330e30d7385211e66741cba116f1c80ce52cbabba8caaa7f6c353",
+    "study.json": "3e9deea74fd72c861bd4aae805b99a1c9638eb64abe842c972280f58bcf02eb4",
+    "study.py": "0eef3a0e269ef740861cf85af32452f2985d29fd89a0ff48438b35918d394b0f",
+    "summary.md": "5f151de86ec8f7299211b62666f869ef6466250f244809037cb4d30165dc325e"
+  }
+}

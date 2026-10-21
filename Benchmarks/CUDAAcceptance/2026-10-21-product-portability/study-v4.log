@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/private/tmp/bombcad-product-portability/run.py", line 4, in <module>
+    try:runpy.run_path('/private/tmp/bombcad-product-portability/study.py',run_name='__main__')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen runpy>", line 287, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "/private/tmp/bombcad-product-portability/study.py", line 81, in <module>
+    if metric=='roofModerate' and b['roof'] is None:continue
+                                  ~^^^^^^^^
+KeyError: 'roof'

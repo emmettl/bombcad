@@ -1,0 +1,21 @@
+Audited saved judgement 1081 buildings 20 variants
+default:default {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+repeat:repeat {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+full:default {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+default:full {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+full:full {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+fast-on:default {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+default:fast-on {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+fast-on:fast-on {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+fast-off:default {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+default:fast-off {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+fast-off:fast-off {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+safe-on:default {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+default:safe-on {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+safe-on:safe-on {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+safe-off:default {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+default:safe-off {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+safe-off:safe-off {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+cuda:default {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+default:cuda {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}
+cuda:cuda {'wallsModerate': [0, 0, 0, 0, 0, 0], 'wallsHeavy': [0, 0, 0, 0, 0, 0], 'roofModerate': [0, 0, 0, 0, 0, 0]}

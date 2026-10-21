@@ -83,8 +83,12 @@ enum FieldWalls {
         let names = (value("variants") ?? "surrogate").split(separator: ",").map(String.init)
 
         // The judged strips' columns, by box (to a tenth of a metre, as judge_field.py keys them).
-        let lines = try String(contentsOfFile: peaksPath, encoding: .utf8).split(separator: "\n")
-        guard let head = lines.first?.split(separator: ",").map(String.init) else {
+        let lines = try String(contentsOfFile: peaksPath, encoding: .utf8).split(whereSeparator: \.isNewline)
+        guard
+            let head = lines.first?.split(separator: ",").map({
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            })
+        else {
             throw BlastError.allocationFailed("a header in \(peaksPath)")
         }
         func column(_ name: String, _ q: String) throws -> Int? {
@@ -106,7 +110,9 @@ enum FieldWalls {
         }
         var rows: [[Int32]: [Double]] = [:]
         for line in lines.dropFirst() {
-            let cells = line.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+            let cells = line.split(separator: ",", omittingEmptySubsequences: false).map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             guard cells.count == head.count, let axis = Int(cells[0]), let outward = Int(cells[1]) else {
                 continue
             }
