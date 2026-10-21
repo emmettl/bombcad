@@ -14,13 +14,15 @@ the spread that 21 comparisons allow, and asks three questions:
 **In short:**
 - Today's afterburning time and concrete tension lie well inside their posteriors.
 - Today's glass strength lies at the posterior's weak edge: the comparisons favour glass about a
-  quarter stronger, as if a fifth of a pane bore its largest stress.
+  quarter stronger, as if a fifth of a pane bore its largest stress. Most of that pull is E1300's
+  own flaw-model integral, not a test ([review](#independent-review-20-october-2026)).
 - The discrepancies widen the afterburning time from a third of its prior to three-quarters, and
   the glass from an eighth to near three-quarters. That half-swamps those two but does not kill
   the idea.
 - The concrete's tension is decided by one beam changing how it fails, not by the discrepancy.
 - What would narrow it most: tests that pin a regime's own error. For glass, panes that only
   just break (68% narrower); for the air, open-air impulses with their scatter by distance (48%).
+  Those figures are for an error known exactly; known to ±10% they are 41% and 17%.
 
 ## The choice
 
@@ -68,7 +70,8 @@ cases prescribe their loads, and the glass cases take measured loads.
   prints each run's outputs. `Scripts/calibration/runs.py` sends the cases to the CI mini through
   `Scripts/remote.py`, with its lock and its waiting, in three chunks of under an hour, and
   gathers the runs.
-  - 169 runs took 52 minutes of computing on the mini, two hours with its build and queue.
+  - 169 runs took 52 minutes of computing on the mini, two hours with its build and queue. (The
+    kept `runs.jsonl` holds 130, ten cases at 13 points; the review could not trace the 169.)
   - The mini's results match the Mac Studio's to the last digit (the open burst's impulses, the
     one case run on both).
   - The new cases are `kb-open`, `kb-reflected`, `glass-monk` and `glass-e1300`. The air's take
@@ -89,8 +92,10 @@ cases prescribe their loads, and the glass cases take measured loads.
   - e: its error above.
 
   The parameters and the seven spreads are sampled by a stretch-move ensemble (40 walkers, 3,000
-  steps, the second half kept). Beside it, the same with no discrepancy (δ = u = 0), the hand
-  fit's assumption. Rerun with another seed, the widths move by about 0.05.
+  steps, the second half kept; the script's default is 4,000, and the figures here are 3,000 at
+  seed 1). Beside it, the same with no discrepancy (δ = u = 0), the hand fit's assumption. Rerun,
+  the widths move by up to about 0.08: the afterburning time's read 0.74 and 0.82 in runs that
+  differed only in the glass, which it does not read. There is no convergence diagnostic.
 - **Which data.** The posterior's precision, linearised at its medians, with three candidate
   additions for each regime:
   - its shared discrepancy pinned;
@@ -170,9 +175,10 @@ and 0.5:
   did not. Above it they hardly care.
 - **Glass.** Today's whole pane at E1300's flaw constant is the posterior's weak edge:
   - without discrepancy it is excluded outright (0.03–0.06);
-  - with discrepancy it lies at the 90% bound.
+  - with discrepancy it lies inside, near the 90th percentile (0.030–1.49).
 
-  The comparisons want glass stronger by a factor of 1.2 to 1.6, the strength going as the
+  The comparisons want glass stronger by a factor of 1.2 to 1.6 (the strengths of the two
+  medians, not an interval), the strength going as the
   factor's −1/7 power. Equally, a fifth (0.03–1) of a pane at its largest stress, where the
   record's hand analysis found a third to a tenth fitting one set or the other but not both
   ([window glass](validation.md#window-glass)).
@@ -212,15 +218,62 @@ and 0.5:
 
 **Pinning a regime's error** means a comparison whose error is known apart from the parameter:
 - **Glass.** Panes held beside panes broken, at loads near the threshold, so that the breaking
-  probability is itself measured: Beauchamp and Matalucci's EMRTC tests, first in
-  [data wanted](data-wanted.md#to-fetch), and Johns and Clubley's. E1300's load resistance is a
-  model (Beason and Morgan's) of tests, not a test: its own error is unknown here.
+  probability is itself measured: Johns and Clubley's, first in
+  [data wanted](data-wanted.md#to-fetch) since the search of 20 October (Beauchamp and Matalucci's
+  EMRTC tests describe weakened tempered glass, not a threshold series). E1300's load resistance
+  is a model (Beason and Morgan's) of tests, not a test: its own error is unknown here.
 - **The air.** Kingery's data by distance, rather than pooled (BRL 1344, in
   [data wanted](data-wanted.md#to-fetch)), with their scatter. Also, on the model's side, the
   same comparison on finer cells: part of the incident regime's 0.94 is the grid's under-resolution
   ([close in](validation.md#close-in)), which a converged run would take out of the discrepancy.
 - **Repeats of what is already compared** help little in every regime: more of the same does not
   separate the parameter from the regime's error.
+
+## Independent review, 20 October 2026
+
+A cloud session reran the calibration from the committed runs (numpy, Linux) and checked it. It
+reproduces: the posteriors, the shared discrepancies, the sensitivities and the ranking to the
+digits given at 3,000 steps and seed 1, and the 0.1 column of the prior's table. The emulators'
+leave-one-out errors are as stated, and their rms matches their predicted spread (0.020 against
+0.020 for Saatci's peak, 0.065 against 0.057 for its residual). The likelihood and the sampler
+are correct as written. Its report is kept outside the repository, at
+`/Volumes/StudioData/bombcad/cloud-reports/2026-10-20/review-crackedhex-calib.md`. What it found:
+- **The glass threshold regime is a model against a model.** Its four "measurements" are E1300's
+  load resistances, and its outputs BombCAD's own Beason–Morgan flaw model with the whole pane at
+  its largest stress; E1300's charts are the same flaw model with the risk integrated over the
+  pane. So the regime measures what share of the pane makes the one reproduce the other, close to
+  deterministic, and with sensitivities two to five times the break times' it sets the glass's
+  posterior. Only the break times are evidence about glass from tests. Either take the regime out
+  and set the stressed share by calculation, or read its result as that share.
+- **The ranking follows from the set-up.** Each regime reads one parameter, so with its shared
+  discrepancy's prior of 0.3 its information is capped along the direction that moves all its
+  comparisons together, and a discrepancy pinned exactly wins by construction. Pinned to a stated
+  precision instead:
+
+| Regime pinned to | exactly | ±5% | ±10% | ±20% |
+|---|---|---|---|---|
+| Glass, threshold: the glass narrower by | 68% | 58% | 41% | 15% |
+| Air, incident: the afterburning time narrower by | 48% | 34% | 17% | 4% |
+| Glass, break time: the glass narrower by | 19% | 12% | 6% | 1% |
+
+  A fairer rival is a comparison whose response has a different shape, as the reflected impulses'
+  has.
+- **Scatter from two repeats** has one degree of freedom: Monk and Clubley's 1:1.3 pane gets 1.7%.
+  Pooling their twelve break times' scatter (12.7% in the logarithm) doubles the no-discrepancy
+  glass factor, 0.044 to 0.085, and moves "1.6 times as strong" to 1.4. Today's glass stays
+  excluded without discrepancy.
+- **Fixed: d₂ for four repeats.** The repeats' scatter divided any range of three or more by 1.693,
+  d₂ for three; for four it is 2.059. Monk and Clubley's 1:1.7 and 1:2 panes, four repeats each,
+  had 0.169 and 0.214 for 0.139 and 0.176. `ValidationEnsemble.scatter` now takes d₂ for two to ten
+  repeats. The committed `measured.json` keeps the values the runs were made with; rerun with the
+  right ones, the posterior moves within the sampler's noise.
+- **Smaller points.** Kingery–Bulmash's three distances are treated as independent errors, though
+  read off one smooth fit (the no-discrepancy afterburning time may count them up to three
+  times). The regimes' spreads sit near their half-normal prior's median, and the one-comparison
+  regime (concrete, blast) is the prior's. Saatci's change of failure lies between design points
+  0.87 and 0.97, so the tension's lower tail rests on how the emulator bridges a step it did not
+  see: three or four runs between 0.85 and 1.0 would settle it. Peterson's D-2d-S90 force is
+  238.0 kN in the script against the tests' mean 238.5.
 
 ## What this does not do, and next
 

@@ -904,13 +904,15 @@ small strain, written so that it could become a ContinuumKit `SolidMechanics` ca
     the parasitic shear of a bending fibre.
 - Every mode then has energy of its own (checked). The field passes the patch test on distorted
   elements, and the largest eigenvalue of a cube's stiffness is the same as today's, so the
-  stable step does not change.
+  stable step does not change. (A linear field has no hourglass amplitudes, so the patch test
+  checks the mean gradients and the modes' vectors, not the assumed strain itself:
+  [review](#stage-1s-gates-reviewed-20-october-2026).)
 - Its bars are strained at their own height, at two points along them and two across a mat.
 - Belytschko and Bindeman's Poisson term (ASQBI) is left out. An element one deep, bending with
   ν = 0.2, is therefore about 1/(1 − ν²) stiff.
 - **The law is not BombCAD's.** Each lattice axis carries a crack band with linear softening and
   Hognestad's compression, unloading on the secant, with ν = 0 and crack shear retention 0.1. The
-  section analysis uses the same law, so the comparison isolates the element.
+  section analysis uses the same law, so the comparison isolates the element in uniform bending.
 
 **Gate G1** (`Tests/BlastModelTests/CrackedHexReferenceTests.swift`):
 1. **The patch test.** A linear field on 3 × 3 × 3 distorted elements is reproduced to rounding
@@ -941,7 +943,7 @@ small strain, written so that it could become a ContinuumKit `SolidMechanics` ca
 
    Today's element on 4 and 6 is the 10–15% excess of limitation 2, from hourglass forces held at
    an uncracked element's stiffness and capped at the bars' strength. The cracked element removes
-   it on every mesh. Today's element with its bars strained at its centre, unsmeared, is 16.8%
+   it on every mesh, in uniform bending under plane-section ends. Today's element with its bars strained at its centre, unsmeared, is 16.8%
    strong on 4.
 
 G1 passes.
@@ -1146,6 +1148,34 @@ check), accepting that struck members then go too far.
 
 A retry of embedded cracks on this element (the plan's stage 4) is not proposed: it was to follow
 only if G2–G4 passed.
+
+### Stage 1's gates, reviewed (20 October 2026)
+
+An independent review by a cloud session (Linux, the CPU reference only, Belytschko and Bindeman's
+paper not in hand, so its checks against the paper are from memory). No gate passes because of a
+bug; the review's probes reproduce stage 1's figures. What the gates show is narrower than the
+text above said, and the text now says so. Its report is kept outside the repository, at
+`/Volumes/StudioData/bombcad/cloud-reports/2026-10-20/review-crackedhex-calib.md`.
+- **G1.3 is uniform bending.** Both end faces are turned about mid-depth, so by symmetry the middle
+  face stays plane and, with ν = 0, nearly every displacement is prescribed. It checks the points'
+  crack histories, the 2 × 2 × 2 quadrature and the bars at their own height, and the shear filter
+  on the one mode it was built to remove; not a moment gradient, the switch spreading along a
+  member, or localisation. Stage 3's "an element whose bending is right against section analysis"
+  rests on this gate alone.
+- **The patch test cannot fail for the assumed strain** (a linear field has no hourglass
+  amplitudes), and "plain 2 × 2 × 2" is the unfiltered field mapped by the centre Jacobian, which
+  is the trilinear element only on parallelepipeds. On the cubes of G1.2 and G1.3 the two agree.
+- **On distorted elements the assumed strain stiffens as today's does.** The cantilever, two
+  through, with skewed or tapered columns reads 0.956–0.901 of beam theory (cubes 0.984; today's
+  0.973–0.910); on four through within 1.1%. The filter keys on the element's natural directions.
+- **Against the paper (from memory):** the decomposition, the γ vectors, the centre Jacobian and
+  the shear assumption agree. Left out besides ASQBI's Poisson term: the variants that keep the
+  hourglass normal strains from locking volumetrically. G1's ν of 0 and 0.2 do not feel it;
+  isochoric flow (steel, crushed concrete) would. The law evaluated at eight points, each with its
+  own history, is an extension of the paper's one-point element with stabilisation.
+- **Confirmed by probe:** a 0.1 m cube's largest stiffness eigenvalue is 2.50 × 10⁹ N/m for today's
+  element, the assumed strain and the unfiltered field alike, with six zero modes; no test asserts
+  it. In G1.3 every element switches (8 of 8 on four through); the test now asserts that all do.
 
 ## Strain-rate effects
 

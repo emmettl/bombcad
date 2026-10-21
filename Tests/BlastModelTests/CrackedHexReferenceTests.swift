@@ -258,6 +258,8 @@ struct CrackedHexReferenceTests {
             }
             #expect(worstToday > 0.05, "today's \(worstToday), the cracked element's \(worstCracked)")
         }
-        #expect(cracked.switched > 0)
+        // Every element cracks or is squeezed in this bending, so every one switches: one switched
+        // would not show the switch at work across the depth.
+        #expect(cracked.switched == cracked.elements)
     }
 }
