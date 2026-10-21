@@ -200,3 +200,12 @@ Metal-only controls are 5.663/5.465 s. All 98 case executions accept once and
 preserve numerical files across versions. Actual CUDA dispatch still records a
 required PC probe. This is a controller improvement on the measured workload,
 not a CUDA solver speedup or proof for long-running districts.
+
+The [long-running backlog study](../Benchmarks/HeterogeneousCompute/2026-10-21-full-queue/summary.md)
+replays one admitted 15.5-million-cell full-flat case eight times per queue. Three
+monitored pairs complete at 194.47 s Metal-only median versus 170.13 s automatic,
+with seven Metal/one CUDA assignment, a 12.5% reduction in queue time. Production
+reference generation is outside timing; no distinct training cases are created.
+An externally overlapped/uncertain original pair is retained and replaced in full.
+The included trials use periodic owner checks in addition to pre/post availability
+snapshots. This validates a useful backlog case, not a universal scheduling fit.

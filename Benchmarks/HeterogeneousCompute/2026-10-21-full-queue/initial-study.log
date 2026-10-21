@@ -1,0 +1,13 @@
+Inspect retained live-process and queue worker identities before any continuation; an observation failure does not prove workers stopped.
+Traceback (most recent call last):
+  File "/private/tmp/bombcad-full-queue/study.py", line 41, in <module>
+    before=snapshot(probe);assert quiet(before),before
+  File "/private/tmp/bombcad-full-queue/study.py", line 9, in snapshot
+    def snapshot(c):return dict(mac=q.mac_snapshot(c),pc=q.pc_snapshot(c))
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/field-queue.py", line 343, in mac_snapshot
+    try:return _mac_snapshot(contract)
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/field-queue.py", line 348, in _mac_snapshot
+    env=clean_env(contract)
+  File "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/field-queue.py", line 141, in clean_env
+    env['BOMBCAD_SOURCE_REVISION']=contract['revisionObservedAtInit']+('-dirty' if contract['worktreeDirtyAtInit'] else '')
+KeyError: 'revisionObservedAtInit'

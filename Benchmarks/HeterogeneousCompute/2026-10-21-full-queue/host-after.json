@@ -1,0 +1,19 @@
+{
+  "scope": "Read-only post-benchmark snapshot, taken during/after repository validation; not an independent QPC/UTC calibration",
+  "bootID": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+  "lockExists": false,
+  "gpu": "0 %, 993 MiB",
+  "timesyncdActive": {
+    "returncode": 3,
+    "stdout": "inactive"
+  },
+  "timesyncdEnabled": {
+    "returncode": 1,
+    "stdout": "masked"
+  },
+  "hostClockAgent": {
+    "returncode": 0,
+    "stdout": "Reference ID    : 50484330 (PHC0)\nStratum         : 1\nRef time (UTC)  : Wed Oct 21 15:18:13 2026\nSystem time     : 0.000000069 seconds fast of NTP time\nLast offset     : -0.000000142 seconds\nRMS offset      : 0.000000259 seconds\nFrequency       : 8.467 ppm fast\nResidual freq   : -0.000 ppm\nSkew            : 0.011 ppm\nRoot delay      : 0.000000001 seconds\nRoot dispersion : 0.000014793 seconds\nUpdate interval : 8.0 seconds\nLeap status     : Normal\n",
+    "stderr": ""
+  }
+}

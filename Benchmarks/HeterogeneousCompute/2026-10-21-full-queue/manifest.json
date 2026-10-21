@@ -1,0 +1,40 @@
+{
+  "baseRevision": "586b36b424bb9ca08e83804078ab8710f2c4ba64",
+  "sourceSHA256": {
+    "Scripts/cuda/field-queue.py": "13357232370213ccd31f47c91fd3f5457a09e970847cead75e18af0fbd97127e",
+    "Scripts/cuda/run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "Sources/SceneBench/FieldExport.swift": "c2ddca89a92d23c881b4d9bcf6fdd6433ac2c2d4d98bd52f46748203e3b06daa",
+    "Sources/BlastCore/BlastSolver.swift": "73511480d95f715b069610028ca4fb072d1ece123c2952acacc8e0fe3c09ceb9",
+    "Sources/BlastCore/Scenario+GPU.swift": "b7ba86272c4bece401ef2780336e450b24b9f2b0a5ba4b5fe7548a9d083b6b14"
+  },
+  "acceptedExecutions": 70,
+  "includedExecutions": 54,
+  "excludedExecutions": 16,
+  "allOwnedGroupsTerminal": true,
+  "validation": "make check-affected passed",
+  "artifactsSHA256": {
+    "package.py": "eec17beb92656e5cb5a100c9dea7bbea62dcce2607598223ae86f102e8e0472e",
+    "audit.json": "ec6374cc8b9de4c0f8e76447f18f00aa0a76f6adbf8a57bcf81f0e7b92806b38",
+    "study.json": "19c26788910135428a4df9c510235e3264e915d30c82331956c7fd9df1055cd1",
+    "initial-study.json": "8653abe93b5c14fe99fe2660e82aca99e44418985b96db8b06ccf70580287f5c",
+    "initial-study.log": "614116e55bc65f2e3feb41c71ff93c42876eee189fed86beead4a8911be92b37",
+    "summary.md": "078d985c1004561536bb908e8d57b51cf0128443d71e2030be246c68d3d769dd",
+    "archive-files.json": "a5083bfd69bc6caa5196c40d36f9859081f7ffac6db55cd95377491a653a4b1a",
+    "initial-study.py.txt": "4a9c12ce689e9c579b42b9245e23673044d321fc313c2ad04aea4181e3fc637a",
+    "calibrated-costs.json": "8e26e8ef865a5611cacf96c48cb84e49d6799227736195c999751bb917d6b698",
+    "host-after.py": "f32b6d5669929a06a54cf363b2f261e75b5f31888d46df8908e4d9a997b589fd",
+    "host-after.json": "b4e1fa7533a2ce55125afc5647299bf0408098b2e663e35586a37ae4a24bc4d3",
+    "study.log": "26bd34fd4bb36d7d1627fcd98ad33c17ebadc54f70d959d5b4e0c49b16286475",
+    "interrupted-study.json": "e3baf9ecc32ee24a8532db1ec9aa2d3cd0cb3c7b3813edd621f49b7b890cf928",
+    "continue.py": "e1616c15ccc63f021993d9baf944bb09fcd84ac6cb7129e8ec10f790050b2a22",
+    "check-integrated.log": "f1cb22419c0af008df453d9dea0f6db62befc52d0d08304b29076914c0b19017",
+    "state.tar.gz": "245d654f28567a91ca3fb31e4001f27ec5ec0f7e47f9f6945cd7a40cdd581894",
+    "archive-audit.json": "25bb1a5505e4d1583cddf29aa7cb0f92fd4681c2f80cea7e740c137176096622",
+    "check.log": "59ae40ecf174345c332761bd684b8680e927d09dfd83ff381b9597ae2a696f82",
+    "continue.log": "e190355296a1323c1997233246a858f9f179b6b94f45d3e49033d237a39de089",
+    "continue-preflight-failed.log": "46022a8cb97223c22fa132296d7f6e545136d5f7c28c832a6874112803dfecc8",
+    "study.py": "2b94c977bf08d34fe0429cc1b84827e09e65212026bb10fedee1a673c76209d7"
+  },
+  "integrationBaseRevision": "b8cd063c",
+  "integrationValidation": "make check-affected passed: 71 CUDA/queue/profiler tests (4 skips), 35 Mac, 54 PC"
+}

@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/private/tmp/bombcad-full-queue/continue.py", line 11, in <module>
+    assert quiet(snapshot(probe))
+AssertionError

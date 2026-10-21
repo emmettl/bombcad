@@ -448,3 +448,19 @@ eight-case workload, automatic completion falls from 12.784 to 5.444 s median,
 close to Metal-only controls (5.663/5.465 s). All 98 accepted executions preserve
 numerical files across versions. This improves controller overhead; longer
 full-district throughput and cost modelling remain in emmettl/bombcad-work#59.
+
+### Long-running full-flat replay backlog
+
+The [full-flat queue comparison](../Benchmarks/HeterogeneousCompute/2026-10-21-full-queue/summary.md)
+shows an end-to-end benefit for independent-job spillover: three monitored
+8-job pairs complete in 194.47 s median on Metal alone and 170.13 s automatically,
+about 12.5% less time. Each automatic trial uses seven Metal jobs and one CUDA job.
+These are independent replays of one admitted 15.5-million-cell case with existing
+production references, not distinct new training examples. The original pair is
+retained/excluded after another checkout's GPU check appeared; replacement trials
+retain 106 ownership samples. All 70 accepted executions, including excluded
+observations, preserve their gates/provenance and have terminal worker groups.
+emmettl/bombcad-work#59 remains open for integration beyond reference replay and
+cost validation across distinct admitted long-running cases; broader admission
+remains separate. The CUDA load also retains bounded rate-consistency evidence
+for emmettl/bombcad-work#64, without claiming reboot verification.

@@ -1,0 +1,23 @@
+reference full-flat-replay-0 15466496
+reference full-flat-replay-1 15466496
+reference full-flat-replay-2 15466496
+reference full-flat-replay-3 15466496
+reference full-flat-replay-4 15466496
+reference full-flat-replay-5 15466496
+reference full-flat-replay-6 15466496
+reference full-flat-replay-7 15466496
+calibration 0 metal 23.413
+calibration 0 cuda 83.841
+calibration 1 cuda 85.984
+calibration 1 metal 22.87
+calibration 2 metal 23.145
+calibration 2 cuda 84.255
+policy 0 metal 201.594 [('full-flat-replay-0', 'metal'), ('full-flat-replay-1', 'metal'), ('full-flat-replay-2', 'metal'), ('full-flat-replay-3', 'metal'), ('full-flat-replay-4', 'metal'), ('full-flat-replay-5', 'metal'), ('full-flat-replay-6', 'metal'), ('full-flat-replay-7', 'metal')]
+policy 0 auto 171.305 [('full-flat-replay-0', 'metal'), ('full-flat-replay-1', 'metal'), ('full-flat-replay-2', 'metal'), ('full-flat-replay-3', 'cuda'), ('full-flat-replay-4', 'metal'), ('full-flat-replay-5', 'metal'), ('full-flat-replay-6', 'metal'), ('full-flat-replay-7', 'metal')]
+Inspect retained live-process and queue worker identities before any continuation; an observation failure does not prove workers stopped.
+Traceback (most recent call last):
+  File "/private/tmp/bombcad-full-queue/study.py", line 66, in <module>
+    row=trial(f'policy-{repetition}-{policy}',plan);row.update(repetition=repetition,policy=policy);report['trials'].append(row);save();print('policy',repetition,policy,round(row['controllerSeconds'],3),[(k,v['backend']) for k,v in row['receipts'].items()],flush=True)
+  File "/private/tmp/bombcad-full-queue/study.py", line 18, in trial
+    if not quiet(before):raise RuntimeError('external workload before '+name+': '+str(before))
+RuntimeError: external workload before policy-1-auto: {'mac': {'status': 'memory budget 26 GB of 36 GB RAM\nslot 1: free\nslot 2: pid 1863 since 16:45 in great-yalow-c74271 (2 GB): /Applications/Xcode.app/Contents/Developer/usr/bin/python3 Scripts/check-affected.py check-steps\nslot 3: free\nslot 4: free\nslot 5: free\n', 'pressure': '1', 'budgetGB': 26.0, 'declaredGB': 2.0, 'regularFree': True, 'smallFree': True, 'waiting': False, 'available': True}, 'pc': {'available': True, 'owner': None, 'staleLock': False, 'freeBytes': 11715739648, 'utilization': 0, 'deviceIndex': 0}}
