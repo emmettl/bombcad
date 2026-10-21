@@ -283,7 +283,8 @@ extension FacadeLoadSurrogate {
                 ? SDOFResponseMemo.remembering(in: memo) {
                     structureProbabilities(
                         estimate, mass: mass, cellSize: cellSize, constructions: constructions,
-                        uncertainty: uncertainty)
+                        uncertainty: uncertainty,
+                        learnedPeaks: estimate.features.contains { $0.learnedPeakFactor != 1 })
                 }.0.chances : []
             var look = Look(
                 estimate: estimate, damage: damage, glass: glass, structure: structure, charge: charge,

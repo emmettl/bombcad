@@ -138,7 +138,7 @@ enum WallCalibration {
                 uncertainty: FacadeLoadSurrogate.Uncertainty(masses: masses, samples: draws),
                 coefficients: coefficients, strengthScatter: false,
                 loadFactor: factor.map { ($0, $0) }, scatterScale: factor == nil ? nil : (scale, scale),
-                impulseRatio: ratio == 1 ? nil : (ratio, ratio))
+                impulseRatio: ratio == 1 ? nil : (ratio, ratio), learnedPeaks: learned != nil)
             print(
                 String(
                     format:

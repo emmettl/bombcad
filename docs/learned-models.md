@@ -1170,6 +1170,14 @@ The recommendation: keep it off until the release is published and the download 
 Then make it the default for glass and walls together, and settle the walls' factor (×0.8 against ×1.0) on its own numbers above.
 Nothing has been changed by default.
 
+**The walls' factor, settled on 22 October 2026** (emmettl/bombcad-work#19). Against Beirut's ten
+near boxes rerun on air refined to 2 m, the model's walls take the peak ×1.15 and the impulse
+×0.95. That is the one choice there that passes the tenths test: concrete walls moderate or worse
+at skill 0.66, against the surrogate's 0.59 at its own ×1.3. The ×0.8 above was chosen against the
+4 m runs, which read the walls' peaks 13–19% low
+([the first look](surrogate-first-look.md#the-walls-chances-re-judged-on-2-m-references-22-october-2026)).
+The option itself stays off by default.
+
 ## Round 3: the 4 m runs' resolution bias (21 October 2026)
 
 emmettl/bombcad-work#69, stage 1. Every training run is on 4 m cells. 3afdd0c9 found that 4 m runs

@@ -37,7 +37,7 @@ extension FacadeLoadSurrogate {
         return [
             String(
                 format:
-                    "Walls' and roofs' chances, against Beirut's near runs at ten yields, each held out: Brier skill "
+                    "Walls' and roofs' chances, against Beirut's near runs at ten yields on air refined to 2 m: Brier skill "
                     + "%.2f for concrete walls damaged, each tenth of chance within %.1f of the runs; %.2f for roofs, "
                     + "their middle chances %.2f–%.2f low (the unsafe side), with a load factor fitted to those runs; "
                     + "masonry's high. Drawn over an assumed strength scatter. Heavy damage is illustrative for "
@@ -59,17 +59,22 @@ extension FacadeLoadSurrogate {
         }
     }
 
-    /// The factor on a building's walls' and roof's loads, and the scale on their load scatter, by
-    /// what the walls are built of: calibrated against Beirut's near runs at ten yields from 0.15 to
-    /// 1.5 kt, each held out in turn (`scenebench wall-calibrate`, on the façade terms with the
-    /// close-in branch; docs/glass-probability.md, "Walls and roofs"). Concrete walls took ×1.0 with
-    /// the whole scatter in nine folds of ten; the same walls as stone ×1.0 with ½ (nine folds);
-    /// roofs ×1.3 with ½ in all ten (their own terms read low).
-    public static func structureCalibration(walls kind: EnvelopeConstruction.Kind) -> (
-        walls: (load: Double, scatter: Double), roof: (load: Double, scatter: Double)
+    /// The factors on a building's walls' and roof's peak and impulse, and the scale on their load
+    /// scatter, by what the walls are built of, and with `learned` for walls whose ground-floor
+    /// peaks are the learned field model's (emmettl/bombcad-work#67): calibrated against Beirut's
+    /// near boxes at ten yields from 0.15 to 1.5 kt, refined to 2 m below the buildings' tops, each
+    /// yield held out in turn (`scenebench wall-calibrate`; docs/glass-probability.md, "Walls and
+    /// roofs"). Against them concrete walls took ×1.3 with the whole scatter in nine folds of ten;
+    /// with the field model, the peak ×1.15 and the impulse ×0.95, which alone passed the tenths
+    /// test; stone ×1.0 with ½ and roofs ×1.3 with ½, as on 4 m cells. The 4 m runs read the walls'
+    /// peaks 13–19% low at 400–600 m of 0.5 kt, and had given concrete ×1.0 (emmettl/bombcad-work#19).
+    public static func structureCalibration(walls kind: EnvelopeConstruction.Kind, learned: Bool = false) -> (
+        walls: (peak: Double, impulse: Double, scatter: Double),
+        roof: (peak: Double, impulse: Double, scatter: Double)
     ) {
-        let walls: (load: Double, scatter: Double) = kind == .unreinforcedMasonry ? (1.0, 0.5) : (1.0, 1.0)
-        return (walls, (1.3, 0.5))
+        let walls: (peak: Double, impulse: Double, scatter: Double) =
+            kind == .unreinforcedMasonry ? (1.0, 1.0, 0.5) : learned ? (1.15, 0.95, 1.0) : (1.3, 1.3, 1.0)
+        return (walls, (1.3, 1.3, 0.5))
     }
 
     /// The chances of every building in `estimate` (`FacadeLoadSurrogate.estimate`, a charge of
@@ -84,7 +89,7 @@ extension FacadeLoadSurrogate {
         uncertainty: Uncertainty = Uncertainty(), binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
         roofCoefficients: Coefficients? = .roofs, strengthScatter: Bool = true,
         loadFactor: (walls: Double, roof: Double)? = nil, scatterScale: (walls: Double, roof: Double)? = nil,
-        impulseRatio: (walls: Double, roof: Double)? = nil
+        impulseRatio: (walls: Double, roof: Double)? = nil, learnedPeaks: Bool = false
     ) -> (chances: [StructureChance], seconds: Double) {
         let start = ContinuousClock.now
         let draws = max(1, uncertainty.samples)
@@ -150,11 +155,19 @@ extension FacadeLoadSurrogate {
                     let wallSD = strengthScatter ? strengthLogSD(construction.walls) : 0
                     let roofSD = strengthScatter ? strengthLogSD(construction.roof) : 0
                     // The calibration for what its walls are built of, unless given.
-                    let calibrated = structureCalibration(walls: construction.walls)
-                    let factors = loadFactor ?? (calibrated.walls.load, calibrated.roof.load)
+                    let calibrated = structureCalibration(walls: construction.walls, learned: learnedPeaks)
+                    let factors = loadFactor ?? (calibrated.walls.peak, calibrated.roof.peak)
                     let scales = scatterScale ?? (calibrated.walls.scatter, calibrated.roof.scatter)
-                    // The impulse's own factor over the load's, where given (1 otherwise: both alike).
-                    let ratios = impulseRatio ?? (1, 1)
+                    // The impulse's own factor over the peak's: given, or the calibration's unless a
+                    // load factor is given (then 1, both alike).
+                    let ratios =
+                        impulseRatio
+                        ?? (loadFactor != nil
+                            ? (1, 1)
+                            : (
+                                calibrated.walls.impulse / calibrated.walls.peak,
+                                calibrated.roof.impulse / calibrated.roof.peak
+                            ))
                     // Those that could be damaged at the scatters' high ends and the largest yield.
                     let possible = members[b].filter { n in
                         let component = estimate.components[n]

@@ -208,18 +208,26 @@ scatter in what the walls and roof can bear. That scatter is a log-normal on the
 components a run damages, which are its loads' upper tail; drawn, the counts can follow the run's
 ([the first look](surrogate-first-look.md#walls-and-roofs-20-october-2026)).
 
-**Calibrated** against Beirut's near boxes (to 1,320 m, 4 m cells, uncapped loads) at ten yields
-from 0.15 to 1.5 kt (`scenebench wall-calibrate`). Each yield is held out in turn, and its chances
-are taken at its own yield with the load factor and scatter scale that did best on the other nine.
-The judgement uses the façade terms with their close-in branch (emmettl/bombcad-work#4). The runs
-judge every wall at its nominal strength, so they check the load's scatter, not the strength's.
+**Calibrated** against Beirut's near boxes (to 1,320 m, uncapped loads) at ten yields from 0.15
+to 1.5 kt, on air refined to 2 m below the buildings' tops since 22 October 2026
+(`scenebench wall-calibrate`; emmettl/bombcad-work#19). Each yield is taken at its own yield with
+the settings below. The judgement uses the façade terms with their close-in branch
+(emmettl/bombcad-work#4). The runs judge every wall at its nominal strength, so they check the
+load's scatter, not the strength's.
 
-| Chance (2,053 buildings × 10 yields) | Settings chosen | Brier skill | Tenths, each within 0.1 of the runs |
+| Chance (2,053 buildings × 10 yields) | Settings | Brier skill | Tenths, each within 0.1 of the runs |
 |---|---|---|---|
-| Concrete walls, moderate or worse | loads ×1.0, the whole scatter (9 folds of 10) | 0.55 | pass |
-| Concrete walls, heavy or worse (illustrative) | as above | 0.52 | 0.3–0.4 and 0.6–0.7 off by 0.15–0.25 |
-| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ (9 folds) | 0.70 | 0.4–0.9 high by 0.09–0.15 |
-| Roofs, moderate or worse | loads ×1.3, scatter ×½ (all 10) | 0.75 | 0.5–0.8 low by 0.11–0.16 |
+| Concrete walls, moderate or worse | loads ×1.3, the whole scatter (the refit's choice in 9 folds of 10) | 0.59 | pass |
+| The same with the learned field model's ground-floor peaks | peak ×1.15, impulse ×0.95, the whole scatter | 0.66 | pass |
+| Concrete walls, heavy or worse (illustrative) | as the first | 0.49 | 0.1–0.6 high by 0.10–0.25 |
+| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.70 | 0.4–0.9 high by up to 0.18 |
+| Roofs, moderate or worse | loads ×1.3, scatter ×½ | 0.74 | 0.4–0.9 low by 0.10–0.18 |
+
+**Why the walls' factor changed.** The 4 m runs the chances were first calibrated on read the walls'
+peaks 13–19% low at 400–600 m of 0.5 kt; the 2 m runs damage about twice as many concrete walls.
+Against the 4 m runs concrete took ×1.0 (skill 0.55); against the 2 m runs ×1.3. Stone and roofs
+took the same settings against both
+([the first look](surrogate-first-look.md#the-walls-chances-re-judged-on-2-m-references-22-october-2026)).
 
 - **Concrete walls' damage is calibrated.** It passes the protective-design report's test, each
   tenth holding 50 buildings or more within 0.1 of the share of runs.

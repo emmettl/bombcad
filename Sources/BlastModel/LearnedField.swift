@@ -33,8 +33,7 @@ public enum LearnedField {
     public static let standing: [String] = {
         let glass = ValidationTables.figure("learnedPeakGlass")
         let glassSkill = ValidationTables.figure("learnedPeakGlassSkill")
-        let walls = ValidationTables.figure("learnedPeakWalls")
-        let wallsApp = ValidationTables.figure("learnedPeakWallsApp")
+        let walls = ValidationTables.figure("learnedWallsRefined")
         return [
             String(
                 format:
@@ -42,11 +41,10 @@ public enum LearnedField {
                     + "district runs, judged through this estimate on Beirut's 50 runs, a city it never saw. With its "
                     + "peak at the ground-floor façade strips, glass by side was exactly right on %.3f of sides against "
                     + "the surrogate's %.3f (Heidke skill %.2f against %.2f). Concrete walls damaged moderately or "
-                    + "worse: Brier skill %.2f against %.2f at the app's load factor, %.2f against %.2f with the "
-                    + "factor the judge chose (×0.8). Roofs, upper storeys and the impulse stay on the surrogate.",
-                glass.high, glass.low, glassSkill.high, glassSkill.low, wallsApp.high, wallsApp.low,
-                walls.high,
-                walls.low),
+                    + "worse, against Beirut's ten near boxes on air refined to 2 m, each at its own calibration (the "
+                    + "model's walls' peak ×1.15, impulse ×0.95): Brier skill %.2f against the surrogate's %.2f. "
+                    + "Roofs, upper storeys and the impulse stay on the surrogate.",
+                glass.high, glass.low, glassSkill.high, glassSkill.low, walls.high, walls.low),
             "It learned one city's runs and made-up districts on 4 m cells, with the charge on the ground: "
                 + "other cells, other cities and other charges are beyond what it was judged on.",
         ]

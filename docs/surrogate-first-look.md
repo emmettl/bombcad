@@ -624,6 +624,15 @@ The proposal, for the user to decide (no default changed):
 
 Refined runs over terrain read the impulse a little low ([#78](https://github.com/emmettl/bombcad-work/issues/78): 3–6% at 2 m). These walls go by the peak, so ×1.3 is if anything a lower bound.
 
+**Adopted on 22 October 2026** (the user's decision):
+- concrete walls ×1.3 on the surrogate. Taken every yield alike, it scores Brier 0.022 and skill
+  0.59, and passes the tenths test;
+- with the field model, its walls' peak ×1.15 and impulse ×0.95;
+- stone walls and roofs as they were.
+
+The standing's figures are re-derived from the 2 m references
+([validation](validation.md#the-walls-and-roofs-chances-against-beiruts-runs)).
+
 
 ## Using it
 

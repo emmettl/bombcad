@@ -10,17 +10,23 @@ extension ValidationTables {
         // Estimates beside a run, against BombCAD's own runs: the standing lines of
         // `FacadeLoadSurrogate`, `HybridFarField` and `ChargeInference` are worded from these.
         Figure(
-            id: "structureChancesSkill", low: 0.55, high: 0.75,
+            id: "structureChancesSkill", low: 0.59, high: 0.74,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
-            quote: "Brier skill 0.55 for concrete walls moderate or worse, 0.75 for roofs"),
+            quote: "Brier skill 0.59 for concrete walls moderate or worse, 0.74 for roofs"),
         Figure(
             id: "structureChancesUnderCall", low: 0.1, high: 0.1,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
             quote: "each tenth of chance within 0.1"),
         Figure(
-            id: "structureChancesRoofLow", low: 0.11, high: 0.16,
+            id: "structureChancesRoofLow", low: 0.10, high: 0.18,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
-            quote: "low by 0.11–0.16"),
+            quote: "low by 0.10–0.18"),
+        // The walls' chances with the learned field model's peaks, at its own calibration, against
+        // the surrogate's at its own, on the 2 m references (emmettl/bombcad-work#19).
+        Figure(
+            id: "learnedWallsRefined", low: 0.59, high: 0.66,
+            document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
+            quote: "0.66 with the learned field model's peaks, against 0.59"),
         Figure(
             id: "surrogateCloseInShielded", low: 1.4, high: 1.7,
             document: "surrogate-first-look.md#close-in-among-buildings-21-october-2026",

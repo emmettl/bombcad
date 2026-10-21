@@ -6386,17 +6386,21 @@ out: fitted to one event's survey, illustrative elsewhere.
 The [walls' and roofs' chances](glass-probability.md#walls-and-roofs), each building's chance of
 its walls damaged moderately or worse and of its roof damaged moderately or worse, drawn over the
 yield, each side's load scatter and an assumed strength scatter. They are judged against Beirut's
-near boxes rerun uncapped at ten yields from 0.15 to 1.5 kt, each yield held out in turn and
-taken at its own yield, on the façade terms with the close-in branch:
+near boxes rerun uncapped at ten yields from 0.15 to 1.5 kt, on air refined to 2 m below the
+buildings' tops since 22 October 2026, each taken at its own yield, on the façade terms with the
+close-in branch. The 4 m runs they were first judged on read the walls' peaks 13–19% low at
+400–600 m of 0.5 kt (emmettl/bombcad-work#19; [the first look](surrogate-first-look.md#the-walls-chances-re-judged-on-2-m-references-22-october-2026)).
 
-- **Concrete walls, moderate or worse:** Brier skill 0.55 for concrete walls moderate or worse,
-  0.75 for roofs; for the walls, each tenth of chance within 0.1 of the share of runs, which
-  passes the protective-design report's test. No load factor was needed.
-- **Roofs:** their middle chances are low by 0.11–0.16 (the unsafe side), even with a load factor
+- **Concrete walls, moderate or worse:** Brier skill 0.59 for concrete walls moderate or worse,
+  0.74 for roofs; for the walls, each tenth of chance within 0.1 of the share of runs, which
+  passes the protective-design report's test. The walls' loads take ×1.3 (×1.0 against the 4 m
+  runs). With the learned field model's ground-floor peaks, its walls' peak ×1.15 and impulse
+  ×0.95: 0.66 with the learned field model's peaks, against 0.59, and the test passes too.
+- **Roofs:** their middle chances are low by 0.10–0.18 (the unsafe side), even with a load factor
   of ×1.3 fitted to the runs. The test fails.
-- **Stone:** each building taken as 0.5 m stone, walls heavy or worse at skill 0.70. Its middle
-  chances are high by up to 0.15 (the safe side). The test fails.
-- **Heavy and failure:** concrete walls heavy or worse score skill 0.52 but fail the test, so they
+- **Stone:** each building taken as 0.5 m stone, walls heavy or worse at skill 0.70, its factors as
+  on 4 m cells. Its middle chances are high by up to 0.18 (the safe side). The test fails.
+- **Heavy and failure:** concrete walls heavy or worse score skill 0.49 but fail the test, so they
   are illustrative. No chance of failure is given: before the close-in branch, the roofs' read
   far too high (skill −0.48).
 
