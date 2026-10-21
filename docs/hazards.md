@@ -232,7 +232,9 @@ not a probe.
   read low.
 - K-factor distances: the primary charge only, as a bare charge in the open; additional charges
   are not added.
-- Not for medical triage or casualty estimates.
+- Not for medical triage or casualty estimates. The quick estimate's [people in the
+  scene](people-in-the-scene.md) put people in the buildings and give the people hurt, as an
+  illustration only: on Beirut 2020 its counts read 4 to 12 times high.
 
 ## Future work
 

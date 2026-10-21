@@ -57,7 +57,9 @@ extension SimulationModel {
 
     /// What a preview works out: only what the view is coloured by.
     var previewParts: FacadeLoadSurrogate.Prepared.Parts {
-        envelopeColouring.isChance ? .glass : envelopeColouring.isStructure ? .structure : .damage
+        // The people hurt follow a drag on the glass's chances alone, their largest part.
+        envelopeColouring.isChance || envelopeColouring == .peopleHurt
+            ? .glass : envelopeColouring.isStructure ? .structure : .damage
     }
 
     /// Asks for a look at the scene with the charge where it is now: a preview while dragging,
@@ -201,6 +203,11 @@ extension SimulationModel {
             }
             // The close calls refined for this scene, back in place over it.
             mergeRefinedCloseCalls()
+        }
+        // The people follow the glass's chances: a preview without them leaves the last ones.
+        if parts.contains(.glass) {
+            peopleUsesStructure = parts.contains(.structure)
+            refreshPeople()
         }
         applyEnvelopeDamageColours()
     }

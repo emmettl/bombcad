@@ -149,6 +149,16 @@ reach these: its searches ran out first.
 | Blast along a street at distance | Overpressure and impulse measured far along a street canyon or between rows of buildings, tens of street widths from the charge, at gauges on the ground and on the façades, beside the same charge in the open: how much the street channels or sheds the wave as it weakens. The street experiments found on 20 October (Chalmers at 1:5, Fouchier at 1:200, Smith et al. at 1:50, Sheffield's MicroBlast) are of intersections and short streets close to the charge | Whether the [hybrid mode](hybrid-far-field.md)'s far field, which loads each façade from the open-air surrogate, should channel along streets beyond the hand-over |
 | Brick walls' blast resistance once cracked | Unreinforced brick walls (a cavity wall's 102.5 mm leaves, a solid 215 mm wall) built between returns or other stiff ends, blasted past cracking: deflection histories to the end of the motion, whether each wall stood, the axial load on it and how stiff its ends were, so that arching across between the returns, arching up between floors and rocking under the load above can be told apart | Whether the [terraced houses'](validation.md#terraced-houses-against-wartime-bomb-damage) cracked front walls should stand, as most surveyed houses did; without it any resistance added would be fitted to that judge |
 
+**For people in the scene** (21 October 2026, [people-in-the-scene.md](people-in-the-scene.md#the-decision-this-records)):
+injuries by place for one event, which no open record found gives. Each would let the injury
+counts be judged building by building or by zone:
+
+| Document | Where | Blocked here by | Save to `/Volumes/StudioData/bombcad/…` | Unlocks |
+|---|---|---|---|---|
+| Mallonee et al., Physical injuries and fatalities resulting from the Oklahoma City bombing, *JAMA* 276 (1996) 382–387 | [JAMA](https://jamanetwork.com/journals/jama/articlepdf/406032/jama_276_5_021.pdf) | Paywall | `data/Mallonee1996/` | Occupants, injured and killed in each of the Murrah building's neighbours (38–100%), with their distances |
+| The AZF explosion's health effects, the population of Toulouse (Rivière et al., 2006) and the workers within 3 km (Diène et al., 2007) | [Santé publique France](https://www.santepubliquefrance.fr/en/regions-et-territoires/occitanie/reportsummary/health-effects-explosion-azf-plant-september-21-2001-final-report-health-effects-population-toulouse) | Not tried: summaries only seen | `data/AZF2001/` | Self-reported injuries by zone round a 20–40 t event |
+| Al-Hajj et al., Spatial and contextual factors influencing injury patterns and severity resulting from the 2020 Beirut blast, *Scientific Reports* 15 (2025) | [Southampton ePrints](https://eprints.soton.ac.uk/506779) | HTTP 403 | `data/AlHajj2025/` | Beirut's injured by distance, place and orientation to the port |
+
 ## To request
 
 Datasets in no open document, which have to be asked of their owners. Drafts, with contacts

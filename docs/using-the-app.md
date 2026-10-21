@@ -72,6 +72,15 @@ the option stays off and the sidebar says why. To use a file you have already, s
 `defaults write dev.bombcad.BombCAD quickEstimate.learnedFieldWeights <path>`. With the option on,
 a drag's preview runs the network again at each place of the charge.
 
+**People in the scene**, under the envelope damage once a quick estimate has the glass's chances,
+places people in each building by its use (from its map tags; untagged buildings take the use you
+choose) and the time of day, and gives the people the estimate would expect hurt, with a band: by
+glass, the walls and roofs, and the blast itself. **Colour Buildings by People Hurt** colours
+each building by the share of its people hurt, and follows a drag on the glass's chances. It is
+illustrative and says so first: on Beirut 2020 its counts read 4 to 12 times the injuries and
+deaths recorded, so compare places of the charge and protections with it, not counts
+([people in the scene](people-in-the-scene.md)).
+
 The sidebar has two tabs. **Run** picks a built-in layout, the grid, the charge and the display.
 The layouts are open ground, a single building, a street canyon and a courtyard (rigid blocks);
 a cantilever wall, a single-storey building, the same building behind a blast wall, a two-storey

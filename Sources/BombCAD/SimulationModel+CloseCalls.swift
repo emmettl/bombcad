@@ -21,6 +21,7 @@ extension SimulationModel {
         case .wallsModerate: [.wallsModerate]
         case .wallsHeavy: [.wallsHeavy]
         case .roofModerate: [.roofModerate]
+        case .peopleHurt: [.blownOut]
         case .damage, .couldFlip: ThresholdRefinement.Quantity.damage
         }
     }
@@ -111,6 +112,7 @@ extension SimulationModel {
         if progress.refined.buildings.count > (closeCallRefined?.buildings.count ?? 0) {
             closeCallRefined = progress.refined
             mergeRefinedCloseCalls()
+            refreshPeople()
             applyEnvelopeDamageColours()
         }
     }
@@ -128,6 +130,7 @@ extension SimulationModel {
         if final.refined.buildings.count > (closeCallRefined?.buildings.count ?? 0) {
             closeCallRefined = final.refined
             mergeRefinedCloseCalls()
+            refreshPeople()
             applyEnvelopeDamageColours()
         }
         let refined = final.refined.buildings.count

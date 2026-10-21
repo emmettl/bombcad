@@ -96,6 +96,8 @@ extension StandingTable {
         "EnvelopeConstruction.facadePaneM": .input,
         "EnvelopeConstruction.glazing": .input,
         "EnvelopeConstruction.sideGlazing": .input,
+        // Who is in the building (`OccupantInjury`): no result the standing covers depends on it.
+        "EnvelopeConstruction.use": .input,
         "EnvelopeConstruction.source": .input,
         "EnvelopeConstruction.detail": .input,
         "EnvelopeConstruction.barsInBothFaces": .input,

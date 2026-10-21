@@ -90,6 +90,10 @@ enum SceneBench {
             try DragTime.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "people" {
+            try PeopleEstimate.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "damage-yield" {
             try DamageYield.run(Array(args.dropFirst()))
             return

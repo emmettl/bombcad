@@ -129,6 +129,7 @@ struct SidebarView: View {
             EnvelopeExposureSection(model: model)
             InspectedEnvelopeSection(model: model)
             EnvelopeDamageSection(model: model)
+            PeopleSection(model: model)
             FarFieldSection(model: model)
 
             if let summary = model.structureSummary {

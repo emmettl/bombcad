@@ -666,6 +666,17 @@ final class SimulationModel {
     /// Each building's chances that its walls and roof are damaged, from the quick estimate's
     /// draws (`FacadeLoadSurrogate.structureProbabilities`); empty without one.
     var envelopeStructureChances: [FacadeLoadSurrogate.StructureChance] = []
+    /// The people in the scene and those the quick estimate expects hurt (emmettl/bombcad-work#41,
+    /// `OccupantInjury`): illustrative; nil without the estimate's glass chances.
+    var peopleEstimate: OccupantInjury.Estimate?
+    /// What the people's figures assume: the time of day, a factor on the density, and the use of
+    /// buildings whose tags say none.
+    var occupancy = OccupantInjury.Assumptions() {
+        didSet { if occupancy != oldValue { refreshPeople() } }
+    }
+    /// Whether the walls' and roofs' chances shown are the look's own (a preview of the glass
+    /// alone leaves the last full look's, for another place of the charge).
+    @ObservationIgnored var peopleUsesStructure = true
     /// How far the quick estimate's charge may be off: its yield within this factor either way,
     /// nine times in ten; 1 for exactly the scene's.
     var quickEstimateYieldWithin = 1.5

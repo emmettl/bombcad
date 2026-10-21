@@ -24,13 +24,16 @@ public struct MapBuilding: Sendable, Equatable {
     public var minLevel: Float?
     /// The `building:material` tag, for its envelope's construction (`EnvelopeConstruction.fromMap`).
     public var material: String?
+    /// The `building:use` tag, where it says more than `kind` of who is in it (`BuildingUse`).
+    public var use: String?
 
     public init(
         id: String, name: String? = nil, kind: String = "yes", rings: [[SIMD2<Double>]], height: Float? = nil,
         minHeight: Float? = nil, levels: Float? = nil, roofLevels: Float? = nil, minLevel: Float? = nil,
-        material: String? = nil
+        material: String? = nil, use: String? = nil
     ) {
         self.material = material
+        self.use = use
         self.id = id
         self.name = name
         self.kind = kind
@@ -92,7 +95,8 @@ public struct MapBuilding: Sendable, Equatable {
             id: id, name: tags["name"], kind: kind, rings: rings, height: tags["height"].flatMap(length),
             minHeight: tags["min_height"].flatMap(length), levels: tags["building:levels"].flatMap(length),
             roofLevels: tags["roof:levels"].flatMap(length),
-            minLevel: tags["building:min_level"].flatMap(length), material: tags["building:material"])
+            minLevel: tags["building:min_level"].flatMap(length), material: tags["building:material"],
+            use: tags["building:use"])
     }
 }
 
@@ -551,6 +555,8 @@ extension Scenario {
                 EnvelopeConstruction.fromMap(objectID: id, material: building.material)
                 ?? .assumed(objectID: id)
             construction.glazing = GlazingMix.forMapBuilding(kind: building.kind, height: top - bottom)
+            // Who is in it, where its tags say (emmettl/bombcad-work#41); nil for an untagged `yes`.
+            construction.use = BuildingUse(mapTag: building.use) ?? BuildingUse(mapTag: building.kind)
             constructions.append(construction)
             copy.envelopeSources =
                 (copy.envelopeSources ?? []) + [

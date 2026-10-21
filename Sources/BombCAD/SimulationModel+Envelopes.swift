@@ -92,6 +92,11 @@ extension SimulationModel {
             }
             judgeEnvelopeDoubt()
         }
+        if envelopeColouring == .peopleHurt, peopleEstimate != nil {
+            // Each building by the share of its people expected hurt: illustrative.
+            renderer?.setEnvelopeDamage(peopleCodes())
+            return
+        }
         if envelopeColouring.isStructure, !envelopeStructureChances.isEmpty {
             // Each building by its walls' or roof's chance, the same on every side.
             renderer?.setEnvelopeDamage(
@@ -210,9 +215,11 @@ extension SimulationModel {
         case wallsModerate = "Chance walls damaged (moderate or worse)"
         case wallsHeavy = "Chance walls heavy or worse (illustrative for concrete)"
         case roofModerate = "Chance roof damaged (moderate or worse)"
+        /// Each building by the share of its people expected hurt (`OccupantInjury`): illustrative.
+        case peopleHurt = "Share of people hurt (illustrative)"
         var id: Self { self }
         /// Each building side's glass chance, from the quick estimate or the far field.
-        var isChance: Bool { self != .damage && self != .couldFlip && !isStructure }
+        var isChance: Bool { self != .damage && self != .couldFlip && self != .peopleHurt && !isStructure }
         /// Each building's walls' or roof's chance, from the quick estimate.
         var isStructure: Bool { self == .wallsModerate || self == .wallsHeavy || self == .roofModerate }
     }
@@ -260,6 +267,7 @@ extension SimulationModel {
         refinedBuildings = []
         envelopeGlassChances = []
         envelopeStructureChances = []
+        peopleEstimate = nil
         envelopeLoads = loads
         applyEnvelopeDamageColours()
     }

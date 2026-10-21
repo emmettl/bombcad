@@ -86,6 +86,9 @@ public struct EnvelopeConstruction: Codable, Hashable, Sendable {
     /// probability (`GlazingMix`): what the building's glass fractions come from. Nil for none
     /// (map buildings are given one by their tag and height).
     public var glazing: GlazingMix?
+    /// What the building is used for, for the people in it (`BuildingUse`, `OccupantInjury`): from
+    /// a map building's tags, or chosen; nil where nothing says (left out of the JSON).
+    public var use: BuildingUse?
     /// A side's own windows where they differ from the building's (`glazing`), by the side
     /// (`sideKey`): what a protective plan changes side by side. Nil for none (left out of the JSON).
     public var sideGlazing: [String: GlazingMix]?
