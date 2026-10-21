@@ -83,7 +83,8 @@ extension FacadeLoadSurrogate {
         constructions: (UUID) -> EnvelopeConstruction,
         uncertainty: Uncertainty = Uncertainty(), binS: Double = 0.7e-3, coefficients: Coefficients = .fitted,
         roofCoefficients: Coefficients? = .roofs, strengthScatter: Bool = true,
-        loadFactor: (walls: Double, roof: Double)? = nil, scatterScale: (walls: Double, roof: Double)? = nil
+        loadFactor: (walls: Double, roof: Double)? = nil, scatterScale: (walls: Double, roof: Double)? = nil,
+        impulseRatio: (walls: Double, roof: Double)? = nil
     ) -> (chances: [StructureChance], seconds: Double) {
         let start = ContinuousClock.now
         let draws = max(1, uncertainty.samples)
@@ -152,6 +153,8 @@ extension FacadeLoadSurrogate {
                     let calibrated = structureCalibration(walls: construction.walls)
                     let factors = loadFactor ?? (calibrated.walls.load, calibrated.roof.load)
                     let scales = scatterScale ?? (calibrated.walls.scatter, calibrated.roof.scatter)
+                    // The impulse's own factor over the load's, where given (1 otherwise: both alike).
+                    let ratios = impulseRatio ?? (1, 1)
                     // Those that could be damaged at the scatters' high ends and the largest yield.
                     let possible = members[b].filter { n in
                         let component = estimate.components[n]
@@ -163,7 +166,8 @@ extension FacadeLoadSurrogate {
                         return level(
                             n, construction: construction, building: b, mass: largest,
                             peak: exp(scale * (scatter?.peak ?? 0)) * weak,
-                            impulse: exp(scale * (scatter?.impulse ?? 0)) * weak) > 0
+                            impulse: exp(scale * (scatter?.impulse ?? 0)) * weak
+                                * max(roof ? ratios.roof : ratios.walls, 1)) > 0
                     }
                     guard !possible.isEmpty else {
                         out[b] = StructureChance(owner: owners[b])
@@ -203,7 +207,8 @@ extension FacadeLoadSurrogate {
                             let weak = roof ? roofWeak * factors.roof : wallWeak * factors.walls
                             let reached = level(
                                 n, construction: construction, building: b, mass: mass,
-                                peak: exp(errors.x) * weak, impulse: exp(errors.y) * weak)
+                                peak: exp(errors.x) * weak,
+                                impulse: exp(errors.y) * weak * (roof ? ratios.roof : ratios.walls))
                             if roof {
                                 worstRoof = max(worstRoof, reached)
                             } else {

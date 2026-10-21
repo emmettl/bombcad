@@ -581,6 +581,50 @@ near the walls. The interim alternative is a wall peak factor of about ×1.15 wi
 ×0.95, in place of ×1.0 on both.
 
 
+### The walls' chances re-judged on 2 m references (22 October 2026)
+
+Beirut's ten near boxes (0.15–1.5 kt, the 4 m layout to 1,320 m, 3 s) were run again with the air
+refined to 2 m below the buildings' tops (`district-compare --refine 2 --ceiling auto`). They took
+24–168 s of air each, and no pool ran out. The walls' and roofs' chances were then re-judged
+against them (`wall-calibrate`, each yield held out, 50 draws).
+
+The choices judged:
+- **today's:** concrete walls ×1.0, scatter ×1; stone ×1.0, scatter ×0.5; roofs ×1.3, scatter ×0.5;
+- **the interim:** walls' peak ×1.15 with the impulse ×0.95;
+- **a refit:** over loads ×0.8–1.5, scatters ×0.5 and 1, and the impulse's own ×0.83 or 1.
+
+Each was judged with the learned field model's ground-floor peaks off and on (#67,
+`--learned`).
+
+**Concrete walls, moderate or worse** (2,053 buildings × 10 yields; Brier, skill, the tenths test):
+
+| References | Model | Today's | Interim | Refit (its choice) |
+|---|---|---|---|---|
+| 4 m | surrogate | 0.013, 0.57, fail | 0.014, 0.51, fail | 0.013, 0.56, fail (×1.0, 8 of 10) |
+| 4 m | field model | 0.012, 0.59, fail | 0.019, 0.36, fail | 0.010, 0.64, fail (×1.0, scatter ×0.5, impulse ×0.83) |
+| 2 m | surrogate | 0.028, 0.48, fail | 0.024, 0.56, fail | **0.023, 0.59**, fail (**×1.3**, 9 of 10) |
+| 2 m | field model | 0.021, 0.62, fail | **0.018, 0.66, pass** | 0.019, 0.66, fail (**×1.3**, scatter ×0.5, impulse ×0.83) |
+
+- **The 2 m runs damage about twice as many concrete walls.** The Brier of giving each building
+  the mean is 0.055 against 0.029. At 1.5 kt they fail 43 walls where the 4 m runs fail 32.
+- **Against them, both models' walls want a load about 30% higher.** The surrogate's refit takes
+  ×1.3 where it took ×1.0 against the 4 m runs. The field model's peak needs the same correction:
+  ×1.3 against ×1.0, because it learned 4 m fields.
+- **Concrete heavy or worse barely moves:** 0.53 today, 0.56 interim and 0.51 refit for the
+  surrogate; 0.60 for the field model.
+- **Stone walls don't move:** the refit keeps ×1.0 with scatter ×0.5 against both references
+  (skill 0.70–0.71), and the interim's ×1.15 makes them worse (0.47–0.51). Stone is damaged at
+  both resolutions alike.
+- **Roofs don't move:** ×1.3 with scatter ×0.5 against both (skill 0.74–0.75).
+
+The proposal, for the user to decide (no default changed):
+- concrete walls' load ×1.3 on the surrogate;
+- with the field model on, its walls ×1.3 with scatter ×0.5 and the impulse ×0.83;
+- stone walls and roofs as they are.
+
+Refined runs over terrain read the impulse a little low ([#78](https://github.com/emmettl/bombcad-work/issues/78): 3–6% at 2 m). These walls go by the peak, so ×1.3 is if anything a lower bound.
+
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings

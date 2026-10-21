@@ -149,10 +149,19 @@ enum WallConvergence {
                 probes.append(("\(objects[id]?.name ?? "?") \(name)", SIMD3(p.x, p.y, ground + 2)))
             }
         }
+        // `--flat`: the ground flat at the charge's foot, the terrain taken away (with `--empty`, the
+        // incident wave without its cut cells).
+        if args.contains("--flat") {
+            scene.terrain = nil
+            scene.charge.position.z = 0
+            probes = probes.map { ($0.name, SIMD3($0.at.x, $0.at.y, 2)) }
+        }
         if empty {
             for object in scene.envelopeObjects { try scene.removeObject(id: object.id) }
         }
         var configuration = SolverConfiguration.recommended
+        // `--staircase`: the terrain in whole cells, not cut.
+        configuration.terrainCutCells = !args.contains("--staircase")
         if levels > 0 {
             configuration.refinement = 2
             configuration.refinementLevels = levels
