@@ -1,0 +1,465 @@
+{
+  "scope": "Observed accepted setters, not a proof of the feedback mechanism or a normalization test.",
+  "pairedCalls": [
+    {
+      "pid": 21238,
+      "comm": "read-clock-stat",
+      "tkid": 0,
+      "modes": 0,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": 696344,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -795624,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 31664,
+      "comm": "systemd-timesyn",
+      "tkid": 0,
+      "modes": 8253,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -1224115,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -1997826,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 21239,
+      "comm": "read-clock-stat",
+      "tkid": 0,
+      "modes": 0,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -1822081,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -1058674,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -788786,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10048,
+      "freq": -2482157,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 21240,
+      "comm": "read-clock-stat",
+      "tkid": 0,
+      "modes": 0,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": 1096174,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": 361658,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 31664,
+      "comm": "systemd-timesyn",
+      "tkid": 0,
+      "modes": 8253,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -343547,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -1345918,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 21241,
+      "comm": "read-clock-stat",
+      "tkid": 0,
+      "modes": 0,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -1204422,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -160824,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 21242,
+      "comm": "read-clock-stat",
+      "tkid": 0,
+      "modes": 0,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -185679,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": 8360294,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": 1579019,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": 1792400,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 31664,
+      "comm": "systemd-timesyn",
+      "tkid": 0,
+      "modes": 8253,
+      "result": 0
+    },
+    {
+      "pid": 21243,
+      "comm": "read-clock-stat",
+      "tkid": 0,
+      "modes": 0,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": 27292,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10044,
+      "freq": -3012982,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10044,
+      "freq": 9491805,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 16386,
+      "tick": 10046,
+      "freq": -1935655,
+      "result": 0
+    },
+    {
+      "pid": 239,
+      "comm": "chronyd",
+      "tkid": 0,
+      "modes": 28,
+      "result": 0
+    }
+  ],
+  "acceptedTickUpdates": 22,
+  "tickValues": [
+    10044,
+    10046,
+    10048
+  ],
+  "tickSetterPIDs": [
+    239
+  ],
+  "capturedCallsAllPaired": true,
+  "initialSample": {
+    "rawSeconds": 4.804099444299936e-05,
+    "state": {
+      "queryModes": 0,
+      "returnState": 0,
+      "status": 0,
+      "tickMicroseconds": 10046,
+      "frequencyScaledPPM": 7619872,
+      "frequencyPPM": 116.270019531,
+      "offset": -9127,
+      "timeConstant": 1,
+      "precision": 1,
+      "toleranceScaledPPM": 32768000
+    }
+  },
+  "finalState": {
+    "queryModes": 0,
+    "returnState": 0,
+    "status": 0,
+    "tickMicroseconds": 10046,
+    "frequencyScaledPPM": -1935655,
+    "frequencyPPM": -29.535751343,
+    "offset": -23615,
+    "timeConstant": 1,
+    "precision": 1,
+    "toleranceScaledPPM": 32768000
+  },
+  "cleanup": {
+    "instanceRemoved": true,
+    "ownedProbesRemoved": true,
+    "priorDefinitionsPreserved": true,
+    "globalControlsUnchanged": true,
+    "globalDefinitionsSHA256Before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "globalDefinitionsSHA256After": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

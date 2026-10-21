@@ -1,0 +1,2 @@
+{"ready": true, "pid": 84213, "group": "bombcad_clock_de4df3ad499f", "durationRawSeconds": 90}
+{"status": "complete", "cleanup": {"instanceRemoved": true, "ownedProbesRemoved": true, "priorDefinitionsPreserved": true, "globalControlsUnchanged": true, "globalDefinitionsSHA256Before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "globalDefinitionsSHA256After": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}}

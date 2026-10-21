@@ -1,0 +1,110 @@
+import json
+from pathlib import Path
+root=Path(__file__).resolve().parent;out=Path('Benchmarks/HeterogeneousCompute/2026-10-21-pinned-control');r=json.loads((root/'analysis.json').read_text())
+def table(rows):
+ return '\n'.join('| '+x['job']+' | '+f"{x['baseline']['medianTotalSeconds']:.3f} / {x['candidate']['medianTotalSeconds']:.3f}"+' | '+f"{x['baseline']['medianSolverSeconds']:.3f} / {x['candidate']['medianSolverSeconds']:.3f}"+' |' for x in rows)
+text='''# Reusable pinned StepControl buffer experiment — 21 October 2026
+
+Decision: retain the production worker unchanged. The candidate reduces CPU allocation and
+pageable staging, but this study does not establish a reliable complete worker-process gain.
+Small process medians improve 1.6–6.4%, while a same-worker control itself shows apparent
+changes of about −3.1% to +3.3%, and solve changes do not consistently track process changes.
+Full flat and Beirut process differences are about −0.2% and +0.02%. Keep the exact candidate
+patch and evidence; close the scoped #65 experiment as a no-adoption outcome. Parent #60
+remains open for further control/launch work.
+
+## Candidate and timed comparisons
+
+The baseline is the production worker at `4c3754cd`. The candidate allocates one pinned CPU
+byte tensor of `sizeof(StepControl)` and one NumPy view, keeps both alive, copies control into
+that tensor with `non_blocking=False`, and reads it through a ctypes buffer view. It retains
+the existing device-wide synchronization. Every field, batch-stop/reset, startup CFL rounding,
+duration rule, error rule, numerical kernel, precision and cooling decision stays unchanged.
+The shared tensor/view lifetime is explicit; reset writes to the host view are uploaded by the
+same existing control-reset path.
+
+Three alternating fresh-process pairs run for each of six cases. The fixture and terrain jobs
+are the exact inputs from the preceding control-readback study, including 32³/64³ cases at
+0.05 s, terrain 256 × 256 × 44, flat 512 × 512 × 59 with a mapped start, and Beirut
+512 × 512 × 80. The same persistent previously primed PTX cache is configured for both
+workers. Generated numerical source remains
+`c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094`.
+
+| Case | Median worker process, baseline / pinned, s | Median solve, baseline / pinned, s |
+| --- | --- | --- |
+'''+table(r['summary'])+'''
+
+All individual observations, named phase medians, ranges and paired differences are retained.
+The unusually long initial cooling32 baseline process (2.568 s) is retained, not silently
+removed. Both worker process and nested stage timing use Linux CLOCK_MONOTONIC_RAW. Process
+totals include interpreter startup, worker setup, cache validation, allocation/transfers, solve,
+output and teardown; they exclude SSH deployment/retrieval, Mac preparation and queue overhead.
+No cross-backend speedup is inferred. Host clocks, services and settings were not changed by
+the benchmark.
+
+The existing PC session confirmed no reservation; every timing profile and diagnostic holds
+the existing shared GPU lock. RTX 3080 Ti / driver 617.42 / PyTorch 2.11.0+cu128 / CUDA 12.8.
+Before/after GPU observations and source/worker/job hashes are in the profiles. This is
+cooperative isolation, not elimination of all OS/CPU/power variation. No repository check or
+clock-service investigation ran on the PC during timing. The later service-history query is
+after all timing/diagnostic/audit handles were terminal.
+
+## Same-worker control
+
+The small-case process changes were not consistently reflected in solve changes, so a separate
+three-pair control runs the exact **same baseline file for both labels**, with equal worker
+hashes, matching caches and the same fresh-process/order policy. These 24 runs are distinct
+from the 36 pinned/baseline runs; they quantify ordinary variation, not another implementation.
+
+| Case | Median process, label baseline / label candidate, s | Median solve, same labels, s |
+| --- | --- | --- |
+'''+table(r['nullSummary'])+'''
+
+For example, the pinned blast64 solve medians are effectively unchanged despite the lower
+process median. Identical-worker process-label differences overlap some of the apparent
+pinned gains. Three repetitions do not support a precise small-effect statistical claim.
+The allocation change is real, but the observed process gains cannot reliably be attributed
+to it. No production adoption follows from counting fewer allocation events alone.
+
+## Separate allocation/API and failure controls
+
+A perturbed 568-step blast diagnostic is excluded from timing. The pinned variant reduces
+`aten::empty_strided` calls from 1,172 to 603 and `_to_copy` calls from 1,170 to 601. Detach
+calls fall 580 to 12. Device-to-pageable-host transfers fall 580 to 11, while pinned-host
+transfers rise 18 to 587: transfer count is unchanged. Both traces retain 571 device-wide
+waits and 1,188 stream waits, as required to isolate staging/allocation. Generated kernel
+counts and all retained numerical outputs match. Trace costs are perturbed and are not
+predictions of uninstrumented process speed.
+
+Both variants reject an incomplete-duration job with the same step-limit error and no output.
+Both reject a separately hashed synthetic finite input whose sound-speed arithmetic overflows
+(the first cell has positive normal density 1e-5 and energy 3e38), through the existing
+nonphysical-wave-speed guard, with no output. Failure controls are separate from timed cases.
+The longer trajectories cross the existing 512-step batch boundary, and flat retains its
+nonzero mapped start, covering control-view reuse through resets and startup/duration handling.
+
+## Correctness, retained evidence and conclusion
+
+A post-run audit rereads every actual raw/NumPy output for all 60 timed runs and verifies its
+hash and executed-worker/support/source provenance. Every saved final state/species/peak/impulse/
+receiver field, target/mask and dt history matches between workers and across repetitions for
+each case. Flat and Beirut match nine/twelve historical numerical-control hashes as well.
+This preserves the current CUDA results; it does not clear broader terrain/Beirut Metal
+admission failures or change #47/#62/#63 training policy. No index or bulk generation changes.
+
+- `small-terrain.json`, `districts.json`, `null-small.json`, `analysis.json`: all observations
+  and phase/paired/median summaries, with the same-worker control clearly separated.
+- `verification.json`: actual per-run file and executed provenance audit.
+- `diagnostic.json`, compressed traces and `controls.log`: allocation/API and failure evidence.
+- Exact baseline/candidate workers, patch, profiler, commands and setup/diagnostic/verification/
+  analysis/summary scripts are retained. Setup script is equivalent to the original inline setup.
+- `inputs.json` records all original input paths, metadata and hashes. Full inputs/outputs
+  remain at `bombcad-pinned-control-01a15d45` on the PC; district reproduction requires access
+  to the original data. Use new output directories and the existing shared lock.
+
+The experiment satisfies #65 with an explicit no-adoption result. Default synchronization and
+control storage remain unchanged. More consequential control batching/graph experiments under
+#60 need separate feasibility and correctness work; deployment/queue costs under #59 and
+clock-origin work under #64 remain separate open topics.
+'''
+(out/'summary.md').write_text(text)

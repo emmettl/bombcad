@@ -559,3 +559,30 @@ uncached-versus-cached experiment. The worker hashes its executed `__file__` und
 executed-worker hash differs from the selected file. This fixes aliased variants attesting an
 unexecuted canonical sibling. The next focused #60 experiment is pinned host StepControl buffer
 reuse with existing synchronization initially retained, separating allocation/staging from waits.
+
+
+## Pinned host control-buffer experiment
+
+The [#65 pinned-buffer study](../Benchmarks/HeterogeneousCompute/2026-10-21-pinned-control/summary.md)
+retains synchronization and reuses one pinned CPU tensor plus a ctypes view for StepControl.
+All 36 candidate/baseline runs are numerically exact; 24 same-worker controls and two failure
+controls per variant are separate. The API trace confirms reduced CPU allocation/pageable
+staging, while transfer and wait counts remain unchanged. Full flat/Beirut worker-process
+medians are 47.880/47.778 s and 68.590/68.603 s. Small apparent process gains overlap variation
+in the same-worker control and are not consistently reflected in solve time. The candidate
+is retained as a patch, with no production adoption. #65 is complete as an experiment; #60
+retains broader control/launch work. Existing numerical admission and default worker behavior
+remain unchanged.
+
+
+## Clock-adjustment actor identified
+
+The [bounded clock-caller trace](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-actor/summary.md)
+identifies chronyd making 22 accepted ADJ_TICK/frequency updates (ticks 10,044–10,048 µs),
+while Ubuntu systemd-timesyncd also updates the same kernel timekeeper. Version-matched WSL
+3.0.3 init source launches a VM-level PHC-based chronyd agent; system-distribution tracking
+reports PHC0 and about 4,576 ppm correction. Ubuntu service inventory alone misses that actor.
+All tracing state is removed and verified; no clock/service settings changed. This identifies
+the setter and duplicate controllers, not a proven feedback mechanism or completed fix. #64
+retains quiescent single-owner normalization and paired/longer validation. Raw elapsed reporting
+and existing numerical gates remain unchanged.

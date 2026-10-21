@@ -1,0 +1,11 @@
+{"status": "failed", "cleanup": {"instanceRemoved": true, "ownedProbesRemoved": true, "priorDefinitionsPreserved": true, "globalControlsUnchanged": true, "globalDefinitionsSHA256Before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "globalDefinitionsSHA256After": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}}
+Traceback (most recent call last):
+  File "/home/lemme/bombcad-clock-actor-01a15d45/trace.py", line 23, in <module>
+    append(f'p:{group}/adjust ntp_adjtimex tkid=%di:u32 modes=+{abi["modes"]}(%si):u32 tick=+{abi["tick"]}(%si):s64 freq=+{abi["freq"]}(%si):s64')
+  File "/home/lemme/bombcad-clock-actor-01a15d45/trace.py", line 16, in append
+    with probe.open('a') as f:f.write(text+'\n')
+         ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument

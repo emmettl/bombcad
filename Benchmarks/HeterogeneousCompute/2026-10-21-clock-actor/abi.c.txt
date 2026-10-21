@@ -1,0 +1,9 @@
+#include <stddef.h>
+#include <stdio.h>
+#include <linux/timex.h>
+int main(void) {
+    printf("{\"modes\":%zu,\"freq\":%zu,\"tick\":%zu,\"size\":%zu}\n",
+        offsetof(struct __kernel_timex, modes), offsetof(struct __kernel_timex, freq),
+        offsetof(struct __kernel_timex, tick), sizeof(struct __kernel_timex));
+    return 0;
+}

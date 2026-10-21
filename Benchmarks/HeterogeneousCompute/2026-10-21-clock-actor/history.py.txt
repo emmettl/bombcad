@@ -1,0 +1,24 @@
+"""Read clock-service history from the already-running experiment-owning WSL distro."""
+import json,subprocess
+from pathlib import Path
+exe='/mnt/c/Windows/System32/wsl.exe';distro='Ubuntu-24.04'
+def decode(b):return b.decode('utf-16le' if b'\0' in b[:100] else 'utf-8',errors='replace')
+def run(args):
+ p=subprocess.run(args,capture_output=True,timeout=25);return dict(returncode=p.returncode,stdout=decode(p.stdout),stderr=decode(p.stderr))
+names=run([exe,'--list','--running','--quiet'])
+assert distro in names['stdout'].split(),names
+prefix=[exe,'--distribution',distro,'--user','root','--exec']
+marker=run(prefix+['/usr/bin/test','-r','/home/lemme/bombcad-pinned-control-01a15d45/inputs.json']);assert marker['returncode']==0
+identity=run(prefix+['/usr/bin/id','-u']);assert identity['returncode']==0 and identity['stdout'].strip()=='0',identity
+commands={
+ 'kernel':['uname','-a'],
+ 'boot':['cat','/proc/sys/kernel/random/boot_id'],
+ 'packages':['dpkg-query','-W','-f','${Package} ${Version} ${Status}\n','systemd','systemd-timesyncd','chrony','ntpsec','adjtimex'],
+ 'services':['systemctl','show','systemd-timesyncd.service','chrony.service','ntp.service','ntpsec.service','adjtimex.service','-p','Id','-p','ActiveState','-p','MainPID','-p','ExecMainStartTimestamp'],
+ 'serviceJournal':['journalctl','--boot','--unit=systemd-timesyncd.service','--unit=chrony.service','--unit=ntp.service','--unit=adjtimex.service','--no-pager','--lines=100','--output=short-monotonic'],
+ 'kernelClockJournal':['journalctl','--boot','--dmesg','--grep=clock|Clock|adjtimex|op=tick','--no-pager','--lines=80','--output=short-monotonic'],
+ 'syncStatus':['timedatectl','timesync-status','--no-pager'],
+}
+report=dict(scope=__doc__,distro=distro,activeDistros=names,rootIdentity=identity,queries={k:run(prefix+v) for k,v in commands.items()})
+report['queries']['bootMatchesSSH']=report['queries']['boot']['stdout'].strip()==Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+print(json.dumps(report,indent=2))

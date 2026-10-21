@@ -357,3 +357,23 @@ are 47.897/47.612 s and 68.639/68.312 s, baseline/candidate. These exclude deplo
 and do not establish a heterogeneous throughput gain. The executed-worker provenance bug is
 fixed, and symmetric-cache profiling is supported. #60 retains pinned control-buffer reuse and
 further launch/control experiments; numerical and clock-discipline gates remain unchanged.
+
+
+### Pinned control-buffer reuse
+
+The [pinned host-buffer follow-up](../Benchmarks/HeterogeneousCompute/2026-10-21-pinned-control/summary.md)
+adds 36 baseline/candidate timed runs and 24 identical-worker controls. Allocation counts fall,
+but full-district process times are effectively unchanged and smaller apparent gains overlap
+control variation. The existing synchronization and control storage remain in production;
+#65 concludes without adoption. The candidate patch, complete phase timings, allocation trace,
+file/provenance audit and both failure controls are retained for later work under #60.
+
+
+### WSL clock ownership
+
+The [kernel clock-caller observation](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-actor/summary.md)
+finds accepted coarse-tick writes by VM-level chronyd alongside guest timesyncd updates on the
+same timekeeper. Runtime PHC0 tracking and WSL 3.0.3 init source explain the actor missed by
+Ubuntu's service list. #64 now has a concrete single-owner normalization experiment; it stays
+open because no clock/service configuration was changed or normalization validated. Owned
+tracing state is cleaned up; worker/profiler durations continue using raw elapsed time.

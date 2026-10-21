@@ -1,0 +1,52 @@
+{
+  "scope": "Read clock-service history from the already-running experiment-owning WSL distro.",
+  "distro": "Ubuntu-24.04",
+  "activeDistros": {
+    "returncode": 0,
+    "stdout": "Ubuntu-24.04\r\n",
+    "stderr": ""
+  },
+  "rootIdentity": {
+    "returncode": 0,
+    "stdout": "0\n",
+    "stderr": ""
+  },
+  "queries": {
+    "kernel": {
+      "returncode": 0,
+      "stdout": "Linux BLINKENLIGHTS 6.18.54.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Tue Oct  6 19:13:07 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\n",
+      "stderr": ""
+    },
+    "boot": {
+      "returncode": 0,
+      "stdout": "2740bd46-3a3b-49e0-b5db-e5dd54507ade\n",
+      "stderr": ""
+    },
+    "packages": {
+      "returncode": 1,
+      "stdout": "chrony  unknown ok not-installed\nsystemd 255.4-1ubuntu8.18 install ok installed\nsystemd-timesyncd 255.4-1ubuntu8.18 install ok installed\n",
+      "stderr": "dpkg-query: no packages found matching ntpsec\ndpkg-query: no packages found matching adjtimex\n"
+    },
+    "services": {
+      "returncode": 0,
+      "stdout": "MainPID=30289\nExecMainStartTimestamp=Wed 2026-10-21 06:08:37 CEST\nId=systemd-timesyncd.service\nActiveState=active\n\nMainPID=0\nExecMainStartTimestamp=\nId=chrony.service\nActiveState=inactive\n\nMainPID=0\nExecMainStartTimestamp=\nId=ntp.service\nActiveState=inactive\n\nMainPID=0\nExecMainStartTimestamp=\nId=ntpsec.service\nActiveState=inactive\n\nMainPID=0\nExecMainStartTimestamp=\nId=adjtimex.service\nActiveState=inactive\n",
+      "stderr": ""
+    },
+    "serviceJournal": {
+      "returncode": 0,
+      "stdout": "[   46.333852] BLINKENLIGHTS systemd[1]: Starting systemd-timesyncd.service - Network Time Synchronization...\n[   46.366299] BLINKENLIGHTS systemd[1]: Started systemd-timesyncd.service - Network Time Synchronization.\n[   46.425798] BLINKENLIGHTS systemd-timesyncd[124]: Contacted time server 185.125.190.57:123 (ntp.ubuntu.com).\n[   46.426087] BLINKENLIGHTS systemd-timesyncd[124]: Initial clock synchronization to Tue 2026-10-20 17:01:28.631913 CEST.\n[18787.875853] BLINKENLIGHTS systemd-timesyncd[124]: Timed out waiting for reply from 185.125.190.57:123 (ntp.ubuntu.com).\n[18798.125707] BLINKENLIGHTS systemd-timesyncd[124]: Timed out waiting for reply from 185.125.190.56:123 (ntp.ubuntu.com).\n[18798.256471] BLINKENLIGHTS systemd-timesyncd[124]: Contacted time server 91.189.91.157:123 (ntp.ubuntu.com).\n[23288.875764] BLINKENLIGHTS systemd-timesyncd[124]: Timed out waiting for reply from 91.189.91.157:123 (ntp.ubuntu.com).\n[23288.899202] BLINKENLIGHTS systemd-timesyncd[124]: Contacted time server 185.125.190.58:123 (ntp.ubuntu.com).\n[47750.705894] BLINKENLIGHTS systemd[1]: Stopping systemd-timesyncd.service - Network Time Synchronization...\n[47750.737334] BLINKENLIGHTS systemd[1]: systemd-timesyncd.service: Deactivated successfully.\n[47750.737508] BLINKENLIGHTS systemd[1]: Stopped systemd-timesyncd.service - Network Time Synchronization.\n[47750.772537] BLINKENLIGHTS systemd[1]: Starting systemd-timesyncd.service - Network Time Synchronization...\n[47750.798644] BLINKENLIGHTS systemd[1]: Started systemd-timesyncd.service - Network Time Synchronization.\n[47750.856937] BLINKENLIGHTS systemd-timesyncd[30289]: Contacted time server 185.125.190.57:123 (ntp.ubuntu.com).\n[47750.857192] BLINKENLIGHTS systemd-timesyncd[30289]: Initial clock synchronization to Wed 2026-10-21 06:08:37.520130 CEST.\n",
+      "stderr": ""
+    },
+    "kernelClockJournal": {
+      "returncode": 0,
+      "stdout": "[    0.313638] BLINKENLIGHTS kernel: clk: Disabling unused clocks\n[    0.304905] BLINKENLIGHTS kernel: sched_clock: Marking stable (304031516, 428107)->(327346820, -22887197)\n[    0.288796] BLINKENLIGHTS kernel: rtc_cmos PNP0B00:00: setting system clock to 2026-10-20T15:00:42 UTC (1792508442)\n[    0.205480] BLINKENLIGHTS kernel: clocksource: Switched to clocksource tsc\n[    0.204601] BLINKENLIGHTS kernel: clocksource: tsc: mask: 0xffffffffffffffff max_cycles: 0x43bf1eb6812, max_idle_ns: 440795234625 ns\n[    0.187464] BLINKENLIGHTS kernel: clocksource: acpi_pm: mask: 0xffffff max_cycles: 0xffffff, max_idle_ns: 2085701024 ns\n[    0.165784] BLINKENLIGHTS kernel: clocksource: Switched to clocksource tsc-early\n[    0.162237] BLINKENLIGHTS kernel: PTP clock support registered\n[    0.080771] BLINKENLIGHTS kernel: clocksource: tsc-early: mask: 0xffffffffffffffff max_cycles: 0x43bf1eb6812, max_idle_ns: 440795234625 ns\n[    0.080346] BLINKENLIGHTS kernel: clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns\n[    0.021181] BLINKENLIGHTS kernel: clocksource: refined-jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645519600211568 ns\n[    0.000000] BLINKENLIGHTS kernel: clocksource: hyperv_clocksource_msr: mask: 0xffffffffffffffff max_cycles: 0x24e6a1710, max_idle_ns: 440795202120 ns\n[    0.000000] BLINKENLIGHTS kernel: clocksource: hyperv_clocksource_tsc_page: mask: 0xffffffffffffffff max_cycles: 0x24e6a1710, max_idle_ns: 440795202120 ns\n",
+      "stderr": ""
+    },
+    "syncStatus": {
+      "returncode": 0,
+      "stdout": "       Server: 185.125.190.57 (ntp.ubuntu.com)\nPoll interval: 32s (min: 32s; max 34min 8s)\n         Leap: normal\n      Version: 4\n      Stratum: 2\n    Reference: 1D586304\n    Precision: 1us (-25)\nRoot distance: 4.302ms (max: 5s)\n       Offset: -144.741ms\n        Delay: 46.309ms\n       Jitter: 2.953ms\n Packet count: 918\n    Frequency: -39.338ppm\n",
+      "stderr": ""
+    },
+    "bootMatchesSSH": true
+  }
+}

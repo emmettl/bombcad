@@ -1,0 +1,11 @@
+Run in a fresh PC experiment directory, with exact workers/support files and original inputs available.
+The setup script is equivalent to the inline setup used by this study.
+
+bombcad-ml/venv/bin/python bombcad-pinned-control-01a15d45/profile-worker.py --baseline bombcad-pinned-control-01a15d45/baseline.py --candidate bombcad-pinned-control-01a15d45/candidate.py --source bombcad-pinned-control-01a15d45/solver.cu --jobs bombcad-pinned-control-01a15d45/cooling32 bombcad-pinned-control-01a15d45/blast64 bombcad-pinned-control-01a15d45/cooling64 bombcad-pinned-control-01a15d45/terrain256 --out bombcad-pinned-control-01a15d45/results-small-terrain --lock bombcad-ml/lock --lock-helper bombcad-pinned-control-01a15d45/remote-train.py --baseline-cache-dir bombcad-cuda/ptx-cache --candidate-cache-dir bombcad-cuda/ptx-cache --fresh-process
+
+bombcad-ml/venv/bin/python bombcad-pinned-control-01a15d45/profile-worker.py --baseline bombcad-pinned-control-01a15d45/baseline.py --candidate bombcad-pinned-control-01a15d45/candidate.py --source bombcad-pinned-control-01a15d45/solver.cu --jobs bombcad-pinned-control-01a15d45/flat512 bombcad-pinned-control-01a15d45/beirut512 --out bombcad-pinned-control-01a15d45/results-districts --lock bombcad-ml/lock --lock-helper bombcad-pinned-control-01a15d45/remote-train.py --baseline-cache-dir bombcad-cuda/ptx-cache --candidate-cache-dir bombcad-cuda/ptx-cache --fresh-process
+
+bombcad-ml/venv/bin/python bombcad-pinned-control-01a15d45/profile-worker.py --baseline bombcad-pinned-control-01a15d45/baseline.py --candidate bombcad-pinned-control-01a15d45/baseline.py --source bombcad-pinned-control-01a15d45/solver.cu --jobs bombcad-pinned-control-01a15d45/cooling32 bombcad-pinned-control-01a15d45/blast64 bombcad-pinned-control-01a15d45/cooling64 bombcad-pinned-control-01a15d45/terrain256 --out bombcad-pinned-control-01a15d45/results-null-small --lock bombcad-ml/lock --lock-helper bombcad-pinned-control-01a15d45/remote-train.py --baseline-cache-dir bombcad-cuda/ptx-cache --candidate-cache-dir bombcad-cuda/ptx-cache --fresh-process
+
+bombcad-ml/venv/bin/python bombcad-pinned-control-01a15d45/diagnose.py
+bombcad-ml/venv/bin/python bombcad-pinned-control-01a15d45/verify.py

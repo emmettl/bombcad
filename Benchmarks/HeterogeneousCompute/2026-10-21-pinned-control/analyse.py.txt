@@ -1,0 +1,31 @@
+"""Summarise candidate and identical-worker controls without discarding observations."""
+import hashlib,json,statistics
+from pathlib import Path
+root=Path(__file__).resolve().parent
+reports=[json.loads((root/n).read_text()) for n in ['small-terrain.json','districts.json']]
+null=json.loads((root/'null-small.json').read_text())
+assert null['workerSHA256']['baseline']==null['workerSHA256']['candidate']==hashlib.sha256((root/'baseline.py').read_bytes()).hexdigest()
+
+def summarise(report):
+ assert report['allOutputsAndTimestepsBitIdentical'];result=[]
+ for entry in report['summaries']:
+  rows=[r for r in report['rows'] if r['job']==entry['job']];assert len(rows)==6 and all(r['hashes']==rows[0]['hashes'] for r in rows)
+  item={'job':entry['job']}
+  for name in ['baseline','candidate']:
+   group=[r for r in rows if r['worker']==name];assert len(group)==3
+   item[name]=dict(entry[name],minTotalSeconds=min(r['totalSeconds'] for r in group),maxTotalSeconds=max(r['totalSeconds'] for r in group),phaseMediansSeconds={k:statistics.median(r['timings'][k] for r in group) for k in group[0]['timings']})
+  item['candidateTotalChangePercent']=100*(item['candidate']['medianTotalSeconds']/item['baseline']['medianTotalSeconds']-1)
+  item['pairedCandidateMinusBaselineSeconds']=[next(r['totalSeconds'] for r in rows if r['worker']=='candidate' and r['repetition']==i)-next(r['totalSeconds'] for r in rows if r['worker']=='baseline' and r['repetition']==i) for i in range(3)]
+  result.append(item)
+ return result
+summary=[s for report in reports for s in summarise(report)];null_summary=summarise(null)
+repo=Path.cwd();old=json.loads((repo/'Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/profile.json').read_text());flat=next(r for r in old['rows'] if r['job']=='flat-district')['remoteNumericalSHA256']
+old=json.loads((repo/'Benchmarks/HeterogeneousCompute/2026-10-21-cooling-box/integrated-equality.json').read_text());beirut={n:v['integrated'] for n,v in old['files'].items()}
+controls=[]
+for name,expected in [('flat512',flat),('beirut512',beirut)]:
+ for r in reports[1]['rows']:
+  if r['job']==name:assert all(r['hashes'].get(n)==h for n,h in expected.items())
+ controls.append(dict(job=name,filesCompared=len(expected),allSixRunsMatch=True,expectedSHA256=expected))
+(root/'analysis.json').write_text(json.dumps(dict(summary=summary,nullSummary=null_summary,historicalNumericalControls=controls),indent=2)+'\n')
+for name,rows in [('pinned',summary),('identical-worker control',null_summary)]:
+ print(name,[(r['job'],round(r['baseline']['medianTotalSeconds'],3),round(r['candidate']['medianTotalSeconds'],3),round(r['candidateTotalChangePercent'],2)) for r in rows])

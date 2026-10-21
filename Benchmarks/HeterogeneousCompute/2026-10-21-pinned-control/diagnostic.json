@@ -1,0 +1,1161 @@
+{
+  "scope": "Pinned-buffer diagnostic; perturbed call counts and two failure controls, not timing trials.",
+  "torch": "2.11.0+cu128",
+  "rows": [
+    {
+      "worker": "baseline",
+      "steps": 568,
+      "events": [
+        {
+          "name": "cudaMemGetInfo",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 101791.65999999999,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Instrumentation",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 132.88099999999395,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Activity Buffer Request",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 2784.823000000004,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Resource",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 5811.406000000017,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::empty",
+          "count": 594,
+          "selfCPUTimeMicroseconds": 705.4429999996792,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaDeviceGetStreamPriorityRange",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 1.2789999999804422,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaStreamIsCapturing",
+          "count": 1175,
+          "selfCPUTimeMicroseconds": 686.9959999994317,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaMalloc",
+          "count": 5,
+          "selfCPUTimeMicroseconds": 1268.6320000000414,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Lazy Function Loading",
+          "count": 30,
+          "selfCPUTimeMicroseconds": 1062.6460000001825,
+          "selfDeviceTimeMicroseconds": 74.62900000004447
+        },
+        {
+          "name": "aten::lift_fresh",
+          "count": 590,
+          "selfCPUTimeMicroseconds": 90.44299999950454,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::to",
+          "count": 1750,
+          "selfCPUTimeMicroseconds": 1289.546999999322,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::_to_copy",
+          "count": 1170,
+          "selfCPUTimeMicroseconds": 2626.554999999673,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::empty_strided",
+          "count": 1172,
+          "selfCPUTimeMicroseconds": 2931.422000001039,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::copy_",
+          "count": 1175,
+          "selfCPUTimeMicroseconds": 4796.234999998851,
+          "selfDeviceTimeMicroseconds": 2686.7189999982074
+        },
+        {
+          "name": "cudaMemcpyAsync",
+          "count": 1191,
+          "selfCPUTimeMicroseconds": 26744.40899999987,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Memcpy HtoD (Pageable -> Device)",
+          "count": 590,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 725.7449999984528
+        },
+        {
+          "name": "cudaStreamSynchronize",
+          "count": 1188,
+          "selfCPUTimeMicroseconds": 12163.588000000804,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::clone",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 23.14999999984866,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "Memcpy DtoD (Device -> Device)",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 17.402999999991152
+        },
+        {
+          "name": "aten::isfinite",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 146.5529999997816,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::abs",
+          "count": 24,
+          "selfCPUTimeMicroseconds": 133.8709999996936,
+          "selfDeviceTimeMicroseconds": 49.32800000003772
+        },
+        {
+          "name": "aten::resize_",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 27.15100000007078,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaLaunchKernel",
+          "count": 93,
+          "selfCPUTimeMicroseconds": 3159.1980000001495,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "Runtime Triggered Module Loading",
+          "count": 22,
+          "selfCPUTimeMicroseconds": 79707.66299999997,
+          "selfDeviceTimeMicroseconds": 91.35399999999208
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AbsFunctor<float>, std::array<char*, 2ul> >(int, at::native::AbsFunctor<float>, std::array<char*, 2ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 49.32800000003772
+        },
+        {
+          "name": "aten::ne",
+          "count": 13,
+          "selfCPUTimeMicroseconds": 171.74499999993714,
+          "selfDeviceTimeMicroseconds": 30.13000000003376
+        },
+        {
+          "name": "aten::eq",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 66.0559999999532,
+          "selfDeviceTimeMicroseconds": 37.1710000000312
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 2ul> >(int, at::native::AUnaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 2ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 27.635000000038417
+        },
+        {
+          "name": "aten::mul",
+          "count": 16,
+          "selfCPUTimeMicroseconds": 119.58700000014505,
+          "selfDeviceTimeMicroseconds": 29.272000000084518
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 37.1710000000312
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<bool, bool, bool, at::native::binary_internal::MulFunctor<bool> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<bool, bool, bool, at::native::binary_internal::MulFunctor<bool> >, std::array<char*, 3ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 23.416000000172062
+        },
+        {
+          "name": "aten::all",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 160.57299999994575,
+          "selfDeviceTimeMicroseconds": 61.29299999997602
+        },
+        {
+          "name": "aten::as_strided",
+          "count": 46,
+          "selfCPUTimeMicroseconds": 35.77200000023004,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaMemsetAsync",
+          "count": 11,
+          "selfCPUTimeMicroseconds": 319.5989999999874,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Memset (Device)",
+          "count": 11,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 4.480000000010477
+        },
+        {
+          "name": "aten::item",
+          "count": 18,
+          "selfCPUTimeMicroseconds": 30.146999999997206,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::_local_scalar_dense",
+          "count": 18,
+          "selfCPUTimeMicroseconds": 108.98200000025099,
+          "selfDeviceTimeMicroseconds": 34.96300000016345
+        },
+        {
+          "name": "cudaHostAlloc",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 1117.0139999999665,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::and_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4> >(at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::and_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 58.02899999998044
+        },
+        {
+          "name": "Memcpy DtoH (Device -> Pinned)",
+          "count": 18,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 34.96300000016345
+        },
+        {
+          "name": "aten::select",
+          "count": 11,
+          "selfCPUTimeMicroseconds": 54.10800000006566,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::le",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 25.679999999993015,
+          "selfDeviceTimeMicroseconds": 8.989000000001397
+        },
+        {
+          "name": "aten::any",
+          "count": 6,
+          "selfCPUTimeMicroseconds": 71.49299999995856,
+          "selfDeviceTimeMicroseconds": 28.567999999970198
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1} const&)::{lambda(int)#1})",
+          "count": 6,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 20.79300000006333
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::or_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4> >(at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::or_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4>)",
+          "count": 6,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 27.351999999955297
+        },
+        {
+          "name": "aten::lt",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 40.80400000006193,
+          "selfDeviceTimeMicroseconds": 9.693000000086613
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}, std::array<char*, 2ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 4.73499999998603
+        },
+        {
+          "name": "aten::gt",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 31.867000000027474,
+          "selfDeviceTimeMicroseconds": 6.494000000006054
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::compare_scalar_kernel<unsigned char>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, unsigned char)::{lambda(unsigned char)#1}, std::array<char*, 2ul> >(int, at::native::compare_scalar_kernel<unsigned char>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, unsigned char)::{lambda(unsigned char)#1}, std::array<char*, 2ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.9200000000419095
+        },
+        {
+          "name": "aten::detach_",
+          "count": 582,
+          "selfCPUTimeMicroseconds": 257.28000000090105,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "detach_",
+          "count": 582,
+          "selfCPUTimeMicroseconds": 318.06400000018766,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::zeros",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 15.285000000090804,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::zero_",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 11.915999999968335,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::fill_",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 22.211999999999534,
+          "selfDeviceTimeMicroseconds": 2.462999999988824
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<int>, std::array<char*, 1ul> >(int, at::native::FillFunctor<int>, std::array<char*, 1ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.184000000008382
+        },
+        {
+          "name": "aten::slice",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 36.77499999984866,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::floor",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 32.65700000000652,
+          "selfDeviceTimeMicroseconds": 1.9510000000009313
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1})",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.9510000000009313
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > const&)::{lambda(int)#1})",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.4949999999953434
+        },
+        {
+          "name": "aten::ge",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 6.956999999994878,
+          "selfDeviceTimeMicroseconds": 2.271999999997206
+        },
+        {
+          "name": "aten::__or__",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 10.34599999996135,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::bitwise_or",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 40.214999999967404,
+          "selfDeviceTimeMicroseconds": 2.65400000003865
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<bool, bool, bool, at::native::BitwiseOrFunctor<bool> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<bool, bool, bool, at::native::BitwiseOrFunctor<bool> >, std::array<char*, 3ul>)",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.65400000003865
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<unsigned char>, std::array<char*, 1ul> >(int, at::native::FillFunctor<unsigned char>, std::array<char*, 1ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.2789999999804422
+        },
+        {
+          "name": "cuLaunchKernel",
+          "count": 2847,
+          "selfCPUTimeMicroseconds": 18985.82499999978,
+          "selfDeviceTimeMicroseconds": 106.29499999963446
+        },
+        {
+          "name": "cudaFirstPhase",
+          "count": 570,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1924.073999999906
+        },
+        {
+          "name": "cudaDeviceSynchronize",
+          "count": 571,
+          "selfCPUTimeMicroseconds": 93962.33199999982,
+          "selfDeviceTimeMicroseconds": 15.895999999833293
+        },
+        {
+          "name": "cudaMeasure",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 20.601000000024214
+        },
+        {
+          "name": "cudaPrepare",
+          "count": 569,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1341.6639999996405
+        },
+        {
+          "name": "cudaSweep",
+          "count": 1707,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 98695.70800000045
+        },
+        {
+          "name": "Memcpy DtoH (Device -> Pageable)",
+          "count": 580,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1941.9079999998212
+        },
+        {
+          "name": "aten::detach",
+          "count": 580,
+          "selfCPUTimeMicroseconds": 489.4359999987646,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "detach",
+          "count": 580,
+          "selfCPUTimeMicroseconds": 700.6169999997946,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::resolve_conj",
+          "count": 580,
+          "selfCPUTimeMicroseconds": 74.33600000105798,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::resolve_neg",
+          "count": 580,
+          "selfCPUTimeMicroseconds": 38.08800000033807,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::reshape",
+          "count": 10,
+          "selfCPUTimeMicroseconds": 19.304000000003725,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::view",
+          "count": 7,
+          "selfCPUTimeMicroseconds": 18.590999999898486,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::_reshape_alias",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 11.77600000007078,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::unsqueeze",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 12.767000000108965,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::gather",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 88.92499999981374,
+          "selfDeviceTimeMicroseconds": 16.63400000007823
+        },
+        {
+          "name": "void at::native::_scatter_gather_elementwise_kernel<128, 8, at::native::_cuda_scatter_gather_internal_kernel<false, at::native::OpaqueType<4>, long>::operator()<at::native::TensorAssign>(at::TensorIterator&, long, long, long, at::native::TensorAssign const&)::{lambda(int)#1}>(int, at::native::_cuda_scatter_gather_internal_kernel<false, at::native::OpaqueType<4>, long>::operator()<at::native::TensorAssign>(at::TensorIterator&, long, long, long, at::native::TensorAssign const&)::{lambda(int)#1})",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 16.63400000007823
+        },
+        {
+          "name": "aten::rsub",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 16.352999999769963,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::sub",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 49.15200000000186,
+          "selfDeviceTimeMicroseconds": 3.4219999999040738
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctorOnOther_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctorOnOther_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctorOnOther_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctorOnOther_add<float> const&)::{lambda(int)#1})",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 3.4219999999040738
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.4959999999264255
+        },
+        {
+          "name": "aten::add",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 20.81200000003446,
+          "selfDeviceTimeMicroseconds": 2.4959999999264255
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int)#1})",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 3.35999999998603
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul> >(int, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>)",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.4959999999264255
+        },
+        {
+          "name": "aten::expand_as",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 6.768000000156462,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::expand",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 4.697999999974854,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::contiguous",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 2.108000000123866,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::empty_like",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 4.908999999985099,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1})",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.662999999942258
+        }
+      ],
+      "hashes": {
+        "targets.npy": "b1d1ecd22f11ed52ed232a25f2bd6ef5f92816f4c22009bd16af4afe2868bcfd",
+        "first-phase.bin": "ef9e382e5ec8fdb2b6c08f3c0af387d9e958fe53aa3fb5fa4d7a9778b438c319",
+        "peak.bin": "f6e9bd526d4411282d3703700861f49e6deb855953491132bcfc79f68231e120",
+        "firstPhaseImpulse.npy": "5466950fbd2ba8f7af1f1e156ca1de640d5fb25a39eb6e1a3ae56f29f1065428",
+        "state.bin": "7942fdf57a9e53f71464eac5ec86b3b64029815d0c4259579355142f68cd6f0f",
+        "impulse.bin": "40542da42431e3d9056534d599cb3ba9b965b5a61b7b2128f3b87147082c9b7f",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "e9657d3d58b17820889f18d457159cd60f4a4fe75f67cfe8dccb16473c08e822",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      },
+      "workerFilesSHA256": {
+        "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+        "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+        "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+      }
+    },
+    {
+      "worker": "candidate",
+      "steps": 568,
+      "events": [
+        {
+          "name": "cudaMemGetInfo",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 97.35299999998824,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Activity Buffer Request",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 53.67200000000594,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::empty",
+          "count": 595,
+          "selfCPUTimeMicroseconds": 1520.3319999997766,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Lazy Function Loading",
+          "count": 10,
+          "selfCPUTimeMicroseconds": 556.6320000000123,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::lift_fresh",
+          "count": 590,
+          "selfCPUTimeMicroseconds": 123.69099999983155,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::to",
+          "count": 613,
+          "selfCPUTimeMicroseconds": 1016.9140000003972,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::_to_copy",
+          "count": 601,
+          "selfCPUTimeMicroseconds": 1360.7529999998078,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::empty_strided",
+          "count": 603,
+          "selfCPUTimeMicroseconds": 2304.9850000000733,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::copy_",
+          "count": 1175,
+          "selfCPUTimeMicroseconds": 7926.366000000227,
+          "selfDeviceTimeMicroseconds": 1679.4930000015302
+        },
+        {
+          "name": "cudaStreamIsCapturing",
+          "count": 1170,
+          "selfCPUTimeMicroseconds": 855.5999999994383,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaMemcpyAsync",
+          "count": 1191,
+          "selfCPUTimeMicroseconds": 25277.982999999556,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "Memcpy HtoD (Pageable -> Device)",
+          "count": 590,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 694.1050000007963
+        },
+        {
+          "name": "cudaStreamSynchronize",
+          "count": 1188,
+          "selfCPUTimeMicroseconds": 14695.472000000125,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::clone",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 10.493999999991502,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "Memcpy DtoD (Device -> Device)",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 16.485000000029686
+        },
+        {
+          "name": "aten::isfinite",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 91.51700000010896,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::abs",
+          "count": 24,
+          "selfCPUTimeMicroseconds": 129.0659999998752,
+          "selfDeviceTimeMicroseconds": 53.42100000001665
+        },
+        {
+          "name": "aten::resize_",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 35.181000000055064,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaLaunchKernel",
+          "count": 93,
+          "selfCPUTimeMicroseconds": 1590.6940000001196,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::ne",
+          "count": 13,
+          "selfCPUTimeMicroseconds": 131.387000000017,
+          "selfDeviceTimeMicroseconds": 26.275999999867054
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AbsFunctor<float>, std::array<char*, 2ul> >(int, at::native::AbsFunctor<float>, std::array<char*, 2ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 53.42100000001665
+        },
+        {
+          "name": "aten::eq",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 77.11899999987509,
+          "selfDeviceTimeMicroseconds": 35.81799999998475
+        },
+        {
+          "name": "aten::mul",
+          "count": 16,
+          "selfCPUTimeMicroseconds": 132.64299999998184,
+          "selfDeviceTimeMicroseconds": 26.371000000057393
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 2ul> >(int, at::native::AUnaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 2ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 23.93899999986752
+        },
+        {
+          "name": "aten::all",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 229.32200000008743,
+          "selfDeviceTimeMicroseconds": 53.86900000003516
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 35.81799999998475
+        },
+        {
+          "name": "aten::as_strided",
+          "count": 46,
+          "selfCPUTimeMicroseconds": 30.545999999914784,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaMemsetAsync",
+          "count": 11,
+          "selfCPUTimeMicroseconds": 217.07099999995262,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<bool, bool, bool, at::native::binary_internal::MulFunctor<bool> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<bool, bool, bool, at::native::binary_internal::MulFunctor<bool> >, std::array<char*, 3ul>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 20.675000000061118
+        },
+        {
+          "name": "Memset (Device)",
+          "count": 11,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 3.9700000000739237
+        },
+        {
+          "name": "aten::item",
+          "count": 18,
+          "selfCPUTimeMicroseconds": 33.32200000002922,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::and_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4> >(at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::and_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4>)",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 50.98799999996845
+        },
+        {
+          "name": "aten::_local_scalar_dense",
+          "count": 18,
+          "selfCPUTimeMicroseconds": 114.88699999997334,
+          "selfDeviceTimeMicroseconds": 20.898999999975786
+        },
+        {
+          "name": "Memcpy DtoH (Device -> Pinned)",
+          "count": 587,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 508.75900000067486
+        },
+        {
+          "name": "aten::select",
+          "count": 11,
+          "selfCPUTimeMicroseconds": 40.96000000003551,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::le",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 15.673000000009779,
+          "selfDeviceTimeMicroseconds": 9.122000000003027
+        },
+        {
+          "name": "aten::any",
+          "count": 6,
+          "selfCPUTimeMicroseconds": 83.49799999999232,
+          "selfDeviceTimeMicroseconds": 24.103000000002794
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1} const&)::{lambda(int)#1})",
+          "count": 6,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 19.589999999996508
+        },
+        {
+          "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::or_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4> >(at::native::ReduceOp<bool, at::native::func_wrapper_t<bool, at::native::or_kernel_cuda(at::TensorIterator&)::{lambda()#1}::operator()() const::{lambda()#12}::operator()() const::{lambda(bool, bool)#1}>, unsigned int, bool, 4, 4>)",
+          "count": 6,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 23.013999999995576
+        },
+        {
+          "name": "aten::lt",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 34.05700000001525,
+          "selfDeviceTimeMicroseconds": 8.611000000004424
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::compare_scalar_kernel<float>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, float)::{lambda(float)#1}, std::array<char*, 2ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 4.4490000000078
+        },
+        {
+          "name": "aten::gt",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 35.169000000008964,
+          "selfDeviceTimeMicroseconds": 6.3070000000006985
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::compare_scalar_kernel<unsigned char>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, unsigned char)::{lambda(unsigned char)#1}, std::array<char*, 2ul> >(int, at::native::compare_scalar_kernel<unsigned char>(at::TensorIteratorBase&, at::native::(anonymous namespace)::OpType, unsigned char)::{lambda(unsigned char)#1}, std::array<char*, 2ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.0170000000071013
+        },
+        {
+          "name": "aten::detach_",
+          "count": 582,
+          "selfCPUTimeMicroseconds": 424.738000000958,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "detach_",
+          "count": 582,
+          "selfCPUTimeMicroseconds": 421.4579999992857,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaHostAlloc",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 15.093999999997322,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::detach",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 12.400999999823398,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "detach",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 19.048000000053435,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::resolve_conj",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 2.3700000001117587,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::resolve_neg",
+          "count": 12,
+          "selfCPUTimeMicroseconds": 1.070000000167056,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::zeros",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 5.6230000000068685,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::zero_",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 4.55000000000291,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::fill_",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 13.181999999986147,
+          "selfDeviceTimeMicroseconds": 2.1759999999922
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<int>, std::array<char*, 1ul> >(int, at::native::FillFunctor<int>, std::array<char*, 1ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.0559999999968568
+        },
+        {
+          "name": "aten::slice",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 12.88200000001234,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::floor",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 14.543999999994412,
+          "selfDeviceTimeMicroseconds": 1.727999999988242
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::floor_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1})",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.727999999988242
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 4, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, bool, at::native::(anonymous namespace)::CompareEqFunctor<float> > const&)::{lambda(int)#1})",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.3369999999995343
+        },
+        {
+          "name": "aten::ge",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 7.0019999999931315,
+          "selfDeviceTimeMicroseconds": 2.0160000000032596
+        },
+        {
+          "name": "aten::__or__",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 4.260999999984051,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::bitwise_or",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 23.7160000000149,
+          "selfDeviceTimeMicroseconds": 2.304999999993015
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<bool, bool, bool, at::native::BitwiseOrFunctor<bool> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<bool, bool, bool, at::native::BitwiseOrFunctor<bool> >, std::array<char*, 3ul>)",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.304999999993015
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<unsigned char>, std::array<char*, 1ul> >(int, at::native::FillFunctor<unsigned char>, std::array<char*, 1ul>)",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.1199999999953434
+        },
+        {
+          "name": "cuLaunchKernel",
+          "count": 2847,
+          "selfCPUTimeMicroseconds": 57639.675999999716,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaFirstPhase",
+          "count": 570,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1777.2300000006799
+        },
+        {
+          "name": "cudaMeasure",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 16.54899999999907
+        },
+        {
+          "name": "cudaDeviceSynchronize",
+          "count": 571,
+          "selfCPUTimeMicroseconds": 19722.555999999706,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "cudaPrepare",
+          "count": 569,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1193.3689999995986
+        },
+        {
+          "name": "cudaSweep",
+          "count": 1707,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 88189.97900000056
+        },
+        {
+          "name": "Memcpy DtoH (Device -> Pageable)",
+          "count": 11,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 479.4100000000326
+        },
+        {
+          "name": "aten::reshape",
+          "count": 10,
+          "selfCPUTimeMicroseconds": 14.142000000050757,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::view",
+          "count": 7,
+          "selfCPUTimeMicroseconds": 22.176999999966938,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::_reshape_alias",
+          "count": 3,
+          "selfCPUTimeMicroseconds": 7.701999999990221,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::unsqueeze",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 6.772000000113621,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::gather",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 42.610000000102445,
+          "selfDeviceTimeMicroseconds": 16.38800000003539
+        },
+        {
+          "name": "void at::native::_scatter_gather_elementwise_kernel<128, 8, at::native::_cuda_scatter_gather_internal_kernel<false, at::native::OpaqueType<4>, long>::operator()<at::native::TensorAssign>(at::TensorIterator&, long, long, long, at::native::TensorAssign const&)::{lambda(int)#1}>(int, at::native::_cuda_scatter_gather_internal_kernel<false, at::native::OpaqueType<4>, long>::operator()<at::native::TensorAssign>(at::TensorIterator&, long, long, long, at::native::TensorAssign const&)::{lambda(int)#1})",
+          "count": 4,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 16.38800000003539
+        },
+        {
+          "name": "aten::rsub",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 9.82200000010198,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::sub",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 26.435999999928754,
+          "selfDeviceTimeMicroseconds": 3.1680000000051223
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctorOnOther_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctorOnOther_add<float> const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::CUDAFunctorOnOther_add<float> >(at::TensorIteratorBase&, at::native::CUDAFunctorOnOther_add<float> const&)::{lambda(int)#1})",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 3.1680000000051223
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul> >(int, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 3ul>)",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.463999999978114
+        },
+        {
+          "name": "aten::add",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 18.771999999997206,
+          "selfDeviceTimeMicroseconds": 2.496000000042841
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<float, float, float, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int)#1})",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 3.232000000018161
+        },
+        {
+          "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul> >(int, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>)",
+          "count": 2,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 2.496000000042841
+        },
+        {
+          "name": "aten::expand_as",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 2.0499999999883585,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::expand",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 2.2810000000172295,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "aten::contiguous",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 1.9599999999045394,
+          "selfDeviceTimeMicroseconds": 0.0
+        },
+        {
+          "name": "aten::empty_like",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 1.4900000000488944,
+          "selfDeviceTimeMicroseconds": 0
+        },
+        {
+          "name": "void at::native::elementwise_kernel<128, 2, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#7}::operator()() const::{lambda(float)#1} const&)::{lambda(int)#1})",
+          "count": 1,
+          "selfCPUTimeMicroseconds": 0,
+          "selfDeviceTimeMicroseconds": 1.632999999972526
+        }
+      ],
+      "hashes": {
+        "targets.npy": "b1d1ecd22f11ed52ed232a25f2bd6ef5f92816f4c22009bd16af4afe2868bcfd",
+        "first-phase.bin": "ef9e382e5ec8fdb2b6c08f3c0af387d9e958fe53aa3fb5fa4d7a9778b438c319",
+        "peak.bin": "f6e9bd526d4411282d3703700861f49e6deb855953491132bcfc79f68231e120",
+        "firstPhaseImpulse.npy": "5466950fbd2ba8f7af1f1e156ca1de640d5fb25a39eb6e1a3ae56f29f1065428",
+        "state.bin": "7942fdf57a9e53f71464eac5ec86b3b64029815d0c4259579355142f68cd6f0f",
+        "impulse.bin": "40542da42431e3d9056534d599cb3ba9b965b5a61b7b2128f3b87147082c9b7f",
+        "species.bin": "0e4ac1a68b306db0ddfc0b809e88a39e437253a8253a0b2e387470ca7dca3205",
+        "dt.npy": "e9657d3d58b17820889f18d457159cd60f4a4fe75f67cfe8dccb16473c08e822",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9"
+      },
+      "workerFilesSHA256": {
+        "run.py": "083e4b7ae3d38bd068c621170bf2258062130561bee8cef6617a8a884b9c3a64",
+        "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+        "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+      }
+    }
+  ],
+  "allNumericalOutputsAndTimestepsBitIdentical": true,
+  "incompleteDurationControls": [
+    {
+      "worker": "baseline",
+      "error": "step limit reached before duration; no completed dataset written",
+      "noOutputWritten": true
+    },
+    {
+      "worker": "candidate",
+      "error": "step limit reached before duration; no completed dataset written",
+      "noOutputWritten": true
+    }
+  ],
+  "nonphysicalControls": [
+    {
+      "worker": "baseline",
+      "error": "nonphysical wave speed; no completed dataset written",
+      "noOutputWritten": true
+    },
+    {
+      "worker": "candidate",
+      "error": "nonphysical wave speed; no completed dataset written",
+      "noOutputWritten": true
+    }
+  ]
+}

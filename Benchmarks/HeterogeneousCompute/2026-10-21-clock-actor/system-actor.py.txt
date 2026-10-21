@@ -1,0 +1,18 @@
+"""Read the traced chronyd identity/configuration from the already-running WSL system distro."""
+import json,subprocess
+exe='/mnt/c/Windows/System32/wsl.exe'
+commands={
+ 'identity':['/usr/bin/id','-u'],
+ 'kernel':['/bin/uname','-a'],
+ 'boot':['/bin/cat','/proc/sys/kernel/random/boot_id'],
+ 'process':['/bin/sh','-c',"grep -E '^(Name|Pid|PPid|NSpid):' /proc/239/status; readlink /proc/239/exe; readlink /proc/239/ns/pid; tr '\\000' ' ' < /proc/239/cmdline"],
+ 'os':['/bin/cat','/etc/os-release'],
+ 'config':['/bin/sh','-c',"for p in /etc/chrony.conf /etc/chrony/chrony.conf; do if test -f \"$p\"; then echo \"$p\"; grep -E '^[[:space:]]*(refclock|server|pool|driftfile|makestep|rtcsync|maxslewrate|maxdrift|maxupdateskew|pidfile|confdir|sourcedir|logdir|log|bindcmdaddress|cmdport)([[:space:]]|$)' \"$p\"; fi; done"],
+ 'tracking':['/bin/sh','-c','chronyc -n tracking; chronyc -n sources -v'],
+}
+rows={}
+for name,args in commands.items():
+ p=subprocess.run([exe,'--system','--exec',*args],capture_output=True,timeout=20)
+ decode=lambda b:b.decode('utf-16le' if b'\0' in b[:100] else 'utf-8',errors='replace')
+ rows[name]=dict(returncode=p.returncode,stdout=decode(p.stdout),stderr=decode(p.stderr))
+print(json.dumps(dict(scope=__doc__,queries=rows),indent=2))

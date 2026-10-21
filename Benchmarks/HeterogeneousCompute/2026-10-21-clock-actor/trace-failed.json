@@ -1,0 +1,30 @@
+{
+  "status": "failed",
+  "scope": "Bounded clock-caller observation in an owned ftrace instance; never adjusts clocks.",
+  "group": "bombcad_clock_79bc336b3cf5",
+  "abi": {
+    "modes": 0,
+    "freq": 16,
+    "tick": 88,
+    "size": 208
+  },
+  "globalControlsBefore": {
+    "tracing_on": "1\n",
+    "current_tracer": "nop\n"
+  },
+  "samples": [],
+  "rawTrace": "",
+  "error": "OSError(22, 'Invalid argument')",
+  "cleanup": {
+    "instanceRemoved": true,
+    "ownedProbesRemoved": true,
+    "priorDefinitionsPreserved": true,
+    "globalControlsUnchanged": true,
+    "globalDefinitionsSHA256Before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "globalDefinitionsSHA256After": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "globalControlsAfter": {
+    "tracing_on": "1\n",
+    "current_tracer": "nop\n"
+  }
+}

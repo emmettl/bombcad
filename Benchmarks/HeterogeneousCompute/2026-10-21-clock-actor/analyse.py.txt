@@ -1,0 +1,33 @@
+"""Pair observed clock calls/returns; redact timex fields unused by the input mode bits."""
+import copy,hashlib,json,re
+from pathlib import Path
+root=Path(__file__).resolve().parent;out=Path('Benchmarks/HeterogeneousCompute/2026-10-21-clock-actor')
+original=(root/'trace.json').read_bytes();trace=json.loads(original);assert trace['status']=='complete'
+assert all(trace['cleanup'][k] for k in ['instanceRemoved','ownedProbesRemoved','priorDefinitionsPreserved','globalControlsUnchanged'])
+pending={};calls=[];names={};sanitised=[]
+for line in trace['rawTrace'].splitlines():
+ m=re.match(r'\s*(.+)-(\d+)\s+\[\d+\].*?\s(adjust|complete):',line);assert m,line
+ name,pid,event=m.group(1).strip(),int(m.group(2)),m.group(3)
+ if name!='<...>':names[pid]=name
+ fields={k:int(v) for k,v in re.findall(r'\b(\w+)=(-?\d+)',line)}
+ if event=='adjust':
+  assert pid not in pending
+  pending[pid]=dict(pid=pid,comm=name,**fields)
+  if not fields['modes']&0x4000:line=re.sub(r'\btick=-?\d+','tick=<unused>',line)
+  if not fields['modes']&2:line=re.sub(r'\bfreq=-?\d+','freq=<unused>',line)
+ else:
+  call=pending.pop(pid);call['result']=fields['result'];calls.append(call)
+ sanitised.append(line)
+assert not pending
+for c in calls:
+ c['comm']=names[c['pid']]
+ if not c['modes']&0x4000:c.pop('tick',None)
+ if not c['modes']&2:c.pop('freq',None)
+tick=[c for c in calls if c['modes']&0x4000 and c['result']>=0]
+assert tick and all(c['comm']=='chronyd' and c['tkid']==0 for c in tick)
+assert any(c['comm']=='systemd-timesyn' and c['tkid']==0 and c['modes'] and c['result']>=0 for c in calls)
+report=dict(scope='Observed accepted setters, not a proof of the feedback mechanism or a normalization test.',pairedCalls=calls,acceptedTickUpdates=len(tick),tickValues=sorted({c['tick'] for c in tick}),tickSetterPIDs=sorted({c['pid'] for c in tick}),capturedCallsAllPaired=True,initialSample=trace['samples'][0],finalState=trace['finalState'],cleanup=trace['cleanup'])
+(out/'analysis.json').write_text(json.dumps(report,indent=2)+'\n')
+trace['rawTrace']='\n'.join(sanitised)+'\n';trace['unusedTimexFieldsRedacted']=True;trace['originalPrivateTraceSHA256']=hashlib.sha256(original).hexdigest()
+(out/'trace.json').write_text(json.dumps(trace,indent=2)+'\n')
+print('accepted tick updates',len(tick),'pids',report['tickSetterPIDs'],'ticks',report['tickValues'],'paired calls',len(calls))

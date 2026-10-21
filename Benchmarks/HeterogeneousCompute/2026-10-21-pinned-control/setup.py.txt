@@ -1,0 +1,7 @@
+"""Stage exact previously retained case inputs for a new isolated pinned-buffer study."""
+from pathlib import Path
+import hashlib,json
+root=Path(__file__).resolve().parent;old=Path.home()/'bombcad-control-profile-01a15d45'
+(root/'solver.cu').write_bytes((old/'solver.cu').read_bytes())
+for name in ['cooling32','blast64','cooling64','terrain256','flat512','beirut512']:(root/name).symlink_to((old/name).resolve(),target_is_directory=True)
+(root/'inputs.json').write_text(json.dumps({p.name:{'path':str(p.resolve()),'jobSHA256':hashlib.sha256((p/'job.json').read_bytes()).hexdigest(),'meta':json.loads((p/'job.json').read_text())} for p in root.iterdir() if p.is_dir() and (p/'job.json').exists()},indent=2)+'\n')

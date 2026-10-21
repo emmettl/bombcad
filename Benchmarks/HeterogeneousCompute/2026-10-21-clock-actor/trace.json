@@ -1,0 +1,137 @@
+{
+  "status": "complete",
+  "scope": "Bounded clock-caller observation in an owned ftrace instance; never adjusts clocks.",
+  "group": "bombcad_clock_de4df3ad499f",
+  "abi": {
+    "modes": 0,
+    "freq": 16,
+    "tick": 88,
+    "size": 208
+  },
+  "globalControlsBefore": {
+    "tracing_on": "1\n",
+    "current_tracer": "nop\n"
+  },
+  "samples": [
+    {
+      "rawSeconds": 4.804099444299936e-05,
+      "state": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10046,
+        "frequencyScaledPPM": 7619872,
+        "frequencyPPM": 116.270019531,
+        "offset": -9127,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      }
+    },
+    {
+      "rawSeconds": 15.773561016991152,
+      "state": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10046,
+        "frequencyScaledPPM": -1997826,
+        "frequencyPPM": -30.484405518,
+        "offset": -87181,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      }
+    },
+    {
+      "rawSeconds": 30.800525943996035,
+      "state": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10048,
+        "frequencyScaledPPM": -2482157,
+        "frequencyPPM": -37.874710083,
+        "offset": -11763,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      }
+    },
+    {
+      "rawSeconds": 45.82811609900091,
+      "state": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10046,
+        "frequencyScaledPPM": -1345918,
+        "frequencyPPM": -20.537078857,
+        "offset": -101429,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      }
+    },
+    {
+      "rawSeconds": 60.877294698992046,
+      "state": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 0,
+        "tickMicroseconds": 10046,
+        "frequencyScaledPPM": -160824,
+        "frequencyPPM": -2.453979492,
+        "offset": -13686,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      }
+    },
+    {
+      "rawSeconds": 76.81413406699721,
+      "state": {
+        "queryModes": 0,
+        "returnState": 0,
+        "status": 8193,
+        "tickMicroseconds": 10046,
+        "frequencyScaledPPM": 1792400,
+        "frequencyPPM": 27.349853516,
+        "offset": -133995890,
+        "timeConstant": 1,
+        "precision": 1,
+        "toleranceScaledPPM": 32768000
+      }
+    }
+  ],
+  "rawTrace": " read-clock-stat-21238   [002] d..1. 76882.049698: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=0 tick=<unused> freq=<unused>\n read-clock-stat-21238   [002] d..1. 76882.049700: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76886.780443: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76886.780458: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76886.780481: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=696344\n         chronyd-239     [002] d..1. 76886.780481: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76886.780484: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-795624\n         chronyd-239     [002] d..1. 76886.780484: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76886.780488: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76886.780488: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n           <...>-31664   [017] d..1. 76893.362473: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=8253 tick=<unused> freq=<unused>\n           <...>-31664   [017] d..1. 76893.362485: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76894.789744: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76894.789756: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76894.789780: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-1224115\n         chronyd-239     [002] d..1. 76894.789781: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76894.789783: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-1997826\n         chronyd-239     [002] d..1. 76894.789784: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76894.789788: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76894.789788: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n read-clock-stat-21239   [014] d..1. 76897.823323: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=0 tick=<unused> freq=<unused>\n read-clock-stat-21239   [014] d..1. 76897.823334: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76902.848263: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76902.848274: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76902.848296: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-1822081\n         chronyd-239     [002] d..1. 76902.848297: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76902.848299: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-1058674\n         chronyd-239     [002] d..1. 76902.848299: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76902.848303: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76902.848304: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76910.852788: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76910.852798: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76910.852818: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-788786\n         chronyd-239     [002] d..1. 76910.852819: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76910.852822: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10048 freq=-2482157\n         chronyd-239     [002] d..1. 76910.852822: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76910.852826: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76910.852827: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n read-clock-stat-21240   [010] d..1. 76912.850324: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=0 tick=<unused> freq=<unused>\n read-clock-stat-21240   [010] d..1. 76912.850334: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76918.851928: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76918.851939: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76918.851960: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=1096174\n         chronyd-239     [002] d..1. 76918.851961: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76918.851964: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=361658\n         chronyd-239     [002] d..1. 76918.851964: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76918.851968: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76918.851968: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n systemd-timesyn-31664   [017] d..1. 76925.614132: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=8253 tick=<unused> freq=<unused>\n systemd-timesyn-31664   [017] d..1. 76925.614147: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76926.863874: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76926.863886: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76926.863910: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-343547\n         chronyd-239     [002] d..1. 76926.863911: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76926.863913: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-1345918\n         chronyd-239     [002] d..1. 76926.863913: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76926.863917: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76926.863918: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n read-clock-stat-21241   [010] d..1. 76927.878062: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=0 tick=<unused> freq=<unused>\n read-clock-stat-21241   [010] d..1. 76927.878073: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76934.923907: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76934.923922: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76934.923943: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-1204422\n         chronyd-239     [002] d..1. 76934.923944: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76934.923946: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-160824\n         chronyd-239     [002] d..1. 76934.923946: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76934.923950: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76934.923953: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n read-clock-stat-21242   [015] d..1. 76942.927141: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=0 tick=<unused> freq=<unused>\n read-clock-stat-21242   [015] d..1. 76942.927152: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76942.932174: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76942.932181: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76942.932203: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-185679\n         chronyd-239     [002] d..1. 76942.932204: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76942.932206: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=8360294\n         chronyd-239     [002] d..1. 76942.932211: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76942.932216: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76942.932216: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76950.932809: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76950.932823: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76950.932855: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=1579019\n         chronyd-239     [002] d..1. 76950.932856: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76950.932860: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=1792400\n         chronyd-239     [002] d..1. 76950.932861: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76950.932865: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76950.932866: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n systemd-timesyn-31664   [017] d..1. 76957.865777: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=8253 tick=<unused> freq=<unused>\n systemd-timesyn-31664   [017] d..1. 76957.865788: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n read-clock-stat-21243   [014] d..1. 76958.863908: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=0 tick=<unused> freq=<unused>\n read-clock-stat-21243   [014] d..1. 76958.863919: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76958.930840: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76958.930849: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76958.930871: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=27292\n         chronyd-239     [002] d..1. 76958.930872: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76958.930874: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10044 freq=-3012982\n         chronyd-239     [002] d..1. 76958.930874: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76958.930879: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76958.930879: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76967.004874: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76967.004888: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76967.004921: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10044 freq=9491805\n         chronyd-239     [002] d..1. 76967.004922: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76967.004926: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=16386 tick=10046 freq=-1935655\n         chronyd-239     [002] d..1. 76967.004927: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n         chronyd-239     [002] d..1. 76967.004932: adjust: (ntp_adjtimex+0x4/0x7e0) tkid=0 modes=28 tick=<unused> freq=<unused>\n         chronyd-239     [002] d..1. 76967.004932: complete: (do_adjtimex+0x17f/0x3b0 <- ntp_adjtimex) result=0\n",
+  "traceClock": "local global counter uptime perf mono [mono_raw] boot tai x86-tsc",
+  "rawElapsedSeconds": 90.00650470200344,
+  "finalState": {
+    "queryModes": 0,
+    "returnState": 0,
+    "status": 0,
+    "tickMicroseconds": 10046,
+    "frequencyScaledPPM": -1935655,
+    "frequencyPPM": -29.535751343,
+    "offset": -23615,
+    "timeConstant": 1,
+    "precision": 1,
+    "toleranceScaledPPM": 32768000
+  },
+  "probeStats": [],
+  "cleanup": {
+    "instanceRemoved": true,
+    "ownedProbesRemoved": true,
+    "priorDefinitionsPreserved": true,
+    "globalControlsUnchanged": true,
+    "globalDefinitionsSHA256Before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "globalDefinitionsSHA256After": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "globalControlsAfter": {
+    "tracing_on": "1\n",
+    "current_tracer": "nop\n"
+  },
+  "unusedTimexFieldsRedacted": true,
+  "originalPrivateTraceSHA256": "b0968b2b0c949ee194244e5f07fae78279912992dd7b5b05df1839faaac3d935"
+}

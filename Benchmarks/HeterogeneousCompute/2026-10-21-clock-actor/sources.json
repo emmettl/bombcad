@@ -1,0 +1,21 @@
+{
+  "installedWSLVersion": "3.0.3.0",
+  "installedKernelVersion": "6.18.54.1-microsoft-standard-WSL2",
+  "sources": [
+    {
+      "tag": "3.0.3",
+      "commit": "15ea3b3846c5f18318722d1381186b2ff6ed72eb",
+      "url": "https://github.com/microsoft/WSL/blob/15ea3b3846c5f18318722d1381186b2ff6ed72eb/src/linux/init/main.cpp#L3706",
+      "fileSHA256": "30f329997fc55f1378412d0931c374ae8f890e7b356164c32fe05845ec2cf747"
+    },
+    {
+      "tag": "linux-msft-wsl-6.18.54.1",
+      "commit": "d504d40ab83839cb61942a812a99d183c42227b9",
+      "url": "https://github.com/microsoft/WSL2-Linux-Kernel/blob/d504d40ab83839cb61942a812a99d183c42227b9/kernel/time/ntp.c#L759",
+      "fileSHA256": "c50179c677406b3e5e25a75b9bfa665a0e149e2749d7c02fb8a811700bece909"
+    },
+    {
+      "url": "https://www.kernel.org/doc/html/latest/trace/kprobetrace.html"
+    }
+  ]
+}

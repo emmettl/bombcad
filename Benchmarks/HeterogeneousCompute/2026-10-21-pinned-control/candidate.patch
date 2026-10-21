@@ -1,0 +1,22 @@
+--- baseline.py
++++ candidate.py
+@@ -101,6 +101,9 @@
+     def blob(value):
+         return torch.tensor(list(bytes(value)),dtype=torch.uint8,device='cuda')
+     controls=blob(control);uniforms=blob(u)
++    # Retain the pinned tensor and NumPy view for the lifetime of the ctypes control view.
++    control_host=torch.empty(C.sizeof(Control),dtype=torch.uint8,pin_memory=True)
++    control_host_view=control_host.numpy()
+     speed=torch.zeros(2,device='cuda',dtype=torch.int32)
+     # Keep one immutable uniform buffer per axis: asynchronous launches must not see a later write.
+     variants=[]
+@@ -190,7 +193,8 @@
+         launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
+         trace()
+         torch.cuda.synchronize()
+-        control=Control.from_buffer_copy(controls.cpu().numpy().tobytes())
++        control_host.copy_(controls,non_blocking=False)
++        control=Control.from_buffer(control_host_view)
+         if control.stopped==3:
+             raise RuntimeError('nonphysical wave speed; no completed dataset written')
+         if control.dt>0:

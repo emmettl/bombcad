@@ -1,0 +1,39 @@
+{
+  "acceptedTickUpdates": 22,
+  "artifactSHA256": {
+    "abi.c.txt": "77ddbab0a44aea1e604415454303d897aef80efce36bc349e8491c6f33d2c3a8",
+    "abi.json": "05e9ce9faaff2d3226670ff9a7f6e7a06747ff6fe89c4aaaf19e9123351bc8a5",
+    "analyse.py.txt": "ef2eb4b6a9dd40538a78f04ee9f138b94cfaf8e955550dc67399deb94b498df7",
+    "analysis.json": "fcd79f389f5dd6054b74c8fd46f73017600a04eeba3f2ef5a4ef68997c2f483c",
+    "check.log": "1a183c4b3fc88a6f89b6f7f95aabc7183db200599a751499e370fef3baa67069",
+    "discipline.json": "98dc3c9470887d4312e16ab808c3ad58acb0496cbe9a138117f39fd4fd6a81b6",
+    "final-resource.txt": "1494cfffc26b31a969613ad5ab42e010c76161547d3f2d31bc706299436008fe",
+    "history.json": "ec0e5696041515dc2f9a33179d29172185e8cdc44f957fc48d069ec21f75fcbb",
+    "history.py.txt": "ad82ce6737a93a2342ab9ee016d8586a95f4f85919dbf1d5043eb62019d5ebe1",
+    "read-clock-state.c.txt": "c4502d2da25d7d356b60dabca2d5aa9dbdc5c9d0e01f0f8b9aa4d05645cfb7c7",
+    "sources.json": "fcfcfa026972e8528309e364a7239b1e72ececda1c0a3b6285bcb3e7fd9e0bde",
+    "summary.md": "2af788b77b6d7da5b2e1560a13aa8e0095792da6e81ea498240ccc589413c757",
+    "system-actor.json": "c9ec708dfd9e2b1cbad972801f716a112d379b2b6b9e6ab7d32da088b5268941",
+    "system-actor.py.txt": "9bce4775edf41538e114748820c3a29c87e32d36b1c923e992d95190865dbbae",
+    "system-root-processes.txt": "ce6e31a2de04fb645773ea113450d290ab3fbfba582b02575469ec55c07e6732",
+    "trace-failed.json": "41dbdf00dba7424770f9a883914bb35647fb679dfea4107c25a31a250a217110",
+    "trace-run.log": "a6c4db9dccf9e50963b09e60923a3985072aa21dda2b405cbf27a0529dfda3dc",
+    "trace.json": "65e8ce4643a46f2692b89aa776d8efdb99ed1cd8ba2724957a84b1b6536367d0",
+    "trace.log": "a7c513e6145f02607d09af103ff19f59afc1e2ef92b9fb2b12af72d05f9f1c07",
+    "trace.py.txt": "107d41fc5eb331c8a6945c5f8580a9116982f1d26a4efc8a58154c4a4929df55",
+    "wsl-version.json": "d70d96b5f510f7e29b1254ca7f1428f2f817a11f67ea159b6885194f3023aaf9"
+  },
+  "clockOrServiceSettingsChangedByInvestigation": false,
+  "currentTickSetterIdentified": true,
+  "feedbackMechanismProven": false,
+  "format": "bombcad-clock-actor-evidence-1",
+  "normalizationPerformed": false,
+  "ownedTraceCleanupVerified": {
+    "globalControlsUnchanged": true,
+    "globalDefinitionsSHA256After": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "globalDefinitionsSHA256Before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "instanceRemoved": true,
+    "ownedProbesRemoved": true,
+    "priorDefinitionsPreserved": true
+  }
+}

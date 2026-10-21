@@ -1,0 +1,191 @@
+cooling32 0 baseline 1.869
+cooling32 0 candidate 1.617
+cooling32 1 candidate 1.766
+cooling32 1 baseline 1.566
+cooling32 2 baseline 1.565
+cooling32 2 candidate 1.566
+blast64 0 baseline 1.614
+blast64 0 candidate 1.614
+blast64 1 candidate 1.563
+blast64 1 baseline 1.514
+blast64 2 baseline 1.613
+blast64 2 candidate 1.565
+cooling64 0 baseline 1.665
+cooling64 0 candidate 1.663
+cooling64 1 candidate 1.772
+cooling64 1 baseline 1.789
+cooling64 2 baseline 1.783
+cooling64 2 candidate 1.727
+terrain256 0 baseline 5.734
+terrain256 0 candidate 5.724
+terrain256 1 candidate 5.718
+terrain256 1 baseline 5.62
+terrain256 2 baseline 5.701
+terrain256 2 candidate 5.754
+[
+  {
+    "job": "cooling32",
+    "baseline": {
+      "medianTotalSeconds": 1.5662229949957691,
+      "medianSolverSeconds": 0.23783942400768865
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.6172886950080283,
+      "medianSolverSeconds": 0.31733268800599035
+    }
+  },
+  {
+    "job": "blast64",
+    "baseline": {
+      "medianTotalSeconds": 1.6125540759967407,
+      "medianSolverSeconds": 0.18999076500767842
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.564517746999627,
+      "medianSolverSeconds": 0.19865591199777555
+    }
+  },
+  {
+    "job": "cooling64",
+    "baseline": {
+      "medianTotalSeconds": 1.7825758659892017,
+      "medianSolverSeconds": 0.363003687991295
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.727131236999412,
+      "medianSolverSeconds": 0.3551345349987969
+    }
+  },
+  {
+    "job": "terrain256",
+    "baseline": {
+      "medianTotalSeconds": 5.701330640993547,
+      "medianSolverSeconds": 4.06962115499482
+    },
+    "candidate": {
+      "medianTotalSeconds": 5.723819220991572,
+      "medianSolverSeconds": 4.084500209995895
+    }
+  }
+]
+/home/lemme/bombcad-ml/venv/lib/python3.12/site-packages/torch/profiler/profiler.py:224: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+[
+  {
+    "baseline": [
+      {
+        "name": "cudaMemcpyAsync",
+        "count": 1191,
+        "selfCPUTimeMicroseconds": 26744.40899999987,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy HtoD (Pageable -> Device)",
+        "count": 590,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 725.7449999984528
+      },
+      {
+        "name": "cudaStreamSynchronize",
+        "count": 1188,
+        "selfCPUTimeMicroseconds": 12163.588000000804,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoD (Device -> Device)",
+        "count": 3,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 17.402999999991152
+      },
+      {
+        "name": "cudaLaunchKernel",
+        "count": 93,
+        "selfCPUTimeMicroseconds": 3159.1980000001495,
+        "selfDeviceTimeMicroseconds": 0.0
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pinned)",
+        "count": 18,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 34.96300000016345
+      },
+      {
+        "name": "cuLaunchKernel",
+        "count": 2847,
+        "selfCPUTimeMicroseconds": 18985.82499999978,
+        "selfDeviceTimeMicroseconds": 106.29499999963446
+      },
+      {
+        "name": "cudaDeviceSynchronize",
+        "count": 571,
+        "selfCPUTimeMicroseconds": 93962.33199999982,
+        "selfDeviceTimeMicroseconds": 15.895999999833293
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pageable)",
+        "count": 580,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 1941.9079999998212
+      }
+    ]
+  },
+  {
+    "candidate": [
+      {
+        "name": "cudaMemcpyAsync",
+        "count": 1191,
+        "selfCPUTimeMicroseconds": 25277.982999999556,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy HtoD (Pageable -> Device)",
+        "count": 590,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 694.1050000007963
+      },
+      {
+        "name": "cudaStreamSynchronize",
+        "count": 1188,
+        "selfCPUTimeMicroseconds": 14695.472000000125,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoD (Device -> Device)",
+        "count": 3,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 16.485000000029686
+      },
+      {
+        "name": "cudaLaunchKernel",
+        "count": 93,
+        "selfCPUTimeMicroseconds": 1590.6940000001196,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pinned)",
+        "count": 587,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 508.75900000067486
+      },
+      {
+        "name": "cuLaunchKernel",
+        "count": 2847,
+        "selfCPUTimeMicroseconds": 57639.675999999716,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "cudaDeviceSynchronize",
+        "count": 571,
+        "selfCPUTimeMicroseconds": 19722.555999999706,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pageable)",
+        "count": 11,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 479.4100000000326
+      }
+    ]
+  }
+]
+Verified 60 runs

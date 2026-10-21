@@ -1,0 +1,58 @@
+"""Pinned-buffer diagnostic; perturbed call counts and two failure controls, not timing trials."""
+import gzip,hashlib,importlib.util,json,shutil,sys
+from pathlib import Path
+root=Path(__file__).resolve().parent
+sys.path.insert(0,str(root))
+def module(path,name):
+ spec=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+lock=module(root/'remote-train.py','lock')
+lockpath=str(Path.home()/'bombcad-ml/lock')
+if not lock.acquire(lockpath,'CUDA control diagnostic trace',lock.boot_id()):raise SystemExit('GPU held by another job')
+try:
+ import torch
+ torch.cuda.init();out=root/'diagnostic';out.mkdir()
+ rows=[]
+ for name in ['baseline','candidate']:
+  worker=module(root/(name+'.py'),name)
+  with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CPU,torch.profiler.ProfilerActivity.CUDA]) as prof:
+   result=worker.run(root/'blast64',root/'solver.cu',out/name,cache_dir=Path.home()/'bombcad-cuda/ptx-cache')
+  trace=out/(name+'-trace.json');prof.export_chrome_trace(str(trace))
+  with trace.open('rb') as src,gzip.open(str(trace)+'.gz','wb') as dst:shutil.copyfileobj(src,dst)
+  trace.unlink()
+  events=[dict(name=e.key,count=e.count,selfCPUTimeMicroseconds=e.self_cpu_time_total,selfDeviceTimeMicroseconds=getattr(e,'self_device_time_total',0)) for e in prof.key_averages()]
+  hashes={str(p.relative_to(out/name)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (out/name).rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')}
+  rows.append(dict(worker=name,steps=result['steps'],events=events,hashes=hashes,workerFilesSHA256=result['workerFilesSHA256']))
+ assert rows[0]['hashes']==rows[1]['hashes']
+ # Check the incomplete-duration failure without altering any original job inputs.
+ failures=[]
+ job=out/'step-limit';job.mkdir()
+ for f in (root/'blast64').iterdir():
+  if f.name!='job.json':(job/f.name).symlink_to(f.resolve())
+ meta=json.loads((root/'blast64/job.json').read_text());meta['steps']=1;(job/'job.json').write_text(json.dumps(meta))
+ for name in ['baseline','candidate']:
+  worker=module(root/(name+'.py'),'failure_'+name);dest=out/('failed-'+name)
+  try:worker.run(job,root/'solver.cu',dest,cache_dir=Path.home()/'bombcad-cuda/ptx-cache')
+  except RuntimeError as error:
+   assert 'step limit reached before duration' in str(error) and not dest.exists()
+   failures.append(dict(worker=name,error=str(error),noOutputWritten=True))
+  else:raise AssertionError('incomplete job accepted')
+ # Finite input values whose sound-speed calculation overflows must hit stopped==3.
+ import numpy as np
+ fatal=out/'nonphysical';fatal.mkdir()
+ for f in (root/'blast64').iterdir():
+  if f.name not in ('job.json','state.bin'):(fatal/f.name).symlink_to(f.resolve())
+ state=np.frombuffer((root/'blast64/state.bin').read_bytes(),dtype='<f4').copy().reshape(-1,5)
+ state[0,0]=np.float32(1e-5);state[0,4]=np.float32(3e38);state.tofile(fatal/'state.bin')
+ meta=json.loads((root/'blast64/job.json').read_text());meta['files']['state.bin']=hashlib.sha256((fatal/'state.bin').read_bytes()).hexdigest();(fatal/'job.json').write_text(json.dumps(meta))
+ fatal_results=[]
+ for name in ['baseline','candidate']:
+  worker=module(root/(name+'.py'),'nonphysical_'+name);dest=out/('nonphysical-'+name)
+  try:worker.run(fatal,root/'solver.cu',dest,cache_dir=Path.home()/'bombcad-cuda/ptx-cache')
+  except RuntimeError as error:
+   assert 'nonphysical wave speed' in str(error) and not dest.exists()
+   fatal_results.append(dict(worker=name,error=str(error),noOutputWritten=True))
+  else:raise AssertionError('nonphysical job accepted')
+ report=dict(scope=__doc__,torch=torch.__version__,rows=rows,allNumericalOutputsAndTimestepsBitIdentical=True,incompleteDurationControls=failures,nonphysicalControls=fatal_results)
+ (out/'diagnostic.json').write_text(json.dumps(report,indent=2)+'\n')
+ print(json.dumps([{r['worker']:[e for e in r['events'] if 'Synchronize' in e['name'] or 'Memcpy' in e['name'] or 'LaunchKernel' in e['name']]} for r in rows],indent=2))
+finally:lock.release(lockpath)

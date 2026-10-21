@@ -1,0 +1,443 @@
+{
+  "allSourcesProvenanceAndNumericalOutputsVerified": true,
+  "reports": [
+    {
+      "profile": "results-small-terrain",
+      "profileSHA256": "8c1f4d2dc12dae16dda72ff4728ff63fbbd8db73f3dfe97e99a8a1c2bc0a9459",
+      "verified": [
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "95bd77476911e3a5cd42ca8cd981c9e145fad6e9b8b8f75558f90b7cbb70b53a",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "1c14dfeb021a47e89c0398d2f25cca106dcf0a59677dbf70a0be4895a90969c1",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "001ca6fe301b1bb282f71aed477497019b2609d9529c8d933161d1c5e84e7569",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "363f57216d0cc91ccaa21f0dfefcda14084e85d18e7a0c51802df555a8679af6",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "e682c9be237dcf8eae31d9960957505bb860cdd4cbe13644be91960f35257210",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "070afad30b755ad4ee505110ac6f5e0c827925592bae2805a9b20f379061176f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "36cca39f6099c89e22952c074f4484560ad2c53a71d4ec136b45b6fbbc435484",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "0fe38160aa1cc4f557342a08f08aedbc23ce99675b0089a8e98f1cb317691fbc",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "8c6d25356aabb0f14baf9d16f3af9d220d4b48283bbc8b174621381bd0e78bf5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "8b6379645696707d1c85274e9b4dc0d57d8fb45094ee56cc6524b095e00b4644",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "e37012422888b4dde60240654f5248bef381eebb9e499baf3f0dd82abe307d4d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "9752e277ac770f2d3529d96b2ce8d8653235230a6d60e8911cba3ba81f550dd4",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "d3e5ac1524a4f052401bc360bbec23b637f013f42d22ebaa6811830be54b39a8",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "faf0cb769d1defd840e2f5e0e1b829b01e0c0ceb34eb0ff3c075205b2f5baf72",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "3de78355bee217ef8566c0931bfb9befffb0331277af42da02f20d5e803eb91f",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "284f955b761401fbae669c797d0c258ba3b0a08b05eed93360f06d70d45259a5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "cd3a22d827dac6dc9d5a2138b0857e5e8347272e8c8570349a187338114df88d",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "562f8953d876f434e4307dd200328a76ea37027216461d2f32dc1d0d398db061",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "0eda81a014c1bd5825f6dd72c9a0a3fe94865341097770fdb5bfe2f474997379",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "a653163cbf7ec36aef02f2c98adbfad35dc07d37b3701b89ce1fd1adcad1a851",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "eafee0034022fcf79dc6a250d041a8f475fad69a71979e43319209e9f1b9081f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "45c295fe4feefd74f13f40b7ee65099ce8e542c3a8ade3f4516b271059ace1a6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "4be6569e7aa2ff8ae14ce082d6253c7e19dc7a8094333a94604af22b8dfe3012",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "0bab2e3f4c6decc308d152d8fc00179b2e59530943498d3fddf023cff667d364",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "results-districts",
+      "profileSHA256": "68e33ecfaa15af9c85200ee1b865a62639bd4f81f8034ec9eeeee5e55721b9f7",
+      "verified": [
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "036d077431ade0a210fe6b8b482926920198cc6923d2ea6e23a61a221397e29a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "e18592dc75e3bed1f9711f72694c2d1c626d1acb0299aef1656f079740ea08ea",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "4849a05cdc40c9c309974d7f8fabbe82536584b7b8732280920dd8c185f8789a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "2b1558e0190de6df334a5376cd7941257ef6462283cd58d3bdda9f781722d346",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "dd6c46e1d39e811adcf4a7709b7298d7ee3f2a125e623fc9998afbab965356e7",
+          "numericalFiles": 12
+        },
+        {
+          "job": "flat512",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "18992395a1c3929aacd58aa5a95d127e43f85389b2b60d382d3596d7f32abf3b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "c862a36cb1585db1355d1f6fbe469f6a634b572a04b116dbfa7b8973057548d2",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "b43850bf676e10c3b8a2457a20db9751dc72249f0751410a166de187ee14286b",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "9fa8310b70a3585c2e8ee45a1b32816da496810b4a66d181897c5e7234f463a2",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "92a9505f6bf1fc39324209b700f4dc0d3c9ed8b34c184f878f1d68c98ce5609f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "f20eebb64afd1b7ca3e0de44ee17b0cdd193cd348f9b1017ae46744167acc58a",
+          "numericalFiles": 12
+        },
+        {
+          "job": "beirut512",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "28ab03657b5229bc74c9fd80e5723ff1a20fd0bbb528ffdd3fd4425d9ff3756e",
+          "numericalFiles": 12
+        }
+      ]
+    },
+    {
+      "profile": "results-null-small",
+      "profileSHA256": "129bbabcf525fe053833403524c6cfba782f0f1d787cbeb065d8e115288b8e87",
+      "verified": [
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "df0a038eb213d988d4735fbc4e06565286d7382530830ffa313a264f27e570eb",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "0482b279aa5eb3852ff78e029cbd22c9c52ff32c3c68236f711ea23b4e70f910",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "8f3bb87cda0f8cfcbbb349c046750b5b7a73b470bd7402c9db8c94f5d9b8da6e",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "daeae22b093ba3bf040f1c124ac4e25ee28dbf210190eddab8f36446ae5788b2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "65168b86a5cc4a6480c4e2b1c7dea8de86b374c9b094b38b8acc4c8ad2fd25b2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling32",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "4a379cc4fe1ab36702ced92626abb6ed6fce6e6d8d1f7a50cf878c6bc87507ff",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "b53465f65873da07a6bc2817106aac6b0a159fd9a4bef63d721c3657da46f0a5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "e656884b5b13f5792197e4149f555915173207b2ce2cccce3fca964adf50a0bd",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "a650be983c02bfb9c58acedc2edb279906d5c00fde03d8013dac2704b3d5196b",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "1524f67a3983fe33e30806e0c0d0fd59c00a07f3794308d8c93101c4404612ec",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "8f53f77be9d1be53a03dd6c7a94aae85157c8f300be2459baae2ea5555c781f5",
+          "numericalFiles": 9
+        },
+        {
+          "job": "blast64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "49dcddd3c9f59dcb384b56780996a6da870528b39d955fa591c28c02cd2f0560",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "18c20b2693e04b9fe29b5d91665b1301e33b83e9e71cd13ab514763d81dcd73c",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "d25d850f8012f409d3e9b5036df01f58cd09960a70183ac3100b44b3ff625906",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "073632fe0f669d10f97a2717b043fd13099bbd8ffac68d7cca1fbb726d367bc4",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "5602e29d76398332d3727da24002052a8882738b4ec469f2f0dcf8deeb2085d2",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "59506955cb1449101aa5e6380ee49b80a16bca30d36caa954db715b64b29d5a7",
+          "numericalFiles": 9
+        },
+        {
+          "job": "cooling64",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "e94b97c1f278e9536852785a504205b6c716cf7cc7ac067761f730df697d9236",
+          "numericalFiles": 9
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "baseline",
+          "resultSHA256": "f412878de12d0ae3e581068754f3501c22ed985dc638b3eb1cefa15733f14fee",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 0,
+          "worker": "candidate",
+          "resultSHA256": "c962d8424b8e66074394e9f8d0cb5168f01fb6ee5de3c4a749a1a832624bad9f",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "candidate",
+          "resultSHA256": "9db660aec121418caa07c88091377ab9455f50d8e1346adfd0f293ab7d421090",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 1,
+          "worker": "baseline",
+          "resultSHA256": "4ebfa35e4f2183a38c6edba273cffb62bd8f92b7be436ec09f6e197a799e2dd0",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "baseline",
+          "resultSHA256": "763a31fc72ad6969a5dd67f99a73ffcfe501639a710fb0c355eabc13e6abdcf6",
+          "numericalFiles": 12
+        },
+        {
+          "job": "terrain256",
+          "repetition": 2,
+          "worker": "candidate",
+          "resultSHA256": "71267ec374d4fcec7fba2fc43249d9fba00e1129424d6e6cb23b6dae920192c5",
+          "numericalFiles": 12
+        }
+      ]
+    }
+  ]
+}
