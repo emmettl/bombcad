@@ -72,6 +72,16 @@ def run(args):
             estimate = fr.estimate(case, plan["layouts"])
             cells = estimate["cells"] * (4 / dx) ** 3
             memory = max(4, int(math.ceil(cells * 73 * 1.3 / 1e9 + (2 if layout["kind"] == "beirut" else 1))))
+            # Better, from a coarser run of the same case: its solver's memory scaled by the cells.
+            for coarse in sorted((float(d) for d in args.dx.split(",")), reverse=True):
+                try:
+                    with open(os.path.join(args.out, name, "dx%g" % coarse, "meta.json")) as handle:
+                        solver = json.load(handle)["solverBytes"]
+                except (OSError, ValueError, KeyError):
+                    continue
+                if coarse > dx:
+                    memory = max(4, int(math.ceil(solver * (coarse / dx) ** 3 * 1.15 / 1e9 + 2)))
+                    break
             command = [GPU_SLOT, "--mem", str(memory), scenebench] + arguments
             print("%s at %g m: %s" % (name, dx, " ".join(command)), flush=True)
             if args.dry_run:
@@ -181,6 +191,8 @@ def analyse(args):
     import numpy as np
     sys.path.insert(0, HERE)
     import judge_field
+    with open(field_runs().LIST) as handle:
+        plan = json.load(handle)
     rows = []
     for name in sorted(os.listdir(args.out)):
         base = os.path.join(args.out, name)
@@ -245,6 +257,14 @@ def analyse(args):
             continue
         with open(strips_path) as handle:
             strips = [{k: float(v) for k, v in s.items()} for s in csv.DictReader(handle)]
+        # The strips are laid out on the dataset run's own square; a smaller one (`--radius`) about
+        # the same charge has its corner that much nearer.
+        full = next(r["radiusM"] for r in plan["sets"]["main"] if r["id"] == run_id)
+        shift = full - 0.5 * c["meta"]["domainM"][0]
+        if shift:
+            for s in strips:
+                for key in ("x0", "x1", "y0", "y1"):
+                    s[key] -= shift
         half = 0.5 * c["meta"]["domainM"][0]
         middle = (0.5 * c["meta"]["domainM"][0], 0.5 * c["meta"]["domainM"][1])
         found = {"peak": [], "impulse": [], "z": [], "level": [], "sight": [], "cos": []}

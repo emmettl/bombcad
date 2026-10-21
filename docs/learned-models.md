@@ -1170,6 +1170,130 @@ The recommendation: keep it off until the release is published and the download 
 Then make it the default for glass and walls together, and settle the walls' factor (×0.8 against ×1.0) on its own numbers above.
 Nothing has been changed by default.
 
+## Round 3: the 4 m runs' resolution bias (21 October 2026)
+
+emmettl/bombcad-work#69, stage 1. Every training run is on 4 m cells. 3afdd0c9 found that 4 m runs
+read walls' reflected peaks 13–27% low at 400–600 m of 0.5 kt (emmettl/bombcad-work#19). The
+question here is whether that bias is also in the exported fields the model learns, and what to do
+about it.
+
+**How it was measured.** `Scripts/ml/field_bias.py run` exports six of the dataset's runs again,
+on 4 m and on uniform 2 m cells, with the fields at more heights (`--levels 6,10,14,20 --roof`,
+[below](#fields-at-more-heights)). The six are 54–355 t: Beirut
+p2-5, p0-1 and p4-3, and the made-up perimeter-s6-2, mixed-s6-4 and towers-s6-1. All six are in
+the strict split's held-out set. Two made-up runs were also run at 1 m on smaller squares about
+the same charge (half sides 512 m and 384 m), at 4, 2 and 1 m. Uniform cells were used, not
+corridors or ceilings, so that nothing but the cell size differs. 3afdd0c9 saw a refined level of
+its own over terrain read impulse 12–17% low.
+
+The 4 m runs agree to the bit with the dataset's. The 2 m runs took 3–9 minutes each on a shared
+Studio, the 1 m runs 6–7 minutes. `field_bias.py analyse` compares each coarse cell with the
+mean of the finer cells it holds, at each level, wherever all of them are in the mask. It also
+compares each façade strip's front cells, as judge_field.py reads them: each storey at the level
+it spans, and on the fine cells the first cell in the mask going out from the face. Each figure
+below is the median of fine over coarse, then the log-SD.
+
+**4 m against 2 m, all six runs** (1.1 M cells at 2 m over the ground, 72,000 ground-floor strips):
+
+| Where | Peak | First-phase impulse |
+|---|---|---|
+| Cells 2 m over the ground | 1.09 / 0.07 | 0.97 / 0.06 |
+| Z 0–3 / 3–7 / 7–14 / 14–20 / 20–40 | 1.13 / 1.09 / 1.09–1.10 / 1.08 / 1.10–1.14 | 0.95–0.99 |
+| In sight, open | 1.09 / 0.05 | 0.92 / 0.07 |
+| Shielded (4+ buildings crossed), open | 1.09 / 0.07 | 0.97 / 0.05 |
+| Shielded, beside a building | 1.11 / 0.10 | 0.98 / 0.07 |
+| Cells at 10 m, 20 m | 1.09, 1.08 | 0.97 |
+| Over the roofs (2 m over the top) | 1.08 / 0.08 | 0.97 / 0.05 |
+| Ground-floor façade strips | **1.11 / 0.13** | 0.97 / 0.08 |
+| … Z 0–3 / 3–5 / 5–7 / 7–14 / 14–40 | 1.24 / 1.19 / 1.15 / 1.11–1.13 / 1.09–1.15 | 0.96–1.00 |
+| … in sight and facing (cos > 0.7) | 1.17 / 0.21 | 0.94 / 0.14 |
+| … facing away, down a street | 1.11 / 0.12–0.14 | 0.96–0.97 |
+| Façade strips at 10 m, 20 m | 1.09, 1.07 | 0.96 |
+
+By run, the cells at 2 m are 1.08–1.12 in peak, and the ground-floor strips 1.10–1.12. Beirut's
+runs lie in the made-up runs' range. The runs with the fewest cells per charge length run highest:
+1.11–1.12 at W^(1/3)/dx = 9.5 on 4 m cells, and 1.08–1.09 at 13–18.
+
+**4 m, 2 m and 1 m** (the two smaller squares, made-up and flat):
+
+| | Perimeter s6-2, 54 t: cells | Façade strips | Towers s6-1, 194 t: cells | Façade strips |
+|---|---|---|---|---|
+| 2 m over 4 m, peak | 1.08 | 1.12 | 1.09 | 1.12 |
+| 1 m over 2 m, peak | 1.05 | 1.08 (facing: 1.15) | 1.07 | 1.10 (facing: 1.14) |
+| **1 m over 4 m, peak** | **1.14** | **1.20** (facing: 1.29) | **1.16** | **1.23** (facing: 1.28) |
+| 1 m over 4 m, first-phase impulse | 0.93 | 0.93 | 0.93 | 0.92 |
+| Open, in sight, Z 3–14, over Kingery–Bulmash's incident peak: 4 m / 2 m / 1 m | 0.73 / 0.81 / 0.88 | | 0.76 / 0.83 / 0.87 | |
+
+**What it says:**
+
+- **The bias is general, not only at reflecting faces.** The field 2 m over open ground reads about
+  9% low on 4 m cells against 2 m, and 14–16% against 1 m. Façade strips read 11% low against 2 m,
+  and 20–23% against 1 m. Strips facing the charge read 15–17% and 28–29% low, as 3afdd0c9's block
+  in the open did. Roofs and upper levels have about the same bias, a little less with height:
+  1.08 at 20 m against 1.09 at 2 m.
+- **The impulse is 3–7% high on 4 m cells**: 0.97 against 2 m and 0.93 against 1 m. It is
+  highest close in and in sight, at 0.92.
+- **It is not converged at 2 m.** From 2 m to 1 m the peak still rises by 5–7% in the open and
+  8–10% at façades (14–15% for those facing). In the open, in sight, 1 m reads 0.87–0.88 of
+  Kingery–Bulmash's incident peak, against 0.73–0.76 for 4 m.
+- **It hardly depends on the district.** Shielded and in-sight cells, Beirut and made-up layouts,
+  ground and roofs: all lie within a few per cent. The bias's own scatter from cell to cell, a
+  log-SD of 0.05–0.13, is well under the model's scatter against the runs (0.22–0.26 at Beirut's
+  façades). What it depends on is the scaled distance, whether the face is struck head on, and,
+  weakly, the cells per charge length.
+
+**The verdict: a correction, not finer training data.**
+
+- **Finer training data cost too much for what they buy.** On 2 m cells the 200 runs would take
+  about 16 times the 4 m list's GPU time: 50–80 GPU hours, against the 5 approved. They would
+  still be 5–10% low against 1 m. A refined export would also need the refined levels' fields
+  read on the plan, and 3afdd0c9 found a refined level over terrain reading impulse low.
+- **A factor fixes most of it,** because the bias is close to a function of scaled distance and
+  facing alone, with little scatter. Against 1 m, as the best this study has:
+  - the peak ×1.15 in the open, at roofs and at upper levels (×1.2 within Z 7, ×1.06 beyond
+    Z 14);
+  - ×1.20 at façades, and up to ×1.29 for faces struck head on;
+  - the first-phase impulse ×0.93.
+  This matches 3afdd0c9's interim wall factor (peak ×1.15, impulse ×0.95), measured on Beirut's
+  walls in the refined runs.
+- **Nothing was changed.** The factor is not applied in the model, the trainer or the app. The
+  glass's and walls' calibrations were fitted against 4 m runs (#19, #47). A factor on the
+  model's peak alone would move their chances without recalibrating them. f5d0fd97 is re-running
+  #19's wall references on 2 m air. The factor belongs with that recalibration, as one decision
+  for the user. It would apply to the surrogate and the model alike.
+
+The runs and tables are in `/Volumes/StudioData/bombcad/ml/bias/`: `analyse-4-2.txt` and
+`summary-*.json`, with the 4/2/1 m tables in `summary-r512-*` and `summary-r384-*`.
+
+```bash
+python3 -I Scripts/ml/field_bias.py run --only beirut-p2-5,beirut-p0-1,beirut-p4-3,made-perimeter-s6-2,made-towers-s6-1,made-mixed-s6-4 \
+    --dx 4,2 --out /Volumes/StudioData/bombcad/ml/bias
+python3 -I Scripts/ml/field_bias.py run --only made-perimeter-s6-2 --dx 4,2,1 --radius 512 --tag r512 --out /Volumes/StudioData/bombcad/ml/bias
+python -I Scripts/ml/field_bias.py analyse --out /Volumes/StudioData/bombcad/ml/bias [--tag r512 --coarse 4 --fine 1]
+```
+
+### Fields at more heights
+
+`field-export --levels 6,10,14,18,22,26,30 --roof` (and `field-runs.py run --levels … --roof`)
+writes the same targets at more levels as well:
+
+- **Each height**, so many metres over the ground under the cell, read between the two cells
+  whose centres span it, as the 2 m field is read.
+- **The roof**, `--above` (2 m) over the top of the cell's building.
+- **The first phase** at every level. The first-phase recorder takes a layer of columns for each
+  level, and the same kernel sweeps each layer at its offset in the buffers. No shader changed,
+  and one layer is as before.
+
+They go to `levels-targets.npy` (levels × targets × rows × columns) and `levels-mask.npy`
+(levels × rows × columns), named in `meta.json`'s `levels`. A height level's mask is the air
+there over a cell whose building, if any, is no taller. The roof's mask is the air over a cell
+with a building. The 2 m files are as they were: on the dataset's runs they are bit-identical to
+`main-fp`'s. Without either flag nothing else is written. `FirstPhaseColumnsTests` checks that
+two layers each record as that layer alone would, and leave the run as it was to the bit.
+
+`train_field.py --levels all` learns every level: a log peak and a log impulse for each, as
+corrections to Kingery–Bulmash's incident logs at the cell's distance, each over its own mask.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
@@ -1186,8 +1310,9 @@ Nothing has been changed by default.
 - **Fields at façades and roofs.** The targets are at street level only. A façade model needs the
   envelope histories (`district-compare --save-loads`) on the same grid.
 - **Other cell sizes.** Every run is on 4 m cells, so the model learns the 4 m runs, artefacts and
-  all: their peaks are about 0.7 of Kingery–Bulmash's even in the open. Finer runs would be needed
-  to learn converged fields.
+  all. Their peaks are about 9% low against 2 m and 15–20% against 1 m, and their impulses 3–7%
+  high ([round 3](#round-3-the-4-m-runs-resolution-bias-21-october-2026)). The proposed
+  correction is a factor, decided with #19's recalibration.
 - **Times on the PCs.** `job.json` records each job's time and GPU. The training time for each
   machine is to be added here after the first runs.
 

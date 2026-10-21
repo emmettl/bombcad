@@ -570,6 +570,7 @@ def reliability(predicted, observed):
 def walls_main(argv):
     parser = argparse.ArgumentParser(description="the walls' and roofs' chances with the field model's loads")
     parser.add_argument("--peaks", required=True, help="judge_field.py --peaks-out folder")
+    parser.add_argument("--roofs", help="judge_field.py --roofs-out folder: the roofs' own loads, in place of the proxy")
     parser.add_argument("--recorded", default="/Volumes/StudioData/bombcad/ml/judge/compare-first")
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--scenebench", default=os.path.join(REPOSITORY, ".build", "release", "scenebench"))
@@ -611,7 +612,8 @@ def walls_main(argv):
             mine = [v for v in variants if not any(n in v.split(":") and run_id not in held
                                                    for n, held in only.items())]
             command = [args.scenebench, "field-walls"] + arguments + [
-                "--loads", loads, "--peaks", os.path.join(args.peaks, name), "--variants", ",".join(mine),
+                "--loads", loads, "--peaks", os.path.join(args.peaks, name), "--variants", ",".join(mine)] + (
+                ["--roof-peaks", os.path.join(args.roofs, name)] if args.roofs else []) + [
                 "--factors", args.factors, "--scales", args.scales, "--draws", str(args.draws),
                 "--out", target + ".tmp"]
             began = time.time()
