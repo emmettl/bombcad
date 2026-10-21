@@ -453,9 +453,11 @@ the charge where it was and 60 m east):
 | 6%, a tenth | 0.928 | 0.881–0.882 | +0.009 | 0.997 |
 | **The preview's (10%, a fifth)** | **0.928** | **0.880–0.882** | **+0.006** | **0.997** |
 
-Two runs of the same build differ in the third decimal. Each building's strength draws are keyed
-by its place among the scene's objects sorted by their identifiers, which are new each time a
-scene is built. So these figures agree within their own noise.
+Two runs of the same build differed in the third decimal. Each building's strength draws were
+keyed by its place among the scene's objects sorted by their identifiers, which are new each time
+a scene is built, so these figures agree within their own noise. Since 21 October the draws are
+keyed by each building's geometry (`SceneObject.drawKey`), and the same scene gives the same
+chances to the bit (`EstimateReproducibilityTests`).
 
 **Faster** (Beirut, 21 frames 5 m apart; the Studio shared, load 2–14):
 

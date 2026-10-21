@@ -135,7 +135,8 @@ package enum GlassCalibration {
                     out[n].append(
                         Placed(
                             side: FacadeLoadSurrogate.GlassSideStrips(
-                                owner: objects[n].id, axis: axis, outward: key % 2 == 1 ? 1 : -1,
+                                owner: objects[n].id, ownerKey: objects[n].drawKey, axis: axis,
+                                outward: key % 2 == 1 ? 1 : -1,
                                 mix: mix,
                                 strips: members.map {
                                     (
@@ -315,7 +316,8 @@ package enum GlassCalibration {
                     return nil
                 }
                 return FacadeLoadSurrogate.GlassSideStrips(
-                    owner: objects[key.object].id, axis: key.axis, outward: key.outward, mix: mix,
+                    owner: objects[key.object].id, ownerKey: objects[key.object].drawKey, axis: key.axis,
+                    outward: key.outward, mix: mix,
                     strips: sideStrips[key]!)
             }
             let sideKeys = keys.filter {

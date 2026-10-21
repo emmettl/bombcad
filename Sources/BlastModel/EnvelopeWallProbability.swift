@@ -104,11 +104,21 @@ extension FacadeLoadSurrogate {
             members[b].append(n)
         }
         let built = owners.map(constructions)
+        // Each building's draws by its geometry (`SceneObject.drawKey`), as the glass's: the same
+        // scene, the same chances, however often it is laid out. Without the estimate's keys, by
+        // its identifier.
+        var keyOf: [UUID: UInt64] = [:]
+        if !estimate.ownerKeys.isEmpty {
+            for (k, n) in estimate.owners.enumerated() where estimate.ownerKeys.indices.contains(n) {
+                keyOf[estimate.components[k].owner] = estimate.ownerKeys[n]
+            }
+        }
         let ownerSeeds = owners.map { id in
-            UInt64(
-                truncatingIfNeeded: id.uuidString.utf8.reduce(UInt64(14_695_981_039_346_656_037)) {
-                    ($0 ^ UInt64($1)) &* 1_099_511_628_211
-                })
+            keyOf[id]
+                ?? UInt64(
+                    truncatingIfNeeded: id.uuidString.utf8.reduce(UInt64(14_695_981_039_346_656_037)) {
+                        ($0 ^ UInt64($1)) &* 1_099_511_628_211
+                    })
         }
 
         func level(

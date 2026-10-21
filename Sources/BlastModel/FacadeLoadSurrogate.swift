@@ -700,6 +700,9 @@ public enum FacadeLoadSurrogate {
         public var components: [EnvelopeComponent]
         /// Each component's owner, by index in `scene.envelopeObjects`.
         public var owners: [Int]
+        /// Each owner's key for its draws (`SceneObject.drawKey`), by index in
+        /// `scene.envelopeObjects`; empty for an estimate made without them.
+        public var ownerKeys: [UInt64] = []
         public var features: [Features]
         public var predictions: [Prediction]
         /// The predicted loads as a run's recorder would give them, for `EnvelopeDamageAssessment`.
@@ -739,6 +742,7 @@ public enum FacadeLoadSurrogate {
         }
         var result = Estimate(
             components: [], owners: [], features: [], predictions: [], loads: [], seconds: 0)
+        result.ownerKeys = objects.map(\.drawKey)
         for (n, list) in perObject.enumerated() {
             for (component, f, p, l) in list {
                 result.components.append(component)

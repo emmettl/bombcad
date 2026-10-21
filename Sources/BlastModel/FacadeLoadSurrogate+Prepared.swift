@@ -80,6 +80,7 @@ extension FacadeLoadSurrogate {
             }
             var result = Estimate(
                 components: [], owners: [], features: [], predictions: [], loads: [], seconds: 0)
+            result.ownerKeys = objects.map(\.drawKey)
             let count = componentCount
             result.components.reserveCapacity(count)
             result.owners.reserveCapacity(count)
@@ -160,6 +161,7 @@ extension FacadeLoadSurrogate {
             }
             var result = Estimate(
                 components: [], owners: [], features: [], predictions: [], loads: [], seconds: 0)
+            result.ownerKeys = objects.map(\.drawKey)
             var sides: [GlassSideStrips] = []
             for (n, list) in perObject.enumerated() {
                 for (component, f, p, l, area) in list {
@@ -171,7 +173,8 @@ extension FacadeLoadSurrogate {
                     if component.kind == .facade, let mix = mixes[n] {
                         sides.append(
                             GlassSideStrips(
-                                owner: objects[n].id, axis: component.axis, outward: component.outward,
+                                owner: objects[n].id, ownerKey: objects[n].drawKey, axis: component.axis,
+                                outward: component.outward,
                                 mix: mix,
                                 strips: [(f, area)]))
                     }
@@ -285,7 +288,8 @@ extension FacadeLoadSurrogate {
                 for (key, members) in groups.sorted(by: { $0.key < $1.key }) {
                     sides.append(
                         GlassSideStrips(
-                            owner: objects[n].id, axis: key / 2, outward: key % 2 == 1 ? 1 : -1, mix: mix,
+                            owner: objects[n].id, ownerKey: objects[n].drawKey, axis: key / 2,
+                            outward: key % 2 == 1 ? 1 : -1, mix: mix,
                             strips: members.map { k in
                                 let spans = estimate.components[k].spans
                                 return (estimate.features[k], Double(spans.x * spans.y))

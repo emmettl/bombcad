@@ -223,6 +223,9 @@ extension FacadeLoadSurrogate {
     /// A building side's façade strips, for `glassProbabilities(sides:)`.
     public struct GlassSideStrips: Sendable {
         public var owner: UUID
+        /// What the owner's draws are keyed by (`SceneObject.drawKey`): the same building, the same
+        /// draws, whatever its identifier.
+        public var ownerKey: UInt64
         public var axis: Int
         public var outward: Int
         public var mix: GlazingMix
@@ -230,14 +233,20 @@ extension FacadeLoadSurrogate {
         public var strips: [(features: Features, areaM2: Double)]
 
         public init(
-            owner: UUID, axis: Int, outward: Int, mix: GlazingMix,
+            owner: UUID, ownerKey: UInt64, axis: Int, outward: Int, mix: GlazingMix,
             strips: [(features: Features, areaM2: Double)]
         ) {
             self.owner = owner
+            self.ownerKey = ownerKey
             self.axis = axis
             self.outward = outward
             self.mix = mix
             self.strips = strips
+        }
+
+        /// What this side's own draws (its loads' scatter) are keyed by.
+        var sideKey: UInt64 {
+            ownerKey ^ (UInt64(axis * 2 + (outward > 0 ? 1 : 0)) &+ 1) &* 0x9E37_79B9_7F4A_7C15
         }
     }
 
@@ -258,7 +267,8 @@ extension FacadeLoadSurrogate {
                     .sorted { $0.key < $1.key }
                     .map { key, members in
                         GlassSideStrips(
-                            owner: objects[n].id, axis: key / 2, outward: key % 2 == 1 ? 1 : -1, mix: mix,
+                            owner: objects[n].id, ownerKey: objects[n].drawKey, axis: key / 2,
+                            outward: key % 2 == 1 ? 1 : -1, mix: mix,
                             strips: members.map { component in
                                 let spans = component.spans
                                 return (
@@ -300,12 +310,6 @@ extension FacadeLoadSurrogate {
     ) -> (sides: [SideGlass], draws: [[GlassDraw]]?) {
         let draws = max(1, uncertainty.samples)
         let masses = uncertainty.masses(base: base, draws: draws)
-        // Each building's strength draws by its owner.
-        let owners = Dictionary(
-            Array(Set(sides.map(\.owner))).sorted { $0.uuidString < $1.uuidString }.enumerated().map {
-                ($1, $0)
-            },
-            uniquingKeysWith: { a, _ in a })
         let table = responses.flatMap { $0.binS == binS ? $0.table : nil } ?? GlassTable(binS: binS)
         var results = [SideGlass?](repeating: nil, count: sides.count)
         var outcomes = [[GlassDraw]](
@@ -315,7 +319,10 @@ extension FacadeLoadSurrogate {
                 concurrently(iterations: sides.count) { s in
                     let side = sides[s]
                     guard !side.strips.isEmpty else { return }
-                    let owner = UInt64(owners[side.owner] ?? 0)
+                    // Each building's strength draws by its geometry, each side's scatter by its
+                    // building and facing: the same scene, the same chances, however often it is
+                    // laid out (its objects' identifiers are new each time).
+                    let owner = side.ownerKey
                     var some = 0.0
                     var blown = 0.0
                     var fraction = 0.0
@@ -332,8 +339,8 @@ extension FacadeLoadSurrogate {
                                     * uncertainty.normal(2, k, owner, draws: draws))
                         var errors = SIMD2<Double>.zero
                         if let scatter = uncertainty.scatter(atZ: middle / cbrt(mass)) {
-                            let a = uncertainty.normal(3, k, UInt64(s), draws: draws)
-                            let b = uncertainty.normal(4, k, UInt64(s), draws: draws)
+                            let a = uncertainty.normal(3, k, side.sideKey, draws: draws)
+                            let b = uncertainty.normal(4, k, side.sideKey, draws: draws)
                             let r = scatter.correlation
                             errors = SIMD2(
                                 scatter.peak * a, scatter.impulse * (r * a + (1 - r * r).squareRoot() * b))
@@ -642,5 +649,29 @@ public enum EnvelopeChanceColour {
     /// The eighth `code` gives the side facing along `axis` to `outward`.
     public static func eighth(code: Int, axis: Int, outward: Int) -> Int {
         ((code - first) >> (3 * (axis * 2 + (outward > 0 ? 1 : 0)))) & 7
+    }
+}
+
+extension SceneObject {
+    /// A key for this object's draws in the quick estimate's chances, from its geometry: an
+    /// envelope's solids (their corners' bits, FNV-1a), else its name. Its identifier would not do:
+    /// a map's buildings are given new ones each time a district is laid out.
+    public var drawKey: UInt64 {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        func mix(_ value: UInt32) {
+            for shift in stride(from: 0, to: 32, by: 8) {
+                hash = (hash ^ UInt64((value >> UInt32(shift)) & 0xFF)) &* 1_099_511_628_211
+            }
+        }
+        if let envelope {
+            for solid in envelope.solids {
+                for corner in [solid.min, solid.max] {
+                    for axis in 0..<3 { mix(corner[axis].bitPattern) }
+                }
+            }
+        } else {
+            for byte in name.utf8 { hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211 }
+        }
+        return hash
     }
 }
