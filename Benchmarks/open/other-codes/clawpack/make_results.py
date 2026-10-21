@@ -17,7 +17,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
 OUT = ROOT / 'Benchmarks' / 'open' / 'results' / 'clawpack-5.14.0.json'
-HISTORIES = HERE / 'histories'
+HISTORIES = [HERE / 'histories' / 'free-field', HERE / 'histories' / 'room']  # one receipt each
 FREE_FIELD = HERE / 'outputs' / 'free-field-dx0.0625.json'
 ROOM = 'room-n24-{run}.json'
 
@@ -80,7 +80,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--out', type=Path, default=OUT)
     args = ap.parse_args(argv)
-    result, diagnostics = run_decks.extract(HISTORIES)
+    result, diagnostics = None, {}
+    for folder in HISTORIES:
+        part, info = run_decks.extract(folder)
+        diagnostics.update(info)
+        if result is None:
+            result = part
+        else:
+            if (part['code'], part['prepared']) != (result['code'], result['prepared']):
+                raise SystemExit('the receipts name different codes or dates')
+            result['cases'] += part['cases']
     for case in result['cases']:
         {'kb-surface-burst-free-field': free_field, 'ufc-closed-room-gas-pressure': room}[case['case']](case)
     result['code']['url'] = 'https://www.clawpack.org'
