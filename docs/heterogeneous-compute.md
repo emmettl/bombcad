@@ -344,3 +344,16 @@ selection keeps all four cases on Metal (3.518 s); the forced split takes 21.142
 jobs establish an overhead floor and show why worker solve time is insufficient for scheduling.
 They do not establish a CUDA throughput win. #59 retains larger/repeated representative queues,
 finer Metal accounting and complete-cost modelling; synchronous PC probing remains measurable.
+
+
+### Per-step control waits
+
+The [control-readback study](../Benchmarks/HeterogeneousCompute/2026-10-21-control-readback/summary.md)
+compares 36 fresh-process runs across six cases, including full flat and Beirut districts.
+Removing the device-wide wait before a blocking CPU control copy is numerically exact but has
+mixed process-level results; it is not adopted. The separate API trace confirms that explicit
+wait removal shifts waiting into blocking copies. Full flat and Beirut worker-process medians
+are 47.897/47.612 s and 68.639/68.312 s, baseline/candidate. These exclude deployment/retrieval
+and do not establish a heterogeneous throughput gain. The executed-worker provenance bug is
+fixed, and symmetric-cache profiling is supported. #60 retains pinned control-buffer reuse and
+further launch/control experiments; numerical and clock-discipline gates remain unchanged.

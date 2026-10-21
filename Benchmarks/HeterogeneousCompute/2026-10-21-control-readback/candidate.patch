@@ -1,0 +1,11 @@
+--- baseline.py
++++ candidate.py
+@@ -189,7 +189,7 @@
+                 launch('cudaCoolingReset',[controls,elapsed_cooling],1)
+         launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
+         trace()
+-        torch.cuda.synchronize()
++        # The blocking control copy waits for preceding work on the current stream.
+         control=Control.from_buffer_copy(controls.cpu().numpy().tobytes())
+         if control.stopped==3:
+             raise RuntimeError('nonphysical wave speed; no completed dataset written')

@@ -537,3 +537,25 @@ case workers. A small real static-terrain CUDA case passes alongside uniform Met
 the recovery experiment. This changes neither the larger terrain/Beirut failures nor bulk
 dataset admission. The CLI's optional `--phase-timings` records local field initialization,
 setup including compilation, solve and output without changing numerical arrays.
+
+
+## Control-readback profiling
+
+The [three-pair six-case control-readback experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-control-readback/summary.md)
+removes only the device-wide wait immediately before the blocking CPU control copy. All saved
+numerical fields and timestep histories match across 36 timed runs, including full flat,
+static-terrain and Beirut cooling cases; the existing Metal admission failures remain unchanged.
+Worker-process medians for flat and Beirut are 47.897/47.612 s and 68.639/68.312 s, respectively,
+with mixed smaller-case results. The candidate is retained as a patch and is **not adopted**:
+removing explicit waits alone does not establish a consistent complete worker-process benefit.
+A separate perturbed API trace shows device-wide waits falling from 571 to 2, while blocking
+copy/stream waits remain and waiting shifts into the copy API. Trace timings are not benchmark
+predictions. Network deployment and queue overhead are outside these worker-process totals.
+
+`profile-worker.py --baseline-cache-dir PATH --candidate-cache-dir PATH --fresh-process`
+now supports symmetric cached-worker comparisons; omit the baseline option for the original
+uncached-versus-cached experiment. The worker hashes its executed `__file__` under the logical
+`run.py` provenance role, even when the variant is renamed. The profiler rejects a result whose
+executed-worker hash differs from the selected file. This fixes aliased variants attesting an
+unexecuted canonical sibling. The next focused #60 experiment is pinned host StepControl buffer
+reuse with existing synchronization initially retained, separating allocation/staging from waits.

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Compare two isolated CUDA worker files on identical jobs under the shared GPU lock.
 
-Run on the PC with its existing CUDA Python environment. By default all runs share one interpreter; --fresh-process includes a new
-Python/PyTorch process each time. Compilation and worker setup are
-included in totalSeconds, measured with Linux CLOCK_MONOTONIC_RAW; solver time is the worker's wallSeconds. Inputs and
-output folders must be explicit. This does not deploy or alter installed workers.
+Run on the PC with its existing CUDA Python environment. By default all runs share one
+interpreter; --fresh-process includes a new Python/PyTorch process each time. Compilation
+and worker setup are included in totalSeconds, measured with Linux CLOCK_MONOTONIC_RAW;
+solver time is the worker's wallSeconds. Set both cache-directory options for symmetric
+warm-cache comparisons, or only the candidate option for a cache experiment. Executed-worker
+provenance must match each explicit variant. Inputs and output folders must be explicit.
+This does not deploy or alter installed workers.
 """
 import argparse
 import hashlib
@@ -49,6 +52,7 @@ def main():
     p.add_argument('--lock',type=Path,required=True)
     p.add_argument('--lock-helper',type=Path,required=True)
     p.add_argument('--fresh-process',action='store_true',help='include a new Python/PyTorch process for every run')
+    p.add_argument('--baseline-cache-dir',type=Path,help='pass an opt-in PTX cache to baseline for symmetric warm-cache comparisons')
     p.add_argument('--candidate-cache-dir',type=Path,help='pass an opt-in PTX cache only to candidate')
     p.add_argument('--repetitions',type=int,default=3)
     a=p.parse_args()
@@ -74,7 +78,8 @@ def main():
                 for name in order:
                     out=a.out/f'{job.name}-{repetition}-{name}'
                     start=elapsed_time()
-                    kwargs={'cache_dir':a.candidate_cache_dir} if name=='candidate' and a.candidate_cache_dir else {}
+                    cache=a.candidate_cache_dir if name=='candidate' else a.baseline_cache_dir
+                    kwargs={'cache_dir':cache} if cache else {}
                     if a.fresh_process:
                         worker_path=a.baseline if name=='baseline' else a.candidate
                         command=[sys.executable,str(worker_path),str(job),'--source',str(a.source),'--out',str(out)]
@@ -84,6 +89,9 @@ def main():
                     else:
                         result=workers[name].run(job,a.source,out,**kwargs)
                     elapsed=elapsed_time()-start
+                    worker_path=a.baseline if name=='baseline' else a.candidate
+                    if result.get('workerFilesSHA256',{}).get('run.py')!=digest(worker_path):
+                        raise RuntimeError('executed worker provenance differs; no accepted profile')
                     hashes={str(p.relative_to(out)):digest(p) for p in out.rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')}
                     row={'job':job.name,'repetition':repetition,'worker':name,'totalSeconds':elapsed,
                          'solverSeconds':result['wallSeconds'],'solverTimingClock':result.get('timingClock','legacy adjusted host monotonic'),
@@ -100,6 +108,7 @@ def main():
             summaries.append({'job':job.name,**{k:{'medianTotalSeconds':statistics.median(r['totalSeconds'] for r in v),
                 'medianSolverSeconds':statistics.median(r['solverSeconds'] for r in v)} for k,v in values.items()}})
         report={'format':'bombcad-worker-profile-1','timingClock':TIMING_CLOCK,'device':torch.cuda.get_device_name(),
+                'baselineCacheDir':str(a.baseline_cache_dir) if a.baseline_cache_dir else None,
                 'candidateCacheDir':str(a.candidate_cache_dir) if a.candidate_cache_dir else None,
                 'torch':torch.__version__,'cuda':torch.version.cuda,'before':before,'after':snapshot(),
                 'scope':('fresh Python process per run' if a.fresh_process else 'one interpreter')+'; alternating order; total includes compile/setup/output, excludes deployment and retrieval; solver time excludes setup/output',

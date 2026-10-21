@@ -1,0 +1,233 @@
+{
+  "summary": [
+    {
+      "job": "cooling32",
+      "baseline": {
+        "medianTotalSeconds": 1.515053198003443,
+        "medianSolverSeconds": 0.21245032400474884,
+        "minTotalSeconds": 1.465070652004215,
+        "maxTotalSeconds": 1.6638445709977532,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.701924818000407,
+          "compileSeconds": 0.13458972499938682,
+          "deviceSetupAndUploadSeconds": 0.1671017229964491,
+          "solverSeconds": 0.21245032400474884,
+          "validationAndOutputSeconds": 0.04415216398774646,
+          "workerSecondsBeforeManifests": 1.2812468399934005
+        }
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.6138774139981251,
+        "medianSolverSeconds": 0.23670327899162658,
+        "minTotalSeconds": 1.5141784320003353,
+        "maxTotalSeconds": 1.7648758819996146,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.72888336199685,
+          "compileSeconds": 0.1424152609979501,
+          "deviceSetupAndUploadSeconds": 0.20212173300387803,
+          "solverSeconds": 0.23670327899162658,
+          "validationAndOutputSeconds": 0.04449038000893779,
+          "workerSecondsBeforeManifests": 1.354618434997974
+        }
+      },
+      "candidateTotalChangePercent": 6.522821517086919
+    },
+    {
+      "job": "blast64",
+      "baseline": {
+        "medianTotalSeconds": 1.5802627110097092,
+        "medianSolverSeconds": 0.2146471830055816,
+        "minTotalSeconds": 1.5645262449979782,
+        "maxTotalSeconds": 1.584578755995608,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.715897494010278,
+          "compileSeconds": 0.13231428600556683,
+          "deviceSetupAndUploadSeconds": 0.2090585489931982,
+          "solverSeconds": 0.2146471830055816,
+          "validationAndOutputSeconds": 0.04937564500141889,
+          "workerSecondsBeforeManifests": 1.3205190160078928
+        }
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.4757774989993777,
+        "medianSolverSeconds": 0.17808972200145945,
+        "minTotalSeconds": 1.4634673749969807,
+        "maxTotalSeconds": 1.5785081200010609,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.7119858570076758,
+          "compileSeconds": 0.13204902299912646,
+          "deviceSetupAndUploadSeconds": 0.16449008000199683,
+          "solverSeconds": 0.17808972200145945,
+          "validationAndOutputSeconds": 0.03174102499906439,
+          "workerSecondsBeforeManifests": 1.2126197479956318
+        }
+      },
+      "candidateTotalChangePercent": -6.611888724727965
+    },
+    {
+      "job": "cooling64",
+      "baseline": {
+        "medianTotalSeconds": 1.6235141479992308,
+        "medianSolverSeconds": 0.35296471700712573,
+        "minTotalSeconds": 1.6165868410025723,
+        "maxTotalSeconds": 1.6672544820030453,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.7062281280086609,
+          "compileSeconds": 0.13077992299804464,
+          "deviceSetupAndUploadSeconds": 0.16138835399760865,
+          "solverSeconds": 0.35296471700712573,
+          "validationAndOutputSeconds": 0.03784390300279483,
+          "workerSecondsBeforeManifests": 1.3826424069993664
+        }
+      },
+      "candidate": {
+        "medianTotalSeconds": 1.72095227400132,
+        "medianSolverSeconds": 0.3328129040019121,
+        "minTotalSeconds": 1.6681791650044033,
+        "maxTotalSeconds": 1.8169111759925727,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.7393618970090756,
+          "compileSeconds": 0.13954444001137745,
+          "deviceSetupAndUploadSeconds": 0.20671666000271216,
+          "solverSeconds": 0.3328129040019121,
+          "validationAndOutputSeconds": 0.048523201010539196,
+          "workerSecondsBeforeManifests": 1.469804963999195
+        }
+      },
+      "candidateTotalChangePercent": 6.001680128391174
+    },
+    {
+      "job": "terrain256",
+      "baseline": {
+        "medianTotalSeconds": 5.6811681340041105,
+        "medianSolverSeconds": 4.022399049994419,
+        "minTotalSeconds": 5.569145847999607,
+        "maxTotalSeconds": 5.770455015997868,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.8876370999932988,
+          "compileSeconds": 0.13493728599860333,
+          "deviceSetupAndUploadSeconds": 0.26161420698917937,
+          "solverSeconds": 4.022399049994419,
+          "validationAndOutputSeconds": 0.12205061900021974,
+          "workerSecondsBeforeManifests": 5.427172113995766
+        }
+      },
+      "candidate": {
+        "medianTotalSeconds": 5.622019071000977,
+        "medianSolverSeconds": 4.026258912999765,
+        "minTotalSeconds": 5.572634534997633,
+        "maxTotalSeconds": 5.628857917996356,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 0.8440462090075016,
+          "compileSeconds": 0.13414000099874102,
+          "deviceSetupAndUploadSeconds": 0.2079492649936583,
+          "solverSeconds": 4.026258912999765,
+          "validationAndOutputSeconds": 0.125180103990715,
+          "workerSecondsBeforeManifests": 5.357565309997881
+        }
+      },
+      "candidateTotalChangePercent": -1.0411426243328692
+    },
+    {
+      "job": "flat512",
+      "baseline": {
+        "medianTotalSeconds": 47.89685600899975,
+        "medianSolverSeconds": 45.06795627399697,
+        "minTotalSeconds": 47.165892510995036,
+        "maxTotalSeconds": 48.0157754690008,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 1.2459554059896618,
+          "compileSeconds": 0.13296290099970065,
+          "deviceSetupAndUploadSeconds": 0.5597181160119362,
+          "solverSeconds": 45.06795627399697,
+          "validationAndOutputSeconds": 0.637711279996438,
+          "workerSecondsBeforeManifests": 47.64430929700029
+        }
+      },
+      "candidate": {
+        "medianTotalSeconds": 47.612119232988334,
+        "medianSolverSeconds": 44.80520988498756,
+        "minTotalSeconds": 47.24767346998851,
+        "maxTotalSeconds": 48.13743091200013,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 1.22880527000234,
+          "compileSeconds": 0.132421340997098,
+          "deviceSetupAndUploadSeconds": 0.6176031659997534,
+          "solverSeconds": 44.80520988498756,
+          "validationAndOutputSeconds": 0.6215027750004083,
+          "workerSecondsBeforeManifests": 47.37825362299918
+        }
+      },
+      "candidateTotalChangePercent": -0.5944790529840094
+    },
+    {
+      "job": "beirut512",
+      "baseline": {
+        "medianTotalSeconds": 68.63892116599891,
+        "medianSolverSeconds": 64.97088091200567,
+        "minTotalSeconds": 68.30016957198677,
+        "maxTotalSeconds": 68.64192558301147,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 1.7285091699886834,
+          "compileSeconds": 0.13653452199650928,
+          "deviceSetupAndUploadSeconds": 0.7598993170104222,
+          "solverSeconds": 64.97088091200567,
+          "validationAndOutputSeconds": 0.7961863710079342,
+          "workerSecondsBeforeManifests": 68.35858256099164
+        }
+      },
+      "candidate": {
+        "medianTotalSeconds": 68.31242868900881,
+        "medianSolverSeconds": 64.74556926199875,
+        "minTotalSeconds": 68.27862499399635,
+        "maxTotalSeconds": 68.64631256798748,
+        "phaseMediansSeconds": {
+          "importsAndValidationSeconds": 1.6149174360034522,
+          "compileSeconds": 0.136140153001179,
+          "deviceSetupAndUploadSeconds": 0.7799391389999073,
+          "solverSeconds": 64.74556926199875,
+          "validationAndOutputSeconds": 0.796271818006062,
+          "workerSecondsBeforeManifests": 68.06349190999754
+        }
+      },
+      "candidateTotalChangePercent": -0.4756666792598563
+    }
+  ],
+  "historicalNumericalControls": [
+    {
+      "job": "flat512",
+      "filesCompared": 9,
+      "allSixRunsMatch": true,
+      "expectedSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      }
+    },
+    {
+      "job": "beirut512",
+      "filesCompared": 12,
+      "allSixRunsMatch": true,
+      "expectedSHA256": {
+        "targets.npy": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+        "first-phase.bin": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+        "peak.bin": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+        "firstPhaseImpulse.npy": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+        "state.bin": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+        "impulse.bin": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+        "species.bin": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+        "dt.npy": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+        "mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+        "dataset/targets.npy": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+        "dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+        "dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+      }
+    }
+  ]
+}

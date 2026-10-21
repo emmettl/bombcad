@@ -1,0 +1,107 @@
+import json
+from pathlib import Path
+root=Path(__file__).resolve().parent;out=Path('Benchmarks/HeterogeneousCompute/2026-10-21-control-readback');r=json.loads((root/'analysis.json').read_text())
+rows='\n'.join('| '+x['job']+' | '+f"{x['baseline']['medianTotalSeconds']:.3f} / {x['candidate']['medianTotalSeconds']:.3f}"+' | '+f"{x['baseline']['medianSolverSeconds']:.3f} / {x['candidate']['medianSolverSeconds']:.3f}"+' |' for x in r['summary'])
+text='''# CUDA control-readback experiment — 21 October 2026
+
+Decision: retain the existing device-wide synchronization in the production solver. Removing
+that one wait preserves every saved numerical byte in this experiment but does not establish
+a consistent worker-process benefit across the tested cases. Keep the candidate as an
+experimental patch. Adopt the executed-worker provenance correction and symmetric-cache
+profiler support, which make future isolated comparisons trustworthy.
+
+## Experiment
+
+Three alternating baseline/candidate pairs run in fresh Python/PyTorch processes for each of
+six exact cases: cooling32, blast64 and cooling64 (0.05 s simulated), a 256 × 256 × 44 static
+terrain case, the 512 × 512 × 59 flat district with its mapped start, and the
+512 × 512 × 80 Beirut cooling case. The same generated numerical source
+`c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094`, precise compiler flags,
+inputs and persistent PTX cache are used for both workers. No equation, stepping, startup,
+stop, precision, recorder or cooling-bound rule changes. The only candidate difference is
+removing `torch.cuda.synchronize()` immediately before the blocking `controls.cpu()` copy.
+
+The existing PC session confirmed no reservation, and the experiment holds the existing
+`bombcad-ml/lock` throughout each profile. RTX 3080 Ti, driver 617.42, PyTorch 2.11.0+cu128,
+CUDA 12.8; source/worker/job hashes and GPU before/after observations are retained. This is
+cooperative isolation, not proof against every external OS/CPU/power variation. There are
+three repetitions, not a statistical claim of a small sub-percent speedup.
+
+| Case | Median fresh worker process, baseline / candidate, s | Median solve, baseline / candidate, s |
+| --- | --- | --- |
+'''+rows+'''
+
+Worker-process totals include Python startup, imports, input validation, compilation/cache
+validation, allocation/upload, solve, output/manifests and process teardown. Linux raw elapsed
+time is used; solver time excludes setup/output. Named phase medians are in `analysis.json`.
+Network deployment, Mac preparation, queue scheduling and retrieval are outside these totals.
+Do not compare them directly with a Metal solver-only number or add nested timings together.
+The preceding complete deployment/Metal study remains the relevant cross-backend cost control.
+
+Both workers attest their executed file, and every saved raw final state/species/peak/impulse/
+first-phase field, target/mask array and timestep history matches within every pair and across
+all six runs of each case. Flat and Beirut also match the previously retained numerical
+controls: nine and twelve file hashes respectively. The larger terrain/Beirut Metal admission
+failures are unchanged; equality to an existing CUDA result does not clear them. A separate
+incomplete-duration negative control fails with the same error and writes no output in both
+workers.
+
+## API trace: less explicit waiting is not necessarily less waiting
+
+A separate, perturbed 568-step blast64 diagnostic uses the installed PyTorch profiler. It is
+excluded from the timing table. Both traces launch 569 prepares, 1,707 sweeps and 570 first-phase
+kernels (including initial recording and the terminal control iteration). Driver launches are
+unchanged. Device-wide synchronization calls fall from 571 to 2, but blocking control readback
+and stream waits remain: 1,188 `cudaStreamSynchronize` calls, 1,191 `cudaMemcpyAsync` calls, and
+580 device-to-pageable-host transfers in each trace, including setup/output transfers.
+
+The profiler attributes about 90.8 ms to baseline device-wide waits versus 0.028 ms in the
+candidate; memcpy API time grows from about 30.4 to 89.3 ms. These are perturbed trace
+observations, not additive performance predictions. They show waiting moving into the blocking
+copy. Kernel timings and context warmup are also perturbed; only the uninstrumented repeated
+worker measurements support the performance conclusion.
+
+## Provenance correction and next work
+
+The initial renamed worker failed at output because it tried to hash a sibling `run.py` that
+was absent. With a canonical sibling present, the old implementation could instead report
+that sibling's hash for the executed variant. `worker_files()` now hashes `__file__` under
+the logical `run.py` role, plus the actual support files. Both measured workers contain the
+same correction. Current `profile-worker.py` also rejects a result whose executed-worker hash
+differs, and accepts separate baseline/candidate cache paths for fair warm-cache comparisons.
+The exact earlier driver used for these timings is retained; a separate post-run audit verifies
+its result provenance and every numerical file. CPU-only regression tests cover the renamed
+worker, cache routing, default candidate-only caching and rejected false provenance. These
+orchestration stubs are not GPU evidence.
+
+The setup inventory initially included `__pycache__` as if it were a job; that inventory-only
+failure and the first alias failure are excluded. `small-terrain.json` and `districts.json`
+contain only the complete corrected runs. The diagnostic, failure controls and final hash audit
+are separate from the timing trials. No concurrent repository check was run on the PC during
+those timing trials; repository validation follows them.
+
+Next under #60: measure a reusable pinned host StepControl buffer while initially retaining
+synchronization, so allocation/staging changes can be attributed separately. The worker still
+creates a CPU tensor and byte copy for each control readback. Reuse must preserve every control
+field, startup/duration/batch-stop rule and numerical hash, and demonstrate repeated complete
+worker-process benefit before adoption. CUDA Graphs/batched control remain further experiments;
+no graph or reduced-frequency control rule is introduced here. #59 queue-cost work and #64
+clock-discipline remediation remain separate.
+
+## Retained evidence
+
+- `small-terrain.json`, `districts.json`, `analysis.json`: all 36 timed runs, individual phase
+  observations, exact output hashes, summaries and historical numerical controls.
+- `verification.json`: post-run verification of every result's worker/support/source hashes and
+  every reported numerical output file against the actual retained files on the PC.
+- `diagnostic.json` and compressed Chrome traces: perturbed API/kernel observations and the
+  incomplete-duration controls, with exact output equality.
+- `baseline.py.txt`, `candidate.py.txt`, `candidate.patch`, `executed-profile-worker.py.txt`:
+  actual experiment programs. The production synchronization removal is not adopted.
+- Setup, diagnostic, verification, analysis and summary scripts plus logs retain procedure.
+  Full inputs and per-run raw outputs remain under `bombcad-control-profile-01a15d45` on the PC;
+  `inputs.json` records input paths, metadata and file hashes. Fixture inputs can be regenerated;
+  district reproduction requires access to the referenced original inputs. Use new output
+  directories and the existing shared lock. Do not interpret retained state as portable deployment.
+'''
+(out/'summary.md').write_text(text)

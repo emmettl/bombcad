@@ -20,6 +20,14 @@ def elapsed_time():
     return time.clock_gettime(time.CLOCK_MONOTONIC_RAW)
 
 
+
+def worker_files():
+    # Isolated profiler variants may have a different filename; attest the executed worker.
+    return {name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in (
+        ('run.py',Path(__file__)),('job.py',Path(__file__).with_name('job.py')),
+        ('compile.py',Path(__file__).with_name('compile.py')))}
+
+
 def luminous_bounds(medium,shape):
     """Integer bounds of positive opacity, or None; zero-opacity cells exchange no radiation."""
     import torch
@@ -228,7 +236,7 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_
             'sourceSHA256':hashlib.sha256(source.encode()).hexdigest(),'steps':steps,
             'startTime':meta.get('startTime',0),'elapsedSimulationTime':sum(dt_history),
             'wallSeconds':elapsed,'shape':meta['shape'],'math':'float32, unfused, precise division/sqrt',
-            'workerFilesSHA256':{name:hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in ('run.py','job.py','compile.py')},
+            'workerFilesSHA256':worker_files(),
             'channels':['peakOverpressure','impulse'],'units':['Pa','Pa s'],'above':meta.get('above',2)}
     if 'dataset' in meta:
         import shutil

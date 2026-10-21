@@ -1,0 +1,27 @@
+import hashlib,json,statistics
+from pathlib import Path
+root=Path(__file__).resolve().parent
+reports=[json.loads((root/name).read_text()) for name in ['small-terrain.json','districts.json']]
+summary=[]
+for report in reports:
+ assert report['allOutputsAndTimestepsBitIdentical']
+ for entry in report['summaries']:
+  observed=[r['hashes'] for r in report['rows'] if r['job']==entry['job']]
+  assert len(observed)==6 and all(h==observed[0] for h in observed)
+  result={'job':entry['job']}
+  for name in ['baseline','candidate']:
+   rows=[r for r in report['rows'] if r['job']==entry['job'] and r['worker']==name];assert len(rows)==3
+   result[name]=dict(entry[name],minTotalSeconds=min(r['totalSeconds'] for r in rows),maxTotalSeconds=max(r['totalSeconds'] for r in rows),phaseMediansSeconds={k:statistics.median(r['timings'][k] for r in rows) for k in rows[0]['timings']})
+  result['candidateTotalChangePercent']=100*(result['candidate']['medianTotalSeconds']/result['baseline']['medianTotalSeconds']-1)
+  summary.append(result)
+# Compare to previously retained numerical controls, independently of changed metadata/timings.
+repo=Path.cwd();old=json.loads((repo/'Benchmarks/HeterogeneousCompute/2026-10-21-deployment-profile/profile.json').read_text());flat=next(r for r in old['rows'] if r['job']=='flat-district')['remoteNumericalSHA256']
+old=json.loads((repo/'Benchmarks/HeterogeneousCompute/2026-10-21-cooling-box/integrated-equality.json').read_text());beirut={n:v['integrated'] for n,v in old['files'].items()}
+controls=[]
+for name,expected in [('flat512',flat),('beirut512',beirut)]:
+ for r in reports[1]['rows']:
+  if r['job']!=name:continue
+  assert all(r['hashes'].get(n)==h for n,h in expected.items())
+ controls.append(dict(job=name,filesCompared=len(expected),allSixRunsMatch=True,expectedSHA256=expected))
+(root/'analysis.json').write_text(json.dumps(dict(summary=summary,historicalNumericalControls=controls),indent=2)+'\n')
+print(json.dumps(summary,indent=2))

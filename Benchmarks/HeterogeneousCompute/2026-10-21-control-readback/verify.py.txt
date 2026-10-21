@@ -1,0 +1,25 @@
+"""Post-run source/provenance and full numerical-output audit; no GPU computation."""
+import hashlib,json
+from pathlib import Path
+root=Path(__file__).resolve().parent
+
+def digest(p):
+ h=hashlib.sha256()
+ with p.open('rb') as f:
+  for b in iter(lambda:f.read(1048576),b''):h.update(b)
+ return h.hexdigest()
+reports=[]
+for name in ['results-small-terrain-v2','results-districts']:
+ profile=json.loads((root/name/'profile.json').read_text());assert profile['allOutputsAndTimestepsBitIdentical']
+ assert profile['baselineCacheDir']==profile['candidateCacheDir']=='bombcad-cuda/ptx-cache'
+ verified=[]
+ for row in profile['rows']:
+  out=root/name/f"{row['job']}-{row['repetition']}-{row['worker']}";r=json.loads((out/'result.json').read_text())
+  assert r['workerFilesSHA256']=={'run.py':digest(root/(row['worker']+'.py')),'job.py':digest(root/'job.py'),'compile.py':digest(root/'compile.py')}
+  assert r['sourceSHA256']==profile['sourceSHA256']==digest(root/'solver.cu')
+  actual={str(p.relative_to(out)):digest(p) for p in out.rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')}
+  assert actual==row['hashes'];assert r['compileCacheEnabled'] and r['timingClock']=='clock_gettime(CLOCK_MONOTONIC_RAW)'
+  verified.append(dict(job=row['job'],repetition=row['repetition'],worker=row['worker'],resultSHA256=digest(out/'result.json'),numericalFiles=len(actual)))
+ reports.append(dict(profile=name,profileSHA256=digest(root/name/'profile.json'),verified=verified))
+(root/'verification.json').write_text(json.dumps(dict(allSourcesProvenanceAndNumericalOutputsVerified=True,reports=reports),indent=2)+'\n')
+print('Verified',sum(len(r['verified']) for r in reports),'runs')

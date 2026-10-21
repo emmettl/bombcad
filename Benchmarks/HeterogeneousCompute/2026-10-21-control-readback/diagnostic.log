@@ -1,0 +1,120 @@
+/home/lemme/bombcad-ml/venv/lib/python3.12/site-packages/torch/profiler/profiler.py:224: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+[
+  {
+    "baseline": [
+      {
+        "name": "cudaMemcpyAsync",
+        "count": 1191,
+        "selfCPUTimeMicroseconds": 30384.126999997854,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy HtoD (Pageable -> Device)",
+        "count": 590,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 813.627000000939
+      },
+      {
+        "name": "cudaStreamSynchronize",
+        "count": 1188,
+        "selfCPUTimeMicroseconds": 12770.854999999283,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoD (Device -> Device)",
+        "count": 3,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 17.105000000010477
+      },
+      {
+        "name": "cudaLaunchKernel",
+        "count": 93,
+        "selfCPUTimeMicroseconds": 3094.2720000001427,
+        "selfDeviceTimeMicroseconds": 0.0
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pinned)",
+        "count": 18,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 33.89300000015646
+      },
+      {
+        "name": "cuLaunchKernel",
+        "count": 2847,
+        "selfCPUTimeMicroseconds": 20968.96500000055,
+        "selfDeviceTimeMicroseconds": 100.3409999999567
+      },
+      {
+        "name": "cudaDeviceSynchronize",
+        "count": 571,
+        "selfCPUTimeMicroseconds": 90807.81400000025,
+        "selfDeviceTimeMicroseconds": 15.673999999999069
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pageable)",
+        "count": 580,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 2896.683000000019
+      }
+    ]
+  },
+  {
+    "candidate": [
+      {
+        "name": "cudaMemcpyAsync",
+        "count": 1191,
+        "selfCPUTimeMicroseconds": 89284.50499999919,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy HtoD (Pageable -> Device)",
+        "count": 590,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 647.6779999999562
+      },
+      {
+        "name": "cudaStreamSynchronize",
+        "count": 1188,
+        "selfCPUTimeMicroseconds": 10872.329000000958,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoD (Device -> Device)",
+        "count": 3,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 16.980999999999767
+      },
+      {
+        "name": "cudaLaunchKernel",
+        "count": 93,
+        "selfCPUTimeMicroseconds": 619.9510000001319,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pinned)",
+        "count": 18,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 30.62099999995553
+      },
+      {
+        "name": "cuLaunchKernel",
+        "count": 2847,
+        "selfCPUTimeMicroseconds": 18976.43499999949,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "cudaDeviceSynchronize",
+        "count": 2,
+        "selfCPUTimeMicroseconds": 27.695000000006985,
+        "selfDeviceTimeMicroseconds": 0
+      },
+      {
+        "name": "Memcpy DtoH (Device -> Pageable)",
+        "count": 580,
+        "selfCPUTimeMicroseconds": 0,
+        "selfDeviceTimeMicroseconds": 1455.5119999998424
+      }
+    ]
+  }
+]

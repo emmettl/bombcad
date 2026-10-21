@@ -16,9 +16,24 @@ from compare import compare
 import remote
 from test_cooling_bounds import CoolingBoundsTests
 from test_field_queue import AdmissionTests, PlannerTests, PublicationTests
+from test_profile_worker import ProfileWorkerTests
 
 
 class ElapsedClockTests(unittest.TestCase):
+    def test_renamed_worker_attests_executed_file_not_canonical_sibling(self):
+        import importlib.util
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp);worker=folder/'candidate.py'
+            worker.write_bytes(Path(__file__).with_name('run.py').read_bytes())
+            (folder/'run.py').write_text('unexecuted canonical sibling')
+            for name in ('job.py','compile.py'):(folder/name).write_text('pinned support '+name)
+            spec=importlib.util.spec_from_file_location('renamed_worker',worker)
+            module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            files=module.worker_files()
+            self.assertEqual(files['run.py'],hashlib.sha256(worker.read_bytes()).hexdigest())
+            self.assertNotEqual(files['run.py'],hashlib.sha256((folder/'run.py').read_bytes()).hexdigest())
+            self.assertEqual(files['compile.py'],hashlib.sha256((folder/'compile.py').read_bytes()).hexdigest())
+
     def test_worker_and_profiler_ignore_disciplined_monotonic_for_elapsed_time(self):
         import importlib.util
         for name in ('run.py','profile-worker.py'):

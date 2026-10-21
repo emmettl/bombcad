@@ -1,0 +1,4 @@
+import hashlib,json
+from pathlib import Path
+root=Path(__file__).resolve().parent
+(root/'inputs.json').write_text(json.dumps({p.name:{'path':str(p.resolve()),'jobSHA256':hashlib.sha256((p/'job.json').read_bytes()).hexdigest(),'meta':json.loads((p/'job.json').read_text())} for p in root.iterdir() if p.is_dir() and (p/'job.json').exists()},indent=2)+'\n')

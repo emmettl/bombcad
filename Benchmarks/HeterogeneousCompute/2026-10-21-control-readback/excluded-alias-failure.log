@@ -1,0 +1,23 @@
+Traceback (most recent call last):
+  File "/home/lemme/bombcad-control-profile-01a15d45/baseline.py", line 291, in <module>
+    print(json.dumps(run(a.job,a.source,a.out,a.cache_dir,a.trace_columns,a.full_grid_cooling),indent=2))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/lemme/bombcad-control-profile-01a15d45/baseline.py", line 231, in run
+    'workerFilesSHA256':{name:hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in ('run.py','job.py','compile.py')},
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1021, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/lemme/bombcad-control-profile-01a15d45/run.py'
+Traceback (most recent call last):
+  File "/home/lemme/bombcad-control-profile-01a15d45/profile-worker.py", line 118, in <module>
+    if __name__=='__main__': main()
+                             ^^^^^^
+  File "/home/lemme/bombcad-control-profile-01a15d45/profile-worker.py", line 84, in main
+    subprocess.run(command,check=True,stdout=subprocess.DEVNULL,timeout=600)
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/home/lemme/bombcad-ml/venv/bin/python', 'bombcad-control-profile-01a15d45/baseline.py', 'bombcad-control-profile-01a15d45/cooling32', '--source', 'bombcad-control-profile-01a15d45/solver.cu', '--out', 'bombcad-control-profile-01a15d45/results-small-terrain/cooling32-0-baseline', '--cache-dir', 'bombcad-cuda/ptx-cache']' returned non-zero exit status 1.

@@ -1,0 +1,10 @@
+import hashlib,json,os
+from pathlib import Path
+from fixtures import make
+root=Path(__file__).resolve().parent
+source=(Path.home()/'bombcad-cooling-box-01a15d45/solver.cu').read_text();(root/'solver.cu').write_text(source)
+for name,n,kind in [('cooling32',32,'cooling'),('blast64',64,'blast'),('cooling64',64,'cooling')]:
+ make(root/name,source,kind,n);p=root/name/'job.json';r=json.loads(p.read_text());r['duration']=.05;p.write_text(json.dumps(r,indent=2)+'\n')
+for name,target in [('terrain256','bombcad-cuda/c58f4f0a7ab5563b/jobs/e0ca9de41d5d4cbba58f130a846aa37b/input'),('flat512','bombcad-cuda/c58f4f0a7ab5563b/jobs/f4d8b98fb54e4d50a739f31ecc791a6a/input'),('beirut512','bombcad-cooling-box-01a15d45/beirut')]:
+ (root/name).symlink_to(Path.home()/target,target_is_directory=True)
+(root/'inputs.json').write_text(json.dumps({p.name:{'path':str(p.resolve()),'jobSHA256':hashlib.sha256((p/'job.json').read_bytes()).hexdigest(),'meta':json.loads((p/'job.json').read_text())} for p in root.iterdir() if p.is_dir() and (p/'job.json').exists()},indent=2)+'\n')
