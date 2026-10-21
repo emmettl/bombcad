@@ -107,8 +107,11 @@ other Macs run the blast alone.
 
 On another Mac it is a session of `BombCAD worker`, of the kind any model fed by the blast uses
 (see [Several consumers on several machines](distributed-computing.md#several-consumers-on-several-machines)):
-the fireball goes out, its shape a few to a hundred kilobytes a frame and its cells up to
-1.6 MB after it as raw bytes, and in the app each receiver's fluence and peak irradiance so far
+the fireball goes out, its shape a few to a hundred kilobytes a frame and its cells as raw
+bytes after it. The current cell box holds at most 1,048,576 voxels: three bytes each for fill
+and temperature, plus two each when products and hot-air absorption are present, with a
+32-byte header (up to 7 MiB plus that header). These are voxel-box payloads; the march's
+compact directional tiles are constructed by the consumer, and in the app each receiver's fluence and peak irradiance so far
 come back after each frame, as raw floats, to draw. The receivers are laid out on both sides from
 the same scene and description. The worker marches the volume on its GPU where it has one; for
 the shape and the sphere its result is the same as this Mac's to the last bit, whether either Mac
@@ -121,7 +124,7 @@ marches agree to a thousandth of the highest irradiance.
   (1,500 K by default), from the gas model's own temperature, p / (ρR) for ideal and thermally
   perfect air and the equilibrium temperature for dissociating air. The GPU sums it in blocks of
   two cells a side at the end of the batch that lands on the frame, and the blocks are doubled
-  until their box holds no more than 32,768 (a metre a side when the fireball fills the street
+  until their box holds no more than 1,048,576 (a metre a side when the fireball fills the street
   on 0.25 m cells, half a metre while it is smaller). Each keeps the share of its air that is
   luminous and the fourth root of that gas's mean T⁴, the temperature of a black body that
   radiates as it does on average. For the volume, every cell in the blocks' box is cut out too,

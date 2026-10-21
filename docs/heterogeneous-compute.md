@@ -228,3 +228,27 @@ Beirut outputs/timesteps bit for bit while three paired runs reduce median solve
 88.90 to 65.90 seconds (worker total 93.20→70.12 seconds, excluding SSH and cold Python startup).
 The integrated default and full-grid fallback also pass luminous/empty controls. This improves
 worker throughput; it changes neither the numerical gate nor the unresolved label contract.
+
+
+## Thermal transport audit and idle-at-start link repeat
+
+The [retained repeat](../Benchmarks/HeterogeneousCompute/2026-10-21-quiet-link.json)
+used the same bounded echo probe with the shared GPU lock absent and GPU utilization 0% before,
+1% after. PC-session coordination was sent before measurement; this is an idle-at-start observation,
+not proof of exclusive CPU/network use. Setup took 0.460 s. Median tiny-message RTT was 26.0 ms;
+64 KiB, 1 MiB and 4 MiB each-way echoes took 0.103, 1.129 and 5.084 s respectively.
+All bytes matched. The largest echo was slower than the earlier busy-GPU run, so GPU utilization
+alone cannot explain link performance. These are application round trips, not one-way bandwidth.
+
+The transport audit for #61 found that `FrameInput.payload` sends `LuminousCells.binary`,
+not the march's compact directional tiles. Its 32-byte header precedes a voxel box of at most
+1,048,576 cells, at 3, 5 or 7 bytes per cell depending on optional products/absorption channels.
+A full current afterburn frame can therefore be 7 MiB plus header, before shape JSON or result
+traffic. Receiver fluence/peak updates and static scene setup also belong in the cost model.
+The older thermal documentation's 1.6 MB maximum was stale and is corrected.
+
+This strengthens the case for measuring saved, representative frames and compression before a
+live CUDA consumer. It does not establish a one-way transfer budget or close #61. The next
+experiment must capture actual evolving fields, scene and receiver setup, measure extraction,
+encoding, compressed transfer and reconstruction separately, and compare the complete sequence
+with local Metal. A synthetic sphere or echo alone cannot meet that acceptance criterion.
