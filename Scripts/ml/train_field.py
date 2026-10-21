@@ -17,6 +17,12 @@ Kingery–Bulmash's (`--no-residual` predicts them outright). The impulse is eve
 the runs' `firstPhaseImpulse` target, exported with `field-export --first-phase`). The loss is the squared error of the
 logs over the mask (air at that height, away from the side faces).
 
+`--validate-layouts made-*-s5` (emmettl/bombcad-work#69) sets apart every training run of the
+layouts matching the patterns as a validation set: not trained on, and the epoch kept in `best.pt`
+is the one with the least loss on it, so that the held-out runs are only judged, never chosen by.
+`best-heldout.pt` then keeps the epoch the held-out loss would have chosen, for comparison. Without
+it, `best.pt` is the best epoch on the held-out runs, as before.
+
 `--levels` (emmettl/bombcad-work#69) trains on the fields at more heights as well, from runs exported
 with `field-export --levels … --roof`: `all` takes the 2 m field (`ground`) and every level the runs
 have, or a list names them. The network then predicts a log peak and log impulse for each level, in
@@ -479,23 +485,31 @@ def train(args):
     elif args.resume not in ("auto", "none"):
         resume = os.path.expanduser(args.resume)
     state = torch.load(resume, map_location="cpu", weights_only=False) if resume else None
+    validation_patterns = args.validate_layouts.split(",") if args.validate_layouts else []
     if state:
         held = state["heldOut"]
         stats = state["stats"]
+        validation_patterns = state.get("validateLayouts", validation_patterns)
         print("train_field: resuming from %s at epoch %d" % (resume, state["epoch"]))
     else:
         held = split(runs, args.holdout, args.holdout_runs.split(",") if args.holdout_runs else None,
                      args.split_by, args.seed,
                      args.holdout_layouts.split(",") if args.holdout_layouts else None)
         stats = None
-    training = [run for run in runs if run["id"] not in held]
+    validating = [run for run in runs if run["id"] not in held
+                  and any(fnmatch.fnmatchcase(run["layout"], p) for p in validation_patterns)]
+    validation_ids = {run["id"] for run in validating}
+    training = [run for run in runs if run["id"] not in held and run["id"] not in validation_ids]
     testing = [run for run in runs if run["id"] in held]
+    if validation_patterns and not validating:
+        raise SystemExit("train_field: no training run matches --validate-layouts %s" % args.validate_layouts)
     if not training or not testing:
         raise SystemExit("train_field: the split leaves %d runs to train on and %d held out" % (
             len(training), len(testing)))
     stats = stats or statistics(training)
     with open(os.path.join(args.out, "split.json"), "w") as handle:
         json.dump({"training": [r["id"] for r in training], "heldOut": held,
+                   "validation": [r["id"] for r in validating], "validateLayouts": validation_patterns,
                    "by": "layouts " + args.holdout_layouts if args.holdout_layouts else args.split_by,
                    "impulse": args.impulse, "levels": levels,
                    "seed": args.seed, "stats": stats, "inputs": INPUTS}, handle, indent=1)
@@ -517,20 +531,23 @@ def train(args):
         t = min(1.0, (step - warm) / max(1, total_steps - warm))
         return args.lr * (0.05 + 0.95 * 0.5 * (1 + math.cos(math.pi * t)))
 
-    history, best, start_epoch = [], float("inf"), 0
+    history, best, best_held, start_epoch = [], float("inf"), float("inf"), 0
     if state:
         model.load_state_dict(state["model"])
         optimizer.load_state_dict(state["optimizer"])
         if state.get("scaler"):
             scaler.load_state_dict(state["scaler"])
         history, best, start_epoch = state["history"], state["best"], state["epoch"]
+        best_held = state.get("bestHeldOut", best)
         random.setstate(state["random"])
         torch.set_rng_state(state["torch"])
     crops = Crops(training, stats, args.crop, not args.no_residual, args.seed + start_epoch)
     print("train_field: %s, %d parameters, on %s (%s), %d runs to train on, %d held out (%s); %d steps of %d "
-          "crops of %d a side an epoch" % (
+          "crops of %d a side an epoch%s" % (
               args.model, parameters, device, "autocast %s" % str(dtype).split(".")[-1] if autocast else "float32",
-              len(training), len(testing), ", ".join(held), steps_per_epoch, args.batch, crop))
+              len(training), len(testing), ", ".join(held), steps_per_epoch, args.batch, crop,
+              "; %d validating (%s), choosing the epoch" % (len(validating), ", ".join(r["id"] for r in validating))
+              if validating else ""))
     sys.stdout.flush()
     if not state:
         reference = judge(model, testing, stats, not args.no_residual, device, autocast, dtype, model.multiple)
@@ -556,22 +573,36 @@ def train(args):
         result = judge(model, testing, stats, not args.no_residual, device, autocast, dtype, model.multiple)
         entry = {"epoch": epoch + 1, "trainLoss": total / steps_per_epoch, "heldOutLoss": result["loss"],
                  "seconds": seconds, "lr": optimizer.param_groups[0]["lr"], "bands": result["bands"]}
+        if result.get("levels"):
+            entry["levels"] = result["levels"]
+        if validating:
+            checked = judge(model, validating, stats, not args.no_residual, device, autocast, dtype, model.multiple)
+            entry["validationLoss"] = checked["loss"]
         history.append(entry)
-        print("epoch %d/%d: train loss %.4f, held-out loss %.4f, %.1f s (%.0f ms a step)" % (
-            epoch + 1, args.epochs, entry["trainLoss"], entry["heldOutLoss"], seconds, 1000 * seconds / steps_per_epoch))
+        print("epoch %d/%d: train loss %.4f, held-out loss %.4f%s, %.1f s (%.0f ms a step)" % (
+            epoch + 1, args.epochs, entry["trainLoss"], entry["heldOutLoss"],
+            ", validation loss %.4f" % entry["validationLoss"] if validating else "", seconds,
+            1000 * seconds / steps_per_epoch))
         if (epoch + 1) % args.print_every == 0 or epoch + 1 == args.epochs:
             print_table(result, "epoch %d" % (epoch + 1))
-        improved = result["loss"] < best
-        best = min(best, result["loss"])
+        # The epoch kept: the best on the validation runs when there are any, else on the held-out.
+        chosen_by = entry["validationLoss"] if validating else result["loss"]
+        improved = chosen_by < best
+        best = min(best, chosen_by)
+        improved_held = result["loss"] < best_held
+        best_held = min(best_held, result["loss"])
         checkpoint = {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "scaler": scaler.state_dict() if scaled else None,
-                      "epoch": epoch + 1, "best": best, "history": history, "args": vars(args), "stats": stats,
+                      "epoch": epoch + 1, "best": best, "bestHeldOut": best_held, "validateLayouts": validation_patterns,
+                      "history": history, "args": vars(args), "stats": stats,
                       "heldOut": held, "inputs": INPUTS, "residual": not args.no_residual, "levels": levels,
                       "random": random.getstate(), "torch": torch.get_rng_state()}
         torch.save(checkpoint, checkpoint_path + ".tmp")
         os.replace(checkpoint_path + ".tmp", checkpoint_path)
+        kept = ("model", "epoch", "args", "stats", "inputs", "residual", "levels")
         if improved:
-            torch.save({k: checkpoint[k] for k in ("model", "epoch", "args", "stats", "inputs", "residual", "levels")},
-                       os.path.join(args.out, "best.pt"))
+            torch.save({k: checkpoint[k] for k in kept}, os.path.join(args.out, "best.pt"))
+        if validating and improved_held:
+            torch.save({k: checkpoint[k] for k in kept}, os.path.join(args.out, "best-heldout.pt"))
         with open(os.path.join(args.out, "metrics.json"), "w") as handle:
             json.dump({"model": args.model, "parameters": parameters, "device": str(device),
                        "precision": str(dtype) if autocast else "float32", "heldOut": held, "history": history},
@@ -745,6 +776,9 @@ def main(argv):
     parser.add_argument("--holdout-layouts", default="",
                         help="hold out every run of the layouts matching these shell patterns, e.g. beirut,made-*-s6")
     parser.add_argument("--split-by", choices=("run", "layout"), default="run")
+    parser.add_argument("--validate-layouts", default="",
+                        help="train runs of the layouts matching these patterns (e.g. made-*-s5) choose the epoch "
+                             "kept instead of the held-out runs; not trained on")
     parser.add_argument("--impulse", choices=("all", "first"), default="all",
                         help="the impulse target: every positive phase's, or the first phase's (field-export --first-phase)")
     parser.add_argument("--levels", default="ground",
