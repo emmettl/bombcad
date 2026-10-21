@@ -19,10 +19,10 @@ from job import validate
 
 
 def command(args):
-    subprocess.run(args,check=True)
+    subprocess.run(args,check=True,stdin=subprocess.DEVNULL)
 
 
-def deploy(host,job,out,python='bombcad-ml/venv/bin/python'):
+def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*',host):
         raise ValueError('use a configured SSH host alias')
     if not re.fullmatch(r'[A-Za-z0-9_./-]+',python) or '..' in Path(python).parts:
@@ -49,13 +49,19 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python'):
         staging=Path(temp)/'input';staging.mkdir()
         for name in ['job.json',*meta['files'],*meta.get('dataset',{})]:
             shutil.copyfile(job/name,staging/name)
-        command(['scp','-r',str(staging),f'{host}:{remote}/input'])
+        # Initial fields are mostly still air: compression avoids sending gigabytes of repeats.
+        command(['scp','-C','-r',str(staging),f'{host}:{remote}/input'])
     worker=f'{remote}/worker/run.py'
     args=[python,worker,f'{remote}/input','--source',f'{remote}/worker/solver.cu','--out',f'{remote}/out',
           '--lock','bombcad-ml/lock']
     ssh(' '.join(shlex.quote(x) for x in args))
     out.parent.mkdir(parents=True,exist_ok=True)
-    command(['scp','-r',f'{host}:{remote}/out',str(out)])
+    if dataset_only:
+        out.mkdir()
+        command(['scp','-r',f'{host}:{remote}/out/dataset',str(out/'dataset')])
+        command(['scp',f'{host}:{remote}/out/result.json',str(out/'result.json')])
+    else:
+        command(['scp','-r',f'{host}:{remote}/out',str(out)])
     report=json.loads((out/'result.json').read_text())
     if report['sourceSHA256']!=hashlib.sha256(source.encode()).hexdigest():
         raise ValueError('returned worker source hash differs')
@@ -69,4 +75,5 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python'):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('host');p.add_argument('job',type=Path)
     p.add_argument('--out',type=Path,required=True);p.add_argument('--python',default='bombcad-ml/venv/bin/python')
-    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python),indent=2))
+    p.add_argument('--dataset-only',action='store_true',help='retrieve training arrays and provenance; retain raw fields on the PC')
+    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python,a.dataset_only),indent=2))

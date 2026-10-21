@@ -7,11 +7,47 @@ import tempfile
 import unittest
 from pathlib import Path
 import sys
+from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from generate import generate
 from fixtures import make
 from job import validate,scalar_layout
 from compare import compare
+import remote
+
+
+class DeploymentTests(unittest.TestCase):
+    def test_dataset_only_keeps_provenance_without_retrieving_raw_fields(self):
+        with tempfile.TemporaryDirectory() as temp:
+            job = Path(temp) / 'input'
+            job.mkdir()
+            (job / 'job.json').write_text('{}')
+            out = Path(temp) / 'output'
+            source = 'test generated source'
+            worker = Path(remote.__file__).parent
+            report = {
+                'sourceSHA256': hashlib.sha256(source.encode()).hexdigest(),
+                'workerFilesSHA256': {
+                    name: hashlib.sha256((worker / name).read_bytes()).hexdigest()
+                    for name in ('run.py', 'job.py', 'compile.py')
+                },
+            }
+            commands = []
+
+            def command(args):
+                commands.append(args)
+                if args[0] == 'scp' and args[-2].endswith('/out/result.json'):
+                    Path(args[-1]).write_text(json.dumps(report))
+
+            with patch.object(remote, 'generate', return_value=source), \
+                    patch.object(remote, 'validate', return_value=({'files': {}}, None)), \
+                    patch.object(remote, 'command', side_effect=command):
+                self.assertEqual(remote.deploy('bombcad-pc', job, out, dataset_only=True), report)
+            self.assertTrue((out / 'deployment.json').exists())
+            downloads = [c[-2] for c in commands if c[0] == 'scp' and c[-2].startswith('bombcad-pc:')]
+            self.assertEqual(len(downloads), 2)
+            self.assertTrue(downloads[0].endswith('/out/dataset'))
+            self.assertTrue(downloads[1].endswith('/out/result.json'))
 
 
 class JobTests(unittest.TestCase):

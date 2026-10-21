@@ -595,9 +595,15 @@ checked on the four recorder runs of the judgement, run again with it into
   strips) 1.00 / 0.02. Over the mask, the first phase is a median 0.76–0.80 of all the phases.
 - **Cost.** The kernel reads two cells a column a step: nothing measurable beside the air.
 
-`train_field.py --impulse first` trains on it. The 200-run dataset has not been exported again
-with it: that waits for the user's go-ahead. The command, about 5 GPU hours on the Studio as the
-first export took (5.3 h measured, partly on the mini):
+`train_field.py --impulse first` trains on it. **Update, 21 October:** the overnight job completed
+all 200 stable cases in `/Volumes/StudioData/bombcad/ml/datasets/main-fp`, then trained
+`field-unet-fp-strict` (75 whole-layout holdouts, 2,360 s on the PC GPU) and
+`field-unet-fp-byrun` (40 run holdouts, 2,042 s). Both jobs exited successfully. The retained
+record is `ml/overnight-fp/summary.txt`, with each model's `job.json`, split and metrics under
+StudioData. The strict round's all-cell first-phase impulse ratio / log-SD is 1.00 / 0.17;
+the by-run round is 1.02 / 0.09. These are field-prediction checks, not wall/roof damage validation.
+
+The original Metal regeneration command (about 5 GPU hours estimated) was:
 
 ```bash
 python3 -I Scripts/ml/field-runs.py run --set main --first-phase --dataset /Volumes/StudioData/bombcad/ml/datasets/main-first
@@ -734,13 +740,11 @@ would take, and what it would leave out:
 
 ## Not done yet
 
-- **The PCs' set-up**, by the user (above), then a first `--estimate` on each card to replace the
-  estimated times.
-- **The full run list.** It waits for the user's go-ahead for about 5 GPU hours on the Studio
-  (or about 15 on the mini).
-- **The 200 runs exported again with `--first-phase`** (about 5 GPU hours, the user's go-ahead)
-  and a model trained on it, before the field model drives walls and roofs
-  ([above](#the-first-phase-target-and-glass-by-side-20-october-2026)).
+- **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
+  and has completed the first-phase training rounds above.
+- **Wall and roof damage validation** using the completed first-phase model. The 200-case Metal
+  dataset and both training rounds are complete; their field scores alone do not establish
+  better structural damage predictions.
 - **The user's decision** on the field model's peak in the quick estimate's ground-floor glass,
   and then in the [hybrid far field](hybrid-far-field.md)
   ([above](#the-recommendation-for-the-user-to-decide)).

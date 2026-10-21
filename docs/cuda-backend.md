@@ -123,3 +123,31 @@ Metal, particularly near reflections and damage thresholds. No training-model ac
 inferred from this backend comparison.
 
 Tests and reproduction tools are in [Scripts/cuda](../Scripts/cuda/README.md).
+
+## Full training-plan pilots: acceptance stop, 21 October 2026
+
+The resumable `Scripts/cuda/field-runs.py` prepares the existing 200-case plan on the Mac and
+integrates it on the PC, retrieving training arrays while retaining raw fields remotely. Each
+case must pass the existing exact feature/mask and per-value target gate before entering the
+new dataset. Compressed transfers avoid sending repeated still-air values uncompressed.
+
+The [training-pilot record](../Benchmarks/CUDAAcceptance/2026-10-21-training-pilots.json) records:
+
+- Flat `made-perimeter-s1-1`: 15.5M cells, 2,645 steps; 61.7 s CUDA and 97.7 s end to end.
+  All three channels pass. First-phase impulse relative L2 is 5.32e-7.
+- Sloped `made-perimeter-s3-1`: 13.1M cells, 2,708 steps; 50.1 s CUDA and 87.9 s end to end.
+  Features and masks agree exactly; peak and total impulse pass. First-phase impulse has two
+  values outside tolerance: Metal/CUDA 426.405/417.138 Pa s and 225.719/186.434 Pa s
+  (2.17% and 17.4% discrepancies), despite overall relative L2 of 5.36e-5.
+- Beirut `beirut-p0-1`: 21.0M cells, 2,477 steps; 86.8 s CUDA and 150.4 s end to end.
+  Features and masks agree exactly and total impulse passes; three peak values and three
+  first-phase values exceed the per-value gate. First-phase relative L2 is 4.73e-5.
+
+A fresh production Metal run of the slope reproduces the older training reference exactly in
+all three target channels. The cause of the CUDA discrepancy remains unresolved; a discontinuous
+first-phase stopping decision is a hypothesis, not an established diagnosis. The earlier smaller
+terrain acceptance cases do not cover this failure. The failing case is excluded, the full CUDA
+dataset and its training have not started, and no tolerance or model default was changed.
+
+Separately, the overnight **Metal** first-phase dataset and both PC training rounds already
+completed; see [learned models](learned-models.md). This stop concerns CUDA generation.
