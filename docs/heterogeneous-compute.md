@@ -310,3 +310,12 @@ The explicit deployment profiler and timing receipts are reusable for #59 cost d
 [#64](https://github.com/emmettl/bombcad-work/issues/64) tracks independently reproduced elapsed-clock
 disagreement; worker times must not be directly compared across hosts or subtracted from the
 common-observer deployment total. No new broad CUDA dataset admission is enabled.
+
+
+The [follow-up clock audit](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-audit/summary.md)
+now isolates WSL adjusted monotonic versus raw timing: raw agrees with Windows QPC during
+paired intervals; changing kernel tick discipline is consistent with the discrepancy. CUDA
+worker/profiler elapsed measurements now use raw time with explicit provenance and a dual-clock
+audit. Existing gates and all numerical outputs/timesteps remain unchanged. This corrects
+measurement, not compute throughput. #64's host discipline investigation remains open; no clock
+or service settings were changed, and old receipts must not be normalized by one fixed factor.

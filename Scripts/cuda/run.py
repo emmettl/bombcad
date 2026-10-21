@@ -10,6 +10,16 @@ import time
 from job import scalar_layout, validate
 
 
+TIMING_CLOCK = 'clock_gettime(CLOCK_MONOTONIC_RAW)'
+
+
+def elapsed_time():
+    # CUDA worker is Linux-only. Fail rather than silently reverting to a disciplined clock.
+    if not hasattr(time, 'CLOCK_MONOTONIC_RAW'):
+        raise RuntimeError('CUDA profiling requires CLOCK_MONOTONIC_RAW')
+    return time.clock_gettime(time.CLOCK_MONOTONIC_RAW)
+
+
 def luminous_bounds(medium,shape):
     """Integer bounds of positive opacity, or None; zero-opacity cells exchange no radiation."""
     import torch
@@ -23,7 +33,7 @@ def luminous_bounds(medium,shape):
 
 
 def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_cooling=False):
-    worker_start=time.monotonic();timings={}
+    worker_start=elapsed_time();adjusted_start=time.monotonic();timings={}
     import numpy as np
     import torch
     source=Path(source_path).read_text()
@@ -37,14 +47,14 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_
     if trace_columns:
         from trace_columns import trace_source, FIELDS
         compilation_source+=trace_source(source)
-    timings['importsAndValidationSeconds']=time.monotonic()-worker_start
-    stage_start=time.monotonic()
+    timings['importsAndValidationSeconds']=elapsed_time()-worker_start
+    stage_start=elapsed_time()
     spec=importlib.util.spec_from_file_location('cuda_compile',Path(__file__).with_name('compile.py'))
     compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
     capability=torch.cuda.get_device_capability()
     ptx=compiler.compile_ptx(compilation_source,f'compute_{capability[0]}{capability[1]}',cut_cells='terrain' in meta,cache_dir=cache_dir)
-    timings['compileSeconds']=time.monotonic()-stage_start
-    stage_start=time.monotonic()
+    timings['compileSeconds']=elapsed_time()-stage_start
+    stage_start=elapsed_time()
     required=(77 if 'cooling' in meta else 65)*__import__('math').prod(meta['shape'])+36*meta['shape'][0]*meta['shape'][1]
     if 'terrain' in meta:
         required+=sum((Path(folder)/name).stat().st_size for name in meta['files'] if name.startswith('cut-'))
@@ -134,8 +144,8 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_
     if trace_columns: trace_times.append(meta.get('startTime',0))
     launch('cudaMeasure',[state,mask,speed,uniforms],count)
     torch.cuda.synchronize()
-    timings['deviceSetupAndUploadSeconds']=time.monotonic()-stage_start
-    start=time.monotonic()
+    timings['deviceSetupAndUploadSeconds']=elapsed_time()-stage_start
+    start=elapsed_time()
     steps=0;dt_history=[]
     cooling_intervals=empty_cooling=box_cell_sum=box_cell_max=0
     box_cell_min=count
@@ -184,9 +194,9 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_
             control.stopped=0;control.stepIndex=0;control.batchTime=0
             control.timeLimit=max(meta['duration']-sum(dt_history),0)
             controls.copy_(blob(control))
-    elapsed=time.monotonic()-start
+    elapsed=elapsed_time()-start
     timings['solverSeconds']=elapsed
-    stage_start=time.monotonic()
+    stage_start=elapsed_time()
     if steps==meta['steps'] and sum(dt_history) < meta['duration']*(1-1e-4):
         raise RuntimeError('step limit reached before duration; no completed dataset written')
     if not all(torch.isfinite(t).all().item() for t in (state,species,peak,impulse,records)):
@@ -237,8 +247,8 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_
         details.update(stable=True,steps=steps,untilS=meta.get('startTime',0)+sum(dt_history),wallS=elapsed)
         details['configuration']=details['configuration'].replace('; awaiting CUDA','; CUDA uniform')
         details['cudaProvenance']=report
-    timings['validationAndOutputSeconds']=time.monotonic()-stage_start
-    timings['workerSecondsBeforeManifests']=time.monotonic()-worker_start
+    timings['validationAndOutputSeconds']=elapsed_time()-stage_start
+    timings['workerSecondsBeforeManifests']=elapsed_time()-worker_start
     if trace_columns:
         report['workerFilesSHA256']['trace_columns.py']=hashlib.sha256(Path(__file__).with_name('trace_columns.py').read_bytes()).hexdigest()
         report['traceColumns']=trace_columns
@@ -248,8 +258,11 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_
         'minBoxCells':box_cell_min if cooling_intervals else 0,'maxBoxCells':box_cell_max,
         'meanBoxCells':box_cell_sum/cooling_intervals if cooling_intervals else 0}
     report['compileCacheEnabled']=cache_dir is not None
+    report['timingClock']=TIMING_CLOCK
+    report['clockAudit']={'rawSeconds':elapsed_time()-worker_start,
+                          'adjustedMonotonicSeconds':time.monotonic()-adjusted_start}
     report['timings']=timings
-    report['timingScope']='Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload'
+    report['timingScope']='Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload'
     if 'dataset' in meta:
         (dataset/'meta.json').write_text(json.dumps(details,indent=2)+'\n')
     (out/'result.json').write_text(json.dumps(report,indent=2)+'\n')

@@ -1,0 +1,378 @@
+{
+  "status": "complete",
+  "scope": "Timing-only raw-clock change: matched Metal gates and exact numerical hashes versus pre-change deployments; no performance optimization claim.",
+  "rows": [
+    {
+      "job": "cooling32",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 26,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.042571086989482865,
+        "shape": [
+          32,
+          32,
+          32
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "a1404bc1aa18d7268b044d3c523e522be32a09a96eff9ba3998add5e541cfcbf",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 6,
+          "emptyIntervals": 0,
+          "minBoxCells": 810,
+          "maxBoxCells": 2028,
+          "meanBoxCells": 1476.5
+        },
+        "compileCacheEnabled": true,
+        "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+        "clockAudit": {
+          "rawSeconds": 1.408930372010218,
+          "adjustedMonotonicSeconds": 1.4373499159992207
+        },
+        "timings": {
+          "importsAndValidationSeconds": 0.7972496910078917,
+          "compileSeconds": 0.1827766440110281,
+          "deviceSetupAndUploadSeconds": 0.3299652720015729,
+          "solverSeconds": 0.042571086989482865,
+          "validationAndOutputSeconds": 0.05635982799867634,
+          "workerSecondsBeforeManifests": 1.4089277620078065
+        },
+        "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/87dfc187ebdd4a7e9edd77ccde5cf9a2",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 1250903,
+        "returnedFileBytes": 1214832,
+        "timings": {
+          "generateAndValidateSeconds": 0.007015625000000001,
+          "remoteDirectorySeconds": 0.456843916,
+          "workerUploadSeconds": 1.421422,
+          "inputUploadSeconds": 1.883678917,
+          "remoteProcessSeconds": 2.096812458,
+          "retrievalSeconds": 2.4259337910000003,
+          "returnedProvenanceValidationSeconds": 0.001990499999999784
+        },
+        "totalSecondsBeforeReceipt": 8.31120525,
+        "otherLocalSeconds": 0.017508043000001194,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "comparison": {
+        "state": {
+          "count": 163840,
+          "outsideTolerance": 0,
+          "differentValues": 146665,
+          "maxAbsolute": 0.3125,
+          "relativeL2": 1.0966526709588965e-07
+        },
+        "species": {
+          "count": 65536,
+          "outsideTolerance": 0,
+          "differentValues": 60487,
+          "maxAbsolute": 3.5762786865234375e-07,
+          "relativeL2": 2.725422424840452e-07
+        },
+        "peak": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 15024,
+          "maxAbsolute": 0.375,
+          "relativeL2": 1.765493517693511e-07
+        },
+        "impulse": {
+          "count": 32768,
+          "outsideTolerance": 0,
+          "differentValues": 20048,
+          "maxAbsolute": 0.00018310546875,
+          "relativeL2": 1.205879094041643e-07
+        },
+        "first-phase": {
+          "count": 4096,
+          "outsideTolerance": 0,
+          "differentValues": 1802,
+          "maxAbsolute": 0.0390625,
+          "relativeL2": 7.85200828820721e-06
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a",
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3"
+      },
+      "bitIdenticalWithOldTimer": true
+    },
+    {
+      "job": "cooling64",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 28,
+        "startTime": 0,
+        "elapsedSimulationTime": 0.0020000000004074536,
+        "wallSeconds": 0.05257058099959977,
+        "shape": [
+          64,
+          64,
+          64
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "a1404bc1aa18d7268b044d3c523e522be32a09a96eff9ba3998add5e541cfcbf",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 0.625,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 8,
+          "emptyIntervals": 0,
+          "minBoxCells": 6859,
+          "maxBoxCells": 12167,
+          "meanBoxCells": 9429.0
+        },
+        "compileCacheEnabled": true,
+        "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+        "clockAudit": {
+          "rawSeconds": 1.3277693800046109,
+          "adjustedMonotonicSeconds": 1.3603716190118575
+        },
+        "timings": {
+          "importsAndValidationSeconds": 0.8141439169994555,
+          "compileSeconds": 0.17298298199602868,
+          "deviceSetupAndUploadSeconds": 0.2367296250013169,
+          "solverSeconds": 0.05257058099959977,
+          "validationAndOutputSeconds": 0.05133436500909738,
+          "workerSecondsBeforeManifests": 1.3277664799970808
+        },
+        "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/9d8a33de272e4e71a36237732b328bd3",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "all",
+        "inputFileBytes": 9848407,
+        "returnedFileBytes": 9570682,
+        "timings": {
+          "generateAndValidateSeconds": 0.02387949999999961,
+          "remoteDirectorySeconds": 0.4673359579999996,
+          "workerUploadSeconds": 1.4124662499999996,
+          "inputUploadSeconds": 3.0866074999999995,
+          "remoteProcessSeconds": 2.0321265410000002,
+          "retrievalSeconds": 6.299062124999999,
+          "returnedProvenanceValidationSeconds": 0.0016915839999995796
+        },
+        "totalSecondsBeforeReceipt": 13.345327542,
+        "otherLocalSeconds": 0.02215808400000263,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "comparison": {
+        "state": {
+          "count": 1310720,
+          "outsideTolerance": 0,
+          "differentValues": 1176154,
+          "maxAbsolute": 0.625,
+          "relativeL2": 1.1360500461346126e-07
+        },
+        "species": {
+          "count": 524288,
+          "outsideTolerance": 0,
+          "differentValues": 484158,
+          "maxAbsolute": 4.470348358154297e-07,
+          "relativeL2": 2.8797903304773317e-07
+        },
+        "peak": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 112490,
+          "maxAbsolute": 0.5,
+          "relativeL2": 1.6894168079305607e-07
+        },
+        "impulse": {
+          "count": 262144,
+          "outsideTolerance": 0,
+          "differentValues": 151845,
+          "maxAbsolute": 0.00048828125,
+          "relativeL2": 1.0005077155522976e-07
+        },
+        "first-phase": {
+          "count": 16384,
+          "outsideTolerance": 0,
+          "differentValues": 7749,
+          "maxAbsolute": 0.03125,
+          "relativeL2": 1.0864773046822376e-05
+        },
+        "passed": true,
+        "rtol": 0.002,
+        "atol": 0.05
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "36b0c7ca8677855f2d2d170051e337964d31f81a889c284ed4f9663d9aea80cc",
+        "impulse.bin": "0fbd5905586f294f100be91a4dd434875e220d024823bc31f0da056b53d88421",
+        "peak.bin": "d2613b41bda116737f05790e8268957628dd0745b78c0f4adcb9207cfd1ba0b5",
+        "species.bin": "5b7adfcf4b0dca34e30274bf2a9a5ed2d2a085098d5790677e6340fc5890e805",
+        "state.bin": "a475f72c78e693331e6ed678d885be8ed383b69295dde60f413c2213c96a30a4",
+        "dt.npy": "99a070d0c0f03863d888603ee8ac6557dda5ba4113c931e7a9e1dcd428ad7aac",
+        "firstPhaseImpulse.npy": "12252d2f7a0e85f8d1baf05fea8a3802a6f6f24e703aa9cd9d7be591e01924e1",
+        "mask.npy": "4ff849b0b1c137353dadbb6df091cd584426425ffc5ecf182e9c5f50302627c9",
+        "targets.npy": "a8d0e70ddcb2ef347ca5e04a3bfa54653bc5cf1699943c96021e205d169b6ad1"
+      },
+      "bitIdenticalWithOldTimer": true
+    },
+    {
+      "job": "flat-district",
+      "result": {
+        "format": "bombcad-cuda-result-1",
+        "backend": "cuda",
+        "terrainCutCells": false,
+        "device": "NVIDIA GeForce RTX 3080 Ti",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "steps": 2645,
+        "startTime": 0.003934389986701742,
+        "elapsedSimulationTime": 4.506065610017686,
+        "wallSeconds": 43.91236547799781,
+        "shape": [
+          512,
+          512,
+          59
+        ],
+        "math": "float32, unfused, precise division/sqrt",
+        "workerFilesSHA256": {
+          "run.py": "a1404bc1aa18d7268b044d3c523e522be32a09a96eff9ba3998add5e541cfcbf",
+          "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+          "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+        },
+        "channels": [
+          "peakOverpressure",
+          "impulse"
+        ],
+        "units": [
+          "Pa",
+          "Pa s"
+        ],
+        "above": 2,
+        "coolingWorkSelection": "luminous-box",
+        "coolingWork": {
+          "intervals": 662,
+          "emptyIntervals": 0,
+          "minBoxCells": 1,
+          "maxBoxCells": 162000,
+          "meanBoxCells": 113088.88972809668
+        },
+        "compileCacheEnabled": true,
+        "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+        "clockAudit": {
+          "rawSeconds": 46.675989436000236,
+          "adjustedMonotonicSeconds": 47.665180228999816
+        },
+        "timings": {
+          "importsAndValidationSeconds": 1.3167953719967045,
+          "compileSeconds": 0.17354754600091837,
+          "deviceSetupAndUploadSeconds": 0.6803085920109879,
+          "solverSeconds": 43.91236547799781,
+          "validationAndOutputSeconds": 0.592963447998045,
+          "workerSecondsBeforeManifests": 46.67598672599706
+        },
+        "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+      },
+      "deployment": {
+        "host": "bombcad-pc",
+        "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/c24169b1eb944a1b8d11b6133316eced",
+        "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+        "retrievalMode": "dataset",
+        "inputFileBytes": 589043109,
+        "returnedFileBytes": 10492798,
+        "timings": {
+          "generateAndValidateSeconds": 0.24541941600000072,
+          "remoteDirectorySeconds": 0.41820504199999675,
+          "workerUploadSeconds": 1.3876679169999981,
+          "inputUploadSeconds": 19.489451458999998,
+          "remoteProcessSeconds": 47.36413300000001,
+          "retrievalSeconds": 7.03624637499999,
+          "returnedProvenanceValidationSeconds": 0.0022477919999914775
+        },
+        "totalSecondsBeforeReceipt": 76.179534291,
+        "otherLocalSeconds": 0.23616329000000746,
+        "timingScope": "Local host wall clock from deploy entry through returned provenance validation and byte counting; includes cold SSH/scp/Python, staging and transfer; excludes receipt write and caller preparation/comparison. remoteProcessSeconds includes process startup, shared-lock acquisition, worker and teardown; see result.json for nested worker phases. Byte counts are file sizes, not compressed wire bytes."
+      },
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "remoteNumericalSHA256": {
+        "first-phase.bin": "4aaf99f2d877486648134acca1c73d5b3e87a9eb7e68b021a466ab8a6256da2d",
+        "impulse.bin": "a4cce1a2d37fd20cd878e811bb59a382c1f04ed8870437cf767f95c58a161366",
+        "peak.bin": "216a30244317e2930c2fb08ac4da80f49972c8ff39a690ff13598e120a20109f",
+        "species.bin": "5fecf48e63393dfe523bce7f6ecea188c95597d035639c2675a1e3027480ffbe",
+        "state.bin": "6ed101101094b535674afa899413486a97b9a09ac683d94ec25535be519ce749",
+        "dt.npy": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+        "firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+        "mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+        "targets.npy": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96"
+      },
+      "bitIdenticalWithOldTimer": true
+    }
+  ],
+  "profilerValidated": true
+}

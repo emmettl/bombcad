@@ -1,0 +1,32 @@
+import hashlib,json,sys,subprocess,shlex
+from pathlib import Path
+sys.path.insert(0,str(Path.cwd()/'Scripts/cuda'))
+from remote import deploy
+from compare import compare as fields
+from compare_dataset import compare as dataset
+root=Path('/private/tmp/bombcad-clock-audit');base=Path('/private/tmp/bombcad-deployment-profile')
+old=json.loads((base/'results/profile.json').read_text());rows=[]
+report={'status':'running','scope':'Timing-only raw-clock change: matched Metal gates and exact numerical hashes versus pre-change deployments; no performance optimization claim.','rows':rows}
+def save():(root/'pilot.json').write_text(json.dumps(report,indent=2)+'\n')
+save()
+try:
+ for job in old['plan']:
+  out=root/job['name'];result=deploy('bombcad-pc',job['input'],out,dataset_only=job['retrieval']=='dataset',cache_dir=old['cacheDirectory'])
+  gate=dataset(base/'mac-results/metal-0',out/'dataset') if job['retrieval']=='dataset' else fields(job['reference'],out)
+  deployment=json.loads((out/'deployment.json').read_text());remote=deployment['directory']+'/out'
+  text=subprocess.check_output(['ssh','-o','BatchMode=yes','bombcad-pc','cd '+shlex.quote(remote)+' && sha256sum *.bin *.npy'],text=True,timeout=30)
+  hashes={line.split()[1]:line.split()[0] for line in text.splitlines()}
+  expected=next(r['remoteNumericalSHA256'] for r in old['rows'] if r['job']==job['name'])
+  equal=hashes==expected
+  rows.append({'job':job['name'],'result':result,'deployment':deployment,'comparison':gate,'remoteNumericalSHA256':hashes,'bitIdenticalWithOldTimer':equal});save();print(job['name'],gate['passed'],equal,result['timingClock'],result['clockAudit'],flush=True)
+  assert gate['passed'] and equal and result['timingClock']=='clock_gettime(CLOCK_MONOTONIC_RAW)'
+ # Run the actual profiling harness with fresh processes, using the same current worker as
+ # both controls. This validates clock/provenance plumbing, not an optimization comparison.
+ dep=rows[0]['deployment']['directory'];worker=dep+'/worker';dest=dep+'/raw-clock-profile'
+ subprocess.run(['scp','Scripts/cuda/profile-worker.py','bombcad-pc:'+worker+'/profile-worker.py'],check=True)
+ cmd=['bombcad-ml/venv/bin/python',worker+'/profile-worker.py','--baseline',worker+'/run.py','--candidate',worker+'/run.py','--source',worker+'/solver.cu','--jobs',dep+'/input','--out',dest,'--lock','bombcad-ml/lock','--lock-helper',worker+'/remote-train.py','--fresh-process']
+ subprocess.run(['ssh','-o','BatchMode=yes','bombcad-pc',' '.join(shlex.quote(x) for x in cmd)],check=True,stdout=subprocess.DEVNULL)
+ subprocess.run(['scp','bombcad-pc:'+dest+'/profile.json',str(root/'worker-profile.json')],check=True)
+ profile=json.loads((root/'worker-profile.json').read_text());assert profile['allOutputsAndTimestepsBitIdentical'] and profile['timingClock']=='clock_gettime(CLOCK_MONOTONIC_RAW)'
+ report['profilerValidated']=True;report['status']='complete';save()
+except BaseException as e:report['status']='failed';report['error']=repr(e);save();raise

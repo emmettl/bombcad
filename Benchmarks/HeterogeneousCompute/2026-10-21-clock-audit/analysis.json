@@ -1,0 +1,86 @@
+[
+  {
+    "target": "windows",
+    "requestedSeconds": 1,
+    "samples": 3,
+    "medianMacRoundTripSeconds": 1.0429274580000003,
+    "medianWSLMonotonicSeconds": 1.03947890199197,
+    "medianWSLRawSeconds": 1.014331721002236,
+    "medianWindowsQPCSeconds": 1.0137221,
+    "monotonicToRawRatios": [
+      1.0250320504555,
+      1.0247918708141026,
+      1.0247898747765707
+    ]
+  },
+  {
+    "target": "windows",
+    "requestedSeconds": 5,
+    "samples": 3,
+    "medianMacRoundTripSeconds": 5.033996041999998,
+    "medianWSLMonotonicSeconds": 5.130123431998072,
+    "medianWSLRawSeconds": 5.0051217319996795,
+    "medianWindowsQPCSeconds": 5.0044299,
+    "monotonicToRawRatios": [
+      1.024839381180703,
+      1.02499136318592,
+      1.0249747571970544
+    ]
+  },
+  {
+    "target": "windows",
+    "requestedSeconds": 15,
+    "samples": 3,
+    "medianMacRoundTripSeconds": 15.037254458,
+    "medianWSLMonotonicSeconds": 15.378633007989265,
+    "medianWSLRawSeconds": 15.005925876001129,
+    "medianWindowsQPCSeconds": 15.0051783,
+    "monotonicToRawRatios": [
+      1.0248373299367155,
+      1.024908453979525,
+      1.0248873610660805
+    ]
+  },
+  {
+    "target": "wsl",
+    "requestedSeconds": 1,
+    "samples": 3,
+    "medianMacRoundTripSeconds": 1.0135229169999995,
+    "medianWSLMonotonicSeconds": 1.0018967369978782,
+    "medianWSLRawSeconds": 0.9776574529969366,
+    "medianWindowsQPCSeconds": 0.9769209,
+    "monotonicToRawRatios": [
+      1.0248030769239829,
+      1.0247926896536967,
+      1.0247932278597558
+    ]
+  },
+  {
+    "target": "wsl",
+    "requestedSeconds": 5,
+    "samples": 3,
+    "medianMacRoundTripSeconds": 4.927511374999995,
+    "medianWSLMonotonicSeconds": 5.023401209997246,
+    "medianWSLRawSeconds": 4.901670559003833,
+    "medianWindowsQPCSeconds": 4.9010606,
+    "monotonicToRawRatios": [
+      1.0249562039545952,
+      1.0250042410041003,
+      1.0248345231545208
+    ]
+  },
+  {
+    "target": "wsl",
+    "requestedSeconds": 15,
+    "samples": 3,
+    "medianMacRoundTripSeconds": 14.674717750000006,
+    "medianWSLMonotonicSeconds": 15.010410071001388,
+    "medianWSLRawSeconds": 14.64529285300523,
+    "medianWindowsQPCSeconds": 14.6447158,
+    "monotonicToRawRatios": [
+      1.0249290595019607,
+      1.0249513239980617,
+      1.0249306873997563
+    ]
+  }
+]

@@ -1,0 +1,241 @@
+{
+  "format": "bombcad-worker-profile-1",
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "candidateCacheDir": null,
+  "torch": "2.11.0+cu128",
+  "cuda": "12.8",
+  "before": {
+    "returncode": 0,
+    "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 876 MiB, 0 %\n",
+    "stderr": ""
+  },
+  "after": {
+    "returncode": 0,
+    "stdout": "name, driver_version, memory.used [MiB], utilization.gpu [%]\nNVIDIA GeForce RTX 3080 Ti, 617.42, 876 MiB, 2 %\n",
+    "stderr": ""
+  },
+  "scope": "fresh Python process per run; alternating order; total includes compile/setup/output, excludes deployment and retrieval; solver time excludes setup/output",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "workerSHA256": {
+    "baseline": "a1404bc1aa18d7268b044d3c523e522be32a09a96eff9ba3998add5e541cfcbf",
+    "candidate": "a1404bc1aa18d7268b044d3c523e522be32a09a96eff9ba3998add5e541cfcbf"
+  },
+  "jobs": {
+    "bombcad-cuda/c58f4f0a7ab5563b/jobs/87dfc187ebdd4a7e9edd77ccde5cf9a2/input": "5317b1b003672b7d464272c5d52a8ce0e55536ea27a971b08fa7638f57160a29"
+  },
+  "rows": [
+    {
+      "job": "input",
+      "repetition": 0,
+      "worker": "baseline",
+      "totalSeconds": 2.453817967994837,
+      "solverSeconds": 0.02562915899034124,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 2.176998481998453,
+        "adjustedMonotonicSeconds": 2.2285606829973403
+      },
+      "steps": 26,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 0.8200606500031427,
+        "compileSeconds": 1.0779259789997013,
+        "deviceSetupAndUploadSeconds": 0.20771090299240313,
+        "solverSeconds": 0.02562915899034124,
+        "validationAndOutputSeconds": 0.04566434099979233,
+        "workerSecondsBeforeManifests": 2.1769960319943493
+      }
+    },
+    {
+      "job": "input",
+      "repetition": 0,
+      "worker": "candidate",
+      "totalSeconds": 2.2487438690004637,
+      "solverSeconds": 0.022523974999785423,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 1.9916727420059033,
+        "adjustedMonotonicSeconds": 2.0384950599982403
+      },
+      "steps": 26,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 0.7028225300018676,
+        "compileSeconds": 1.0276760289998492,
+        "deviceSetupAndUploadSeconds": 0.19429518100514542,
+        "solverSeconds": 0.022523974999785423,
+        "validationAndOutputSeconds": 0.044347877003019676,
+        "workerSecondsBeforeManifests": 1.9916702220070874
+      }
+    },
+    {
+      "job": "input",
+      "repetition": 1,
+      "worker": "candidate",
+      "totalSeconds": 2.2419170739885885,
+      "solverSeconds": 0.021647179004503414,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 2.0056528829882154,
+        "adjustedMonotonicSeconds": 2.0528040710050846
+      },
+      "steps": 26,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 0.7105486199870938,
+        "compileSeconds": 1.033506017003674,
+        "deviceSetupAndUploadSeconds": 0.1945857709943084,
+        "solverSeconds": 0.021647179004503414,
+        "validationAndOutputSeconds": 0.045358525996562093,
+        "workerSecondsBeforeManifests": 2.005650692997733
+      }
+    },
+    {
+      "job": "input",
+      "repetition": 1,
+      "worker": "baseline",
+      "totalSeconds": 2.2488324000005377,
+      "solverSeconds": 0.028622950994758867,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 2.0083040989993606,
+        "adjustedMonotonicSeconds": 2.055517624990898
+      },
+      "steps": 26,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 0.7098386580037186,
+        "compileSeconds": 1.0454018500022357,
+        "deviceSetupAndUploadSeconds": 0.1787432489945786,
+        "solverSeconds": 0.028622950994758867,
+        "validationAndOutputSeconds": 0.04568963100609835,
+        "workerSecondsBeforeManifests": 2.0083014590054518
+      }
+    },
+    {
+      "job": "input",
+      "repetition": 2,
+      "worker": "baseline",
+      "totalSeconds": 2.297522984998068,
+      "solverSeconds": 0.02683913199871313,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 2.0435334920039168,
+        "adjustedMonotonicSeconds": 2.090524151994032
+      },
+      "steps": 26,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 0.7093451709952205,
+        "compileSeconds": 1.0657985180005198,
+        "deviceSetupAndUploadSeconds": 0.19250847298826557,
+        "solverSeconds": 0.02683913199871313,
+        "validationAndOutputSeconds": 0.049034917989047244,
+        "workerSecondsBeforeManifests": 2.0435309820022667
+      }
+    },
+    {
+      "job": "input",
+      "repetition": 2,
+      "worker": "candidate",
+      "totalSeconds": 2.2981985060032457,
+      "solverSeconds": 0.03462160698836669,
+      "solverTimingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+      "clockAudit": {
+        "rawSeconds": 2.021314811994671,
+        "adjustedMonotonicSeconds": 2.0677470240043476
+      },
+      "steps": 26,
+      "elapsedSimulationTime": 0.0020000000004074536,
+      "hashes": {
+        "targets.npy": "bd9ef562290282cfb070aad02448664dac77d75e7226adf00974f19e151749f3",
+        "first-phase.bin": "ffdcfcb6ee27682b0dd7d379b97b6d799389efda21d42ace89d79550f6d6720b",
+        "peak.bin": "0944dc7ee816edc4398e38f25fc161858fd4f5a1757784b5f40ab5db6e3d45cb",
+        "firstPhaseImpulse.npy": "9b320a2654f9f336f884e28f824c9bbedebf0b6bcfcef63636f04792786722d9",
+        "state.bin": "ebf7c2ce4391cc37e7df2d5677a4a515c6f23271a8f19b3525e78c7fc7aa5d8c",
+        "impulse.bin": "779ac8c0ebef169cfec79b511fca81e18012970d82481005a2a22d7808399fed",
+        "species.bin": "1750f98981d72eddda8f13870fc824993d9a5edccc587efb4ff0b33e2325ccf5",
+        "dt.npy": "c345699e5270b988de123d80d12aac7d5edd348d66155b969ebef0a4ae35b335",
+        "mask.npy": "76d8f8161e94b7741aa44d8ac31553239f893d3d3973f28fd50b8dec6f4cb02a"
+      },
+      "timings": {
+        "importsAndValidationSeconds": 0.7004238230001647,
+        "compileSeconds": 1.0514162400068017,
+        "deviceSetupAndUploadSeconds": 0.19039059198985342,
+        "solverSeconds": 0.03462160698836669,
+        "validationAndOutputSeconds": 0.0444552789995214,
+        "workerSecondsBeforeManifests": 2.0213123919966165
+      }
+    }
+  ],
+  "summaries": [
+    {
+      "job": "input",
+      "baseline": {
+        "medianTotalSeconds": 2.297522984998068,
+        "medianSolverSeconds": 0.02683913199871313
+      },
+      "candidate": {
+        "medianTotalSeconds": 2.2487438690004637,
+        "medianSolverSeconds": 0.022523974999785423
+      }
+    }
+  ],
+  "allOutputsAndTimestepsBitIdentical": true
+}

@@ -1,0 +1,26 @@
+{
+  "baseCommit": "d320d213",
+  "sourceSHA256": {
+    "Scripts/cuda/clock-probe.py": "01f82331e7f98d906ba6a8af675ab6fda088e7ce3d22ee0676fab491bed88b57",
+    "Scripts/cuda/read-clock-state.c": "c4502d2da25d7d356b60dabca2d5aa9dbdc5c9d0e01f0f8b9aa4d05645cfb7c7",
+    "Scripts/cuda/run.py": "a1404bc1aa18d7268b044d3c523e522be32a09a96eff9ba3998add5e541cfcbf",
+    "Scripts/cuda/profile-worker.py": "d335da9d95ab7ba8ed4282c67b3712ddcbd88c5dfc514826406a2470ee7ac2e8",
+    "Scripts/cuda/test_backend.py": "8abbe84fe7babacc029cd8c98bdee5c8b59778195e2aa7910a06218fc1571c7a"
+  },
+  "physicalSourceUnchanged": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "datasetProvenanceClockVerified": true,
+  "privilegedTimeServiceHistory": "Not inspected: sudo -n required a password; unprivileged journal could not see system entries. No privilege or settings changes attempted.",
+  "validation": "make check-affected passed; 35 Mac and 54 PC Swift tests, strict build/lint/scripts/docs. 25 CUDA contract tests, four local Torch skips; actual PC integration and six fresh-process profiling controls passed.",
+  "artifactSHA256": {
+    "worker-profile.json": "4c3d649ff19028e69e45f2993c9736f51b2181a3cd7f47426eef750fb97bc811",
+    "paired.json": "12214d7dccaf3127c245ae9b897a142fdb9f617e6b09d1a92bff38693c44bfb5",
+    "summary.md": "90516836a36b010317804df0cb8e59dc0d2556e404c5480dbd47e84fda9c6f10",
+    "discipline.json": "52805823dd63d4eba6430ec296180233aff5537e67511edf15d9deb817b2463d",
+    "pilot.json": "efcada2aef915f529dac478b1ed9c89d6d2127e4fc6c48d0aee1746cd306ec71",
+    "analysis.json": "bb9eb8c127e4d801f45aba0ca7e940b792a9f516847fa1b429560fd6468e43b3",
+    "check.log": "68a37ab6773c346e8c1f67b4b808e0066220ee8b902026f80c56394044900274",
+    "time-service.txt": "e5d9147debb376e386893aed9ddaa60970440280705a6fdc20b1bb2cd1a12576",
+    "pilot.py.txt": "b0091224c1226472a041eb86ab72290ab8354ffe09680c4e35c27380f8fdfc92",
+    "discipline-after.json": "98901a7f95b0e244a77dd26dbc09735b524dfe0ed6a8a9180ea4c68ec58b037c"
+  }
+}

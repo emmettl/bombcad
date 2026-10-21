@@ -1,0 +1,12 @@
+{
+  "queryModes": 0,
+  "returnState": 0,
+  "status": 8192,
+  "tickMicroseconds": 10248,
+  "frequencyScaledPPM": -3129898,
+  "frequencyPPM": -47.758453369,
+  "offset": 0,
+  "timeConstant": 1,
+  "precision": 1,
+  "toleranceScaledPPM": 32768000
+}

@@ -17,6 +17,22 @@ import remote
 from test_cooling_bounds import CoolingBoundsTests
 
 
+class ElapsedClockTests(unittest.TestCase):
+    def test_worker_and_profiler_ignore_disciplined_monotonic_for_elapsed_time(self):
+        import importlib.util
+        for name in ('run.py','profile-worker.py'):
+            spec=importlib.util.spec_from_file_location('clock_test_'+name,Path(__file__).with_name(name))
+            module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+            with patch.object(module.time,'clock_gettime',return_value=12.5) as raw, \
+                    patch.object(module.time,'monotonic',side_effect=AssertionError('adjusted clock used')):
+                self.assertEqual(module.elapsed_time(),12.5)
+                raw.assert_called_once_with(module.time.CLOCK_MONOTONIC_RAW)
+            with patch.object(module.time,'CLOCK_MONOTONIC_RAW',create=True):
+                del module.time.CLOCK_MONOTONIC_RAW
+                with self.assertRaisesRegex(RuntimeError,'requires CLOCK_MONOTONIC_RAW'):
+                    module.elapsed_time()
+
+
 class DeploymentTests(unittest.TestCase):
     def test_dataset_only_keeps_provenance_without_retrieving_raw_fields(self):
         with tempfile.TemporaryDirectory() as temp:

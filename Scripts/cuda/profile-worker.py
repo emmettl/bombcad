@@ -3,7 +3,7 @@
 
 Run on the PC with its existing CUDA Python environment. By default all runs share one interpreter; --fresh-process includes a new
 Python/PyTorch process each time. Compilation and worker setup are
-included in totalSeconds; solver time is the worker's wallSeconds. Inputs and
+included in totalSeconds, measured with Linux CLOCK_MONOTONIC_RAW; solver time is the worker's wallSeconds. Inputs and
 output folders must be explicit. This does not deploy or alter installed workers.
 """
 import argparse
@@ -15,6 +15,15 @@ import statistics
 import sys
 import subprocess
 import time
+
+
+TIMING_CLOCK = 'clock_gettime(CLOCK_MONOTONIC_RAW)'
+
+
+def elapsed_time():
+    if not hasattr(time, 'CLOCK_MONOTONIC_RAW'):
+        raise RuntimeError('CUDA profiling requires CLOCK_MONOTONIC_RAW')
+    return time.clock_gettime(time.CLOCK_MONOTONIC_RAW)
 
 
 def module(path, name):
@@ -64,7 +73,7 @@ def main():
                 order=['baseline','candidate'] if repetition%2==0 else ['candidate','baseline']
                 for name in order:
                     out=a.out/f'{job.name}-{repetition}-{name}'
-                    start=time.perf_counter()
+                    start=elapsed_time()
                     kwargs={'cache_dir':a.candidate_cache_dir} if name=='candidate' and a.candidate_cache_dir else {}
                     if a.fresh_process:
                         worker_path=a.baseline if name=='baseline' else a.candidate
@@ -74,10 +83,11 @@ def main():
                         result=json.loads((out/'result.json').read_text())
                     else:
                         result=workers[name].run(job,a.source,out,**kwargs)
-                    elapsed=time.perf_counter()-start
+                    elapsed=elapsed_time()-start
                     hashes={str(p.relative_to(out)):digest(p) for p in out.rglob('*') if p.is_file() and p.suffix in ('.bin','.npy')}
                     row={'job':job.name,'repetition':repetition,'worker':name,'totalSeconds':elapsed,
-                         'solverSeconds':result['wallSeconds'],'steps':result['steps'],
+                         'solverSeconds':result['wallSeconds'],'solverTimingClock':result.get('timingClock','legacy adjusted host monotonic'),
+                         'clockAudit':result.get('clockAudit'),'steps':result['steps'],
                          'elapsedSimulationTime':result['elapsedSimulationTime'],'hashes':hashes,
                          'timings':result.get('timings')}
                     rows.append(row);pair[name]=row
@@ -89,7 +99,7 @@ def main():
             values={k:[r for r in rows if r['job']==job.name and r['worker']==k] for k in workers}
             summaries.append({'job':job.name,**{k:{'medianTotalSeconds':statistics.median(r['totalSeconds'] for r in v),
                 'medianSolverSeconds':statistics.median(r['solverSeconds'] for r in v)} for k,v in values.items()}})
-        report={'format':'bombcad-worker-profile-1','device':torch.cuda.get_device_name(),
+        report={'format':'bombcad-worker-profile-1','timingClock':TIMING_CLOCK,'device':torch.cuda.get_device_name(),
                 'candidateCacheDir':str(a.candidate_cache_dir) if a.candidate_cache_dir else None,
                 'torch':torch.__version__,'cuda':torch.version.cuda,'before':before,'after':snapshot(),
                 'scope':('fresh Python process per run' if a.fresh_process else 'one interpreter')+'; alternating order; total includes compile/setup/output, excludes deployment and retrieval; solver time excludes setup/output',

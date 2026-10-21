@@ -210,6 +210,27 @@ resolved, use a common observer for cross-host latency and keep worker-clock dia
 separate. No time or clocksource settings were changed. Per-step control/dispatch profiling
 and capability-aware scheduling remain #60/#59 follow-ups.
 
+### Raw elapsed-clock correction
+
+The [paired Windows/WSL/Mac audit](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-audit/summary.md)
+isolates adjusted Linux monotonic running about 2.5% faster while raw and native Windows QPC
+agree in the observed intervals. Read-only kernel discipline queries show enlarged/changing
+ticks; merely seeing `tsc` is not evidence that the clocksource itself is broken. #64 remains
+open for discipline ownership and safe host normalization; no system settings were changed.
+
+`run.py` and `profile-worker.py` now use Linux `CLOCK_MONOTONIC_RAW` for elapsed measurements
+and record `timingClock`. Worker `clockAudit` retains raw and adjusted-monotonic intervals.
+`wallSeconds` remains solver-only, with its clock identity explicit in result/dataset provenance;
+legacy receipts retain their original adjusted-clock values. Do not retroactively apply a fixed
+conversion or mistake the reporting correction for a solver speedup. Host stopping/deadline
+behavior and GPU timesteps are unchanged. The profiling harness labels each solver result's
+clock so old/new worker durations are not silently treated as identical measurement contracts.
+
+Timing-only reruns of both cooling fixtures and the flat district preserve every numerical
+output/timestep hash and pass existing Metal gates. The six-run fresh-process profiler control
+also preserves all outputs. Deployment costs measured on the Mac observer remain independent
+of the PC's adjusted-clock rate; the earlier case-latency decision therefore remains intact.
+
 ## Diagnosing first-phase acceptance: 21 October 2026
 
 Read-only traces now identify the terrain pilot's two first-phase discrepancies as sensitivity
