@@ -589,12 +589,16 @@ def run_queue(root,once=False,poll=2,max_seconds=600):
                 if runnable:
                     needs_mac=any('metal' in states[j['key']]['eligibleBackends'] or not states[j['key']].get('preparationCache') for j in runnable)
                     mac=mac_snapshot(contract) if needs_mac else {'available':False,'reason':'validated CUDA preparation needs no Mac GPU slot'}
-                    needs_pc=any('cuda' in states[j['key']]['eligibleBackends'] for j in runnable)
-                    pc=pc_snapshot(contract) if needs_pc else {'available':False,'reason':'no runnable CUDA cases','freeBytes':0}
+                    has_cuda=any('cuda' in states[j['key']]['eligibleBackends'] for j in runnable)
+                    optimistic=plan_dispatch(contract,states,mac,{'available':True,'freeBytes':math.inf}) if has_cuda else []
+                    needs_pc=any(p['backend']=='cuda' and p['launchNow'] for p in optimistic)
+                    preflight={'probeRequired':needs_pc,'basis':'measured costs and observed Mac capacity; optimistic PC availability and unbounded VRAM','optimisticProposals':optimistic}
+                    reason='no CUDA dispatch selected under optimistic PC availability' if has_cuda else 'no runnable CUDA cases'
+                    pc=pc_snapshot(contract) if needs_pc else {'available':False,'reason':reason,'freeBytes':0}
                     proposals=plan_dispatch(contract,states,mac,pc)
-                    atomic(root/'dispatch.json',{'observedAt':time.time(),'mac':mac,'cuda':pc,'proposals':proposals})
+                    atomic(root/'dispatch.json',{'observedAt':time.time(),'mac':mac,'cuda':pc,'cudaPreflight':preflight,'proposals':proposals})
                     for proposal in proposals:
-                        if proposal['launchNow']:launch(root,contract,proposal,{'mac':mac,'cuda':pc})
+                        if proposal['launchNow']:launch(root,contract,proposal,{'mac':mac,'cuda':pc,'cudaPreflight':preflight})
                 _CHILDREN[:]=[p for p in _CHILDREN if p.poll() is None] # Retain live handles across run-once calls.
                 if once or time.perf_counter()-started>=max_seconds:return 75
                 time.sleep(poll)

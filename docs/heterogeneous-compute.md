@@ -343,7 +343,7 @@ probes reduces Metal-only median controller completion from 3.475 s to 1.360 s. 
 selection keeps all four cases on Metal (3.518 s); the forced split takes 21.142 s. These small
 jobs establish an overhead floor and show why worker solve time is insufficient for scheduling.
 They do not establish a CUDA throughput win. #59 retains larger/repeated representative queues,
-finer Metal accounting and complete-cost modelling; synchronous PC probing remains measurable.
+finer Metal accounting and complete-cost modelling; synchronous PC probing remained measurable in that controller.
 
 
 ### Per-step control waits
@@ -437,3 +437,14 @@ The larger grid still does not amortize CUDA deployment. Complete isolated-case
 costs are an approximate model; automatic policy's extra controller time motivates
 a cost-based PC-probe experiment under #59. Longer full-district queues and broader
 numerical admission remain separate work.
+
+### Cost-planned PC probing
+
+The [cost-preflight comparison](../Benchmarks/HeterogeneousCompute/2026-10-21-cost-probe/summary.md)
+adopts an optimistic cost plan before paying for a PC observation. When that plan
+cannot dispatch CUDA now, the controller skips SSH; when it can, actual PC
+availability/VRAM and normal worker locking still govern dispatch. In the same
+eight-case workload, automatic completion falls from 12.784 to 5.444 s median,
+close to Metal-only controls (5.663/5.465 s). All 98 accepted executions preserve
+numerical files across versions. This improves controller overhead; longer
+full-district throughput and cost modelling remain in emmettl/bombcad-work#59.

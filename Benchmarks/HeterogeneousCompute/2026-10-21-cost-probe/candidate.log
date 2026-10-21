@@ -1,0 +1,7 @@
+candidate auto 0 5.393
+candidate metal 0 5.465
+candidate metal 1 5.516
+candidate auto 1 5.553
+candidate auto 2 5.444
+candidate metal 2 5.012
+candidate cuda-control 0 11.376

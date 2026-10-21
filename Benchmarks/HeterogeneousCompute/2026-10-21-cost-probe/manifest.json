@@ -1,0 +1,28 @@
+{
+  "baseRevision": "a6417e3ab96f7b5538b947509739031a644637b0",
+  "sourceSHA256": {
+    "Scripts/cuda/field-queue.py": "13357232370213ccd31f47c91fd3f5457a09e970847cead75e18af0fbd97127e",
+    "Scripts/cuda/test_field_queue.py": "249791021d2c663147577d6f9b7d629448d87a34280fc846fc53bc0bd47dfa70"
+  },
+  "acceptedExecutions": 98,
+  "allOwnedGroupsTerminal": true,
+  "validation": "make check-affected passed",
+  "artifactsSHA256": {
+    "package.py": "1a342d8c782602cd7a7a1769f938aa17466e8218f1ab5c67ec5d6a5f3b9b29ef",
+    "audit.json": "7601b907e92ce4589a804e9d19fb9b27adbc877962b0852df9b34080e758965d",
+    "summary.md": "e9b94a74f6d4b99a2f4fe317a08ae303ad955188539034a9c693dbd67615e192",
+    "candidate.log": "aad1d13da9b1ffede71b0bdc22092c42c02c70b61517fbcbd30b67a5a83db75b",
+    "baseline-state.tar.gz": "19cef86af5293325cbb5c82b529da838fd2bc7227b37627dbf2d4df721cac535",
+    "baseline-study.json": "4ab04f86ca64cc5b8ebf1a5643accdb700c57939debfa8d6f11c0ff923332b65",
+    "candidate-field-queue.py.txt": "13357232370213ccd31f47c91fd3f5457a09e970847cead75e18af0fbd97127e",
+    "baseline.log": "b2d031f46f7210199e24deece1e4d9d521673875b26634c47ec526bc14ebc2ee",
+    "candidate-state.tar.gz": "3e2745ae4759d15588369a7fbb3adeea5cae9d5d707e4f620babd3a25babb1c7",
+    "check-initial.log": "d65a9f9b6d0c102f55541a0742a96a008d0b00c1386d7a60f93b1ff8643c649d",
+    "unit.log": "20386c6d1cb12fabe5974b4e25024e3a8f48543f8c997b302eb05d8619bfd3f4",
+    "archive-audit.json": "5c966602b5067e538a10721d3571aadde940bbf432322fbf598606c384b8aba0",
+    "baseline-field-queue.py.txt": "0fa09fda2ee37500c8d7f530a257b793f0afd2efe0c362c95940ceb8213b3524",
+    "check.log": "ed46c7eebee472c2403d49d538f78cfe80d468da73900858c476fa2b72041535",
+    "candidate-study.json": "f2e58e5fac33293e77cba1351035efaef16089936cc8e99320a0f945a5b45c93",
+    "study.py": "09704eb82b1c4c5f7af9c6facf2731585e703b8a83984756143dfd0a7cc6fe60"
+  }
+}

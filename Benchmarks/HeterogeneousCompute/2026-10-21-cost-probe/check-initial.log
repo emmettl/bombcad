@@ -1,0 +1,397 @@
+python3 Scripts/check-affected.py 
+check-affected: 2 changed file(s), tier: covered
+  map 90fb60017c15 (49 commits behind the merge base, built 2026-10-20 19:53 UTC on Louiss-Mac-mini)
+  Scripts/cuda/field-queue.py: not code the map covers; by name
+  Scripts/cuda/test_field_queue.py: not code the map covers; by name
+  5 of 411 suites, under 1% of the suites' time in the map:
+    ErrorBandTests: always
+    EvidentialStandingTests: always
+    RenderLayoutTests: always
+    StandingFingerprintTests: always
+    StandingRunTests: always
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 0 GB declared by the 0 held and the waiting against a budget of 26 GB
+  BlastModel's 4 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+..........{"one": "pending"}
+.......ssss...........................job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 baseline 1.0
+.job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+....[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "running"}
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+.{"spill0": "pending", "spill1": "pending", "spill2": "pending", "spill3": "pending", "spill4": "pending", "spill5": "pending"}
+...
+----------------------------------------------------------------------
+Ran 71 tests in 11.852s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.058s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpo564u43z/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpi9rimkqd/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.038s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.955s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (3d7bbd4152), newest first:
+- e511127 Third (A)
+- 30f30eb Second (A)
+
+### Full check: passed
+
+On e511127fee, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp1ty5iy2b/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp1ty5iy2b/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp1ty5iy2b/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpum_1g9gl/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpum_1g9gl/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.315s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 1.318s
+
+OK
+python3 Scripts/test-ship.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 29.333s
+
+OK
+python3 Scripts/test-release-notes.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.006s
+
+OK
+python3 Scripts/test-check-shader-mirrors.py
+.........................
+----------------------------------------------------------------------
+Ran 25 tests in 4.007s
+
+OK
+python3 Scripts/test-check-test-deadlines.py
+/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmphsfj1cci'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpozlxkqid'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpfy2toyjk'>
+  _warnings.warn(warn_message, ResourceWarning)
+.............
+----------------------------------------------------------------------
+Ran 15 tests in 0.010s
+
+OK
+python3 Scripts/calibration/test-calibration.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 4.463s
+
+OK
+python3 Scripts/test-remote-sweep.py
+../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:38: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp8_rv1bm1/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:39: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp8_rv1bm1/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp8_rv1bm1/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:38: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp8_rv1bm1/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:39: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp8_rv1bm1/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp8_rv1bm1/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:42: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp8_rv1bm1/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+python3 Scripts/split/test-split.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 2.212s
+
+OK
+python3 Scripts/split/test-solver-split.py
+The plan no longer describes the tree:
+  newOne(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+The plan no longer describes the tree:
+  time is placed twice
+  time cannot leave the class's body (stored property)
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+....The plan no longer describes the tree:
+  added(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+...
+----------------------------------------------------------------------
+Ran 7 tests in 1.049s
+
+OK
+  added(): not in the plan; with what is above it (BlastSolver+Stepping.swift)
+wrote plan.json
+  widened time: set from BlastSolver+Stepping.swift
+  widened steps: set from BlastSolver+Stepping.swift
+  widened cache: used from BlastSolver+Boxes.swift, BlastSolver+Stepping.swift
+  widened uniforms: used from BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Boxes.swift
+  wrote Sources/BlastCore/BlastSolver.swift
+  wrote Sources/BlastCore/Shaders/SolverSweep.metal
+  wrote Sources/BlastCore/Shaders/SolverView.metal
+  wrote Sources/BlastCore/Shaders/Solver.metal
+  wrote Sources/BlastCore/StructureTypes+GPU.swift
+  wrote Scripts/check-affected.py
+  wrote docs/air.md
+already split; nothing to do
+python3 Scripts/split/test-narrow-access.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.008s
+
+OK
+python3 Scripts/reference/test-kingery-bulmash.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.137s
+
+OK
+python3 Scripts/footing-bed/test-bed-replica.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpo0cnzred.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp99o18fpo.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxe303bet.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_9ycq918.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.008s
+
+OK
+python3 Scripts/reference/test-sdof.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.410s
+
+OK
+python3 Scripts/reference/test-blast1d.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 5.643s
+
+OK
+python3 Scripts/reference/test-compare.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.209s
+
+OK
+python3 Scripts/protective/test-protective.py
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 4.526s
+
+OK
+python3 Scripts/test-analytic-oracles.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 3.178s
+
+OK
+python3 -I Scripts/open-benchmark/test_score.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 0.032s
+
+OK
+python3 -I Scripts/open-benchmark/test_decks.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 1.942s
+
+OK
+python3 -I Scripts/ml/test-remote-train.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.170s
+
+OK
+python3 -I Scripts/ml/test-field-runs.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.061s
+
+OK
+python3 Scripts/check-doc-links.py
+1 broken link(s)
+docs/field-queue.md:196: ../Benchmarks/HeterogeneousCompute/2026-10-21-cost-probe/summary.md (no such file)
+make[1]: *** [ci-test] Error 1
+check-affected: FAILED at make ci-test
+make: *** [check-affected] Error 2

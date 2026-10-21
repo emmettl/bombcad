@@ -290,13 +290,52 @@ class PublicationTests(QueueFixture):
                 self.assertEqual(q.run_queue(self.queue,once=True),75)
                 launch.assert_not_called()
 
-    def test_runnable_cuda_case_still_probes_pc(self):
-        self.plan['cuda']={'host':'unit-offline'};self.job['backends']=['metal','cuda'];self.job['cudaBytes']=1000
-        self.job['costs']['cuda']=[{'report':str(self.cost),'keys':['cuda']}]
+    def test_cuda_only_case_still_probes_pc(self):
+        self.plan['cuda']={'host':'unit-offline'};self.job['backends']=['cuda'];self.job['cudaBytes']=1000
+        self.job['costs']={'cuda':[{'report':str(self.cost),'keys':['cuda']}]}
         self.init()
         with patch.object(q,'mac_snapshot',return_value=self.mac), patch.object(q,'pc_snapshot',return_value={'available':False,'freeBytes':0}) as pc, patch.object(q,'launch'):
             self.assertEqual(q.run_queue(self.queue,once=True),75)
             pc.assert_called_once()
+
+    def test_cost_plan_skips_pc_when_all_runnable_jobs_choose_metal(self):
+        self.plan['cuda']={'host':'unit-offline'};self.job['backends']=['metal','cuda'];self.job['cudaBytes']=1000
+        self.job['costs']['cuda']=[{'report':str(self.cost),'keys':['cuda']}]
+        self.init()
+        with patch.object(q,'mac_snapshot',return_value=self.mac), patch.object(q,'pc_snapshot',side_effect=AssertionError('cost plan cannot select CUDA')), patch.object(q,'launch') as launch:
+            self.assertEqual(q.run_queue(self.queue,once=True),75)
+        self.assertEqual(launch.call_args.args[2]['backend'],'metal')
+        receipt=q.read(self.queue/'dispatch.json');self.assertFalse(receipt['cudaPreflight']['probeRequired'])
+        self.assertIn('optimistic PC availability',receipt['cuda']['reason'])
+
+    def test_cheaper_cuda_is_probed_and_actual_busy_or_vram_observation_controls_dispatch(self):
+        self.plan['cuda']={'host':'unit-offline'};self.job['backends']=['metal','cuda'];self.job['cudaBytes']=1000
+        self.job['costs']['cuda']=[{'report':str(self.cost),'keys':['cuda']}]
+        q.atomic(self.cost,{'metal':1.,'cuda':.5});self.init()
+        for observed in [{'available':False,'freeBytes':10000},{'available':True,'freeBytes':10}]:
+            with patch.object(q,'mac_snapshot',return_value=self.mac), patch.object(q,'pc_snapshot',return_value=observed) as pc, patch.object(q,'launch') as launch:
+                self.assertEqual(q.run_queue(self.queue,once=True),75)
+                pc.assert_called_once();self.assertEqual(launch.call_args.args[2]['backend'],'metal')
+                self.assertTrue(q.read(self.queue/'dispatch.json')['cudaPreflight']['probeRequired'])
+
+    def test_virtual_metal_backlog_triggers_pc_probe_and_cuda_spillover(self):
+        self.plan['cuda']={'host':'unit-offline'};q.atomic(self.cost,{'metal':1.,'cuda':4.})
+        jobs=[];original=self.refs/'one'
+        for i in range(6):
+            name='spill'+str(i);ref=self.refs/name;ref.mkdir()
+            for filename in q.DATA_FILES:(ref/filename).write_bytes((original/filename).read_bytes())
+            job=json.loads(json.dumps(self.job));job['id']=name;job['reference']=str(ref)
+            job['arguments'][job['arguments'].index('--id')+1]=name
+            job.update(backends=['metal','cuda'],cudaBytes=1000)
+            job['costs']['cuda']=[{'report':str(self.cost),'keys':['cuda']}]
+            meta=q.read(ref/'meta.json');meta.update(id=name,arguments=job['arguments']);q.atomic(ref/'meta.json',meta)
+            jobs.append(job)
+        self.plan['jobs']=jobs;self.init()
+        with patch.object(q,'mac_snapshot',return_value=self.mac), patch.object(q,'pc_snapshot',return_value={'available':True,'freeBytes':10000}) as pc, patch.object(q,'launch') as launch:
+            self.assertEqual(q.run_queue(self.queue,once=True),75)
+            pc.assert_called_once()
+        self.assertEqual({call.args[2]['backend'] for call in launch.call_args_list},{'metal','cuda'})
+        self.assertTrue(q.read(self.queue/'dispatch.json')['cudaPreflight']['probeRequired'])
 
     def test_resume_reuses_accepted_object_and_recovers_missing_pointer(self):
         c=self.init();self.assertEqual(self.tick(),75);self.await_attempt(1,'accepted')

@@ -114,15 +114,18 @@ observed conservatively, and actual lock acquisition can still race a preflight 
 
 Resource probes run only when a pending case can dispatch. A Metal-only eligible set does
 not query the PC; a queue containing only running cases or cases in retry backoff does not
-probe either host. A runnable CUDA alternative still triggers the PC availability/memory
-check, even when Metal is likely to be cheaper. The latest dispatch receipt retains its own
+probe either host. After observing Mac capacity, a preliminary cost plan assumes the PC is available
+with unbounded VRAM. The controller probes the PC only if that plan could dispatch
+CUDA now, then replans with actual availability/memory. CUDA eligibility alone does
+not force an SSH observation. Every dispatch records the optimistic plan and probe
+decision; worker locks and actual memory checks remain authoritative. The latest dispatch receipt retains its own
 observation timestamp; it is not continuously refreshed while no dispatch is possible.
 
 A [three-repeat four-case study](../Benchmarks/HeterogeneousCompute/2026-10-21-queue-costs/summary.md)
 measures controller-to-completion time as well as accepted worker-body time. With these tiny
 cases, Metal-only median falls from 3.475 s to 1.360 s after removing irrelevant probes;
 automatic selection uses Metal for every case (3.518 s), while a forced two-Metal/two-CUDA
-split takes 21.142 s. The automatic policy still pays for synchronous PC observations. This
+split takes 21.142 s. That baseline automatic policy paid for synchronous PC observations. This
 is a small warm-cache overhead study, not evidence for broader CUDA throughput or a complete
 cost model. Its observed-cost report excludes controller overhead and publication explicitly.
 
@@ -186,5 +189,14 @@ calibrates each exact case/backend with three isolated controller completion
 observations, then repeats three policy rounds. All 120 executions pass. Median
 queue completion is 3.854 s Metal-only, 11.265 s automatic (all Metal), and
 49.690 s forced split. The isolated complete costs include controller overhead,
-but do not predict multi-case overhead exactly. The automatic policy still probes
-the PC whenever CUDA is eligible; cost-based suppression of probes the current planner would not use remains an experiment, alongside longer full-district queue evaluation.
+but do not predict multi-case overhead exactly. That baseline automatic policy probed
+the PC whenever CUDA was eligible. The later cost-preflight experiment below
+addresses this overhead; longer full-district queues remain open.
+
+The [cost-preflight comparison](../Benchmarks/HeterogeneousCompute/2026-10-21-cost-probe/summary.md)
+retains three automatic and three Metal-only runs per controller version plus a
+forced CUDA control. Automatic median completion falls from 12.784 s to 5.444 s;
+Metal-only controls are 5.663/5.465 s. All 98 case executions accept once and
+preserve numerical files across versions. Actual CUDA dispatch still records a
+required PC probe. This is a controller improvement on the measured workload,
+not a CUDA solver speedup or proof for long-running districts.
