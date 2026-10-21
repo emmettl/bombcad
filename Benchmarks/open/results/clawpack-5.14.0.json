@@ -234,7 +234,7 @@
         }
       ],
       "notes": [
-        "Total energy rose by -0.000% to 0.028% of the charge's over the 120 ms, all of it from the deck's pressure floor in the near-vacuum at the charge's centre; the scheme itself conserves it.",
+        "Total energy rose by 0.000% to 0.028% of the charge's over the 120 ms, all of it from the deck's pressure floor in the near-vacuum at the charge's centre; the scheme itself conserves it.",
         "0.25kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 f69cb49826deb0456fb51ded36e420553b045037ab46573431e2c4f14c350048",
         "0.25kg-m3: fixed 100-120 ms room proxy; relative half-window drift 0.000118461; not an assertion of equilibrium",
         "0.5kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 2a1feafef151dadc714bc7732f36ef0d27240f12b3f880490ec1e1b68f5cf121",

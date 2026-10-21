@@ -71,7 +71,7 @@ def room(case):
         f"theta 1.5; no startup steps).")
     case['recorded_in'] = 'Benchmarks/open/other-codes/clawpack/outputs/room-n24-*.json'
     case['notes'] = [
-        f"Total energy rose by {min(gains):.3%} to {max(gains):.3%} of the charge's over the 120 ms, all of it "
+        f"Total energy rose by {max(min(gains), 0):.3%} to {max(gains):.3%} of the charge's over the 120 ms, all of it "
         "from the deck's pressure floor in the near-vacuum at the charge's centre; the scheme itself conserves it.",
     ] + case['notes']
 
