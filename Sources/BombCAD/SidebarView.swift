@@ -244,8 +244,8 @@ struct SidebarView: View {
                 Toggle("Safety distances and injury", isOn: $model.renderSettings.showBlastHazards)
                     .help(
                         "The safety standards' K24 and K40 distances and the minimum safe distance as blue rings, "
-                            + "and after a run where eardrums begin to rupture (amber) and where half would die "
-                            + "(dark red), at standing height.")
+                            + "stand-off lines (amber when crossed), and injury rings: surface-burst references before a run; simulated contours after a run. Eardrum threshold (amber) and 50% lethality "
+                            + "(dark red); simulated contours are at standing height.")
                 if model.groundShockSpec != nil {
                     Toggle("Ground points", isOn: $model.renderSettings.showGroundPoints)
                 }

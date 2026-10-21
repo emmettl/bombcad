@@ -12,6 +12,46 @@ import simd
 @MainActor
 @Suite("Dragging the charge", .serialized)
 struct ChargeDragTests {
+    @Test("Hazards follow the editable charge, with live stand-off crossing feedback")
+    func hazardsFollow() async throws {
+        var scene = Scenario(
+            name: "Hazard drag", domainSize: SIMD3(120, 60, 20), boxes: [],
+            charge: Charge(mass: 50, position: SIMD3(20, 30, 0.5)))
+        scene.standOffLines = [
+            StandOffLine(name: "Fence", points: [SIMD2(40, 0), SIMD2(40, 60)], guardsLeft: false)
+        ]
+        var document = ProjectDocument(scenario: scene)
+        document.runSettings?.resolution = "coarse"
+        let model = SimulationModel(document: document)
+        while model.isLoadingInputs { try await Task.sleep(for: .milliseconds(20)) }
+        let expected = BlastInjury.freeFieldRadii(kilograms: 50)
+        #expect(model.previewInjuryRadii == expected)
+        #expect(model.blastHazardSummary.contains { $0.contains("surface-burst reference") })
+        let initial = model.blastHazardLines()
+        model.isDraggingCharge = true
+        model.settings.chargePosition.x = 50
+        // The loaded scene stays at 20 m during a drag, but policy and injury rings move now.
+        #expect(model.scenario.charge.position.x == 20)
+        let moved = model.blastHazardLines()
+        #expect(abs(moved[0].x - initial[0].x - 30) < 0.001)
+        let lungCode = Float(HazardOverlay.Kind.lung.rawValue)
+        let initialLung = try #require(initial.first { $0.w == lungCode })
+        let movedLung = try #require(moved.first { $0.w == lungCode })
+        #expect(abs(movedLung.x - initialLung.x - 30) < 0.001)
+        #expect(abs(movedLung.x - 50 - Float(try #require(expected[.lethality50]))) < 0.001)
+        #expect(moved.contains(SIMD4(40, 0, 0.4, Float(HazardOverlay.Kind.eardrum.rawValue))))
+        #expect(model.blastHazardSummary.contains { $0.contains("Fence: 10.0 m") && $0.contains("inside") })
+        #expect(model.settings.scenario.chargesInsideStandOff == [0])
+        model.settings.scenario.additionalCharges = [Charge(mass: 10, position: SIMD3(10, 10, 0.5))]
+        #expect(model.previewInjuryRadii.isEmpty)
+        #expect(model.blastHazardSummary.contains { $0.contains("unavailable for multiple") })
+        // Once a run starts, references disappear and the loaded scene governs the overlay.
+        model.stepCount = 1
+        #expect(model.previewInjuryRadii.isEmpty)
+        #expect(model.hazardScenario.charge.position.x == 20)
+        #expect(!model.blastHazardSummary.contains { $0.contains("Injury preview") })
+    }
+
     @Test("The estimate follows the dragged charge as a preview, then in full where it is let go")
     func follows() async throws {
         var scene = Scenario(

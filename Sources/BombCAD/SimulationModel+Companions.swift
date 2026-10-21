@@ -478,6 +478,7 @@ extension SimulationModel {
     /// The safety standards' K-factor distances (K24, K40), the minimum safe distance, and the run's
     /// injury contours at standing height: where eardrums begin to rupture and where half would die.
     func blastHazardLines() -> [SIMD4<Float>] {
+        let scenario = hazardScenario
         let terrain = scenario.terrain
         let ground: (SIMD2<Float>) -> Float = { terrain?.height(at: SIMD3($0, 0)) ?? 0 }
         let centre = SIMD2(scenario.charge.position.x, scenario.charge.position.y)
@@ -494,7 +495,27 @@ extension SimulationModel {
             lines += HazardOverlay.ring(
                 centre: centre, radius: safe.distanceM, kind: .kFactor, ground: ground)
         }
-        if let injuryField {
+        for line in scenario.standOffLines ?? [] {
+            let kind: HazardOverlay.Kind = line.guards(centre) ? .eardrum : .kFactor
+            for (a, b) in zip(line.points, line.points.dropFirst()) {
+                lines += [
+                    SIMD4(a.x, a.y, ground(a) + 0.4, Float(kind.rawValue)),
+                    SIMD4(b.x, b.y, ground(b) + 0.4, 0),
+                ]
+            }
+        }
+        if stepCount == 0 {
+            let radii = previewInjuryRadii
+            for (level, kind) in [
+                (BlastInjury.Level.eardrumThreshold, HazardOverlay.Kind.eardrum),
+                (.lethality50, .lung),
+            ] {
+                if let radius = radii[level] {
+                    lines += HazardOverlay.ring(
+                        centre: centre, radius: Float(radius), kind: kind, ground: ground)
+                }
+            }
+        } else if let injuryField {
             lines += HazardOverlay.contour(
                 injuryField, level: .eardrumThreshold, kind: .eardrum, ground: ground)
             lines += HazardOverlay.contour(injuryField, level: .lethality50, kind: .lung, ground: ground)
@@ -508,9 +529,20 @@ extension SimulationModel {
     /// A headless run's fragments' hazard, which its own consumer finds, for the minimum safe distance.
     func setFragmentHazard(_ hazard: GroundHazard?) { if let hazard { fragmentHazard = hazard } }
 
-    /// The run's blast hazards in words: the safety standards' distances, the minimum safe
-    /// distance and what governs it, and the injury's reach at standing height.
+    /// Before a run, use the editable charge even while the loaded scene stays fixed for a drag.
+    var hazardScenario: Scenario { stepCount == 0 ? settings.scenario : scenario }
+
+    /// Surface-burst reference rings only: no shielding, terrain effects or combined charges.
+    var previewInjuryRadii: [BlastInjury.Level: Double] {
+        guard stepCount == 0, (hazardScenario.additionalCharges ?? []).isEmpty else { return [:] }
+        let mass = Double(hazardScenario.charge.mass)
+        guard mass.isFinite, mass > 0 else { return [:] }
+        return BlastInjury.freeFieldRadii(kilograms: mass)
+    }
+
+    /// Policy distances, injury standing, and live distances to the layout's stand-off lines.
     var blastHazardSummary: [String] {
+        let scenario = hazardScenario
         let mass = scenario.charge.mass
         var lines = KFactorDistance.all.map { k in
             String(format: "%@: %.0f m", k.name, k.requiredDistance(kilograms: mass)) + " — "
@@ -527,7 +559,27 @@ extension SimulationModel {
                 ).summary
                 .dropFirst())
         if let envelopeDebris { lines.append(envelopeDebris.summary) }
-        if let injuryField { lines.append(injuryField.summary) }
+        if stepCount == 0 {
+            let radii = previewInjuryRadii
+            if !radii.isEmpty {
+                lines.append(
+                    "Injury preview: bare TNT surface-burst reference in the open, not a district prediction. "
+                        + "No shielding, reflections, terrain or charge-height effects. "
+                        + [BlastInjury.Level.eardrumThreshold, .lethality50].compactMap { level in
+                            radii[level].map { String(format: "%@: %.1f m", level.title, $0) }
+                        }.joined(separator: "; "))
+            } else {
+                lines.append("Injury preview unavailable for multiple charges or a non-positive yield.")
+            }
+            for line in scenario.standOffLines ?? [] {
+                let centre = SIMD2(scenario.charge.position.x, scenario.charge.position.y)
+                lines.append(
+                    String(format: "%@: %.1f m from the charge", line.name, line.distance(to: centre))
+                        + (line.guards(centre) ? "; inside the guarded side" : "; outside the guarded side"))
+            }
+        } else if let injuryField {
+            lines.append(injuryField.summary)
+        }
         return lines
     }
 

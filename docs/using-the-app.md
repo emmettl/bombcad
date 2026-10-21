@@ -1178,3 +1178,11 @@ constant and limited reports. These options
 leave the existing transport defaults in place; the full load/shock audits determine
 accuracy and cost before broader use.
 
+
+With **Safety distances and injury** on, dragging the charge moves the policy-distance rings
+immediately, without waiting for the building preview. Stand-off lines turn amber when the charge
+crosses onto their guarded side; the Hazards section gives the distance to each line. This warns
+without moving the charge back or changing the line. Before a run, the injury rings are labelled
+bare-TNT surface-burst references for a person in the open: they exclude shielding, reflections,
+terrain and charge-height effects. They are omitted for multiple charges. After a run, the injury
+contours come from the simulated field at standing height.
