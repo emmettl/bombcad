@@ -1,0 +1,97 @@
+{
+  "report": {
+    "format": "bombcad-cuda-result-1",
+    "backend": "cuda",
+    "terrainCutCells": false,
+    "device": "NVIDIA GeForce RTX 3080 Ti",
+    "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "steps": 26,
+    "startTime": 0,
+    "elapsedSimulationTime": 0.0020000000004074536,
+    "wallSeconds": 0.00861319999967236,
+    "shape": [
+      32,
+      32,
+      32
+    ],
+    "math": "float32, unfused, precise division/sqrt",
+    "workerFilesSHA256": {
+      "run.py": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+      "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+    },
+    "channels": [
+      "peakOverpressure",
+      "impulse"
+    ],
+    "units": [
+      "Pa",
+      "Pa s"
+    ],
+    "above": 0.625,
+    "coolingWorkSelection": "full-grid",
+    "coolingWork": {
+      "intervals": 6,
+      "emptyIntervals": 0,
+      "minBoxCells": 32768,
+      "maxBoxCells": 32768,
+      "meanBoxCells": 32768.0
+    },
+    "compileCacheEnabled": false,
+    "timings": {
+      "importsAndValidationSeconds": 1.8039516609933344,
+      "compileSeconds": 1.135076468999614,
+      "deviceSetupAndUploadSeconds": 0.29289164699730463,
+      "solverSeconds": 0.00861319999967236,
+      "validationAndOutputSeconds": 0.06584501600445947,
+      "workerSecondsBeforeManifests": 3.306382165996183
+    },
+    "timingScope": "Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+  },
+  "deployment": {
+    "host": "bombcad-pc",
+    "directory": "bombcad-cuda/c58f4f0a7ab5563b/jobs/83a06c3e35824b46a154eb1b314bc9b3",
+    "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094"
+  },
+  "matchedMetalComparison": {
+    "state": {
+      "count": 163840,
+      "outsideTolerance": 0,
+      "differentValues": 146665,
+      "maxAbsolute": 0.3125,
+      "relativeL2": 1.0966526709588965e-07
+    },
+    "species": {
+      "count": 65536,
+      "outsideTolerance": 0,
+      "differentValues": 60487,
+      "maxAbsolute": 3.5762786865234375e-07,
+      "relativeL2": 2.725422424840452e-07
+    },
+    "peak": {
+      "count": 32768,
+      "outsideTolerance": 0,
+      "differentValues": 15024,
+      "maxAbsolute": 0.375,
+      "relativeL2": 1.765493517693511e-07
+    },
+    "impulse": {
+      "count": 32768,
+      "outsideTolerance": 0,
+      "differentValues": 20048,
+      "maxAbsolute": 0.00018310546875,
+      "relativeL2": 1.205879094041643e-07
+    },
+    "first-phase": {
+      "count": 4096,
+      "outsideTolerance": 0,
+      "differentValues": 1802,
+      "maxAbsolute": 0.0390625,
+      "relativeL2": 7.85200828820721e-06
+    },
+    "passed": true,
+    "rtol": 0.002,
+    "atol": 0.05
+  },
+  "scope": "Real small-fixture deployment verifies --full-grid-cooling forwarding/provenance and retained small-case gate; not full-size acceptance"
+}

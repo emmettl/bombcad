@@ -1,0 +1,43 @@
+--- run.py at f3f4f7b5
++++ isolated candidate.py
+@@ -124,7 +124,7 @@
+     torch.cuda.synchronize()
+     timings['deviceSetupAndUploadSeconds']=time.monotonic()-stage_start
+     start=time.monotonic()
+-    steps=0;dt_history=[]
++    steps=0;dt_history=[];cooling_box_counts=[]
+     while steps<meta['steps']:
+         ramp=min(1.,float(np.float32((meta.get('startStep',0)+steps+1)/meta.get('startupSteps',1))))
+         prepared=type(u).from_buffer_copy(bytes(u));prepared.cfl=np.float32(u.cfl)*np.float32(ramp)
+@@ -140,9 +140,20 @@
+             launch('cudaCoolingClock',[controls,elapsed_cooling],1)
+             if (meta.get('startStep',0)+steps+1)%cooling['interval']==0:
+                 launch('cudaCoolingMedium',[state,mask,species,uniforms,radiation,medium],count)
+-                for ray in rays:
+-                    launch('cudaCoolingLines',[medium,mask,loss,box,uniforms,ray],count)
+-                launch('cudaCoolingApply',[state,medium,loss,box,elapsed_cooling,uniforms,radiation,controls],count)
++                active=(medium[:,0]>0).reshape(nz,ny,nx)
++                zs=active.any(dim=(1,2)).nonzero().flatten()
++                if zs.numel():
++                    xs=active.any(dim=(0,1)).nonzero().flatten()
++                    ys=active.any(dim=(0,2)).nonzero().flatten()
++                    edges=torch.stack([xs[0],ys[0],zs[0],xs[-1],ys[-1],zs[-1]]).cpu().tolist()
++                    lowx,lowy,lowz,highx,highy,highz=edges
++                    box.copy_(torch.tensor([lowx,lowy,lowz,0,highx,highy,highz,0],device='cuda',dtype=torch.int32))
++                    cooling_box_counts.append((highx-lowx+1)*(highy-lowy+1)*(highz-lowz+1))
++                    for ray in rays:
++                        launch('cudaCoolingLines',[medium,mask,loss,box,uniforms,ray],count)
++                    launch('cudaCoolingApply',[state,medium,loss,box,elapsed_cooling,uniforms,radiation,controls],count)
++                else:
++                    cooling_box_counts.append(0)
+                 launch('cudaCoolingReset',[controls,elapsed_cooling],1)
+         launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
+         trace()
+@@ -218,6 +229,7 @@
+         report['workerFilesSHA256']['trace_columns.py']=hashlib.sha256(Path(__file__).with_name('trace_columns.py').read_bytes()).hexdigest()
+         report['traceColumns']=trace_columns
+         report['diagnosticSourceSHA256']=hashlib.sha256(compilation_source.encode()).hexdigest()
++    report['coolingBoxCellCounts']=cooling_box_counts
+     report['compileCacheEnabled']=cache_dir is not None
+     report['timings']=timings
+     report['timingScope']='Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload'

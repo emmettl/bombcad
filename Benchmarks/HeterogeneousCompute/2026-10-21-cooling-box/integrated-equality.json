@@ -1,0 +1,53 @@
+{
+  "allBitIdentical": true,
+  "files": {
+    "targets.npy": {
+      "integrated": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03",
+      "baseline": "30b093c6c6aa1aa9b1d94c0ae67a1088e6dab229f6145c98481e97e111aeff03"
+    },
+    "first-phase.bin": {
+      "integrated": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347",
+      "baseline": "5500d165d0e63763ffe081e20d11e0720cbb2d313958ae306f28f1131e1e0347"
+    },
+    "peak.bin": {
+      "integrated": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121",
+      "baseline": "aaf207f188bab959905afc25476c49caf4d6da1f4cecfb01d2072e3fe03de121"
+    },
+    "firstPhaseImpulse.npy": {
+      "integrated": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d",
+      "baseline": "0f59bbbb04658af362b2aaf94b3aeab9a8d2abbfba95b7e07b1c90c917c8358d"
+    },
+    "state.bin": {
+      "integrated": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3",
+      "baseline": "5d8c735b6db34a8cbfbf90aa9353f75d33487fe21bb0584e185a425420e796d3"
+    },
+    "impulse.bin": {
+      "integrated": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255",
+      "baseline": "015fe6cd21744ebaad42a647584441a086d7fa7e6399e692e1c71c4a0ff92255"
+    },
+    "species.bin": {
+      "integrated": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78",
+      "baseline": "94f1a9b7f4de3071248444acd15102875e8884d14e68a19c05bb7e01b44ebf78"
+    },
+    "dt.npy": {
+      "integrated": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d",
+      "baseline": "88935e638b11bd4d9ebabe5ac61ad687ff4fbc9217e55f236a550e58d41b639d"
+    },
+    "mask.npy": {
+      "integrated": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+      "baseline": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0"
+    },
+    "dataset/targets.npy": {
+      "integrated": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6",
+      "baseline": "c0324c2a1c523aac94a1fcec8ee239a6d5f6582c9f7a2315f51728234035e4e6"
+    },
+    "dataset/inputs.npy": {
+      "integrated": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "baseline": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5"
+    },
+    "dataset/mask.npy": {
+      "integrated": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "baseline": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+    }
+  }
+}

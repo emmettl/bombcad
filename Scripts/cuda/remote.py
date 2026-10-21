@@ -22,7 +22,7 @@ def command(args):
     subprocess.run(args,check=True,stdin=subprocess.DEVNULL)
 
 
-def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,cache_dir=None,trace_columns=None,diagnostics_only=False):
+def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,cache_dir=None,trace_columns=None,diagnostics_only=False,full_grid_cooling=False):
     if diagnostics_only and (dataset_only or not trace_columns):
         raise ValueError('diagnostics-only requires traces and excludes dataset-only')
     if dataset_only and trace_columns:
@@ -60,6 +60,7 @@ def deploy(host,job,out,python='bombcad-ml/venv/bin/python',dataset_only=False,c
     worker=f'{remote}/worker/run.py'
     args=[python,worker,f'{remote}/input','--source',f'{remote}/worker/solver.cu','--out',f'{remote}/out',
           '--lock','bombcad-ml/lock']
+    if full_grid_cooling: args += ['--full-grid-cooling']
     if trace_columns: args += ['--trace-columns',','.join(str(i) for i in trace_columns)]
     if cache_dir is not None: args += ['--cache-dir',str(cache_dir)]
     ssh(' '.join(shlex.quote(x) for x in args))
@@ -96,5 +97,6 @@ if __name__=='__main__':
     p.add_argument('--dataset-only',action='store_true',help='retrieve training arrays and provenance; retain raw fields on the PC')
     from trace_columns import parse_columns
     p.add_argument('--trace-columns',type=parse_columns,help='read-only receiver histories; retrieve without --dataset-only')
+    p.add_argument('--full-grid-cooling',action='store_true',help='diagnostic fallback: retain original full-grid cooling work')
     p.add_argument('--cache-dir',help='opt-in remote PTX cache directory, e.g. bombcad-cuda/ptx-cache')
-    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python,a.dataset_only,a.cache_dir,a.trace_columns,a.diagnostics_only),indent=2))
+    a=p.parse_args();print(json.dumps(deploy(a.host,a.job,a.out,a.python,a.dataset_only,a.cache_dir,a.trace_columns,a.diagnostics_only,a.full_grid_cooling),indent=2))

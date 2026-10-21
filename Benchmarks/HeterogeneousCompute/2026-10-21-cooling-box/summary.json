@@ -1,0 +1,39 @@
+{
+  "case": "beirut-p0-1",
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "scope": "one interpreter; alternating order; total includes compile/setup/output, excludes deployment and retrieval; solver time excludes setup/output; not a cross-backend speedup or admission claim",
+  "prototypeRepeatedBeirut": [
+    {
+      "job": "beirut",
+      "baseline": {
+        "medianTotalSeconds": 93.19962117700197,
+        "medianSolverSeconds": 88.89694759399572
+      },
+      "candidate": {
+        "medianTotalSeconds": 70.12067954100348,
+        "medianSolverSeconds": 65.90419778600335
+      }
+    }
+  ],
+  "integratedFullSizeEquality": true,
+  "numericalFilesCompared": 12,
+  "integratedWorkerSHA256": "4df13d6267cb8957061098e146e269c4cfa2d34f7502a2305e37331557c8d1b9",
+  "integratedCoolingWork": {
+    "intervals": 620,
+    "emptyIntervals": 8,
+    "minBoxCells": 0,
+    "maxBoxCells": 163020,
+    "meanBoxCells": 108796.09838709678
+  },
+  "gridCells": 20971520,
+  "cpuBoundsTests": {
+    "environment": "existing PC PyTorch; CPU tensors, no GPU required",
+    "passed": 4
+  },
+  "localContractTests": {
+    "passed": 20,
+    "torchBoundsSkippedLocally": 4
+  },
+  "conclusion": "Bounded ray traversal/application and empty-interval skipping preserve every saved numerical byte in three full-size prototype pairs and final integrated validation. All thresholds/equations/step histories/targets unchanged; old original-reference failures remain. Worker default work selection is luminous-box; full-grid diagnostic fallback retained."
+}

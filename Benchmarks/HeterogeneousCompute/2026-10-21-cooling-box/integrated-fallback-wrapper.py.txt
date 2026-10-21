@@ -1,0 +1,6 @@
+import importlib.util
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('full_grid_worker',Path(__file__).with_name('run.py'))
+worker=importlib.util.module_from_spec(spec);spec.loader.exec_module(worker)
+def run(job,source,out,**kwargs):
+    return worker.run(job,source,out,full_grid_cooling=True,**kwargs)

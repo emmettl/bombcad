@@ -14,6 +14,7 @@ from fixtures import make
 from job import validate,scalar_layout
 from compare import compare
 import remote
+from test_cooling_bounds import CoolingBoundsTests
 
 
 class DeploymentTests(unittest.TestCase):
@@ -42,8 +43,9 @@ class DeploymentTests(unittest.TestCase):
             with patch.object(remote, 'generate', return_value=source), \
                     patch.object(remote, 'validate', return_value=({'files': {}}, None)), \
                     patch.object(remote, 'command', side_effect=command):
-                self.assertEqual(remote.deploy('bombcad-pc', job, out, dataset_only=True,cache_dir='bombcad-cuda/ptx-cache'), report)
+                self.assertEqual(remote.deploy('bombcad-pc', job, out, dataset_only=True,cache_dir='bombcad-cuda/ptx-cache',full_grid_cooling=True), report)
             self.assertTrue(any(c[0]=='ssh' and '--cache-dir bombcad-cuda/ptx-cache' in c[-1] for c in commands))
+            self.assertTrue(any(c[0]=='ssh' and '--full-grid-cooling' in c[-1] for c in commands))
             self.assertTrue((out / 'deployment.json').exists())
             downloads = [c[-2] for c in commands if c[0] == 'scp' and c[-2].startswith('bombcad-pc:')]
             self.assertEqual(len(downloads), 2)

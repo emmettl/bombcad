@@ -222,3 +222,9 @@ original gate. The six-outcome reference spread and an offline phase-band sweep 
 as diagnostics; an analytic weak-wave counterexample shows why a band that repairs selected
 points cannot simply become the target rule. #62/#63 remain policy/validation work, not resolved
 by a precision switch or larger tolerance. See the backend documentation for full receipts.
+
+A concrete #60 gain is now integrated: bounding the CUDA cooling work preserves complete
+Beirut outputs/timesteps bit for bit while three paired runs reduce median solver time from
+88.90 to 65.90 seconds (worker total 93.20→70.12 seconds, excluding SSH and cold Python startup).
+The integrated default and full-grid fallback also pass luminous/empty controls. This improves
+worker throughput; it changes neither the numerical gate nor the unresolved label contract.

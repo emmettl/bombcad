@@ -10,7 +10,19 @@ import time
 from job import scalar_layout, validate
 
 
-def run(folder, source_path, out, cache_dir=None, trace_columns=None):
+def luminous_bounds(medium,shape):
+    """Integer bounds of positive opacity, or None; zero-opacity cells exchange no radiation."""
+    import torch
+    nx,ny,nz=shape
+    active=(medium[:,0]>0).reshape(nz,ny,nx)
+    zs=active.any(dim=(1,2)).nonzero().flatten()
+    if not zs.numel():return None
+    xs=active.any(dim=(0,1)).nonzero().flatten()
+    ys=active.any(dim=(0,2)).nonzero().flatten()
+    return torch.stack([xs[0],ys[0],zs[0],xs[-1],ys[-1],zs[-1]]).cpu().tolist()
+
+
+def run(folder, source_path, out, cache_dir=None, trace_columns=None, full_grid_cooling=False):
     worker_start=time.monotonic();timings={}
     import numpy as np
     import torch
@@ -125,6 +137,8 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None):
     timings['deviceSetupAndUploadSeconds']=time.monotonic()-stage_start
     start=time.monotonic()
     steps=0;dt_history=[]
+    cooling_intervals=empty_cooling=box_cell_sum=box_cell_max=0
+    box_cell_min=count
     while steps<meta['steps']:
         ramp=min(1.,float(np.float32((meta.get('startStep',0)+steps+1)/meta.get('startupSteps',1))))
         prepared=type(u).from_buffer_copy(bytes(u));prepared.cfl=np.float32(u.cfl)*np.float32(ramp)
@@ -140,9 +154,20 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None):
             launch('cudaCoolingClock',[controls,elapsed_cooling],1)
             if (meta.get('startStep',0)+steps+1)%cooling['interval']==0:
                 launch('cudaCoolingMedium',[state,mask,species,uniforms,radiation,medium],count)
-                for ray in rays:
-                    launch('cudaCoolingLines',[medium,mask,loss,box,uniforms,ray],count)
-                launch('cudaCoolingApply',[state,medium,loss,box,elapsed_cooling,uniforms,radiation,controls],count)
+                cooling_intervals+=1
+                edges=[0,0,0,nx-1,ny-1,nz-1] if full_grid_cooling else luminous_bounds(medium,(nx,ny,nz))
+                cells=0
+                if edges is not None:
+                    lowx,lowy,lowz,highx,highy,highz=edges
+                    cells=(highx-lowx+1)*(highy-lowy+1)*(highz-lowz+1)
+                    if not full_grid_cooling:
+                        box.copy_(torch.tensor([lowx,lowy,lowz,0,highx,highy,highz,0],device='cuda',dtype=torch.int32))
+                    for ray in rays:
+                        launch('cudaCoolingLines',[medium,mask,loss,box,uniforms,ray],count)
+                    launch('cudaCoolingApply',[state,medium,loss,box,elapsed_cooling,uniforms,radiation,controls],count)
+                else:
+                    empty_cooling+=1
+                box_cell_sum+=cells;box_cell_min=min(box_cell_min,cells);box_cell_max=max(box_cell_max,cells)
                 launch('cudaCoolingReset',[controls,elapsed_cooling],1)
         launch('cudaFirstPhase',[state,controls,columns,records,opened,uniforms],nx*ny)
         trace()
@@ -218,6 +243,10 @@ def run(folder, source_path, out, cache_dir=None, trace_columns=None):
         report['workerFilesSHA256']['trace_columns.py']=hashlib.sha256(Path(__file__).with_name('trace_columns.py').read_bytes()).hexdigest()
         report['traceColumns']=trace_columns
         report['diagnosticSourceSHA256']=hashlib.sha256(compilation_source.encode()).hexdigest()
+    report['coolingWorkSelection']='disabled' if not cooling else ('full-grid' if full_grid_cooling else 'luminous-box')
+    report['coolingWork']={'intervals':cooling_intervals,'emptyIntervals':empty_cooling,
+        'minBoxCells':box_cell_min if cooling_intervals else 0,'maxBoxCells':box_cell_max,
+        'meanBoxCells':box_cell_sum/cooling_intervals if cooling_intervals else 0}
     report['compileCacheEnabled']=cache_dir is not None
     report['timings']=timings
     report['timingScope']='Host wall time; compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload'
@@ -234,6 +263,7 @@ if __name__=='__main__':
     p.add_argument('--lock',type=Path,help='shared remote-train lock directory')
     from trace_columns import parse_columns
     p.add_argument('--trace-columns',type=parse_columns,help='opt-in read-only traces for up to 64 flattened plan indices')
+    p.add_argument('--full-grid-cooling',action='store_true',help='diagnostic fallback: integrate cooling over the full grid')
     p.add_argument('--cache-dir',type=Path,help='opt-in content-addressed NVRTC PTX cache')
     a=p.parse_args()
     lock_module=None
@@ -245,6 +275,6 @@ if __name__=='__main__':
         if not lock_module.acquire(str(a.lock),f'CUDA dataset {a.job}',lock_module.boot_id()):
             raise SystemExit('PC GPU is held by another job; retry after it finishes')
     try:
-        print(json.dumps(run(a.job,a.source,a.out,a.cache_dir,a.trace_columns),indent=2))
+        print(json.dumps(run(a.job,a.source,a.out,a.cache_dir,a.trace_columns,a.full_grid_cooling),indent=2))
     finally:
         if lock_module:lock_module.release(str(a.lock))

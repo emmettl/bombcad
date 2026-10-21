@@ -70,9 +70,11 @@ compiler choices can still differ. The default Metal solver also contracts arith
 matched unfused comparisons and an actual production-Metal training pair were checked.
 
 Cooling follows the same 13 lattice directions in order, both ways, with the same medium,
-absorption and energy cap. The first implementation traverses the full grid rather than Metal's
-luminous bounding box. Transparent cells add no radiation, so this is extra work rather than a
-change to the equations. Its performance needs measuring for large domains.
+absorption and energy cap. The worker now bounds ray traversal and energy application by the
+positive-opacity medium, skipping empty evaluations while preserving the cooling-clock reset.
+The medium pass and dispatch envelope still cover the full grid. `--full-grid-cooling` retains
+the original work selection as a diagnostic fallback; equations and precision are identical.
+Repeated complete-field/timestep equality and performance measurements are recorded below.
 
 ## Acceptance, 21 October 2026
 
@@ -425,3 +427,45 @@ proportional history to 10/100 Pa avoids that merge. This is a mathematical cont
 or measured-data validation. `phase-conditioning.py` retains all candidate outcomes and those
 controls; no threshold is selected. #62 requires a justified definition and independent weak,
 reflected/multiphase and resolution/product checks before any versioned target change.
+
+## CUDA cooling work selection
+
+The worker now uses a luminous-box work selector by default. It computes integer bounds from
+`medium[:, 0] > 0`, the same opacity condition the radiation equations use. Outside this box
+there is no radiative exchange; transparent prefixes carry zero incident radiation. The 13
+directions, their order, medium, weights, equations, energy cap and cooling clock remain the
+same. Empty evaluations skip ray/application kernels and still take the normal clock-reset
+path. The medium pass and launch envelope remain full-grid; this is not sparse air solving.
+
+[Retained paired measurements and integration receipts](../Benchmarks/HeterogeneousCompute/2026-10-21-cooling-box/summary.json)
+cover the existing RTX 3080 Ti. Three alternating original/bounded pairs of the complete Beirut
+job produce bit-identical saved state, species, peak, impulses, first-phase records, training
+arrays and timestep histories. Their medians are:
+
+| Work selection | Solver | Worker total |
+|---|---|---|
+| Original full-grid cooling | 88.90 s | 93.20 s |
+| Bounded prototype | 65.90 s | 70.12 s |
+
+These totals share one warm Python interpreter and include compilation, setup and output,
+but exclude SSH deployment/retrieval and cold Python startup. They are paired worker
+measurements, not a cross-backend speedup or a claim for every domain. Hardware/load snapshots
+and every repetition are retained. The numerical gate is not changed by this timing result.
+
+The integrated default and its full-grid fallback also pass three alternating pairs each on
+a 128³ luminous fixture and a 64³ empty-medium control. CPU tensor tests cover empty medium,
+radiance without opacity, single-cell non-cubic coordinates and disjoint hot cells. They pass
+in the existing PC PyTorch environment; a Mac Python without PyTorch skips those four tests
+while still running the 20 CPU contract/deployment tests. Final integrated Beirut validation
+compares all 12 saved numerical files bit for bit against the original full-grid worker.
+
+That integrated run evaluates 620 cooling intervals/attempts, eight empty; its mean box has
+108,796 cells, maximum 163,020, in a 20,971,520-cell domain. These are work statistics, not
+physical energy accounting. The final worker report identifies `coolingWorkSelection` and
+aggregated work counts; deployment provenance still pins the worker files.
+
+`run.py --full-grid-cooling` or `remote.py --full-grid-cooling` selects the original path for
+diagnosis. The CUDA worker's default work selection changed; app defaults, arithmetic, labels,
+masks, accepted physics and tolerances did not. Original-reference acceptance failures remain
+exactly the same, so no full training batch is enabled by this optimization. #60 retains
+further profiling; #47/#62/#63 retain their separate numerical contract work.

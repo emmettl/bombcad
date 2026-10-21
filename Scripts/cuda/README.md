@@ -75,3 +75,10 @@ process group. See the backend documentation for the result and scope.
 reporting the original candidate gate unchanged. `phase-conditioning.py` performs offline
 threshold sensitivity on archived pressure histories and includes analytic counterexamples.
 Neither chooses a policy, changes targets or admits a dataset.
+
+Cooling ray traversal/application now uses the positive-opacity box by default and skips empty
+evaluations, while retaining the original clock/reset and numerical equations.
+`--full-grid-cooling` on run.py/remote.py selects the old work for diagnostics.
+`test_cooling_bounds.py` exercises CPU tensors in the PC PyTorch environment (no GPU needed);
+the ordinary contract suite includes these tests and marks them skipped if PyTorch is absent.
+Full-field/timestep paired evidence and scope are in the backend documentation.
