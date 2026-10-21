@@ -335,12 +335,24 @@ public final class BlastSolver {
     /// nothing of, being inside a block, the ground or a structure (`Scenario.blocks`).
     public internal(set) var blockedCharges: [Int] = []
 
+    /// Optional host elapsed setup phases. The scenario initializer also records scenario loading.
+    public internal(set) var setupPhaseSeconds: [String: Double]?
+
     public init(
         device: MTLDevice,
         commandQueue: MTLCommandQueue? = nil,
         grid: Grid,
-        configuration: SolverConfiguration = SolverConfiguration()
+        configuration: SolverConfiguration = SolverConfiguration(),
+        measureSetup: Bool = false
     ) throws {
+        var phaseStart = measureSetup ? ContinuousClock.now : nil
+        var phases: [String: Double] = [:]
+        func finishPhase(_ name: String) {
+            guard let start = phaseStart else { return }
+            let end = ContinuousClock.now
+            phases[name] = (end - start) / .seconds(1)
+            phaseStart = end
+        }
         self.device = device
         self.grid = grid
         self.configuration = configuration
@@ -349,8 +361,10 @@ public final class BlastSolver {
         }
         self.commandQueue = queue
 
+        finishPhase("commandQueueSeconds")
         let library = try ShaderLibrary.make(device: device)
         self.library = library
+        finishPhase("shaderLibrarySeconds")
         func pipeline(_ name: String) throws -> MTLComputePipelineState {
             try ShaderLibrary.pipeline(name, in: library)
         }
@@ -375,6 +389,8 @@ public final class BlastSolver {
         debrisExchangePipeline = try pipeline("debrisExchange")
         shellSplatPipeline = try pipeline("shellSplat")
         beamSplatPipeline = try pipeline("beamSplat")
+
+        finishPhase("eagerPipelinesSeconds")
 
         func buffer(_ length: Int, _ label: String) throws -> MTLBuffer {
             guard let buffer = device.makeBuffer(length: length, options: .storageModeShared) else {
@@ -433,9 +449,12 @@ public final class BlastSolver {
         texture.label = "visualization"
         visualizationTexture = texture
 
+        finishPhase("buffersAndTextureSeconds")
         memset(maskContents, 0, cells)
         memset(rigidMaskBuffer.contents(), 0, cells)
         fill(uniform: Primitive(density: 1.225, pressure: configuration.ambientPressure))
+        finishPhase("initialUniformStateSeconds")
+        setupPhaseSeconds = measureSetup ? phases : nil
     }
 
     /// The bodies' settlements since the last `restart()`, once `settleStructures()` has run.

@@ -95,6 +95,7 @@ enum FieldExport {
         }
         let timingStart = ContinuousClock.now
         var phaseSeconds: [String: Double] = [:]
+        var solverSetupPhases: [String: Double] = [:]
         func writeTimings(folder: URL, mode: String, solve: Double, outputStart: ContinuousClock.Instant)
             throws
         {
@@ -104,9 +105,10 @@ enum FieldExport {
             let report: [String: Any] = [
                 "format": "bombcad-field-phases-1", "mode": mode, "clock": "Swift ContinuousClock",
                 "seconds": phaseSeconds,
+                "solverSetupPhasesSeconds": solverSetupPhases,
                 "totalSecondsBeforeTimingReceipt": (ContinuousClock.now - timingStart) / .seconds(1),
                 "scope":
-                    "Scene preparation; solver setup including shader compilation, allocation and initial state; recorder setup; solve; output. Excludes process startup, gpu-slot waiting and this receipt write. Compilation is included in solver setup, not isolated.",
+                    "Scene preparation; solver setup including shader compilation, allocation and initial state; recorder setup; solve; output. Excludes process startup, gpu-slot waiting and this receipt write. Setup subphases are nested host elapsed intervals: command queue, shader library, eager pipelines, buffers/texture, initial uniform state and scenario load. Library/pipeline phases may include driver cache lookup or compilation; they are not pure compiler time. Lazy setup during later phases remains there.",
             ]
             try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
                 .write(to: folder.appending(path: "phase-timings.json"), options: .withoutOverwriting)
@@ -160,7 +162,9 @@ enum FieldExport {
         let solverSetupStart = ContinuousClock.now
         phaseSeconds["scenePreparationSeconds"] = (solverSetupStart - timingStart) / .seconds(1)
         let solver = try BlastSolver(
-            device: device, scenario: scene, cellSize: dx, configuration: configuration)
+            device: device, scenario: scene, cellSize: dx, configuration: configuration,
+            measureSetup: args.contains("--phase-timings"))
+        solverSetupPhases = solver.setupPhaseSeconds ?? [:]
         let recorderSetupStart = ContinuousClock.now
         phaseSeconds["solverSetupIncludingCompileSeconds"] =
             (recorderSetupStart - solverSetupStart) / .seconds(1)

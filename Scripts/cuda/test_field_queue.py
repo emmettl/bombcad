@@ -97,6 +97,30 @@ else:os.execv(sys.argv[3],sys.argv[3:])
         self.fail('worker did not reach '+status)
 
 
+class ProducerPhaseTests(unittest.TestCase):
+    def test_nested_setup_phases_are_optional_bounded_and_finite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder=Path(directory)
+            report=dict(format='bombcad-field-phases-1',mode='metal',clock='fixture',
+                        seconds=dict(scenePreparationSeconds=.1,solverSetupIncludingCompileSeconds=.6,
+                                     recorderSetupSeconds=.1,solveSeconds=.1,outputSeconds=.1),
+                        totalSecondsBeforeTimingReceipt=1.1)
+            def check():
+                (folder/'phase-timings.json').write_text(json.dumps(report))
+                return q.producer_phases(folder,'metal')
+            self.assertEqual(check(),report)  # Historical receipts remain readable.
+            names=['commandQueueSeconds','shaderLibrarySeconds','eagerPipelinesSeconds',
+                   'buffersAndTextureSeconds','initialUniformStateSeconds','scenarioLoadSeconds']
+            report['solverSetupPhasesSeconds']=dict.fromkeys(names,.05)
+            self.assertEqual(check(),report)
+            for value in [-1,float('nan'),float('inf'),True,1.0]:
+                report['solverSetupPhasesSeconds'][names[0]]=value
+                with self.assertRaises(q.GateFailure):check()
+            report['solverSetupPhasesSeconds']=dict.fromkeys(names,.05)
+            del report['solverSetupPhasesSeconds'][names[-1]]
+            with self.assertRaises(q.GateFailure):check()
+
+
 class AdmissionTests(QueueFixture):
     def test_unknown_physics_option_is_rejected_before_queue_creation(self):
         self.job['arguments']+=['--refine','2']

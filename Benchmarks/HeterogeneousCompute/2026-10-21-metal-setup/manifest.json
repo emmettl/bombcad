@@ -1,0 +1,34 @@
+{
+  "baseRevision": "25736353133397c7e0a1cc018bb5ceeb283a45a1",
+  "dirty": true,
+  "filesSHA256": {
+    "Sources/BlastCore/BlastSolver.swift": "73511480d95f715b069610028ca4fb072d1ece123c2952acacc8e0fe3c09ceb9",
+    "Sources/BlastCore/Scenario+GPU.swift": "b7ba86272c4bece401ef2780336e450b24b9f2b0a5ba4b5fe7548a9d083b6b14",
+    "Sources/SceneBench/FieldExport.swift": "c2ddca89a92d23c881b4d9bcf6fdd6433ac2c2d4d98bd52f46748203e3b06daa",
+    "Scripts/cuda/field-queue.py": "dba55a68777a424f99263777f84422735127e4a96fab97144a22ff0eeba40534",
+    "Scripts/cuda/test_backend.py": "0d8ee168ba072d1a8369610c16be56e8931aa958fa02f75be481056c057ae2d0",
+    "Scripts/cuda/test_field_queue.py": "df2e7fc776d35177dddb023698d98056c91b6f8163a6bad7c530fd42092b8aba",
+    "Samples/MapBuildings/synthetic-neighbourhood.geojson": "ea0c0d242b0f8b229d4a017ebd201abaa3dba15f27cbd32d0a06340313c9e294",
+    "/private/tmp/bombcad-field-queue-final/slope.asc": "323ee68f4e81222a9d98fc6578feb7b6b343b56184093d522cc20f8d860d6182",
+    "/private/tmp/bombcad-metal-setup/solver.cu": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094"
+  },
+  "studyStatus": "complete",
+  "exports": 48,
+  "matchingPairs": 24,
+  "validation": "make check-affected passed",
+  "macTests": 456,
+  "pcTests": 186,
+  "digestVariants": 42,
+  "digestSets": 6,
+  "artifactsSHA256": {
+    "study.json": "2a48f608a1a40dc36774b9e3a24e18d57eb1a873192ddb00d17981764805bfe9",
+    "summary.md": "2501452dd2633a676628c66554d4ba6190ba35baf774b2a7fb86a94117cc2e6b",
+    "reference-audit.json": "2b142ca5ee9374dd21143922589eaa94ccbddba89bbb52a31777f40f1f7b98fb",
+    "study.log": "5a54e77cc1faf7f2229e64f7c393e86407911e3d61a772fa4a3c9ba339bd78bf",
+    "release-build.log": "28d7693cec52c63325d88aa6713998cdd97ccb42ae2e3998cb0fa26e413403f0",
+    "unit.log": "ce7d15212d69dbd6b02876afd81f6ebe3681f519434b0846b3172bf523e153ea",
+    "check.log": "7b421750fe3ce6514272e8652bbb07b5140e956e3ff592ce799330f53a24e148",
+    "exports.tar.gz": "6042fd61fa03059ccd047094bb3e07d02f9961df1215af2392770a4fe851e250",
+    "study.py": "973e9bbfceaddbd7e5f21ab43e450ce3fd62c6b8006353942e47756ce2f7c7cb"
+  }
+}

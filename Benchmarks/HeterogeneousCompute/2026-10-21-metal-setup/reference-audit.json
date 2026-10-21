@@ -1,0 +1,291 @@
+{
+  "status": "complete",
+  "runs": [
+    {
+      "case": "queue-m5",
+      "repetition": 0,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m5-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m5",
+      "repetition": 0,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m5-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m10",
+      "repetition": 0,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m10",
+      "repetition": 0,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m20",
+      "repetition": 0,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m20-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m20",
+      "repetition": 0,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m20-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-terrain-m10",
+      "repetition": 0,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-terrain-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-terrain-m10",
+      "repetition": 0,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-terrain-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m5",
+      "repetition": 1,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m5-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m5",
+      "repetition": 1,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m5-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m10",
+      "repetition": 1,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m10",
+      "repetition": 1,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m20",
+      "repetition": 1,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m20-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m20",
+      "repetition": 1,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m20-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-terrain-m10",
+      "repetition": 1,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-terrain-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-terrain-m10",
+      "repetition": 1,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-terrain-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m5",
+      "repetition": 2,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m5-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m5",
+      "repetition": 2,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m5-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m10",
+      "repetition": 2,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m10",
+      "repetition": 2,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m20",
+      "repetition": 2,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m20-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-m20",
+      "repetition": 2,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-m20-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-terrain-m10",
+      "repetition": 2,
+      "timed": false,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-terrain-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    },
+    {
+      "case": "queue-terrain-m10",
+      "repetition": 2,
+      "timed": true,
+      "reference": "/private/tmp/bombcad-field-queue-final/queue-terrain-m10-reference",
+      "matching": {
+        "mask.npy": true,
+        "targets.npy": true,
+        "inputs.npy": true
+      }
+    }
+  ],
+  "referenceFilesSHA256": {
+    "queue-m5": {
+      "mask.npy": "1ce454b6032aad40f3f5ce262ad191dfdafa6b54faddf576ef9e962f5b4239ba",
+      "targets.npy": "606e6bad1cdfaae76bc42a46f9090b18bae3b85f8af14e9f45ff02c3263f6b2c",
+      "inputs.npy": "75467f187bb8c45b3530e8cc1623825161766d12cb2cf2eb2c7b091e318c19f6"
+    },
+    "queue-m10": {
+      "mask.npy": "1ce454b6032aad40f3f5ce262ad191dfdafa6b54faddf576ef9e962f5b4239ba",
+      "targets.npy": "50ab71c54ba28bd466fc69f315eb6f1df39fcb6f521eeefb5023f0a653784396",
+      "inputs.npy": "254100d4a1c7e27dacab9f2d9c70cc2778f3ebed19774cf92670ad244a084ada"
+    },
+    "queue-m20": {
+      "mask.npy": "1ce454b6032aad40f3f5ce262ad191dfdafa6b54faddf576ef9e962f5b4239ba",
+      "targets.npy": "73367456e0a0945a6c5ef1a4e6666e59e941f1cd848964d05d41b303fdecc7ec",
+      "inputs.npy": "08a85d03e0d833eee3f89eee94cc0f518a081ac76014e33d89a252ed00a75d9f"
+    },
+    "queue-terrain-m10": {
+      "mask.npy": "1ce454b6032aad40f3f5ce262ad191dfdafa6b54faddf576ef9e962f5b4239ba",
+      "targets.npy": "2712cd28192caf6ab293835ca12ff24c891ef41997d64a5c9966752f26910a4d",
+      "inputs.npy": "152c3b2d5e4defaf5564dabe37b7dbe2bdddc85b8e95084334db463c3f045343"
+    }
+  }
+}

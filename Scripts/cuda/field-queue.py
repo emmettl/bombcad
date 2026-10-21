@@ -427,6 +427,11 @@ def producer_phases(folder,mode):
     total=report.get('totalSecondsBeforeTimingReceipt')
     if not isinstance(seconds,dict) or set(seconds)!=names or any(type(v) not in (int,float) or not math.isfinite(v) or v<0 for v in [*seconds.values(),total]):raise GateFailure('producer phase values invalid')
     if sum(seconds.values())>total+1e-5:raise GateFailure('producer phase accounting invalid')
+    if 'solverSetupPhasesSeconds' in report:
+        phases=report['solverSetupPhasesSeconds']
+        expected={'commandQueueSeconds','shaderLibrarySeconds','eagerPipelinesSeconds','buffersAndTextureSeconds','initialUniformStateSeconds','scenarioLoadSeconds'}
+        if not isinstance(phases,dict) or set(phases)!=expected or any(type(v) not in (int,float) or not math.isfinite(v) or v<0 for v in phases.values()):raise GateFailure('producer setup phase values invalid')
+        if sum(phases.values())>seconds['solverSetupIncludingCompileSeconds']+1e-5:raise GateFailure('producer setup phase accounting invalid')
     return report
 
 

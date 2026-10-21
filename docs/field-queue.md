@@ -151,7 +151,7 @@ into a model-training dataset.
 
 `scenebench field-export --phase-timings` writes an opt-in `phase-timings.json`: scene preparation,
 solver setup **including** shader compilation/allocation/initial state, recorder setup, solve
-and output. Compilation inside Metal setup is not yet isolated. Queue receipts embed these
+and output. With setup measurement enabled, `solverSetupPhasesSeconds` additionally separates command-queue creation, shader-library loading/building, eager pipeline creation, buffers/texture allocation, initial uniform state and scenario loading. These host intervals are nested within setup, not additive top-level costs. Driver cache lookup and compilation may occur in library/pipeline creation; lazy work stays in the later phase that triggers it. Queue receipts embed these
 phases, the outer Metal/prepare call, deployment upload/process/retrieval phases, raw worker
 compile/solve and comparison, plus total worker-body time before publication. Producer phases
 exclude process startup/slot wait/receipt writing; the outer calls include startup and slot
@@ -159,7 +159,7 @@ wait. On a preparation-cache hit, producerPreparation describes the original exp
 the retry records its own outer time. Nested timings and different clocks must not be summed twice. See
 [the clock audit](cuda-backend.md#raw-elapsed-clock-correction).
 
-[#59](https://github.com/emmettl/bombcad-work/issues/59) remains open for finer Metal setup/compile
-accounting and broader queue/performance evaluation. [#60](https://github.com/emmettl/bombcad-work/issues/60)
+[#59](https://github.com/emmettl/bombcad-work/issues/59) remains open for complete cost modelling
+and broader queue/performance evaluation. [#60](https://github.com/emmettl/bombcad-work/issues/60)
 retains dispatch/control optimization. Repeated quiet runs are needed before a throughput claim;
 [#47](https://github.com/emmettl/bombcad-work/issues/47) still gates broader CUDA generation.

@@ -374,9 +374,9 @@ file/provenance audit and both failure controls are retained for later work unde
 The [kernel clock-caller observation](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-actor/summary.md)
 finds accepted coarse-tick writes by VM-level chronyd alongside guest timesyncd updates on the
 same timekeeper. Runtime PHC0 tracking and WSL 3.0.3 init source explain the actor missed by
-Ubuntu's service list. #64 now has a concrete single-owner normalization experiment; it stays
-open because no clock/service configuration was changed or normalization validated. Owned
-tracing state is cleaned up; worker/profiler durations continue using raw elapsed time.
+Ubuntu's service list. That trace established a concrete single-owner normalization
+experiment; the later controlled experiment below validates and applies the policy. Owned
+tracing state was cleaned up; worker/profiler durations continue using raw elapsed time.
 
 
 ### Fresh-process observation precision
@@ -403,3 +403,13 @@ Longer validation passed: maximum absolute MONOTONIC/RAW error was 19.3 ppm
 for 5/15-second checks and 9.3 ppm for 60-second checks. Ubuntu-24.04
 systemd-timesyncd is now inactive/masked, with WSL PHC0 retained as clock owner.
 The rollback timer was removed and the shared reservation released.
+
+### Finer Metal setup accounting
+
+The [setup accounting controls](../Benchmarks/HeterogeneousCompute/2026-10-21-metal-setup/summary.md)
+separate library loading/building, eager pipelines, allocation, initial uniform
+state and scenario loading in opt-in field-export receipts. Across four small
+uniform/terrain cases, both Metal execution and CUDA preparation preserve all
+numerical files in 24 timed/untimed pairs. These nested host timings include
+driver caching and do not establish pure compiler cost or a speedup. #59 retains
+complete cost calibration and larger queue evaluation.

@@ -9,15 +9,19 @@ extension BlastSolver {
     /// scenario's atmosphere and reflecting faces.
     public convenience init(
         device: MTLDevice, commandQueue: MTLCommandQueue? = nil, scenario: Scenario, cellSize: Float,
-        configuration: SolverConfiguration = SolverConfiguration()
+        configuration: SolverConfiguration = SolverConfiguration(), measureSetup: Bool = false
     ) throws {
         var configuration = configuration
         configuration.ambientPressure = scenario.atmosphere.pressure
         configuration.reflectiveFaces = scenario.reflectiveFaces
         try self.init(
             device: device, commandQueue: commandQueue, grid: scenario.grid(cellSize: cellSize),
-            configuration: configuration)
+            configuration: configuration, measureSetup: measureSetup)
+        let loadStart = measureSetup ? ContinuousClock.now : nil
         try load(scenario)
+        if let loadStart {
+            setupPhaseSeconds?["scenarioLoadSeconds"] = (ContinuousClock.now - loadStart) / .seconds(1)
+        }
     }
 
     /// Voxelises the scenario's blocks and structure, fills the air, deposits the charge, places
