@@ -20,3 +20,6 @@ deformation. Where screws pulled through, the purlin took the impulse.
 
 Also: the sheets' coupon tests at three strain rates (Table 8), and the screws' stiffness and
 capacity used in the report's own design example (Annex A 7.2.3).
+
+The [substructure desk stage](substructure/README.md) records the Table 17 audit, rig gaps,
+TR35 geometry and the charge-selection protocol fixed before a mechanical comparison.

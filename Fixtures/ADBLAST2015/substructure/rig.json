@@ -1,0 +1,46 @@
+{
+  "source": "Hoffmeister et al., ADBLAST, EUR 27487 EN (2015)",
+  "measurementsFile": "../tests.json",
+  "measurementsKey": "substructureTests",
+  "measurementsSource": "Table 17, p. 37 (PDF page 43)",
+  "sheetCount": 4,
+  "sheetCountSource": "Table 17; section 3.3.4.7's generic load paragraph instead says three panels",
+  "midPurlin": {
+    "section": "U 60 x 30 x 6 mm",
+    "spanM": null,
+    "spanBoundsM": null,
+    "source": "Table 17; Figure 21, p. 33, has photographs but no dimensions",
+    "supports": {
+      "fixed": "fitting bolted connection",
+      "free": "slotted hole connection",
+      "source": "section 3.3.4.7, p. 32; slot travel and force-slip law are not specified"
+    }
+  },
+  "blastSheetSpansM": null,
+  "candidateStaticRig": {
+    "sheetSpansM": [1.27, 1.27],
+    "edgePurlin": "SHS 100 x 10",
+    "source": "Table 13 and Figure 14, pp. 27-28: large-scale static tests",
+    "confirmedForBlast": false
+  },
+  "charge": {
+    "explosive": "C4",
+    "candidatesKg": [0.25, 0.5, 1, 1.5],
+    "heightAboveMiddleM": 3.5,
+    "perShotKg": null,
+    "source": "section 3.3.4.7, p. 32: masses and height, no assignment to Table 17 rows"
+  },
+  "tr35": {
+    "pitchMM": 207,
+    "outsideDepthMM": 34,
+    "crestWidthMM": 119,
+    "troughWidthMM": 40,
+    "coverWidthMM": 1035,
+    "source": "Figure A5, p. A-9 (PDF page 97); 35 is the nominal profile name"
+  },
+  "loadDisagreements": [
+    {"test": 3, "field": "reflectedImpulseKPaMS", "table17": 212, "table16": 215},
+    {"test": 4, "field": "reflectedImpulseKPaMS", "table17": 161, "table16": 165}
+  ],
+  "notTheTestRig": "Annex section 7.2.4, p. A-40: U-240 purlins spanning 7 m in a design example"
+}

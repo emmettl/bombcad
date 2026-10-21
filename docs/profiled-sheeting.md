@@ -311,6 +311,20 @@ sheets pulled through and the purlin took the impulse. Those are not compared: t
 no test's charge, and the purlin's span is not drawn. The project's deliverables (D4, D5, D6)
 would give both ([data survey 3i](data-survey.md#3i-profiled-cladding-on-its-fixings)).
 
+### Substructure desk stage, 21 October 2026
+
+The [stage-one fixture audit](../Fixtures/ADBLAST2015/substructure/README.md) keeps Table 17's
+12 rows, its missing values and the two impulses that disagree with Table 16. The TR35 profile
+now uses Figure A5's dimensions. The charge-selection helper takes only measured and predicted
+impulses; the declared rule is the nearest absolute impulse, ties to the smaller mass, before
+judging any mechanical outcome.
+
+**Recorded stop:** the draft plan's sources do not establish the blast rig's U-60 span or bounds.
+Figure 21 is undimensioned; Annex A-40 describes different U-240 purlins. The two 1.27 m spans
+are from the static tests and remain candidates for the blast rig. The fixture distinguishes
+these from reported inputs. No air shots or deforming-purlin harness have run, and the standing
+and defaults remain unchanged.
+
 ## In the one-way damage of envelopes
 
 An envelope's walls, and separately its roof, can be profiled steel sheeting. In the editor, the
