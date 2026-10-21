@@ -413,3 +413,15 @@ uniform/terrain cases, both Metal execution and CUDA preparation preserve all
 numerical files in 24 timed/untimed pairs. These nested host timings include
 driver caching and do not establish pure compiler cost or a speedup. #59 retains
 complete cost calibration and larger queue evaluation.
+
+### Cached CUDA retries
+
+The [cached retry controls](../Benchmarks/HeterogeneousCompute/2026-10-21-cached-queue/summary.md)
+verify prepared input before using cached resource/cost estimates. CUDA-only
+cached retries can dispatch without Mac GPU observations; fresh preparation
+still requires Mac capacity, and PC availability/VRAM/locking remain enforced.
+Three real post-preparation deferral/resume controls accept once and reuse their
+accepted objects, with matching numerical files. Optional `cachedCudaCosts` terms
+are pinned separately; the retained one-sample worker-body estimate is functional
+calibration, not a complete scheduling-cost fit. #59 remains open for complete
+costs and larger representative queues.

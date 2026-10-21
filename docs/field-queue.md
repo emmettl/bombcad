@@ -88,6 +88,23 @@ solve time is insufficient. The initial integration uses single calibration samp
 estimates have not established a speedup or a production scheduling fit; actual case receipts
 provide fuller observations for subsequent calibration.
 
+An optional job-level `cachedCudaCosts` list uses the same pinned `{report, keys}`
+terms as `costs.cuda`, but estimates a retry that already has prepared input. It
+requires CUDA among the allowed backends; the timeout must exceed both fresh and
+cached estimates. Omit it to retain the fresh estimate conservatively. A cache
+path alone never selects this estimate: the controller verifies the prepared
+object's case/contract identity and every recorded file hash first. The selected
+estimate and preparation identity are retained in the dispatch/request receipt,
+and a running attempt keeps its selected estimate.
+
+A validated cached CUDA retry does not need a Mac GPU slot for preparation.
+CUDA-only cached dispatch skips Mac GPU observations, while still observing PC
+availability/VRAM and using the worker's normal shared lock. A Metal alternative
+still requests Mac observations. Fresh CUDA preparation retains its original Mac
+capacity checks. Cache validity and availability are advisory snapshots; the
+worker revalidates bytes and acquires the actual locks, including a real Mac slot
+if preparation is missing and must be regenerated. Corrupted caches fail closed.
+
 The controller uses a greedy earliest-completion plan across the remaining jobs, reserving
 virtual backend time for earlier assignments. This can spill a later job to an idle PC when
 the predicted Mac backlog exceeds its complete PC cost. It does not force every pending job

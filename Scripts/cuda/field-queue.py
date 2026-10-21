@@ -180,7 +180,7 @@ def build_contract(plan):
             if key in cuda and (not re.fullmatch(r'[A-Za-z0-9_./-]+',cuda[key]) or '..' in Path(cuda[key]).parts):raise ValueError('invalid remote path')
     normalized=[];ids=set()
     for job in jobs:
-        strict(job,('id','arguments','reference','physics','backends','metalGB','cudaBytes','costs','timeoutSeconds'),
+        strict(job,('id','arguments','reference','physics','backends','metalGB','cudaBytes','costs','cachedCudaCosts','timeoutSeconds'),
                ('id','arguments','reference','physics','backends','metalGB','costs'))
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,99}',job['id']) or job['id'] in ids:raise ValueError('invalid or duplicate case id')
         ids.add(job['id']);args=arguments(job['arguments'])
@@ -206,10 +206,15 @@ def build_contract(plan):
         if 'cuda' in modes and (type(cbytes) is not int or cbytes<77*meta['cells']+36*meta['rows']*meta['columns']):raise ValueError('CUDA declaration below portable memory bound')
         strict(job['costs'],modes,modes)
         estimated={mode:costs(job['costs'][mode],pins) for mode in modes}
+        cached_cost=None
+        if 'cachedCudaCosts' in job:
+            if 'cuda' not in modes:raise ValueError('cached CUDA cost requires CUDA backend')
+            cached_cost=costs(job['cachedCudaCosts'],pins)
         timeout=job.get('timeoutSeconds',600)
-        if type(timeout) not in (int,float) or not math.isfinite(timeout) or not max(estimated.values())<timeout<=86400:raise ValueError('timeout must exceed estimated cost and be at most one day')
+        if type(timeout) not in (int,float) or not math.isfinite(timeout) or not max([*estimated.values(),cached_cost or 0])<timeout<=86400:raise ValueError('timeout must exceed estimated cost and be at most one day')
         normalized_args=[token for k,v in args.items() for token in (['--'+k] if v is True else ['--'+k,v])]
         item=dict(job,arguments=normalized_args,reference=str(ref),estimatedSeconds=estimated,cudaBytes=cbytes,timeoutSeconds=timeout)
+        if cached_cost is not None:item['cachedCudaEstimatedSeconds']=cached_cost
         item['key']=address({'job':item,'referenceHashes':{n:pins[str(ref/n)] for n in DATA_FILES}});normalized.append(item)
     contract={'format':FORMAT,'machine':platform.node(),'purpose':plan['purpose'],'scenebench':str(exe),'gpuSlot':str(slot),
               'cuda':cuda,'maxAttempts':max_attempts,'jobs':normalized,'filesSHA256':pins,
@@ -317,7 +322,7 @@ def case_state(root,contract,job):
         with lease(attempt/'active.lock') as held:locked=held is None
         if locked or (process and tracked_alive(process)) or (not process and not result and time.time()-request['createdAt']<2):
             active.append({'attempt':attempt.name,'backend':request['backend'],'startedAt':request['createdAt'],
-                           'estimatedSeconds':job['estimatedSeconds'][request['backend']], 'process':process})
+                           'estimatedSeconds':request.get('decision',{}).get('estimatedSeconds',job['estimatedSeconds'][request['backend']]), 'process':process})
         elif result and result['status']=='blocked':blocked.add(request['backend'])
         elif not result or result['status']=='failed':
             if request.get('generation',0)==generation:failures[request['backend']]+=1
@@ -325,7 +330,11 @@ def case_state(root,contract,job):
         elif result['status']=='deferred':retry_after=max(retry_after,result['finishedAt']+2)
         attempts.append({'id':attempt.name,'backend':request['backend'],'result':result})
     modes=[m for m in job['backends'] if m not in blocked and failures[m]<contract['maxAttempts']]
+    prepared=None
+    if not active and 'cuda' in modes and (folder/'prepared').exists():
+        prepared=verify_prepared(folder/'prepared',contract,job)
     return {'status':'running' if active else 'pending' if modes else 'failed','active':active,
+            'preparationCache':prepared,
             'eligibleBackends':modes,'blockedBackends':sorted(blocked),'failureCounts':failures,
             'attempts':len(attempts),'retryAfter':retry_after,'history':attempts}
 
@@ -399,13 +408,16 @@ def plan_dispatch(contract,states,mac,pc,now=None):
                 fits &= job['metalGB']<8 or mac.get('pressure')=='1'
             else:
                 fits=job['cudaBytes']<=pc.get('freeBytes',0)*.8
-                fits &= job['metalGB']+mac.get('declaredGB',math.inf)<=mac.get('budgetGB',0)
-                fits &= (mac.get('regularFree',False) or (job['metalGB']<=2 and mac.get('smallFree',False)))
-                fits &= job['metalGB']<8 or mac.get('pressure')=='1'
-            if fits and math.isfinite(ends[mode]):candidates.append((ends[mode]+job['estimatedSeconds'][mode],mode,ends[mode]))
+                if not state.get('preparationCache'):
+                    fits &= job['metalGB']+mac.get('declaredGB',math.inf)<=mac.get('budgetGB',0)
+                    fits &= (mac.get('regularFree',False) or (job['metalGB']<=2 and mac.get('smallFree',False)))
+                    fits &= job['metalGB']<8 or mac.get('pressure')=='1'
+            estimate=job.get('cachedCudaEstimatedSeconds',job['estimatedSeconds'][mode]) if mode=='cuda' and state.get('preparationCache') else job['estimatedSeconds'][mode]
+            if fits and math.isfinite(ends[mode]):candidates.append((ends[mode]+estimate,mode,ends[mode],estimate))
         if not candidates:continue
-        finish,mode,start=min(candidates,key=lambda x:(x[0],x[1]!='metal'))
+        finish,mode,start,estimate=min(candidates,key=lambda x:(x[0],x[1]!='metal'))
         proposals.append({'case':job['key'],'backend':mode,'estimatedStartSeconds':start,'estimatedFinishSeconds':finish,
+                          'estimatedSeconds':estimate,'preparationCache':state.get('preparationCache') if mode=='cuda' else None,
                           'launchNow':start==0 and not lanes[mode] and ready[mode]})
         ends[mode]=finish
     return proposals
@@ -575,7 +587,8 @@ def run_queue(root,once=False,poll=2,max_seconds=600):
                 runnable=[j for j in contract['jobs'] if states[j['key']]['status']=='pending'
                           and states[j['key']]['retryAfter']<=time.time()]
                 if runnable:
-                    mac=mac_snapshot(contract)
+                    needs_mac=any('metal' in states[j['key']]['eligibleBackends'] or not states[j['key']].get('preparationCache') for j in runnable)
+                    mac=mac_snapshot(contract) if needs_mac else {'available':False,'reason':'validated CUDA preparation needs no Mac GPU slot'}
                     needs_pc=any('cuda' in states[j['key']]['eligibleBackends'] for j in runnable)
                     pc=pc_snapshot(contract) if needs_pc else {'available':False,'reason':'no runnable CUDA cases','freeBytes':0}
                     proposals=plan_dispatch(contract,states,mac,pc)

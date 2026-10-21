@@ -15,7 +15,7 @@ from job import validate,scalar_layout
 from compare import compare
 import remote
 from test_cooling_bounds import CoolingBoundsTests
-from test_field_queue import AdmissionTests, PlannerTests, ProducerPhaseTests, PublicationTests
+from test_field_queue import CachedPreparationTests, AdmissionTests, PlannerTests, ProducerPhaseTests, PublicationTests
 from test_profile_worker import ProfileWorkerTests
 
 

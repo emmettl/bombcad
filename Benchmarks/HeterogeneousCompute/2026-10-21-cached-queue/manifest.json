@@ -1,0 +1,26 @@
+{
+  "baseRevision": "4cd05eef5f3231765a4d090f4977ec2be9564676",
+  "dirty": true,
+  "sourceSHA256": {
+    "Scripts/cuda/field-queue.py": "0fa09fda2ee37500c8d7f530a257b793f0afd2efe0c362c95940ceb8213b3524",
+    "Scripts/cuda/test_backend.py": "50351e98f7adaab1a3651e00a9209d2b892680ed661bde5a1be90b2c11282d37",
+    "Scripts/cuda/test_field_queue.py": "81903f3ec721ce9e8c3075565945344917a9c7d2e372a6d87682de20f562c0af"
+  },
+  "artifactsSHA256": {
+    "plan-0.json": "b5016bfff1a6757a57890ef9a217950e1a0048a2819b23c55335a2d52153c719",
+    "study.json": "41e0f9b36e166940489cf1ae90f7093431154067220be69981a3190b738f6025",
+    "plan-1.json": "d6fc695f917bdcaa8e4a9b9416ebb2effeaae4d63f7e3efe400e5792ba1aa5d5",
+    "summary.md": "32a929a209b89a5581079cdceb65affb5c793d5dd53b7d17ef045f3234d14e91",
+    "process-audit.json": "a44d66f33875e12417e9ac5e4c3c726175c7a230ad8aa14f550b2cebaf879f56",
+    "cached-cost.json": "b401102330859a6bde0e6a52077dc2844601138d8f815d607c1c974133b9599c",
+    "study.log": "425d1788f9e3313002a340db60c13a6b7bb7e72c67db5053ebe8623295f634b0",
+    "state.tar.gz": "931a85493fa58c3d491b73eaabe4b7fc2aa25a583e25ad4cb3c9884902104f31",
+    "unit.log": "45c1e6a09538e3a9b4487ae3b5791133b9e685ae694066033c59c7c221582039",
+    "check.log": "5713afc192d27b8c0f6a4e5d8c0f264581d3c562b07df13bfe03644406b77aa1",
+    "plan-2.json": "d6fc695f917bdcaa8e4a9b9416ebb2effeaae4d63f7e3efe400e5792ba1aa5d5",
+    "study.py": "5d99b28179839b40ee95951a8995c6403e70e8acdd7c5c5c1c5993e9c1b9b3f0",
+    "defer-worker.py": "ad43e5dc9adfc089fe5a8d73cc4209d836e4bcbbb31f86ad1442d380e9b8b64a"
+  },
+  "validation": "make check-affected passed",
+  "archivedAcceptedFilesVerified": 12
+}

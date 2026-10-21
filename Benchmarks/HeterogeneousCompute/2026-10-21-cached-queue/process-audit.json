@@ -1,0 +1,41 @@
+{
+  "status": "all terminal",
+  "attempts": [
+    {
+      "file": "/private/tmp/bombcad-cached-queue/queue-2/cases/59dace0b99fde26c24689d830b9be3746caa744888a26d61b2dd43eb1179498b/attempts/b072fef6df02429983733bc9e1e194c7/process.json",
+      "pid": 57188,
+      "pgid": 57188,
+      "alive": false
+    },
+    {
+      "file": "/private/tmp/bombcad-cached-queue/queue-2/cases/59dace0b99fde26c24689d830b9be3746caa744888a26d61b2dd43eb1179498b/attempts/6ea7c12e25d742188d5e098c3df8899c/process.json",
+      "pid": 57279,
+      "pgid": 57279,
+      "alive": false
+    },
+    {
+      "file": "/private/tmp/bombcad-cached-queue/queue-1/cases/59dace0b99fde26c24689d830b9be3746caa744888a26d61b2dd43eb1179498b/attempts/d4e815941fe54794bfc9d04ad5c778e0/process.json",
+      "pid": 56850,
+      "pgid": 56850,
+      "alive": false
+    },
+    {
+      "file": "/private/tmp/bombcad-cached-queue/queue-1/cases/59dace0b99fde26c24689d830b9be3746caa744888a26d61b2dd43eb1179498b/attempts/f2ed3f2f87bf44c0b18c46160a3a59cc/process.json",
+      "pid": 56899,
+      "pgid": 56899,
+      "alive": false
+    },
+    {
+      "file": "/private/tmp/bombcad-cached-queue/queue-0/cases/df062a89ed5c114dbf0bb7bbc4eff5250ea864dd33252e52bb6ead634f2a726f/attempts/a9f0d74bd43d4d358524cee03e42f3c7/process.json",
+      "pid": 56599,
+      "pgid": 56599,
+      "alive": false
+    },
+    {
+      "file": "/private/tmp/bombcad-cached-queue/queue-0/cases/df062a89ed5c114dbf0bb7bbc4eff5250ea864dd33252e52bb6ead634f2a726f/attempts/3a66762da9564d2a850763bd23e0614d/process.json",
+      "pid": 56650,
+      "pgid": 56650,
+      "alive": false
+    }
+  ]
+}

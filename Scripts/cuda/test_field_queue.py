@@ -121,6 +121,61 @@ class ProducerPhaseTests(unittest.TestCase):
             with self.assertRaises(q.GateFailure):check()
 
 
+class CachedPreparationTests(QueueFixture):
+    def init_cached(self):
+        self.plan['cuda']={'host':'unit-offline'};self.job['backends']=['cuda'];self.job['cudaBytes']=1000
+        self.job['costs']={'cuda':[{'report':str(self.cost),'keys':['cuda']}]}
+        self.job['cachedCudaCosts']=[{'report':str(self.cost),'keys':['metal']}]
+        c=self.init();job=c['jobs'][0];folder=self.queue/'cases'/job['key']/'prepared';folder.mkdir()
+        (folder/'buffer').write_bytes(b'prepared bytes')
+        receipt=dict(case=job['key'],contract=c['key'],filesSHA256={'buffer':q.digest(folder/'buffer')})
+        receipt['key']=q.address(receipt);q.atomic(folder/'queue-prepared.json',receipt)
+        return c,job,folder,receipt
+
+    def test_cache_identity_enables_separate_evidenced_cost_without_mac_gpu(self):
+        c,job,folder,receipt=self.init_cached();state=q.case_state(self.queue,c,job)
+        self.assertEqual(state['preparationCache'],receipt['key'])
+        with patch.object(q,'mac_snapshot',side_effect=AssertionError('cached retry needs no Mac GPU')), patch.object(q,'pc_snapshot',return_value={'available':True,'freeBytes':10000}), patch.object(q,'launch') as launch:
+            self.assertEqual(q.run_queue(self.queue,once=True),75)
+        decision=launch.call_args.args[2]
+        self.assertEqual(decision['backend'],'cuda');self.assertTrue(decision['launchNow'])
+        self.assertEqual(decision['estimatedSeconds'],job['cachedCudaEstimatedSeconds'])
+        self.assertEqual(decision['preparationCache'],receipt['key'])
+        (folder/'buffer').write_bytes(b'corrupted')
+        with self.assertRaises(q.GateFailure):q.case_state(self.queue,c,job)
+
+    def test_fresh_preparation_needs_mac_capacity_and_cached_retry_needs_pc_capacity(self):
+        c,job,folder,receipt=self.init_cached();state=q.case_state(self.queue,c,job)
+        pc={'available':True,'freeBytes':10000}
+        self.assertTrue(q.plan_dispatch(c,{job['key']:state},{},pc,now=10)[0]['launchNow'])
+        state['preparationCache']=None
+        self.assertEqual(q.plan_dispatch(c,{job['key']:state},{},pc,now=10),[])
+        state['preparationCache']=receipt['key']
+        for observed in [{'available':False,'freeBytes':10000},{'available':True,'freeBytes':10}]:
+            self.assertEqual(q.plan_dispatch(c,{job['key']:state},{},observed,now=10),[])
+
+    def test_cached_cost_requires_cuda(self):
+        self.job['cachedCudaCosts']=[{'report':str(self.cost),'keys':['metal']}]
+        with self.assertRaisesRegex(ValueError,'requires CUDA'):self.init()
+
+
+    def test_cached_cost_evidence_is_pinned_and_bounds_timeout(self):
+        c,job,folder,receipt=self.init_cached()
+        self.assertEqual(c['filesSHA256'][str(self.cost.resolve())],q.digest(self.cost))
+        q.atomic(self.cost,{'metal':float('nan'),'cuda':8.})
+        with self.assertRaises(ValueError):q.build_contract(self.plan)
+        q.atomic(self.cost,{'metal':21.,'cuda':8.})
+        with self.assertRaisesRegex(ValueError,'timeout'):q.build_contract(self.plan)
+
+    def test_running_retry_retains_selected_cost_after_cache_state_changes(self):
+        c,job,folder,receipt=self.init_cached();a='a'*32;attempt=self.queue/'cases'/job['key']/'attempts'/a;attempt.mkdir()
+        q.atomic(attempt/'request.json',dict(backend='cuda',generation=0,createdAt=time.time(),decision=dict(estimatedSeconds=1.25)))
+        state=q.case_state(self.queue,c,job)
+        self.assertEqual(state['status'],'running')
+        self.assertEqual(state['active'][0]['estimatedSeconds'],1.25)
+        self.assertIsNone(state['preparationCache'])
+
+
 class AdmissionTests(QueueFixture):
     def test_unknown_physics_option_is_rejected_before_queue_creation(self):
         self.job['arguments']+=['--refine','2']
