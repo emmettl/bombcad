@@ -999,7 +999,9 @@ too ductile at a blast's rate as the bolted ones would be.
 
 **Not compared:**
 - **Dinu et al.'s** end-plate connections under column loss (Timișoara) are on a server that
-  refuses connections.
+  refuses connections. Their ASCCS 2018 paper, obtained on 21 October 2026, models a frame with
+  these end plates under close-in charges but measures no connection
+  ([steel members](validation.md#steel-beams-and-columns-in-the-open)).
 - **EN 1993-1-8's component method** is not used: none of its springs is built.
 
 **In the presets:**

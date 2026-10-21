@@ -2914,8 +2914,16 @@ the shots near elastic and of the curtain shot are within 14%.
   - **Rate.** Against Culache's bolted end plates loaded in 40 ms, a hinge taken from the slow
     tests reads 13–41% too strong and 1.5–1.7 times too ductile with carbon-steel bolts. The end
     plates therefore take the fast tests' values.
-  - **Not compared:** no connection inside a frame under a blast; Dinu et al.'s frames are in
+  - **Not compared:** no connection inside a frame under a blast. Dinu et al.'s tests are in
     [data wanted](data-wanted.md).
+  - **Dinu et al., ASCCS 2018** (obtained 21 October 2026, CC BY-NC-ND), is mostly a model study:
+    - **Frame and charges.** A 2 × 2 bay, two-storey moment frame (HEB260 columns, IPE270 beams,
+      S275) in the applied element method, under 1.8–28 kg at 0.2–0.5 m from a column, all at
+      Z = 0.16 m/kg^(1/3).
+    - **Its tests, in words only.** 1.815 kg at 0.5 m from a column's web left "little plastic
+      deformations". At 0.2 m it removed the web over almost twice the flange width.
+    - **No histories or deflections measured.** A column breach against those two outcomes, and
+      the frame as a code comparison, are planned but not built.
 - **A frame as a whole.**
 
 ## Profiled steel sheeting
