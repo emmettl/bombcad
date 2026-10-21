@@ -39,6 +39,9 @@ def main(argv=None):
     ap.add_argument('--octant', action='store_true')
     ap.add_argument('--label', required=True)
     ap.add_argument('--history-dir')
+    # MC failed here: Roe's update leaves near-vacuum cells at the centre during the over-expansion,
+    # and a floored density holding its energy runs the time step down to nanoseconds.
+    ap.add_argument('--limiter', choices=['mc', 'minmod'], default='minmod')
     args = ap.parse_args(argv)
 
     deck = protocol.deck(CASE_ID)
@@ -69,7 +72,7 @@ def main(argv=None):
     solver = pyclaw.ClawSolver3D(riemann.euler_3D)
     solver.num_waves = 3
     solver.num_eqn = 5
-    solver.limiters = pyclaw.limiters.tvd.MC
+    solver.limiters = pyclaw.limiters.tvd.MC if args.limiter == 'mc' else pyclaw.limiters.tvd.minmod
     solver.dimensional_split = False
     solver.transverse_waves = solver.trans_cor
     solver.cfl_desired = deck['numerics']['cfl']
@@ -143,7 +146,7 @@ def main(argv=None):
                          else 'the whole 6 m cube, walls on its six faces'),
             'cells_per_side_of_cube': n, 'cell_m': dx, 'cells': [m] * 3, 'initial_state': provenance,
             'source_cells_placed': placed,
-            'riemann_solver': 'euler_3D (Roe, entropy fix)', 'limiter': 'MC', 'dimensional_split': False,
+            'riemann_solver': 'euler_3D (Roe, entropy fix)', 'limiter': {'mc': 'MC', 'minmod': 'minmod'}[args.limiter], 'dimensional_split': False,
             'transverse_waves': 22, 'cfl_desired': solver.cfl_desired, 'cfl_max': solver.cfl_max,
             'density_floor_kg_m3': floors.rho_floor, 'pressure_floor_Pa': floors.p_floor,
         },
