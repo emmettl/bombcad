@@ -180,3 +180,11 @@ the retry records its own outer time. Nested timings and different clocks must n
 and broader queue/performance evaluation. [#60](https://github.com/emmettl/bombcad-work/issues/60)
 retains dispatch/control optimization. Repeated quiet runs are needed before a throughput claim;
 [#47](https://github.com/emmettl/bombcad-work/issues/47) still gates broader CUDA generation.
+
+The [eight-case larger-grid evaluation](../Benchmarks/HeterogeneousCompute/2026-10-21-larger-queue/summary.md)
+calibrates each exact case/backend with three isolated controller completion
+observations, then repeats three policy rounds. All 120 executions pass. Median
+queue completion is 3.854 s Metal-only, 11.265 s automatic (all Metal), and
+49.690 s forced split. The isolated complete costs include controller overhead,
+but do not predict multi-case overhead exactly. The automatic policy still probes
+the PC whenever CUDA is eligible; cost-based suppression of probes the current planner would not use remains an experiment, alongside longer full-district queue evaluation.

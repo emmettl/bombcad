@@ -1,0 +1,57 @@
+calibration cal-0-uniform-m5-metal 0.435 0
+calibration cal-0-uniform-m5-cuda 10.911 0
+calibration cal-0-uniform-m10-metal 0.45 0
+calibration cal-0-uniform-m10-cuda 11.191 0
+calibration cal-0-uniform-m20-metal 0.441 0
+calibration cal-0-uniform-m20-cuda 11.253 0
+calibration cal-0-uniform-m40-metal 0.425 0
+calibration cal-0-uniform-m40-cuda 11.892 0
+calibration cal-0-terrain-m5-metal 0.427 0
+calibration cal-0-terrain-m5-cuda 13.14 0
+calibration cal-0-terrain-m10-metal 0.42 0
+calibration cal-0-terrain-m10-cuda 13.433 0
+calibration cal-0-terrain-m20-metal 0.565 0
+calibration cal-0-terrain-m20-cuda 12.833 0
+calibration cal-0-terrain-m40-metal 0.6 0
+calibration cal-0-terrain-m40-cuda 12.729 0
+calibration cal-1-terrain-m40-cuda 12.836 0
+calibration cal-1-terrain-m40-metal 0.597 0
+calibration cal-1-terrain-m20-cuda 12.906 0
+calibration cal-1-terrain-m20-metal 0.549 0
+calibration cal-1-terrain-m10-cuda 13.12 0
+calibration cal-1-terrain-m10-metal 0.544 0
+calibration cal-1-terrain-m5-cuda 12.811 0
+calibration cal-1-terrain-m5-metal 0.44 0
+calibration cal-1-uniform-m40-cuda 11.282 0
+calibration cal-1-uniform-m40-metal 0.435 0
+calibration cal-1-uniform-m20-cuda 11.544 0
+calibration cal-1-uniform-m20-metal 0.541 0
+calibration cal-1-uniform-m10-cuda 11.467 0
+calibration cal-1-uniform-m10-metal 0.427 0
+calibration cal-1-uniform-m5-cuda 11.453 0
+calibration cal-1-uniform-m5-metal 0.419 0
+calibration cal-2-uniform-m5-metal 0.436 0
+calibration cal-2-uniform-m5-cuda 11.524 0
+calibration cal-2-uniform-m10-metal 0.426 0
+calibration cal-2-uniform-m10-cuda 11.174 0
+calibration cal-2-uniform-m20-metal 0.437 0
+calibration cal-2-uniform-m20-cuda 11.145 0
+calibration cal-2-uniform-m40-metal 0.615 0
+calibration cal-2-uniform-m40-cuda 11.723 0
+calibration cal-2-terrain-m5-metal 0.452 0
+calibration cal-2-terrain-m5-cuda 12.687 0
+calibration cal-2-terrain-m10-metal 0.592 0
+calibration cal-2-terrain-m10-cuda 13.102 0
+calibration cal-2-terrain-m20-metal 0.596 0
+calibration cal-2-terrain-m20-cuda 12.752 0
+calibration cal-2-terrain-m40-metal 0.587 0
+calibration cal-2-terrain-m40-cuda 12.838 0
+policy metal 0 3.854 [('uniform-m5', 'metal'), ('uniform-m10', 'metal'), ('uniform-m20', 'metal'), ('uniform-m40', 'metal'), ('terrain-m5', 'metal'), ('terrain-m10', 'metal'), ('terrain-m20', 'metal'), ('terrain-m40', 'metal')]
+policy auto 0 11.265 [('uniform-m5', 'metal'), ('uniform-m10', 'metal'), ('uniform-m20', 'metal'), ('uniform-m40', 'metal'), ('terrain-m5', 'metal'), ('terrain-m10', 'metal'), ('terrain-m20', 'metal'), ('terrain-m40', 'metal')]
+policy split 0 49.69 [('uniform-m5', 'metal'), ('uniform-m10', 'cuda'), ('uniform-m20', 'metal'), ('uniform-m40', 'cuda'), ('terrain-m5', 'metal'), ('terrain-m10', 'cuda'), ('terrain-m20', 'metal'), ('terrain-m40', 'cuda')]
+policy auto 1 10.374 [('uniform-m5', 'metal'), ('uniform-m10', 'metal'), ('uniform-m20', 'metal'), ('uniform-m40', 'metal'), ('terrain-m5', 'metal'), ('terrain-m10', 'metal'), ('terrain-m20', 'metal'), ('terrain-m40', 'metal')]
+policy split 1 49.191 [('uniform-m5', 'metal'), ('uniform-m10', 'cuda'), ('uniform-m20', 'metal'), ('uniform-m40', 'cuda'), ('terrain-m5', 'metal'), ('terrain-m10', 'cuda'), ('terrain-m20', 'metal'), ('terrain-m40', 'cuda')]
+policy metal 1 3.641 [('uniform-m5', 'metal'), ('uniform-m10', 'metal'), ('uniform-m20', 'metal'), ('uniform-m40', 'metal'), ('terrain-m5', 'metal'), ('terrain-m10', 'metal'), ('terrain-m20', 'metal'), ('terrain-m40', 'metal')]
+policy split 2 49.983 [('uniform-m5', 'metal'), ('uniform-m10', 'cuda'), ('uniform-m20', 'metal'), ('uniform-m40', 'cuda'), ('terrain-m5', 'metal'), ('terrain-m10', 'cuda'), ('terrain-m20', 'metal'), ('terrain-m40', 'cuda')]
+policy metal 2 5.24 [('uniform-m5', 'metal'), ('uniform-m10', 'metal'), ('uniform-m20', 'metal'), ('uniform-m40', 'metal'), ('terrain-m5', 'metal'), ('terrain-m10', 'metal'), ('terrain-m20', 'metal'), ('terrain-m40', 'metal')]
+policy auto 2 12.829 [('uniform-m5', 'metal'), ('uniform-m10', 'metal'), ('uniform-m20', 'metal'), ('uniform-m40', 'metal'), ('terrain-m5', 'metal'), ('terrain-m10', 'metal'), ('terrain-m20', 'metal'), ('terrain-m40', 'metal')]

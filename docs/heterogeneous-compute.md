@@ -425,3 +425,15 @@ accepted objects, with matching numerical files. Optional `cachedCudaCosts` term
 are pinned separately; the retained one-sample worker-body estimate is functional
 calibration, not a complete scheduling-cost fit. #59 remains open for complete
 costs and larger representative queues.
+
+### Eight larger cases with repeated complete-cost calibration
+
+The [eight-case replay study](../Benchmarks/HeterogeneousCompute/2026-10-21-larger-queue/summary.md)
+adds three isolated controller-cost observations per exact case/backend and three
+rotated queue-policy rounds. All 120 executions pass their gates and accept once.
+For these 128 × 128 × 32-cell short trajectories, median completion is 3.854 s
+Metal-only, 11.265 s automatic (all Metal), and 49.690 s forced four-CUDA split.
+The larger grid still does not amortize CUDA deployment. Complete isolated-case
+costs are an approximate model; automatic policy's extra controller time motivates
+a cost-based PC-probe experiment under #59. Longer full-district queues and broader
+numerical admission remain separate work.

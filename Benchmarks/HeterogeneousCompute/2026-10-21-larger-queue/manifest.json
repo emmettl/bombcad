@@ -1,0 +1,34 @@
+{
+  "baseRevision": "c737ab146a6f4acf1e292b37d823826dcf74e957",
+  "sourceSHA256": {
+    "Scripts/cuda/field-queue.py": "0fa09fda2ee37500c8d7f530a257b793f0afd2efe0c362c95940ceb8213b3524",
+    "Scripts/cuda/run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "Sources/SceneBench/FieldExport.swift": "c2ddca89a92d23c881b4d9bcf6fdd6433ac2c2d4d98bd52f46748203e3b06daa",
+    "Sources/BlastCore/BlastSolver.swift": "73511480d95f715b069610028ca4fb072d1ece123c2952acacc8e0fe3c09ceb9",
+    "Sources/BlastCore/Scenario+GPU.swift": "b7ba86272c4bece401ef2780336e450b24b9f2b0a5ba4b5fe7548a9d083b6b14",
+    "Samples/MapBuildings/synthetic-neighbourhood.geojson": "ea0c0d242b0f8b229d4a017ebd201abaa3dba15f27cbd32d0a06340313c9e294"
+  },
+  "validation": "make check-affected passed",
+  "executions": 120,
+  "allOwnedGroupsTerminal": true,
+  "artifactsSHA256": {
+    "package.py": "2bcdbdd12a86eb8c6865e2b98505ed2717bf9fe48d586d06aa21bcfb4369d5e8",
+    "cal-1-state.tar.gz": "2f3b3917bea08fdf93adff3d7532032b4a9b54917e5f3fae5b50601d165d780f",
+    "policy-2-state.tar.gz": "93ce3e88c2bf240167750699ffa340461c794402b9b5b3f0a10d6e69c428c5dd",
+    "audit.json": "dc4118fa19b9f960887173bd3244105c8c828ecc9dec8e81ba89a2a0f84d54d3",
+    "study.json": "93b72c239440314c52df3f7cd83ba97fdf16e6f9024bced2d82efa2ee6f8cbe8",
+    "cal-0-state.tar.gz": "621c1f5f3cafbfbc5ba7ae867c4f38e88c16ef1b979f9423399c54b591dee169",
+    "references.tar.gz": "2bc514f558472c3aaaa6aa657d485cfa144fad781a411b679911b174a813a880",
+    "summary.md": "68dfc6f986e26b9789e2764853d0cec1ed0d6def9e7aafbaad0bfd92b8477ce3",
+    "calibrated-costs.json": "9a9cd2d72f02981f4982a6cb1c69655625d7c89e69dd4c578e426176ad4c4c43",
+    "study.log": "eff21d7f1f0c913bfb11ccb3f5e2bb48566d17c2561719c6dd27f1732ee59e6c",
+    "slope.asc": "58cc6e5d463f2d33e002bda626a3f1b40a2f8167386de4abcad322c5ca39cc13",
+    "archive-audit.json": "399ddf5e570b1fe2a99ebd522a3822a57bd5b9a356d7d06c5e5daabd1a72d643",
+    "cal-2-state.tar.gz": "97dbc62cfd9377541802e84b9d48c385d794c1ce773d3e844b888743ff7d13a5",
+    "check.log": "d03f6ba38039b48ce838d4daf2b742e24515076d920b304b0473fbc909221ced",
+    "policy-1-state.tar.gz": "19a765067b8239ff6753a123deb193295567959a6bfc78c19295b62e48c3121f",
+    "observer-source.json": "1b91fcb12316e226d93d99f45ea5d5a777b536cfbe9b3497264897b751bbcf18",
+    "study.py": "b59f33003b87b158331f1f893666d97618898cfd0a4c1ca4b523e66937b3c39e",
+    "policy-0-state.tar.gz": "9f5bb1051a6185a26bc26983fac77b4609c214a8888010bd6579db9eba54b442"
+  }
+}
