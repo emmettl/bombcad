@@ -206,8 +206,10 @@ extension ElevationGrid {
         var header: [String: Double] = [:]
         var centred = (x: false, y: false)
         var tokens = text.split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" || $0 == "\r" })[...]
+        // A key starts with a letter and is not a number: `nan` or `inf` as the first value is the
+        // grid's, not a key (taken as one, it shifted every value by two).
         while let key = tokens.first, let first = key.unicodeScalars.first,
-            CharacterSet.letters.contains(first)
+            CharacterSet.letters.contains(first), Double(key) == nil
         {
             tokens = tokens.dropFirst()
             guard let token = tokens.first, let value = Double(token) else {

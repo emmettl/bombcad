@@ -231,10 +231,10 @@ UTF-16 with its byte-order mark, or a declared ISO-8859-1, ISO-8859-15 or Window
 seed files read as before, line for line, and an arc within ±720° is drawn bit for bit as before.
 No numerical model changed.
 
-**Left for a decision.**
-- A DXF number that does not parse (`1e`, `0x10`) reads as 0, as an absent group does: refusing
-  it would match the non-finite rule, but it is the reader's long-standing choice.
-- An ESRI header is read while tokens start with a letter, so a first value of `nan` is taken as a
-  key; stopping the header at the known keys would close it.
+**Decided since** (21 October, emmettl/bombcad-work#74): a DXF number that is there but does not
+parse (`1e`, `--1`) is refused, naming its line and value, where it read as 0; an absent group still
+takes its default. A grid's first value of `nan` is read as no data, not taken as a header key.
+
+**Not covered.**
 - Not fuzzed: the IFC reader (macOS only), the GeoTIFF strips, tiles and Deflate (BlastCore), and
   ContinuumKit's mesh files beyond what `ImportedMesh.inspect` reaches.

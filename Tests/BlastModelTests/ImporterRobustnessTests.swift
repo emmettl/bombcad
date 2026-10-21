@@ -67,6 +67,30 @@ struct ImporterRobustnessTests {
         #expect(throws: DXFDrawing.ReadError.self) { try DXFDrawing(data: Self.dxf(entity)) }
     }
 
+    @Test(
+        "A DXF number that is there but does not parse is refused, naming its line, not read as 0",
+        arguments: [
+            ("0\nLINE\n8\nWALLS\n10\n0\n20\n0\n11\n1e\n21\n0\n", "1e", 24),
+            ("0\nLINE\n8\nWALLS\n10\n--1\n20\n0\n11\n1000\n21\n0\n", "--1", 20),
+            ("0\nCIRCLE\n8\nWALLS\n10\n0\n20\n0\n40\nfive\n", "five", 24),
+            ("0\nLWPOLYLINE\n8\nWALLS\n70\n0\n10\n0\n20\n0\n42\n0.5x\n10\n1000\n20\n0\n", "0.5x", 26),
+            ("0\nLWPOLYLINE\n8\nWALLS\n70\nclosed\n10\n0\n20\n0\n10\n1000\n20\n0\n", "closed", 20),
+            ("0\nINSERT\n8\nWALLS\n2\nA\n10\n0\n20\n0\n50\n9O\n", "9O", 26),
+        ])
+    func unparsableNumber(entity: String, value: String, line: Int) {
+        // The header takes 10 lines and the ENTITIES section's opening 4: an entity starts on line 15.
+        do {
+            _ = try DXFDrawing(data: Self.dxf(entity))
+            Issue.record("read \(value) as a number")
+        } catch let error as DXFDrawing.ReadError {
+            #expect(
+                error.message.contains("Line \(line):") && error.message.contains("\"\(value)\""),
+                "\(error.message)")
+        } catch {
+            Issue.record("\(error)")
+        }
+    }
+
     @Test("A drawing made in code with a NaN arc or bulge still makes its segments without trapping")
     func nonFiniteInCode() {
         let drawing = DXFDrawing(

@@ -331,6 +331,29 @@ public struct DXFDrawing: Sendable {
 
         init(pairs: [(Int, String)]) { self.pairs = pairs }
 
+        /// Pair `index`'s value as a number. A value that is there but does not parse (`1e`, `--1`)
+        /// refuses the file, naming its line: read as 0, it moved a point to the origin unseen.
+        func double(at index: Int) throws -> Double {
+            let (code, value) = pairs[index]
+            guard let number = Double(value) else { throw Self.unparsable(code, value, index) }
+            return number
+        }
+
+        /// Pair `index`'s value as a whole number (a flag or a unit code), refused as `double`.
+        func integer(at index: Int) throws -> Int {
+            let (code, value) = pairs[index]
+            guard let number = Int(value) else { throw Self.unparsable(code, value, index) }
+            return number
+        }
+
+        static func unparsable(_ code: Int, _ value: String, _ index: Int) -> ReadError {
+            // Pair k's code is on line 2k + 1 and its value on the line after.
+            ReadError(
+                message:
+                    "Line \(2 * index + 2): the value \"\(value.prefix(40))\" of group code \(code) is not a number: the file is corrupt."
+            )
+        }
+
         mutating func read() throws {
             while position < pairs.count {
                 let (code, value) = pairs[position]
@@ -341,10 +364,10 @@ public struct DXFDrawing: Sendable {
                 let name = pairs[position].1
                 position += 1
                 switch name {
-                case "HEADER": header()
+                case "HEADER": try header()
                 case "TABLES": tables()
-                case "BLOCKS": readBlocks()
-                case "ENTITIES": entities = readEntities(until: ["ENDSEC"])
+                case "BLOCKS": try readBlocks()
+                case "ENTITIES": entities = try readEntities(until: ["ENDSEC"])
                 default: skipSection()
                 }
             }
@@ -357,13 +380,13 @@ public struct DXFDrawing: Sendable {
             }
         }
 
-        mutating func header() {
+        mutating func header() throws {
             while position < pairs.count {
                 let (code, value) = pairs[position]
                 position += 1
                 if code == 0 && value == "ENDSEC" { return }
                 if code == 9 && value == "$INSUNITS", position < pairs.count, pairs[position].0 == 70 {
-                    units = Int(pairs[position].1)
+                    units = try integer(at: position)
                 }
             }
         }
@@ -380,7 +403,7 @@ public struct DXFDrawing: Sendable {
             }
         }
 
-        mutating func readBlocks() {
+        mutating func readBlocks() throws {
             while position < pairs.count {
                 let (code, value) = pairs[position]
                 if code == 0 && value == "ENDSEC" {
@@ -397,18 +420,18 @@ public struct DXFDrawing: Sendable {
                 while position < pairs.count && pairs[position].0 != 0 {
                     let (c, v) = pairs[position]
                     if c == 2 { name = v }
-                    if c == 10 { base.x = Double(v) ?? 0 }
-                    if c == 20 { base.y = Double(v) ?? 0 }
+                    if c == 10 { base.x = try double(at: position) }
+                    if c == 20 { base.y = try double(at: position) }
                     position += 1
                 }
-                let inner = readEntities(until: ["ENDBLK", "ENDSEC"])
+                let inner = try readEntities(until: ["ENDBLK", "ENDSEC"])
                 if position < pairs.count && pairs[position].1 == "ENDBLK" { position += 1 }
                 if !name.isEmpty { blocks[name] = Block(base: base, entities: inner) }
             }
         }
 
         /// Entities up to (not past) a 0 group in `stops`.
-        mutating func readEntities(until stops: Set<String>) -> [Entity] {
+        mutating func readEntities(until stops: Set<String>) throws -> [Entity] {
             var result: [Entity] = []
             var pendingPolyline:
                 (layer: String, closed: Bool, points: [SIMD2<Double>], bulges: [Double], flip: Bool)?
@@ -423,55 +446,64 @@ public struct DXFDrawing: Sendable {
                     continue
                 }
                 position += 1
+                // Field n of this entity is pair `start + n`.
+                let start = position
                 var fields: [(Int, String)] = []
                 while position < pairs.count && pairs[position].0 != 0 {
                     fields.append(pairs[position])
                     position += 1
                 }
-                func number(_ c: Int, _ fallback: Double = 0) -> Double {
-                    fields.first { $0.0 == c }.flatMap { Double($0.1) } ?? fallback
+                func number(_ c: Int, _ fallback: Double = 0) throws -> Double {
+                    guard let n = fields.firstIndex(where: { $0.0 == c }) else { return fallback }
+                    return try double(at: start + n)
+                }
+                func closedFlag() throws -> Bool {
+                    guard let n = fields.firstIndex(where: { $0.0 == 70 }) else { return false }
+                    return try integer(at: start + n) & 1 == 1
                 }
                 let layer = fields.first { $0.0 == 8 }?.1 ?? "0"
                 // An extrusion of (0, 0, -1) mirrors an entity's own coordinates in x.
-                let flip = number(230, 1) < 0
+                let flip = try number(230, 1) < 0
                 func point(_ x: Double, _ y: Double) -> SIMD2<Double> { SIMD2(flip ? -x : x, y) }
                 switch value {
                 case "LINE":
                     result.append(
                         Entity(
                             layer: layer,
-                            shape: .line(SIMD2(number(10), number(20)), SIMD2(number(11), number(21)))))
+                            shape: .line(
+                                SIMD2(try number(10), try number(20)), SIMD2(try number(11), try number(21))))
+                    )
                 case "LWPOLYLINE":
                     var points: [SIMD2<Double>] = []
                     var bulges: [Double] = []
                     var x: Double?
-                    for (c, v) in fields {
+                    for (n, (c, _)) in fields.enumerated() {
                         switch c {
                         case 10:
                             if points.count > bulges.count { bulges.append(0) }
-                            x = Double(v)
+                            x = try double(at: start + n)
                         case 20:
-                            if let px = x, let py = Double(v) { points.append(point(px, py)) }
+                            let py = try double(at: start + n)
+                            if let px = x { points.append(point(px, py)) }
                             x = nil
                         case 42:
-                            if points.count > bulges.count {
-                                bulges.append((Double(v) ?? 0) * (flip ? -1 : 1))
-                            }
+                            let bulge = try double(at: start + n)
+                            if points.count > bulges.count { bulges.append(bulge * (flip ? -1 : 1)) }
                         default: break
                         }
                     }
                     while bulges.count < points.count { bulges.append(0) }
-                    let closed = (Int(fields.first { $0.0 == 70 }?.1 ?? "0") ?? 0) & 1 == 1
+                    let closed = try closedFlag()
                     result.append(
                         Entity(layer: layer, shape: .polyline(points, bulges: bulges, closed: closed)))
                 case "POLYLINE":
-                    let closed = (Int(fields.first { $0.0 == 70 }?.1 ?? "0") ?? 0) & 1 == 1
-                    pendingPolyline = (layer, closed, [], [], flip)
+                    pendingPolyline = (layer, try closedFlag(), [], [], flip)
                 case "VERTEX":
                     if pendingPolyline != nil {
                         let f = pendingPolyline!.flip
-                        pendingPolyline!.points.append(SIMD2(f ? -number(10) : number(10), number(20)))
-                        pendingPolyline!.bulges.append(number(42) * (f ? -1 : 1))
+                        let (x, y, bulge) = (try number(10), try number(20), try number(42))
+                        pendingPolyline!.points.append(SIMD2(f ? -x : x, y))
+                        pendingPolyline!.bulges.append(bulge * (f ? -1 : 1))
                     }
                 case "SEQEND":
                     if let p = pendingPolyline {
@@ -482,24 +514,25 @@ public struct DXFDrawing: Sendable {
                     }
                     pendingPolyline = nil
                 case "ARC":
-                    var start = number(50)
-                    var end = number(51)
+                    var start = try number(50)
+                    var end = try number(51)
                     if flip { (start, end) = (180 - end, 180 - start) }
                     result.append(
                         Entity(
                             layer: layer,
                             shape: .arc(
-                                center: point(number(10), number(20)), radius: number(40), start: start,
-                                end: end)))
+                                center: point(try number(10), try number(20)), radius: try number(40),
+                                start: start, end: end)))
                 case "CIRCLE":
                     result.append(
                         Entity(
                             layer: layer,
-                            shape: .circle(center: point(number(10), number(20)), radius: number(40))))
+                            shape: .circle(
+                                center: point(try number(10), try number(20)), radius: try number(40))))
                 case "INSERT":
                     guard let block = fields.first(where: { $0.0 == 2 })?.1 else { break }
-                    var rotation = number(50)
-                    var scale = SIMD2(number(41, 1), number(42, 1))
+                    var rotation = try number(50)
+                    var scale = SIMD2(try number(41, 1), try number(42, 1))
                     if flip {
                         rotation = 180 - rotation
                         scale.x = -scale.x
@@ -508,7 +541,7 @@ public struct DXFDrawing: Sendable {
                         Entity(
                             layer: layer,
                             shape: .insert(
-                                block: block, position: point(number(10), number(20)), scale: scale,
+                                block: block, position: point(try number(10), try number(20)), scale: scale,
                                 rotation: rotation)))
                 default: break
                 }

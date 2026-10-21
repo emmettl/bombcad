@@ -46,6 +46,14 @@ struct ElevationFileRobustnessTests {
         #expect(grid.elevation(column: 0, row: 0) == 4)
     }
 
+    @Test("A grid whose first value is nan reads it as no data, not as a header key")
+    func gridLeadingNaN() throws {
+        // Taken as a key, `nan` swallowed the value after it and shifted the rest by two.
+        let grid = try ElevationGrid(esriASCII: Self.asc(values: "nan 2 3\n4 5 6\n"))
+        #expect(grid.elevation(column: 0, row: 1).isNaN)
+        #expect(grid.elevation(column: 1, row: 1) == 2 && grid.elevation(column: 2, row: 0) == 6)
+    }
+
     /// A little-endian BigTIFF header pointing at a directory at `ifd`, followed by `rest`.
     static func bigTIFF(ifd: UInt64, _ rest: [UInt8] = []) -> Data {
         var bytes: [UInt8] = [0x49, 0x49, 43, 0, 8, 0, 0, 0]

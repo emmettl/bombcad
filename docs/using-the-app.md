@@ -638,7 +638,7 @@ each on the layer of its group (an Inkscape layer's name, else the outermost gro
 their transforms; a symbol placed with `<use>`, as drawing programs place doors and windows, is
 one item, as a DXF block is. A file of more than 100 MB is refused, as is one whose blocks (or
 `<use>` copies) come to more than 5,000,000 pieces once inserted, one with a NaN or infinite
-coordinate, and an SVG nested more than 64 elements deep, or not in valid UTF-8 while declaring
+coordinate, a DXF whose number does not parse (the message names its line), and an SVG nested more than 64 elements deep, or not in valid UTF-8 while declaring
 no ISO-8859-1, ISO-8859-15 or Windows-1252 encoding. A sheet then asks what the plan means:
 
 - **Units and scale**: from the DXF's header, or the SVG page's size in millimetres (or other
