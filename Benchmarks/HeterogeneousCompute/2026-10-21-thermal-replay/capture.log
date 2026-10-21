@@ -1,0 +1,30 @@
+Thermal radiation, the fireball as its volume:
+Fireball: largest 12.5 m across at 60.0 ms, 1951 K (hottest gas 2465 K); luminous until 60.0 ms
+  radiated 9.0 MJ, 2.2% of the charge's energy, from its cells, absorbing 0.1/m and soot 0.185 of its products
+  ground: 592 points, peak 3.18 MW/m², fluence up to 45.7 kJ/m²
+  block 0: 1620 points, peak 0.28 MW/m², fluence up to 6.7 kJ/m²
+  block 1: 2052 points, peak 1.41 MW/m², fluence up to 34.8 kJ/m²
+  block 2: 1116 points, peak 0.05 MW/m², fluence up to 1.5 kJ/m²
+  block 3: 1596 points, peak 0.09 MW/m², fluence up to 2.3 kJ/m²
+  block 4: 1500 points, peak 0.27 MW/m², fluence up to 7.7 kJ/m²
+  block 5: 1980 points, peak 0.06 MW/m², fluence up to 1.6 kJ/m²
+Surface heating (1D conduction into each surface; ignition illustrative, from test thresholds):
+  ground (asphalt): surface up to 484 K, 191 K above ambient
+  block 0 (concrete): surface up to 313 K, 20 K above ambient
+  block 1 (concrete): surface up to 397 K, 104 K above ambient
+  block 2 (concrete): surface up to 297 K, 4 K above ambient
+  block 3 (concrete): surface up to 300 K, 7 K above ambient
+  block 4 (concrete): surface up to 314 K, 21 K above ambient
+  block 5 (concrete): surface up to 298 K, 5 K above ambient
+  radiated by 2 ms: 0.0%; 5 ms: 0.0%; 10 ms: 0.1%; 20 ms: 0.2%; 50 ms: 1.4%;
+  across, and its temperature, at 10 ms: 4.0 m, 1670 K; 20 ms: 5.5 m, 1608 K; 50 ms: 11.8 m, 1878 K;
+Largest cells: 88 by 66 by 40 voxels 0.250 m a side, 1.63 MB a frame
+Unburnt products left: 55.4 kg of 100.0 kg
+Largest shape: 1017.4 m³ in blocks 0.50 m a side, 44 by 33 by 20, 16 tiles
+Wrote /private/tmp/bombcad-thermal-replay/street.png: t = 60.0 ms after 741 steps, frame rendered in 0.07 ms
+Simulated in 6.6 s
+  Near façade: 2910.1 kPa (422.08 psi), 3329 Pa s
+  Far façade: 473.0 kPa (68.60 psi), 1773 Pa s
+  Down street: 52.0 kPa (7.54 psi), 436 Pa s
+  Side alley: 63.2 kPa (9.16 psi), 489 Pa s
+  Roof: 0.0 kPa (0.00 psi), 0 Pa s

@@ -7,6 +7,10 @@ import simd
 // Split from main.swift (emmettl/bombcad-work#51).
 
 func runThermal() throws {
+    if let path = option("replay") {
+        try runThermalReplay(path: path)
+        return
+    }
     var scenario = option("preset") == nil ? ScenarioPreset.streetCanyon.scenario : chosenScenario()
     if option("preset") == nil, let terrain = option("terrain") { applyTerrain(terrain, to: &scenario) }
     let scene = FragmentScene(scenario)

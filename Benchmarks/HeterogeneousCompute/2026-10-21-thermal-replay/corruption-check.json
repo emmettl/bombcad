@@ -1,0 +1,6 @@
+{
+  "case": "first payload length mismatches manifest",
+  "exitCode": 1,
+  "stdout": "Error: Error Domain=NSCocoaErrorDomain Code=4864 \"The data couldn\u2019t be read because it isn\u2019t in the correct format.\"\n",
+  "stderr": ""
+}

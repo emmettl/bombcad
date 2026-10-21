@@ -252,3 +252,44 @@ live CUDA consumer. It does not establish a one-way transfer budget or close #61
 experiment must capture actual evolving fields, scene and receiver setup, measure extraction,
 encoding, compressed transfer and reconstruction separately, and compare the complete sequence
 with local Metal. A synthetic sphere or echo alone cannot meet that acceptance criterion.
+
+
+### Recording and replaying actual thermal inputs
+
+`blastbench snapshot --thermal spec.json --thermal-record NEW-DIR` records each actual
+consumer frame: shape JSON and the existing binary cells, with static scene/spec/receiver
+setup, per-frame extraction, encoding/write and local consumer times, and final reference.
+The directory must be new; a completed recording has `frames.json` and `reference.json`.
+Recording is synchronous diagnostic I/O and perturbs the solver's elapsed time; do not use
+its total run time as an uninstrumented throughput benchmark.
+
+`blastbench thermal --replay DIR` reconstructs the same inputs, rebuilds the receiver set,
+and requires exact final fluence/peak equality with the capture. It reports read/decode,
+consumer and total time. This is Mac replay, not a CUDA implementation. The static scene
+is the initial consumer geometry, matching existing one-way thermal semantics.
+
+`python3 Scripts/cuda/thermal-link-probe.py bombcad-pc DIR --out NEW.json --context "load/coordination"` selects the
+first, median-size, largest and last luminous cell payloads (deduplicated), and sends each
+three times raw and with zlib levels 1/6 over one SSH connection. Remote SHA256 verifies
+every decoded byte; no files or GPU jobs are created on the PC. Timings include pipe/SSH,
+remote decoding/hashing and a small acknowledgement round trip. Compression is timed once
+per variant. This isolates cell transport; frame JSON, static setup and receiver results
+remain additional costs, and no receiver computation is performed by the remote probe.
+
+### Street replay result: defer live PC thermal offload on this route
+
+The [complete retained experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-thermal-replay/summary.md)
+captures 61 actual street frames and 10,456 receivers. Cells total 53.5 MB, shape JSON 4.08 MB,
+static setup 0.715 MB. Local replay matches every final fluence/peak float exactly and takes
+0.746 s after setup-file decoding. A complete input batch compressed to 10.0–10.7 MB takes
+5.18–5.61 s median send/ack over SSH, plus 0.18–0.39 s compression. These timings include remote
+decode/hash, but no PC thermal computation or result return. All payload hashes pass; GPU
+snapshots stay idle. The original extraction and recording cost are separately retained.
+
+For this case and route, even zero-cost PC computation cannot recover the measured transfer
+cost versus the local consumer. #61's feasibility decision is therefore **defer live thermal
+porting**, preserving a reusable recorder/replay fixture. Offline replay remains possible;
+revisit acceleration with a faster route, heavier receiver/ray work or measured Mac contention.
+No claim extends this result to every scene, and no thermal-model validation threshold changes.
+The probe's optional `--sequence` tests all inputs together, compressed only, with explicit
+length framing; it does not run a remote volume march.

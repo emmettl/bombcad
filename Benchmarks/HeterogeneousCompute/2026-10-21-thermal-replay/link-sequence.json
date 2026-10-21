@@ -1,0 +1,877 @@
+{
+  "date": "2026-10-21T09:13:33.934524+00:00",
+  "host": "bombcad-pc",
+  "context": "Coordinated PC idle; no GPU work. Complete input batch plus selected frame repeats; compressed batch includes setup, manifest, frame JSON and cells, excludes final reference result.",
+  "totals": {
+    "setupBytes": 715469,
+    "frameJSONBytes": 4082313,
+    "cellBytes": 53487328,
+    "localConsumerSeconds": 0.626034753,
+    "extractionSeconds": 0.09732129299999998,
+    "encodingWriteSeconds": 0.300842415
+  },
+  "scope": "Send actual recorded thermal cells one way over persistent SSH; verify decoded SHA256.\n\nNo remote files or GPU work. Timings include local pipes, SSH, remote decode/hash and\nsmall acknowledgement RTT. They are not raw network bandwidth or CUDA replay timings.\n",
+  "before": "0 %, 876 MiB\n",
+  "after": "0 %, 876 MiB\n",
+  "setupSeconds": 0.46315583400000004,
+  "selectedIndices": [
+    0,
+    30,
+    60
+  ],
+  "frames": [
+    {
+      "localConsumerSeconds": 0.008961375,
+      "encodingSeconds": 0.000767208,
+      "cellBytes": 480,
+      "index": 0,
+      "time": 0,
+      "extractionSeconds": 0.071933917
+    },
+    {
+      "localConsumerSeconds": 0.006104292,
+      "encodingSeconds": 0.000641791,
+      "cellBytes": 56480,
+      "index": 1,
+      "time": 0.0009999999999763531,
+      "extractionSeconds": 0.000191792
+    },
+    {
+      "localConsumerSeconds": 0.009699833,
+      "encodingSeconds": 0.000579958,
+      "cellBytes": 72608,
+      "index": 2,
+      "time": 0.00200000000018008,
+      "extractionSeconds": 0.000154708
+    },
+    {
+      "localConsumerSeconds": 0.005035292,
+      "encodingSeconds": 0.00062,
+      "cellBytes": 77648,
+      "index": 3,
+      "time": 0.0030000000003838068,
+      "extractionSeconds": 0.00013225
+    },
+    {
+      "localConsumerSeconds": 0.005553208,
+      "encodingSeconds": 0.00085825,
+      "cellBytes": 118304,
+      "index": 4,
+      "time": 0.004000000000587534,
+      "extractionSeconds": 0.000143958
+    },
+    {
+      "localConsumerSeconds": 0.00647125,
+      "encodingSeconds": 0.001344709,
+      "cellBytes": 224256,
+      "index": 5,
+      "time": 0.00500000000079126,
+      "extractionSeconds": 0.000173584
+    },
+    {
+      "localConsumerSeconds": 0.006470292,
+      "encodingSeconds": 0.001193166,
+      "cellBytes": 183488,
+      "index": 6,
+      "time": 0.006000000000994987,
+      "extractionSeconds": 0.000163459
+    },
+    {
+      "localConsumerSeconds": 0.005383166,
+      "encodingSeconds": 0.0006305,
+      "cellBytes": 80112,
+      "index": 7,
+      "time": 0.007000000001198714,
+      "extractionSeconds": 7.9292e-05
+    },
+    {
+      "localConsumerSeconds": 0.005254833,
+      "encodingSeconds": 0.000551042,
+      "cellBytes": 75296,
+      "index": 8,
+      "time": 0.00800000000140244,
+      "extractionSeconds": 9.0375e-05
+    },
+    {
+      "localConsumerSeconds": 0.005555916,
+      "encodingSeconds": 0.00072525,
+      "cellBytes": 97472,
+      "index": 9,
+      "time": 0.009000000001606168,
+      "extractionSeconds": 0.000121583
+    },
+    {
+      "localConsumerSeconds": 0.006249583,
+      "encodingSeconds": 0.000875791,
+      "cellBytes": 131072,
+      "index": 10,
+      "time": 0.010000000001809894,
+      "extractionSeconds": 0.000142291
+    },
+    {
+      "localConsumerSeconds": 0.007232292,
+      "encodingSeconds": 0.001191375,
+      "cellBytes": 208352,
+      "index": 11,
+      "time": 0.011000000002013621,
+      "extractionSeconds": 0.000158625
+    },
+    {
+      "localConsumerSeconds": 0.007489208,
+      "encodingSeconds": 0.001551,
+      "cellBytes": 265640,
+      "index": 12,
+      "time": 0.012000000002217348,
+      "extractionSeconds": 0.000189291
+    },
+    {
+      "localConsumerSeconds": 0.00727775,
+      "encodingSeconds": 0.001435541,
+      "cellBytes": 230920,
+      "index": 13,
+      "time": 0.013000000002421075,
+      "extractionSeconds": 0.000176333
+    },
+    {
+      "localConsumerSeconds": 0.006521209,
+      "encodingSeconds": 0.001500125,
+      "cellBytes": 255224,
+      "index": 14,
+      "time": 0.014000000002624802,
+      "extractionSeconds": 0.00016675
+    },
+    {
+      "localConsumerSeconds": 0.005811667,
+      "encodingSeconds": 0.001143083,
+      "cellBytes": 192224,
+      "index": 15,
+      "time": 0.015000000002828529,
+      "extractionSeconds": 0.000162167
+    },
+    {
+      "localConsumerSeconds": 0.005900875,
+      "encodingSeconds": 0.001229375,
+      "cellBytes": 192224,
+      "index": 16,
+      "time": 0.01600000000280488,
+      "extractionSeconds": 0.000172333
+    },
+    {
+      "localConsumerSeconds": 0.006072375,
+      "encodingSeconds": 0.001196708,
+      "cellBytes": 198048,
+      "index": 17,
+      "time": 0.01700000000300861,
+      "extractionSeconds": 0.000179
+    },
+    {
+      "localConsumerSeconds": 0.005762125,
+      "encodingSeconds": 0.00131975,
+      "cellBytes": 203872,
+      "index": 18,
+      "time": 0.018000000003212335,
+      "extractionSeconds": 0.000175417
+    },
+    {
+      "localConsumerSeconds": 0.008297084,
+      "encodingSeconds": 0.002964916,
+      "cellBytes": 560592,
+      "index": 19,
+      "time": 0.018999999999778083,
+      "extractionSeconds": 0.000199541
+    },
+    {
+      "localConsumerSeconds": 0.009314292,
+      "encodingSeconds": 0.002981541,
+      "cellBytes": 576608,
+      "index": 20,
+      "time": 0.01999999999634383,
+      "extractionSeconds": 0.000253
+    },
+    {
+      "localConsumerSeconds": 0.009951208,
+      "encodingSeconds": 0.003458,
+      "cellBytes": 629024,
+      "index": 21,
+      "time": 0.02099999999290958,
+      "extractionSeconds": 0.00026075
+    },
+    {
+      "localConsumerSeconds": 0.009958875,
+      "encodingSeconds": 0.003418792,
+      "cellBytes": 629024,
+      "index": 22,
+      "time": 0.021999999989475327,
+      "extractionSeconds": 0.0003145
+    },
+    {
+      "localConsumerSeconds": 0.01007625,
+      "encodingSeconds": 0.004586167,
+      "cellBytes": 681440,
+      "index": 23,
+      "time": 0.022999999986041075,
+      "extractionSeconds": 0.000328583
+    },
+    {
+      "localConsumerSeconds": 0.010428709,
+      "encodingSeconds": 0.004432458,
+      "cellBytes": 733856,
+      "index": 24,
+      "time": 0.023999999982606823,
+      "extractionSeconds": 0.0003615
+    },
+    {
+      "localConsumerSeconds": 0.010112375,
+      "encodingSeconds": 0.004285833,
+      "cellBytes": 733856,
+      "index": 25,
+      "time": 0.02499999997917257,
+      "extractionSeconds": 0.000421375
+    },
+    {
+      "localConsumerSeconds": 0.010534542,
+      "encodingSeconds": 0.004189375,
+      "cellBytes": 786272,
+      "index": 26,
+      "time": 0.025999999979376298,
+      "extractionSeconds": 0.000445041
+    },
+    {
+      "localConsumerSeconds": 0.011179666,
+      "encodingSeconds": 0.004611375,
+      "cellBytes": 838688,
+      "index": 27,
+      "time": 0.026999999979580025,
+      "extractionSeconds": 0.000416083
+    },
+    {
+      "localConsumerSeconds": 0.011681875,
+      "encodingSeconds": 0.00540925,
+      "cellBytes": 919328,
+      "index": 28,
+      "time": 0.027999999979783752,
+      "extractionSeconds": 0.000423709
+    },
+    {
+      "localConsumerSeconds": 0.010865542,
+      "encodingSeconds": 0.004812542,
+      "cellBytes": 976784,
+      "index": 29,
+      "time": 0.02899999997998748,
+      "extractionSeconds": 0.000422375
+    },
+    {
+      "localConsumerSeconds": 0.010783167,
+      "encodingSeconds": 0.005683958,
+      "cellBytes": 976784,
+      "index": 30,
+      "time": 0.029999999976553227,
+      "extractionSeconds": 0.000417333
+    },
+    {
+      "localConsumerSeconds": 0.011022959,
+      "encodingSeconds": 0.005755917,
+      "cellBytes": 976784,
+      "index": 31,
+      "time": 0.030999999973118975,
+      "extractionSeconds": 0.000473209
+    },
+    {
+      "localConsumerSeconds": 0.011366583,
+      "encodingSeconds": 0.006897708,
+      "cellBytes": 1088672,
+      "index": 32,
+      "time": 0.03199999996968472,
+      "extractionSeconds": 0.000498875
+    },
+    {
+      "localConsumerSeconds": 0.01182675,
+      "encodingSeconds": 0.006689791,
+      "cellBytes": 1088672,
+      "index": 33,
+      "time": 0.03299999996625047,
+      "extractionSeconds": 0.000481625
+    },
+    {
+      "localConsumerSeconds": 0.011490792,
+      "encodingSeconds": 0.006336292,
+      "cellBytes": 1088672,
+      "index": 34,
+      "time": 0.0339999999664542,
+      "extractionSeconds": 0.000467584
+    },
+    {
+      "localConsumerSeconds": 0.011779625,
+      "encodingSeconds": 0.006421625,
+      "cellBytes": 1088672,
+      "index": 35,
+      "time": 0.034999999966657924,
+      "extractionSeconds": 0.000510416
+    },
+    {
+      "localConsumerSeconds": 0.011692959,
+      "encodingSeconds": 0.006653708,
+      "cellBytes": 1149152,
+      "index": 36,
+      "time": 0.03599999996686165,
+      "extractionSeconds": 0.000541417
+    },
+    {
+      "localConsumerSeconds": 0.012423208,
+      "encodingSeconds": 0.006361084,
+      "cellBytes": 1234272,
+      "index": 37,
+      "time": 0.03699999996706538,
+      "extractionSeconds": 0.000548833
+    },
+    {
+      "localConsumerSeconds": 0.013222125,
+      "encodingSeconds": 0.006463208,
+      "cellBytes": 1265128,
+      "index": 38,
+      "time": 0.037999999967269105,
+      "extractionSeconds": 0.000571
+    },
+    {
+      "localConsumerSeconds": 0.012882542,
+      "encodingSeconds": 0.006596917,
+      "cellBytes": 1295984,
+      "index": 39,
+      "time": 0.03899999996383485,
+      "extractionSeconds": 0.000553291
+    },
+    {
+      "localConsumerSeconds": 0.012216875,
+      "encodingSeconds": 0.007028542,
+      "cellBytes": 1295984,
+      "index": 40,
+      "time": 0.0399999999604006,
+      "extractionSeconds": 0.000581375
+    },
+    {
+      "localConsumerSeconds": 0.011792625,
+      "encodingSeconds": 0.007651208,
+      "cellBytes": 1295984,
+      "index": 41,
+      "time": 0.04099999995696635,
+      "extractionSeconds": 0.000579583
+    },
+    {
+      "localConsumerSeconds": 0.011926666,
+      "encodingSeconds": 0.007493667,
+      "cellBytes": 1295984,
+      "index": 42,
+      "time": 0.0419999999535321,
+      "extractionSeconds": 0.00062925
+    },
+    {
+      "localConsumerSeconds": 0.012224625,
+      "encodingSeconds": 0.006590583,
+      "cellBytes": 1295984,
+      "index": 43,
+      "time": 0.042999999950097845,
+      "extractionSeconds": 0.000582791
+    },
+    {
+      "localConsumerSeconds": 0.012758167,
+      "encodingSeconds": 0.007277417,
+      "cellBytes": 1295984,
+      "index": 44,
+      "time": 0.04399999994666359,
+      "extractionSeconds": 0.00060875
+    },
+    {
+      "localConsumerSeconds": 0.0126115,
+      "encodingSeconds": 0.007470209,
+      "cellBytes": 1295984,
+      "index": 45,
+      "time": 0.044999999946639946,
+      "extractionSeconds": 0.000616667
+    },
+    {
+      "localConsumerSeconds": 0.013060834,
+      "encodingSeconds": 0.00798875,
+      "cellBytes": 1492992,
+      "index": 46,
+      "time": 0.04599999994684367,
+      "extractionSeconds": 0.000705417
+    },
+    {
+      "localConsumerSeconds": 0.012972959,
+      "encodingSeconds": 0.00796575,
+      "cellBytes": 1492992,
+      "index": 47,
+      "time": 0.046999999946820026,
+      "extractionSeconds": 0.000656792
+    },
+    {
+      "localConsumerSeconds": 0.012992792,
+      "encodingSeconds": 0.008201625,
+      "cellBytes": 1492992,
+      "index": 48,
+      "time": 0.047999999943385774,
+      "extractionSeconds": 0.000696292
+    },
+    {
+      "localConsumerSeconds": 0.012399791,
+      "encodingSeconds": 0.008083625,
+      "cellBytes": 1492992,
+      "index": 49,
+      "time": 0.04899999993995152,
+      "extractionSeconds": 0.000708916
+    },
+    {
+      "localConsumerSeconds": 0.013473791,
+      "encodingSeconds": 0.008646084,
+      "cellBytes": 1541152,
+      "index": 50,
+      "time": 0.04999999993651727,
+      "extractionSeconds": 0.00073375
+    },
+    {
+      "localConsumerSeconds": 0.013819792,
+      "encodingSeconds": 0.008831875,
+      "cellBytes": 1576992,
+      "index": 51,
+      "time": 0.05099999993308302,
+      "extractionSeconds": 0.000689709
+    },
+    {
+      "localConsumerSeconds": 0.013644583,
+      "encodingSeconds": 0.009039708,
+      "cellBytes": 1576992,
+      "index": 52,
+      "time": 0.051999999929648766,
+      "extractionSeconds": 0.000620209
+    },
+    {
+      "localConsumerSeconds": 0.012977709,
+      "encodingSeconds": 0.008568292,
+      "cellBytes": 1576992,
+      "index": 53,
+      "time": 0.05299999992985249,
+      "extractionSeconds": 0.000623166
+    },
+    {
+      "localConsumerSeconds": 0.012829459,
+      "encodingSeconds": 0.008992,
+      "cellBytes": 1576992,
+      "index": 54,
+      "time": 0.05399999993005622,
+      "extractionSeconds": 0.000644417
+    },
+    {
+      "localConsumerSeconds": 0.01338025,
+      "encodingSeconds": 0.008268959,
+      "cellBytes": 1576992,
+      "index": 55,
+      "time": 0.054999999930259946,
+      "extractionSeconds": 0.000637459
+    },
+    {
+      "localConsumerSeconds": 0.014134875,
+      "encodingSeconds": 0.008960417,
+      "cellBytes": 1626272,
+      "index": 56,
+      "time": 0.05599999993046367,
+      "extractionSeconds": 0.000684209
+    },
+    {
+      "localConsumerSeconds": 0.013386625,
+      "encodingSeconds": 0.009095625,
+      "cellBytes": 1626272,
+      "index": 57,
+      "time": 0.0569999999306674,
+      "extractionSeconds": 0.000672458
+    },
+    {
+      "localConsumerSeconds": 0.013270125,
+      "encodingSeconds": 0.008223084,
+      "cellBytes": 1626272,
+      "index": 58,
+      "time": 0.05799999993087113,
+      "extractionSeconds": 0.000649834
+    },
+    {
+      "localConsumerSeconds": 0.013299583,
+      "encodingSeconds": 0.008857458,
+      "cellBytes": 1626272,
+      "index": 59,
+      "time": 0.058999999931074854,
+      "extractionSeconds": 0.0006705
+    },
+    {
+      "localConsumerSeconds": 0.013163458,
+      "encodingSeconds": 0.009242458,
+      "cellBytes": 1626272,
+      "index": 60,
+      "time": 0.05999999993127858,
+      "extractionSeconds": 0.000712584
+    }
+  ],
+  "samples": [
+    {
+      "index": 0,
+      "time": 0,
+      "rawBytes": 480,
+      "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+      "level": 0,
+      "wireBytes": 480,
+      "encodingSeconds": 1.4579999999542181e-06,
+      "medianSeconds": 0.02342674999999994,
+      "samples": [
+        {
+          "seconds": 0.02342674999999994,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 3.0819937819615006e-06,
+          "decodeHashSeconds": 1.0617004591040313e-05
+        },
+        {
+          "seconds": 0.023416707999999953,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 1.1709009413607419e-05,
+          "decodeHashSeconds": 1.3316996046341956e-05
+        },
+        {
+          "seconds": 0.024026667,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 3.885987098328769e-06,
+          "decodeHashSeconds": 9.616996976546943e-06
+        }
+      ]
+    },
+    {
+      "index": 0,
+      "time": 0,
+      "rawBytes": 480,
+      "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+      "level": 1,
+      "wireBytes": 146,
+      "encodingSeconds": 5.633300000007502e-05,
+      "medianSeconds": 0.027718875000000143,
+      "samples": [
+        {
+          "seconds": 0.027718875000000143,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 3.28800524584949e-06,
+          "decodeHashSeconds": 4.479700874071568e-05
+        },
+        {
+          "seconds": 0.035507667000000076,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 4.28801286034286e-06,
+          "decodeHashSeconds": 2.5717992684803903e-05
+        },
+        {
+          "seconds": 0.026186209000000016,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 2.9990042094141245e-06,
+          "decodeHashSeconds": 1.4275996363721788e-05
+        }
+      ]
+    },
+    {
+      "index": 0,
+      "time": 0,
+      "rawBytes": 480,
+      "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+      "level": 6,
+      "wireBytes": 126,
+      "encodingSeconds": 2.1666999999947478e-05,
+      "medianSeconds": 0.023673374999999997,
+      "samples": [
+        {
+          "seconds": 0.026714292000000084,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 3.865003236569464e-06,
+          "decodeHashSeconds": 1.6192992916330695e-05
+        },
+        {
+          "seconds": 0.023673374999999997,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 3.092005499638617e-06,
+          "decodeHashSeconds": 1.4689008821733296e-05
+        },
+        {
+          "seconds": 0.023487833999999985,
+          "sha256": "8753cab26881db0b06b830e55d5a47d10ab6e3dae610901f55b85385f5702f53",
+          "rawBytes": 480,
+          "receiveSeconds": 2.845001290552318e-06,
+          "decodeHashSeconds": 1.111200253944844e-05
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "time": 0.029999999976553227,
+      "rawBytes": 976784,
+      "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+      "level": 0,
+      "wireBytes": 976784,
+      "encodingSeconds": 2.500000000349445e-07,
+      "medianSeconds": 0.42544004199999996,
+      "samples": [
+        {
+          "seconds": 0.42544004199999996,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.35997869398852345,
+          "decodeHashSeconds": 0.0003971499972976744
+        },
+        {
+          "seconds": 0.3630850830000001,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.3298085280111991,
+          "decodeHashSeconds": 0.00045520398998633027
+        },
+        {
+          "seconds": 0.49590229200000024,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.35603984400222544,
+          "decodeHashSeconds": 0.0003956139989895746
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "time": 0.029999999976553227,
+      "rawBytes": 976784,
+      "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+      "level": 1,
+      "wireBytes": 177443,
+      "encodingSeconds": 0.007820750000000043,
+      "medianSeconds": 0.07900341700000002,
+      "samples": [
+        {
+          "seconds": 0.07900341700000002,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.004649997994420119,
+          "decodeHashSeconds": 0.002045564993750304
+        },
+        {
+          "seconds": 0.2432341250000003,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.08128276299976278,
+          "decodeHashSeconds": 0.0014369299897225574
+        },
+        {
+          "seconds": 0.07735341699999987,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.04463034799846355,
+          "decodeHashSeconds": 0.0014847480051685125
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "time": 0.029999999976553227,
+      "rawBytes": 976784,
+      "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+      "level": 6,
+      "wireBytes": 164110,
+      "encodingSeconds": 0.016585208000000407,
+      "medianSeconds": 0.21133512500000018,
+      "samples": [
+        {
+          "seconds": 0.21133512500000018,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.0820362020022003,
+          "decodeHashSeconds": 0.002105564999510534
+        },
+        {
+          "seconds": 0.09356945900000024,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.058375150998472236,
+          "decodeHashSeconds": 0.0019241999980295077
+        },
+        {
+          "seconds": 0.22398812499999998,
+          "sha256": "f805fbb97010db58806c718dbbca618fea47d97038e993665a5b278457f454ff",
+          "rawBytes": 976784,
+          "receiveSeconds": 0.07907565000641625,
+          "decodeHashSeconds": 0.0019464779907139018
+        }
+      ]
+    },
+    {
+      "index": 60,
+      "time": 0.05999999993127858,
+      "rawBytes": 1626272,
+      "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+      "level": 0,
+      "wireBytes": 1626272,
+      "encodingSeconds": 4.124999999799428e-06,
+      "medianSeconds": 0.8677954589999999,
+      "samples": [
+        {
+          "seconds": 1.0671704589999997,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 1.0406647120107664,
+          "decodeHashSeconds": 0.000776137996581383
+        },
+        {
+          "seconds": 0.8323480839999995,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.8136243879998801,
+          "decodeHashSeconds": 0.0006526029901579022
+        },
+        {
+          "seconds": 0.8677954589999999,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.8515227070020046,
+          "decodeHashSeconds": 0.0006815609958721325
+        }
+      ]
+    },
+    {
+      "index": 60,
+      "time": 0.05999999993127858,
+      "rawBytes": 1626272,
+      "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+      "level": 1,
+      "wireBytes": 354145,
+      "encodingSeconds": 0.012382415999999452,
+      "medianSeconds": 0.20566808299999995,
+      "samples": [
+        {
+          "seconds": 0.1754562910000006,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.14961709700583015,
+          "decodeHashSeconds": 0.00287572099477984
+        },
+        {
+          "seconds": 0.20566808299999995,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.15088938300323207,
+          "decodeHashSeconds": 0.0032741770119173452
+        },
+        {
+          "seconds": 0.2093789579999994,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.18216399299853947,
+          "decodeHashSeconds": 0.00317522999830544
+        }
+      ]
+    },
+    {
+      "index": 60,
+      "time": 0.05999999993127858,
+      "rawBytes": 1626272,
+      "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+      "level": 6,
+      "wireBytes": 336917,
+      "encodingSeconds": 0.01222062499999943,
+      "medianSeconds": 0.19230733299999958,
+      "samples": [
+        {
+          "seconds": 0.19230733299999958,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.15852988199912943,
+          "decodeHashSeconds": 0.003991193996625952
+        },
+        {
+          "seconds": 0.17498754100000014,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.14797018599347211,
+          "decodeHashSeconds": 0.003360332004376687
+        },
+        {
+          "seconds": 0.2477867499999995,
+          "sha256": "2556b7df582fb1e26e7e97a115e9708c4b81f2e9d592a7eee0cae518b32d105c",
+          "rawBytes": 1626272,
+          "receiveSeconds": 0.19149562899838202,
+          "decodeHashSeconds": 0.0033527759951539338
+        }
+      ]
+    },
+    {
+      "index": "sequence",
+      "time": null,
+      "rawBytes": 58295589,
+      "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+      "level": 1,
+      "wireBytes": 10680795,
+      "encodingSeconds": 0.17962304099999926,
+      "medianSeconds": 5.611975458,
+      "samples": [
+        {
+          "seconds": 5.031669791,
+          "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+          "rawBytes": 58295589,
+          "receiveSeconds": 5.000142828008393,
+          "decodeHashSeconds": 0.15311264900083188
+        },
+        {
+          "seconds": 6.029972834000002,
+          "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+          "rawBytes": 58295589,
+          "receiveSeconds": 6.012520276999567,
+          "decodeHashSeconds": 0.1368879060028121
+        },
+        {
+          "seconds": 5.611975458,
+          "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+          "rawBytes": 58295589,
+          "receiveSeconds": 5.600838094003848,
+          "decodeHashSeconds": 0.12817130298935808
+        }
+      ]
+    },
+    {
+      "index": "sequence",
+      "time": null,
+      "rawBytes": 58295589,
+      "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+      "level": 6,
+      "wireBytes": 9958949,
+      "encodingSeconds": 0.3933982090000008,
+      "medianSeconds": 5.183649666000001,
+      "samples": [
+        {
+          "seconds": 4.0869962499999986,
+          "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+          "rawBytes": 58295589,
+          "receiveSeconds": 4.0262967760063475,
+          "decodeHashSeconds": 0.15025411199894734
+        },
+        {
+          "seconds": 5.183649666000001,
+          "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+          "rawBytes": 58295589,
+          "receiveSeconds": 5.099315336992731,
+          "decodeHashSeconds": 0.16460327799723018
+        },
+        {
+          "seconds": 5.269416790999998,
+          "sha256": "2eefb7879ddce45a7b14feaa239497031d42d9d44e23003b988641499835d7a1",
+          "rawBytes": 58295589,
+          "receiveSeconds": 5.209638372994959,
+          "decodeHashSeconds": 0.15790206599922385
+        }
+      ]
+    }
+  ]
+}

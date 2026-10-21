@@ -83,6 +83,10 @@ func runSnapshot() throws {
         try spec.validate()
         return ThermalExposure(spec: spec, scene: FragmentScene(scenario))
     }
+    let replay = try option("thermal-record").map { path in
+        guard let thermal else { throw CocoaError(.coderInvalidValue) }
+        return try ThermalReplayWriter(path: path, exposure: thermal, scene: FragmentScene(scenario))
+    }
     // With --thermal-compare, the same frames reckoned with another fireball model too (the
     // shape against the volume, the sphere against the shape, or --thermal-compare-with's), and
     // each timed.
@@ -109,18 +113,21 @@ func runSnapshot() throws {
     var otherRadiated: [(time: Double, power: Double)] = []
     var largestShape: FireballShape?
     var largestCells: LuminousCells?
-    func feedThermal() {
+    func feedThermal() throws {
         guard var exposure = thermal else { return }
         let extracting = ContinuousClock.now
         let frame = solver.fireball(for: exposure.spec)
-        fireballSeconds += (ContinuousClock.now - extracting) / .seconds(1)
+        let extraction = (ContinuousClock.now - extracting) / .seconds(1)
+        fireballSeconds += extraction
         if let shape = frame.shape, shape.volume > largestShape?.volume ?? 0 { largestShape = shape }
         if let cells = frame.cells, cells.fills.count > largestCells?.fills.count ?? 0 {
             largestCells = cells
         }
         var started = ContinuousClock.now
         exposure.add(frame)
-        thermalSeconds.0 += (ContinuousClock.now - started) / .seconds(1)
+        let consumer = (ContinuousClock.now - started) / .seconds(1)
+        thermalSeconds.0 += consumer
+        try replay?.append(frame, extraction: extraction, consumer: consumer)
         thermal = exposure
         if var compared = other {
             started = ContinuousClock.now
@@ -133,7 +140,7 @@ func runSnapshot() throws {
     }
     feedFragments()
     feedGround()
-    feedThermal()
+    try feedThermal()
     // The fireball cut out on the GPU at the end of each batch that lands on a frame, as a
     // headless run does.
     if let thermal { solver.frameRequest = FrameRequest(thermal: thermal.spec) }
@@ -184,7 +191,7 @@ func runSnapshot() throws {
             checkpointSaved = true
         }
     }
-    func advance(to end: Double) {
+    func advance(to end: Double) throws {
         while solver.time < end - 1e-9 {
             // Saving, to the next boundary: a frame's clipped batch leaves the steps off it.
             let interval = BlastSolver.checkpointInterval
@@ -194,7 +201,7 @@ func runSnapshot() throws {
             saveCheckpointIfDue()
             feedFragments()
             feedGround()
-            feedThermal()
+            try feedThermal()
             if solver.airIsAsleep, sleptAt == nil { sleptAt = solver.time }
             if let summary = solver.bodySummary() { largest = max(largest, summary.maxDisplacement) }
             if result.steps == 0 || !result.isStable { break }
@@ -205,11 +212,12 @@ func runSnapshot() throws {
         $0 < time
     }
     for frameTime in frames.sorted() {
-        advance(to: frameTime)
+        try advance(to: frameTime)
         let stem = (output as NSString).deletingPathExtension
         try writeSnapshot(to: "\(stem)-\(format(frameTime * 1000, 0))ms.png")
     }
-    if option("from") == nil { advance(to: time) }
+    if option("from") == nil { try advance(to: time) }
+    if let thermal { try replay?.finish(thermal) }
     if checkpointAt != nil, !checkpointSaved {
         print(
             "No checkpoint: the run ended before a \(BlastSolver.checkpointInterval)-step boundary from --checkpoint-at"
