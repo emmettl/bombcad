@@ -164,6 +164,8 @@ def main(argv=None):
     ap.add_argument('--label', required=True)
     ap.add_argument('--history-dir', type=Path, help='write the deck-format CSV here (full runs only)')
     ap.add_argument('--steps-csv', type=Path, help='write every step\'s gauge pressures here')
+    ap.add_argument('--directions', action='store_true',
+                    help='also read each gauge\'s distance at 45 degrees above the ground and on the axis')
     ap.add_argument('--startup-steps', type=int, default=0,
                     help='first-order steps before second order (the deck names 6 for BombCAD\'s adapter)')
     args = ap.parse_args(argv)
@@ -232,7 +234,15 @@ def main(argv=None):
     excess_mass = mass0 - rho0 * ambient_volume
     excess_energy = energy0 - p0 / (gamma - 1) * ambient_volume
 
-    probe = Gauges(gauges, args.dx, n, n, gamma, p0)
+    extra = []
+    if args.directions:
+        # Off the ground: the same distance from the charge, at 45 degrees and straight up the axis.
+        for g in gauges:
+            d = g['position_m'][0]
+            extra.append({'id': f"{g['id']}@45deg", 'position_m': [d / math.sqrt(2), 0, d / math.sqrt(2)]})
+            extra.append({'id': f"{g['id']}@axis", 'position_m': [0, 0, d]})
+    probe = Gauges(gauges + extra, args.dx, n, n, gamma, p0)
+    main_ids = [g['id'] for g in gauges]
     steps = [(0.0, probe.read(state.q))]
 
     def before_step(solver, state):
@@ -264,9 +274,11 @@ def main(argv=None):
                   f'{time.time() - started:.0f} s', flush=True)
     wall = time.time() - started
 
-    def reads(trace):
+    def reads(trace, ids=main_ids):
         out = {}
         for idx, gid in enumerate(probe.ids):
+            if gid not in ids:
+                continue
             series = [(t, v[idx]) for t, v in trace]
             try:
                 values, info = run_decks.incident(series)
@@ -311,6 +323,8 @@ def main(argv=None):
                                          for b in budget],
         'gauges_at_samples': reads(samples),
         'gauges_every_step': reads(steps),
+        **({'directions_at_samples': reads(samples, [g['id'] for g in extra]),
+            'directions_every_step': reads(steps, [g['id'] for g in extra])} if extra else {}),
     }
     out = HERE / 'outputs' / f'{args.label}.json'
     out.parent.mkdir(exist_ok=True)
@@ -327,7 +341,7 @@ def main(argv=None):
             writer = csv.writer(stream, lineterminator='\n')
             writer.writerow(['case', 'run', 'gauge', 'time_s', 'overpressure_Pa'])
             for t, values in samples:
-                for gid, value in zip(probe.ids, values):
+                for gid, value in zip(main_ids, values):
                     writer.writerow([CASE_ID, RUN_ID, gid, repr(float(t)), repr(float(value))])
     print(f'{args.label}: done, {solver.status["numsteps"]} steps, {wall:.0f} s', flush=True)
     return 0

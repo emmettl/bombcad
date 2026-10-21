@@ -81,6 +81,11 @@
      "peak_incident_overpressure": 2668.2815221403325,
      "incident_positive_impulse": 834.4292991217458,
      "arrival_time": 1.2716036312181973
+    },
+    "0.015625": {
+     "peak_incident_overpressure": 2510.958541121702,
+     "incident_positive_impulse": 867.6551926198612,
+     "arrival_time": 1.2392144013394335
     }
    }
   },
@@ -165,6 +170,11 @@
      "peak_incident_overpressure": 1550.8156266241929,
      "incident_positive_impulse": 890.3316127672236,
      "arrival_time": 2.0223387871941525
+    },
+    "0.015625": {
+     "peak_incident_overpressure": 1279.491785910756,
+     "incident_positive_impulse": 851.8577447732163,
+     "arrival_time": 1.9619027543626701
     }
    }
   },
@@ -249,6 +259,11 @@
      "peak_incident_overpressure": 577.5870255887506,
      "incident_positive_impulse": 616.0027614585696,
      "arrival_time": 4.20442153756656
+    },
+    "0.015625": {
+     "peak_incident_overpressure": 534.046667818309,
+     "incident_positive_impulse": 601.4335221085744,
+     "arrival_time": 4.222269799371234
     }
    }
   },
@@ -333,6 +348,11 @@
      "peak_incident_overpressure": 281.62093838938887,
      "incident_positive_impulse": 496.19207826169804,
      "arrival_time": 7.363943823197068
+    },
+    "0.015625": {
+     "peak_incident_overpressure": 288.7887673551183,
+     "incident_positive_impulse": 493.8144065698305,
+     "arrival_time": 7.418888584466419
     }
    }
   },
@@ -579,6 +599,84 @@
     "window_mean_kPa": 418.38487511960994,
     "drift": 0.00011846073988257483,
     "energy_gain": 0.00027592066953086025
+   },
+   "24-octant": {
+    "window_mean_kPa": 418.3848761515108,
+    "drift": 0.0001184607529205048,
+    "energy_gain": 0.0002759234831191115
+   },
+   "48-octant": {
+    "window_mean_kPa": 418.163553910695,
+    "drift": 9.856775479771876e-05,
+    "energy_gain": 5.085009420424669e-06
+   },
+   "96-octant": {
+    "window_mean_kPa": 418.053104748432,
+    "drift": 8.298993138255542e-05,
+    "energy_gain": 5.3511724511512426e-05
+   }
+  },
+  "0.5kg-m3": {
+   "24": {
+    "window_mean_kPa": 836.8723489521949,
+    "drift": 4.226074517017792e-05,
+    "energy_gain": 0.00021290406144736096
+   },
+   "48-octant": {
+    "window_mean_kPa": 836.4897817212255,
+    "drift": 6.78624743628792e-05,
+    "energy_gain": 9.789414265881646e-07
+   }
+  },
+  "1kg-m3": {
+   "24": {
+    "window_mean_kPa": 1673.5117322295825,
+    "drift": 1.7184950301812986e-05,
+    "energy_gain": 8.859796173821266e-06
+   },
+   "48": {
+    "window_mean_kPa": 1673.265387916933,
+    "drift": 5.798832006698468e-05,
+    "energy_gain": 6.661338147750939e-16
+   },
+   "48-octant": {
+    "window_mean_kPa": 1673.2653879169288,
+    "drift": 5.798832006741966e-05,
+    "energy_gain": 8.881784197001252e-16
+   }
+  },
+  "2kg-m3": {
+   "24": {
+    "window_mean_kPa": 3347.0726033925944,
+    "drift": 1.545049885011844e-05,
+    "energy_gain": 6.262522278532856e-09
+   },
+   "48-octant": {
+    "window_mean_kPa": 3346.543267179239,
+    "drift": 4.0137412218062174e-05,
+    "energy_gain": 2.220446049250313e-16
+   }
+  },
+  "4kg-m3": {
+   "24": {
+    "window_mean_kPa": 6694.216728561617,
+    "drift": 9.615918215894019e-06,
+    "energy_gain": -1.9984014443252818e-15
+   },
+   "24-octant": {
+    "window_mean_kPa": 6694.216728561614,
+    "drift": 9.61591821589402e-06,
+    "energy_gain": -1.887379141862766e-15
+   },
+   "48-octant": {
+    "window_mean_kPa": 6693.666907656929,
+    "drift": 1.5160720437687667e-05,
+    "energy_gain": 6.661338147750939e-16
+   },
+   "96-octant": {
+    "window_mean_kPa": 6693.13973103304,
+    "drift": 2.823517662116878e-05,
+    "energy_gain": -1.1102230246251565e-16
    }
   }
  }
