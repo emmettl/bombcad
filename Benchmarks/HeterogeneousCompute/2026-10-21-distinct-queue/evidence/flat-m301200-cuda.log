@@ -1,0 +1,108 @@
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": false,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2716,
+  "startTime": 0.003642724240071818,
+  "elapsedSimulationTime": 4.50635727574263,
+  "wallSeconds": 45.06590796900855,
+  "shape": [
+    512,
+    512,
+    59
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 680,
+    "emptyIntervals": 0,
+    "minBoxCells": 14,
+    "maxBoxCells": 285190,
+    "meanBoxCells": 182490.5705882353
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 48.892780681999284,
+    "adjustedMonotonicSeconds": 48.892060882993974
+  },
+  "timings": {
+    "importsAndValidationSeconds": 2.3688400039973203,
+    "compileSeconds": 0.1801362130063353,
+    "deviceSetupAndUploadSeconds": 0.6952200419909786,
+    "solverSeconds": 45.06590796900855,
+    "validationAndOutputSeconds": 0.5826670139940688,
+    "workerSecondsBeforeManifests": 48.89277828201011
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": false,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2716,
+  "startTime": 0.003642724240071818,
+  "elapsedSimulationTime": 4.50635727574263,
+  "wallSeconds": 45.06590796900855,
+  "shape": [
+    512,
+    512,
+    59
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 680,
+    "emptyIntervals": 0,
+    "minBoxCells": 14,
+    "maxBoxCells": 285190,
+    "meanBoxCells": 182490.5705882353
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 48.892780681999284,
+    "adjustedMonotonicSeconds": 48.892060882993974
+  },
+  "timings": {
+    "importsAndValidationSeconds": 2.3688400039973203,
+    "compileSeconds": 0.1801362130063353,
+    "deviceSetupAndUploadSeconds": 0.6952200419909786,
+    "solverSeconds": 45.06590796900855,
+    "validationAndOutputSeconds": 0.5826670139940688,
+    "workerSecondsBeforeManifests": 48.89277828201011
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}

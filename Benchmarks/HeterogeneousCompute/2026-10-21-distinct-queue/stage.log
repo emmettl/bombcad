@@ -1,0 +1,5 @@
+flat-m100400 gate False
+Traceback (most recent call last):
+  File "/private/tmp/bombcad-distinct-queue/stage.py", line 58, in <module>
+    if not before['available']:raise RuntimeError('PC unavailable before dispatch; no worker started for this case. Inspect owner before continuation')
+RuntimeError: PC unavailable before dispatch; no worker started for this case. Inspect owner before continuation

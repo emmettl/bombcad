@@ -1,0 +1,112 @@
+{
+  "arguments" : [
+    "--osm",
+    "\/Volumes\/StudioData\/bombcad\/ml\/layouts\/made-perimeter-s1\/district.osm",
+    "--centre",
+    "0.01275236,0.01201492",
+    "--radius",
+    "1024",
+    "--dx",
+    "4",
+    "--mass",
+    "200800",
+    "--ground",
+    "saturated",
+    "--id",
+    "flat-m200800",
+    "--layout",
+    "made-perimeter-s1",
+    "--first-phase",
+    "--height",
+    "236",
+    "--until",
+    "4.51",
+    "--phase-timings",
+    "--out",
+    "\/Volumes\/StudioData\/bombcad\/experiments\/2026-10-21-distinct-queue\/flat-m200800\/reference"
+  ],
+  "buildings" : 6234,
+  "cellSizeM" : 4,
+  "cells" : 15466496,
+  "charge" : {
+    "cell" : [
+      256,
+      256
+    ],
+    "massKg" : 200800,
+    "positionM" : [
+      1024,
+      1024,
+      0
+    ],
+    "yieldKt" : 0.2008
+  },
+  "columns" : 512,
+  "configuration" : "recommended",
+  "domainM" : [
+    2048,
+    2048,
+    236
+  ],
+  "edgeCells" : 4,
+  "format" : "bombcad-field-1",
+  "ground" : "saturated",
+  "heightAboveGroundM" : 2,
+  "id" : "flat-m200800",
+  "index" : "[channel, row, column]: rows from the south going north (y), columns from the west going east (x)",
+  "inputs" : [
+    {
+      "name" : "height",
+      "units" : "m above the ground: the tallest block over the cell's centre, 0 for none"
+    },
+    {
+      "name" : "ground",
+      "units" : "m, the ground at the cell's centre above the ground under the charge"
+    },
+    {
+      "name" : "distance",
+      "units" : "m, in plan from the charge to the cell's centre"
+    },
+    {
+      "name" : "logScaledDistance",
+      "units" : "ln(Z), Z = max(distance, cell \/ 2) \/ W^(1\/3) in m\/kg^(1\/3)"
+    },
+    {
+      "name" : "kingeryBulmashPeak",
+      "units" : "Pa, incident peak overpressure of a hemispherical surface burst at Z"
+    },
+    {
+      "name" : "kingeryBulmashImpulse",
+      "units" : "Pa s, incident positive impulse at Z"
+    }
+  ],
+  "layout" : "made-perimeter-s1",
+  "made" : "2026-10-21T20:59:31Z",
+  "mask" : "1 where the target is air at the height and at least edgeCells from the side faces",
+  "maskedShare" : 0.6027717590332031,
+  "originM" : [
+    0,
+    0
+  ],
+  "rows" : 512,
+  "solverBytes" : 1138491392,
+  "sourceRevision" : "7ed4a40186081f0600fcc2d2b2de7bae2aefacbd",
+  "stable" : true,
+  "steps" : 2645,
+  "targets" : [
+    {
+      "name" : "peakOverpressure",
+      "units" : "Pa, the run's largest overpressure in the cell at the height"
+    },
+    {
+      "name" : "impulse",
+      "units" : "Pa s, the run's positive-phase impulse in the cell at the height"
+    },
+    {
+      "name" : "firstPhaseImpulse",
+      "units" : "Pa s, the first positive phase's impulse at the height, by the façade recorder's rule: from the start until the overpressure first falls below nothing after reaching half its peak"
+    }
+  ],
+  "untilS" : 4.510000000004387,
+  "wallS" : 44.873685167
+}

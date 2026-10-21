@@ -1,0 +1,65 @@
+{
+  "above" : 2,
+  "axes" : [
+    0,
+    1,
+    2
+  ],
+  "cooling" : {
+    "absorption" : 0.10000000149011612,
+    "capacity" : 0,
+    "hasSpecies" : 1,
+    "interval" : 4,
+    "largestShare" : 0.25,
+    "luminous" : 1500,
+    "luminousEnergy" : 1203432.625,
+    "sootAbsorption" : 0.1867472380399704
+  },
+  "description" : "BombCAD initial grid; mapped start retained where used",
+  "duration" : 4.5055642341263402,
+  "files" : {
+    "columns.bin" : "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+    "impulse.bin" : "b974d0ff6bae8231a9b1a8ed04c0748ce7ac6dfdb537d23df02e92ea466d4b3a",
+    "mask.bin" : "f47f4e678aea3bf472c49649a52a63ece09d651a43f036ecdfc64c0fbfdfc780",
+    "open.bin" : "571f6a851b8926e78094aca76ba5743aaddcd31c26ced58324d33a925e04cf62",
+    "peak.bin" : "25c675eb997345d5c654e4f4c6dc9fea23591f85a2a032009d249fd52be17bec",
+    "records.bin" : "8cbcd836772394e4c9ce7e90eb3834a1c22f90a81436eed559b9dbd409a7059e",
+    "species.bin" : "5db999e42eb2374efb92f8f86c94bfc6b484fc085524a76e1f22bfc21bb39edc",
+    "state.bin" : "be582651ba7afc0d28580d193a54bb74e423e73da7ba6e850edc7bb0444c7f25"
+  },
+  "format" : "bombcad-cuda-job-1",
+  "shape" : [
+    512,
+    512,
+    59
+  ],
+  "sourceSHA256" : "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "startStep" : 0,
+  "startTime" : 0.0044357658736597378,
+  "startupSteps" : 6,
+  "steps" : 10000000,
+  "uniforms" : {
+    "afterburnEnergy" : 10000000,
+    "afterburnRate" : 2.2284760475158691,
+    "airModel" : 1,
+    "ambientPressure" : 101325,
+    "boundaryFlags" : 80,
+    "cfl" : 0.44999998807907104,
+    "densityFloor" : 9.9999999747524271e-07,
+    "dx" : 4,
+    "gamma" : 1.3999999761581421,
+    "gaugeWalls" : 0,
+    "limiterTheta" : 1.5,
+    "maxStep" : 0,
+    "oxygenPerFuel" : 0.73966449499130249,
+    "pressureFloor" : 0.0010000000474974513,
+    "refineMargin" : 1,
+    "riemannSolver" : 0,
+    "stillEnergy" : 253383.40625,
+    "stillMx" : 0,
+    "stillMy" : 0,
+    "stillMz" : 0,
+    "stillOxygen" : 0.28419998288154602,
+    "stillRho" : 1.2250000238418579
+  }
+}

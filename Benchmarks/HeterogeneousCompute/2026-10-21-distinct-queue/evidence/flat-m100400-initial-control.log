@@ -1,0 +1,7 @@
+gpu-slot: waiting in line for a slot (gpu-slot --status shows who holds them and who waits)
+Read 9878 buildings in 0.14 s
+6234 buildings placed (6234 by height, 0 by levels, 0 assumed), 3644 left out
+512 × 512 × 59 cells (15.5 M), 236 m top, 100400 kg, to 4.51 s
+  t 4.51 s, 2666 steps, 37 s
+Ran to 4.510 s in 2666 steps, 37 s
+Wrote /Volumes/StudioData/bombcad/experiments/2026-10-21-distinct-queue/flat-m100400/observed-reference: 512 × 512, 60% of cells in the mask, peak 210686.7 kPa at most

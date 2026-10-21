@@ -1,0 +1,1213 @@
+python3 Scripts/check-affected.py 
+check-affected: 67 changed file(s), tier: covered
+  map 90fb60017c15 (89 commits behind the merge base, built 2026-10-20 19:53 UTC on Louiss-Mac-mini)
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/audit.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/audit.py: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/build.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/continue.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/continue.py: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/audit.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/external-load-observation.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400-cuda.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400-initial-control.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400-prepare.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400-reference.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/cuda/dataset/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/cuda/deployment.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/cuda/result.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/initial/initial-diagnostic.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/initial/job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/observed-reference/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/prepared/job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/prepared/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/prepared/phase-timings.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/reference/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/reference/phase-timings.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800-cuda.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800-initial-control.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800-prepare.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800-reference.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/cuda/dataset/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/cuda/deployment.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/cuda/result.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/initial/initial-diagnostic.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/initial/job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/observed-reference/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/prepared/job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/prepared/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/prepared/phase-timings.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/reference/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/reference/phase-timings.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200-cuda.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200-initial-control.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200-prepare.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200-reference.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/cuda/dataset/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/cuda/deployment.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/cuda/result.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/initial/initial-diagnostic.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/initial/job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/observed-reference/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/prepared/job.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/prepared/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/prepared/phase-timings.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/reference/meta.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m301200/reference/phase-timings.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/interrupted-stage.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/solver.cu: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/stage.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/metadata-files.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/package-audit.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/package.py: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/retained-files.json: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/stage.log: not code the map covers; by name
+  Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/stage.py: not code the map covers; by name
+  35 of 411 suites, about 1% of the suites' time in the map:
+    AdblastSubstructureTests: not in the map
+    ChargeDragTests: not in the map
+    CloseInSightTests: not in the map
+    CraterCooper1976Tests: not in the map
+    ElevationFileRobustnessTests: not in the map
+    ErrorBandTests: always
+    EstimateReproducibilityTests: not in the map
+    EvidentialStandingTests: always
+    FirstPhaseColumnsTests: not in the map
+    GlassSandia1998Tests: not in the map
+    HeadlessRunOptionTests: reads Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/cuda/result.json; reads Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/cuda/result.json …
+    HeadlessRunTests: reads Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/cuda/result.json; reads Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m200800/cuda/result.json …
+    ImporterFuzzReplayTests: not in the map
+    ImporterRobustnessTests: not in the map
+    InflateTests: not in the map
+    LearnedFieldDownloadTests: not in the map
+    LearnedFieldEncodingTests: not in the map
+    LearnedFieldNetworkTests: not in the map
+    LearnedFieldOptionTests: not in the map
+    LearnedFieldTests: not in the map
+    LearnedFieldWeightsTests: not in the map
+    MasonryArchingTests: not in the map
+    OccupantInjuryTests: not in the map
+    OpenBenchmarkDeckTests: not in the map
+    PeopleInSceneTests: not in the map
+    PreparedDistrictTests: not in the map
+    ReceiverLoadStudyTests: not in the map
+    RemoteRunTests: not in the map
+    RenderLayoutTests: always
+    StandingFingerprintTests: always
+    StandingRunTests: always
+    ThresholdRefinementRunTests: not in the map
+    ThresholdRefinementTests: not in the map
+    UniformCUDAJobTests: reads Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/initial/job.json; reads Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/evidence/flat-m100400/prepared/job.json …
+    ValidationEnsembleGlassTests: not in the map
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 8 GB declared by the 2 held and the waiting against a budget of 26 GB
+  BlastModel's 23 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+..........{"one": "pending"}
+.......ssss...........................job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 baseline 1.0
+.job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+....[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "running"}
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+.{"spill0": "pending", "spill1": "pending", "spill2": "pending", "spill3": "pending", "spill4": "pending", "spill5": "pending"}
+...
+----------------------------------------------------------------------
+Ran 71 tests in 12.697s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.096s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_rhkl_2n/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpu3i381d5/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.006s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.037s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 1.050s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (339f6fc608), newest first:
+- 0f68323 Third (A)
+- 2b30569 Second (A)
+
+### Full check: passed
+
+On 0f6832392d, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpqrix_58m/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpqrix_58m/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpqrix_58m/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmps2c_x3um/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmps2c_x3um/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.312s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 1.660s
+
+OK
+python3 Scripts/test-ship.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 26.279s
+
+OK
+python3 Scripts/test-release-notes.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.008s
+
+OK
+python3 Scripts/test-check-shader-mirrors.py
+.........................
+----------------------------------------------------------------------
+Ran 25 tests in 3.595s
+
+OK
+python3 Scripts/test-check-test-deadlines.py
+/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3zqhb29m'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp7r3dk7v9'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmplg8ejs1l'>
+  _warnings.warn(warn_message, ResourceWarning)
+.............
+----------------------------------------------------------------------
+Ran 15 tests in 0.008s
+
+OK
+python3 Scripts/calibration/test-calibration.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 3.552s
+
+OK
+python3 Scripts/test-remote-sweep.py
+.../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:476: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxchvh3g8/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:477: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxchvh3g8/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:478: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxchvh3g8/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:476: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxchvh3g8/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:477: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxchvh3g8/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:478: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxchvh3g8/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:480: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxchvh3g8/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+remote-sweep: interrupted tests retained; use a fresh invocation to retry
+remote-sweep: cached completion dddddddddddddddddddddddddddddddd exit 0
+....remote-sweep: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_v7pqpnd/same-fake already exists
+......remote-sweep: the lock ~/bombcad-sweeps/lock is held (sweep same-name)
+remote-sweep: cached completion aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa exit 0
+....remote-sweep: waiting for the lock (held)
+remote-sweep: the lock ~/bombcad-sweeps/lock is held (held)
+..
+----------------------------------------------------------------------
+Ran 23 tests in 1.265s
+
+OK
+python3 Scripts/split/test-split.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 2.048s
+
+OK
+python3 Scripts/split/test-solver-split.py
+The plan no longer describes the tree:
+  newOne(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+The plan no longer describes the tree:
+  time is placed twice
+  time cannot leave the class's body (stored property)
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+....The plan no longer describes the tree:
+  added(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+...
+----------------------------------------------------------------------
+Ran 7 tests in 0.917s
+
+OK
+  added(): not in the plan; with what is above it (BlastSolver+Stepping.swift)
+wrote plan.json
+  widened time: set from BlastSolver+Stepping.swift
+  widened steps: set from BlastSolver+Stepping.swift
+  widened cache: used from BlastSolver+Boxes.swift, BlastSolver+Stepping.swift
+  widened uniforms: used from BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Boxes.swift
+  wrote Sources/BlastCore/BlastSolver.swift
+  wrote Sources/BlastCore/Shaders/SolverSweep.metal
+  wrote Sources/BlastCore/Shaders/SolverView.metal
+  wrote Sources/BlastCore/Shaders/Solver.metal
+  wrote Sources/BlastCore/StructureTypes+GPU.swift
+  wrote Scripts/check-affected.py
+  wrote docs/air.md
+already split; nothing to do
+python3 Scripts/split/test-narrow-access.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.010s
+
+OK
+python3 Scripts/reference/test-kingery-bulmash.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.124s
+
+OK
+python3 Scripts/footing-bed/test-bed-replica.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp6xy4zcb2.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpzh4jn0i5.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmphlw6lhqm.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpzlf4ttcd.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.011s
+
+OK
+python3 Scripts/reference/test-sdof.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.336s
+
+OK
+python3 Scripts/reference/test-blast1d.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 5.030s
+
+OK
+python3 Scripts/reference/test-compare.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.226s
+
+OK
+python3 Scripts/protective/test-protective.py
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 4.268s
+
+OK
+python3 Scripts/test-analytic-oracles.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 3.042s
+
+OK
+python3 -I Scripts/open-benchmark/test_score.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 0.040s
+
+OK
+python3 -I Scripts/open-benchmark/test_decks.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 1.841s
+
+OK
+python3 -I Scripts/ml/test-remote-train.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.175s
+
+OK
+python3 -I Scripts/ml/test-field-runs.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.063s
+
+OK
+python3 Scripts/ml/test-field-model.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.031s
+
+OK
+python3 Scripts/check-doc-links.py
+python3 Scripts/check-shader-mirrors.py
+38 Swift/Metal pairs and 4 shader copies checked; 0 findings, 1 allowed
+python3 Scripts/check-test-deadlines.py
+No wall-clock bounds in 413 test files.
++ /Users/louisemmett/.local/bin/gpu-slot /Applications/Xcode.app/Contents/Developer/usr/bin/python3 Scripts/check-affected.py check-steps
++ make build-strict
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[1 / 3] CompressibleFlow
+[1 / 15] BombCAD
+Build complete! (0.82 secs)
+build-strict: no warnings
++ make ifc-converter
+python3 Scripts/prepare-ifc-converter.py
+/Users/louisemmett/Developer/Projects/bombcad/.build/ifc-converter/IfcConvert
++ swift test --filter \.(ChargeDragTests|FirstPhaseColumnsTests|HeadlessRunOptionTests|HeadlessRunTests|LearnedFieldDownloadTests|LearnedFieldNetworkTests|LearnedFieldOptionTests|PeopleInSceneTests|RemoteRunTests|StandingRunTests|ThresholdRefinementRunTests|UniformCUDAJobTests)(/|$)
+Building for debugging...
+[Computing dependencies]
+[6 / 24] blastbench-product
+Build complete! (0.71 secs)
+Number of files: 4129
+Number of files transferred: 67
+Total file size: 250662850 B
+Total transferred file size: 478475 B
+Unmatched data: 478475 B
+Matched data: 0 B
+File list size: 423096 B
+File list generation time: 0.351 seconds
+File list transfer time: 0.078 seconds
+Total sent: 908483 B
+Total received: 5280 B
+
+sent 908483 bytes  received 5280 bytes  559526 bytes/sec
+total size is 250662850  speedup is 274.32
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Standing carried with results" started.
+◇ Suite "Headless run options" started.
+◇ Suite "The learned field option" started.
+◇ Suite "Dragging the charge" started.
+◇ Suite "Headless runs" started.
+◇ Suite "People in the scene" started.
+◇ Suite "Runs on a Mac nearby, watched here" started.
+◇ Test "Results files carry their standing beside their own keys, which their readers pass over" started.
+◇ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" started.
+◇ Test "The app's air settings give the standing the solver's configuration" started.
+◇ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" started.
+◇ Test "Comparison names the runs whose standing differs from the reference's" started.
+◇ Test "Hazards follow the editable charge, with live stand-off crossing feedback" started.
+◇ Test "A quick estimate places the people; the time of day moves them; the view colours by the share hurt" started.
+◇ Test "An air-only run matches the same case swept in the app, to the last bit" started.
+◇ Test "Default names avoid the project's saved runs" started.
+◇ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" started.
+◇ Test "Off by default; without weights, turning it on asks, and declining leaves it off" started.
+◇ Test "A run kept going when its connection drops is watched again, and its result fetched" started.
+◇ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" started.
+◇ Test "Options parse, and unknown, repeated or invalid ones are refused" started.
+✔ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" passed after 0.003 seconds.
+✔ Test "Options parse, and unknown, repeated or invalid ones are refused" passed after 0.005 seconds.
+✔ Test "The app's air settings give the standing the solver's configuration" passed after 0.017 seconds.
+✔ Test "Default names avoid the project's saved runs" passed after 0.024 seconds.
+✔ Suite "Headless run options" passed after 0.024 seconds.
+✔ Test "Results files carry their standing beside their own keys, which their readers pass over" passed after 0.238 seconds.
+✔ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" passed after 0.238 seconds.
+✔ Test "Comparison names the runs whose standing differs from the reference's" passed after 0.266 seconds.
+✔ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" passed after 0.267 seconds.
+✔ Test "Hazards follow the editable charge, with live stand-off crossing feedback" passed after 2.120 seconds.
+◇ Test "The estimate follows the dragged charge as a preview, then in full where it is let go" started.
+✔ Test "Off by default; without weights, turning it on asks, and declining leaves it off" passed after 7.550 seconds.
+◇ Test "A download that fails its check keeps nothing and leaves it off; one that passes turns it on" started.
+✔ Test "A quick estimate places the people; the time of day moves them; the view colours by the share hurt" passed after 7.583 seconds.
+✔ Suite "People in the scene" passed after 7.583 seconds.
+✔ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" passed after 7.719 seconds.
+✔ Suite "Standing carried with results" passed after 7.719 seconds.
+✔ Test "A download that fails its check keeps nothing and leaves it off; one that passes turns it on" passed after 0.261 seconds.
+✔ Suite "The learned field option" passed after 7.812 seconds.
+✔ Test "An air-only run matches the same case swept in the app, to the last bit" passed after 7.834 seconds.
+◇ Test "A structural run matches the same case swept in the app, to the last bit" started.
+✔ Test "A run kept going when its connection drops is watched again, and its result fetched" passed after 9.618 seconds.
+◇ Test "A run not asked to keep going stops with its connection, as before" started.
+✔ Test "A run not asked to keep going stops with its connection, as before" passed after 0.477 seconds.
+◇ Test "Run on a Mac nearby draws its frames here and comes back kept, to replay and compare" started.
+✔ Test "Run on a Mac nearby draws its frames here and comes back kept, to replay and compare" passed after 0.516 seconds.
+◇ Test "A dropped link says so, and the run is watched again or its result fetched later" started.
+✔ Test "A dropped link says so, and the run is watched again or its result fetched later" passed after 0.374 seconds.
+◇ Test "Stopped, the run ends there and nothing is kept" started.
+✔ Test "The estimate follows the dragged charge as a preview, then in full where it is let go" passed after 8.889 seconds.
+◇ Test "Once the full estimate is in, its close calls are run in the air and their results shown in place" started.
+✔ Test "Stopped, the run ends there and nothing is kept" passed after 2.019 seconds.
+✔ Suite "Runs on a Mac nearby, watched here" passed after 13.006 seconds.
+✔ Test "A structural run matches the same case swept in the app, to the last bit" passed after 14.063 seconds.
+◇ Test "A structural run is added to a copy of the project, which itself is left untouched" started.
+✔ Test "A structural run is added to a copy of the project, which itself is left untouched" passed after 1.731 seconds.
+◇ Test "A structural run exports its surface every frame interval" started.
+✔ Test "A structural run exports its surface every frame interval" passed after 0.270 seconds.
+◇ Test "An air-only run writes a volume a frame, which the USD scene reads" started.
+✔ Test "An air-only run writes a volume a frame, which the USD scene reads" passed after 0.217 seconds.
+◇ Test "The fireball's radiation is reckoned frame by frame, into the scene and a JSON file" started.
+✔ Test "Once the full estimate is in, its close calls are run in the air and their results shown in place" passed after 13.164 seconds.
+✔ Suite "Dragging the charge" passed after 24.174 seconds.
+✔ Test "The fireball's radiation is reckoned frame by frame, into the scene and a JSON file" passed after 0.120 seconds.
+◇ Test "On a mapped start handed over after several frames, a run with a structure ends and its frames keep their times" started.
+✔ Test "On a mapped start handed over after several frames, a run with a structure ends and its frames keep their times" passed after 7.559 seconds.
+◇ Test "On a mapped start the fireball's frames before the hand-over come from the one-dimensional solution" started.
+✔ Test "On a mapped start the fireball's frames before the hand-over come from the one-dimensional solution" passed after 22.442 seconds.
+◇ Test "The hot gas left at the end is handed over to the cloud, into the scene and a JSON file" started.
+Cloud: 10 kg of gas at least 500 K handed over at 4 ms, 3.1 m across at 568 K, its centre 1.1 m up, rising at 44.0 m/s; 80% of the warm gas's buoyancy
+  at 30 s: centre 35 m up, top 45 m, 21 m across, rising at 0.5 m/s, 154 m downwind
+A sounding brings its own wind and humidity: leave windSpeed and relativeHumidity at 0.
+
+Usage: BombCAD cloud <cloud-results.json> [--cloud <spec.json>] [--sounding <sounding.csv>]
+                     [--cloud-results <file.json>]
+
+Follows the cloud from the hand-over in the results of an earlier `BombCAD run --cloud`,
+with the description given or, without --cloud, the one it was made with, and prints a
+summary. --sounding reads a measured atmosphere, in the University of Wyoming archive's
+comma-separated values, in place of the standard one, as it does for `BombCAD run`.
+--cloud-results writes the new results.
+✔ Test "The hot gas left at the end is handed over to the cloud, into the scene and a JSON file" passed after 0.114 seconds.
+◇ Test "A project with no room for another run is refused before running" started.
+✔ Test "A project with no room for another run is refused before running" passed after 0.196 seconds.
+✔ Suite "Headless runs" passed after 54.553 seconds.
+✔ Test run with 30 tests in 7 suites passed after 54.553 seconds.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "The learned field model's download" started.
+◇ Suite "First-phase columns" started.
+◇ Suite "Threshold refinement's run" started.
+◇ Suite "Portable uniform CUDA jobs" started.
+◇ Test "A wrong hash, a missing source or a file that is not weights leaves nothing" started.
+◇ Test "A file with the pinned hash is kept, in place of one there before" started.
+◇ Suite "The learned field model's network against PyTorch" started.
+◇ Test "The release is the repository's field-model-1 asset, its hash and size pinned" started.
+◇ Test "An exported job preserves initial state, species, cooling and receiver records" started.
+◇ Test "Each column's first phase is the recorder's rule over its whole history" started.
+◇ Test "Each building is judged once the blast has passed it, nearest first, and the run ends" started.
+◇ Test "On Beirut's held-out run, the log peak is PyTorch's to float rounding" started.
+◇ Test "Cancelled or out of budget, it stops with what it has judged" started.
+✔ Test "The release is the repository's field-model-1 asset, its hash and size pinned" passed after 0.001 seconds.
+✔ Test "A wrong hash, a missing source or a file that is not weights leaves nothing" passed after 0.013 seconds.
+✔ Test "A file with the pinned hash is kept, in place of one there before" passed after 0.013 seconds.
+✔ Suite "The learned field model's download" passed after 0.013 seconds.
+✔ Test "Each column's first phase is the recorder's rule over its whole history" passed after 0.086 seconds.
+◇ Test "Production diagnostics preserve batches, fields and recorder values to the bit" started.
+✔ Test "Production diagnostics preserve batches, fields and recorder values to the bit" passed after 0.058 seconds.
+◇ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" started.
+✔ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" passed after 0.008 seconds.
+◇ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" started.
+✔ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" passed after 0.013 seconds.
+◇ Test "Layers of columns each record as that layer alone would, and leave the run as it was" started.
+✔ Test "Layers of columns each record as that layer alone would, and leave the run as it was" passed after 0.075 seconds.
+◇ Test "Recording the columns leaves the run as it was, to the bit" started.
+✔ Test "Recording the columns leaves the run as it was, to the bit" passed after 0.049 seconds.
+✔ Suite "First-phase columns" passed after 0.291 seconds.
+✔ Test "On Beirut's held-out run, the log peak is PyTorch's to float rounding" passed after 1.138 seconds.
+✔ Suite "The learned field model's network against PyTorch" passed after 1.139 seconds.
+✔ Test "An exported job preserves initial state, species, cooling and receiver records" passed after 2.407 seconds.
+◇ Test "A mapped-start job keeps its nonzero hand-over time and seeded receiver history" started.
+✔ Test "Cancelled or out of budget, it stops with what it has judged" passed after 3.989 seconds.
+✔ Test "Each building is judged once the blast has passed it, nearest first, and the run ends" passed after 5.284 seconds.
+✔ Suite "Threshold refinement's run" passed after 5.284 seconds.
+✔ Test "A mapped-start job keeps its nonzero hand-over time and seeded receiver history" passed after 9.108 seconds.
+◇ Test "Terrain jobs preserve the production cut geometry and checksums" started.
+✔ Test "Terrain jobs preserve the production cut geometry and checksums" passed after 0.035 seconds.
+◇ Test "Unsupported physics and unconfigured receivers are refused before writing a job" started.
+✔ Test "Unsupported physics and unconfigured receivers are refused before writing a job" passed after 0.016 seconds.
+✔ Suite "Portable uniform CUDA jobs" passed after 11.569 seconds.
+✔ Test run with 16 tests in 5 suites passed after 11.569 seconds.
+check-affected: here in 74 s, waiting for gpu-slot included
+remote-sweep: staging invocation 3468a1b2671240168a2092cff4b59702 at bombcad-pc:~/bombcad-sweeps/staging/3468a1b2671240168a2092cff4b59702
+remote-sweep: source basis a93654e09de34057860107531ddd2eb4
+remote-sweep: source/input transfer finished in 2.569 s (basis a93654e09de34057860107531ddd2eb4)
+Building for debugging...
+[Provisioning 1 / 17]
+Build complete! (0.68 secs)
+remote-sweep: tests built in 2 s
+◇ Test run started.
+↳ Testing Library Version: 6.4.1 (804dc4530ef3666)
+↳ Target Platform: x86_64-unknown-linux-gnu
+◇ Suite "Learned field peaks" started.
+◇ Suite "Close-in branch in sight only" started.
+◇ Suite "The quick estimate reproduced" started.
+◇ Suite "Open benchmark input decks" started.
+◇ Suite "Masonry arching between returns" started.
+◇ Suite "Learned field weights' file" started.
+◇ Suite "Craters against H. F. Cooper's 1976 high-explosive data" started.
+◇ Suite "The calibration's glass cases" started.
+◇ Suite "Glass against Beauchamp and Matalucci's windows (SAND98-0598)" started.
+◇ Suite "Prepared district" started.
+◇ Suite "Learned field encoding" started.
+◇ Suite "Importers refuse or survive corrupt files" started.
+◇ Suite EvidentialStandingTests started.
+◇ Suite "People in the scene: occupants and the people hurt" started.
+◇ Suite "The renderer's copies of the solver's structs" started.
+◇ Suite "Inflate" started.
+◇ Suite "Receiver load fixtures" started.
+◇ Suite ErrorBandTests started.
+◇ Suite "Importer fuzz replay" started.
+◇ Test "A weights file reads back its header and tensors, and one short of a tensor is refused" started.
+◇ Test "The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support" started.
+◇ Test "A look with the model: its peaks in the damage, glass and walls; without it, or failing, the surrogate's to the bit" started.
+◇ Suite "ADBLAST substructure reference" started.
+◇ Test "The plan holds the blocks' heights over the cells their blocks cover, and the inputs follow field-export's" started.
+◇ Test "With more levels, upper storeys read their height's level and roofs the roof's, as far as the reach" started.
+◇ Test "Both frozen decks decode and conserve their represented source budgets" started.
+◇ Test "Off, the estimate is the surrogate's to the bit; on, only ground-floor façade strips take the model's peak" started.
+◇ Suite "Threshold refinement's plan" started.
+◇ Test "A district laid out twice, its buildings' identifiers new, gives the same chances to the bit" started.
+◇ Test "Weights of another shape, width or depth than the header's are refused" started.
+◇ Suite StandingFingerprintTests started.
+◇ Test "A strip's front cells are the air beside its face along its width, as judge_field.py's" started.
+◇ Test "On, a solid one-brick front between party walls stands at 16.9 m from 96 kg; a cavity leaf does not" started.
+◇ Test "A standardisation with a zero or non-finite deviation is refused" started.
+◇ Test "A .npy file cut short is refused" started.
+◇ Test "Halves read as IEEE halves" started.
+◇ Test "The fixture: table 1, the height-of-burst law and 135 points from figures 9–12" started.
+◇ Test "A header whose tensors lie outside the payload, or overflow, is refused" started.
+◇ Test "Off as fitted; on, the branch for components in sight and the fitted terms behind buildings" started.
+◇ Test "A ton's radius at a centre height of one charge radius, to the underside and to the centre" started.
+◇ Test "A preview judges each building's nearest component of each kind and side, its glass on the side's area" started.
+◇ Test "Every half reads as the platform's own Float16 does" started.
+◇ Test "Unsupported physics, changed domains, invalid cells and changed budgets are refused" started.
+◇ Test "The calibration's glass cases give the record's figures at today's flaw constant and move with it" started.
+◇ Test "The arch takes hold from cracking to 1.7 f t² (1 − x/t)² / L² at the struts' crushing strain, then falls to nothing" started.
+◇ Test "Surface bursts read as measured; above the ground, heights to the underside read too wide" started.
+◇ Test "Laid out once, a charge anywhere gives what laying it out again gives, to the bit" started.
+◇ Test "Off, nothing changes: no key in the JSON, and every route judges as before" started.
+◇ Test "A file cut short anywhere is refused" started.
+◇ Test "The filmed panes fly at 0.81–1.03 of their measured speeds, the speed inverse to thickness" started.
+◇ Test "A look gives the quick estimate's damage and chances, again alike with its responses kept" started.
+◇ Test "An SVG whose size overflows gives no unit from it, not an infinite one" started.
+◇ Test "A preview works out only the parts asked for" started.
+◇ Test "A freestanding wall, a wall with an upright edge free, a roof and other constructions do not arch" started.
+◇ Test "Shot 1: the 1/2 in pane holds; at the measured 4 psi the thin panes pass their flaws' strengths" started.
+◇ Suite "Elevation readers refuse corrupt files" started.
+◇ Test "An SVG or OSM file in invalid UTF-8 is refused before Linux's XMLParser traps on it" started.
+◇ Test "The option shows in the standing" started.
+◇ Test "Stratified, a few draws spread evenly over their distributions, the yields' middle on the charge's" started.
+◇ Test "An SVG nested deeper than its limit is refused; within it, it reads on a small stack" started.
+◇ Test "The file as exported reads, and its tensors have the network's shapes" started.
+◇ Test "The standardised, padded inputs are train_field.py's, to float rounding in the logs alone" started.
+◇ Test "Shell nodes and elements are drawn with the solver's layout" started.
+◇ Test "A DXF number that is there but does not parse is refused, naming its line, not read as 0" started.
+◇ Test "An SVG arc of ordinary radii is still flattened into pieces" started.
+◇ Test "An SVG with a coordinate past a Double's range is refused, not trapped on" started.
+◇ Test everyOptionIsSetBySomeInput() started.
+◇ Test aDeflagrationDoesNotQuoteTheChargesComparisons() started.
+◇ Test "Kummer's glass injury through its own points: 1% broken 0.1%, half 10%, all of them everyone" started.
+◇ Test refinementCountsAsTheFinerGrid() started.
+◇ Test "A bulge between a vertex and its repeat is drawn straight, not trapped on" started.
+◇ Test "Map tags give uses; an untagged building has none" started.
+◇ Test "Occupants by floor area, use and time; the untagged take the assumed use" started.
+◇ Test "An SVG arc whose radii or rotation overflow is drawn straight to its end, not trapped on" started.
+◇ Test "An SVG whose <use> elements copy a symbol past the limit is refused, and stops reading" started.
+◇ Test "Against a pinned baseline: no change against itself, less glass broken a fall, draw by draw" started.
+◇ Test aDeflagrationsBandFollowsItsFuel() started.
+◇ Test "Map placement keeps a building's use from its tags" started.
+◇ Test "Bands by scaled distance hold everyone placed" started.
+◇ Test "An arc of ordinary angles is drawn as before" started.
+◇ Test modelsRunAlongsideAreIllustrative() started.
+◇ Test "Blocks nested a few levels, inserted a few times each, still read and expand" started.
+◇ Test "Eisenberg's eardrum probit: half at UFC's 15 psi, a few in a hundred at its 5 psi threshold" started.
+◇ Test "An arc's enormous angle draws a bounded arc, not an endless loop or a trap" started.
+◇ Test levelsRecordedAsMeasuredStillRead() started.
+◇ Test "The blast through blown-out windows and outdoors hurts close in, not far off" started.
+◇ Test "Nothing broken far away hurts no one; everything broken hurts nearly all inside, within the band" started.
+◇ Test "A block that inserts itself a dozen times is refused, not expanded to 12⁸ copies" started.
+◇ Test "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test "A DXF of many layers lists them in order, once each, without quadratic time" started.
+◇ Test "Raw binned triangles conserve the declared impulse, including limiting rises" started.
+◇ Test "Invalid and oversized declarations refuse the whole study" started.
+➜ Test "Every input in BLASTMODEL_FUZZ_DIR reads or is refused" skipped.
+◇ Test "CLI refuses an existing output without changing its bytes" started.
+◇ Test coarseCellsForASmallChargeAreAnApproximation() started.
+◇ Test "A drawing made in code with a NaN arc or bulge still makes its segments without trapping" started.
+◇ Test tightOpenFacesAreSaidBesideTheStructure() started.
+◇ Test afterburningChangesTheImpulsesStanding() started.
+◇ Test samplesTakeOnlyTheBandsThatFitThem() started.
+◇ Test theDocsNameTheLevelsAsTheCodeDoes() started.
+◇ Test optionsCapTheResultsTheyTouch() started.
+◇ Test eachPresetHasAStandingForWhatItProduces() started.
+◇ Test everyInputHasAStandingEntry() started.
+◇ Test collapseStandsApartFromLocalDamage() started.
+◇ Test linksReachHeadingsInTheDocs() started.
+◇ Test standingsRoundTripAndCompare() started.
+◇ Test closeInLoadingAsksForFinerAir() started.
+◇ Test "zlib's stored, fixed-Huffman and dynamic-Huffman blocks decode to what was written" started.
+◇ Test "The preregistered charge rule uses impulse only, breaks ties down, and refuses incomplete sweeps" started.
+◇ Test theConfinedRegimesDefaultsAreReported() started.
+◇ Test standingsWithoutBandsStillDecode() started.
+◇ Test aGaugeOnAWallReadsTheReflectedBand() started.
+◇ Test "The twelve-shot reference preserves unknowns and support assignments" started.
+◇ Test radiationAndCloudFollowTheAirTheyWereComparedOn() started.
+◇ Test closeInGaugesOnTodaysAir() started.
+◇ Test meshSeriesQuoteTheStudy() started.
+◇ Test readingATableInterpolatesBetweenGridsAndSpansDistances() started.
+◇ Test gaugesTakeTheirOwnBands() started.
+◇ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() started.
+◇ Test tablesMirrorTheValidationRecord() started.
+◇ Test confinedScenesAreAdvisedOnAfterburning() started.
+◇ Test figuresQuoteTheRecord() started.
+◇ Test structuresTakeBandsByRegimeMeshAndMaterial() started.
+◇ Test groundShockIsBandedOnlyForTheHalfSpace() started.
+◇ Test "No plan without close calls, nor for a scene the cut cannot carry" started.
+◇ Test "A cut away from the corner moves everything by the same whole cells" started.
+◇ Test "The nearest close calls, on a scene cut round them on the same cells, moved to the origin" started.
+◇ Test "A building's doubt is its most unsettled chance among those the view shows" started.
+◇ Test theIdentityIsAHashOfTheTablesContent() started.
+◇ Test numberedTablesStillReadAndShow() started.
+◇ Test theTextIsCanonical() started.
+◇ Test case passing 3 arguments entity → "0
+LINE
+8
+WALLS
+10
+0
+20
+0
+11
+1e
+21
+0
+", value → "1e", line → 24 to "A DXF number that is there but does not parse is refused, naming its line, not read as 0" started.
+◇ Test case passing 3 arguments entity → "0
+LINE
+8
+WALLS
+10
+--1
+20
+0
+11
+1000
+21
+0
+", value → "--1", line → 20 to "A DXF number that is there but does not parse is refused, naming its line, not read as 0" started.
+◇ Test case passing 3 arguments entity → "0
+CIRCLE
+8
+WALLS
+10
+0
+20
+0
+40
+five
+", value → "five", line → 24 to "A DXF number that is there but does not parse is refused, naming its line, not read as 0" started.
+◇ Test case passing 3 arguments entity → "0
+LWPOLYLINE
+8
+WALLS
+70
+0
+10
+0
+20
+0
+42
+0.5x
+10
+1000
+20
+0
+", value → "0.5x", line → 26 to "A DXF number that is there but does not parse is refused, naming its line, not read as 0" started.
+◇ Test case passing 3 arguments entity → "0
+LWPOLYLINE
+8
+WALLS
+70
+closed
+10
+0
+20
+0
+10
+1000
+20
+0
+", value → "closed", line → 20 to "A DXF number that is there but does not parse is refused, naming its line, not read as 0" started.
+◇ Test case passing 3 arguments entity → "0
+INSERT
+8
+WALLS
+2
+A
+10
+0
+20
+0
+50
+9O
+", value → "9O", line → 26 to "A DXF number that is there but does not parse is refused, naming its line, not read as 0" started.
+✔ Test "The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support" passed after 0.341 seconds.
+✔ Test "Halves read as IEEE halves" passed after 0.341 seconds.
+◇ Test case passing 1 argument path → "M0 0 A1e200 1e200 0 0 1 10 10" to "An SVG arc whose radii or rotation overflow is drawn straight to its end, not trapped on" started.
+◇ Test case passing 1 argument path → "M0 0 A5 5 1e308 0 1 10 10" to "An SVG arc whose radii or rotation overflow is drawn straight to its end, not trapped on" started.
+✔ Test "The fixture: table 1, the height-of-burst law and 135 points from figures 9–12" passed after 0.453 seconds.
+✔ Test "A ton's radius at a centre height of one charge radius, to the underside and to the centre" passed after 0.453 seconds.
+✔ Test "Off as fitted; on, the branch for components in sight and the fitted terms behind buildings" passed after 0.457 seconds.
+✔ Test "The arch takes hold from cracking to 1.7 f t² (1 − x/t)² / L² at the struts' crushing strain, then falls to nothing" passed after 0.456 seconds.
+✔ Test "Unsupported physics, changed domains, invalid cells and changed budgets are refused" passed after 0.457 seconds.
+✔ Test "A standardisation with a zero or non-finite deviation is refused" passed after 0.457 seconds.
+✔ Test "A strip's front cells are the air beside its face along its width, as judge_field.py's" passed after 0.457 seconds.
+✔ Test "Both frozen decks decode and conserve their represented source budgets" passed after 0.457 seconds.
+◇ Test case passing 2 arguments start → "0", end → "1e300" to "An arc's enormous angle draws a bounded arc, not an endless loop or a trap" started.
+◇ Test case passing 2 arguments start → "1e300", end → "0" to "An arc's enormous angle draws a bounded arc, not an endless loop or a trap" started.
+◇ Test case passing 2 arguments start → "1e15", end → "0" to "An arc's enormous angle draws a bounded arc, not an endless loop or a trap" started.
+◇ Test case passing 2 arguments start → "0", end → "1e10" to "An arc's enormous angle draws a bounded arc, not an endless loop or a trap" started.
+◇ Test case passing 1 argument entity → "0
+ARC
+8
+WALLS
+10
+0
+20
+0
+40
+500
+50
+0
+51
+nan
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test case passing 1 argument entity → "0
+ARC
+8
+WALLS
+10
+0
+20
+0
+40
+500
+50
+nan
+51
+90
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test case passing 1 argument entity → "0
+ARC
+8
+WALLS
+10
+0
+20
+0
+40
+inf
+50
+0
+51
+90
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test case passing 1 argument entity → "0
+LWPOLYLINE
+8
+WALLS
+70
+0
+10
+0
+20
+0
+42
+nan
+10
+1000
+20
+0
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test case passing 1 argument entity → "0
+LWPOLYLINE
+8
+WALLS
+70
+0
+10
+0
+20
+0
+42
+inf
+10
+1000
+20
+0
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test case passing 1 argument entity → "0
+LINE
+8
+WALLS
+10
+0
+20
+0
+11
+1e309
+21
+0
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test case passing 1 argument entity → "0
+LINE
+8
+WALLS
+10
+nan
+20
+0
+11
+1000
+21
+0
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+◇ Test case passing 1 argument entity → "0
+CIRCLE
+8
+WALLS
+10
+0
+20
+0
+40
+-inf
+" to "A DXF with a NaN or infinite number in an entity is refused" started.
+✔ Test "Surface bursts read as measured; above the ground, heights to the underside read too wide" passed after 0.460 seconds.
+✔ Test "A weights file reads back its header and tensors, and one short of a tensor is refused" passed after 0.460 seconds.
+✔ Test "Weights of another shape, width or depth than the header's are refused" passed after 0.460 seconds.
+✔ Test "With more levels, upper storeys read their height's level and roofs the roof's, as far as the reach" passed after 0.460 seconds.
+✔ Test "The plan holds the blocks' heights over the cells their blocks cover, and the inputs follow field-export's" passed after 0.466 seconds.
+✔ Test "A preview judges each building's nearest component of each kind and side, its glass on the side's area" passed after 0.466 seconds.
+✔ Test "A header whose tensors lie outside the payload, or overflow, is refused" passed after 0.476 seconds.
+✔ Test "The filmed panes fly at 0.81–1.03 of their measured speeds, the speed inverse to thickness" passed after 0.476 seconds.
+✔ Test "An SVG whose size overflows gives no unit from it, not an infinite one" passed after 0.476 seconds.
+✔ Test "The calibration's glass cases give the record's figures at today's flaw constant and move with it" passed after 0.476 seconds.
+✔ Test "Off, the estimate is the surrogate's to the bit; on, only ground-floor façade strips take the model's peak" passed after 0.477 seconds.
+✔ Test "An SVG or OSM file in invalid UTF-8 is refused before Linux's XMLParser traps on it" passed after 0.477 seconds.
+◇ Test "An elevation grid's NaN and nodata cells still read as no data" started.
+◇ Test "A grid whose first value is nan reads it as no data, not as a header key" started.
+◇ Test "An elevation grid's infinite cell size, NaN corner or elevation past a Float's range is refused" started.
+✔ Test "A .npy file cut short is refused" passed after 0.477 seconds.
+✔ Test "On, a solid one-brick front between party walls stands at 16.9 m from 96 kg; a cavity leaf does not" passed after 0.477 seconds.
+✔ Test "Shot 1: the 1/2 in pane holds; at the measured 4 psi the thin panes pass their flaws' strengths" passed after 0.477 seconds.
+◇ Test "A BigTIFF's 64-bit offsets and counts past Int's range are refused, not trapped on" started.
+◇ Test "A BigTIFF directory within its file still reads" started.
+◇ Test "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+✔ Test "The option shows in the standing" passed after 0.478 seconds.
+✔ Test "Shell nodes and elements are drawn with the solver's layout" passed after 0.478 seconds.
+✔ Test "Laid out once, a charge anywhere gives what laying it out again gives, to the bit" passed after 0.478 seconds.
+✔ Test "Stratified, a few draws spread evenly over their distributions, the yields' middle on the charge's" passed after 0.478 seconds.
+✔ Test "A DXF number that is there but does not parse is refused, naming its line, not read as 0" with 6 test cases passed after 0.478 seconds.
+✔ Test "The standardised, padded inputs are train_field.py's, to float rounding in the logs alone" passed after 0.478 seconds.
+✔ Test "Off, nothing changes: no key in the JSON, and every route judges as before" passed after 0.478 seconds.
+✔ Test "Every half reads as the platform's own Float16 does" passed after 0.478 seconds.
+✔ Test "A preview works out only the parts asked for" passed after 0.478 seconds.
+✔ Test "A freestanding wall, a wall with an upright edge free, a roof and other constructions do not arch" passed after 0.479 seconds.
+✔ Test "A file cut short anywhere is refused" passed after 0.479 seconds.
+✔ Test "An SVG nested deeper than its limit is refused; within it, it reads on a small stack" passed after 0.478 seconds.
+✔ Test "An SVG arc of ordinary radii is still flattened into pieces" passed after 0.478 seconds.
+✔ Test "The file as exported reads, and its tensors have the network's shapes" passed after 0.479 seconds.
+✔ Test "An SVG with a coordinate past a Double's range is refused, not trapped on" passed after 0.478 seconds.
+✔ Test "Kummer's glass injury through its own points: 1% broken 0.1%, half 10%, all of them everyone" passed after 0.479 seconds.
+✔ Test "A bulge between a vertex and its repeat is drawn straight, not trapped on" passed after 0.489 seconds.
+✔ Test "Occupants by floor area, use and time; the untagged take the assumed use" passed after 0.489 seconds.
+✔ Test "Map tags give uses; an untagged building has none" passed after 0.489 seconds.
+✔ Test "An SVG arc whose radii or rotation overflow is drawn straight to its end, not trapped on" with 2 test cases passed after 0.489 seconds.
+✔ Test "Against a pinned baseline: no change against itself, less glass broken a fall, draw by draw" passed after 0.489 seconds.
+✔ Test "Map placement keeps a building's use from its tags" passed after 0.665 seconds.
+✔ Test "Bands by scaled distance hold everyone placed" passed after 0.665 seconds.
+✔ Test "An arc of ordinary angles is drawn as before" passed after 0.665 seconds.
+✔ Test "Blocks nested a few levels, inserted a few times each, still read and expand" passed after 0.664 seconds.
+✔ Test "Eisenberg's eardrum probit: half at UFC's 15 psi, a few in a hundred at its 5 psi threshold" passed after 0.669 seconds.
+✔ Test "An arc's enormous angle draws a bounded arc, not an endless loop or a trap" with 4 test cases passed after 0.669 seconds.
+✔ Test "The blast through blown-out windows and outdoors hurts close in, not far off" passed after 0.670 seconds.
+✔ Test "A block that inserts itself a dozen times is refused, not expanded to 12⁸ copies" passed after 0.670 seconds.
+✔ Test "A DXF with a NaN or infinite number in an entity is refused" with 8 test cases passed after 0.670 seconds.
+✔ Test "Nothing broken far away hurts no one; everything broken hurts nearly all inside, within the band" passed after 0.670 seconds.
+✔ Test "Invalid and oversized declarations refuse the whole study" passed after 0.667 seconds.
+✔ Suite "Importer fuzz replay" passed after 0.677 seconds.
+✔ Test "CLI refuses an existing output without changing its bytes" passed after 0.667 seconds.
+✔ Test "A drawing made in code with a NaN arc or bulge still makes its segments without trapping" passed after 0.668 seconds.
+✔ Test "Raw binned triangles conserve the declared impulse, including limiting rises" passed after 1.199 seconds.
+✔ Test "The preregistered charge rule uses impulse only, breaks ties down, and refuses incomplete sweeps" passed after 1.195 seconds.
+✔ Test "zlib's stored, fixed-Huffman and dynamic-Huffman blocks decode to what was written" passed after 1.202 seconds.
+✔ Test "The twelve-shot reference preserves unknowns and support assignments" passed after 1.256 seconds.
+✔ Test "A cut away from the corner moves everything by the same whole cells" passed after 1.251 seconds.
+✔ Test "The nearest close calls, on a scene cut round them on the same cells, moved to the origin" passed after 1.251 seconds.
+✔ Test "No plan without close calls, nor for a scene the cut cannot carry" passed after 1.251 seconds.
+◇ Test case passing 1 argument text → "ncols 3
+nrows 2
+xllcorner 0
+yllcorner 0
+cellsize inf
+NODATA_value -9999
+1 2 3
+4 5 6
+" to "An elevation grid's infinite cell size, NaN corner or elevation past a Float's range is refused" started.
+◇ Test case passing 1 argument text → "ncols 3
+nrows 2
+xllcorner nan
+yllcorner 0
+cellsize 10
+NODATA_value -9999
+1 2 3
+4 5 6
+" to "An elevation grid's infinite cell size, NaN corner or elevation past a Float's range is refused" started.
+◇ Test case passing 1 argument text → "ncols 3
+nrows 2
+xllcorner inf
+yllcorner 0
+cellsize 10
+NODATA_value -9999
+1 2 3
+4 5 6
+" to "An elevation grid's infinite cell size, NaN corner or elevation past a Float's range is refused" started.
+◇ Test case passing 1 argument text → "ncols 3
+nrows 2
+xllcorner 0
+yllcorner 0
+cellsize 10
+NODATA_value -9999
+1 2 3
+4 1e39 6
+" to "An elevation grid's infinite cell size, NaN corner or elevation past a Float's range is refused" started.
+◇ Test case passing 1 argument text → "ncols 3
+nrows 2
+xllcorner 0
+yllcorner 0
+cellsize 10
+NODATA_value -9999
+1 2 3
+4 -inf 6
+" to "An elevation grid's infinite cell size, NaN corner or elevation past a Float's range is refused" started.
+◇ Test case passing 1 argument data → 16 bytes to "A BigTIFF's 64-bit offsets and counts past Int's range are refused, not trapped on" started.
+◇ Test case passing 1 argument data → 16 bytes to "A BigTIFF's 64-bit offsets and counts past Int's range are refused, not trapped on" started.
+◇ Test case passing 1 argument data → 24 bytes to "A BigTIFF's 64-bit offsets and counts past Int's range are refused, not trapped on" started.
+◇ Test case passing 1 argument data → 52 bytes to "A BigTIFF's 64-bit offsets and counts past Int's range are refused, not trapped on" started.
+◇ Test case passing 1 argument data → 52 bytes to "A BigTIFF's 64-bit offsets and counts past Int's range are refused, not trapped on" started.
+✔ Test "A building's doubt is its most unsettled chance among those the view shows" passed after 1.237 seconds.
+◇ Test case passing 1 argument ncols → "1e300" to "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+◇ Test case passing 1 argument ncols → "nan" to "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+◇ Test case passing 1 argument ncols → "inf" to "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+◇ Test case passing 1 argument ncols → "2.5" to "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+◇ Test case passing 1 argument ncols → "-3" to "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+◇ Test case passing 1 argument ncols → "9223372036854775807" to "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+◇ Test case passing 1 argument ncols → "4294967296" to "An elevation grid's counts that are not whole numbers an Int holds are refused" started.
+✔ Test theTextIsCanonical() passed after 1.238 seconds.
+✔ Suite "Close-in branch in sight only" passed after 1.276 seconds.
+✔ Suite "Craters against H. F. Cooper's 1976 high-explosive data" passed after 1.277 seconds.
+✔ Suite "Masonry arching between returns" passed after 1.277 seconds.
+✔ Suite "Open benchmark input decks" passed after 1.277 seconds.
+✔ Test "An SVG whose <use> elements copy a symbol past the limit is refused, and stops reading" passed after 1.275 seconds.
+✔ Suite "Learned field weights' file" passed after 1.277 seconds.
+✔ Test numberedTablesStillReadAndShow() passed after 1.238 seconds.
+✔ Suite "Glass against Beauchamp and Matalucci's windows (SAND98-0598)" passed after 1.277 seconds.
+✔ Suite "The calibration's glass cases" passed after 1.277 seconds.
+✔ Test "An elevation grid's NaN and nodata cells still read as no data" passed after 0.798 seconds.
+✔ Test "A grid whose first value is nan reads it as no data, not as a header key" passed after 0.798 seconds.
+✔ Test "An elevation grid's infinite cell size, NaN corner or elevation past a Float's range is refused" with 5 test cases passed after 0.798 seconds.
+✔ Test "A BigTIFF's 64-bit offsets and counts past Int's range are refused, not trapped on" with 5 test cases passed after 0.798 seconds.
+✔ Test "A BigTIFF directory within its file still reads" passed after 0.798 seconds.
+✔ Suite "The renderer's copies of the solver's structs" passed after 1.277 seconds.
+✔ Test "An elevation grid's counts that are not whole numbers an Int holds are refused" with 7 test cases passed after 0.798 seconds.
+✔ Suite "Learned field encoding" passed after 1.277 seconds.
+✔ Suite "Receiver load fixtures" passed after 1.277 seconds.
+✔ Suite "People in the scene: occupants and the people hurt" passed after 1.277 seconds.
+✔ Suite "ADBLAST substructure reference" passed after 1.277 seconds.
+✔ Suite "Inflate" passed after 1.277 seconds.
+✔ Suite "Threshold refinement's plan" passed after 1.277 seconds.
+✔ Suite "Elevation readers refuse corrupt files" passed after 1.277 seconds.
+✔ Test everyOptionIsSetBySomeInput() passed after 1.276 seconds.
+✔ Test levelsRecordedAsMeasuredStillRead() passed after 1.270 seconds.
+✔ Test aDeflagrationDoesNotQuoteTheChargesComparisons() passed after 1.276 seconds.
+✔ Test modelsRunAlongsideAreIllustrative() passed after 1.273 seconds.
+✔ Test coarseCellsForASmallChargeAreAnApproximation() passed after 1.267 seconds.
+✔ Test refinementCountsAsTheFinerGrid() passed after 1.276 seconds.
+✔ Test aDeflagrationsBandFollowsItsFuel() passed after 1.276 seconds.
+✔ Test tightOpenFacesAreSaidBesideTheStructure() passed after 1.267 seconds.
+✔ Test theDocsNameTheLevelsAsTheCodeDoes() passed after 1.262 seconds.
+✔ Test afterburningChangesTheImpulsesStanding() passed after 1.267 seconds.
+✔ Test samplesTakeOnlyTheBandsThatFitThem() passed after 1.267 seconds.
+✔ Test optionsCapTheResultsTheyTouch() passed after 1.262 seconds.
+✔ Test collapseStandsApartFromLocalDamage() passed after 1.262 seconds.
+✔ Test everyInputHasAStandingEntry() passed after 1.262 seconds.
+✔ Test closeInLoadingAsksForFinerAir() passed after 1.262 seconds.
+✔ Test standingsRoundTripAndCompare() passed after 1.263 seconds.
+✔ Test theConfinedRegimesDefaultsAreReported() passed after 1.262 seconds.
+✔ Test standingsWithoutBandsStillDecode() passed after 1.262 seconds.
+✔ Test radiationAndCloudFollowTheAirTheyWereComparedOn() passed after 1.262 seconds.
+✔ Test aGaugeOnAWallReadsTheReflectedBand() passed after 1.262 seconds.
+✔ Test closeInGaugesOnTodaysAir() passed after 1.262 seconds.
+✔ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() passed after 1.261 seconds.
+✔ Test readingATableInterpolatesBetweenGridsAndSpansDistances() passed after 1.263 seconds.
+✔ Test gaugesTakeTheirOwnBands() passed after 1.261 seconds.
+✔ Test confinedScenesAreAdvisedOnAfterburning() passed after 1.261 seconds.
+✔ Test meshSeriesQuoteTheStudy() passed after 1.263 seconds.
+✔ Test structuresTakeBandsByRegimeMeshAndMaterial() passed after 1.261 seconds.
+✔ Test groundShockIsBandedOnlyForTheHalfSpace() passed after 1.257 seconds.
+✔ Test "A district laid out twice, its buildings' identifiers new, gives the same chances to the bit" passed after 1.314 seconds.
+✔ Suite "The quick estimate reproduced" passed after 1.315 seconds.
+✔ Test "A DXF of many layers lists them in order, once each, without quadratic time" passed after 1.506 seconds.
+✔ Test theIdentityIsAHashOfTheTablesContent() passed after 1.476 seconds.
+✔ Suite "Importers refuse or survive corrupt files" passed after 1.514 seconds.
+✔ Suite StandingFingerprintTests passed after 1.514 seconds.
+✔ Test tablesMirrorTheValidationRecord() passed after 1.497 seconds.
+✔ Test "A look with the model: its peaks in the damage, glass and walls; without it, or failing, the surrogate's to the bit" passed after 1.674 seconds.
+✔ Suite "Learned field peaks" passed after 1.675 seconds.
+✔ Test "A look gives the quick estimate's damage and chances, again alike with its responses kept" passed after 1.837 seconds.
+✔ Suite "Prepared district" passed after 1.837 seconds.
+✔ Test eachPresetHasAStandingForWhatItProduces() passed after 2.113 seconds.
+✔ Test figuresQuoteTheRecord() passed after 2.224 seconds.
+✔ Suite ErrorBandTests passed after 2.241 seconds.
+✔ Test linksReachHeadingsInTheDocs() passed after 2.923 seconds.
+✔ Suite EvidentialStandingTests passed after 2.938 seconds.
+✔ Test run with 114 tests in 23 suites passed after 2.938 seconds.
+check-affected: BlastModel's 23 suite(s) on bombcad-pc in 17 s, sending and building included: passed
+check-affected: passed (covered, BlastModel on bombcad-pc)

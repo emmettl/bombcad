@@ -1,0 +1,14 @@
+Concrete diagnostic prerequisite under emmettl/bombcad-work#62; source audit at emmettl/bombcad@7ed4a40186081f0600fcc2d2b2de7bae2aefacbd.
+
+Sources/SceneBench/FieldExport.swift exports production-trace.npy with recorder peak/all-positive/first-phase/phase-peak/open, accumulated fields and dt. Sources/BlastCore/Shaders/SolverEnvelopes.metal computes the signed pressure inside sampleFirstPhase, but it is not retained. Scripts/cuda/diagnose-phase.py correctly cannot replay recorder-only production traces. The original fifth production discrepancy history therefore remains missing; deriving pressure on the host or from accumulated impulses is not evidence of the exact near-zero shader input.
+
+Deliverable: an explicit opt-in, bounded-column diagnostic retaining the actual signed per-step pressure consumed by the production recorder, sufficient initial/mapped-start recorder state and active dt/step/time to replay its decisions. Keep ordinary logical batches, startup, duration and per-step controls. Do not replace the flow/recorder algorithm or claim that an independently recomputed pressure is identical.
+
+Acceptance:
+- No pressure buffer allocation, extra observation pass or diagnostic readback in ordinary runs. Existing recorder-only format stays unambiguously identified; version any new format and reject attempts to replay absent pressure as if present.
+- Retain exact source/executable/resource identities and plain-versus-observed controls for full state/exported target/mask/input arrays and recorder histories. Instrumentation may change compiler arithmetic: verify parity rather than assuming a store or a sibling shader is numerically neutral, especially around zero.
+- Reproduce full float32 recorder state/closing decisions from captured pressure, initial seeded values and dt on bounded cases, including mapped starts, initial zero-dt sample, tails/axes and multiple export heights where supported. Keep existing disabled/invalid-index safety and bounded storage.
+- Recover the previously unavailable production fifth-point trace if the parity gate permits; otherwise retain the observer-induced discrepancy and do not label it an unmodified-production history.
+- Only then use independent, predeclared weak/reflected/multiphase/grid controls to evaluate candidate phase definitions. No deadband/closing-rule/default/tolerance/mask/training-index/admission change is authorized by this diagnostic issue.
+
+The distinct-case admission stage under emmettl/bombcad-work#59 has already found one first-phase gate failure at 100400 kg in the retained flat geometry, despite exact portable initial buffers and equal step counts. Its complete retained report will link here; mechanism is not yet diagnosed for that new receiver. Existing emmettl/bombcad-work#62/#63 gates remain open.

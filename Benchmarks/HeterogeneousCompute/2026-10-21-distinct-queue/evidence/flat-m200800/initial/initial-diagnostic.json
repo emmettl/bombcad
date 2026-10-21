@@ -1,0 +1,9 @@
+{
+  "executionPath" : "tiled",
+  "format" : "bombcad-field-initial-diagnostic-1",
+  "requestedContraction" : "default",
+  "requestedMathMode" : "default",
+  "scope" : "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+  "stepCount" : 0,
+  "time" : 0.003934389986701742
+}

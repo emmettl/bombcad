@@ -1,0 +1,5 @@
+{
+  "observedUnixSeconds": 1792616276.046741,
+  "slotStatus": "memory budget 26 GB of 36 GB RAM\nslot 1: free\nslot 2: pid 39848 since 22:37 in wall-recal (6 GB): /Volumes/StudioData/bombcad/claude-wt/bb-caps/release/scenebench wall-calibrate --osm /Volumes/StudioData/bombcad/data/Beirut2020/OSM/beirut-port-buildings.osm --dem /Volumes/StudioData/bombcad/data/Beirut2020/DEM/Copernicus_DSM_COG_10_N33_00_E035_00_DEM.tif\nslot 3: free\nslot 4: free\nslot 5: free\n",
+  "scope": "Concurrent Mac numerical jobs observed. Admission-stage timings are not benchmark evidence. Existing cooperative slots remain authoritative; no external jobs signalled."
+}

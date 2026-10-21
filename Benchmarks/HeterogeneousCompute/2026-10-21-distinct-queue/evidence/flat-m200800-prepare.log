@@ -1,0 +1,6 @@
+gpu-slot: waiting in line for a slot (gpu-slot --status shows who holds them and who waits)
+Read 9878 buildings in 0.15 s
+6234 buildings placed (6234 by height, 0 by levels, 0 assumed), 3644 left out
+512 × 512 × 59 cells (15.5 M), 236 m top, 200800 kg, to 4.51 s
+Wrote /Volumes/StudioData/bombcad/experiments/2026-10-21-distinct-queue/flat-m200800/prepared: 512 × 512, 60% of cells in the mask, peak 2095627.9 kPa at most
+CUDA job ready at /Volumes/StudioData/bombcad/experiments/2026-10-21-distinct-queue/flat-m200800/prepared; no grid simulation or training targets generated on this Mac

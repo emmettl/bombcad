@@ -1,0 +1,7 @@
+{
+  "status": "complete",
+  "rawFileInstancesHashed": 131,
+  "rawBytesHashed": 3606930271,
+  "metadataFilesCopiedAndRehashed": 50,
+  "scope": "Retain reproducible metadata, sources and logs; large numerical buffers stay in receipted scratch."
+}

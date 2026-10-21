@@ -209,3 +209,20 @@ reference generation is outside timing; no distinct training cases are created.
 An externally overlapped/uncertain original pair is retained and replaced in full.
 The included trials use periodic owner checks in addition to pre/post availability
 snapshots. This validates a useful backlog case, not a universal scheduling fit.
+
+
+## Distinct full-flat cases: admission stop
+
+The [three-mass admission stage](../Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/summary.md)
+tests distinct charge strengths on the retained full-flat geometry, keeping its 4 m grid,
+236 m top and 4.51 s duration fixed. At 100400 kg one first-phase impulse target fails the
+unchanged Metal/CUDA gate; 200800 and 301200 kg pass all channels. Peak and total impulse
+pass for every case. All three portable physical initial states match their production
+snapshots, and all plain/snapshot production exports are bit-identical.
+
+The fixed set therefore stops before mixed-backlog calibration/timing. It is not replaced
+by a selected passing subset, and concurrent Mac workloads make its incidental durations
+unsuitable as benchmarks. The earlier 12.5% queue result remains a repeated-reference
+backlog result. emmettl/bombcad-work#59 stays open for distinct-case integration;
+emmettl/bombcad-work#62 and emmettl/bombcad-work#79 track phase validation and the missing
+actual signed-pressure diagnostic. No training index, gate or default changes.

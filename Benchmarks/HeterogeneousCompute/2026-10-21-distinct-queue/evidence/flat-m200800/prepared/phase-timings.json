@@ -1,0 +1,22 @@
+{
+  "clock" : "Swift ContinuousClock",
+  "format" : "bombcad-field-phases-1",
+  "mode" : "cuda-prepare",
+  "scope" : "Scene preparation; solver setup including shader compilation, allocation and initial state; recorder setup; solve; output. Excludes process startup, gpu-slot waiting and this receipt write. Setup subphases are nested host elapsed intervals: command queue, shader library, eager pipelines, buffers\/texture, initial uniform state and scenario load. Library\/pipeline phases may include driver cache lookup or compilation; they are not pure compiler time. Lazy setup during later phases remains there. Optional initial-state diagnostic copying is inside total time but outside these component phases.",
+  "seconds" : {
+    "outputSeconds" : 0.60600350000000003,
+    "recorderSetupSeconds" : 0.0039112920000000002,
+    "scenePreparationSeconds" : 0.446838334,
+    "solverSetupIncludingCompileSeconds" : 2.9529055409999998,
+    "solveSeconds" : 0
+  },
+  "solverSetupPhasesSeconds" : {
+    "buffersAndTextureSeconds" : 0.00034479200000000002,
+    "commandQueueSeconds" : 0.00088795900000000001,
+    "eagerPipelinesSeconds" : 0.0046584579999999999,
+    "initialUniformStateSeconds" : 0.87774129199999995,
+    "scenarioLoadSeconds" : 2.059777542,
+    "shaderLibrarySeconds" : 0.0093129579999999997
+  },
+  "totalSecondsBeforeTimingReceipt" : 4.0097880840000002
+}

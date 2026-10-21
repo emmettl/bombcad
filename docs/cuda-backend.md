@@ -739,3 +739,21 @@ that every possible GPU optimization has been exhausted or that CUDA beats produ
 No numerical gate is relaxed. emmettl/bombcad-work#47 / emmettl/bombcad-work#62 /
 emmettl/bombcad-work#63 admission, emmettl/bombcad-work#59 distributed integration and
 emmettl/bombcad-work#64 reboot/clock persistence remain separate deliverables.
+
+
+## Charge-strength portability control
+
+The [distinct full-flat admission stage](../Benchmarks/HeterogeneousCompute/2026-10-21-distinct-queue/summary.md)
+adds a phase discrepancy beyond the original terrain/Beirut subset. On the same geometry,
+512×512×59 grid, 236 m top and 4.51 s duration, the 100400 kg case rejects receiver 62902:
+Metal/CUDA first-phase impulse 703.286865/705.982666 Pa s differs by 2.695801 Pa s,
+exceeding the unchanged 1.456574 Pa s tolerance. Both backends take 2666 steps. The 200800/301200 kg
+controls pass; every peak/total-impulse gate passes. Plain/snapshot exports are exact and
+portable physical initial buffers agree for all three. This does not diagnose the new
+receiver's mechanism or establish physical correctness of either label.
+
+Production traces currently retain recorder/accumulated fields rather than the actual
+signed pressure consumed inside `sampleFirstPhase`. emmettl/bombcad-work#79 tracks an opt-in
+in-kernel observation with explicit plain/observer parity, initial-state and replay gates.
+Host reconstruction or recorder-only traces cannot substitute for this near-zero pressure
+evidence. emmettl/bombcad-work#62 remains open; no phase definition or admission rule changes.

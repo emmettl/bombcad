@@ -1,0 +1,126 @@
+{
+  "status": "complete",
+  "allStartedCommandsTerminal": true,
+  "commandCount": 12,
+  "datasetFileInstancesVerified": 24,
+  "datasetBytesVerified": 62940071,
+  "allThreePhysicalCasesDistinct": true,
+  "allUnchangedGatesPass": false,
+  "cases": [
+    {
+      "id": "flat-m100400",
+      "massKg": 100400,
+      "unchangedGate": {
+        "0": {
+          "relativeL2": 6.008765440670655e-08,
+          "maxAbsolute": 2.25,
+          "outsideTolerance": 0,
+          "medianRelative": 3.322954638346232e-06,
+          "p99Relative": 2.1944706092863244e-05
+        },
+        "1": {
+          "relativeL2": 4.348095380924246e-06,
+          "maxAbsolute": 1.0771484375,
+          "outsideTolerance": 0,
+          "medianRelative": 2.37852612250293e-06,
+          "p99Relative": 8.50844657696759e-06
+        },
+        "2": {
+          "relativeL2": 2.6487743807451105e-06,
+          "maxAbsolute": 2.69580078125,
+          "outsideTolerance": 1,
+          "medianRelative": 3.1312640570516313e-06,
+          "p99Relative": 6.690022955901497e-06
+        },
+        "passed": false
+      },
+      "failedTargets": [
+        {
+          "channel": 2,
+          "column": 62902,
+          "row": 122,
+          "x": 438,
+          "reference": 703.286865234375,
+          "candidate": 705.982666015625,
+          "absoluteError": 2.69580078125,
+          "tolerance": 1.45657373046875,
+          "referenceTargets": [
+            5102.265625,
+            1015.7855224609375,
+            703.286865234375
+          ],
+          "candidateTargets": [
+            5102.296875,
+            1015.779296875,
+            705.982666015625
+          ]
+        }
+      ],
+      "initialBuffersMatch": true,
+      "observerArraysBitIdentical": true
+    },
+    {
+      "id": "flat-m200800",
+      "massKg": 200800,
+      "unchangedGate": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "failedTargets": [],
+      "initialBuffersMatch": true,
+      "observerArraysBitIdentical": true
+    },
+    {
+      "id": "flat-m301200",
+      "massKg": 301200,
+      "unchangedGate": {
+        "0": {
+          "relativeL2": 1.2050622691545056e-08,
+          "maxAbsolute": 12.0,
+          "outsideTolerance": 0,
+          "medianRelative": 2.530407058148754e-06,
+          "p99Relative": 3.264412945986348e-05
+        },
+        "1": {
+          "relativeL2": 7.378068901657236e-07,
+          "maxAbsolute": 1.015625,
+          "outsideTolerance": 0,
+          "medianRelative": 1.7718104032314093e-06,
+          "p99Relative": 7.143701744694549e-06
+        },
+        "2": {
+          "relativeL2": 4.482327725207578e-07,
+          "maxAbsolute": 1.1259765625,
+          "outsideTolerance": 0,
+          "medianRelative": 2.4120816344908376e-06,
+          "p99Relative": 6.6381190668353485e-06
+        },
+        "passed": true
+      },
+      "failedTargets": [],
+      "initialBuffersMatch": true,
+      "observerArraysBitIdentical": true
+    }
+  ],
+  "scope": "Post-stage audit; no GPU work. Preserve rejected gates as results, never admissions."
+}
