@@ -55,11 +55,12 @@ def order(values):
     return p, c + (c - b) / (2 ** p - 1)
 
 
-def series(prefix):
+def series(prefix, startup=0):
     runs = []
     for path in sorted(OUT.glob(f'{prefix}*.json')):
         summary = json.loads(path.read_text())
-        runs.append(summary)
+        if summary['parameters'].get('first_order_startup_steps', 0) == startup:
+            runs.append(summary)
     return sorted(runs, key=lambda s: -s['parameters']['cell_m'])
 
 
@@ -97,10 +98,23 @@ def free_field():
             row = [fmt(v, digits) for v in values]
             row += [fmt(v, digits) for v in near_values] + ['–'] * (len(near) - len(near_values))
             lines.append(f'| {gauge} | ' + ' | '.join(row) + f' | {fmt(p, 2)} | {fmt(rich, digits)} | {fmt(ref, digits)} |')
+    started = series('startup6-near-dx', 6) + series('near-dx', 6)
+    if started:
+        lines.append('\n**With six first-order startup steps** (near field; the 16 mm mesh needs them)\n')
+        lines.append('| Gauge | ' + ' | '.join(f"{s['parameters']['cell_m'] * 1000:g} mm, {q}"
+                                            for q in ('peak', 'impulse', 'arrival') for s in started) + ' |')
+        lines.append('|---' * (3 * len(started) + 1) + '|')
+        for gauge in started[0]['gauges_at_samples']:
+            row = [fmt(s['gauges_at_samples'][gauge].get(quantity), digits)
+                   for quantity, _, digits in QUANTITIES for s in started]
+            lines.append(f'| {gauge} | ' + ' | '.join(row) + ' |')
+            report.setdefault(gauge, {})['startup6'] = {
+                f"{s['parameters']['cell_m']}": {q: s['gauges_at_samples'][gauge].get(q) for q, _, _ in QUANTITIES}
+                for s in started}
     lines.append('\n**Energy** (the domain\'s total energy gained, as a share of the charge\'s 418.4 MJ, at the stop)\n')
     lines.append('| Run | Cells | Steps | Wall, s | Energy gained | of which floors |')
     lines.append('|---|---|---|---|---|---|')
-    for s in full + near:
+    for s in full + near + started:
         b = s['budget']
         lines.append(f"| {s['label']} | {s['parameters']['cells'][0]}² | {s['steps']:,} | {s['wall_s']:,.0f} | "
                      f"{b['excess_energy_final_over_initial'] - 1:+.2%} | "
