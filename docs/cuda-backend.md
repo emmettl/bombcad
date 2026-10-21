@@ -806,3 +806,24 @@ All three full references and both archived recorder histories match exactly. Be
 255969 now has an instrumented consumed-pressure history under those parity controls, closing
 at −0.078125 Pa. Source/trace receipts, refusal controls and the separate CUDA whole-file parity
 check are retained. The actual half-mass CUDA case stays rejected; no new phase rule is adopted.
+
+## Phase eligibility contract
+
+The current streaming recorder approximates the offline façade definition; it does not
+implement that definition for every possible history. The offline functions use half the
+**final** history peak to qualify a phase, then integrate all positive pressure from the
+start through that phase's first negative sample. The streaming recorder retains one phase
+against the running peak. It can discard an intermediate phase that would qualify against
+the final peak. With separated positive peaks 1, 1.6 and 3 Pa, negative gaps and 1 s samples,
+the offline impulse is 2.6 Pa·s and the streaming impulse is 5.6 Pa·s. This semantic difference
+persists in the analytical Float32 models and is separate from near-zero sign sensitivity.
+
+The [2026-10-22 CPU audit](../Benchmarks/CUDAAcceptance/2026-10-22-phase-contract/summary.md)
+checks eight fixed analytical controls and all 13 receipted pyro2 gauge histories at
+25/50/100 µs bins. Both algorithms receive identical signed bin means. All 39 corpus
+comparisons agree on impulse and closing sample; 24 close within the window and 15 room-mean
+comparisons remain open. Both actual Swift offline functions pass the analytical controls
+and all 39 derived inputs. The strong spherical free-field and room-volume-mean data do not
+validate weak loads or local 3-D reflections. emmettl/bombcad-work#62 remains open for a
+justified target definition and independent weak/reflected/multiphase/resolution validation.
+No recorder behavior, default, tolerance, mask or training admission changes here.

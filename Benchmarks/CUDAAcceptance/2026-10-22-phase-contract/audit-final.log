@@ -1,0 +1,18 @@
+{
+  "status": "complete",
+  "scope": "CPU-only definition audit. Same signed bin means feed both algorithms; no policy or data admission.",
+  "revision": "5420e246d4c5140ab3b36917d30560552922d343",
+  "worktreeDirty": true,
+  "linearBinControl": {
+    "originalSignedArea": -5.551115123125783e-17,
+    "reconstructedSignedArea": -4.163336342344337e-17,
+    "error": 1.3877787807814457e-17,
+    "doubleRoundoffBound": 5.9685589803848406e-15,
+    "finalEndpointAdjustment": 1.1102230246251565e-16
+  },
+  "corpusComparisons": 39,
+  "corpusDifferentComparisons": 0,
+  "corpusDifferentClosingComparisons": 0,
+  "corpusComparisonsClosedWithinWindow": 24,
+  "limits": "Analytical controls and independent 1-D strong-wave/room-mean histories; not weak-load, local 3-D reflection, physical validation or a target-definition decision. Double arithmetic isolates semantic choice; Float32 fixture variants are models, not new GPU runs. No policy, mask, tolerance or training-index change."
+}

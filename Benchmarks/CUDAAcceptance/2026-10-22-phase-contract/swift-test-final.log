@@ -1,0 +1,32 @@
+Building for debugging...
+[Computing dependencies]
+[Provisioning 2 / 40]
+[1 / 1]
+[1 / 58] BlastModelTests-product
+[3 / 36] BlastCore
+[5 / 39] BlastModelTests-product
+[7 / 40] BlastCore
+[7 / 40] BlastModelTests-product
+[7 / 40] BlastCore
+[13 / 35] BlastCoreTests-product
+[20 / 31] rigidboxdemo-product
+[20 / 31] BlastCoreTests-product
+[22 / 32] BlastCoreTests-product
+[23 / 34] BombCAD-product
+[25 / 31] BombCADTests-product
+[27 / 32] BombCADTests-product
+[27 / 32] BlastModelTests-product
+[33 / 37] BlastModelTests-product
+[36 / 37] blastbench-product
+[40 / 40] rigidboxdemo-product
+Build complete! (6.08 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "The offline first-phase definition" started.
+◇ Test "Both façade functions use half the final peak on the declared scalar histories" started.
+◇ Test "Both offline functions agree on all 39 declared independent-history bin means" started.
+✔ Test "Both façade functions use half the final peak on the declared scalar histories" passed after 0.001 seconds.
+✔ Test "Both offline functions agree on all 39 declared independent-history bin means" passed after 0.035 seconds.
+✔ Suite "The offline first-phase definition" passed after 0.035 seconds.
+✔ Test run with 2 tests in 1 suite passed after 0.035 seconds.

@@ -56,7 +56,8 @@ final class FirstPhasePressureCapture {
 }
 
 /// The first positive phase's impulse at a point over each plan cell, recorded as the run goes, by
-/// the façade recorder's rule (`SurrogateBench.firstImpulse`, `HybridFarField.firstImpulse`): the
+/// an online approximation to the façade recorder’s offline rule (`SurrogateBench.firstImpulse`,
+/// `HybridFarField.firstImpulse`): the
 /// positive overpressure summed from the start until it first falls below nothing after reaching
 /// half its peak. The field export's opt-in target for the learned field model
 /// (docs/learned-models.md, "A first-phase impulse target"); off, nothing of it exists.
@@ -67,8 +68,11 @@ final class FirstPhasePressureCapture {
 /// says whether that phase is still going. The rule wants the history's whole peak, which a run
 /// does not know until its end: the phase stands while its peak is at least half the peak so far,
 /// and when a later sample's overpressure is more than twice it, that sample's phase takes over,
-/// counting the impulse of everything before it as the rule does. This is the rule exactly unless
-/// a phase in between would have had half the final peak without being the largest so far.
+/// counting the impulse of everything before it as the rule does. Only one phase is retained:
+/// a closed intermediate phase can qualify against half the final peak after the retained phase
+/// no longer qualifies, but its endpoint has been discarded. For separated peaks 1, 1.6 and 3,
+/// the offline rule selects the second phase; this recorder selects the third. This approximation
+/// is distinct from near-zero sign sensitivity (docs/cuda-backend.md, “Phase eligibility contract”).
 ///
 /// The columns may come in several layers of the plan (`layers`, the field export's heights,
 /// emmettl/bombcad-work#69): each its own plan of columns, records and flags, one after another in

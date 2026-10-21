@@ -505,3 +505,10 @@ terrain256 0.70%, with weaker evidence for other cases. The candidate is retaine
 workload-specific decision; production remains unchanged. This fulfils the explicit
 prepare-reuse experiment in emmettl/bombcad-work#60. Distributed integration and numerical
 admission gates remain separate.
+
+The [2026-10-22 phase-definition audit](../Benchmarks/CUDAAcceptance/2026-10-22-phase-contract/summary.md)
+separates the existing streaming approximation from floating-point closure sensitivity.
+An analytical three-phase control yields 2.6 Pa·s offline versus 5.6 Pa·s streaming.
+All 39 comparisons on the receipted independent histories agree, with 15 right-censored
+room-mean comparisons; these data do not settle weak/local-reflection semantics.
+emmettl/bombcad-work#62 remains open; CUDA admission and defaults are unchanged.

@@ -1,0 +1,113 @@
+{
+  "scope": "Predeclared analytical scalar histories, not CFD or physical validation. Expected values are real-arithmetic hand calculations.",
+  "fixtures": [
+    {
+      "name": "single-phase",
+      "pressurePa": [
+        0,
+        1,
+        0.5,
+        -0.25
+      ],
+      "binS": 1,
+      "expectedWholeHistoryImpulse": 1.5,
+      "expectedStreamingImpulse": 1.5
+    },
+    {
+      "name": "late-dominant",
+      "pressurePa": [
+        0,
+        1,
+        -0.25,
+        3,
+        -0.25
+      ],
+      "binS": 1,
+      "expectedWholeHistoryImpulse": 4,
+      "expectedStreamingImpulse": 4
+    },
+    {
+      "name": "equal-reflection",
+      "pressurePa": [
+        0,
+        3,
+        -0.25,
+        3,
+        -0.25
+      ],
+      "binS": 1,
+      "expectedWholeHistoryImpulse": 3,
+      "expectedStreamingImpulse": 3
+    },
+    {
+      "name": "sub-half-middle",
+      "pressurePa": [
+        0,
+        1,
+        -0.25,
+        1.4,
+        -0.25,
+        3,
+        -0.25
+      ],
+      "binS": 1,
+      "expectedWholeHistoryImpulse": 5.4,
+      "expectedStreamingImpulse": 5.4
+    },
+    {
+      "name": "intermediate-qualifying",
+      "pressurePa": [
+        0,
+        1,
+        -0.25,
+        1.6,
+        -0.25,
+        3,
+        -0.25
+      ],
+      "binS": 1,
+      "expectedWholeHistoryImpulse": 2.6,
+      "expectedStreamingImpulse": 5.6
+    },
+    {
+      "name": "no-negative",
+      "pressurePa": [
+        0,
+        1,
+        1.6,
+        3,
+        0
+      ],
+      "binS": 1,
+      "expectedWholeHistoryImpulse": 5.6,
+      "expectedStreamingImpulse": 5.6
+    },
+    {
+      "name": "no-positive",
+      "pressurePa": [
+        0,
+        -1,
+        0
+      ],
+      "binS": 1,
+      "expectedWholeHistoryImpulse": 0,
+      "expectedStreamingImpulse": 0
+    },
+    {
+      "name": "weak-two-pulse",
+      "pressurePa": [
+        0,
+        1,
+        0.6,
+        -0.05,
+        -0.05,
+        0.8,
+        0.4,
+        -0.5
+      ],
+      "binS": 0.01,
+      "expectedWholeHistoryImpulse": 0.016,
+      "expectedStreamingImpulse": 0.016
+    }
+  ]
+}

@@ -1,0 +1,1573 @@
+{
+  "status": "complete",
+  "scope": "CPU-only definition audit. Same signed bin means feed both algorithms; no policy or data admission.",
+  "revision": "5420e246d4c5140ab3b36917d30560552922d343",
+  "worktreeDirty": true,
+  "sourceSHA256": {
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastCore/FirstPhaseColumns.swift": "d405c4073e8aed4414bfc2a00b8f3ebb7ca98eb09e12d0b038bc6d72413cf8e9",
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastCore/Shaders/SolverEnvelopes.metal": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastModel/HybridFarField.swift": "c2a3affbc519930ace95befe21d85dcd85c458b63ca64aba34558b57e9f3a5e2",
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastModel/Studies/SurrogateBench.swift": "448475ab81ebce25187a910fc36795a5fd6c909c95ecdc6aeb4e6c354bda9c9f",
+    "/Users/louisemmett/Developer/Projects/bombcad/Scripts/cuda/diagnose-phase.py": "baad1bca47201c94b6ced179de843f0fa5328627acccf73aebadefd9d63d550b",
+    "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/open/records/pyro2-ideal-gas-balloon-v1/receipt.json": "e88e90bc94ebc75697bbebd5bcf0abb0787224a6f40b55a2b60bd0c7eb923f4c",
+    "/Users/louisemmett/Developer/Projects/bombcad/Tests/BlastModelTests/FirstPhaseDefinitionTests.swift": "78d65495ff04acedf4b2690f8757b450df2863e9297f047fe0c68bf27749b4b4",
+    "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-phase-contract/fixtures.json": "fdcf6f8492a5b4f74b0ab9d9aad4672758b8d50cd0bed84bdac81400ae7d8549",
+    "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-phase-contract/binned-fixtures.json": "f1ec041c30f748d314ef7699ae84148cfd00983cf5caeaf5ddb7498d966f17c8",
+    "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-phase-contract/audit.py": "9bdd68685c867c9e1cc6778cf902e1104c06d1527d36b146f0bdcd887eca7efe"
+  },
+  "linearBinControl": {
+    "originalSignedArea": -5.551115123125783e-17,
+    "reconstructedSignedArea": -4.163336342344337e-17,
+    "error": 1.3877787807814457e-17,
+    "doubleRoundoffBound": 5.9685589803848406e-15,
+    "finalEndpointAdjustment": 1.1102230246251565e-16
+  },
+  "fixtureControls": [
+    {
+      "name": "single-phase",
+      "wholeHistory": {
+        "impulse": 1.5,
+        "peak": 1,
+        "closingSample": 3
+      },
+      "streaming": {
+        "impulse": 1.5,
+        "peak": 1.0,
+        "closingSample": 3,
+        "openingSamples": [
+          1
+        ]
+      },
+      "semanticDifference": 0.0,
+      "float32Separate": {
+        "impulse": 1.5,
+        "peak": 1.0,
+        "closingSample": 3,
+        "openingSamples": [
+          1
+        ]
+      },
+      "float32Fused": {
+        "impulse": 1.5,
+        "peak": 1.0,
+        "closingSample": 3,
+        "openingSamples": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "late-dominant",
+      "wholeHistory": {
+        "impulse": 4.0,
+        "peak": 3,
+        "closingSample": 4
+      },
+      "streaming": {
+        "impulse": 4.0,
+        "peak": 3.0,
+        "closingSample": 4,
+        "openingSamples": [
+          1,
+          3
+        ]
+      },
+      "semanticDifference": 0.0,
+      "float32Separate": {
+        "impulse": 4.0,
+        "peak": 3.0,
+        "closingSample": 4,
+        "openingSamples": [
+          1,
+          3
+        ]
+      },
+      "float32Fused": {
+        "impulse": 4.0,
+        "peak": 3.0,
+        "closingSample": 4,
+        "openingSamples": [
+          1,
+          3
+        ]
+      }
+    },
+    {
+      "name": "equal-reflection",
+      "wholeHistory": {
+        "impulse": 3.0,
+        "peak": 3,
+        "closingSample": 2
+      },
+      "streaming": {
+        "impulse": 3.0,
+        "peak": 3.0,
+        "closingSample": 2,
+        "openingSamples": [
+          1
+        ]
+      },
+      "semanticDifference": 0.0,
+      "float32Separate": {
+        "impulse": 3.0,
+        "peak": 3.0,
+        "closingSample": 2,
+        "openingSamples": [
+          1
+        ]
+      },
+      "float32Fused": {
+        "impulse": 3.0,
+        "peak": 3.0,
+        "closingSample": 2,
+        "openingSamples": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "sub-half-middle",
+      "wholeHistory": {
+        "impulse": 5.4,
+        "peak": 3,
+        "closingSample": 6
+      },
+      "streaming": {
+        "impulse": 5.4,
+        "peak": 3.0,
+        "closingSample": 6,
+        "openingSamples": [
+          1,
+          5
+        ]
+      },
+      "semanticDifference": 0.0,
+      "float32Separate": {
+        "impulse": 5.400000095367432,
+        "peak": 3.0,
+        "closingSample": 6,
+        "openingSamples": [
+          1,
+          5
+        ]
+      },
+      "float32Fused": {
+        "impulse": 5.400000095367432,
+        "peak": 3.0,
+        "closingSample": 6,
+        "openingSamples": [
+          1,
+          5
+        ]
+      }
+    },
+    {
+      "name": "intermediate-qualifying",
+      "wholeHistory": {
+        "impulse": 2.6,
+        "peak": 3,
+        "closingSample": 4
+      },
+      "streaming": {
+        "impulse": 5.6,
+        "peak": 3.0,
+        "closingSample": 6,
+        "openingSamples": [
+          1,
+          5
+        ]
+      },
+      "semanticDifference": 2.9999999999999996,
+      "float32Separate": {
+        "impulse": 5.599999904632568,
+        "peak": 3.0,
+        "closingSample": 6,
+        "openingSamples": [
+          1,
+          5
+        ]
+      },
+      "float32Fused": {
+        "impulse": 5.599999904632568,
+        "peak": 3.0,
+        "closingSample": 6,
+        "openingSamples": [
+          1,
+          5
+        ]
+      }
+    },
+    {
+      "name": "no-negative",
+      "wholeHistory": {
+        "impulse": 5.6,
+        "peak": 3,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 5.6,
+        "peak": 3.0,
+        "closingSample": null,
+        "openingSamples": [
+          1
+        ]
+      },
+      "semanticDifference": 0.0,
+      "float32Separate": {
+        "impulse": 5.599999904632568,
+        "peak": 3.0,
+        "closingSample": null,
+        "openingSamples": [
+          1
+        ]
+      },
+      "float32Fused": {
+        "impulse": 5.599999904632568,
+        "peak": 3.0,
+        "closingSample": null,
+        "openingSamples": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "no-positive",
+      "wholeHistory": {
+        "impulse": 0.0,
+        "peak": 0,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 0.0,
+        "peak": 0.0,
+        "closingSample": null,
+        "openingSamples": []
+      },
+      "semanticDifference": 0.0,
+      "float32Separate": {
+        "impulse": 0.0,
+        "peak": 0.0,
+        "closingSample": null,
+        "openingSamples": []
+      },
+      "float32Fused": {
+        "impulse": 0.0,
+        "peak": 0.0,
+        "closingSample": null,
+        "openingSamples": []
+      }
+    },
+    {
+      "name": "weak-two-pulse",
+      "wholeHistory": {
+        "impulse": 0.016,
+        "peak": 1,
+        "closingSample": 3
+      },
+      "streaming": {
+        "impulse": 0.016,
+        "peak": 1.0,
+        "closingSample": 3,
+        "openingSamples": [
+          1
+        ]
+      },
+      "semanticDifference": 0.0,
+      "float32Separate": {
+        "impulse": 0.01599999889731407,
+        "peak": 1.0,
+        "closingSample": 3,
+        "openingSamples": [
+          1
+        ]
+      },
+      "float32Fused": {
+        "impulse": 0.01600000075995922,
+        "peak": 1.0,
+        "closingSample": 3,
+        "openingSamples": [
+          1
+        ]
+      }
+    }
+  ],
+  "inputHistories": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/kb-surface-burst-free-field--100kg.csv",
+      "sha256": "c1259d9740407318daea5bcc4d3195772f53ec53c37d6b05da17bf00a9fe1c49",
+      "gauges": [
+        "Z0.75",
+        "Z1",
+        "Z1.5",
+        "Z2",
+        "Z3",
+        "Z4",
+        "Z5",
+        "Z6"
+      ]
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.25kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--0.25kg-m3.csv",
+      "sha256": "5aed713b0df462bf2754ee7d68309479e5cfa57f9d022f5b5ef9999c3d337d25",
+      "gauges": [
+        "room"
+      ]
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.5kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--0.5kg-m3.csv",
+      "sha256": "8f9fa2971e2f185fca892c717e465b9d48dba8328df887dc63c1f458c3872352",
+      "gauges": [
+        "room"
+      ]
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "1kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--1kg-m3.csv",
+      "sha256": "dbd8bcdf65bb43b8bd921d0d9dd1d7c3c3ed7436e30d9847914317184d53bb70",
+      "gauges": [
+        "room"
+      ]
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "2kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--2kg-m3.csv",
+      "sha256": "8698b1849114c0d86582fd51f9e1b8d103f57fe69d1470cdc63a3c7b65cc99b5",
+      "gauges": [
+        "room"
+      ]
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "4kg-m3",
+      "path": "/Volumes/StudioData/bombcad/open-benchmark/pyro2-decks/entry-20mm/ufc-closed-room-gas-pressure--4kg-m3.csv",
+      "sha256": "bccd956cc604a3d3e086830d4ada302fc6aea358e563b78e9f15f28d96b77393",
+      "gauges": [
+        "room"
+      ]
+    }
+  ],
+  "corpusRows": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z0.75",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -146.50494379296524,
+        "reconstructedSignedArea": -146.50494379296524,
+        "error": 0.0,
+        "doubleRoundoffBound": 2.927652760974926e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 829.3906388556062,
+        "peak": 2742557.720044767,
+        "closingSample": 83
+      },
+      "streaming": {
+        "impulse": 829.3906388556062,
+        "peak": 2742557.720044767,
+        "closingSample": 83,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "163233688c259c4b7691dde4501f7da920d3006fff25d0cec4c3293bed6d639a"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z0.75",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -146.50494379296524,
+        "reconstructedSignedArea": -146.5049437929653,
+        "error": 5.684341886080802e-14,
+        "doubleRoundoffBound": 2.927652760974926e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 829.089776057793,
+        "peak": 2645251.1470677,
+        "closingSample": 42
+      },
+      "streaming": {
+        "impulse": 829.089776057793,
+        "peak": 2645251.1470677,
+        "closingSample": 42,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "76aa1b8174cc06865cb7fe247ab281e3008421f682a55efae0d831d4f2481b4d"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z0.75",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -146.50494379296524,
+        "reconstructedSignedArea": -146.50494379296524,
+        "error": 0.0,
+        "doubleRoundoffBound": 2.927652760974926e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 829.0897760577933,
+        "peak": 2453221.5619934625,
+        "closingSample": 21
+      },
+      "streaming": {
+        "impulse": 829.0897760577933,
+        "peak": 2453221.5619934625,
+        "closingSample": 21,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "719bc7e5ebcde297e2dc2b117448f68075754891f33d8a350b7cc5bc73f5f065"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z1",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 120.6640183684513,
+        "reconstructedSignedArea": 120.6640183684513,
+        "error": 0.0,
+        "doubleRoundoffBound": 2.3591081295689307e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 867.380833118725,
+        "peak": 1574032.1685536213,
+        "closingSample": 193
+      },
+      "streaming": {
+        "impulse": 867.380833118725,
+        "peak": 1574032.1685536213,
+        "closingSample": 193,
+        "openingSamples": [
+          77
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "864e6adedf5f2247cbd8f10da6653b479013e134dcaa80af43eed95f74c10ffb"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z1",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 120.6640183684513,
+        "reconstructedSignedArea": 120.66401836845131,
+        "error": 1.4210854715202004e-14,
+        "doubleRoundoffBound": 2.3591081295689307e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 867.3792646589309,
+        "peak": 1524200.4838478442,
+        "closingSample": 97
+      },
+      "streaming": {
+        "impulse": 867.3792646589309,
+        "peak": 1524200.4838478442,
+        "closingSample": 97,
+        "openingSamples": [
+          38
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "c7231ed142ffcdffe894cd525bb9ecdc73643e9fd465ec9562e2b060f2f8cfc4"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z1",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 120.6640183684513,
+        "reconstructedSignedArea": 120.66401836845131,
+        "error": 1.4210854715202004e-14,
+        "doubleRoundoffBound": 2.3591081295689307e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 867.3550926062759,
+        "peak": 1267146.0176678603,
+        "closingSample": 48
+      },
+      "streaming": {
+        "impulse": 867.3550926062759,
+        "peak": 1267146.0176678603,
+        "closingSample": 48,
+        "openingSamples": [
+          19
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "1b2b20b0743e9cbe995e1829fdf59707517b7e4f5bc034a6859ef98ad6d1c3dc"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z1.5",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -78.74562169894295,
+        "reconstructedSignedArea": -78.74562169894294,
+        "error": 1.4210854715202004e-14,
+        "doubleRoundoffBound": 1.860573133080266e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 611.7141942231267,
+        "peak": 583219.1677790999,
+        "closingSample": 348
+      },
+      "streaming": {
+        "impulse": 611.7141942231267,
+        "peak": 583219.1677790999,
+        "closingSample": 348,
+        "openingSamples": [
+          163
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "53aff80936c93edaf67393d31afcdc037db1dd984a0349a355292cbbc826a0a0"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z1.5",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -78.74562169894295,
+        "reconstructedSignedArea": -78.74562169894295,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.860573133080266e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 611.7141942231259,
+        "peak": 580753.4944600086,
+        "closingSample": 174
+      },
+      "streaming": {
+        "impulse": 611.7141942231259,
+        "peak": 580753.4944600086,
+        "closingSample": 174,
+        "openingSamples": [
+          81
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "01b3b69ca2994761a6990a63b5768fffc8c4d3b2d2c96afbca5f94a215510522"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z1.5",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -78.74562169894295,
+        "reconstructedSignedArea": -78.74562169894295,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.860573133080266e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 611.7141942231259,
+        "peak": 542098.083885497,
+        "closingSample": 87
+      },
+      "streaming": {
+        "impulse": 611.7141942231259,
+        "peak": 542098.083885497,
+        "closingSample": 87,
+        "openingSamples": [
+          40
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "b76c80dca41f958bd30f0a2ea018c1e8f5e35a492ddc30844846de5d0ed0654e"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z2",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -104.14739568452678,
+        "reconstructedSignedArea": -104.14739568452677,
+        "error": 1.4210854715202004e-14,
+        "doubleRoundoffBound": 1.5509518104536035e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 492.95191468287135,
+        "peak": 285349.6129568621,
+        "closingSample": 534
+      },
+      "streaming": {
+        "impulse": 492.95191468287135,
+        "peak": 285349.6129568621,
+        "closingSample": 534,
+        "openingSamples": [
+          285
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "67e073b9edf6a6e0ff1231bdbf16744afb17e81e0fa848b8dc98f228b51b8046"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z2",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -104.14739568452678,
+        "reconstructedSignedArea": -104.14739568452677,
+        "error": 1.4210854715202004e-14,
+        "doubleRoundoffBound": 1.5509518104536035e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 492.95191468287123,
+        "peak": 284055.44038811186,
+        "closingSample": 267
+      },
+      "streaming": {
+        "impulse": 492.95191468287123,
+        "peak": 284055.44038811186,
+        "closingSample": 267,
+        "openingSamples": [
+          142
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "5b1861a203bb20c6be4842a452eed52b34efb7c3bacaa0f1a29eaef0bdfd910e"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z2",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -104.14739568452678,
+        "reconstructedSignedArea": -104.14739568452677,
+        "error": 1.4210854715202004e-14,
+        "doubleRoundoffBound": 1.5509518104536035e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 492.9450889035547,
+        "peak": 275122.5761099939,
+        "closingSample": 133
+      },
+      "streaming": {
+        "impulse": 492.9450889035547,
+        "peak": 275122.5761099939,
+        "closingSample": 133,
+        "openingSamples": [
+          71
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "da5a15eea0fd1bda3643bfd0ae325405ad60a69c37afd398e36f4a63202465d8"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z3",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -51.93236593960797,
+        "reconstructedSignedArea": -51.93236593960797,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.1250132185340198e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 369.86245517811807,
+        "peak": 113702.14338857176,
+        "closingSample": 1010
+      },
+      "streaming": {
+        "impulse": 369.86245517811807,
+        "peak": 113702.14338857176,
+        "closingSample": 1010,
+        "openingSamples": [
+          622
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "ff7e0ad2883f67ff151794fb4079bcaf7eeaaf8f33b147694e9587295d1fcf3c"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z3",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -51.93236593960797,
+        "reconstructedSignedArea": -51.93236593960797,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.1250132185340198e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 369.86245517811807,
+        "peak": 113444.23299492472,
+        "closingSample": 505
+      },
+      "streaming": {
+        "impulse": 369.86245517811807,
+        "peak": 113444.23299492472,
+        "closingSample": 505,
+        "openingSamples": [
+          311
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "561c323ec3976b14474032a8a5a6745a2143714d3a8ab98b7db1438effd5e793"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z3",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -51.93236593960797,
+        "reconstructedSignedArea": -51.93236593960797,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.1250132185340198e-11,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 369.85936091703604,
+        "peak": 112661.13882371868,
+        "closingSample": 252
+      },
+      "streaming": {
+        "impulse": 369.85936091703604,
+        "peak": 112661.13882371868,
+        "closingSample": 252,
+        "openingSamples": [
+          155
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "1aa65b5ac0ca5d95c08fc4a465d698d56e6e4f158dd972ac1ad9dd5c254f20d5"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z4",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -24.331449362337505,
+        "reconstructedSignedArea": -24.3314493623375,
+        "error": 3.552713678800501e-15,
+        "doubleRoundoffBound": 8.623986569186468e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 291.26380888539927,
+        "peak": 64419.057006881245,
+        "closingSample": 1526
+      },
+      "streaming": {
+        "impulse": 291.26380888539927,
+        "peak": 64419.057006881245,
+        "closingSample": 1526,
+        "openingSamples": [
+          1032
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "8b3b54ce43c9b5e905f5b00f59ccb74d76203c71679f36aee3ad99105e5430cb"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z4",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -24.331449362337505,
+        "reconstructedSignedArea": -24.331449362337505,
+        "error": 0.0,
+        "doubleRoundoffBound": 8.623986569186468e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 291.2638088853989,
+        "peak": 64414.12814389237,
+        "closingSample": 763
+      },
+      "streaming": {
+        "impulse": 291.2638088853989,
+        "peak": 64414.12814389237,
+        "closingSample": 763,
+        "openingSamples": [
+          516
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "efc9e4d696d9f980b3003d8f9126821a1106ab4f794f333274eecc7cae9268db"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z4",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -24.331449362337505,
+        "reconstructedSignedArea": -24.331449362337505,
+        "error": 0.0,
+        "doubleRoundoffBound": 8.623986569186468e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 291.26139193421847,
+        "peak": 63997.26940034835,
+        "closingSample": 381
+      },
+      "streaming": {
+        "impulse": 291.26139193421847,
+        "peak": 63997.26940034835,
+        "closingSample": 381,
+        "openingSamples": [
+          258
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "7435bd0fe33107f02d11d913a669dd4b4f39dbacc5b0d5c019de590a7e1c42cc"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z5",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -2.888080041990309,
+        "reconstructedSignedArea": -2.8880800419903068,
+        "error": 2.220446049250313e-15,
+        "doubleRoundoffBound": 6.807170272352249e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 238.06188003819517,
+        "peak": 43266.71311059844,
+        "closingSample": 2055
+      },
+      "streaming": {
+        "impulse": 238.06188003819517,
+        "peak": 43266.71311059844,
+        "closingSample": 2055,
+        "openingSamples": [
+          1482
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "ba827448f818d91ca1cac09eaab416e6fac11f79d8ac6d7a7d0df1699d931175"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z5",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -2.888080041990309,
+        "reconstructedSignedArea": -2.888080041990309,
+        "error": 0.0,
+        "doubleRoundoffBound": 6.807170272352249e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 238.0618537726502,
+        "peak": 43256.57018838923,
+        "closingSample": 1027
+      },
+      "streaming": {
+        "impulse": 238.0618537726502,
+        "peak": 43256.57018838923,
+        "closingSample": 1027,
+        "openingSamples": [
+          741
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "4a30b5a0aef613245cc33238f1de6d7681e27f5db779977eed2e5b7fec6d1ab8"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z5",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": -2.888080041990309,
+        "reconstructedSignedArea": -2.8880800419903094,
+        "error": 4.440892098500626e-16,
+        "doubleRoundoffBound": 6.807170272352249e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 238.06094833790812,
+        "peak": 43155.872866954676,
+        "closingSample": 514
+      },
+      "streaming": {
+        "impulse": 238.06094833790812,
+        "peak": 43155.872866954676,
+        "closingSample": 514,
+        "openingSamples": [
+          370
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "9fb0ccad99d9e349d5b34b192b1bef631e4eebc56e24452d851b9e4c78a88ebf"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z6",
+      "binS": 2.5e-05,
+      "bins": 4000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 24.06377036937464,
+        "reconstructedSignedArea": 24.06377036937464,
+        "error": 0.0,
+        "doubleRoundoffBound": 5.357258438532791e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 200.52365869012164,
+        "peak": 32204.268558098425,
+        "closingSample": 2589
+      },
+      "streaming": {
+        "impulse": 200.52365869012164,
+        "peak": 32204.268558098425,
+        "closingSample": 2589,
+        "openingSamples": [
+          1955
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "9f3a2b32ca0d29b3fb5d8c1b92ba914a13acec04c98447daf1ba76efc6d92fc5"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z6",
+      "binS": 5e-05,
+      "bins": 2000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 24.06377036937464,
+        "reconstructedSignedArea": 24.06377036937464,
+        "error": 0.0,
+        "doubleRoundoffBound": 5.357258438532791e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 200.52335535130294,
+        "peak": 32104.608522003076,
+        "closingSample": 1294
+      },
+      "streaming": {
+        "impulse": 200.52335535130294,
+        "peak": 32104.608522003076,
+        "closingSample": 1294,
+        "openingSamples": [
+          977
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "30f1815c03e7abbfc99dfffd18d0edd6cc9019084a31c6faf7e2234c1c36d196"
+    },
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "gauge": "Z6",
+      "binS": 0.0001,
+      "bins": 1000,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 24.06377036937464,
+        "reconstructedSignedArea": 24.06377036937464,
+        "error": 0.0,
+        "doubleRoundoffBound": 5.357258438532791e-12,
+        "finalEndpointAdjustment": 0.0
+      },
+      "wholeHistory": {
+        "impulse": 200.52335535130305,
+        "peak": 31718.43173117294,
+        "closingSample": 647
+      },
+      "streaming": {
+        "impulse": 200.52335535130305,
+        "peak": 31718.43173117294,
+        "closingSample": 647,
+        "openingSamples": [
+          488
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "4bd58dfb644631ef5007b5ce7f6a1b91c502d679ee8aebf6abc201c258cba083"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.25kg-m3",
+      "gauge": "room",
+      "binS": 2.5e-05,
+      "bins": 4800,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 49187.084077705105,
+        "reconstructedSignedArea": 49187.084077705105,
+        "error": 0.0,
+        "doubleRoundoffBound": 6.98990505692693e-10,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 49187.084077704996,
+        "peak": 419369.62740616687,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 49187.084077704996,
+        "peak": 419369.62740616687,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "5c39b6f0a2ed83ac7b0f0fd1ed80ccc7bb8b8b7009720724c8e2816a2f8c524a"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.25kg-m3",
+      "gauge": "room",
+      "binS": 5e-05,
+      "bins": 2400,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 49187.084077705105,
+        "reconstructedSignedArea": 49187.084077705105,
+        "error": 0.0,
+        "doubleRoundoffBound": 6.98990505692693e-10,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 49187.08407770511,
+        "peak": 419367.45042388694,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 49187.08407770511,
+        "peak": 419367.45042388694,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "59057fa64cbd8dee2b6df4f69d5781cb86ef2747453700a2f4c6602c203efedc"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.25kg-m3",
+      "gauge": "room",
+      "binS": 0.0001,
+      "bins": 1200,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 49187.084077705105,
+        "reconstructedSignedArea": 49187.084077705105,
+        "error": 0.0,
+        "doubleRoundoffBound": 6.98990505692693e-10,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 49187.08407770502,
+        "peak": 419360.714990179,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 49187.08407770502,
+        "peak": 419360.714990179,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "5151681475cb1c58978d9401cfdf0177b1a29a1b2bb02e54419d67aae9ef36f5"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.5kg-m3",
+      "gauge": "room",
+      "binS": 2.5e-05,
+      "bins": 4800,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 98723.81138526417,
+        "reconstructedSignedArea": 98723.81138526417,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.4029497405269946e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 98723.81138526421,
+        "peak": 838164.7853256991,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 98723.81138526421,
+        "peak": 838164.7853256991,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "b72f300daefa39f1f0e9ad6678a281b902972a50d18af2abaeece0f81d6b1214"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.5kg-m3",
+      "gauge": "room",
+      "binS": 5e-05,
+      "bins": 2400,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 98723.81138526417,
+        "reconstructedSignedArea": 98723.81138526417,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.4029497405269946e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 98723.81138526436,
+        "peak": 838161.4477949191,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 98723.81138526436,
+        "peak": 838161.4477949191,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "d95d4712a002ee4b00130797910715643a2fa402c97a52957934a44c5d75fa54"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "0.5kg-m3",
+      "gauge": "room",
+      "binS": 0.0001,
+      "bins": 1200,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 98723.81138526417,
+        "reconstructedSignedArea": 98723.81138526417,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.4029497405269946e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 98723.81138526417,
+        "peak": 838151.7072434883,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 98723.81138526417,
+        "peak": 838151.7072434883,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "3d289dd13bcae02a349e8e922432f268af9ae5b69c39c4efcfdc26d410b77a9f"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "1kg-m3",
+      "gauge": "room",
+      "binS": 2.5e-05,
+      "bins": 4800,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 197428.8118399585,
+        "reconstructedSignedArea": 197428.8118399585,
+        "error": 0.0,
+        "doubleRoundoffBound": 2.8056321616526035e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 197428.81183995836,
+        "peak": 1675823.6405929518,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 197428.81183995836,
+        "peak": 1675823.6405929518,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "e211933f7658dd755bdcedf953df039dd6329a7455ef30f98009814bf646cf92"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "1kg-m3",
+      "gauge": "room",
+      "binS": 5e-05,
+      "bins": 2400,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 197428.8118399585,
+        "reconstructedSignedArea": 197428.8118399585,
+        "error": 0.0,
+        "doubleRoundoffBound": 2.8056321616526035e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 197428.81183995836,
+        "peak": 1675809.2910239385,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 197428.81183995836,
+        "peak": 1675809.2910239385,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "3ca5dbb4edd321973a1d7d226aff1b8c5829197b9342c3da39da6c0580fb7ec7"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "1kg-m3",
+      "gauge": "room",
+      "binS": 0.0001,
+      "bins": 1200,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 197428.8118399585,
+        "reconstructedSignedArea": 197428.8118399585,
+        "error": 0.0,
+        "doubleRoundoffBound": 2.8056321616526035e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 197428.81183995848,
+        "peak": 1675808.7425288258,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 197428.81183995848,
+        "peak": 1675808.7425288258,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "7ddb55d7caf323817b95a7d0415d60b58a0ecc649a5c5c68549c24bea2800f0e"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "2kg-m3",
+      "gauge": "room",
+      "binS": 2.5e-05,
+      "bins": 4800,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 396545.33408741094,
+        "reconstructedSignedArea": 396545.33408741094,
+        "error": 0.0,
+        "doubleRoundoffBound": 5.635248130707438e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 396545.3340874105,
+        "peak": 3352078.625122812,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 396545.3340874105,
+        "peak": 3352078.625122812,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "bb5e7ef352cbf117278719698f6500cb84fc495b42a8800d62709daf70b73502"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "2kg-m3",
+      "gauge": "room",
+      "binS": 5e-05,
+      "bins": 2400,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 396545.33408741094,
+        "reconstructedSignedArea": 396545.33408741094,
+        "error": 0.0,
+        "doubleRoundoffBound": 5.635248130707438e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 396545.33408741077,
+        "peak": 3352066.2157072704,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 396545.33408741077,
+        "peak": 3352066.2157072704,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "4de65ce72648e70d082dabcd0c60516ecba40144998e897bae3e99457bd338d5"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "2kg-m3",
+      "gauge": "room",
+      "binS": 0.0001,
+      "bins": 1200,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 396545.33408741094,
+        "reconstructedSignedArea": 396545.33408741094,
+        "error": 0.0,
+        "doubleRoundoffBound": 5.635248130707438e-09,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 396545.33408741065,
+        "peak": 3351991.596470862,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 396545.33408741065,
+        "peak": 3351991.596470862,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "0f484bd2bb58b6848f84b6783efb6f268cce88d8bb58378266090e64db93b359"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "4kg-m3",
+      "gauge": "room",
+      "binS": 2.5e-05,
+      "bins": 4800,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 790509.5064242661,
+        "reconstructedSignedArea": 790509.5064242661,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.1233815746781291e-08,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 790509.5064242701,
+        "peak": 6700624.619136698,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 790509.5064242701,
+        "peak": 6700624.619136698,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "9c1116b42a35b43b6dc8b412cc8f5bddcbcce06ec2d23da17563a511714858bc"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "4kg-m3",
+      "gauge": "room",
+      "binS": 5e-05,
+      "bins": 2400,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 790509.5064242661,
+        "reconstructedSignedArea": 790509.5064242661,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.1233815746781291e-08,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 790509.5064242666,
+        "peak": 6700443.5106048845,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 790509.5064242666,
+        "peak": 6700443.5106048845,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "98898f5c65cc3c0377458bb8c3e1eb4567292be1078616dc3ba0ce58f143db43"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "run": "4kg-m3",
+      "gauge": "room",
+      "binS": 0.0001,
+      "bins": 1200,
+      "sameClosingSample": true,
+      "signedAreaControl": {
+        "originalSignedArea": 790509.5064242661,
+        "reconstructedSignedArea": 790509.5064242661,
+        "error": 0.0,
+        "doubleRoundoffBound": 1.1233815746781291e-08,
+        "finalEndpointAdjustment": 1.3877787807814457e-17
+      },
+      "wholeHistory": {
+        "impulse": 790509.5064242667,
+        "peak": 6700137.982802096,
+        "closingSample": null
+      },
+      "streaming": {
+        "impulse": 790509.5064242667,
+        "peak": 6700137.982802096,
+        "closingSample": null,
+        "openingSamples": [
+          0
+        ]
+      },
+      "semanticDifference": 0.0,
+      "relativeDifference": 0.0,
+      "meanValuesSHA256": "5ca96cae76af6a5cec54a36c19433548180f12fbe267f16635d3bc27de37efd3"
+    }
+  ],
+  "corpusComparisons": 39,
+  "corpusDifferentComparisons": 0,
+  "corpusDifferentClosingComparisons": 0,
+  "corpusComparisonsClosedWithinWindow": 24,
+  "limits": "Analytical controls and independent 1-D strong-wave/room-mean histories; not weak-load, local 3-D reflection, physical validation or a target-definition decision. Double arithmetic isolates semantic choice; Float32 fixture variants are models, not new GPU runs. No policy, mask, tolerance or training-index change."
+}

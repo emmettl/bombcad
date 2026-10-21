@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-phase-contract/audit.py", line 59, in <module>
+    values=bin_means(gauge['times'],gauge['pressures'],dt);a=whole(values,dt);b=streaming(values,dt)
+  File "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-phase-contract/audit.py", line 37, in bin_means
+    if span<=0 or end<=x:raise ValueError('strictly increasing pressure sample times required')
+ValueError: strictly increasing pressure sample times required

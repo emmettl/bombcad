@@ -1,0 +1,11 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 3 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+[1 / 61] SolidMechanics
+[12 / 15] BlastModelTests-product
+Build complete! (1.30 secs)
+build-strict: no warnings
