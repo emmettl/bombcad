@@ -215,3 +215,44 @@ kernel void extractViewField(
     }
     values[id.x + size.x * (id.y + size.y * id.z)] = half4(best);
 }
+
+// Same write predicate as extractViewField. These are display copies only, never solver inputs.
+static inline bool writeBodyView(device const StepControl &control, constant uint4 &layout) {
+    if (layout.y == 1u) { return true; }
+    if (layout.y == 2u) {
+        return (ulong(control.clockLow) | (ulong(control.clockHigh) << 32))
+            >= (ulong(layout.z) | (ulong(layout.w) << 32));
+    }
+    return control.stopped == 2;
+}
+
+kernel void extractSolidViewNodes(
+    device const StepControl &control [[buffer(0)]],
+    device const StructureNode *nodes [[buffer(1)]],
+    device float3 *displacements [[buffer(2)]],
+    constant uint4 &layout [[buffer(4)]], uint id [[thread_position_in_grid]])
+{
+    if (writeBodyView(control, layout)) { displacements[id] = float3(nodes[id].displacement); }
+}
+
+kernel void extractSolidViewDamage(
+    device const StepControl &control [[buffer(0)]],
+    device const ElementState *states [[buffer(1)]],
+    device float *damage [[buffer(2)]],
+    constant uint4 &layout [[buffer(4)]], uint id [[thread_position_in_grid]])
+{
+    if (writeBodyView(control, layout)) { damage[id] = states[id].display; }
+}
+
+kernel void extractShellViewNodes(
+    device const StepControl &control [[buffer(0)]],
+    device const ShellNode *nodes [[buffer(1)]],
+    device float3 *displacements [[buffer(2)]],
+    device float4 *rotations [[buffer(3)]],
+    constant uint4 &layout [[buffer(4)]], uint id [[thread_position_in_grid]])
+{
+    if (writeBodyView(control, layout)) {
+        displacements[id] = float3(nodes[id].displacement);
+        rotations[id] = nodes[id].rotation;
+    }
+}

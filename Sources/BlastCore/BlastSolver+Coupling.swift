@@ -76,6 +76,7 @@ extension BlastSolver {
             try StructuralBody(object: $0, device: device, queue: commandQueue, library: library)
         }
         clearEnvelopeExposure()
+        frameExtractor?.invalidate()
         bodies = compiled
         couplingRegion = nil
         tiledCoupling = nil

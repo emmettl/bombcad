@@ -170,14 +170,28 @@ again ends a replay.
   than 2% of the run's time. Measured on the Studio (`RunTimelineCostStudyTests`, 20 October 2026):
   the made-up district's frames, on 21 million cells, take 0.4 to 0.5 ms each on the main thread
   with their layers (9 ms before), so its 1.3 s run records 237 frames of about 1 MB, under 0.1%
-  of the run; the office tower's are 3.5 MB each, so its 256 MB holds about 70, and still take 26 to 29 ms each (33 ms
-  before), under 1% of its run, nearly all of it copying its structure's nodes and elements, which the GPU does
-  not yet cut out for it. The layers add little: 9.5 kB in all to the district's 237 frames (its
+  of the run; the office tower's are 3.5 MB each, so its 256 MB holds about 70, and took 26 to 29 ms each (33 ms
+  before), under 1% of its run, nearly all of it copying its structure's nodes and elements, which the GPU did
+  not then cut out for it. The layers add little: 9.5 kB in all to the district's 237 frames (its
   damage colours changed in 3) and 4.2 kB to the office tower's 73 (its panes changed in 38, its
   colours in 8), before compression; a recorder that fell behind on a busy Mac once let the office
   tower's pass its space threefold, and now counts the frames still to be written; the thermal paint, where reckoned, 6 bytes a receiver in
   each frame where more of the radiation has been reckoned, so a run with a million receivers
   records fewer frames within its space.
+
+
+The GPU now also extracts the bodies' displacements, shell rotations and solid damage with the
+field, leaving velocities and constitutive histories in the solver. Between batches a frame
+copies those compact buffers; if none was captured for that batch, it reads the original buffers.
+The timeline format is unchanged. On the Studio on 21 October 2026, a short office-tower
+comparison in a release build took 1.19 ms per frame against 2.42 ms reading the original bodies
+(30 frames each, one-million-cell air grid, unchanged preset structure mesh). Reproduce with
+`blastbench capture-cost --preset office --cells 1000000 --pairs 30 --frame-interval 0.00005`,
+then add `--cpu-bodies`. In a debug build, with 12 frames per path, the same comparison took
+0.83 ms against 25.44 ms, reproducing the original study's body-copy bottleneck. This measures
+field and body copying, excluding timeline encoding and
+layers; it is not a repeat of the full-run study above. Concurrent GPU work makes the benchmark's
+batch-time differences too noisy to infer a change in total run time.
 
 ### Continuing a run from a saved state
 

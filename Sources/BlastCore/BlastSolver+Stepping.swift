@@ -561,14 +561,14 @@ extension BlastSolver {
         if let stride = frameRequest.viewField {
             frameExtractor?.encodeViewField(
                 encoder, stride: stride, grid: grid, field: visualizationTexture, control: controlBuffer,
-                write: .atLimit)
+                write: .atLimit, bodies: bodies)
         }
         // Its threads return at once unless the batch's clock has reached the frame's time.
         if let capture {
             frameExtractor?.encodeViewField(
                 encoder, stride: capture.stride, grid: grid, field: visualizationTexture,
                 control: controlBuffer,
-                write: .from(ticks: capture.fromTicks), capture: true)
+                write: .from(ticks: capture.fromTicks), capture: true, bodies: bodies)
         }
         encoder.endEncoding()
         return commandBuffer

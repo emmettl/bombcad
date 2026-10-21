@@ -12,6 +12,8 @@ final class FrameExtractor {
     private let airPipeline: MTLComputePipelineState
     private let fireballPipeline: MTLComputePipelineState
     private let cellsPipeline: MTLComputePipelineState
+    private let bodyExtractor: BodyViewExtractor
+    private var readyBodies: (time: Double, steps: Int)?
     private let viewPipeline: MTLComputePipelineState
     private var viewBuffer: MTLBuffer?
     /// The view field's stride the batch in flight was asked for, and what the last completed
@@ -36,6 +38,7 @@ final class FrameExtractor {
 
     init(library: MTLLibrary) throws {
         device = library.device
+        bodyExtractor = try BodyViewExtractor(library: library)
         airPipeline = try ShaderLibrary.pipeline("extractAirSlice", in: library)
         fireballPipeline = try ShaderLibrary.pipeline("extractFireballBlocks", in: library)
         cellsPipeline = try ShaderLibrary.pipeline("extractLuminousCells", in: library)
@@ -60,7 +63,7 @@ final class FrameExtractor {
     /// recorder's.
     func encodeViewField(
         _ encoder: MTLComputeCommandEncoder, stride: Int, grid: Grid, field: MTLTexture, control: MTLBuffer,
-        write: ViewFieldWrite, capture: Bool = false
+        write: ViewFieldWrite, capture: Bool = false, bodies: [StructuralBody]? = nil
     ) {
         let size = Self.viewFieldSize(grid, stride: stride)
         let bytes = 8 * size.x * size.y * size.z
@@ -88,6 +91,7 @@ final class FrameExtractor {
         encoder.dispatchThreads(
             MTLSize(width: size.x, height: size.y, depth: size.z),
             threadsPerThreadgroup: Self.threadgroup(viewPipeline, depth: true))
+        if let bodies { bodyExtractor.encode(encoder, bodies: bodies, control: control, layout: layout) }
         switch (write, capture) {
         case (.atLimit, false): encodedView = stride
         case (.from(let ticks), true): encodedCapture = (stride, ticks)
@@ -121,6 +125,7 @@ final class FrameExtractor {
         _ encoder: MTLComputeCommandEncoder, request: FrameRequest, grid: Grid, state: MTLBuffer,
         mask: MTLBuffer, species: MTLBuffer, hasSpecies: Bool, control: MTLBuffer, uniforms: SolverUniforms
     ) {
+        readyBodies = nil
         ready = nil
         readyView = nil
         encodedView = nil
@@ -218,6 +223,7 @@ final class FrameExtractor {
         }
         readyView = reachedLimit ? encodedView.map { (time, steps, $0) } : nil
         readyCapture = encodedCapture.flatMap { clock >= $0.fromTicks ? (time, steps, $0.stride) : nil }
+        readyBodies = readyView != nil || readyCapture != nil ? (time, steps) : nil
         encoded = nil
         encodedView = nil
         encodedCapture = nil
@@ -225,9 +231,15 @@ final class FrameExtractor {
 
     /// The state has been changed by other means: nothing cut out is current.
     func invalidate() {
+        readyBodies = nil
         ready = nil
         readyView = nil
         readyCapture = nil
+    }
+
+    func bodyFields(time: Double, steps: Int) -> [(solids: BodyViewFields?, shells: BodyViewFields?)]? {
+        guard let readyBodies, readyBodies.time == time, readyBodies.steps == steps else { return nil }
+        return bodyExtractor.fields()
     }
 
     /// The samples cut out for `layout` at `time` and `steps`, if they are ready.

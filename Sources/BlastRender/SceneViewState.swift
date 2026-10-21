@@ -380,30 +380,39 @@ extension ViewFrame {
     }
 
     /// The run's view now with `field` read already, as `BlastSolver.viewField(stride:)` reads it.
-    public init(solver: BlastSolver, field: Data) {
+    /// Uses the batch's compact GPU body capture when available; `useCapturedBodies: false`
+    /// reads the original buffers for comparisons and capture-cost measurements.
+    public init(solver: BlastSolver, field: Data, useCapturedBodies: Bool = true) {
+        let captured = useCapturedBodies ? solver.capturedBodyViewFields() : nil
         self.init(
             time: solver.time, field: field,
-            bodies: solver.bodies.map { body in
+            bodies: solver.bodies.enumerated().map { index, body in
                 Body(
                     solids: body.solids.map { structure in
-                        let nodes: [StructureNode] = Self.read(structure.nodeBuffer, structure.nodeCount)
+                        let cut = captured?[index].solids
+                        let nodes: [StructureNode] =
+                            cut == nil ? Self.read(structure.nodeBuffer, structure.nodeCount) : []
                         let floats = StructureSolver.stateStride / MemoryLayout<Float>.stride
-                        let states: [Float] = Self.read(
-                            structure.stateBuffer, structure.elementCount * floats)
+                        let states: [Float] =
+                            cut == nil
+                            ? Self.read(
+                                structure.stateBuffer, structure.elementCount * floats) : []
                         return Solids(
-                            displacements: nodes.map(\.displacement),
+                            displacements: cut?.displacements ?? nodes.map(\.displacement),
                             flags: Self.read(
                                 structure.flagBuffer, structure.ex * structure.ey * structure.ez),
-                            damage: (0..<structure.elementCount).map { states[$0 * floats + 7] })
+                            damage: cut?.damage
+                                ?? (0..<structure.elementCount).map { states[$0 * floats + 7] })
                     },
                     shells: body.shells.map { shells in
                         let count =
                             shells.elementCount + shells.beamCount == 0
                             ? 0 : shells.referenceBuffer.length / MemoryLayout<SIMD4<Float>>.stride
-                        let nodes: [ShellNode] = Self.read(shells.nodeBuffer, count)
+                        let cut = captured?[index].shells
+                        let nodes: [ShellNode] = cut == nil ? Self.read(shells.nodeBuffer, count) : []
                         return Shells(
-                            displacements: nodes.map(\.displacement),
-                            rotations: nodes.map { SIMD4($0.qx, $0.qy, $0.qz, $0.qw) },
+                            displacements: cut?.displacements ?? nodes.map(\.displacement),
+                            rotations: cut?.rotations ?? nodes.map { SIMD4($0.qx, $0.qy, $0.qz, $0.qw) },
                             flags: Self.read(shells.flagBuffer, shells.elementCount),
                             beamFlags: Self.read(shells.beamFlagBuffer, shells.beamCount),
                             damage: Self.read(shells.displayBuffer, shells.elementCount),

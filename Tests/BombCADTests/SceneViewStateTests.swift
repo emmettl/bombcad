@@ -51,6 +51,56 @@ struct SceneViewStateTests {
         #expect(try pixels(renderer, queue, scene) == local)
     }
 
+    @Test("GPU body capture matches source values and expires on the next uncaptured batch")
+    func capturedBodies() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let solver = try BlastSolver(device: device, scenario: scene(), cellSize: 0.5)
+        solver.viewFieldCapture = ViewFieldCapture(stride: 2, from: 0)
+        solver.advance(steps: 4)
+        let captured = try #require(solver.capturedBodyViewFields())
+        let frame = ViewFrame(solver: solver, field: Data())
+        #expect(frame == ViewFrame(solver: solver, field: Data(), useCapturedBodies: false))
+        for (index, body) in solver.bodies.enumerated() {
+            if let solid = body.solids {
+                let nodes = solid.nodeBuffer.contents().bindMemory(
+                    to: StructureNode.self, capacity: solid.nodeCount)
+                let state = solid.stateBuffer.contents().bindMemory(
+                    to: Float.self, capacity: solid.stateBuffer.length / 4)
+                #expect(
+                    captured[index].solids?.displacements
+                        == (0..<solid.nodeCount).map { nodes[$0].displacement })
+                #expect(
+                    frame.bodies[index].solids?.damage
+                        == (0..<solid.elementCount).map { state[$0 * StructureSolver.stateStride / 4 + 7] })
+            }
+            if let shell = body.shells {
+                let count = shell.referenceBuffer.length / MemoryLayout<SIMD4<Float>>.stride
+                let nodes = shell.nodeBuffer.contents().bindMemory(to: ShellNode.self, capacity: count)
+                #expect(captured[index].shells?.displacements == (0..<count).map { nodes[$0].displacement })
+                #expect(
+                    frame.bodies[index].shells?.rotations
+                        == (0..<count).map { SIMD4(nodes[$0].qx, nodes[$0].qy, nodes[$0].qz, nodes[$0].qw) })
+            }
+        }
+        solver.viewFieldCapture = ViewFieldCapture(stride: 2, from: solver.time + 100)
+        solver.advance(steps: 1)
+        #expect(solver.capturedBodyViewFields() == nil)
+        solver.viewFieldCapture = nil
+        solver.advance(steps: 1)
+        #expect(solver.capturedBodyViewFields() == nil)
+        let fallback = ViewFrame(solver: solver, field: Data())
+        #expect(fallback.bodies.count == frame.bodies.count)
+        solver.frameRequest.viewField = 3
+        solver.advance(until: solver.time + 0.0005)
+        #expect(solver.capturedBodyViewFields() != nil)
+        #expect(
+            ViewFrame(solver: solver, field: Data())
+                == ViewFrame(solver: solver, field: Data(), useCapturedBodies: false))
+        try solver.setStructures([])
+        #expect(solver.capturedBodyViewFields() == nil)
+        #expect(ViewFrame(solver: solver, field: Data()).bodies.isEmpty)
+    }
+
     @Test("A frame whose parts are not the sizes its setup says is refused and changes nothing")
     func mismatchedFrame() throws {
         let scene = try scene()
