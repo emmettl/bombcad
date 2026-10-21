@@ -1,0 +1,163 @@
+{
+  "case": "kb-surface-burst-free-field",
+  "run": "100kg",
+  "code": {
+    "name": "pyro2",
+    "package": "pyro-hydro",
+    "version": "4.5.1",
+    "solver": "compressible (2nd-order unsplit CTU, CGF Riemann solver)"
+  },
+  "parameters": {
+    "geometry": "1-D spherical: SphericalPolar wedge about the equator, reflecting theta faces",
+    "sphere_mass_kg": 200.0,
+    "charge_density_kg_m3": 1600.0,
+    "charge_radius_m": 0.31017524544970004,
+    "specific_energy_J_kg": 4184000.0,
+    "energy_J": 836800000.0,
+    "gamma": 1.4,
+    "ambient_pressure_Pa": 101325.0,
+    "ambient_temperature_C": 15.0,
+    "ambient_density_kg_m3": 1.2250122659906946,
+    "initial_charge_density_in_shell_kg_m3": 1675.0694971301853,
+    "initial_charge_pressure_Pa": 2803396310.3970776,
+    "dr_m": 0.02,
+    "r_in_m": 0.11017524544970003,
+    "r_out_m": 36.0101752454497,
+    "outer_bc": "outflow",
+    "cfl": 0.8,
+    "tmax_s": 0.075,
+    "steps": 7795,
+    "wall_s": 2006.0
+  },
+  "gauges": [
+    {
+      "gauge": "Z0.75",
+      "radius_m": 3.481,
+      "peak_Pa": 2831879.630657697,
+      "t_peak_s": 0.0012982702892154546,
+      "t_start_s": 0.0012569468940897368,
+      "t_end_s": 0.002083241100884557,
+      "duration_s": 0.00082629420679482,
+      "impulse_Pa_s": 829.4853117157443,
+      "arrival_s": {
+        "0.01": 0.0012569468940897368,
+        "0.1": 0.0012616841989281922,
+        "0.5": 0.001271477000527859
+      },
+      "largest_overpressure_after_phase_Pa": 72679.95654139025,
+      "note": "t_start_s and duration_s corrected after the run: the script then took round-off ahead of the shock as positive and started the phase at t = 0; t_start_s is now the 1% arrival. The impulse, peak and arrivals are as run."
+    },
+    {
+      "gauge": "Z1",
+      "radius_m": 4.642,
+      "peak_Pa": 1600990.0303283937,
+      "t_peak_s": 0.0020528091513636795,
+      "t_start_s": 0.0019355727370746314,
+      "t_end_s": 0.004835734872222489,
+      "duration_s": 0.0029001621351478577,
+      "impulse_Pa_s": 867.370326852039,
+      "arrival_s": {
+        "0.01": 0.0019980113055377406,
+        "0.1": 0.00200486519364167,
+        "0.5": 0.002017721229219237
+      },
+      "largest_overpressure_after_phase_Pa": 17498.41364539064
+    },
+    {
+      "gauge": "Z1.5",
+      "radius_m": 6.962,
+      "peak_Pa": 588569.1853283223,
+      "t_peak_s": 0.004266621148058077,
+      "t_start_s": 0.004078798072715506,
+      "t_end_s": 0.008703351688760795,
+      "duration_s": 0.0046245536160452886,
+      "impulse_Pa_s": 611.7077265935375,
+      "arrival_s": {
+        "0.01": 0.004183738420384455,
+        "0.1": 0.0041977037625164065,
+        "0.5": 0.004217899374790726
+      },
+      "largest_overpressure_after_phase_Pa": 4468.033397354215
+    },
+    {
+      "gauge": "Z2",
+      "radius_m": 9.283,
+      "peak_Pa": 285644.5762607973,
+      "t_peak_s": 0.0074789979162786825,
+      "t_start_s": 0.007129440780818683,
+      "t_end_s": 0.01333913397391139,
+      "duration_s": 0.006209693193092707,
+      "impulse_Pa_s": 492.9483288204017,
+      "arrival_s": {
+        "0.01": 0.007346088531915004,
+        "0.1": 0.007363800137617471,
+        "0.5": 0.007396001664079763
+      },
+      "largest_overpressure_after_phase_Pa": 1032.6848111488653
+    },
+    {
+      "gauge": "Z3",
+      "radius_m": 13.925,
+      "peak_Pa": 113797.41253115892,
+      "t_peak_s": 0.016095499827513255,
+      "t_start_s": 0.015554740592432753,
+      "t_end_s": 0.02524013748792725,
+      "duration_s": 0.009685396895494497,
+      "impulse_Pa_s": 369.8577445797008,
+      "arrival_s": {
+        "0.01": 0.01589534531292675,
+        "0.1": 0.015922613515949872,
+        "0.5": 0.015969539322629695
+      },
+      "largest_overpressure_after_phase_Pa": -11.851894530307618
+    },
+    {
+      "gauge": "Z4",
+      "radius_m": 18.566,
+      "peak_Pa": 64439.01725587502,
+      "t_peak_s": 0.02647486294599902,
+      "t_start_s": 0.025813365542617595,
+      "t_end_s": 0.038146308143863064,
+      "duration_s": 0.01233294260124547,
+      "impulse_Pa_s": 291.26057092054424,
+      "arrival_s": {
+        "0.01": 0.026225047632583185,
+        "0.1": 0.026258462293630595,
+        "0.5": 0.02631346077730926
+      },
+      "largest_overpressure_after_phase_Pa": -21.4366608690907
+    },
+    {
+      "gauge": "Z5",
+      "radius_m": 23.208,
+      "peak_Pa": 43281.92516567584,
+      "t_peak_s": 0.037824236992806105,
+      "t_start_s": 0.03705800451799674,
+      "t_end_s": 0.05136372820243581,
+      "duration_s": 0.014305723684439067,
+      "impulse_Pa_s": 238.05895284100814,
+      "arrival_s": {
+        "0.01": 0.0375226896500883,
+        "0.1": 0.03755718872261625,
+        "0.5": 0.03761712723976224
+      },
+      "largest_overpressure_after_phase_Pa": -8.567978008883074
+    },
+    {
+      "gauge": "Z6",
+      "radius_m": 27.85,
+      "peak_Pa": 32222.433805980138,
+      "t_peak_s": 0.049697330200595434,
+      "t_start_s": 0.048886011426678276,
+      "t_end_s": 0.06472378976591718,
+      "duration_s": 0.015837778339238905,
+      "impulse_Pa_s": 200.52104274224018,
+      "arrival_s": {
+        "0.01": 0.049383774484400025,
+        "0.1": 0.04942445518677938,
+        "0.5": 0.0494869579568027
+      },
+      "largest_overpressure_after_phase_Pa": -1.7207499605719931
+    }
+  ]
+}

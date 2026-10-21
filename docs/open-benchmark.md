@@ -3,14 +3,16 @@
 Part of BombCAD's validation record written down so that any blast code can run it and be scored
 the same way: ten cases, each a JSON file holding the scene, the charge, the gauges and the
 measured (or reference) values with their uncertainty and full citations; a scorer; and BombCAD's
-own entry, quoted from the record. The cases name no code's options. This is a first step: no
-other code has run them yet ([what this doesn't yet do](#what-this-doesnt-yet-do)).
+own entry, quoted from the record. The cases name no code's options. This is a first step: one
+other code, pyro2, has run two of them ([a second code](#a-second-code-pyro2-20-october-2026)), and
+none has run the rest ([what this doesn't yet do](#what-this-doesnt-yet-do)).
 
 | Path | What |
 |---|---|
 | `Benchmarks/open/cases/*.json` | The ten cases |
 | `Benchmarks/open/schema/case.schema.json`, `results.schema.json` | JSON Schemas (draft 2020-12) for a case and a results file |
 | `Benchmarks/open/results/bombcad-0.6.0-dev.json` | BombCAD's entry |
+| `Benchmarks/open/results/pyro2-4.5.1.json`, `Benchmarks/open/other-codes/pyro2/` | A second code's entry for two cases, with its scripts and runs |
 | `Scripts/open-benchmark/score.py` | The scorer: Python 3, standard library only |
 | `Scripts/open-benchmark/make_cases.py`, `make_bombcad_results.py` | The generators that write the cases and BombCAD's entry |
 | `Scripts/open-benchmark/test_score.py` | The scorer's tests, and a check that the committed JSON is exactly what the generators write; run by `make ci-test` |
@@ -230,10 +232,76 @@ for the ten-case benchmark. All input and extraction choices stayed fixed. The f
 histories and runtime snapshot are retained on StudioData, rather than committed; the record
 states where they are and how to reproduce them. **A second-solver run is still needed.**
 
+## A second code: pyro2, 20 October 2026
+
+A cloud session ran two cases in [pyro2](https://github.com/python-hydro/pyro2) 4.5.1 (BSD-3-Clause,
+PyPI `pyro-hydro`), unchanged: an open finite-volume code whose spherical-polar grid, one cell
+wide about the equator with reflecting faces, makes a 1-D spherical run. It was chosen because it
+installs with no compiler and supports a spherical blast without new numerics; Clawpack needed a
+Fortran compiler the machine lacked, and OpenFOAM's packages were out of the machine's reach. The
+scripts, the runs and how to rerun them are in
+[`Benchmarks/open/other-codes/pyro2/`](../Benchmarks/open/other-codes/pyro2/README.md).
+
+The runs were set up from the cases' prose a day before the decks above existed, yet chose the
+decks' physics: a constant-volume balloon of 1,600 kg/m³ holding 4.184 MJ/kg, one ideal gas of
+γ 1.4, released at t = 0, no afterburning. The free field is the 200 kg sphere the hemisphere is
+half of, on 10 mm cells to 36 m; the room is a closed sphere of the cube's 216 m³, on 20 mm cells,
+read as its volume-mean pressure at 80 ms. That is not the decks' 3-D mesh or the room's
+100–120 ms window, so it is a deviation from `ideal-gas-balloon-v1`, not an import of it.
+
+| Case | Code | Score | Passed | Coverage | Geometric mean ratio | Typical factor |
+|---|---|---|---|---|---|---|
+| `kb-surface-burst-free-field` | pyro2 4.5.1 | 0.96 | 23/24 | 24/24 | 0.95 | 1.14 |
+| | BombCAD's entry | 1.00 | 16/16 | 16/24 | 1.02 | 1.12 |
+| | BombCAD's control | 0.50 | 12/24 | 24/24 | 0.77 | 1.40 |
+| `ufc-closed-room-gas-pressure` | pyro2 4.5.1 | 0.60 | 3/5 | 5/5 | 0.74 | 1.55 |
+| | BombCAD's entry | 1.00 | 5/5 | 5/5 | 0.99 | 1.04 |
+| | BombCAD's control | 0.60 | 3/5 | 5/5 | 0.74 | 1.55 |
+
+- **Free field.** pyro2's peaks are 0.98–1.23 of Kingery–Bulmash (high close in, within 3% from
+  Z = 2), its arrivals 1–8% early, and its impulses 0.74–0.93 (Z = 1.5 fails): the shortfall of a
+  balloon without afterburning. Its impulses and arrivals have converged by 20 mm; the near peaks
+  still rise 2% from 10 to 5 mm.
+- **Room.** The volume mean is the energy balance of a charge that does not burn, 0.47–1.14 of
+  the curve, as BombCAD's own record gives without afterburning.
+
+**Against BombCAD's control.** The same balloon, so the two differ in numerics and mesh alone.
+pyro2's free-field history, thinned to 50 µs, read with the decks' extractor
+(`run_decks.incident`), over BombCAD's control on its 0.5 m cells:
+
+| Z, m/kg^⅓ | 0.75 | 1 | 1.5 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|---|
+| Control / pyro2, peak | 0.39 | 0.50 | 0.53 | 0.58 | 0.61 | 0.63 | 0.64 | 0.65 |
+| Control / pyro2, impulse | 1.05 | 1.11 | 1.08 | 1.03 | 0.99 | 0.99 | 0.99 | 0.99 |
+| Control / pyro2, arrival | 0.79 | 0.90 | 0.90 | 0.92 | 0.95 | 0.97 | 0.98 | 0.98 |
+
+The rooms agree within 0.3% (pyro2 at 80 ms against the control's 100–120 ms mean), and both sit
+on the analytic energy bound. So the control's low peaks and early arrivals are its mesh (the
+charge in one 0.5 m cell, the gauges read across 0.5 m), not the balloon: resolved, the same
+balloon's peaks are within the free field's band. The impulses agree within 1% from Z = 3 out.
+This is the first check of the control against a converged run; it does not test the 3-D code
+on a finer mesh, which is still to do.
+
+**What the case format left open, as the run found it, and where it stands now.**
+- **Settled by the decks** for these two cases: the source (t = 0, density, specific energy, γ),
+  the symmetry (the hemisphere as half a sphere), the ambient state, the read rules (arrival at
+  half the peak, the positive phase about the peak, the room as a volume mean over a window), the
+  sampling and the case version (each deck hashes its case).
+- **The sampling still moves a resolved peak.** pyro2's raw maximum at Z = 1 is 1,665 kPa from
+  every step and 1,514 kPa from 50 µs samples, 9% lower; at Z = 0.75 its impulse moves 3%. The
+  decks' 50 µs is fine for the control's 0.5 m cells, not for a code that resolves the shock close
+  in.
+- **Still open:** what a code that cannot model the cube should keep (its volume, here); a
+  structured set-up in the results file beside the free-text `configuration` (dimension, cells,
+  source, ambient, far boundary, read rules); a check that the far boundary returns nothing inside
+  the last gauge's positive phase (pyro2's outflow at 36 m does not, by its shock's speed); and
+  decks for the other eight cases.
+
 ## What this doesn't yet do
 
-- **No other code has run it.** The format is untested by anyone but its author; the first outside
-  run will find what is missing.
+- **One other code has run two cases.** pyro2's 1-D runs of the free field and the room found
+  what the prose left open, and the decks now settle most of it; no other code has run the
+  decks' contract, a 3-D case or any structure.
 - **Three of the ten are curves, not tests**: Kingery–Bulmash's two and UFC 3-340-02's, each a
   fit or design chart with little or no stated scatter, labelled as such.
 - **Peaks and integrals only**: the two controls retain raw pressure histories, but no pressure or displacement histories are scored, so a code can

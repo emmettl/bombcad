@@ -1,0 +1,1277 @@
+{
+ "case": "ufc-closed-room-gas-pressure",
+ "code": {
+  "name": "pyro2",
+  "package": "pyro-hydro",
+  "version": "4.5.1",
+  "solver": "compressible (2nd-order unsplit CTU, CGF Riemann solver)"
+ },
+ "parameters": {
+  "geometry": "closed rigid sphere of the room's volume, 1-D spherical (SphericalPolar wedge, one theta cell, reflecting faces); the case's cube is not modelled",
+  "charge_density_kg_m3": 1600.0,
+  "specific_energy_J_kg": 4184000.0,
+  "gamma": 1.4,
+  "ambient_pressure_Pa": 101325.0,
+  "ambient_temperature_C": 15.0,
+  "ambient_density_kg_m3": 1.2250122659906946,
+  "afterburning": false,
+  "heat_loss": false,
+  "read": "volume-mean pressure above ambient over the gridded sphere"
+ },
+ "runs": [
+  {
+   "run": "1kg-m3",
+   "mass_kg": 216.0,
+   "charge_radius_m": 0.3182353253841166,
+   "dr_m": 0.02002298327671677,
+   "r_in_m": 0.1180054926169489,
+   "room_sphere_radius_m": 3.722142482425967,
+   "gridded_volume_m3": 215.99999999999991,
+   "room_volume_m3": 216.0,
+   "steps": 29282,
+   "wall_s": 2685.7,
+   "energy_balance_overpressure_kPa": 1673.5366718749997,
+   "relative_energy_drift": 0.0013312044072377738,
+   "reads": {
+    "10": {
+     "mean_overpressure_kPa": 1617.415835623048,
+     "kinetic_energy_fraction": 0.03287298569982523
+    },
+    "20": {
+     "mean_overpressure_kPa": 1649.6107928152328,
+     "kinetic_energy_fraction": 0.01476859394865236
+    },
+    "30": {
+     "mean_overpressure_kPa": 1661.34864556879,
+     "kinetic_energy_fraction": 0.008137067352954443
+    },
+    "50": {
+     "mean_overpressure_kPa": 1663.9964978313242,
+     "kinetic_energy_fraction": 0.00668315438029797
+    },
+    "80": {
+     "mean_overpressure_kPa": 1675.1791193421254,
+     "kinetic_energy_fraction": 0.00038022676031442
+    },
+    "100": {
+     "mean_overpressure_kPa": 1675.5051172936392,
+     "kinetic_energy_fraction": 0.00022365817632568895
+    }
+   },
+   "history_every_0.5ms": [
+    {
+     "t_ms": 0.0,
+     "mean_overpressure_kPa": 1673.5399008013358,
+     "kinetic_energy_fraction": 0.0,
+     "total_energy_J_per_m3": 4437162.252003341
+    },
+    {
+     "t_ms": 0.5032,
+     "mean_overpressure_kPa": 397.87907131922066,
+     "kinetic_energy_fraction": 0.7188389303131891,
+     "total_energy_J_per_m3": 4438773.04809029
+    },
+    {
+     "t_ms": 1.0049,
+     "mean_overpressure_kPa": 622.0185121361511,
+     "kinetic_energy_fraction": 0.5926880840618092,
+     "total_energy_J_per_m3": 4439739.446794863
+    },
+    {
+     "t_ms": 1.5044,
+     "mean_overpressure_kPa": 1201.6999527125254,
+     "kinetic_energy_fraction": 0.26675666463397624,
+     "total_energy_J_per_m3": 4442675.74577434
+    },
+    {
+     "t_ms": 2.0046,
+     "mean_overpressure_kPa": 1470.8415896491895,
+     "kinetic_energy_fraction": 0.11523379711973734,
+     "total_energy_J_per_m3": 4442322.120044731
+    },
+    {
+     "t_ms": 2.5019,
+     "mean_overpressure_kPa": 1341.2421971881827,
+     "kinetic_energy_fraction": 0.18811734409902622,
+     "total_energy_J_per_m3": 4442043.399693388
+    },
+    {
+     "t_ms": 3.0001,
+     "mean_overpressure_kPa": 1383.6952759986175,
+     "kinetic_energy_fraction": 0.16412440106189874,
+     "total_energy_J_per_m3": 4441511.027134876
+    },
+    {
+     "t_ms": 3.5021,
+     "mean_overpressure_kPa": 1577.5135031568748,
+     "kinetic_energy_fraction": 0.05505327951379656,
+     "total_energy_J_per_m3": 4441622.122073356
+    },
+    {
+     "t_ms": 4.0028,
+     "mean_overpressure_kPa": 1632.9311585984433,
+     "kinetic_energy_fraction": 0.023918814924326615,
+     "total_energy_J_per_m3": 4441885.022258652
+    },
+    {
+     "t_ms": 4.5005,
+     "mean_overpressure_kPa": 1527.6757378542563,
+     "kinetic_energy_fraction": 0.08319736788733975,
+     "total_energy_J_per_m3": 4442070.410783024
+    },
+    {
+     "t_ms": 5.0,
+     "mean_overpressure_kPa": 1440.8506891992395,
+     "kinetic_energy_fraction": 0.13212625420361415,
+     "total_energy_J_per_m3": 4442396.421913003
+    },
+    {
+     "t_ms": 5.503,
+     "mean_overpressure_kPa": 1521.4930127540101,
+     "kinetic_energy_fraction": 0.08682499672890816,
+     "total_energy_J_per_m3": 4442790.283737784
+    },
+    {
+     "t_ms": 6.0064,
+     "mean_overpressure_kPa": 1658.0544050377835,
+     "kinetic_energy_fraction": 0.010003808049350072,
+     "total_energy_J_per_m3": 4442894.375106563
+    },
+    {
+     "t_ms": 6.504,
+     "mean_overpressure_kPa": 1586.0813970029112,
+     "kinetic_energy_fraction": 0.050478216914737306,
+     "total_energy_J_per_m3": 4442779.5840556035
+    },
+    {
+     "t_ms": 7.0027,
+     "mean_overpressure_kPa": 1518.568408193942,
+     "kinetic_energy_fraction": 0.088429658216733,
+     "total_energy_J_per_m3": 4442590.258654677
+    },
+    {
+     "t_ms": 7.5029,
+     "mean_overpressure_kPa": 1583.5850880768824,
+     "kinetic_energy_fraction": 0.05178752263383011,
+     "total_energy_J_per_m3": 4442332.621368322
+    },
+    {
+     "t_ms": 8.0002,
+     "mean_overpressure_kPa": 1647.6553681153907,
+     "kinetic_energy_fraction": 0.0157394396169564,
+     "total_energy_J_per_m3": 4442371.356002374
+    },
+    {
+     "t_ms": 8.5028,
+     "mean_overpressure_kPa": 1647.3771783340678,
+     "kinetic_energy_fraction": 0.015921748309636864,
+     "total_energy_J_per_m3": 4442487.61551813
+    },
+    {
+     "t_ms": 9.0012,
+     "mean_overpressure_kPa": 1589.6589894186156,
+     "kinetic_energy_fraction": 0.048417169961364505,
+     "total_energy_J_per_m3": 4442555.9605514305
+    },
+    {
+     "t_ms": 9.5025,
+     "mean_overpressure_kPa": 1551.460723169532,
+     "kinetic_energy_fraction": 0.06994688483316211,
+     "total_energy_J_per_m3": 4442718.636755081
+    },
+    {
+     "t_ms": 10.0007,
+     "mean_overpressure_kPa": 1617.415835623048,
+     "kinetic_energy_fraction": 0.03287298569982523,
+     "total_energy_J_per_m3": 4442903.595415413
+    },
+    {
+     "t_ms": 10.5021,
+     "mean_overpressure_kPa": 1665.6126649704356,
+     "kinetic_energy_fraction": 0.005764032629384486,
+     "total_energy_J_per_m3": 4442953.4913209025
+    },
+    {
+     "t_ms": 11.001,
+     "mean_overpressure_kPa": 1625.281662010509,
+     "kinetic_energy_fraction": 0.028444551099282355,
+     "total_energy_J_per_m3": 4442892.744732448
+    },
+    {
+     "t_ms": 11.5022,
+     "mean_overpressure_kPa": 1589.0018364094722,
+     "kinetic_energy_fraction": 0.04882009941957195,
+     "total_energy_J_per_m3": 4442710.6675036
+    },
+    {
+     "t_ms": 12.0034,
+     "mean_overpressure_kPa": 1624.390412361911,
+     "kinetic_energy_fraction": 0.02888430344631126,
+     "total_energy_J_per_m3": 4442610.232967498
+    },
+    {
+     "t_ms": 12.5016,
+     "mean_overpressure_kPa": 1665.1342931374054,
+     "kinetic_energy_fraction": 0.005956356537982779,
+     "total_energy_J_per_m3": 4442610.001974483
+    },
+    {
+     "t_ms": 13.0034,
+     "mean_overpressure_kPa": 1659.0595604265216,
+     "kinetic_energy_fraction": 0.009380188213389226,
+     "total_energy_J_per_m3": 4442634.145514462
+    },
+    {
+     "t_ms": 13.5008,
+     "mean_overpressure_kPa": 1623.6308052428037,
+     "kinetic_energy_fraction": 0.029333853898640246,
+     "total_energy_J_per_m3": 4442711.359026524
+    },
+    {
+     "t_ms": 14.003,
+     "mean_overpressure_kPa": 1610.1111174573223,
+     "kinetic_energy_fraction": 0.03697863140025261,
+     "total_energy_J_per_m3": 4442881.989072022
+    },
+    {
+     "t_ms": 14.5021,
+     "mean_overpressure_kPa": 1647.7701941455466,
+     "kinetic_energy_fraction": 0.015801314957987662,
+     "total_energy_J_per_m3": 4442942.316242993
+    },
+    {
+     "t_ms": 15.0006,
+     "mean_overpressure_kPa": 1670.751963555471,
+     "kinetic_energy_fraction": 0.0028796405787432505,
+     "total_energy_J_per_m3": 4442986.613431529
+    },
+    {
+     "t_ms": 15.5038,
+     "mean_overpressure_kPa": 1641.15396363244,
+     "kinetic_energy_fraction": 0.01952364252540485,
+     "total_energy_J_per_m3": 4442939.777050129
+    },
+    {
+     "t_ms": 16.0,
+     "mean_overpressure_kPa": 1619.0324990873867,
+     "kinetic_energy_fraction": 0.03194056223989507,
+     "total_energy_J_per_m3": 4442799.2538039535
+    },
+    {
+     "t_ms": 16.5006,
+     "mean_overpressure_kPa": 1644.9355955525646,
+     "kinetic_energy_fraction": 0.017341495163982475,
+     "total_energy_J_per_m3": 4442694.453257631
+    },
+    {
+     "t_ms": 17.0018,
+     "mean_overpressure_kPa": 1669.6310550872429,
+     "kinetic_energy_fraction": 0.0034449164915033082,
+     "total_energy_J_per_m3": 4442694.850475227
+    },
+    {
+     "t_ms": 17.5014,
+     "mean_overpressure_kPa": 1663.3785761883546,
+     "kinetic_energy_fraction": 0.006969768979989797,
+     "total_energy_J_per_m3": 4442723.698289894
+    },
+    {
+     "t_ms": 18.0011,
+     "mean_overpressure_kPa": 1637.081312318104,
+     "kinetic_energy_fraction": 0.021779295013824706,
+     "total_energy_J_per_m3": 4442776.316881047
+    },
+    {
+     "t_ms": 18.5021,
+     "mean_overpressure_kPa": 1630.473761994256,
+     "kinetic_energy_fraction": 0.02552579992932935,
+     "total_energy_J_per_m3": 4442905.62507623
+    },
+    {
+     "t_ms": 19.0025,
+     "mean_overpressure_kPa": 1656.8315578888999,
+     "kinetic_energy_fraction": 0.01070738295392418,
+     "total_energy_J_per_m3": 4442963.91076528
+    },
+    {
+     "t_ms": 19.5031,
+     "mean_overpressure_kPa": 1671.4997709492334,
+     "kinetic_energy_fraction": 0.002461826341884863,
+     "total_energy_J_per_m3": 4442999.821370322
+    },
+    {
+     "t_ms": 20.0042,
+     "mean_overpressure_kPa": 1649.6107928152328,
+     "kinetic_energy_fraction": 0.01476859394865236,
+     "total_energy_J_per_m3": 4442955.690563876
+    },
+    {
+     "t_ms": 20.5027,
+     "mean_overpressure_kPa": 1634.3404679975504,
+     "kinetic_energy_fraction": 0.02333229936463025,
+     "total_energy_J_per_m3": 4442824.992749367
+    },
+    {
+     "t_ms": 21.0013,
+     "mean_overpressure_kPa": 1652.2286289525252,
+     "kinetic_energy_fraction": 0.01325062694206071,
+     "total_energy_J_per_m3": 4442753.339478335
+    },
+    {
+     "t_ms": 21.5027,
+     "mean_overpressure_kPa": 1671.6818565319352,
+     "kinetic_energy_fraction": 0.002306796494653283,
+     "total_energy_J_per_m3": 4442765.697667784
+    },
+    {
+     "t_ms": 22.0021,
+     "mean_overpressure_kPa": 1665.6884350818038,
+     "kinetic_energy_fraction": 0.005680654522683749,
+     "total_energy_J_per_m3": 4442771.437363419
+    },
+    {
+     "t_ms": 22.5027,
+     "mean_overpressure_kPa": 1646.1465442901642,
+     "kinetic_energy_fraction": 0.016685916000088206,
+     "total_energy_J_per_m3": 4442811.2358103935
+    },
+    {
+     "t_ms": 23.0031,
+     "mean_overpressure_kPa": 1644.0166931764588,
+     "kinetic_energy_fraction": 0.017910618510771564,
+     "total_energy_J_per_m3": 4442929.854637682
+    },
+    {
+     "t_ms": 23.5001,
+     "mean_overpressure_kPa": 1662.2056993581216,
+     "kinetic_energy_fraction": 0.007686090723374152,
+     "total_energy_J_per_m3": 4442975.863967522
+    },
+    {
+     "t_ms": 24.0024,
+     "mean_overpressure_kPa": 1672.3720344083456,
+     "kinetic_energy_fraction": 0.001973002948639503,
+     "total_energy_J_per_m3": 4443008.655198402
+    },
+    {
+     "t_ms": 24.5034,
+     "mean_overpressure_kPa": 1655.6630444191924,
+     "kinetic_energy_fraction": 0.011365524864831849,
+     "total_energy_J_per_m3": 4442966.760235056
+    },
+    {
+     "t_ms": 25.0005,
+     "mean_overpressure_kPa": 1644.6899988124053,
+     "kinetic_energy_fraction": 0.017514522674891172,
+     "total_energy_J_per_m3": 4442851.927862751
+    },
+    {
+     "t_ms": 25.5004,
+     "mean_overpressure_kPa": 1657.2018601470816,
+     "kinetic_energy_fraction": 0.010464707444166794,
+     "total_energy_J_per_m3": 4442809.855738065
+    },
+    {
+     "t_ms": 26.0025,
+     "mean_overpressure_kPa": 1673.2099909695664,
+     "kinetic_energy_fraction": 0.0014541042683071667,
+     "total_energy_J_per_m3": 4442797.768622497
+    },
+    {
+     "t_ms": 26.5003,
+     "mean_overpressure_kPa": 1668.0794308026987,
+     "kinetic_energy_fraction": 0.004341184264537052,
+     "total_energy_J_per_m3": 4442798.082131411
+    },
+    {
+     "t_ms": 27.0021,
+     "mean_overpressure_kPa": 1652.0703926871638,
+     "kinetic_energy_fraction": 0.013360387406242383,
+     "total_energy_J_per_m3": 4442846.633933784
+    },
+    {
+     "t_ms": 27.5007,
+     "mean_overpressure_kPa": 1650.5531976840898,
+     "kinetic_energy_fraction": 0.014236317225758669,
+     "total_energy_J_per_m3": 4442946.692745282
+    },
+    {
+     "t_ms": 28.0023,
+     "mean_overpressure_kPa": 1666.2061575681732,
+     "kinetic_energy_fraction": 0.005437492354065442,
+     "total_energy_J_per_m3": 4442986.599584893
+    },
+    {
+     "t_ms": 28.5022,
+     "mean_overpressure_kPa": 1673.2749001066652,
+     "kinetic_energy_fraction": 0.0014664327341028175,
+     "total_energy_J_per_m3": 4443015.133095951
+    },
+    {
+     "t_ms": 29.0023,
+     "mean_overpressure_kPa": 1659.0334159826446,
+     "kinetic_energy_fraction": 0.00947119619072588,
+     "total_energy_J_per_m3": 4442976.3405487025
+    },
+    {
+     "t_ms": 29.5015,
+     "mean_overpressure_kPa": 1650.1711284658697,
+     "kinetic_energy_fraction": 0.014437118214300356,
+     "total_energy_J_per_m3": 4442882.744560165
+    },
+    {
+     "t_ms": 30.0014,
+     "mean_overpressure_kPa": 1661.34864556879,
+     "kinetic_energy_fraction": 0.008137067352954443,
+     "total_energy_J_per_m3": 4442835.767802702
+    },
+    {
+     "t_ms": 30.5003,
+     "mean_overpressure_kPa": 1673.9341200564409,
+     "kinetic_energy_fraction": 0.0010499426432920842,
+     "total_energy_J_per_m3": 4442812.498439365
+    },
+    {
+     "t_ms": 31.0011,
+     "mean_overpressure_kPa": 1669.2889404646207,
+     "kinetic_energy_fraction": 0.0036679886662028434,
+     "total_energy_J_per_m3": 4442831.105301653
+    },
+    {
+     "t_ms": 31.5005,
+     "mean_overpressure_kPa": 1655.6177285213864,
+     "kinetic_energy_fraction": 0.011370191338203318,
+     "total_energy_J_per_m3": 4442873.138985092
+    },
+    {
+     "t_ms": 32.0023,
+     "mean_overpressure_kPa": 1655.0006009938832,
+     "kinetic_energy_fraction": 0.011736540059525727,
+     "total_energy_J_per_m3": 4442958.968400165
+    },
+    {
+     "t_ms": 32.501,
+     "mean_overpressure_kPa": 1668.346757451021,
+     "kinetic_energy_fraction": 0.004234788611753783,
+     "total_energy_J_per_m3": 4442994.536291926
+    },
+    {
+     "t_ms": 33.0019,
+     "mean_overpressure_kPa": 1673.5430729367479,
+     "kinetic_energy_fraction": 0.0013167191171254305,
+     "total_energy_J_per_m3": 4443020.3922301
+    },
+    {
+     "t_ms": 33.5034,
+     "mean_overpressure_kPa": 1661.0642254832137,
+     "kinetic_energy_fraction": 0.008330383711375986,
+     "total_energy_J_per_m3": 4442984.8321839515
+    },
+    {
+     "t_ms": 34.0015,
+     "mean_overpressure_kPa": 1653.8930352536356,
+     "kinetic_energy_fraction": 0.01234593540348013,
+     "total_energy_J_per_m3": 4442896.805094111
+    },
+    {
+     "t_ms": 34.5013,
+     "mean_overpressure_kPa": 1664.1202699316987,
+     "kinetic_energy_fraction": 0.006581417554005877,
+     "total_energy_J_per_m3": 4442853.448505115
+    },
+    {
+     "t_ms": 35.0007,
+     "mean_overpressure_kPa": 1674.2045958579804,
+     "kinetic_energy_fraction": 0.0009041001688795971,
+     "total_energy_J_per_m3": 4442840.76272884
+    },
+    {
+     "t_ms": 35.5023,
+     "mean_overpressure_kPa": 1669.813070962554,
+     "kinetic_energy_fraction": 0.0033791612712889474,
+     "total_energy_J_per_m3": 4442858.312148623
+    },
+    {
+     "t_ms": 36.0025,
+     "mean_overpressure_kPa": 1658.160770735301,
+     "kinetic_energy_fraction": 0.009942903867291821,
+     "total_energy_J_per_m3": 4442889.651536467
+    },
+    {
+     "t_ms": 36.5004,
+     "mean_overpressure_kPa": 1658.4859404352956,
+     "kinetic_energy_fraction": 0.009777432404919307,
+     "total_energy_J_per_m3": 4442968.172067841
+    },
+    {
+     "t_ms": 37.0002,
+     "mean_overpressure_kPa": 1669.5197971517532,
+     "kinetic_energy_fraction": 0.0035767883591564646,
+     "total_energy_J_per_m3": 4443003.67670993
+    },
+    {
+     "t_ms": 37.5037,
+     "mean_overpressure_kPa": 1673.7455102002934,
+     "kinetic_energy_fraction": 0.0012042058034482197,
+     "total_energy_J_per_m3": 4443026.593909997
+    },
+    {
+     "t_ms": 38.0008,
+     "mean_overpressure_kPa": 1662.8765838827658,
+     "kinetic_energy_fraction": 0.007312027081040668,
+     "total_energy_J_per_m3": 4442991.2319155065
+    },
+    {
+     "t_ms": 38.501,
+     "mean_overpressure_kPa": 1657.126429589182,
+     "kinetic_energy_fraction": 0.010527946027796067,
+     "total_energy_J_per_m3": 4442903.219272175
+    },
+    {
+     "t_ms": 39.0026,
+     "mean_overpressure_kPa": 1665.7075506258711,
+     "kinetic_energy_fraction": 0.00569293629211041,
+     "total_energy_J_per_m3": 4442874.377348774
+    },
+    {
+     "t_ms": 39.5008,
+     "mean_overpressure_kPa": 1674.550110941703,
+     "kinetic_energy_fraction": 0.0007155486786704845,
+     "total_energy_J_per_m3": 4442866.864868925
+    },
+    {
+     "t_ms": 40.0022,
+     "mean_overpressure_kPa": 1670.2761580738847,
+     "kinetic_energy_fraction": 0.0031221758787313854,
+     "total_energy_J_per_m3": 4442874.3302508565
+    },
+    {
+     "t_ms": 40.5019,
+     "mean_overpressure_kPa": 1660.3751981241446,
+     "kinetic_energy_fraction": 0.008699602731935685,
+     "total_energy_J_per_m3": 4442901.977491469
+    },
+    {
+     "t_ms": 41.003,
+     "mean_overpressure_kPa": 1661.0732269044845,
+     "kinetic_energy_fraction": 0.0083237798726064,
+     "total_energy_J_per_m3": 4442977.937592579
+    },
+    {
+     "t_ms": 41.5015,
+     "mean_overpressure_kPa": 1670.638974669023,
+     "kinetic_energy_fraction": 0.002948982046363716,
+     "total_energy_J_per_m3": 4443012.300177555
+    },
+    {
+     "t_ms": 42.0018,
+     "mean_overpressure_kPa": 1673.9165309943176,
+     "kinetic_energy_fraction": 0.0011092722510615757,
+     "total_energy_J_per_m3": 4443032.359993305
+    },
+    {
+     "t_ms": 42.5024,
+     "mean_overpressure_kPa": 1664.31528194805,
+     "kinetic_energy_fraction": 0.006503693752128397,
+     "total_energy_J_per_m3": 4442996.594059641
+    },
+    {
+     "t_ms": 43.001,
+     "mean_overpressure_kPa": 1659.637263433365,
+     "kinetic_energy_fraction": 0.00911652650599604,
+     "total_energy_J_per_m3": 4442909.561363325
+    },
+    {
+     "t_ms": 43.501,
+     "mean_overpressure_kPa": 1666.6751104282093,
+     "kinetic_energy_fraction": 0.005152965819235124,
+     "total_energy_J_per_m3": 4442894.3588401
+    },
+    {
+     "t_ms": 44.0022,
+     "mean_overpressure_kPa": 1674.8174747237151,
+     "kinetic_energy_fraction": 0.0005687424346282938,
+     "total_energy_J_per_m3": 4442883.042927891
+    },
+    {
+     "t_ms": 44.502,
+     "mean_overpressure_kPa": 1670.751324040903,
+     "kinetic_energy_fraction": 0.0028570756751477543,
+     "total_energy_J_per_m3": 4442884.467241105
+    },
+    {
+     "t_ms": 45.0028,
+     "mean_overpressure_kPa": 1661.9928463025992,
+     "kinetic_energy_fraction": 0.007792427575095365,
+     "total_energy_J_per_m3": 4442915.714685438
+    },
+    {
+     "t_ms": 45.5001,
+     "mean_overpressure_kPa": 1662.6931859013218,
+     "kinetic_energy_fraction": 0.007414408526011567,
+     "total_energy_J_per_m3": 4442987.589820231
+    },
+    {
+     "t_ms": 46.001,
+     "mean_overpressure_kPa": 1671.7247696049164,
+     "kinetic_energy_fraction": 0.0023395625066093347,
+     "total_energy_J_per_m3": 4443019.145020128
+    },
+    {
+     "t_ms": 46.5004,
+     "mean_overpressure_kPa": 1674.103232793537,
+     "kinetic_energy_fraction": 0.0010054050394232678,
+     "total_energy_J_per_m3": 4443037.634411828
+    },
+    {
+     "t_ms": 47.002,
+     "mean_overpressure_kPa": 1665.4049925783404,
+     "kinetic_energy_fraction": 0.005891695077421347,
+     "total_energy_J_per_m3": 4443001.793240058
+    },
+    {
+     "t_ms": 47.5003,
+     "mean_overpressure_kPa": 1661.263338837003,
+     "kinetic_energy_fraction": 0.008204294631599007,
+     "total_energy_J_per_m3": 4442921.887280941
+    },
+    {
+     "t_ms": 48.0025,
+     "mean_overpressure_kPa": 1667.6469672323367,
+     "kinetic_energy_fraction": 0.004609241953112841,
+     "total_energy_J_per_m3": 4442908.357676883
+    },
+    {
+     "t_ms": 48.5001,
+     "mean_overpressure_kPa": 1674.8523371985468,
+     "kinetic_energy_fraction": 0.0005517894974073865,
+     "total_energy_J_per_m3": 4442894.885732401
+    },
+    {
+     "t_ms": 49.0027,
+     "mean_overpressure_kPa": 1671.1163191696146,
+     "kinetic_energy_fraction": 0.0026544122901572945,
+     "total_energy_J_per_m3": 4442896.577202463
+    },
+    {
+     "t_ms": 49.5001,
+     "mean_overpressure_kPa": 1663.1132006231214,
+     "kinetic_energy_fraction": 0.0071651835451872975,
+     "total_energy_J_per_m3": 4442929.909840211
+    },
+    {
+     "t_ms": 50.0025,
+     "mean_overpressure_kPa": 1663.9964978313242,
+     "kinetic_energy_fraction": 0.00668315438029797,
+     "total_energy_J_per_m3": 4442996.979302186
+    },
+    {
+     "t_ms": 50.5029,
+     "mean_overpressure_kPa": 1672.513362131855,
+     "kinetic_energy_fraction": 0.0018971106149722442,
+     "total_energy_J_per_m3": 4443024.814868512
+    },
+    {
+     "t_ms": 51.0028,
+     "mean_overpressure_kPa": 1674.2202431711082,
+     "kinetic_energy_fraction": 0.0009405740277250557,
+     "total_energy_J_per_m3": 4443042.117948003
+    },
+    {
+     "t_ms": 51.5027,
+     "mean_overpressure_kPa": 1666.080157668558,
+     "kinetic_energy_fraction": 0.005513029666738362,
+     "total_energy_J_per_m3": 4443007.325365671
+    },
+    {
+     "t_ms": 52.0009,
+     "mean_overpressure_kPa": 1662.4809388499714,
+     "kinetic_energy_fraction": 0.007522128874765208,
+     "total_energy_J_per_m3": 4442935.178116952
+    },
+    {
+     "t_ms": 52.5018,
+     "mean_overpressure_kPa": 1668.6190002830137,
+     "kinetic_energy_fraction": 0.0040641493149359146,
+     "total_energy_J_per_m3": 4442916.677478628
+    },
+    {
+     "t_ms": 53.003,
+     "mean_overpressure_kPa": 1674.9158135387966,
+     "kinetic_energy_fraction": 0.0005170413251985868,
+     "total_energy_J_per_m3": 4442899.196335188
+    },
+    {
+     "t_ms": 53.5005,
+     "mean_overpressure_kPa": 1671.3219427690838,
+     "kinetic_energy_fraction": 0.0025420081558242967,
+     "total_energy_J_per_m3": 4442911.273615846
+    },
+    {
+     "t_ms": 54.0029,
+     "mean_overpressure_kPa": 1663.9293774288692,
+     "kinetic_energy_fraction": 0.006708928315522549,
+     "total_energy_J_per_m3": 4442943.331895791
+    },
+    {
+     "t_ms": 54.5003,
+     "mean_overpressure_kPa": 1665.2005324702743,
+     "kinetic_energy_fraction": 0.006007263565058487,
+     "total_energy_J_per_m3": 4443004.127993185
+    },
+    {
+     "t_ms": 55.0005,
+     "mean_overpressure_kPa": 1672.9344854030464,
+     "kinetic_energy_fraction": 0.0016612796959937259,
+     "total_energy_J_per_m3": 4443029.828750816
+    },
+    {
+     "t_ms": 55.5003,
+     "mean_overpressure_kPa": 1674.2545007790586,
+     "kinetic_energy_fraction": 0.0009222925638356677,
+     "total_energy_J_per_m3": 4443046.54073294
+    },
+    {
+     "t_ms": 56.0011,
+     "mean_overpressure_kPa": 1666.6476167897135,
+     "kinetic_energy_fraction": 0.005194953446931184,
+     "total_energy_J_per_m3": 4443012.786564607
+    },
+    {
+     "t_ms": 56.501,
+     "mean_overpressure_kPa": 1663.6501368413703,
+     "kinetic_energy_fraction": 0.006865819006156631,
+     "total_energy_J_per_m3": 4442942.279650307
+    },
+    {
+     "t_ms": 57.0002,
+     "mean_overpressure_kPa": 1669.5267517149252,
+     "kinetic_energy_fraction": 0.0035551103945942477,
+     "total_energy_J_per_m3": 4442924.4662396405
+    },
+    {
+     "t_ms": 57.5001,
+     "mean_overpressure_kPa": 1675.0021051199624,
+     "kinetic_energy_fraction": 0.0004702106949685698,
+     "total_energy_J_per_m3": 4442906.865124638
+    },
+    {
+     "t_ms": 58.0017,
+     "mean_overpressure_kPa": 1671.4070022964017,
+     "kinetic_energy_fraction": 0.0024971936274173776,
+     "total_energy_J_per_m3": 4442924.849361925
+    },
+    {
+     "t_ms": 58.5009,
+     "mean_overpressure_kPa": 1664.7787988454306,
+     "kinetic_energy_fraction": 0.0062332723043777745,
+     "total_energy_J_per_m3": 4442953.636968529
+    },
+    {
+     "t_ms": 59.0027,
+     "mean_overpressure_kPa": 1666.3889351097946,
+     "kinetic_energy_fraction": 0.005339950996129461,
+     "total_energy_J_per_m3": 4443010.29502522
+    },
+    {
+     "t_ms": 59.5002,
+     "mean_overpressure_kPa": 1673.2658387183824,
+     "kinetic_energy_fraction": 0.0014761503704406643,
+     "total_energy_J_per_m3": 4443035.685569092
+    },
+    {
+     "t_ms": 60.002,
+     "mean_overpressure_kPa": 1674.2137522660246,
+     "kinetic_energy_fraction": 0.0009462182588433705,
+     "total_energy_J_per_m3": 4443050.976624117
+    },
+    {
+     "t_ms": 60.5031,
+     "mean_overpressure_kPa": 1667.1646750032726,
+     "kinetic_energy_fraction": 0.004904989129392379,
+     "total_energy_J_per_m3": 4443017.138273116
+    },
+    {
+     "t_ms": 61.0015,
+     "mean_overpressure_kPa": 1664.8895547412815,
+     "kinetic_energy_fraction": 0.006168486410237105,
+     "total_energy_J_per_m3": 4442942.618013888
+    },
+    {
+     "t_ms": 61.5007,
+     "mean_overpressure_kPa": 1670.1920760478279,
+     "kinetic_energy_fraction": 0.0031829098756891373,
+     "total_energy_J_per_m3": 4442934.149099777
+    },
+    {
+     "t_ms": 62.0021,
+     "mean_overpressure_kPa": 1675.0714485485194,
+     "kinetic_energy_fraction": 0.00043452463124788067,
+     "total_energy_J_per_m3": 4442921.680276084
+    },
+    {
+     "t_ms": 62.5008,
+     "mean_overpressure_kPa": 1671.5265034337963,
+     "kinetic_energy_fraction": 0.0024320374056738094,
+     "total_energy_J_per_m3": 4442934.14060539
+    },
+    {
+     "t_ms": 63.0023,
+     "mean_overpressure_kPa": 1665.6135416365773,
+     "kinetic_energy_fraction": 0.005765367995392137,
+     "total_energy_J_per_m3": 4442961.663068454
+    },
+    {
+     "t_ms": 63.501,
+     "mean_overpressure_kPa": 1667.3354011963297,
+     "kinetic_energy_fraction": 0.004808777808146413,
+     "total_energy_J_per_m3": 4443016.482050939
+    },
+    {
+     "t_ms": 64.0019,
+     "mean_overpressure_kPa": 1673.6487582829845,
+     "kinetic_energy_fraction": 0.0012620254011102112,
+     "total_energy_J_per_m3": 4443041.627099052
+    },
+    {
+     "t_ms": 64.5032,
+     "mean_overpressure_kPa": 1674.1522085331237,
+     "kinetic_energy_fraction": 0.0009817122134056658,
+     "total_energy_J_per_m3": 4443054.822516906
+    },
+    {
+     "t_ms": 65.0019,
+     "mean_overpressure_kPa": 1667.7731205437824,
+     "kinetic_energy_fraction": 0.004563466075113297,
+     "total_energy_J_per_m3": 4443020.876399929
+    },
+    {
+     "t_ms": 65.5015,
+     "mean_overpressure_kPa": 1666.1158954492255,
+     "kinetic_energy_fraction": 0.0054786331671678665,
+     "total_energy_J_per_m3": 4442943.496221316
+    },
+    {
+     "t_ms": 66.0001,
+     "mean_overpressure_kPa": 1670.6360747433228,
+     "kinetic_energy_fraction": 0.002935318684312549,
+     "total_energy_J_per_m3": 4442944.143817011
+    },
+    {
+     "t_ms": 66.5024,
+     "mean_overpressure_kPa": 1675.130057619456,
+     "kinetic_energy_fraction": 0.0004046566590195875,
+     "total_energy_J_per_m3": 4442935.50748734
+    },
+    {
+     "t_ms": 67.0002,
+     "mean_overpressure_kPa": 1671.6673066899473,
+     "kinetic_energy_fraction": 0.002354058508925027,
+     "total_energy_J_per_m3": 4442939.706746176
+    },
+    {
+     "t_ms": 67.5027,
+     "mean_overpressure_kPa": 1666.3846915594431,
+     "kinetic_energy_fraction": 0.005333018753518246,
+     "total_energy_J_per_m3": 4442968.664105578
+    },
+    {
+     "t_ms": 68.0012,
+     "mean_overpressure_kPa": 1668.070421141101,
+     "kinetic_energy_fraction": 0.004396696967837642,
+     "total_energy_J_per_m3": 4443023.179393625
+    },
+    {
+     "t_ms": 68.5016,
+     "mean_overpressure_kPa": 1674.0733268518616,
+     "kinetic_energy_fraction": 0.0010242669821151388,
+     "total_energy_J_per_m3": 4443046.683147198
+    },
+    {
+     "t_ms": 69.0031,
+     "mean_overpressure_kPa": 1674.1098678569965,
+     "kinetic_energy_fraction": 0.0010061757483361255,
+     "total_energy_J_per_m3": 4443057.666514998
+    },
+    {
+     "t_ms": 69.5008,
+     "mean_overpressure_kPa": 1668.3128489810283,
+     "kinetic_energy_fraction": 0.0042603663874319995,
+     "total_energy_J_per_m3": 4443023.530560742
+    },
+    {
+     "t_ms": 70.0004,
+     "mean_overpressure_kPa": 1666.9538191167364,
+     "kinetic_energy_fraction": 0.005008685942770582,
+     "total_energy_J_per_m3": 4442950.390959469
+    },
+    {
+     "t_ms": 70.5006,
+     "mean_overpressure_kPa": 1671.1664662358216,
+     "kinetic_energy_fraction": 0.002638718523776221,
+     "total_energy_J_per_m3": 4442952.366298763
+    },
+    {
+     "t_ms": 71.002,
+     "mean_overpressure_kPa": 1675.1445465062347,
+     "kinetic_energy_fraction": 0.0003981404475087868,
+     "total_energy_J_per_m3": 4442942.781492866
+    },
+    {
+     "t_ms": 71.5021,
+     "mean_overpressure_kPa": 1671.7887712682489,
+     "kinetic_energy_fraction": 0.002286903010162983,
+     "total_energy_J_per_m3": 4442945.012493684
+    },
+    {
+     "t_ms": 72.0001,
+     "mean_overpressure_kPa": 1666.9923308711611,
+     "kinetic_energy_fraction": 0.004992791686155072,
+     "total_energy_J_per_m3": 4442976.18171978
+    },
+    {
+     "t_ms": 72.5015,
+     "mean_overpressure_kPa": 1668.7142900883357,
+     "kinetic_energy_fraction": 0.004035839507808896,
+     "total_energy_J_per_m3": 4443029.57953228
+    },
+    {
+     "t_ms": 73.0,
+     "mean_overpressure_kPa": 1674.4437124027747,
+     "kinetic_energy_fraction": 0.0008167349676439885,
+     "total_energy_J_per_m3": 4443050.575775185
+    },
+    {
+     "t_ms": 73.5006,
+     "mean_overpressure_kPa": 1674.151763274028,
+     "kinetic_energy_fraction": 0.000983131433472691,
+     "total_energy_J_per_m3": 4443060.02015169
+    },
+    {
+     "t_ms": 74.0007,
+     "mean_overpressure_kPa": 1668.6707568434563,
+     "kinetic_energy_fraction": 0.0040594710041452885,
+     "total_energy_J_per_m3": 4443025.726214883
+    },
+    {
+     "t_ms": 74.5023,
+     "mean_overpressure_kPa": 1667.5383998726147,
+     "kinetic_energy_fraction": 0.004681891654354873,
+     "total_energy_J_per_m3": 4442959.956824025
+    },
+    {
+     "t_ms": 75.0005,
+     "mean_overpressure_kPa": 1671.7583318050556,
+     "kinetic_energy_fraction": 0.0023068858743351605,
+     "total_energy_J_per_m3": 4442957.725930857
+    },
+    {
+     "t_ms": 75.5021,
+     "mean_overpressure_kPa": 1675.1575312859966,
+     "kinetic_energy_fraction": 0.0003916136613791472,
+     "total_energy_J_per_m3": 4442946.246661959
+    },
+    {
+     "t_ms": 76.0012,
+     "mean_overpressure_kPa": 1671.8709096287362,
+     "kinetic_energy_fraction": 0.00224223265213108,
+     "total_energy_J_per_m3": 4442951.905907115
+    },
+    {
+     "t_ms": 76.5021,
+     "mean_overpressure_kPa": 1667.4090199140994,
+     "kinetic_energy_fraction": 0.004760232138829813,
+     "total_energy_J_per_m3": 4442984.68829078
+    },
+    {
+     "t_ms": 77.0021,
+     "mean_overpressure_kPa": 1669.340830921329,
+     "kinetic_energy_fraction": 0.0036845206909404417,
+     "total_energy_J_per_m3": 4443035.031808595
+    },
+    {
+     "t_ms": 77.5009,
+     "mean_overpressure_kPa": 1674.7271824349948,
+     "kinetic_energy_fraction": 0.0006579365119764365,
+     "total_energy_J_per_m3": 4443053.703343589
+    },
+    {
+     "t_ms": 78.0005,
+     "mean_overpressure_kPa": 1674.1585786135001,
+     "kinetic_energy_fraction": 0.0009797998501121373,
+     "total_energy_J_per_m3": 4443062.258268441
+    },
+    {
+     "t_ms": 78.5,
+     "mean_overpressure_kPa": 1668.8945697520921,
+     "kinetic_energy_fraction": 0.003934069625609307,
+     "total_energy_J_per_m3": 4443028.10629895
+    },
+    {
+     "t_ms": 79.0022,
+     "mean_overpressure_kPa": 1668.0683463499945,
+     "kinetic_energy_fraction": 0.004385522383844135,
+     "total_energy_J_per_m3": 4442968.101936736
+    },
+    {
+     "t_ms": 79.5023,
+     "mean_overpressure_kPa": 1672.298456000595,
+     "kinetic_energy_fraction": 0.0020037138130557706,
+     "total_energy_J_per_m3": 4442961.062453196
+    },
+    {
+     "t_ms": 80.0006,
+     "mean_overpressure_kPa": 1675.1791193421254,
+     "kinetic_energy_fraction": 0.00038022676031442,
+     "total_energy_J_per_m3": 4442949.626698115
+    },
+    {
+     "t_ms": 80.5016,
+     "mean_overpressure_kPa": 1671.8608135950312,
+     "kinetic_energy_fraction": 0.0022496919070001185,
+     "total_energy_J_per_m3": 4442959.8247484425
+    },
+    {
+     "t_ms": 81.0031,
+     "mean_overpressure_kPa": 1667.7628714054106,
+     "kinetic_energy_fraction": 0.004562847077015522,
+     "total_energy_J_per_m3": 4442992.373277136
+    },
+    {
+     "t_ms": 81.5018,
+     "mean_overpressure_kPa": 1669.9321638554914,
+     "kinetic_energy_fraction": 0.0033527682994280474,
+     "total_energy_J_per_m3": 4443039.391262866
+    },
+    {
+     "t_ms": 82.0011,
+     "mean_overpressure_kPa": 1674.9230910914212,
+     "kinetic_energy_fraction": 0.000548381102008952,
+     "total_energy_J_per_m3": 4443056.7160668
+    },
+    {
+     "t_ms": 82.5014,
+     "mean_overpressure_kPa": 1674.0863953429557,
+     "kinetic_energy_fraction": 0.0010209607895144855,
+     "total_energy_J_per_m3": 4443064.683184198
+    },
+    {
+     "t_ms": 83.0018,
+     "mean_overpressure_kPa": 1669.054162872953,
+     "kinetic_energy_fraction": 0.0038447742582470175,
+     "total_energy_J_per_m3": 4443030.355923449
+    },
+    {
+     "t_ms": 83.5013,
+     "mean_overpressure_kPa": 1668.61944125145,
+     "kinetic_energy_fraction": 0.004076177615775439,
+     "total_energy_J_per_m3": 4442971.443875682
+    },
+    {
+     "t_ms": 84.0023,
+     "mean_overpressure_kPa": 1672.7037506722638,
+     "kinetic_energy_fraction": 0.001776402567748452,
+     "total_energy_J_per_m3": 4442964.369995936
+    },
+    {
+     "t_ms": 84.5013,
+     "mean_overpressure_kPa": 1675.170415096932,
+     "kinetic_energy_fraction": 0.0003864226310843223,
+     "total_energy_J_per_m3": 4442955.3962563425
+    },
+    {
+     "t_ms": 85.0016,
+     "mean_overpressure_kPa": 1671.8263657896914,
+     "kinetic_energy_fraction": 0.0022706676542451312,
+     "total_energy_J_per_m3": 4442966.915738679
+    },
+    {
+     "t_ms": 85.5013,
+     "mean_overpressure_kPa": 1668.122917072856,
+     "kinetic_energy_fraction": 0.004361532974457995,
+     "total_energy_J_per_m3": 4442998.075292983
+    },
+    {
+     "t_ms": 86.0005,
+     "mean_overpressure_kPa": 1670.4579359898316,
+     "kinetic_energy_fraction": 0.0030577343915550886,
+     "total_energy_J_per_m3": 4443042.9853139315
+    },
+    {
+     "t_ms": 86.503,
+     "mean_overpressure_kPa": 1675.0742661682773,
+     "kinetic_energy_fraction": 0.00046398569623429297,
+     "total_energy_J_per_m3": 4443059.681560453
+    },
+    {
+     "t_ms": 87.0034,
+     "mean_overpressure_kPa": 1673.959173307765,
+     "kinetic_energy_fraction": 0.0010929737313819978,
+     "total_energy_J_per_m3": 4443066.588337247
+    },
+    {
+     "t_ms": 87.5,
+     "mean_overpressure_kPa": 1669.2620081811283,
+     "kinetic_energy_fraction": 0.0037281918808278096,
+     "total_energy_J_per_m3": 4443031.996267565
+    },
+    {
+     "t_ms": 88.001,
+     "mean_overpressure_kPa": 1669.205612937398,
+     "kinetic_energy_fraction": 0.003746271131297133,
+     "total_energy_J_per_m3": 4442971.106737856
+    },
+    {
+     "t_ms": 88.5001,
+     "mean_overpressure_kPa": 1672.9880145444515,
+     "kinetic_energy_fraction": 0.0016174813002058953,
+     "total_energy_J_per_m3": 4442968.9555641515
+    },
+    {
+     "t_ms": 89.0003,
+     "mean_overpressure_kPa": 1675.140365758024,
+     "kinetic_energy_fraction": 0.00040510472599134207,
+     "total_energy_J_per_m3": 4442963.27981712
+    },
+    {
+     "t_ms": 89.5031,
+     "mean_overpressure_kPa": 1671.781163256799,
+     "kinetic_energy_fraction": 0.002297320873052367,
+     "total_energy_J_per_m3": 4442972.341239923
+    },
+    {
+     "t_ms": 90.0005,
+     "mean_overpressure_kPa": 1668.505440935471,
+     "kinetic_energy_fraction": 0.0041473522220960325,
+     "total_energy_J_per_m3": 4443002.799873512
+    },
+    {
+     "t_ms": 90.5008,
+     "mean_overpressure_kPa": 1670.906308195466,
+     "kinetic_energy_fraction": 0.002806334288089735,
+     "total_energy_J_per_m3": 4443046.9454753455
+    },
+    {
+     "t_ms": 91.001,
+     "mean_overpressure_kPa": 1675.213347260297,
+     "kinetic_energy_fraction": 0.00038644488204293284,
+     "total_energy_J_per_m3": 4443062.867056313
+    },
+    {
+     "t_ms": 91.5018,
+     "mean_overpressure_kPa": 1673.8563085946314,
+     "kinetic_energy_fraction": 0.0011512366360150771,
+     "total_energy_J_per_m3": 4443068.294483504
+    },
+    {
+     "t_ms": 92.0011,
+     "mean_overpressure_kPa": 1669.479363003259,
+     "kinetic_energy_fraction": 0.003606041398730665,
+     "total_energy_J_per_m3": 4443032.667242136
+    },
+    {
+     "t_ms": 92.5,
+     "mean_overpressure_kPa": 1669.7417688079613,
+     "kinetic_energy_fraction": 0.0034444535807700875,
+     "total_energy_J_per_m3": 4442970.527763515
+    },
+    {
+     "t_ms": 93.0016,
+     "mean_overpressure_kPa": 1673.2873852640948,
+     "kinetic_energy_fraction": 0.0014503039324957106,
+     "total_energy_J_per_m3": 4442974.626733368
+    },
+    {
+     "t_ms": 93.5008,
+     "mean_overpressure_kPa": 1675.091582416095,
+     "kinetic_energy_fraction": 0.00043412492745589505,
+     "total_energy_J_per_m3": 4442970.260182129
+    },
+    {
+     "t_ms": 94.0015,
+     "mean_overpressure_kPa": 1671.7909874579907,
+     "kinetic_energy_fraction": 0.0022926550066707657,
+     "total_energy_J_per_m3": 4442976.180229098
+    },
+    {
+     "t_ms": 94.5029,
+     "mean_overpressure_kPa": 1668.8819539738133,
+     "kinetic_energy_fraction": 0.003936664774459077,
+     "total_energy_J_per_m3": 4443008.018091995
+    },
+    {
+     "t_ms": 95.0018,
+     "mean_overpressure_kPa": 1671.2855522641496,
+     "kinetic_energy_fraction": 0.0025939558596571777,
+     "total_energy_J_per_m3": 4443051.460029879
+    },
+    {
+     "t_ms": 95.5003,
+     "mean_overpressure_kPa": 1675.3720021566348,
+     "kinetic_energy_fraction": 0.0002979175271285327,
+     "total_energy_J_per_m3": 4443066.1726786215
+    },
+    {
+     "t_ms": 96.0013,
+     "mean_overpressure_kPa": 1673.7637064670785,
+     "kinetic_energy_fraction": 0.0012036458902529624,
+     "total_energy_J_per_m3": 4443069.648690451
+    },
+    {
+     "t_ms": 96.5029,
+     "mean_overpressure_kPa": 1669.6875548370094,
+     "kinetic_energy_fraction": 0.0034889822110525178,
+     "total_energy_J_per_m3": 4443033.050368379
+    },
+    {
+     "t_ms": 97.0,
+     "mean_overpressure_kPa": 1670.1831291908416,
+     "kinetic_energy_fraction": 0.003196627952786003,
+     "total_energy_J_per_m3": 4442972.854196297
+    },
+    {
+     "t_ms": 97.5013,
+     "mean_overpressure_kPa": 1673.6052469169656,
+     "kinetic_energy_fraction": 0.0012726402607334615,
+     "total_energy_J_per_m3": 4442979.932432058
+    },
+    {
+     "t_ms": 98.0011,
+     "mean_overpressure_kPa": 1675.0293497364435,
+     "kinetic_energy_fraction": 0.0004701668539604916,
+     "total_energy_J_per_m3": 4442974.813831556
+    },
+    {
+     "t_ms": 98.5014,
+     "mean_overpressure_kPa": 1671.8039431337386,
+     "kinetic_energy_fraction": 0.0022861913891467065,
+     "total_energy_J_per_m3": 4442979.860132733
+    },
+    {
+     "t_ms": 99.0006,
+     "mean_overpressure_kPa": 1669.2009325674771,
+     "kinetic_energy_fraction": 0.0037584340704532974,
+     "total_energy_J_per_m3": 4443013.605127692
+    },
+    {
+     "t_ms": 99.5013,
+     "mean_overpressure_kPa": 1671.6380656071628,
+     "kinetic_energy_fraction": 0.002396634163365394,
+     "total_energy_J_per_m3": 4443056.04392252
+    },
+    {
+     "t_ms": 100.0,
+     "mean_overpressure_kPa": 1675.5051172936392,
+     "kinetic_energy_fraction": 0.00022365817632568895,
+     "total_energy_J_per_m3": 4443069.021948837
+    },
+    {
+     "t_ms": 100.0,
+     "mean_overpressure_kPa": 1675.5051172936392,
+     "kinetic_energy_fraction": 0.00022365817632568895,
+     "total_energy_J_per_m3": 4443069.021948837
+    }
+   ]
+  }
+ ]
+}

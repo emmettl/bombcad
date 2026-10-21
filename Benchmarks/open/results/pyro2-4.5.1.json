@@ -1,0 +1,243 @@
+{
+  "format": "open-blast-benchmark-results",
+  "format_version": 1,
+  "code": {
+    "name": "pyro2",
+    "version": "4.5.1",
+    "url": "https://github.com/python-hydro/pyro2"
+  },
+  "prepared": "2026-10-20",
+  "notes": [
+    "A second code's run of two cases, to test whether the open benchmark can be run by a code that is not BombCAD. pyro2 is an open educational finite-volume code (BSD-3-Clause), installed from PyPI as pyro-hydro 4.5.1; nothing in it was changed.",
+    "The input scripts and the runs' summaries are in Benchmarks/open/other-codes/pyro2/; docs/open-benchmark.md says what the case format left open and what was decided.",
+    "No parameter was tuned to the references: the charge is its mass, its density and 4.184 MJ/kg, the gas air's gamma."
+  ],
+  "cases": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "configuration": "pyro2 4.5.1 compressible solver (second-order unsplit CTU, CGF Riemann solver, fourth-order limiter, flattening, artificial viscosity 0.1, CFL 0.8). 1-D spherical: a SphericalPolar wedge one cell wide about the equator with reflecting faces, the case's 100 kg hemisphere on rigid ground run as the 200 kg sphere it is half of, every gauge at its distance from the charge's centre. Radial cells 10 mm from r = 0.0502 m (a reflecting wall inside the charge) to 36.00 m (outflow). Charge: a constant-volume balloon released at t = 0, its own mass at 1600 kg/m^3 (radius 0.3102 m) holding 4.184 MJ/kg (836.8 MJ) as internal energy; one ideal gas, gamma 1.4, for products and air; no JWL, no afterburning. Air at 101.325 kPa and 15 C (1.2250 kg/m^3). Peak: the record's largest overpressure; impulse: the integral over the contiguous stretch around the peak where the overpressure is positive; arrival: the first time the overpressure reaches half its peak.",
+      "recorded_in": "Benchmarks/open/other-codes/pyro2/outputs/free-field-dr10mm.json",
+      "notes": [
+        "Run by Benchmarks/open/other-codes/pyro2/run_free_field.py --dr 0.01; the README there gives the resolution study (40, 20, 10 mm, and 5 mm for the four nearest gauges) and how the arrival moves with the level that defines it.",
+        "Time zero is the balloon's release: the whole charge at once, with no detonation front crossing it."
+      ],
+      "predictions": [
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 2864.61
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 1665.48
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 612.65
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 293.59
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 116.1
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 65.23
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 44.33
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 32.52
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 831.88
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 859.14
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 611.07
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 492.4
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 369.56
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 291.01
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 237.85
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 200.37
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 1.2842
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 2.0407
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 4.2364
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 7.4096
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 15.9783
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 26.3208
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 37.6241
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 49.4937
+        }
+      ]
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "configuration": "pyro2 4.5.1 compressible solver, set up as for kb-surface-burst-free-field. Not the case's cube: pyro2 has no 3-D grid, so a closed rigid adiabatic sphere of the room's volume (216 m^3, radius 3.722 m), 1-D spherical, the charge at its centre as a constant-volume balloon of its own mass at 1600 kg/m^3 holding 4.184 MJ/kg; one ideal gas, gamma 1.4; no afterburning, no heat loss. Radial cells about 20.0 mm. The pressure is the room's volume-mean pressure above ambient, read at 80 ms.",
+      "recorded_in": "Benchmarks/open/other-codes/pyro2/outputs/closed-room-dr20mm-*.json",
+      "notes": [
+        "Run by Benchmarks/open/other-codes/pyro2/run_closed_room.py --run ID --dr 0.02, one process per run.",
+        "Without afterburning the mean pressure is fixed by the energy balance, (gamma - 1) times the charge's energy over the volume, less the kinetic energy still in the gas; the light charges come out at about half the curve, which includes the products burning in the room's air.",
+        "The sphere focuses its reverberations on the centre where a cube would scatter them; the volume mean hardly feels that, but a gauge on a wall would."
+      ],
+      "predictions": [
+        {
+          "run": "0.25kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 416.9
+        },
+        {
+          "run": "0.5kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 835.7
+        },
+        {
+          "run": "1kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 1675.2
+        },
+        {
+          "run": "2kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 3337.1
+        },
+        {
+          "run": "4kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 6695.6
+        }
+      ]
+    }
+  ]
+}
