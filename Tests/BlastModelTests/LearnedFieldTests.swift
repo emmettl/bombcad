@@ -50,9 +50,12 @@ struct LearnedFieldTests {
         func file(dropping: String? = nil) throws -> Data {
             var entries: [[String: Any]] = []
             var values: [UInt16] = []
+            let shapes = LearnedField.Weights.tensorShapes(width: 2, depth: 1)
             for name in LearnedField.Weights.tensorNames(depth: 1) where name != dropping {
-                entries.append(["name": name, "shape": [2], "offset": values.count, "count": 2])
-                values += [0x3C00, 0xC000]
+                let shape = shapes[name]!
+                let count = shape.reduce(1, *)
+                entries.append(["name": name, "shape": shape, "offset": values.count, "count": count])
+                values += (0..<count).map { $0 % 2 == 0 ? 0x3C00 : 0xC000 }
             }
             let header: [String: Any] = [
                 "format": "bombcad-field-weights-1", "model": "unet", "width": 2, "depth": 1,

@@ -14,9 +14,12 @@ struct LearnedFieldOptionTests {
     static func tinyWeights() throws -> Data {
         var entries: [[String: Any]] = []
         var values: [UInt16] = []
+        let shapes = LearnedField.Weights.tensorShapes(width: 1, depth: 1)
         for name in LearnedField.Weights.tensorNames(depth: 1) {
-            entries.append(["name": name, "shape": [1], "offset": values.count, "count": 1])
-            values.append(0x3C00)
+            let shape = shapes[name]!
+            let count = shape.reduce(1, *)
+            entries.append(["name": name, "shape": shape, "offset": values.count, "count": count])
+            values += [UInt16](repeating: 0x3C00, count: count)
         }
         let header: [String: Any] = [
             "format": "bombcad-field-weights-1", "model": "unet", "width": 1, "depth": 1,

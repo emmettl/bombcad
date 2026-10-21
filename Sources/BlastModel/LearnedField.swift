@@ -117,13 +117,27 @@ public enum LearnedField {
             else {
                 throw fail("inputs \(header.inputs)")
             }
+            guard header.stats.mean.allSatisfy(\.isFinite),
+                header.stats.std.allSatisfy({ $0.isFinite && $0 > 0 })
+            else {
+                throw fail("a standardisation that is not finite and positive")
+            }
+            // train_field.py's U-Net: `depth` halvings, padded to 2^depth.
+            guard (1...8).contains(header.depth), (1...1024).contains(header.width),
+                header.multiple == 1 << header.depth
+            else {
+                throw fail("width \(header.width), depth \(header.depth), multiple \(header.multiple)")
+            }
             let size = header.dtype == "float16" ? 2 : header.dtype == "float32" ? 4 : 0
             guard size > 0 else { throw fail("dtype \(header.dtype)") }
             let payload = data.startIndex + 12 + length
+            // The values the payload holds: each tensor's offset and count within them, checked
+            // without overflow, so that no header can read outside the file.
+            let held = (data.endIndex - payload) / size
             var tensors: [String: (shape: [Int], values: [Float])] = [:]
             for entry in header.tensors {
-                guard entry.shape.reduce(1, *) == entry.count,
-                    payload + (entry.offset + entry.count) * size <= data.endIndex
+                guard let elements = Self.elements(entry.shape), elements == entry.count,
+                    entry.offset >= 0, entry.offset <= held, entry.count <= held - entry.offset
                 else { throw fail("tensor \(entry.name) outside the file") }
                 let start = payload + entry.offset * size
                 let values = data.withUnsafeBytes { raw -> [Float] in
@@ -145,10 +159,49 @@ public enum LearnedField {
             self.header = header
             self.tensors = tensors
             // The U-Net's own tensors (train_field.py's `UNet`): each level's two convolutions and
-            // their norms, down then up, and the head.
-            for name in Self.tensorNames(depth: header.depth) where tensors[name] == nil {
-                throw fail("no tensor \(name)")
+            // their norms, down then up, and the head, each of the shape its width and depth give.
+            let shapes = Self.tensorShapes(width: header.width, depth: header.depth)
+            for name in Self.tensorNames(depth: header.depth) {
+                guard let tensor = tensors[name] else { throw fail("no tensor \(name)") }
+                guard tensor.shape == shapes[name] else {
+                    throw fail("tensor \(name) of shape \(tensor.shape), not \(shapes[name] ?? [])")
+                }
             }
+        }
+
+        /// The values a tensor of `shape` holds; nil for a negative extent or one past `Int`.
+        static func elements(_ shape: [Int]) -> Int? {
+            var count = 1
+            for extent in shape {
+                guard extent >= 0 else { return nil }
+                let (product, overflow) = count.multipliedReportingOverflow(by: extent)
+                guard !overflow else { return nil }
+                count = product
+            }
+            return count
+        }
+
+        /// The shape of each tensor of train_field.py's `UNet(6, 2, width, depth)`, by name: level
+        /// n's blocks have `width` × 2^n channels, the up blocks take the level below's joined to
+        /// the skip, and `up.0` is the deepest.
+        public static func tensorShapes(width: Int, depth: Int) -> [String: [Int]] {
+            let widths = (0...depth).map { width << $0 }
+            var shapes: [String: [Int]] = [:]
+            func block(_ prefix: String, _ input: Int, _ output: Int) {
+                shapes["\(prefix).body.0.weight"] = [output, input, 3, 3]
+                shapes["\(prefix).body.3.weight"] = [output, output, 3, 3]
+                for name in ["0.bias", "1.weight", "1.bias", "3.bias", "4.weight", "4.bias"] {
+                    shapes["\(prefix).body.\(name)"] = [output]
+                }
+            }
+            for n in 0...depth { block("down.\(n)", n == 0 ? inputs.count : widths[n - 1], widths[n]) }
+            for k in 0..<depth {
+                let n = depth - 1 - k
+                block("up.\(k)", widths[n + 1] + widths[n], widths[n])
+            }
+            shapes["head.weight"] = [2, widths[0], 1, 1]
+            shapes["head.bias"] = [2]
+            return shapes
         }
 
         /// The tensors a U-Net of `depth` halvings has, by name.
@@ -491,9 +544,15 @@ public enum LearnedField {
             throw LearnedFieldError.badWeights("\(url.lastPathComponent) is not a .npy file")
         }
         let lengthBytes = data[s + 6] == 1 ? 2 : 4
+        guard data.count >= 8 + lengthBytes else {
+            throw LearnedFieldError.badWeights("\(url.lastPathComponent) is short")
+        }
         var length = 0
         for k in 0..<lengthBytes { length |= Int(data[s + 8 + k]) << (8 * k) }
         let headerStart = s + 8 + lengthBytes
+        guard data.endIndex - headerStart >= length else {
+            throw LearnedFieldError.badWeights("\(url.lastPathComponent) is short")
+        }
         guard let text = String(data: data[headerStart..<(headerStart + length)], encoding: .ascii),
             text.contains("'<f4'"), text.contains("'fortran_order': False"),
             let open = text.firstIndex(of: "("), let close = text.firstIndex(of: ")")
@@ -504,9 +563,8 @@ public enum LearnedField {
         let shape = text[text.index(after: open)..<close].split(separator: ",").compactMap {
             Int($0.trimmingCharacters(in: .whitespaces))
         }
-        let count = shape.reduce(1, *)
         let body = headerStart + length - s
-        guard data.count - body >= 4 * count else {
+        guard let count = Weights.elements(shape), count <= (data.count - body) / 4 else {
             throw LearnedFieldError.badWeights("\(url.lastPathComponent) is short")
         }
         let values = data.withUnsafeBytes { raw in
