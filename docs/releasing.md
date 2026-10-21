@@ -139,6 +139,8 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.4.0 (10) | `9482ba7` | `b548eb9b-5031-48cd-800e-124a207db04e` | Published as v0.4.0           |
 | 0.5.0 (11) | `cde4b514` | `da25d621-e049-4f08-99bc-39ca876f0e3d` | Published as v0.5.0           |
 | 0.5.1 (12) | `1b79ae33` | `0db0948d-6e0b-4584-8fcb-c6f0d2c80a77` | Published as v0.5.1           |
+| 0.6.0 (13) | `27fb9be7` | `eddcd055-0eb0-492f-b911-63ca7d61d071` | Published as v0.6.0           |
+| 0.7.0 (14) | `914cd18d` | `83596e83-7a6f-4bcf-b0e4-1aa0e9cf2e48` | Made and verified, not yet published |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -287,6 +289,28 @@ arm64, and ran a project from inside its bundle. The user said to publish; it wa
 The copy downloaded back matched the checksum, validated its ticket, passed `codesign` and was
 accepted by `spctl`. The Homebrew cask was moved to 0.6.0 and `brew audit --cask --strict
 --online` passed.
+
+Build 14 (0.7.0) was prepared on 2026-10-22 from `914cd18d` on main (the branch `release/0.7.0`,
+in the worktree `$BOMBCAD_DATA/release-0.7.0`): main after the crater's centre datum
+(`ec7c5dde`), with its notes assembled from 30 fragments (the main changes first, then New,
+Changed, Fixed and Known limitations), landed by `make ship`. `make release` ran once, outside
+`gpu-slot`, with the Studio at load averages of 30 to 50 from other sessions' work, and passed
+first time: `make check` (416 app, 895 model and 627 core GPU tests, build-strict with no
+warnings), the release smoke runs, and the app's own run and interface smoke from inside its
+bundle before signing and again before archiving. notarytool found the profile from the desktop
+shell, and Apple accepted it (submission `83596e83-7a6f-4bcf-b0e4-1aa0e9cf2e48`). A fresh expansion
+of its ZIP (42,243,112 bytes):
+
+- matched the checksum (`615894b3e633e534dd1152f94f9a54a1580c0627a732a1b5a340b652532546ed`);
+- validated its stapled ticket;
+- passed `codesign --verify --deep --strict`;
+- was accepted by `spctl` as `Notarized Developer ID`;
+- holds the licence text and the four resource bundles its binary links;
+- is version 0.7.0, build 14, arm64;
+- ran the courtyard project and the structure on the mapped start from inside its bundle and drew
+  its views through a change of source (`Scripts/release.py smoke`, on that copy).
+
+It waits for the user's word to be published.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
