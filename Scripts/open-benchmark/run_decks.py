@@ -155,6 +155,11 @@ def read_history(path, deck, run):
         if reference_times is not None and times != reference_times:
             raise ValueError('Gauges must share sample times')
         reference_times = times
+    if deck['extraction']['kind'] == 'room-window':
+        volume = math.prod(deck['mesh']['counts']) * deck['mesh']['cell_size_m']**3
+        expected = (deck['physics']['gamma']-1)*run['source']['excess_energy_J']/volume
+        if abs(traces['room'][0][1]/expected-1) > 1e-4:
+            raise ValueError('Initial room mean disagrees with source energy: check observable and pressure units')
     return traces
 
 

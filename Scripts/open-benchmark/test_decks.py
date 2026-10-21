@@ -60,7 +60,7 @@ class Decks(unittest.TestCase):
             for i in range(round(stop/dt)+1):
                 t = i*dt
                 # A known triangular pulse per gauge (not an empirical reference prediction).
-                value = max(0, 1000*(1-abs(t-.02)/.01)) if deck['case_id'] == p.IDS[0] else 100000*t
+                value = max(0, 1000*(1-abs(t-.02)/.01)) if deck['case_id'] == p.IDS[0] else 0.4*run['source']['excess_energy_J']/216 + 100000*t
                 for gauge in run['gauges']:
                     out.writerow([deck['case_id'],run['id'],gauge['id'],t,value])
         return path
@@ -93,7 +93,7 @@ class Decks(unittest.TestCase):
             spec.loader.exec_module(scorer)
             cases = {cid: json.loads((p.CASES/f'{cid}.json').read_text()) for cid in p.IDS}
             self.assertEqual(scorer.check_results(results, cases), ([], []))
-            self.assertAlmostEqual(results['cases'][1]['predictions'][0]['value'], 11)
+            self.assertAlmostEqual(results['cases'][1]['predictions'][0]['value'], 429.4)
             for mutate in ['missing','duplicate','hash','path','deck']:
                 changed = copy.deepcopy(receipt)
                 if mutate == 'missing': changed['histories'].pop()
@@ -106,6 +106,18 @@ class Decks(unittest.TestCase):
             (root/'receipt.json').write_text(json.dumps(receipt))
             snapshot.write_text('tampered runtime')
             with self.assertRaises(ValueError): r.extract(root)
+
+    def test_room_mean_must_match_initial_energy_not_absolute_or_point_pressure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            deck, run = r.selected(p.IDS[1], '0.25kg-m3')[0]
+            path = self.histories(Path(directory), deck, run)
+            r.read_history(path, deck, run)
+            good = path.read_text()
+            for bad in [good.replace(',0.0,418400.0', ',0.0,519725.0'),
+                        good.replace(',0.0,418400.0', ',0.0,418.4')]:
+                self.assertNotEqual(good, bad)
+                path.write_text(bad)
+                with self.assertRaises(ValueError): r.read_history(path, deck, run)
 
     def test_history_rejections(self):
         with tempfile.TemporaryDirectory() as directory:

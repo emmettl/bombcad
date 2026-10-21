@@ -123,7 +123,8 @@ coverage. A missing sample, duplicate time, wrong unit/header or truncated recor
   make noisy or under-resolved waveforms physically accurate.
 - **Room:** at every sample, compute the volume mean of pressure over **all gas cells**, not the
   pressure at the centre or the EOS evaluated on a mean density/energy with kinetic energy
-  omitted. Time-average that series from exactly 0.100 to 0.120 s, using interpolated endpoints
+  omitted. The initial room mean must match the declared source-energy bound within 0.01%;
+  this also catches a point pressure or absolute-pressure series mislabeled as a volume mean. Time-average that series from exactly 0.100 to 0.120 s, using interpolated endpoints
   and trapezoids. Convert Pa to kPa. Diagnostics give the difference of the second and first
   half-window means divided by the whole mean. This is a fixed finite-window proxy for the
   quasi-static gas pressure, **not** proof that reverberations have decayed. Report drift even
