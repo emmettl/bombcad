@@ -1,0 +1,260 @@
+variant flat-h240-dx4 default tiled 0
+variant flat-h240-dx4 default full 0
+variant flat-h240-dx4 fast-on tiled 0
+variant flat-h240-dx4 fast-on full 0
+variant flat-h240-dx4 fast-off tiled 0
+variant flat-h240-dx4 fast-off full 0
+variant flat-h240-dx4 safe-on tiled 0
+variant flat-h240-dx4 safe-on full 0
+variant flat-h240-dx4 safe-off tiled 0
+variant flat-h240-dx4 safe-off full 0
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": false,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2644,
+  "startTime": 0.003934389986701742,
+  "elapsedSimulationTime": 4.5060656100467895,
+  "wallSeconds": 44.651689382997574,
+  "shape": [
+    512,
+    512,
+    60
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 662,
+    "emptyIntervals": 0,
+    "minBoxCells": 1,
+    "maxBoxCells": 162000,
+    "meanBoxCells": 113114.09818731117
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 48.52341753699875,
+    "adjustedMonotonicSeconds": 48.52301250600431
+  },
+  "timings": {
+    "importsAndValidationSeconds": 2.391643014008878,
+    "compileSeconds": 0.21300750400405377,
+    "deviceSetupAndUploadSeconds": 0.672371430991916,
+    "solverSeconds": 44.651689382997574,
+    "validationAndOutputSeconds": 0.5946979349973844,
+    "workerSecondsBeforeManifests": 48.52341451701068
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}
+cuda flat-h240-dx4 True
+variant flat-h240-dx8 default tiled 0
+variant flat-h240-dx8 default full 0
+variant flat-h240-dx8 fast-on tiled 0
+variant flat-h240-dx8 fast-on full 0
+variant flat-h240-dx8 fast-off tiled 0
+variant flat-h240-dx8 fast-off full 0
+variant flat-h240-dx8 safe-on tiled 0
+variant flat-h240-dx8 safe-on full 0
+variant flat-h240-dx8 safe-off tiled 0
+variant flat-h240-dx8 safe-off full 0
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": false,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 1331,
+  "startTime": 0,
+  "elapsedSimulationTime": 4.510000000038417,
+  "wallSeconds": 3.3144578710052883,
+  "shape": [
+    256,
+    256,
+    30
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 332,
+    "emptyIntervals": 0,
+    "minBoxCells": 108,
+    "maxBoxCells": 14848,
+    "meanBoxCells": 11708.057228915663
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 4.7212619579950115,
+    "adjustedMonotonicSeconds": 4.7212227290001465
+  },
+  "timings": {
+    "importsAndValidationSeconds": 0.8768178769969381,
+    "compileSeconds": 0.16902502298762556,
+    "deviceSetupAndUploadSeconds": 0.2644609350099927,
+    "solverSeconds": 3.3144578710052883,
+    "validationAndOutputSeconds": 0.09649304099730216,
+    "workerSecondsBeforeManifests": 4.721259626996471
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}
+cuda flat-h240-dx8 True
+variant terrain-h200-dx4 default tiled 0
+variant terrain-h200-dx4 default full 0
+variant terrain-h200-dx4 fast-on tiled 0
+variant terrain-h200-dx4 fast-on full 0
+variant terrain-h200-dx4 fast-off tiled 0
+variant terrain-h200-dx4 fast-off full 0
+variant terrain-h200-dx4 safe-on tiled 0
+variant terrain-h200-dx4 safe-on full 0
+variant terrain-h200-dx4 safe-off tiled 0
+variant terrain-h200-dx4 safe-off full 0
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": true,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2708,
+  "startTime": 0,
+  "elapsedSimulationTime": 4.579999999987194,
+  "wallSeconds": 36.21874229500827,
+  "shape": [
+    512,
+    512,
+    50
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 678,
+    "emptyIntervals": 0,
+    "minBoxCells": 144,
+    "maxBoxCells": 29808,
+    "meanBoxCells": 24499.451327433628
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 40.167152392008575,
+    "adjustedMonotonicSeconds": 40.16681813700416
+  },
+  "timings": {
+    "importsAndValidationSeconds": 2.593271404010011,
+    "compileSeconds": 0.20709537400398403,
+    "deviceSetupAndUploadSeconds": 0.6081404500000644,
+    "solverSeconds": 36.21874229500827,
+    "validationAndOutputSeconds": 0.5398937890131492,
+    "workerSecondsBeforeManifests": 40.16715018200921
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}
+cuda terrain-h200-dx4 False
+variant terrain-h200-dx8 default tiled 0
+variant terrain-h200-dx8 default full 0
+variant terrain-h200-dx8 fast-on tiled 0
+variant terrain-h200-dx8 fast-on full 0
+variant terrain-h200-dx8 fast-off tiled 0
+variant terrain-h200-dx8 fast-off full 0
+variant terrain-h200-dx8 safe-on tiled 0
+variant terrain-h200-dx8 safe-on full 0
+variant terrain-h200-dx8 safe-off tiled 0
+variant terrain-h200-dx8 safe-off full 0
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": true,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 1290,
+  "startTime": 0,
+  "elapsedSimulationTime": 4.580000000074506,
+  "wallSeconds": 2.7904408699978376,
+  "shape": [
+    256,
+    256,
+    25
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 322,
+    "emptyIntervals": 0,
+    "minBoxCells": 108,
+    "maxBoxCells": 2736,
+    "meanBoxCells": 2281.2329192546586
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 4.249924856994767,
+    "adjustedMonotonicSeconds": 4.249890373001108
+  },
+  "timings": {
+    "importsAndValidationSeconds": 0.9339750670042122,
+    "compileSeconds": 0.17802723599015735,
+    "deviceSetupAndUploadSeconds": 0.2517078969976865,
+    "solverSeconds": 2.7904408699978376,
+    "validationAndOutputSeconds": 0.09576616701087914,
+    "workerSecondsBeforeManifests": 4.249922147006146
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}
+cuda terrain-h200-dx8 True

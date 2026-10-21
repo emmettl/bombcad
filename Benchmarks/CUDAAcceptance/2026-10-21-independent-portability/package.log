@@ -1,0 +1,2072 @@
+{
+  "status": "complete",
+  "groups": [
+    {
+      "name": "flat-h240-dx4",
+      "observerArraysBitIdentical": true,
+      "allPhysicalInitialStatesMatch": true,
+      "cudaPreparedInitialStateMatchesDefault": true,
+      "variants": [
+        {
+          "mode": "default",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "default",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.6875,
+              "medianRelative": 1.4538592329874844e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.9319872307008682e-05,
+              "relativeL2": 2.9145352400400104e-09
+            },
+            "1": {
+              "maxAbsolute": 1.103515625,
+              "medianRelative": 7.038952153426632e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.667416820718062e-06,
+              "relativeL2": 1.2905047197338825e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01123046875,
+              "medianRelative": 2.7825198485836174e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.6996942114217314e-06,
+              "relativeL2": 6.77047523823828e-08
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 4.0,
+              "medianRelative": 2.052227128185185e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.33883935097208e-05,
+              "relativeL2": 5.53543467070986e-09
+            },
+            "1": {
+              "maxAbsolute": 0.9267578125,
+              "medianRelative": 9.470317761780892e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 5.720469353069481e-06,
+              "relativeL2": 1.285273974229876e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01953125,
+              "medianRelative": 4.1637196784053954e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.359600877649936e-06,
+              "relativeL2": 1.1319628965630858e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 4.0,
+              "medianRelative": 2.052227128185185e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.33883935097208e-05,
+              "relativeL2": 5.53543467070986e-09
+            },
+            "1": {
+              "maxAbsolute": 0.9267578125,
+              "medianRelative": 9.470317761780892e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 5.720469353069481e-06,
+              "relativeL2": 1.285273974229876e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01953125,
+              "medianRelative": 4.1637196784053954e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.359600877649936e-06,
+              "relativeL2": 1.1319628965630858e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 3.5,
+              "medianRelative": 1.9937409824756813e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.6040430065361478e-05,
+              "relativeL2": 5.77274110485385e-09
+            },
+            "1": {
+              "maxAbsolute": 0.94921875,
+              "medianRelative": 1.6516330813556565e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 6.999953765737473e-06,
+              "relativeL2": 1.2589513004155295e-06
+            },
+            "2": {
+              "maxAbsolute": 0.02734375,
+              "medianRelative": 8.469847102320109e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 6.013231749804974e-06,
+              "relativeL2": 1.7025389549609065e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 3.5,
+              "medianRelative": 1.9937409824756813e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.6040430065361478e-05,
+              "relativeL2": 5.77274110485385e-09
+            },
+            "1": {
+              "maxAbsolute": 0.94921875,
+              "medianRelative": 1.6516330813556565e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 6.999953765737473e-06,
+              "relativeL2": 1.2589513004155295e-06
+            },
+            "2": {
+              "maxAbsolute": 0.02734375,
+              "medianRelative": 8.469847102320109e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 6.013231749804974e-06,
+              "relativeL2": 1.7025389549609065e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 4.0,
+              "medianRelative": 1.8657760695561319e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.005429700915228e-05,
+              "relativeL2": 5.003957633928265e-09
+            },
+            "1": {
+              "maxAbsolute": 1.224609375,
+              "medianRelative": 1.0453982301686736e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 6.183923807874763e-06,
+              "relativeL2": 1.257222462590268e-06
+            },
+            "2": {
+              "maxAbsolute": 0.015625,
+              "medianRelative": 5.942746000300835e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 3.671448036870813e-06,
+              "relativeL2": 1.2326366771334115e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 4.0,
+              "medianRelative": 1.8657760695561319e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.005429700915228e-05,
+              "relativeL2": 5.003957633928265e-09
+            },
+            "1": {
+              "maxAbsolute": 1.224609375,
+              "medianRelative": 1.0453982301686736e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 6.183923807874763e-06,
+              "relativeL2": 1.257222462590268e-06
+            },
+            "2": {
+              "maxAbsolute": 0.015625,
+              "medianRelative": 5.942746000300835e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 3.671448036870813e-06,
+              "relativeL2": 1.2326366771334115e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 2.5,
+              "medianRelative": 1.927753579115489e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.9436975606595613e-05,
+              "relativeL2": 5.011076214782613e-09
+            },
+            "1": {
+              "maxAbsolute": 0.958984375,
+              "medianRelative": 1.0456819467099567e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 6.316266686121714e-06,
+              "relativeL2": 1.2668074753539522e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01953125,
+              "medianRelative": 4.125019439154107e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 3.5602154542457037e-06,
+              "relativeL2": 1.0086657965486957e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 2.5,
+              "medianRelative": 1.927753579115489e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.9436975606595613e-05,
+              "relativeL2": 5.011076214782613e-09
+            },
+            "1": {
+              "maxAbsolute": 0.958984375,
+              "medianRelative": 1.0456819467099567e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 6.316266686121714e-06,
+              "relativeL2": 1.2668074753539522e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01953125,
+              "medianRelative": 4.125019439154107e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 3.5602154542457037e-06,
+              "relativeL2": 1.0086657965486957e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        }
+      ],
+      "withinModeTiledFull": {
+        "default": {
+          "arraysBitIdentical": false,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.6875,
+              "medianRelative": 1.4538592329874844e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.9319872307008682e-05,
+              "relativeL2": 2.9145352400400104e-09
+            },
+            "1": {
+              "maxAbsolute": 1.103515625,
+              "medianRelative": 7.038952153426632e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.667416820718062e-06,
+              "relativeL2": 1.2905047197338825e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01123046875,
+              "medianRelative": 2.7825198485836174e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.6996942114217314e-06,
+              "relativeL2": 6.77047523823828e-08
+            },
+            "passed": true
+          }
+        },
+        "fast-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "fast-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        }
+      },
+      "cuda": {
+        "0": {
+          "maxAbsolute": 2.5,
+          "medianRelative": 2.804206309464196e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 2.479145816832878e-05,
+          "relativeL2": 8.88308391129163e-09
+        },
+        "1": {
+          "maxAbsolute": 1.4765625,
+          "medianRelative": 2.0904315626279994e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 8.688087611631963e-06,
+          "relativeL2": 1.565589343764569e-06
+        },
+        "2": {
+          "maxAbsolute": 0.0703125,
+          "medianRelative": 2.5999050402250985e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 7.081735025081145e-06,
+          "relativeL2": 5.443452902889748e-07
+        },
+        "passed": true
+      },
+      "cudaFailures": []
+    },
+    {
+      "name": "flat-h240-dx8",
+      "observerArraysBitIdentical": true,
+      "allPhysicalInitialStatesMatch": true,
+      "cudaPreparedInitialStateMatchesDefault": true,
+      "variants": [
+        {
+          "mode": "default",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "default",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.078125,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 8.616133998115938e-06,
+              "relativeL2": 3.222964427505295e-08
+            },
+            "1": {
+              "maxAbsolute": 0.03515625,
+              "medianRelative": 6.455297837113728e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.630031208607829e-06,
+              "relativeL2": 5.700086731915775e-07
+            },
+            "2": {
+              "maxAbsolute": 0.0030517578125,
+              "medianRelative": 1.6371827784416099e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 1.705648355316944e-06,
+              "relativeL2": 1.375768976328578e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.5,
+              "medianRelative": 1.6203266740607574e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.0066256097634632e-05,
+              "relativeL2": 7.623768876491013e-08
+            },
+            "1": {
+              "maxAbsolute": 0.048828125,
+              "medianRelative": 8.171769134447121e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 3.457231169408443e-06,
+              "relativeL2": 6.876544269529138e-07
+            },
+            "2": {
+              "maxAbsolute": 0.0234375,
+              "medianRelative": 3.758992214187376e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.1714052726931395e-06,
+              "relativeL2": 2.464349284656107e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.5,
+              "medianRelative": 1.6203266740607574e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.0066256097634632e-05,
+              "relativeL2": 7.623768876491013e-08
+            },
+            "1": {
+              "maxAbsolute": 0.048828125,
+              "medianRelative": 8.171769134447121e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 3.457231169408443e-06,
+              "relativeL2": 6.876544269529138e-07
+            },
+            "2": {
+              "maxAbsolute": 0.0234375,
+              "medianRelative": 3.758992214187376e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.1714052726931395e-06,
+              "relativeL2": 2.464349284656107e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.5,
+              "medianRelative": 1.65174589541145e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.040331574479418e-05,
+              "relativeL2": 7.562124460948503e-08
+            },
+            "1": {
+              "maxAbsolute": 0.0322265625,
+              "medianRelative": 1.6651087492931092e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 5.569127726088022e-06,
+              "relativeL2": 9.60933393204203e-07
+            },
+            "2": {
+              "maxAbsolute": 0.03125,
+              "medianRelative": 1.0988599328196995e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 4.55820614746494e-06,
+              "relativeL2": 4.934878837103087e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.5,
+              "medianRelative": 1.65174589541145e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.040331574479418e-05,
+              "relativeL2": 7.562124460948503e-08
+            },
+            "1": {
+              "maxAbsolute": 0.0322265625,
+              "medianRelative": 1.6651087492931092e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 5.569127726088022e-06,
+              "relativeL2": 9.60933393204203e-07
+            },
+            "2": {
+              "maxAbsolute": 0.03125,
+              "medianRelative": 1.0988599328196995e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 4.55820614746494e-06,
+              "relativeL2": 4.934878837103087e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.5,
+              "medianRelative": 1.5877527106908153e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 9.768884474800348e-06,
+              "relativeL2": 7.146594762763083e-08
+            },
+            "1": {
+              "maxAbsolute": 1.099609375,
+              "medianRelative": 8.952784447270607e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.525579970479294e-06,
+              "relativeL2": 2.6419379108928953e-06
+            },
+            "2": {
+              "maxAbsolute": 0.015625,
+              "medianRelative": 4.301954902950909e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.2139049911528667e-06,
+              "relativeL2": 2.6801233851394893e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.5,
+              "medianRelative": 1.5877527106908153e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 9.768884474800348e-06,
+              "relativeL2": 7.146594762763083e-08
+            },
+            "1": {
+              "maxAbsolute": 1.099609375,
+              "medianRelative": 8.952784447270607e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.525579970479294e-06,
+              "relativeL2": 2.6419379108928953e-06
+            },
+            "2": {
+              "maxAbsolute": 0.015625,
+              "medianRelative": 4.301954902950909e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.2139049911528667e-06,
+              "relativeL2": 2.6801233851394893e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 2.0,
+              "medianRelative": 1.681146945692229e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.045467376190526e-05,
+              "relativeL2": 7.136997241306116e-08
+            },
+            "1": {
+              "maxAbsolute": 1.0966796875,
+              "medianRelative": 8.845317836041641e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.175060512988557e-06,
+              "relativeL2": 2.6430107849820797e-06
+            },
+            "2": {
+              "maxAbsolute": 0.03125,
+              "medianRelative": 4.411267303058144e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.238608212502123e-06,
+              "relativeL2": 2.742857474629237e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 2.0,
+              "medianRelative": 1.681146945692229e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.045467376190526e-05,
+              "relativeL2": 7.136997241306116e-08
+            },
+            "1": {
+              "maxAbsolute": 1.0966796875,
+              "medianRelative": 8.845317836041641e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 4.175060512988557e-06,
+              "relativeL2": 2.6430107849820797e-06
+            },
+            "2": {
+              "maxAbsolute": 0.03125,
+              "medianRelative": 4.411267303058144e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.238608212502123e-06,
+              "relativeL2": 2.742857474629237e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        }
+      ],
+      "withinModeTiledFull": {
+        "default": {
+          "arraysBitIdentical": false,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.078125,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 8.616133998115938e-06,
+              "relativeL2": 3.222964427505295e-08
+            },
+            "1": {
+              "maxAbsolute": 0.03515625,
+              "medianRelative": 6.455297837113728e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 2.630031208607829e-06,
+              "relativeL2": 5.700086731915775e-07
+            },
+            "2": {
+              "maxAbsolute": 0.0030517578125,
+              "medianRelative": 1.6371827784416099e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 1.705648355316944e-06,
+              "relativeL2": 1.375768976328578e-07
+            },
+            "passed": true
+          }
+        },
+        "fast-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "fast-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        }
+      },
+      "cuda": {
+        "0": {
+          "maxAbsolute": 3.0,
+          "medianRelative": 1.8083705857674002e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 1.0762930315407673e-05,
+          "relativeL2": 1.0259943833943324e-07
+        },
+        "1": {
+          "maxAbsolute": 0.0625,
+          "medianRelative": 9.699284272178494e-07,
+          "outsideTolerance": 0,
+          "p99Relative": 4.001191706286575e-06,
+          "relativeL2": 8.271769689800313e-07
+        },
+        "2": {
+          "maxAbsolute": 0.03125,
+          "medianRelative": 9.053634636952772e-07,
+          "outsideTolerance": 0,
+          "p99Relative": 2.787763247450952e-06,
+          "relativeL2": 5.301324525887045e-07
+        },
+        "passed": true
+      },
+      "cudaFailures": []
+    },
+    {
+      "name": "terrain-h200-dx4",
+      "observerArraysBitIdentical": true,
+      "allPhysicalInitialStatesMatch": true,
+      "cudaPreparedInitialStateMatchesDefault": true,
+      "variants": [
+        {
+          "mode": "default",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "default",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.3125,
+              "medianRelative": 2.597567264613122e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.2781647351181968e-05,
+              "relativeL2": 5.089806459803148e-08
+            },
+            "1": {
+              "maxAbsolute": 1.34375,
+              "medianRelative": 9.406744824173829e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 5.352620935171002e-06,
+              "relativeL2": 5.1165701244051205e-06
+            },
+            "2": {
+              "maxAbsolute": 39.28410339355469,
+              "medianRelative": 5.017490973533739e-07,
+              "outsideTolerance": 1,
+              "p99Relative": 4.342866286738248e-06,
+              "relativeL2": 5.2178540571717e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.43516540527344,
+              "absoluteError": 39.28410339355469,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "fast-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.563111401097145e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.351350833768211e-05,
+              "relativeL2": 1.0959739539335179e-07
+            },
+            "1": {
+              "maxAbsolute": 1.3203125,
+              "medianRelative": 1.3597394739167976e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 9.102480274166706e-06,
+              "relativeL2": 5.226482238432913e-06
+            },
+            "2": {
+              "maxAbsolute": 39.28497314453125,
+              "medianRelative": 7.525028873117729e-07,
+              "outsideTolerance": 1,
+              "p99Relative": 1.0158570874582285e-05,
+              "relativeL2": 5.218089864763224e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.43429565429688,
+              "absoluteError": 39.28497314453125,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "fast-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.563111401097145e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.351350833768211e-05,
+              "relativeL2": 1.0959739539335179e-07
+            },
+            "1": {
+              "maxAbsolute": 1.3203125,
+              "medianRelative": 1.3597394739167976e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 9.102480274166706e-06,
+              "relativeL2": 5.226482238432913e-06
+            },
+            "2": {
+              "maxAbsolute": 39.28497314453125,
+              "medianRelative": 7.525028873117729e-07,
+              "outsideTolerance": 1,
+              "p99Relative": 1.0158570874582285e-05,
+              "relativeL2": 5.218089864763224e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.43429565429688,
+              "absoluteError": 39.28497314453125,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "fast-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.432639933528399e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.159991242591248e-05,
+              "relativeL2": 1.2023779963600142e-07
+            },
+            "1": {
+              "maxAbsolute": 1.15234375,
+              "medianRelative": 1.8475637668869106e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.1030145227048346e-05,
+              "relativeL2": 4.687259621931249e-06
+            },
+            "2": {
+              "maxAbsolute": 39.28550720214844,
+              "medianRelative": 1.5439326589509e-06,
+              "outsideTolerance": 1,
+              "p99Relative": 1.378299752785976e-05,
+              "relativeL2": 5.21829385552505e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.4337615966797,
+              "absoluteError": 39.28550720214844,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "fast-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.432639933528399e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.159991242591248e-05,
+              "relativeL2": 1.2023779963600142e-07
+            },
+            "1": {
+              "maxAbsolute": 1.15234375,
+              "medianRelative": 1.8475637668869106e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.1030145227048346e-05,
+              "relativeL2": 4.687259621931249e-06
+            },
+            "2": {
+              "maxAbsolute": 39.28550720214844,
+              "medianRelative": 1.5439326589509e-06,
+              "outsideTolerance": 1,
+              "p99Relative": 1.378299752785976e-05,
+              "relativeL2": 5.21829385552505e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.4337615966797,
+              "absoluteError": 39.28550720214844,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "safe-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.446213500708141e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.494968160230473e-05,
+              "relativeL2": 1.1403761840177472e-07
+            },
+            "1": {
+              "maxAbsolute": 1.2578125,
+              "medianRelative": 1.8073445496720605e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2330059008015493e-05,
+              "relativeL2": 5.212127537241394e-06
+            },
+            "2": {
+              "maxAbsolute": 39.2845458984375,
+              "medianRelative": 1.0501723332798913e-06,
+              "outsideTolerance": 1,
+              "p99Relative": 1.3828984837158981e-05,
+              "relativeL2": 5.2181180817416684e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.43472290039062,
+              "absoluteError": 39.2845458984375,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "safe-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.446213500708141e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.494968160230473e-05,
+              "relativeL2": 1.1403761840177472e-07
+            },
+            "1": {
+              "maxAbsolute": 1.2578125,
+              "medianRelative": 1.8073445496720605e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2330059008015493e-05,
+              "relativeL2": 5.212127537241394e-06
+            },
+            "2": {
+              "maxAbsolute": 39.2845458984375,
+              "medianRelative": 1.0501723332798913e-06,
+              "outsideTolerance": 1,
+              "p99Relative": 1.3828984837158981e-05,
+              "relativeL2": 5.2181180817416684e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.43472290039062,
+              "absoluteError": 39.2845458984375,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "safe-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.7539848063290114e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.670949045827762e-05,
+              "relativeL2": 1.194498922942444e-07
+            },
+            "1": {
+              "maxAbsolute": 1.431640625,
+              "medianRelative": 1.7061001382964771e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2193282530628694e-05,
+              "relativeL2": 5.24942574851995e-06
+            },
+            "2": {
+              "maxAbsolute": 39.285125732421875,
+              "medianRelative": 1.3514368974992016e-06,
+              "outsideTolerance": 1,
+              "p99Relative": 1.5129144673805866e-05,
+              "relativeL2": 5.218244838470288e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.43414306640625,
+              "absoluteError": 39.285125732421875,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        },
+        {
+          "mode": "safe-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 8.0,
+              "medianRelative": 3.7539848063290114e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.670949045827762e-05,
+              "relativeL2": 1.194498922942444e-07
+            },
+            "1": {
+              "maxAbsolute": 1.431640625,
+              "medianRelative": 1.7061001382964771e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2193282530628694e-05,
+              "relativeL2": 5.24942574851995e-06
+            },
+            "2": {
+              "maxAbsolute": 39.285125732421875,
+              "medianRelative": 1.3514368974992016e-06,
+              "outsideTolerance": 1,
+              "p99Relative": 1.5129144673805866e-05,
+              "relativeL2": 5.218244838470288e-05
+            },
+            "passed": false
+          },
+          "failures": [
+            {
+              "channel": 2,
+              "columnIndex": 250097,
+              "row": 488,
+              "column": 241,
+              "reference": 225.71926879882812,
+              "candidate": 186.43414306640625,
+              "absoluteError": 39.285125732421875,
+              "tolerance": 0.5014385375976563
+            }
+          ]
+        }
+      ],
+      "withinModeTiledFull": {
+        "default": {
+          "arraysBitIdentical": false,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.3125,
+              "medianRelative": 2.597567264613122e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.2781647351181968e-05,
+              "relativeL2": 5.089806459803148e-08
+            },
+            "1": {
+              "maxAbsolute": 1.34375,
+              "medianRelative": 9.406744824173829e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 5.352620935171002e-06,
+              "relativeL2": 5.1165701244051205e-06
+            },
+            "2": {
+              "maxAbsolute": 39.28410339355469,
+              "medianRelative": 5.017490973533739e-07,
+              "outsideTolerance": 1,
+              "p99Relative": 4.342866286738248e-06,
+              "relativeL2": 5.2178540571717e-05
+            },
+            "passed": false
+          }
+        },
+        "fast-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "fast-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        }
+      },
+      "cuda": {
+        "0": {
+          "maxAbsolute": 4.0,
+          "medianRelative": 4.143346690969162e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 4.8600753512509e-05,
+          "relativeL2": 1.1608068688422482e-07
+        },
+        "1": {
+          "maxAbsolute": 1.72265625,
+          "medianRelative": 1.9001361520635113e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 1.1273875622349842e-05,
+          "relativeL2": 5.4500979025415725e-06
+        },
+        "2": {
+          "maxAbsolute": 39.28532409667969,
+          "medianRelative": 2.6071040979565216e-06,
+          "outsideTolerance": 2,
+          "p99Relative": 1.6981082209926684e-05,
+          "relativeL2": 5.362352373474352e-05
+        },
+        "passed": false
+      },
+      "cudaFailures": [
+        {
+          "channel": 2,
+          "columnIndex": 134058,
+          "row": 261,
+          "column": 426,
+          "reference": 426.4053649902344,
+          "candidate": 417.13818359375,
+          "absoluteError": 9.267181396484375,
+          "tolerance": 0.9028107299804689
+        },
+        {
+          "channel": 2,
+          "columnIndex": 250097,
+          "row": 488,
+          "column": 241,
+          "reference": 225.71926879882812,
+          "candidate": 186.43394470214844,
+          "absoluteError": 39.28532409667969,
+          "tolerance": 0.5014385375976563
+        }
+      ],
+      "historicalArraysBitIdentical": true,
+      "historicalComparison": {
+        "0": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "1": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "2": {
+          "relativeL2": 0.0,
+          "maxAbsolute": 0.0,
+          "outsideTolerance": 0,
+          "medianRelative": 0.0,
+          "p99Relative": 0.0
+        },
+        "passed": true
+      }
+    },
+    {
+      "name": "terrain-h200-dx8",
+      "observerArraysBitIdentical": true,
+      "allPhysicalInitialStatesMatch": true,
+      "cudaPreparedInitialStateMatchesDefault": true,
+      "variants": [
+        {
+          "mode": "default",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "default",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.068359375,
+              "medianRelative": 2.4832545865712215e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.6832094104700754e-05,
+              "relativeL2": 9.608678098257496e-08
+            },
+            "1": {
+              "maxAbsolute": 0.01171875,
+              "medianRelative": 1.2191450887298876e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 7.48784761741418e-06,
+              "relativeL2": 8.942506834532302e-07
+            },
+            "2": {
+              "maxAbsolute": 0.00250244140625,
+              "medianRelative": 6.227626085607563e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 6.65220318916476e-06,
+              "relativeL2": 2.959422024770155e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.75,
+              "medianRelative": 4.296769259194012e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 4.0597221094521635e-05,
+              "relativeL2": 1.846643132370556e-07
+            },
+            "1": {
+              "maxAbsolute": 0.15625,
+              "medianRelative": 1.5630320821713059e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 9.579393260014035e-06,
+              "relativeL2": 1.6095101516191359e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01171875,
+              "medianRelative": 1.0078967704064575e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 8.628692211114108e-06,
+              "relativeL2": 4.952735043983491e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.75,
+              "medianRelative": 4.296769259194012e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 4.0597221094521635e-05,
+              "relativeL2": 1.846643132370556e-07
+            },
+            "1": {
+              "maxAbsolute": 0.15625,
+              "medianRelative": 1.5630320821713059e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 9.579393260014035e-06,
+              "relativeL2": 1.6095101516191359e-06
+            },
+            "2": {
+              "maxAbsolute": 0.01171875,
+              "medianRelative": 1.0078967704064575e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 8.628692211114108e-06,
+              "relativeL2": 4.952735043983491e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.5,
+              "medianRelative": 3.676164541530407e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.436268670393109e-05,
+              "relativeL2": 1.6176823486551822e-07
+            },
+            "1": {
+              "maxAbsolute": 0.158203125,
+              "medianRelative": 1.7571517448791382e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2422495275569765e-05,
+              "relativeL2": 1.6994430976480638e-06
+            },
+            "2": {
+              "maxAbsolute": 0.0078125,
+              "medianRelative": 1.0931170548608728e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2689394740492092e-05,
+              "relativeL2": 5.407409836230762e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "fast-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.5,
+              "medianRelative": 3.676164541530407e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.436268670393109e-05,
+              "relativeL2": 1.6176823486551822e-07
+            },
+            "1": {
+              "maxAbsolute": 0.158203125,
+              "medianRelative": 1.7571517448791382e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2422495275569765e-05,
+              "relativeL2": 1.6994430976480638e-06
+            },
+            "2": {
+              "maxAbsolute": 0.0078125,
+              "medianRelative": 1.0931170548608728e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2689394740492092e-05,
+              "relativeL2": 5.407409836230762e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-on",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.5,
+              "medianRelative": 3.5283286044505645e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.9292870115413907e-05,
+              "relativeL2": 1.559371372390165e-07
+            },
+            "1": {
+              "maxAbsolute": 0.154296875,
+              "medianRelative": 1.7441102934311676e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.0254229026660152e-05,
+              "relativeL2": 1.7140329417900907e-06
+            },
+            "2": {
+              "maxAbsolute": 0.0048828125,
+              "medianRelative": 1.3595512212055548e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2674152170045969e-05,
+              "relativeL2": 5.94408022746106e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-on",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.5,
+              "medianRelative": 3.5283286044505645e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.9292870115413907e-05,
+              "relativeL2": 1.559371372390165e-07
+            },
+            "1": {
+              "maxAbsolute": 0.154296875,
+              "medianRelative": 1.7441102934311676e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.0254229026660152e-05,
+              "relativeL2": 1.7140329417900907e-06
+            },
+            "2": {
+              "maxAbsolute": 0.0048828125,
+              "medianRelative": 1.3595512212055548e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2674152170045969e-05,
+              "relativeL2": 5.94408022746106e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-off",
+          "path": "tiled",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.0,
+              "medianRelative": 4.253337274759208e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.166658890885048e-05,
+              "relativeL2": 1.7740055904150501e-07
+            },
+            "1": {
+              "maxAbsolute": 0.015625,
+              "medianRelative": 1.672138740695593e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.0147208775108154e-05,
+              "relativeL2": 1.2709600390403842e-06
+            },
+            "2": {
+              "maxAbsolute": 0.0078125,
+              "medianRelative": 1.196537221281611e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2204718460392202e-05,
+              "relativeL2": 5.637769913605287e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        },
+        {
+          "mode": "safe-off",
+          "path": "full",
+          "initialMatchesDefault": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 1.0,
+              "medianRelative": 4.253337274759208e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 3.166658890885048e-05,
+              "relativeL2": 1.7740055904150501e-07
+            },
+            "1": {
+              "maxAbsolute": 0.015625,
+              "medianRelative": 1.672138740695593e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.0147208775108154e-05,
+              "relativeL2": 1.2709600390403842e-06
+            },
+            "2": {
+              "maxAbsolute": 0.0078125,
+              "medianRelative": 1.196537221281611e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 1.2204718460392202e-05,
+              "relativeL2": 5.637769913605287e-07
+            },
+            "passed": true
+          },
+          "failures": []
+        }
+      ],
+      "withinModeTiledFull": {
+        "default": {
+          "arraysBitIdentical": false,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.068359375,
+              "medianRelative": 2.4832545865712215e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 2.6832094104700754e-05,
+              "relativeL2": 9.608678098257496e-08
+            },
+            "1": {
+              "maxAbsolute": 0.01171875,
+              "medianRelative": 1.2191450887298876e-06,
+              "outsideTolerance": 0,
+              "p99Relative": 7.48784761741418e-06,
+              "relativeL2": 8.942506834532302e-07
+            },
+            "2": {
+              "maxAbsolute": 0.00250244140625,
+              "medianRelative": 6.227626085607563e-07,
+              "outsideTolerance": 0,
+              "p99Relative": 6.65220318916476e-06,
+              "relativeL2": 2.959422024770155e-07
+            },
+            "passed": true
+          }
+        },
+        "fast-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "fast-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-off": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        },
+        "safe-on": {
+          "arraysBitIdentical": true,
+          "comparison": {
+            "0": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "1": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "2": {
+              "maxAbsolute": 0.0,
+              "medianRelative": 0.0,
+              "outsideTolerance": 0,
+              "p99Relative": 0.0,
+              "relativeL2": 0.0
+            },
+            "passed": true
+          }
+        }
+      },
+      "cuda": {
+        "0": {
+          "maxAbsolute": 1.0,
+          "medianRelative": 4.414017152870656e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 3.361017968317154e-05,
+          "relativeL2": 1.8470692666913664e-07
+        },
+        "1": {
+          "maxAbsolute": 0.01953125,
+          "medianRelative": 1.6875056742378297e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 1.0440889530377142e-05,
+          "relativeL2": 1.2885112385159662e-06
+        },
+        "2": {
+          "maxAbsolute": 0.01171875,
+          "medianRelative": 1.506184846836565e-06,
+          "outsideTolerance": 0,
+          "p99Relative": 1.3680468441423978e-05,
+          "relativeL2": 7.345902226979608e-07
+        },
+        "passed": true
+      },
+      "cudaFailures": []
+    }
+  ],
+  "scope": "Within-grid numerical controls; no performance, cross-grid convergence or new dataset admission claim.",
+  "lastOwnedProcessTerminal": {
+    "birth": "Wed Oct 21 16:06:11 2026",
+    "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+    "command": [
+      "/Users/louisemmett/.local/bin/gpu-slot",
+      "--mem",
+      "3",
+      "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+      "field-export",
+      "--osm",
+      "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s3/district.osm",
+      "--dem",
+      "/Volumes/StudioData/bombcad/ml/layouts/made-perimeter-s3/ground.asc",
+      "--centre",
+      "0.01274337,0.01183506",
+      "--radius",
+      "1024",
+      "--dx",
+      "8",
+      "--mass",
+      "53500",
+      "--ground",
+      "saturated",
+      "--id",
+      "terrain-h200-dx8",
+      "--layout",
+      "made-perimeter-s3",
+      "--first-phase",
+      "--height",
+      "200",
+      "--cuda-job",
+      "--cuda-source",
+      "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/solver.cu",
+      "--out",
+      "/Volumes/StudioData/bombcad/experiments/2026-10-21-independent-portability/terrain-h200-dx8/cuda-input"
+    ],
+    "label": "terrain-h200-dx8-prepare",
+    "pgid": 45366,
+    "pid": 45366
+  }
+}
+Verified archive bytes 47156634

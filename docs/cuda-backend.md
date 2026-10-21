@@ -204,11 +204,11 @@ Mac observer clock; CUDA preparation adds another 2.49 s before deployment. Prim
 is cheaper, but no district deployment speedup is observed. Availability and complete cost,
 not solver-only time, should drive dispatch. This does not resolve the terrain/Beirut gates.
 
-An independent [clock-calibration issue #64](https://github.com/emmettl/bombcad-work/issues/64)
+An independent [clock-calibration issue emmettl/bombcad-work#64](https://github.com/emmettl/bombcad-work/issues/64)
 records reproducible Mac/WSL interval disagreement and an apparent PC wall-clock step. Until
 resolved, use a common observer for cross-host latency and keep worker-clock diagnostics
 separate. No time or clocksource settings were changed. Per-step control/dispatch profiling
-remain #60 follow-ups. A [bounded field replay queue](field-queue.md) now covers #59
+remain emmettl/bombcad-work#60 follow-ups. A [bounded field replay queue](field-queue.md) now covers emmettl/bombcad-work#59
 resumability and per-case admission; finer accounting and larger evaluation remain open.
 
 ### Raw elapsed-clock correction
@@ -216,7 +216,7 @@ resumability and per-case admission; finer accounting and larger evaluation rema
 The [paired Windows/WSL/Mac audit](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-audit/summary.md)
 isolates adjusted Linux monotonic running about 2.5% faster while raw and native Windows QPC
 agree in the observed intervals. Read-only kernel discipline queries show enlarged/changing
-ticks; merely seeing `tsc` is not evidence that the clocksource itself is broken. #64 remains
+ticks; merely seeing `tsc` is not evidence that the clocksource itself is broken. emmettl/bombcad-work#64 remains
 open for discipline ownership and safe host normalization; no system settings were changed.
 
 `run.py` and `profile-worker.py` now use Linux `CLOCK_MONOTONIC_RAW` for elapsed measurements
@@ -268,8 +268,8 @@ without it; smaller CUDA and Metal controls pass the same no-change check. Compr
 histories, source/worker hashes, transition windows and counterfactual summaries are retained.
 These traced runs perturb execution timing and must not be used as performance benchmarks.
 
-[#62](https://github.com/emmettl/bombcad-work/issues/62) tracks a justified, versioned phase-label
-robustness policy and its physical/product checks. #47 remains gated; neither a new epsilon nor
+[emmettl/bombcad-work#62](https://github.com/emmettl/bombcad-work/issues/62) tracks a justified, versioned phase-label
+robustness policy and its physical/product checks. emmettl/bombcad-work#47 remains gated; neither a new epsilon nor
 exceptions to dataset comparison have been introduced. The Beirut follow-up below separates peak behavior from phase decisions; assess candidate
 definitions on held-out histories before changing any label semantics or regenerating data.
 
@@ -329,7 +329,7 @@ Its very small aggregate peak L2 error does not override those individual failur
 new math mode nor a global precision switch is a demonstrated acceptance fix.
 
 The direct production follow-up below resolves the closure question and tests work selection;
-execution-path arithmetic and #62's label definitions remain under investigation. No broad CUDA batch has been enabled.
+execution-path arithmetic and emmettl/bombcad-work#62's label definitions remain under investigation. No broad CUDA batch has been enabled.
 
 ## Direct production observation and execution-path controls
 
@@ -383,6 +383,16 @@ compressed traces, pass `--arrays EXPORTED-ARRAYS` to recompute the gates. It re
 whose hashes differ from the archive receipt. Trace artifacts alone are not presented as a
 fresh array-comparison pass.
 
+For initial-state controls, `field-export --first-phase --initial-state-diagnostic NEW-FOLDER
+--cuda-source GENERATED.cu` copies the actual portable physical buffers before the ordinary
+production solve. Existing CUDA export capability checks still apply. The new folder must be
+outside `--out`, with neither folder containing the other, and cannot already exist. This option
+cannot be combined with `--cuda-job`. Compare job metadata and buffer hashes to establish
+physical initialization identity; work-selection buffers are deliberately omitted. The accompanying
+`initial-diagnostic.json` records the path and requested arithmetic policies, not emitted machine
+instructions. The snapshot contains no final targets and confers no dataset admission. Optional
+copying contributes to the timing receipt's total but lies outside its component phase intervals.
+
 No phase semantics, dataset mask or acceptance tolerance changed. The full CUDA training batch
 remains gated. Direct production closure resolves the earlier hypothesis; peak-path attribution
 and a justified versioned phase policy remain separate work.
@@ -404,10 +414,10 @@ still fails 12 peak and five phase targets, with total impulse passing. Changing
 or choosing whichever reference is closer therefore does not resolve the current contract.
 All comparisons and executable/source/environment receipts are in the production archive.
 
-[#63](https://github.com/emmettl/bombcad-work/issues/63) tracks peak-path arithmetic and a
+[emmettl/bombcad-work#63](https://github.com/emmettl/bombcad-work/issues/63) tracks peak-path arithmetic and a
 justified portability contract. Next isolate contraction from other math-mode effects with
 fixed fixtures, and assess localized errors and damage-threshold effects before deciding
-whether to constrain arithmetic or revise a versioned contract. #62 separately owns phase
+whether to constrain arithmetic or revise a versioned contract. emmettl/bombcad-work#62 separately owns phase
 label conditioning. No default, mask, label or tolerance changed in these controls.
 
 ## Explicit contraction-policy factorial
@@ -434,7 +444,7 @@ No particular emitted instruction or compiler transformation has been inspected 
 
 No explicit-policy variant passes the original gate. These are diagnostic settings, not a new
 reference or chosen product policy. The safe/off repeat also reproduces the previous safe/off
-arrays exactly. #63 still needs independent-case, resolution and damage-threshold evidence
+arrays exactly. emmettl/bombcad-work#63 still needs independent-case, resolution and damage-threshold evidence
 before a justified numerical portability contract can be chosen.
 
 `math-matrix.py` reproduces the experiment from prepared field-run inputs and a matching stable
@@ -456,6 +466,18 @@ python3 Scripts/cuda/math-matrix.py --case beirut-p0-1 \
 ```
 
 ## Whole-field spread and phase-conditioning probes
+
+[Independent geometry/grid controls](../Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/summary.md)
+extend the arithmetic/path study to synthetic flat and terrain geometries, each at 4 m and 8 m
+with fixed physical domains. All 16 explicit-policy tiled/full-grid pairs are bit-identical;
+all default pairs differ. Initial physical buffers match across every policy/path, and the
+initial-state observer leaves each default output bit-identical. Peak pressure and total impulse
+pass every within-grid gate. Terrain at 4 m still has two CUDA first-phase failures against
+default production, and one against each explicit policy; three other geometry/grid groups pass.
+No arithmetic setting resolves that terrain case. These are within-grid sensitivity controls,
+not convergence, physical validation or a revised reference/admission policy. Retained arrays,
+localized failures and exact scripts support the remaining product/label work in
+emmettl/bombcad-work#62 and emmettl/bombcad-work#63.
 
 [The full-field spread study](../Benchmarks/CUDAAcceptance/2026-10-21-reference-spread/study.json)
 uses six distinct reference outcomes (default tiled/full plus four explicit policies), with
@@ -482,7 +504,7 @@ phases at 1 Pa peak, separated by a sustained -0.05 Pa interval, have first-posi
 0.016 Pa s. The 0.0625 Pa band merges the phases and gives 0.028 Pa s (+75%). Scaling the same
 proportional history to 10/100 Pa avoids that merge. This is a mathematical control, not a CFD
 or measured-data validation. `phase-conditioning.py` retains all candidate outcomes and those
-controls; no threshold is selected. #62 requires a justified definition and independent weak,
+controls; no threshold is selected. emmettl/bombcad-work#62 requires a justified definition and independent weak,
 reflected/multiphase and resolution/product checks before any versioned target change.
 
 ## CUDA cooling work selection
@@ -524,8 +546,8 @@ aggregated work counts; deployment provenance still pins the worker files.
 `run.py --full-grid-cooling` or `remote.py --full-grid-cooling` selects the original path for
 diagnosis. The CUDA worker's default work selection changed; app defaults, arithmetic, labels,
 masks, accepted physics and tolerances did not. Original-reference acceptance failures remain
-exactly the same, so no full training batch is enabled by this optimization. #60 retains
-further profiling; #47/#62/#63 retain their separate numerical contract work.
+exactly the same, so no full training batch is enabled by this optimization. emmettl/bombcad-work#60 retains
+further profiling; emmettl/bombcad-work#47/#62/#63 retain their separate numerical contract work.
 
 
 ## Resumable field dispatch
@@ -557,20 +579,20 @@ now supports symmetric cached-worker comparisons; omit the baseline option for t
 uncached-versus-cached experiment. The worker hashes its executed `__file__` under the logical
 `run.py` provenance role, even when the variant is renamed. The profiler rejects a result whose
 executed-worker hash differs from the selected file. This fixes aliased variants attesting an
-unexecuted canonical sibling. The next focused #60 experiment is pinned host StepControl buffer
+unexecuted canonical sibling. The next focused emmettl/bombcad-work#60 experiment is pinned host StepControl buffer
 reuse with existing synchronization initially retained, separating allocation/staging from waits.
 
 
 ## Pinned host control-buffer experiment
 
-The [#65 pinned-buffer study](../Benchmarks/HeterogeneousCompute/2026-10-21-pinned-control/summary.md)
+The [emmettl/bombcad-work#65 pinned-buffer study](../Benchmarks/HeterogeneousCompute/2026-10-21-pinned-control/summary.md)
 retains synchronization and reuses one pinned CPU tensor plus a ctypes view for StepControl.
 All 36 candidate/baseline runs are numerically exact; 24 same-worker controls and two failure
 controls per variant are separate. The API trace confirms reduced CPU allocation/pageable
 staging, while transfer and wait counts remain unchanged. Full flat/Beirut worker-process
 medians are 47.880/47.778 s and 68.590/68.603 s. Small apparent process gains overlap variation
 in the same-worker control and are not consistently reflected in solve time. The candidate
-is retained as a patch, with no production adoption. #65 is complete as an experiment; #60
+is retained as a patch, with no production adoption. emmettl/bombcad-work#65 is complete as an experiment; emmettl/bombcad-work#60
 retains broader control/launch work. Existing numerical admission and default worker behavior
 remain unchanged.
 
@@ -583,14 +605,14 @@ while Ubuntu systemd-timesyncd also updates the same kernel timekeeper. Version-
 3.0.3 init source launches a VM-level PHC-based chronyd agent; system-distribution tracking
 reports PHC0 and about 4,576 ppm correction. Ubuntu service inventory alone misses that actor.
 All tracing state is removed and verified; no clock/service settings changed. This identifies
-the setter and duplicate controllers, not a proven feedback mechanism or completed fix. #64
+the setter and duplicate controllers, not a proven feedback mechanism or completed fix. emmettl/bombcad-work#64
 retains quiescent single-owner normalization and paired/longer validation. Raw elapsed reporting
 and existing numerical gates remain unchanged.
 
 
 ## Fresh-process observer precision
 
-The [#66 observer correction](../Benchmarks/HeterogeneousCompute/2026-10-21-observer-precision/summary.md)
+The [emmettl/bombcad-work#66 observer correction](../Benchmarks/HeterogeneousCompute/2026-10-21-observer-precision/summary.md)
 now drains stdout/EOF readiness while retaining the deadline and owned-child cleanup. A bounded
 CPU control reduces median final-child-timestamp to parent-return interval from 8.260 to
 1.914 ms; that interval includes child teardown and is not pure wait latency. Eighteen real
@@ -598,13 +620,13 @@ same-source GPU runs retain every numerical hash and provenance contract. The fr
 now passes each worker's selected cache argument, fixing the distinct/baseline-only routing bug;
 earlier symmetric-cache studies used equal paths and remain valid. Reports record observer
 scope and profiler source hash. Historical values are retained, not rescaled. This is a
-measurement correction, not a CUDA speedup or numerical-admission change; #65 remains unadopted.
+measurement correction, not a CUDA speedup or numerical-admission change; emmettl/bombcad-work#65 remains unadopted.
 
 The subsequent [controlled clock-ownership experiment](../Benchmarks/HeterogeneousCompute/2026-10-21-clock-normalization/summary.md)
 reproduces improvement when Ubuntu's time client is paused and renewed instability
 when restored, while WSL's PHC0 agent remains active. It therefore adds mechanism
 evidence beyond the earlier setter trace. See the transaction receipts for the
-longer single-owner validation and final service policy. #64 stays open for reboot
+longer single-owner validation and final service policy. emmettl/bombcad-work#64 stays open for reboot
 and operational validation. Keep RAW elapsed measurements and all numerical gates.
 
 Longer validation passed: maximum absolute MONOTONIC/RAW error was 19.3 ppm

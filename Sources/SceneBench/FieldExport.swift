@@ -108,7 +108,7 @@ enum FieldExport {
                 "solverSetupPhasesSeconds": solverSetupPhases,
                 "totalSecondsBeforeTimingReceipt": (ContinuousClock.now - timingStart) / .seconds(1),
                 "scope":
-                    "Scene preparation; solver setup including shader compilation, allocation and initial state; recorder setup; solve; output. Excludes process startup, gpu-slot waiting and this receipt write. Setup subphases are nested host elapsed intervals: command queue, shader library, eager pipelines, buffers/texture, initial uniform state and scenario load. Library/pipeline phases may include driver cache lookup or compilation; they are not pure compiler time. Lazy setup during later phases remains there.",
+                    "Scene preparation; solver setup including shader compilation, allocation and initial state; recorder setup; solve; output. Excludes process startup, gpu-slot waiting and this receipt write. Setup subphases are nested host elapsed intervals: command queue, shader library, eager pipelines, buffers/texture, initial uniform state and scenario load. Library/pipeline phases may include driver cache lookup or compilation; they are not pure compiler time. Lazy setup during later phases remains there. Optional initial-state diagnostic copying is inside total time but outside these component phases.",
             ]
             try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
                 .write(to: folder.appending(path: "phase-timings.json"), options: .withoutOverwriting)
@@ -154,6 +154,28 @@ enum FieldExport {
             throw BlastError.allocationFailed(
                 "execution-path diagnostics require a production run, not --cuda-job")
         }
+        let initialDiagnosticArgument = value("initial-state-diagnostic")
+        if args.contains("--initial-state-diagnostic"),
+            initialDiagnosticArgument == nil || initialDiagnosticArgument?.hasPrefix("--") == true
+        {
+            throw BlastError.allocationFailed("--initial-state-diagnostic requires a folder")
+        }
+        let initialDiagnostic = initialDiagnosticArgument.map {
+            URL(filePath: $0).standardizedFileURL.resolvingSymlinksInPath()
+        }
+        if let initialDiagnostic {
+            let output = URL(filePath: out).standardizedFileURL.resolvingSymlinksInPath()
+            guard args.contains("--first-phase"), !args.contains("--cuda-job"),
+                value("cuda-source").map({ !$0.hasPrefix("--") && !$0.isEmpty }) == true,
+                !initialDiagnostic.pathComponents.starts(with: output.pathComponents),
+                !output.pathComponents.starts(with: initialDiagnostic.pathComponents),
+                !FileManager.default.fileExists(atPath: initialDiagnostic.path)
+            else {
+                throw BlastError.allocationFailed(
+                    "--initial-state-diagnostic requires --first-phase, --cuda-source and a new folder outside --out; excludes --cuda-job"
+                )
+            }
+        }
         if args.contains("--full-grid-diagnostic") { configuration.skipStillAir = false }
         if value("trace-columns") != nil && (args.contains("--cuda-job") || !args.contains("--first-phase")) {
             throw BlastError.allocationFailed(
@@ -190,6 +212,27 @@ enum FieldExport {
                 format: "%d × %d × %d cells (%.1f M), %.0f m top, %.0f kg, to %.2f s", solver.grid.nx,
                 solver.grid.ny, solver.grid.nz, Double(solver.grid.cellCount) / 1e6, scene.domainSize.z, mass,
                 until))
+        if let initialDiagnostic, let shader = value("cuda-source") {
+            let hash = SHA256.hash(data: try Data(contentsOf: URL(filePath: shader)))
+                .map { String(format: "%02x", $0) }.joined()
+            try solver.exportUniformCUDAJob(
+                to: initialDiagnostic, sourceSHA256: hash, until: until, above: above)
+            let receipt: [String: Any] = [
+                "format": "bombcad-field-initial-diagnostic-1",
+                "scope":
+                    "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+                "executionPath": args.contains("--full-grid-diagnostic")
+                    ? "full" : (args.contains("--all-tiles-diagnostic") ? "all-tiles" : "tiled"),
+                "requestedMathMode": ProcessInfo.processInfo.environment["BOMBCAD_KERNEL_MATH"] ?? "default",
+                "requestedContraction": ProcessInfo.processInfo.environment["BOMBCAD_KERNEL_CONTRACT"]
+                    ?? "default",
+                "stepCount": solver.stepCount, "time": solver.time,
+            ]
+            try JSONSerialization.data(withJSONObject: receipt, options: [.prettyPrinted, .sortedKeys])
+                .write(
+                    to: initialDiagnostic.appending(path: "initial-diagnostic.json"),
+                    options: .withoutOverwriting)
+        }
         if args.contains("--cuda-job") {
             let outputStart = ContinuousClock.now
             guard let shader = value("cuda-source") else {

@@ -1,0 +1,41 @@
+{
+  "baseRevisionObserved": "55b4ed89a0085926b193a6e7dd6718056c41091b",
+  "worktreeDirtyAtMeasurement": true,
+  "producingExecutable": "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/scenebench",
+  "producingExecutableSHA256": "823d24156272577d0f70f6c04d736b65ca53d75ccb231db574dbc263b7e83a6a",
+  "initialDiagnosticSourceSHA256": "6da1ab1908da64590a9a02b93c7f846317ca39f935741237f5b4ca3db0af75de",
+  "groups": 4,
+  "macExports": 48,
+  "cudaDeployments": 4,
+  "observerArraysBitIdentical": true,
+  "physicalInitialStatesMatch": true,
+  "explicitPolicyPathPairsBitIdentical": 16,
+  "existingAdmissionGateUnchanged": true,
+  "archiveAudit": {
+    "archiveBytes": 47156634,
+    "deduplicatedPayloadLinks": 581,
+    "filesVerified": 881,
+    "status": "complete"
+  },
+  "validation": "make check-affected passed; real CLI observer/initial-state controls and seven rejection controls passed",
+  "artifactsSHA256": {
+    "archive-audit.json": "7daeda3bc90a573265dd3480869bf2a46bac6f8f0c4226eb0830bfde6d802417",
+    "archive-files.json": "939f0b10d6b3475f0d68ecc8240ce746897447d639c02249a14d20f743b8a2cf",
+    "audit.json": "436d01a2355e2ba4825e7395a9e545f6c9141d1539cc12e07032ab4c9441acc5",
+    "build.log": "1704fc6a2be4807c8ac26f33f2a2e7f74715e4c12addc6affd3274379cd4c4c4",
+    "check-integrated.log": "3d9d4f7f75822295b58060dcae92d6097cae12cd1d3ccd0828af9a4538cb99fe",
+    "check.log": "8e47a040097ac27d8b7730deeb702187219c76799732299a35b0ff24f9b5264d",
+    "package.log": "08e3fa5b150727b262cc72f9e09ccf5add425b513be0bef773d43de743f769ee",
+    "package.py": "81949754570f85d64d939ecf974e5358608893e45af8b43cc3f45de7240b2e16",
+    "smoke.json": "cace15ede53b602c1216beee75891f4c9b08eec6de515daa34c1e8ac40bd1767",
+    "smoke.log": "057107eb5129f7f1b8927c3c45d8cdfb076b82c73c915709aba76c1e5cd27661",
+    "smoke.py": "a247e0145735873dc0a94659d5f6c132e652251e12fc1ac78b53e13095a32b9d",
+    "state.tar.gz": "02f75fc780efb2572d3f0eac4af8054fc988e3acc535ef046efa58b3ce15a049",
+    "study.json": "3137fcdd92281a53e978da58478142df77ec98ac44635a29cced0440887991c6",
+    "study.log": "05c31d5f37718e78fe650c13404ff225ce6effa53391796ebc2b668e8f1dd72a",
+    "study.py": "10406ca54f8e570e4c76f9764abb24853609eb78bd5a863c8eb65ea49d7a8917",
+    "summary.md": "e523c1b8c7e38125b4768ee6891a139ac83e033f3f7a02f15bda3182b6ee3290"
+  },
+  "integrationBaseRevision": "8701c269",
+  "integrationValidation": "make check-affected passed after rebase"
+}

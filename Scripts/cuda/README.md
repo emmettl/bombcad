@@ -65,6 +65,16 @@ and summarizes the actual production transitions; archived gzip traces require `
 a fresh gate computation. `--full-grid-diagnostic` and `--all-tiles-diagnostic` on field-export
 provide mutually exclusive controlled paths. No product defaults or acceptance rules change.
 
+`field-export --initial-state-diagnostic NEW-FOLDER --cuda-source GENERATED.cu --first-phase`
+also snapshots the actual portable physical state before stepping, then completes the ordinary
+production export. The snapshot uses the existing CUDA job capability checks and format;
+work-selection buffers are omitted. Its `initial-diagnostic.json` records the selected execution
+path and requested math/contraction policies, which do not prove particular emitted instructions.
+The folder must be new and outside `--out` (neither may contain the other); `--cuda-job` cannot
+be combined with this option. Snapshot copying is included in the optional timing receipt's total,
+outside its component phase intervals. These snapshots establish initial-state identity for
+numerical controls; they do not provide final targets or dataset admission.
+
 `math-matrix.py` runs explicit fast/safe × contraction-on/off × tiled/full production controls
 from prepared field-run inputs. `--dry-run` plans without creating outputs; `--modes
  default-off,fast-default` runs bridge controls in a fresh root. Status completion is separate

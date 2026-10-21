@@ -1,0 +1,47 @@
+{
+  "status": "complete",
+  "controls": [
+    {
+      "observerArraysBitIdentical": true
+    },
+    {
+      "physicalBuffersIdenticalAcrossPaths": true
+    },
+    {
+      "control": "missing-phase",
+      "rejected": true,
+      "outputCreated": false
+    },
+    {
+      "control": "missing-source",
+      "rejected": true,
+      "outputCreated": false
+    },
+    {
+      "control": "same-output",
+      "rejected": true,
+      "outputCreated": false
+    },
+    {
+      "control": "nested-output",
+      "rejected": true,
+      "outputCreated": false
+    },
+    {
+      "control": "existing",
+      "rejected": true,
+      "outputCreated": false
+    },
+    {
+      "control": "cuda-job",
+      "rejected": true,
+      "outputCreated": false
+    },
+    {
+      "control": "missing-value",
+      "rejected": true,
+      "outputCreated": false
+    }
+  ],
+  "executableSHA256": "823d24156272577d0f70f6c04d736b65ca53d75ccb231db574dbc263b7e83a6a"
+}

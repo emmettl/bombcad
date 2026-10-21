@@ -1,0 +1,691 @@
+python3 Scripts/check-affected.py 
+check-affected: 19 changed file(s), tier: covered
+  map 90fb60017c15 (53 commits behind the merge base, built 2026-10-20 19:53 UTC on Louiss-Mac-mini)
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/archive-audit.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/archive-files.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/audit.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/build.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/check.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/manifest.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/package.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/package.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/smoke.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/smoke.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/smoke.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/state.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/study.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/study.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/study.py: not code the map covers; by name
+  Sources/SceneBench/FieldExport.swift: not in the map; by name
+  19 of 411 suites, under 1% of the suites' time in the map:
+    AdblastSubstructureTests: not in the map
+    ChargeDragTests: not in the map
+    CloseInSightTests: not in the map
+    ErrorBandTests: always
+    EstimateReproducibilityTests: not in the map
+    EvidentialStandingTests: reads Scripts/cuda/README.md; always
+    FirstPhaseColumnsTests: not in the map
+    IFCSelectionTests: reads Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/manifest.json
+    InflateTests: not in the map
+    MasonryArchingTests: not in the map
+    OpenBenchmarkDeckTests: not in the map
+    PreparedDistrictTests: not in the map
+    ProjectContainerErrorTests: reads Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/manifest.json
+    RealCADFixtureTests: reads Benchmarks/CUDAAcceptance/2026-10-21-independent-portability/manifest.json
+    RenderLayoutTests: always
+    StandingFingerprintTests: always
+    StandingRunTests: always
+    UniformCUDAJobTests: not in the map
+    ValidationEnsembleGlassTests: not in the map
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 0 GB declared by the 0 held and the waiting against a budget of 26 GB
+  BlastModel's 12 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+..........{"one": "pending"}
+.......ssss...........................job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 baseline 1.0
+.job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+....[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "running"}
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+.{"spill0": "pending", "spill1": "pending", "spill2": "pending", "spill3": "pending", "spill4": "pending", "spill5": "pending"}
+...
+----------------------------------------------------------------------
+Ran 71 tests in 10.930s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.040s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp4cj4oxey/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpybiaga8r/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.022s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.369s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (ff0b1b9e22), newest first:
+- e7253e7 Third (A)
+- 04c0039 Second (A)
+
+### Full check: passed
+
+On e7253e7f7c, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpoocnk312/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpoocnk312/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpoocnk312/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp9_ogzwj0/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp9_ogzwj0/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.188s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 0.627s
+
+OK
+python3 Scripts/test-ship.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 10.404s
+
+OK
+python3 Scripts/test-release-notes.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.002s
+
+OK
+python3 Scripts/test-check-shader-mirrors.py
+.........................
+----------------------------------------------------------------------
+Ran 25 tests in 2.856s
+
+OK
+python3 Scripts/test-check-test-deadlines.py
+/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpi98jjqoa'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpia_zpwdn'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp0_wackhk'>
+  _warnings.warn(warn_message, ResourceWarning)
+.............
+----------------------------------------------------------------------
+Ran 15 tests in 0.006s
+
+OK
+python3 Scripts/calibration/test-calibration.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 2.953s
+
+OK
+python3 Scripts/test-remote-sweep.py
+../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:38: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_8ym_dzr/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:39: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_8ym_dzr/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_8ym_dzr/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:38: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_8ym_dzr/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:39: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_8ym_dzr/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_8ym_dzr/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:42: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp_8ym_dzr/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+python3 Scripts/split/test-split.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 1.140s
+
+OK
+python3 Scripts/split/test-solver-split.py
+The plan no longer describes the tree:
+  newOne(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+The plan no longer describes the tree:
+  time is placed twice
+  time cannot leave the class's body (stored property)
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+....The plan no longer describes the tree:
+  added(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+...
+----------------------------------------------------------------------
+Ran 7 tests in 0.461s
+
+OK
+  added(): not in the plan; with what is above it (BlastSolver+Stepping.swift)
+wrote plan.json
+  widened time: set from BlastSolver+Stepping.swift
+  widened steps: set from BlastSolver+Stepping.swift
+  widened cache: used from BlastSolver+Boxes.swift, BlastSolver+Stepping.swift
+  widened uniforms: used from BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Boxes.swift
+  wrote Sources/BlastCore/BlastSolver.swift
+  wrote Sources/BlastCore/Shaders/SolverSweep.metal
+  wrote Sources/BlastCore/Shaders/SolverView.metal
+  wrote Sources/BlastCore/Shaders/Solver.metal
+  wrote Sources/BlastCore/StructureTypes+GPU.swift
+  wrote Scripts/check-affected.py
+  wrote docs/air.md
+already split; nothing to do
+python3 Scripts/split/test-narrow-access.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.007s
+
+OK
+python3 Scripts/reference/test-kingery-bulmash.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.104s
+
+OK
+python3 Scripts/footing-bed/test-bed-replica.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp7cln5ozt.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpw8v_t4ef.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpe8agaata.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp430mugnx.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.008s
+
+OK
+python3 Scripts/reference/test-sdof.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.328s
+
+OK
+python3 Scripts/reference/test-blast1d.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 4.418s
+
+OK
+python3 Scripts/reference/test-compare.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.158s
+
+OK
+python3 Scripts/protective/test-protective.py
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 3.820s
+
+OK
+python3 Scripts/test-analytic-oracles.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 2.674s
+
+OK
+python3 -I Scripts/open-benchmark/test_score.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 0.027s
+
+OK
+python3 -I Scripts/open-benchmark/test_decks.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 1.687s
+
+OK
+python3 -I Scripts/ml/test-remote-train.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.115s
+
+OK
+python3 -I Scripts/ml/test-field-runs.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.052s
+
+OK
+python3 Scripts/check-doc-links.py
+python3 Scripts/check-shader-mirrors.py
+38 Swift/Metal pairs and 4 shader copies checked; 0 findings, 1 allowed
+python3 Scripts/check-test-deadlines.py
+No wall-clock bounds in 396 test files.
++ /Users/louisemmett/.local/bin/gpu-slot /Applications/Xcode.app/Contents/Developer/usr/bin/python3 Scripts/check-affected.py check-steps
++ make build-strict
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Constructing description]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+[16 / 22] BombCADTests-product
+[16 / 21] scenebench-product
+[20 / 25] scenebench-product
+[23 / 25] scenebench-product
+Build complete! (2.00 secs)
+build-strict: no warnings
++ make ifc-converter
+python3 Scripts/prepare-ifc-converter.py
+/Users/louisemmett/Developer/Projects/bombcad/.build/ifc-converter/IfcConvert
++ swift test --filter \.(ChargeDragTests|FirstPhaseColumnsTests|IFCSelectionTests|ProjectContainerErrorTests|RealCADFixtureTests|StandingRunTests|UniformCUDAJobTests)(/|$)
+Building for debugging...
+[Computing dependencies]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+Build complete! (1.02 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Shared project-container errors" started.
+◇ Suite "Dragging the charge" started.
+◇ Suite "Selective IFC import and completeness" started.
+◇ Suite "Standing carried with results" started.
+◇ Test "Hazards follow the editable charge, with live stand-off crossing feedback" started.
+◇ Test "An unsupported package version is still reported before absent metadata" started.
+◇ Test "The project's length unit is read from the IFC: SI with its prefix, or converted; none where unclear" started.
+◇ Test "Excluded, unsupported and unknown GUIDs cannot enter native conversion" started.
+◇ Test "Real fixtures cover beams, columns, distinct storeys and invalid door/window geometry" started.
+◇ Test "Repository IFC fixture bytes match the pinned provenance manifest" started.
+◇ Test "Missing manifest metadata reaches the document error with its field path" started.
+◇ Test "A chosen storey converts only its GUIDs and persists choices, exclusions and original IFC" started.
+◇ Test "Spatial scope uses GUIDs, preserves duplicate storey names, and does not leak between buildings" started.
+◇ Test "Malformed package JSON identifies its file before application decoding" started.
+◇ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" started.
+◇ Test "Missing selected geometry remains visible as an omission rather than an exclusion" started.
+◇ Test "The app's air settings give the standing the solver's configuration" started.
+◇ Test "Where the converter cannot find the units, the project's own length unit scales the geometry, and says so" started.
+◇ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" started.
+◇ Test "Comparison names the runs whose standing differs from the reference's" started.
+◇ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" started.
+◇ Test "Results files carry their standing beside their own keys, which their readers pass over" started.
+◇ Test "Parts aggregated into a supported element carry its geometry; openings and spaces do not" started.
+◇ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" started.
+◇ Test case passing 1 argument file → "manifest.json" to "Malformed package JSON identifies its file before application decoding" started.
+◇ Test case passing 1 argument file → "settings.json" to "Malformed package JSON identifies its file before application decoding" started.
+◇ Test case passing 1 argument file → "scene.json" to "Malformed package JSON identifies its file before application decoding" started.
+◇ Test case passing 1 argument file → "view.json" to "Malformed package JSON identifies its file before application decoding" started.
+✔ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" passed after 0.002 seconds.
+✔ Test "Spatial scope uses GUIDs, preserves duplicate storey names, and does not leak between buildings" passed after 0.002 seconds.
+✔ Test "The project's length unit is read from the IFC: SI with its prefix, or converted; none where unclear" passed after 0.002 seconds.
+✔ Test "An unsupported package version is still reported before absent metadata" passed after 0.002 seconds.
+✔ Test "Malformed package JSON identifies its file before application decoding" with 4 test cases passed after 0.002 seconds.
+✔ Test "Missing manifest metadata reaches the document error with its field path" passed after 0.002 seconds.
+✔ Test "Repository IFC fixture bytes match the pinned provenance manifest" passed after 0.002 seconds.
+✔ Suite "Shared project-container errors" passed after 0.002 seconds.
+✔ Test "Parts aggregated into a supported element carry its geometry; openings and spaces do not" passed after 0.002 seconds.
+✔ Test "The app's air settings give the standing the solver's configuration" passed after 0.009 seconds.
+✔ Test "Excluded, unsupported and unknown GUIDs cannot enter native conversion" passed after 0.078 seconds.
+✔ Test "Hazards follow the editable charge, with live stand-off crossing feedback" passed after 0.085 seconds.
+◇ Test "The estimate follows the dragged charge as a preview, then in full where it is let go" started.
+✔ Test "Where the converter cannot find the units, the project's own length unit scales the geometry, and says so" passed after 0.140 seconds.
+✔ Test "Results files carry their standing beside their own keys, which their readers pass over" passed after 0.210 seconds.
+✔ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" passed after 0.211 seconds.
+✔ Test "Comparison names the runs whose standing differs from the reference's" passed after 0.241 seconds.
+✔ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" passed after 0.242 seconds.
+✔ Test "Missing selected geometry remains visible as an omission rather than an exclusion" passed after 0.335 seconds.
+✔ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" passed after 0.571 seconds.
+✔ Suite "Standing carried with results" passed after 0.571 seconds.
+✔ Test "A chosen storey converts only its GUIDs and persists choices, exclusions and original IFC" passed after 0.575 seconds.
+✔ Test "Real fixtures cover beams, columns, distinct storeys and invalid door/window geometry" passed after 2.350 seconds.
+✔ Suite "Selective IFC import and completeness" passed after 2.350 seconds.
+✔ Test "The estimate follows the dragged charge as a preview, then in full where it is let go" passed after 2.698 seconds.
+✔ Suite "Dragging the charge" passed after 2.784 seconds.
+✔ Test run with 21 tests in 4 suites passed after 2.784 seconds.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Portable uniform CUDA jobs" started.
+◇ Suite "First-phase columns" started.
+◇ Suite "Real CAD export fixtures" started.
+◇ Test "An exported job preserves initial state, species, cooling and receiver records" started.
+◇ Test "Each column's first phase is the recorder's rule over its whole history" started.
+◇ Test "Pinned CAD exports retain the exact upstream bytes and usable STEP reference files" started.
+◇ Test "Unchanged window assembly opens defect inspection instead of entering the simulation" started.
+◇ Test "Physical-scale hollow block reports coarse-grid loss; finer core sampling preserves openings" started.
+◇ Test "Exporter-generated hollow block and curved pipe validate as single solids" started.
+◇ Test "Physical-scale PVC tee vanishes on app grids, with an empty bore after finer core sampling" started.
+◇ Test case passing 3 arguments name → "concrete-block", triangles → 372, size → SIMD3<Float>(390.0, 140.0, 190.0) to "Exporter-generated hollow block and curved pipe validate as single solids" started.
+◇ Test case passing 3 arguments name → "pvc-tee", triangles → 4004, size → SIMD3<Float>(82.0, 37.974648, 67.0) to "Exporter-generated hollow block and curved pipe validate as single solids" started.
+✔ Test "Pinned CAD exports retain the exact upstream bytes and usable STEP reference files" passed after 0.008 seconds.
+✔ Test "Unchanged window assembly opens defect inspection instead of entering the simulation" passed after 0.016 seconds.
+✔ Test "Each column's first phase is the recorder's rule over its whole history" passed after 0.087 seconds.
+◇ Test "Production diagnostics preserve batches, fields and recorder values to the bit" started.
+✔ Test "Production diagnostics preserve batches, fields and recorder values to the bit" passed after 0.033 seconds.
+◇ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" started.
+✔ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" passed after 0.006 seconds.
+◇ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" started.
+✔ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" passed after 0.006 seconds.
+◇ Test "Recording the columns leaves the run as it was, to the bit" started.
+✔ Test "Recording the columns leaves the run as it was, to the bit" passed after 0.021 seconds.
+✔ Suite "First-phase columns" passed after 0.155 seconds.
+✔ Test "Physical-scale hollow block reports coarse-grid loss; finer core sampling preserves openings" passed after 1.376 seconds.
+✔ Test "An exported job preserves initial state, species, cooling and receiver records" passed after 2.327 seconds.
+◇ Test "A mapped-start job keeps its nonzero hand-over time and seeded receiver history" started.
+✔ Test "Exporter-generated hollow block and curved pipe validate as single solids" with 2 test cases passed after 2.864 seconds.
+✔ Test "Physical-scale PVC tee vanishes on app grids, with an empty bore after finer core sampling" passed after 3.250 seconds.
+✔ Suite "Real CAD export fixtures" passed after 3.250 seconds.
+✔ Test "A mapped-start job keeps its nonzero hand-over time and seeded receiver history" passed after 7.886 seconds.
+◇ Test "Terrain jobs preserve the production cut geometry and checksums" started.
+✔ Test "Terrain jobs preserve the production cut geometry and checksums" passed after 0.029 seconds.
+◇ Test "Unsupported physics and unconfigured receivers are refused before writing a job" started.
+✔ Test "Unsupported physics and unconfigured receivers are refused before writing a job" passed after 0.009 seconds.
+✔ Suite "Portable uniform CUDA jobs" passed after 10.254 seconds.
+✔ Test run with 14 tests in 3 suites passed after 10.254 seconds.
+check-affected: here in 19 s, waiting for gpu-slot included
+remote-sweep: sending this worktree to bombcad-pc:~/bombcad-sweeps/src
+Building for debugging...
+[Using on-disk description]
+Build complete! (0.52 secs)
+remote-sweep: tests built in 1 s
+◇ Test run started.
+↳ Testing Library Version: 6.4.1 (804dc4530ef3666)
+↳ Target Platform: x86_64-unknown-linux-gnu
+◇ Suite StandingFingerprintTests started.
+◇ Suite "ADBLAST substructure reference" started.
+◇ Suite EvidentialStandingTests started.
+◇ Suite "Masonry arching between returns" started.
+◇ Suite "The renderer's copies of the solver's structs" started.
+◇ Suite "Prepared district" started.
+◇ Test levelsRecordedAsMeasuredStillRead() started.
+◇ Suite "The quick estimate reproduced" started.
+◇ Test "The twelve-shot reference preserves unknowns and support assignments" started.
+◇ Suite "Inflate" started.
+◇ Test modelsRunAlongsideAreIllustrative() started.
+◇ Test theIdentityIsAHashOfTheTablesContent() started.
+◇ Test refinementCountsAsTheFinerGrid() started.
+◇ Suite "The calibration's glass cases" started.
+◇ Suite "Close-in branch in sight only" started.
+◇ Test closeInLoadingAsksForFinerAir() started.
+◇ Test theDocsNameTheLevelsAsTheCodeDoes() started.
+◇ Test coarseCellsForASmallChargeAreAnApproximation() started.
+◇ Test numberedTablesStillReadAndShow() started.
+◇ Suite ErrorBandTests started.
+◇ Test optionsCapTheResultsTheyTouch() started.
+◇ Test standingsRoundTripAndCompare() started.
+◇ Test aDeflagrationDoesNotQuoteTheChargesComparisons() started.
+◇ Test samplesTakeOnlyTheBandsThatFitThem() started.
+◇ Test theTextIsCanonical() started.
+◇ Test "The preregistered charge rule uses impulse only, breaks ties down, and refuses incomplete sweeps" started.
+◇ Test "Off, nothing changes: no key in the JSON, and every route judges as before" started.
+◇ Test linksReachHeadingsInTheDocs() started.
+◇ Test aDeflagrationsBandFollowsItsFuel() started.
+◇ Suite "Open benchmark input decks" started.
+◇ Test everyOptionIsSetBySomeInput() started.
+◇ Test "The arch takes hold from cracking to 1.7 f t² (1 − x/t)² / L² at the struts' crushing strain, then falls to nothing" started.
+◇ Test "Shell nodes and elements are drawn with the solver's layout" started.
+◇ Test everyInputHasAStandingEntry() started.
+◇ Test "The option shows in the standing" started.
+◇ Test "Laid out once, a charge anywhere gives what laying it out again gives, to the bit" started.
+◇ Test eachPresetHasAStandingForWhatItProduces() started.
+◇ Test "On, a solid one-brick front between party walls stands at 16.9 m from 96 kg; a cavity leaf does not" started.
+◇ Test collapseStandsApartFromLocalDamage() started.
+◇ Test "A freestanding wall, a wall with an upright edge free, a roof and other constructions do not arch" started.
+◇ Test tightOpenFacesAreSaidBesideTheStructure() started.
+◇ Test "A look gives the quick estimate's damage and chances, again alike with its responses kept" started.
+◇ Test "A preview works out only the parts asked for" started.
+◇ Test "Stratified, a few draws spread evenly over their distributions, the yields' middle on the charge's" started.
+◇ Test afterburningChangesTheImpulsesStanding() started.
+◇ Test "zlib's stored, fixed-Huffman and dynamic-Huffman blocks decode to what was written" started.
+◇ Test "The calibration's glass cases give the record's figures at today's flaw constant and move with it" started.
+◇ Test "A district laid out twice, its buildings' identifiers new, gives the same chances to the bit" started.
+◇ Test "Off as fitted; on, the branch for components in sight and the fitted terms behind buildings" started.
+◇ Test figuresQuoteTheRecord() started.
+◇ Test readingATableInterpolatesBetweenGridsAndSpansDistances() started.
+◇ Test "A preview judges each building's nearest component of each kind and side, its glass on the side's area" started.
+◇ Test standingsWithoutBandsStillDecode() started.
+◇ Test meshSeriesQuoteTheStudy() started.
+◇ Test tablesMirrorTheValidationRecord() started.
+◇ Test theConfinedRegimesDefaultsAreReported() started.
+◇ Test gaugesTakeTheirOwnBands() started.
+◇ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() started.
+◇ Test closeInGaugesOnTodaysAir() started.
+◇ Test structuresTakeBandsByRegimeMeshAndMaterial() started.
+◇ Test confinedScenesAreAdvisedOnAfterburning() started.
+◇ Test aGaugeOnAWallReadsTheReflectedBand() started.
+◇ Test groundShockIsBandedOnlyForTheHalfSpace() started.
+◇ Test radiationAndCloudFollowTheAirTheyWereComparedOn() started.
+◇ Test "Unsupported physics, changed domains, invalid cells and changed budgets are refused" started.
+◇ Test "Both frozen decks decode and conserve their represented source budgets" started.
+✔ Test "The preregistered charge rule uses impulse only, breaks ties down, and refuses incomplete sweeps" passed after 0.091 seconds.
+✔ Test "The twelve-shot reference preserves unknowns and support assignments" passed after 0.091 seconds.
+✔ Test "The arch takes hold from cracking to 1.7 f t² (1 − x/t)² / L² at the struts' crushing strain, then falls to nothing" passed after 0.110 seconds.
+✔ Test theTextIsCanonical() passed after 0.114 seconds.
+✔ Test "The option shows in the standing" passed after 0.115 seconds.
+✔ Test "Stratified, a few draws spread evenly over their distributions, the yields' middle on the charge's" passed after 0.525 seconds.
+✔ Test "Shell nodes and elements are drawn with the solver's layout" passed after 0.527 seconds.
+✔ Test "zlib's stored, fixed-Huffman and dynamic-Huffman blocks decode to what was written" passed after 0.527 seconds.
+✔ Test "The calibration's glass cases give the record's figures at today's flaw constant and move with it" passed after 0.527 seconds.
+✔ Test "Laid out once, a charge anywhere gives what laying it out again gives, to the bit" passed after 0.529 seconds.
+✔ Test "On, a solid one-brick front between party walls stands at 16.9 m from 96 kg; a cavity leaf does not" passed after 0.538 seconds.
+✔ Test "Off, nothing changes: no key in the JSON, and every route judges as before" passed after 0.539 seconds.
+✔ Test "A freestanding wall, a wall with an upright edge free, a roof and other constructions do not arch" passed after 0.538 seconds.
+✔ Test "A preview works out only the parts asked for" passed after 0.538 seconds.
+✔ Test "Off as fitted; on, the branch for components in sight and the fitted terms behind buildings" passed after 0.539 seconds.
+✔ Test "A preview judges each building's nearest component of each kind and side, its glass on the side's area" passed after 0.539 seconds.
+✔ Test numberedTablesStillReadAndShow() passed after 0.555 seconds.
+✔ Test "Unsupported physics, changed domains, invalid cells and changed budgets are refused" passed after 0.540 seconds.
+✔ Test "Both frozen decks decode and conserve their represented source budgets" passed after 0.535 seconds.
+✔ Suite "ADBLAST substructure reference" passed after 0.563 seconds.
+✔ Suite "Masonry arching between returns" passed after 0.563 seconds.
+✔ Suite "The renderer's copies of the solver's structs" passed after 0.563 seconds.
+✔ Suite "Inflate" passed after 0.563 seconds.
+✔ Suite "The calibration's glass cases" passed after 0.563 seconds.
+✔ Suite "Close-in branch in sight only" passed after 0.563 seconds.
+✔ Test levelsRecordedAsMeasuredStillRead() passed after 0.564 seconds.
+✔ Suite "Open benchmark input decks" passed after 0.563 seconds.
+✔ Test everyOptionIsSetBySomeInput() passed after 0.563 seconds.
+✔ Test everyInputHasAStandingEntry() passed after 0.563 seconds.
+✔ Test theDocsNameTheLevelsAsTheCodeDoes() passed after 0.564 seconds.
+✔ Test coarseCellsForASmallChargeAreAnApproximation() passed after 0.564 seconds.
+✔ Test modelsRunAlongsideAreIllustrative() passed after 0.564 seconds.
+✔ Test aDeflagrationDoesNotQuoteTheChargesComparisons() passed after 0.564 seconds.
+✔ Test closeInLoadingAsksForFinerAir() passed after 0.564 seconds.
+✔ Test refinementCountsAsTheFinerGrid() passed after 0.564 seconds.
+✔ Test standingsRoundTripAndCompare() passed after 0.564 seconds.
+✔ Test aDeflagrationsBandFollowsItsFuel() passed after 0.564 seconds.
+✔ Test optionsCapTheResultsTheyTouch() passed after 0.564 seconds.
+✔ Test samplesTakeOnlyTheBandsThatFitThem() passed after 0.564 seconds.
+✔ Test tightOpenFacesAreSaidBesideTheStructure() passed after 0.564 seconds.
+✔ Test afterburningChangesTheImpulsesStanding() passed after 0.564 seconds.
+✔ Test readingATableInterpolatesBetweenGridsAndSpansDistances() passed after 0.563 seconds.
+✔ Test standingsWithoutBandsStillDecode() passed after 0.563 seconds.
+✔ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() passed after 0.563 seconds.
+✔ Test gaugesTakeTheirOwnBands() passed after 0.563 seconds.
+✔ Test closeInGaugesOnTodaysAir() passed after 0.563 seconds.
+✔ Test theConfinedRegimesDefaultsAreReported() passed after 0.563 seconds.
+✔ Test confinedScenesAreAdvisedOnAfterburning() passed after 0.563 seconds.
+✔ Test groundShockIsBandedOnlyForTheHalfSpace() passed after 0.563 seconds.
+✔ Test radiationAndCloudFollowTheAirTheyWereComparedOn() passed after 0.563 seconds.
+✔ Test aGaugeOnAWallReadsTheReflectedBand() passed after 0.563 seconds.
+✔ Test structuresTakeBandsByRegimeMeshAndMaterial() passed after 0.563 seconds.
+✔ Test meshSeriesQuoteTheStudy() passed after 0.568 seconds.
+✔ Test collapseStandsApartFromLocalDamage() passed after 0.744 seconds.
+✔ Test tablesMirrorTheValidationRecord() passed after 0.744 seconds.
+✔ Test theIdentityIsAHashOfTheTablesContent() passed after 1.037 seconds.
+✔ Suite StandingFingerprintTests passed after 1.050 seconds.
+✔ Test "A district laid out twice, its buildings' identifiers new, gives the same chances to the bit" passed after 1.281 seconds.
+✔ Suite "The quick estimate reproduced" passed after 1.282 seconds.
+✔ Test "A look gives the quick estimate's damage and chances, again alike with its responses kept" passed after 1.505 seconds.
+✔ Suite "Prepared district" passed after 1.506 seconds.
+✔ Test figuresQuoteTheRecord() passed after 1.627 seconds.
+✔ Suite ErrorBandTests passed after 1.628 seconds.
+✔ Test eachPresetHasAStandingForWhatItProduces() passed after 1.632 seconds.
+✔ Test linksReachHeadingsInTheDocs() passed after 2.103 seconds.
+✔ Suite EvidentialStandingTests passed after 2.103 seconds.
+✔ Test run with 54 tests in 12 suites passed after 2.104 seconds.
+check-affected: BlastModel's 12 suite(s) on bombcad-pc in 7 s, sending and building included: passed
+check-affected: passed (covered, BlastModel on bombcad-pc)
