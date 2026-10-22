@@ -1,0 +1,85 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 34 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+[1 / 44] BombCAD-product
+[11 / 46] BlastCore
+[15 / 45] BombCAD_BlastCore
+[17 / 46] BlastCore
+[20 / 49] BlastCore
+[33 / 63] BlastCore
+[34 / 63] BlastCore
+[41 / 66] BlastCore
+[41 / 66] BlastRender
+[48 / 73] BlastCore
+[48 / 73] BlastRender
+[55 / 80] BlastRender
+[55 / 80] rigidboxdemo-product
+[56 / 80] BlastRender
+[66 / 89]
+[69 / 104] scenebench-product
+[70 / 104] scenebench-product
+[79 / 119] scenebench-product
+[82 / 119] scenebench-product
+[84 / 119] blastbench-product
+[88 / 149] BombCAD-product
+[89 / 149] BombCAD
+[92 / 149] blastbench-product
+[94 / 149] blastbench-product
+[96 / 149] blastbench-product
+[98 / 150] scenebench-product
+[101 / 152] blastbench-product
+[103 / 152] BombCAD-product
+[106 / 152] BombCAD-product
+[109 / 152] BombCAD-product
+[110 / 152] BombCAD-product
+[111 / 152] BombCAD-product
+[112 / 152] BombCAD-product
+[113 / 152] BombCAD-product
+[114 / 152] BombCAD-product
+[115 / 152] BombCAD-product
+[116 / 152] blastbench-product
+[118 / 152] BombCAD
+[119 / 152] BombCAD
+[120 / 152] BombCAD
+[121 / 152] BombCAD
+[123 / 152] BombCAD
+[124 / 152] BombCAD
+[127 / 152] BombCAD
+[129 / 152] BombCAD-product
+[130 / 152] BombCAD-product
+[132 / 154] BombCAD
+[138 / 154] BlastCoreTests-product
+[138 / 154] BlastRender
+[141 / 155] blastbench-product
+[141 / 156] BlastCoreTests-product
+[145 / 171] blastbench-product
+[147 / 171] BlastCoreTests-product
+[149 / 171] BlastCoreTests-product
+[149 / 171] BombCAD
+[151 / 171] BlastCoreTests-product
+[153 / 171] BlastCoreTests-product
+[155 / 171] BlastCoreTests-product
+[156 / 171]
+[161 / 173] BlastCoreTests-product
+[163 / 177] scenebench-product
+[165 / 178] rigidboxdemo-product
+[167 / 181] BlastCoreTests-product
+[168 / 184] BombCAD-product
+[170 / 186] BlastCoreTests-product
+[170 / 186] BombCAD-product
+[172 / 186] BlastCoreTests-product
+[174 / 186] BlastCoreTests-product
+[176 / 186] BlastCoreTests-product
+[176 / 184] BombCAD
+[178 / 184] BombCAD
+[179 / 184] BombCADTests-product
+[194 / 199] BombCADTests-product
+[196 / 199] BombCADTests-product
+[200 / 204] BombCADTests-product
+[202 / 204] BombCADTests-product
+Build complete! (28.87 secs)
+build-strict: no warnings

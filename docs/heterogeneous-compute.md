@@ -561,6 +561,12 @@ solver, numerical default or CUDA admission change.
 The [protected sweep implementation gate](../Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/implementation.md)
 adds guarded opt-in density/energy compensation and a matching protected-arithmetic
 no-carry control. Residual hashes and actual update words support replay/parity audits;
-ordinary source and numerical defaults are preserved. The predeclared 1296-export wave
-matrix and its independent-reference/conservation analysis remain pending in
-emmettl/bombcad-work#81. Implementation tests alone do not establish improved wave accuracy.
+ordinary source and numerical defaults are preserved. The
+[complete 1296-export experiment](../Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/summary.md)
+passes all observation/replay and full/tiled gates, with independent Float64 controls.
+At the previously problematic 1 Pa fine-grid wall case, combined residual retention
+changes native impulse error from −15.59% to −0.085%, but peak error remains −4.68%.
+Keep it as a bounded research candidate; stronger-pulse regressions and conservation
+residuals remain explicit. emmettl/bombcad-work#82 tracks the remaining peak mechanism;
+emmettl/bombcad-work#80 retains broader accuracy/product validation. Defaults and CUDA
+admission are unchanged.

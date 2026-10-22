@@ -1,0 +1,9 @@
+{
+  "schema": "bombcad-postlaunch-analysis-amendment-1",
+  "originalRunAnalysisManifestSHA256": "aee5c6b079643cd382e84192971675d7200ca04aace738f7901291ddf439ab01",
+  "additionalSHA256": {
+    "audit-v2.py": "1ac7cad5f690310d5d55afc794eb38de6b744b653878a75cf1f1c2aee92c5c30",
+    "summarize.py": "0a26aa4ad9d8ebf14094d74faaca08231cfc8b51f21941b86b9492c78d61b556"
+  },
+  "reason": "Original auditor equated host Double dt-sum and truncated integer tick clocks. Version 2 exactly replays both definitions, without changing raw inputs or tolerances. Original failure and original auditor retained. Summary is descriptive and applies no admission threshold."
+}

@@ -1,0 +1,14 @@
+{
+  "frozenProducingSourcesAllMatch": true,
+  "frozenProducingSourceCount": 537,
+  "currentCheckoutMatchesPriorProductionPins": 520,
+  "priorProductionPinCount": 524,
+  "changedCurrentCheckoutFiles": [
+    "Sources/BlastCore/StructureSolver.swift",
+    "Sources/blastbench/Commands.swift",
+    "Sources/blastbench/main.swift",
+    "Sources/BlastCore/Shaders/Structure.metal"
+  ],
+  "incomingCommit": "1ccde59fb2b79bceb29e2733a58ba2e47fa0e08b",
+  "scope": "Incoming whole-event/rubble changes are preserved. Scientific exports were produced from the frozen pre-incoming 4ef88d4d tree; they were not rerun or reattributed to the rebased tree."
+}

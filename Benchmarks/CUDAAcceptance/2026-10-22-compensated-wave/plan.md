@@ -50,3 +50,21 @@ partial outputs and exact process identities on failure, never relaunch on obser
 timeout. Publish receipts/all adverse outcomes and an evidence-backed keep/reject decision.
 This implementation gate alone does not close the scientific experiment or change any
 phase rule, label, tolerance, mask, training index, host service or dataset admission.
+
+
+## Execution contract, before any scientific export
+
+Use 432 isolated `--only-case` commands, three observation modes each. Each GPU command
+has an 80-minute execution budget including queue acquisition; exact owner boot/birth/
+process-group identity is required before budget termination. Every failed/partial result
+is retained, and no case is automatically retried. Unique Float64 oracle inputs may be
+reused only when initial state, gamma, dx, dt sequence, recorded clock and receiver indices
+are byte-identical; retain every case alias and oracle failure. Four CPU oracle workers
+have individual 20-minute budgets. Observation timeouts never authorize relaunching work.
+
+Freeze the executable and non-test resource bundles, selected nonsealed source files,
+all analysis helpers/imports, baseline index and Python/NumPy-core byte identities before
+execution. Record contextual before/after default-device queries and system-library linkage.
+These pins are not a hermetic operating-system/driver/dependency environment. Keep native
+GPU pressure separate from Double stored-state and represented-pair projection controls.
+Use cancellation-resistant changes before subtracting the large background conserved total.

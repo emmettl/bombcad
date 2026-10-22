@@ -1,0 +1,600 @@
+python3 Scripts/check-affected.py 
+check-affected: 49 changed file(s), tier: covered
+  map 5b94640b3b97 (41 commits behind the merge base, built 2026-10-21 20:47 UTC on Louiss-Mac-mini)
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/analysis-amendment.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/analyze.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/archive.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/archive.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/audit-v2.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/audit.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/baseline.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/check-tools.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/device.swift: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/audit-sources-logs.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-default-cfl0.225-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-default-cfl0.225-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-default-cfl0.225-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-default-cfl0.45-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-default-cfl0.45-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-default-cfl0.45-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-unfused-cfl0.225-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-unfused-cfl0.225-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-unfused-cfl0.225-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-unfused-cfl0.45-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-unfused-cfl0.45-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/discard-unfused-cfl0.45-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-default-cfl0.225-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-default-cfl0.225-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-default-cfl0.225-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-default-cfl0.45-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-default-cfl0.45-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-default-cfl0.45-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-unfused-cfl0.225-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-unfused-cfl0.225-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-unfused-cfl0.225-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-unfused-cfl0.45-both.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-unfused-cfl0.45-density.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/evidence/retain-unfused-cfl0.45-energy.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/finalize.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/oracles.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/phase.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/readouts.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/reference-worker.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/replay.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/results.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/run.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/summarize.py: not code the map covers; by name
+  18 of 432 suites, under 1% of the suites' time in the map:
+    AcousticPhaseReferenceTests: not in the map
+    CompensatedSweepTests: not in the map
+    CraterCooper1976Tests: not in the map
+    ErrorBandTests: always
+    EvidentialStandingTests: always
+    FirstPhaseDefinitionTests: not in the map
+    GlassSandia1998Tests: not in the map
+    GroundShockRunTests: reads Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/results.json
+    LearnedFieldEncodingTests: not in the map
+    LearnedFieldWeightsTests: not in the map
+    NearbyBulkTests: not in the map
+    OccupantInjuryTests: not in the map
+    PeopleInSceneTests: not in the map
+    RemoteRunTests: not in the map
+    RenderLayoutTests: always
+    StandingFingerprintTests: always
+    StandingRunTests: always
+    SweepUpdateDiagnosticsTests: not in the map
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 0 GB declared by the 0 held and the waiting against a budget of 26 GB
+  BlastModel's 11 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+..........{"one": "pending"}
+.......ssss...............................job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 baseline 1.0
+.job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+....[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "running"}
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+.{"spill0": "pending", "spill1": "pending", "spill2": "pending", "spill3": "pending", "spill4": "pending", "spill5": "pending"}
+...
+----------------------------------------------------------------------
+Ran 75 tests in 11.969s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.097s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpzrfkc61i/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpq_3sz6kx/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.008s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.027s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.579s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (4a52625843), newest first:
+- 8bcceca Third (A)
+- ed4d36e Second (A)
+
+### Full check: passed
+
+On 8bcceca75e, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpa5ebfolt/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpa5ebfolt/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpa5ebfolt/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpl5jkjitt/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpl5jkjitt/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.283s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.004s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 1.058s
+
+OK
+python3 Scripts/test-ship.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 16.888s
+
+OK
+python3 Scripts/test-release-notes.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.007s
+
+OK
+python3 Scripts/test-check-shader-mirrors.py
+.........................
+----------------------------------------------------------------------
+Ran 25 tests in 3.506s
+
+OK
+python3 Scripts/test-check-test-deadlines.py
+/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpnw4fk_sk'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp552u71wa'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpbly_nuwq'>
+  _warnings.warn(warn_message, ResourceWarning)
+.............
+----------------------------------------------------------------------
+Ran 15 tests in 0.019s
+
+OK
+python3 Scripts/calibration/test-calibration.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 3.205s
+
+OK
+python3 Scripts/test-remote-sweep.py
+.../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:476: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3kvhujxo/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:477: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3kvhujxo/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:478: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3kvhujxo/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:476: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3kvhujxo/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:477: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3kvhujxo/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:478: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3kvhujxo/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:480: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3kvhujxo/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+remote-sweep: interrupted tests retained; use a fresh invocation to retry
+remote-sweep: cached completion dddddddddddddddddddddddddddddddd exit 0
+....remote-sweep: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmph3csy8nd/same-fake already exists
+......remote-sweep: the lock ~/bombcad-sweeps/lock is held (sweep same-name)
+remote-sweep: cached completion aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa exit 0
+....remote-sweep: waiting for the lock (held)
+remote-sweep: the lock ~/bombcad-sweeps/lock is held (held)
+..
+----------------------------------------------------------------------
+Ran 23 tests in 1.121s
+
+OK
+python3 Scripts/split/test-split.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 1.979s
+
+OK
+python3 Scripts/split/test-solver-split.py
+The plan no longer describes the tree:
+  newOne(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+The plan no longer describes the tree:
+  time is placed twice
+  time cannot leave the class's body (stored property)
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+....The plan no longer describes the tree:
+  added(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+...
+----------------------------------------------------------------------
+Ran 7 tests in 0.666s
+
+OK
+  added(): not in the plan; with what is above it (BlastSolver+Stepping.swift)
+wrote plan.json
+  widened time: set from BlastSolver+Stepping.swift
+  widened steps: set from BlastSolver+Stepping.swift
+  widened cache: used from BlastSolver+Boxes.swift, BlastSolver+Stepping.swift
+  widened uniforms: used from BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Boxes.swift
+  wrote Sources/BlastCore/BlastSolver.swift
+  wrote Sources/BlastCore/Shaders/SolverSweep.metal
+  wrote Sources/BlastCore/Shaders/SolverView.metal
+  wrote Sources/BlastCore/Shaders/Solver.metal
+  wrote Sources/BlastCore/StructureTypes+GPU.swift
+  wrote Scripts/check-affected.py
+  wrote docs/air.md
+already split; nothing to do
+python3 Scripts/split/test-narrow-access.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.010s
+
+OK
+python3 Scripts/reference/test-kingery-bulmash.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.113s
+
+OK
+python3 Scripts/footing-bed/test-bed-replica.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp81xol32k.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpm8mx1yro.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp9km4_4sb.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmppanyh66e.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.009s
+
+OK
+python3 Scripts/reference/test-sdof.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.318s
+
+OK
+python3 Scripts/reference/test-blast1d.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 4.677s
+
+OK
+python3 Scripts/reference/test-planar-euler.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.051s
+
+OK
+python3 Scripts/reference/test-compare.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.236s
+
+OK
+python3 Scripts/protective/test-protective.py
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 4.044s
+
+OK
+python3 Scripts/test-analytic-oracles.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 2.921s
+
+OK
+python3 -I Scripts/open-benchmark/test_score.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 0.049s
+
+OK
+python3 -I Scripts/open-benchmark/test_decks.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 1.865s
+
+OK
+python3 -I Scripts/ml/test-remote-train.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.186s
+
+OK
+python3 -I Scripts/ml/test-field-runs.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.065s
+
+OK
+python3 Scripts/ml/test-field-model.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.036s
+
+OK
+python3 Scripts/check-doc-links.py
+python3 Scripts/check-shader-mirrors.py
+38 Swift/Metal pairs and 4 shader copies checked; 0 findings, 1 allowed
+python3 Scripts/check-test-deadlines.py
+No wall-clock bounds in 418 test files.
++ /Users/louisemmett/.local/bin/gpu-slot /Applications/Xcode.app/Contents/Developer/usr/bin/python3 Scripts/check-affected.py check-steps
++ make build-strict
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 35 / 40]
+[1 / 2] scenebench-product
+[1 / 52] BombCADTests-product
+[1 / 15] scenebench-product
+Build complete! (0.85 secs)
+build-strict: no warnings
++ make ifc-converter
+python3 Scripts/prepare-ifc-converter.py
+/Users/louisemmett/Developer/Projects/bombcad/.build/ifc-converter/IfcConvert
++ swift test --filter \.(CompensatedSweepTests|GroundShockRunTests|NearbyBulkTests|PeopleInSceneTests|RemoteRunTests|StandingRunTests|SweepUpdateDiagnosticsTests)(/|$)
+Building for debugging...
+[Computing dependencies]
+[Provisioning 3 / 40]
+[1 / 1]
+[6 / 31] SceneRender
+[10 / 13] BlastCoreTests-product
+Build complete! (0.84 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Standing carried with results" started.
+◇ Suite "People in the scene" started.
+◇ Suite "Ground shock alongside a run" started.
+◇ Suite "Runs on a Mac nearby, watched here" started.
+◇ Test "Comparison names the runs whose standing differs from the reference's" started.
+◇ Suite "Nearby sessions' sealed sockets" started.
+◇ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" started.
+◇ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" started.
+◇ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" started.
+◇ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" started.
+◇ Test "The app's air settings give the standing the solver's configuration" started.
+◇ Test "Results files carry their standing beside their own keys, which their readers pass over" started.
+◇ Test "Options take a ground shock description and refuse results without one" started.
+◇ Test "Bytes sealed one way open the other, in records, and an ended stream is told from a cut one" started.
+◇ Test "A quick estimate places the people; the time of day moves them; the view colours by the share hurt" started.
+◇ Test "A run kept going when its connection drops is watched again, and its result fetched" started.
+✔ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" passed after 0.002 seconds.
+✔ Test "The app's air settings give the standing the solver's configuration" passed after 0.014 seconds.
+✔ Test "Bytes sealed one way open the other, in records, and an ended stream is told from a cut one" passed after 0.019 seconds.
+◇ Test "A record changed, replayed, reordered or sealed with another key does not open" started.
+✔ Test "A record changed, replayed, reordered or sealed with another key does not open" passed after 0.001 seconds.
+◇ Test "Keys differ by pairing, by nonce and by direction" started.
+✔ Test "Keys differ by pairing, by nonce and by direction" passed after 0.001 seconds.
+◇ Test "The listener closes strangers and takes the session's client, however they come" started.
+✔ Test "The listener closes strangers and takes the session's client, however they come" passed after 0.001 seconds.
+◇ Test "A session's messages go on its sealed socket, and as before on its connection if asked" started.
+✔ Test "Results files carry their standing beside their own keys, which their readers pass over" passed after 0.199 seconds.
+✔ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" passed after 0.200 seconds.
+✔ Test "Comparison names the runs whose standing differs from the reference's" passed after 0.220 seconds.
+✔ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" passed after 0.221 seconds.
+✔ Test "Options take a ground shock description and refuse results without one" passed after 2.299 seconds.
+◇ Test "A run estimates the ground's shaking frame by frame and writes it out" started.
+✔ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" passed after 2.402 seconds.
+✔ Suite "Standing carried with results" passed after 2.403 seconds.
+✔ Test "A run estimates the ground's shaking frame by frame and writes it out" passed after 0.159 seconds.
+◇ Test "A layered soil column runs alongside a headless run and writes its profile out" started.
+✔ Test "A run kept going when its connection drops is watched again, and its result fetched" passed after 2.528 seconds.
+◇ Test "A run not asked to keep going stops with its connection, as before" started.
+✔ Test "A session's messages go on its sealed socket, and as before on its connection if asked" passed after 2.593 seconds.
+◇ Test "A socket that cannot be opened, on either Mac, leaves the session on its connection" started.
+✔ Test "A run not asked to keep going stops with its connection, as before" passed after 0.094 seconds.
+◇ Test "Run on a Mac nearby draws its frames here and comes back kept, to replay and compare" started.
+✔ Test "A socket that cannot be opened, on either Mac, leaves the session on its connection" passed after 0.176 seconds.
+✔ Suite "Nearby sessions' sealed sockets" passed after 2.791 seconds.
+✔ Test "Run on a Mac nearby draws its frames here and comes back kept, to replay and compare" passed after 0.176 seconds.
+◇ Test "A dropped link says so, and the run is watched again or its result fetched later" started.
+✔ Test "A dropped link says so, and the run is watched again or its result fetched later" passed after 0.118 seconds.
+◇ Test "Paused there, the run holds while it reports; let go, it comes to the same run as one never paused" started.
+✔ Test "A layered soil column runs alongside a headless run and writes its profile out" passed after 0.579 seconds.
+◇ Test "Estimating ground shock leaves the air as a run with the same frames gives it" started.
+✔ Test "Estimating ground shock leaves the air as a run with the same frames gives it" passed after 0.080 seconds.
+✔ Suite "Ground shock alongside a run" passed after 3.119 seconds.
+✔ Test "A quick estimate places the people; the time of day moves them; the view colours by the share hurt" passed after 3.611 seconds.
+✔ Suite "People in the scene" passed after 3.611 seconds.
+✔ Test "Paused there, the run holds while it reports; let go, it comes to the same run as one never paused" passed after 1.780 seconds.
+◇ Test "A paused run whose link drops goes on there, and its result is fetched later" started.
+✔ Test "A paused run whose link drops goes on there, and its result is fetched later" passed after 0.633 seconds.
+◇ Test "Paused, edited and run again: the new run goes over the same connection, sending only what changed" started.
+✔ Test "Paused, edited and run again: the new run goes over the same connection, sending only what changed" passed after 0.309 seconds.
+◇ Test "A run sent from the app brings back the project's thermal radiation and ground points" started.
+✔ Test "A run sent from the app brings back the project's thermal radiation and ground points" passed after 0.141 seconds.
+◇ Test "Stopped, the run ends there and nothing is kept" started.
+✔ Test "Stopped, the run ends there and nothing is kept" passed after 0.054 seconds.
+✔ Suite "Runs on a Mac nearby, watched here" passed after 5.838 seconds.
+✔ Test run with 27 tests in 5 suites passed after 5.839 seconds.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Production sweep update diagnostics" started.
+◇ Suite "Experimental compensated conserved sweeps" started.
+◇ Test "Both sweep paths retain plain state and actual pre/post cells" started.
+◇ Test "Every component mode preserves observation parity and replays actual residual updates" started.
+✔ Test "Both sweep paths retain plain state and actual pre/post cells" passed after 1.875 seconds.
+◇ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" started.
+✔ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" passed after 0.014 seconds.
+◇ Test "Invalid scope, cells and truncated history are refused" started.
+✔ Test "Invalid scope, cells and truncated history are refused" passed after 0.020 seconds.
+✔ Suite "Production sweep update diagnostics" passed after 1.910 seconds.
+✔ Test "Every component mode preserves observation parity and replays actual residual updates" passed after 9.425 seconds.
+◇ Test "Sleeping tiles retain residuals and floors clear the overridden component" started.
+✔ Test "Sleeping tiles retain residuals and floors clear the overridden component" passed after 0.305 seconds.
+◇ Test "Unsupported scope and configuring after observation are refused" started.
+✔ Test "Unsupported scope and configuring after observation are refused" passed after 0.106 seconds.
+✔ Suite "Experimental compensated conserved sweeps" passed after 9.837 seconds.
+✔ Test run with 6 tests in 2 suites passed after 9.837 seconds.
+check-affected: here in 23 s, waiting for gpu-slot included
+Number of files: 5413
+Number of files transferred: 65
+Total file size: 355566745 B
+Total transferred file size: 87794575 B
+Unmatched data: 87794575 B
+Matched data: 0 B
+File list size: 598051 B
+File list generation time: 0.417 seconds
+File list transfer time: 0.088 seconds
+Total sent: 88438344 B
+Total received: 33538 B
+
+sent 88438344 bytes  received 33538 bytes  2672858 bytes/sec
+total size is 355566745  speedup is 4.02
+remote-sweep: staging invocation c7e991f25cc549d4bce316b5ccdd63f6 at bombcad-pc:~/bombcad-sweeps/staging/c7e991f25cc549d4bce316b5ccdd63f6
+remote-sweep: source basis cecc45dbf87f474ebe10e400d423cc45
+remote-sweep: source/input transfer finished in 34.129 s (basis cecc45dbf87f474ebe10e400d423cc45)
+remote-sweep: local snapshot changed during transfer; retained staging, no worker launched
+check-affected: BlastModel's 11 suite(s) on bombcad-pc in 40 s, sending and building included: FAILED
+make: *** [check-affected] Error 1

@@ -1,0 +1,48 @@
+{
+  "status": "pass",
+  "scientificProducer": "4ef88d4daa472f66c815351c947fd3189c1336e0",
+  "preRebase": {
+    "format": "pass",
+    "lint": "pass",
+    "strict": "pass-warning-free",
+    "macGPUTests": "6 tests /2 suites pass",
+    "linuxLane": "refused changing local snapshot before worker launch; tool-controls.log was written during transfer; no numerical experiment rerun",
+    "checkAffected": "failed-protective-snapshot-refusal"
+  },
+  "toolControls": "5 pass",
+  "scriptsParsed": 14,
+  "baselineIndexSHA256": "0c48ef2babc78aaea69c97d3aceeadf4b84c4bdea0b552fe4492dcb15f6d301f",
+  "archiveReceiptSHA256": "1ef594e62ae806382c3c5dbad7b8d8b6f337a784cdb07b89e13df5f5c8f39af0",
+  "analysisPipelineStatus": "complete-all-byte-checks-pass",
+  "followUp": "emmettl/bombcad-work#82",
+  "integratedVerification": {
+    "checkedRevision": "c8fb953d6384fb338214094dab041ac830718046",
+    "preservedIncomingCommit": "1ccde59fb2b79bceb29e2733a58ba2e47fa0e08b",
+    "format": "pass",
+    "lint": "pass",
+    "strict": "pass-warning-free",
+    "checkAffected": "pass",
+    "macTests": 33,
+    "macSuites": 7,
+    "pcLinuxTests": 62,
+    "pcLinuxSuites": 11,
+    "existingLinuxWarnings": "Two unused createFile-result warnings in USDSceneWriter.swift retained",
+    "scientificCasesRerun": false
+  },
+  "afterPublicationPreparation": {
+    "frozenSourcePins": 537,
+    "frozenSourcesAllMatch": true,
+    "frozenRuntimeAllMatch": true,
+    "frozenOriginalAnalysisAllMatch": true,
+    "pythonAndNumpyCoreOriginalAndSnapshotPinsMatch": true,
+    "currentRepositoryHelpersMatchExecutedCopies": true,
+    "externalArchiveHashMatches": true,
+    "publishedArchiveHashesAllMatch": true
+  },
+  "logsSHA256": {
+    "publication-pre-rebase-strict.log": "558b4270ae353c43f763b12ddfc40579f65e64af0b5f92b1cf72a8ce1a4345af",
+    "publication-integrated-affected.log": "c55ca9c8a7e39e8d9f70d3a5e8be7cfa288d92656c372c5efc5d98957a04ad9b",
+    "publication-integrated-strict.log": "a6dcdd7bd309667c77862479b025b99f930255486586164bdb50f5caab9b41ae",
+    "publication-changing-snapshot.log": "b0b6404bad7459eff257100c7c270384a3bde34e10f847bbd2a86bdf5f1359be"
+  }
+}
