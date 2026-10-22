@@ -18,9 +18,9 @@ extension ValidationTables {
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
             quote: "each tenth of chance within 0.1"),
         Figure(
-            id: "structureChancesRoofLow", low: 0.10, high: 0.18,
+            id: "structureChancesRoofLow", low: 0.11, high: 0.18,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
-            quote: "low by 0.10–0.18"),
+            quote: "low by 0.11–0.18"),
         // The walls' chances with the learned field model's peaks, at its own calibration, against
         // the surrogate's at its own, on the 2 m references (emmettl/bombcad-work#19).
         Figure(

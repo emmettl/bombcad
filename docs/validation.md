@@ -6396,8 +6396,11 @@ close-in branch. The 4 m runs they were first judged on read the walls' peaks 13
   passes the protective-design report's test. The walls' loads take ×1.3 (×1.0 against the 4 m
   runs). With the learned field model's ground-floor peaks, its walls' peak ×1.15 and impulse
   ×0.95: 0.66 with the learned field model's peaks, against 0.59, and the test passes too.
-- **Roofs:** their middle chances are low by 0.10–0.18 (the unsafe side), even with a load factor
+- **Roofs:** their middle chances are low by 0.11–0.18 (the unsafe side), even with a load factor
   of ×1.3 fitted to the runs. The test fails.
+- **On the mapped start:** the references were rerun on 22 October 2026 after a charge on terrain
+  was given the mapped start in place of the balloon (emmettl/bombcad-work#78). Every figure here
+  held to the second decimal, and the refit chose ×1.3 again in nine folds of ten.
 - **Stone:** each building taken as 0.5 m stone, walls heavy or worse at skill 0.70, its factors as
   on 4 m cells. Its middle chances are high by up to 0.18 (the safe side). The test fails.
 - **Heavy and failure:** concrete walls heavy or worse score skill 0.49 but fail the test, so they

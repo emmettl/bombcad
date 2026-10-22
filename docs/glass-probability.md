@@ -221,7 +221,7 @@ load's scatter, not the strength's.
 | The same with the learned field model's ground-floor peaks | peak ×1.15, impulse ×0.95, the whole scatter | 0.66 | pass |
 | Concrete walls, heavy or worse (illustrative) | as the first | 0.49 | 0.1–0.6 high by 0.10–0.25 |
 | Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.70 | 0.4–0.9 high by up to 0.18 |
-| Roofs, moderate or worse | loads ×1.3, scatter ×½ | 0.74 | 0.4–0.9 low by 0.10–0.18 |
+| Roofs, moderate or worse | loads ×1.3, scatter ×½ | 0.74 | 0.4–0.9 low by 0.11–0.18 |
 
 **Why the walls' factor changed.** The 4 m runs the chances were first calibrated on read the walls'
 peaks 13–19% low at 400–600 m of 0.5 kt; the 2 m runs damage about twice as many concrete walls.

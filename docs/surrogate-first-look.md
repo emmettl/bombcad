@@ -633,6 +633,16 @@ Refined runs over terrain read the impulse a little low ([#78](https://github.co
 The standing's figures are re-derived from the 2 m references
 ([validation](validation.md#the-walls-and-roofs-chances-against-beiruts-runs)).
 
+**Re-judged on the mapped start (22 October 2026).** Every one of these references had started its
+charge as the balloon, because a charge on terrain was never mapped (emmettl/bombcad-work#78,
+fixed in aff21dff). Rerun on the mapped start, the judge holds to the second decimal:
+- concrete walls moderate or worse at ×1.3: 0.023 / 0.59, tenths pass;
+- the field model at the peak ×1.15, impulse ×0.95: 0.018 / 0.66, tenths pass;
+- the refit takes ×1.3 in nine folds of ten;
+- roofs 0.74.
+
+The walls go by the peak, which the start barely moved.
+
 
 ## Using it
 
