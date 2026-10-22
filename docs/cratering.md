@@ -412,6 +412,53 @@ On 17 October 2026, for stage 1:
 Stage 2's material flow and fracture overlap Edgerton's volume solver and cohesive cracks, so
 the check is to be redone then.
 
+### The first rung, and the stop (22 October 2026)
+
+**The gate** (emmettl/bombcad-work#23).
+- **Sharing check, redone.** ContinuumKit still has no soil model. Edgerton's Metal MPM is a
+  chosen visual model for gel and apple, with no soil law and no explosive coupling. BombCAD's own
+  Drucker–Prager (the structure solver, the soil column, the half-space) is the only reuse route.
+- **The judge.** Clarke et al., *Characterisation of buried blast loading* (Proc. R. Soc. A 476,
+  2020, CC BY), with its figshare dataset 12124224. 78 g of PE4, a 3:1 disc, sits under a rigid
+  plate with Hopkinson bars to 100 mm:
+  - in the free air of an empty steel pot (series A);
+  - on Leighton Buzzard sand (B);
+  - buried 28 mm in it at three moistures, then other depths, stand-offs and soils (C–L).
+
+  The buried loads are soil momentum: a delayed blast and a hail of sand in dry sand, an intact
+  slug that about doubles the impulse in saturated sand.
+
+**The first rung, with no soil** (`scenebench clarke-airblast`, a quarter of the rig on mirror
+planes, 93.6 g of TNT at the authors' 1.2): does BombCAD's air carry series A and B within ±20%?
+
+| Total impulse on the plate to 100 mm | Measured | BombCAD, 2.5 mm | 1.25 mm | Ratio |
+|---|---|---|---|---|
+| A, free air in the pot | 61.4 N s | 40.0 | 40.1 | 0.65 |
+| B, on the sand (rigid ground) | 63.3 N s | 34.6 | 35.4 | 0.56 |
+
+| Peak specific impulse, MPa ms | 0 mm | 25 mm | 50 mm | 75 mm | 100 mm |
+|---|---|---|---|---|---|
+| A measured | 3.92 | 3.57 | 2.39 | 1.67 | 1.04 |
+| A, BombCAD 1.25 mm | 1.69 | 1.56 | 1.37 | 1.24 | 1.09 |
+| B measured | 3.86 | 3.61 | 2.65 | 1.54 | 1.22 |
+| B, BombCAD 1.25 mm | 1.42 | 1.37 | 1.25 | 1.10 | 0.93 |
+
+- **The air is right for the charge it models.** B's centre reads 1.42 MPa ms against
+  Kingery–Bulmash's 1.41 for a hemisphere of the same mass at Z = 0.42, and its peak 55 MPa
+  against 55. A's centre reads 1.69 against 1.57, 8% over, which the pot's confinement accounts
+  for. The impulse is converged: it moves by under 3% from 2.5 to 1.25 mm.
+- **The plate saw a different charge.** The measured centre impulse is about 2.7 times
+  Kingery–Bulmash's, and falls from the axis to 100 mm, where BombCAD's sphere and the measurements
+  agree. That is the disc's flat face toward the plate and the explosive's near field. BombCAD's
+  charges are spheres, mapped from a one-dimensional solution, so it cannot carry them.
+- **Stopped by the rung's rule:** both totals miss by more than 20% before any soil.
+  - A soil body would be judged against a load the air already misses by half.
+  - What would come first is charges of other shapes: a disc or cylinder start, from an
+    axisymmetric solution or a fine three-dimensional deposit.
+  - Then the rung again, then the soil body (12–18 session-days in the plan).
+- **The air share's taper datum** (to the underside or the centre) gets no evidence here.
+  Clarke's charges are all on or in the ground.
+
 ## Sources
 
 - H. F. Cooper Jr., *Estimates of Crater Dimensions for Near-Surface Explosions of Nuclear and

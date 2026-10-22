@@ -78,6 +78,10 @@ enum SceneBench {
             try GlassCalibration.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "clarke-airblast" {
+            try ClarkeAirblast.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "terrain-impulse" {
             try TerrainImpulse.run(Array(args.dropFirst()))
             return
