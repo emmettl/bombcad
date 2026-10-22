@@ -20,6 +20,7 @@
   "riemann_solver": "euler_4wave_2D (Roe, entropy fix)",
   "limiter": "MC",
   "transverse_waves": 2,
+  "first_order_startup_steps": 0,
   "cfl_desired": 0.45,
   "cfl_max": 0.5,
   "source_split": "Godunov, geometric source by two-stage Runge-Kutta",
@@ -48,7 +49,7 @@
   "max_overpressure_at_outer_faces_final_Pa": 0.00011651612294372171
  },
  "steps": 3134,
- "wall_s": 617.9,
+ "wall_s": 606.1,
  "excess_energy_over_declared": [
   [
    0.001,
@@ -197,6 +198,114 @@
    "phase_start_s": 0.0072178948004207625,
    "phase_end_s": 0.013294421683201657,
    "max_overpressure_kPa": 281.77848745383034
+  }
+ },
+ "directions_at_samples": {
+  "Z0.75@45deg": {
+   "peak_incident_overpressure": 2479.8731463723875,
+   "incident_positive_impulse": 852.2959449072245,
+   "arrival_time": 1.2750969460713077,
+   "phase_start_s": 0.0012500512053595324,
+   "phase_end_s": 0.002086315328907652,
+   "max_overpressure_kPa": 2479.8731463723875
+  },
+  "Z0.75@axis": {
+   "peak_incident_overpressure": 2703.910346248321,
+   "incident_positive_impulse": 868.8340018283352,
+   "arrival_time": 1.2742184477548413,
+   "phase_start_s": 0.0012000000000000001,
+   "phase_end_s": 0.0021348655801619303,
+   "max_overpressure_kPa": 2703.910346248321
+  },
+  "Z1@45deg": {
+   "peak_incident_overpressure": 1528.0357921230577,
+   "incident_positive_impulse": 869.6481949386247,
+   "arrival_time": 2.036469962895273,
+   "phase_start_s": 0.002000065958706628,
+   "phase_end_s": 0.005014628610592569,
+   "max_overpressure_kPa": 1528.0357921230577
+  },
+  "Z1@axis": {
+   "peak_incident_overpressure": 1490.7574858959404,
+   "incident_positive_impulse": 903.0640106469049,
+   "arrival_time": 2.0256445095288473,
+   "phase_start_s": 0.0019500000000000001,
+   "phase_end_s": 0.005128399581097113,
+   "max_overpressure_kPa": 1490.7574858959404
+  },
+  "Z1.5@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 594.0518944510729
+  },
+  "Z1.5@axis": {
+   "peak_incident_overpressure": 579.4479671384089,
+   "incident_positive_impulse": 617.8008831806168,
+   "arrival_time": 4.2261165398564735,
+   "phase_start_s": 0.0041,
+   "phase_end_s": 0.008415511138174105,
+   "max_overpressure_kPa": 579.4479671384089
+  },
+  "Z2@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 285.00185219476157
+  },
+  "Z2@axis": {
+   "peak_incident_overpressure": 281.2039437478359,
+   "incident_positive_impulse": 493.9348943198414,
+   "arrival_time": 7.3899231612045035,
+   "phase_start_s": 0.007200000000000001,
+   "phase_end_s": 0.013343024818615459,
+   "max_overpressure_kPa": 281.2039437478359
+  }
+ },
+ "directions_every_step": {
+  "Z0.75@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 2719.7028479139667
+  },
+  "Z0.75@axis": {
+   "peak_incident_overpressure": 2712.5527712213548,
+   "incident_positive_impulse": 870.5775431020115,
+   "arrival_time": 1.2732722236359015,
+   "phase_start_s": 0.0012101080633818053,
+   "phase_end_s": 0.0021347531278226024,
+   "max_overpressure_kPa": 2712.5527712213548
+  },
+  "Z1@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 1577.4121937111727
+  },
+  "Z1@axis": {
+   "peak_incident_overpressure": 1548.807489490982,
+   "incident_positive_impulse": 901.8224403483893,
+   "arrival_time": 2.0285186529598973,
+   "phase_start_s": 0.00196367582030907,
+   "phase_end_s": 0.005128096323394181,
+   "max_overpressure_kPa": 1548.807489490982
+  },
+  "Z1.5@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 594.0518944510729
+  },
+  "Z1.5@axis": {
+   "peak_incident_overpressure": 579.8680248217505,
+   "incident_positive_impulse": 617.7320298208039,
+   "arrival_time": 4.225346212699152,
+   "phase_start_s": 0.0041,
+   "phase_end_s": 0.008415303743644992,
+   "max_overpressure_kPa": 579.8680248217505
+  },
+  "Z2@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 285.18911677895926
+  },
+  "Z2@axis": {
+   "peak_incident_overpressure": 281.4611988676682,
+   "incident_positive_impulse": 493.9345873929479,
+   "arrival_time": 7.391004671569178,
+   "phase_start_s": 0.0072178948004207625,
+   "phase_end_s": 0.013342958732463711,
+   "max_overpressure_kPa": 281.4611988676682
   }
  }
 }
