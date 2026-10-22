@@ -878,3 +878,13 @@ increments directly corroborates an update representation limit at selected weak
 locations. It does not quantify a global dissipation budget or validate a new representation.
 `acoustic-phase --trace-updates` exposes the bounded diagnostic. Ordinary shader source,
 numerical defaults and CUDA admission remain unchanged; emmettl/bombcad-work#80 stays open.
+
+
+The [compensated scalar compiler gate](../Benchmarks/CUDAAcceptance/2026-10-22-compensated-scalar/summary.md)
+completes 18 dispatches on eight fixed sequences. Under default and unfused fast math,
+unprotected Kahan's complete outputs equal naive addition. A locally safe/contract-off
+helper matches every operation-rounded CPU reference word and all final-only/trace pairs;
+it preserves the tested small density/energy increments, but still fails a large-cancellation
+adversary. emmettl/bombcad-work#81 therefore retains only the protected helper as a bounded
+PDE candidate; full component-wise wave/conservation/stability controls remain. No production
+solver, numerical default or CUDA admission change.

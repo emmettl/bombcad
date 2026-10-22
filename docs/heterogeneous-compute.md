@@ -546,3 +546,13 @@ parity. Density/energy frequently remain unchanged for nonzero modeled increment
 one compatible update arithmetic model per trace. This corroborates the independent CPU
 precision mechanism on Metal; it does not establish a CUDA/3-D/product fix or relax any gate.
 emmettl/bombcad-work#80 remains open for candidate representation and broader validation.
+
+
+The [compensated scalar compiler gate](../Benchmarks/CUDAAcceptance/2026-10-22-compensated-scalar/summary.md)
+completes 18 dispatches on eight fixed sequences. Under default and unfused fast math,
+unprotected Kahan's complete outputs equal naive addition. A locally safe/contract-off
+helper matches every operation-rounded CPU reference word and all final-only/trace pairs;
+it preserves the tested small density/energy increments, but still fails a large-cancellation
+adversary. emmettl/bombcad-work#81 therefore retains only the protected helper as a bounded
+PDE candidate; full component-wise wave/conservation/stability controls remain. No production
+solver, numerical default or CUDA admission change.

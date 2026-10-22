@@ -1,0 +1,139 @@
+{
+  "status": "complete",
+  "rawRoot": "/Volumes/StudioData/bombcad/experiments/2026-10-22-compensated-scalar",
+  "files": [
+    {
+      "path": "audit.log",
+      "sha256": "12f290e9c4dba3bcad09335fcdbfb53dc2afb64b634e4c948262df495aaa6ec1",
+      "bytes": 286,
+      "compressedSHA256": "37769344da98320e1ca00cc54708c7f70cd745ddaea7193efddb830f817a9bc6",
+      "compressedBytes": 210,
+      "published": true
+    },
+    {
+      "path": "compile.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "compressedSHA256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "compressedBytes": 20,
+      "published": true
+    },
+    {
+      "path": "controller.log",
+      "sha256": "5517293c40893d04934996ca3d9cac0ec1daaaee0ff3504d13b440376191c985",
+      "bytes": 2433,
+      "compressedSHA256": "1c86833bf5dba1b462933fe6f263698a61fc6895a9cb253be82de720a8e88442",
+      "compressedBytes": 659,
+      "published": true
+    },
+    {
+      "path": "fixtures.json",
+      "sha256": "7d90aed8e01eaa438b85450359505314a344113f2a37fa8818be15c494e05ac3",
+      "bytes": 252641,
+      "compressedSHA256": "b420d29d40493d80d1ca0d0a1c0a627b1e7e91d410a17cc8b445b4b53d37a6ae",
+      "compressedBytes": 1140,
+      "published": true
+    },
+    {
+      "path": "fixtures.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "compressedSHA256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "compressedBytes": 20,
+      "published": true
+    },
+    {
+      "path": "gpu.json",
+      "sha256": "9f597b58081aa8b26747186929a5f5e8942714c55f14291e8478ed2a771217b0",
+      "bytes": 3378085,
+      "compressedSHA256": "f7412d1e7a6598c48fdfb1014c0bd33fd4b064c04d00664e4192cbfc23114be0",
+      "compressedBytes": 192771,
+      "published": true
+    },
+    {
+      "path": "gpu.log",
+      "sha256": "1a5ab4aae18e65febe907e45931cf3f4faf7a3af1b95e60dcadb441a5de8e512",
+      "bytes": 40,
+      "compressedSHA256": "704cb9abb798ffd78594e3c10ad33ee6212a0dcd03c60efe40530bb5edc30329",
+      "compressedBytes": 59,
+      "published": true
+    },
+    {
+      "path": "independent-audit.py",
+      "sha256": "dc009f6fe9ce1673b52eefc9bd842744b0141d1cac7e8d8450c51c92149a88bd",
+      "bytes": 1802,
+      "compressedSHA256": "3c5bb3cef73f58e883d2dcfbe88a38d7796cd93ac0fce86a489bdea6e7b2ea17",
+      "compressedBytes": 858,
+      "published": true
+    },
+    {
+      "path": "independent.json",
+      "sha256": "d2fbf3e84ccfefa6eef70007d735edb8212cdaf4c576e8721f3f6f1ff6c4adf8",
+      "bytes": 1517,
+      "compressedSHA256": "9b82b791e22c4b310c4302f41cd3acd08f0dc324e0f3b62dc8d03e5d297e5027",
+      "compressedBytes": 494,
+      "published": true
+    },
+    {
+      "path": "probe",
+      "sha256": "91d049d7be1e02fa7ef8d51206811addcc442ed2bc7674e0b637b3090f7b0436",
+      "bytes": 100008,
+      "compressedSHA256": "2868ad18a1832c1e58a8b04f606399ddcfa466c7ffa53f858d81a6a194409ddb",
+      "compressedBytes": 20318,
+      "published": false
+    },
+    {
+      "path": "results.json",
+      "sha256": "79bd00b46b3ee0a185fdadc09cbaa699167a0b8b9e62fed0c992caf4284b11e2",
+      "bytes": 41687,
+      "compressedSHA256": "3addd92ba8ac4ddf82d4f68b637624659d59884ebfe28f00bc13614fbf7fa465",
+      "compressedBytes": 1408,
+      "published": true
+    },
+    {
+      "path": "run.json",
+      "sha256": "3723344e5cda54dbb200fd437800debb0fe4aaeb9f137bf5cd9488b0b1bc505a",
+      "bytes": 4388,
+      "compressedSHA256": "aceaefbf847d58d3c0587c9fd4a2fb4007cc9d6c94fb0d2a00786450310a590b",
+      "compressedBytes": 1230,
+      "published": true
+    },
+    {
+      "path": "sources/plan.md",
+      "sha256": "27fd660910ae4fe787290d73317d34dd0797d61f6eaf11dfdaed932427e56107",
+      "bytes": 2185,
+      "compressedSHA256": "3def21aa2d3b216964e3bcd117ef4bebe1883051a60f7affff727910229480fe",
+      "compressedBytes": 1188,
+      "published": true
+    },
+    {
+      "path": "sources/probe.swift",
+      "sha256": "51aa76097bfe0c5230f73db38f33481969d0acf9933bdbabf59a78f1c3a17651",
+      "bytes": 5749,
+      "compressedSHA256": "564d6ca63a02efb620cf12357477407dbf9e8127da1781c6379a21c5a1b25744",
+      "compressedBytes": 2030,
+      "published": true
+    },
+    {
+      "path": "sources/reference.py",
+      "sha256": "43dd16516573584a22b99de7ebafb0a82ce163c3ebc1bd0fab78fa8d75d58e6d",
+      "bytes": 5129,
+      "compressedSHA256": "9c2a9dd356c85607eb1253ccf90d47842457d30be0f5e509426a185961edc816",
+      "compressedBytes": 1864,
+      "published": true
+    },
+    {
+      "path": "sources/run.py",
+      "sha256": "c78b91a9bc2774db27067d31518c6f12814655438ec6456e25ba7edc42de5b3c",
+      "bytes": 2989,
+      "compressedSHA256": "0e118b24286f69d7faf63027252c98c819245e2458e749f3c0a46bf1add2c891",
+      "compressedBytes": 1344,
+      "published": true
+    }
+  ],
+  "rawFiles": 16,
+  "rawBytes": 3798939,
+  "compressedBytes": 225613,
+  "publishedFiles": 15,
+  "publishedCompressedBytes": 205295
+}

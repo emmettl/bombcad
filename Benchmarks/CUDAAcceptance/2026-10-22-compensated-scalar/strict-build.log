@@ -1,0 +1,9 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 28 / 40]
+[1 / 1]
+[1 / 56] RadialBlast
+[12 / 14] BlastCoreTests-product
+Build complete! (0.72 secs)
+build-strict: no warnings
