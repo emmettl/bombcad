@@ -1,0 +1,607 @@
+{
+  "status": "all-members-and-raw-rehash-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-matched-clock",
+  "manifest": {
+    "analysis/analyze.py": {
+      "sha256": "8f553b658b3bee3a1d97a2f0a1859c4097ed6bd324e6f40cd15030dc987617e5",
+      "bytes": 8591
+    },
+    "analysis/archive.py": {
+      "sha256": "6a1c8709a862bb77d068de1a64fc751e67f0344abc803ffcc1454ab19e86f77b",
+      "bytes": 3359
+    },
+    "analysis/build_worker.py": {
+      "sha256": "c64093b6c6b8df842f5efcd9cd3ee0001a7e60a1710e21ff845bad0492dae637",
+      "bytes": 5118
+    },
+    "analysis/check_clock.py": {
+      "sha256": "15941e759717182c312c5a96083c36146e58a7d9462e670fdce64fe59e90b6fe",
+      "bytes": 1146
+    },
+    "analysis/clock_model.py": {
+      "sha256": "f4b732adfbdaed8191c98987c755f7cc7993b69f5410ecf6f039e4d6aaa265eb",
+      "bytes": 1992
+    },
+    "analysis/plan.md": {
+      "sha256": "7b7c38efceeec4c38ba3c43489a7fa3736c20ee44180ea1ec0f55a934a8253dd",
+      "bytes": 3820
+    },
+    "analysis/prepare.py": {
+      "sha256": "fef248f0168763794c79a051db03c136fe65754a624b81ce41d0603a0c07f481",
+      "bytes": 6582
+    },
+    "analysis/remote_controller.py": {
+      "sha256": "eba25e609f19b59ac58731d67f88336f3ba068e5a8d322ac376671d66853a063",
+      "bytes": 6162
+    },
+    "analysis/run-baseline.py": {
+      "sha256": "7d77da87987ad4d4819a1430dc74e065666bb4346d82ea10d99d3caf83ee97d1",
+      "bytes": 5653
+    },
+    "analysis/run-forced.py": {
+      "sha256": "7d77da87987ad4d4819a1430dc74e065666bb4346d82ea10d99d3caf83ee97d1",
+      "bytes": 5653
+    },
+    "analysis/run.py": {
+      "sha256": "7d77da87987ad4d4819a1430dc74e065666bb4346d82ea10d99d3caf83ee97d1",
+      "bytes": 5653
+    },
+    "analysis/summary.md": {
+      "sha256": "93bd76130fa9536ebc9ef9306fcbc981d55a87c324a2cee674f6e04f90b5479f",
+      "bytes": 5436
+    },
+    "analysis/verify_remote.py": {
+      "sha256": "f01047c554c51920bca8f6601d08a9776ff077ead38dc6a04357fa02d55522d5",
+      "bytes": 3034
+    },
+    "analysis-result.json": {
+      "sha256": "29acc3541c3a6e8005dbcd4382a6fb42bd2c82a956a9171cf2515f1e876e6a72",
+      "bytes": 24258
+    },
+    "baseline/beirut-p0-1/clock-events.json": {
+      "sha256": "b5cf11bba07915335af630af569f39bf5f2afaaaf8c05cf09c50da369b0ebdaa",
+      "bytes": 693963
+    },
+    "baseline/beirut-p0-1/dt.npy": {
+      "sha256": "5531317cf80fa5e5e5043c1c999921971fb3902eee0bd9d0ae4cf8be71965213",
+      "bytes": 9796
+    },
+    "baseline/beirut-p0-1/firstPhaseImpulse.npy": {
+      "sha256": "8b16e09d6af58c8300922ddd8f1059bbf8303dd1c9b99697ae628f25e5490453",
+      "bytes": 1048704
+    },
+    "baseline/beirut-p0-1/mask.npy": {
+      "sha256": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+      "bytes": 1048704
+    },
+    "baseline/beirut-p0-1/pressure-inputs.json": {
+      "sha256": "f6190dd967bc1ea1c882fdbed54cb1a7e665a2632f50c338621c6ed80ca2de9b",
+      "bytes": 426
+    },
+    "baseline/beirut-p0-1/pressure-inputs.npy": {
+      "sha256": "ce3d11d4378f7d2c9d176a8727d1d906b3d00cfd5fa6b228c87816f3cbfb5b0c",
+      "bytes": 155008
+    },
+    "baseline/beirut-p0-1/result.json": {
+      "sha256": "3a499b81c95d7f8886d5be8d2462df2a5f852a73477d86f67cb8d1abe93f6f82",
+      "bytes": 2234
+    },
+    "baseline/beirut-p0-1/targets.npy": {
+      "sha256": "583692760ebd7d4b6d4f0acc00ef09f126059794b381b32f43a9b68fe224736f",
+      "bytes": 2097280
+    },
+    "baseline/beirut-p0-1/trace.json": {
+      "sha256": "973a83ff68f28e1fed52c0861f178a7f01267c28b713e7bb67809eb3af1e2fb9",
+      "bytes": 57590
+    },
+    "baseline/beirut-p0-1/trace.npy": {
+      "sha256": "c159b850aff2495f5f5d155dbe6b731c11e227b81396e50145465bea94e07735",
+      "bytes": 77568
+    },
+    "baseline/beirut-p0-1/worker.log": {
+      "sha256": "3a499b81c95d7f8886d5be8d2462df2a5f852a73477d86f67cb8d1abe93f6f82",
+      "bytes": 2234
+    },
+    "baseline/made-perimeter-s1-1/clock-events.json": {
+      "sha256": "5bce85e49c481e6197519da31c0923e86ad82a12552afa7e29e7b52ec68264af",
+      "bytes": 759679
+    },
+    "baseline/made-perimeter-s1-1/dt.npy": {
+      "sha256": "09fba881a5b9e017f81b8e68c1e4b9c14247b1097ad1fc870c3b97b281febbbb",
+      "bytes": 10708
+    },
+    "baseline/made-perimeter-s1-1/firstPhaseImpulse.npy": {
+      "sha256": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+      "bytes": 1048704
+    },
+    "baseline/made-perimeter-s1-1/mask.npy": {
+      "sha256": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+      "bytes": 1048704
+    },
+    "baseline/made-perimeter-s1-1/pressure-inputs.json": {
+      "sha256": "00a9469d443f55ea380f3f20f50c83bb4f344eafbdf83e047171415583ef2fb7",
+      "bytes": 425
+    },
+    "baseline/made-perimeter-s1-1/pressure-inputs.npy": {
+      "sha256": "fdc1ca974f7cc85974d0b65b7a8740fb80501c936067fefbfff2c39248968381",
+      "bytes": 169600
+    },
+    "baseline/made-perimeter-s1-1/result.json": {
+      "sha256": "711840d4b26f598126eea5040147c77616382c1f336b6912fd67664c0e7e5c9a",
+      "bytes": 2235
+    },
+    "baseline/made-perimeter-s1-1/targets.npy": {
+      "sha256": "1869c10e560e5c4b48bf8898aea5dcc76ee0cb9973065e5c895687adf2953a96",
+      "bytes": 2097280
+    },
+    "baseline/made-perimeter-s1-1/trace.json": {
+      "sha256": "507d8beb8740147a363c40eb73edc24179d89e4865ffd839c120a4a6095f4f76",
+      "bytes": 63202
+    },
+    "baseline/made-perimeter-s1-1/trace.npy": {
+      "sha256": "7009f18b126a9d4bf6ac91ee82db28e39f35d19c072f25452bfd38e303643f3f",
+      "bytes": 84864
+    },
+    "baseline/made-perimeter-s1-1/worker.log": {
+      "sha256": "711840d4b26f598126eea5040147c77616382c1f336b6912fd67664c0e7e5c9a",
+      "bytes": 2235
+    },
+    "baseline/made-perimeter-s3-1/clock-events.json": {
+      "sha256": "ed1546cee0c33a2ccd47f95b0e1dd0fad437312c95920a26b8128778e974d010",
+      "bytes": 778518
+    },
+    "baseline/made-perimeter-s3-1/dt.npy": {
+      "sha256": "70d21128e3d36498cb04e9817cab125956478f5d1c0473a9abe9b925035a98d3",
+      "bytes": 10972
+    },
+    "baseline/made-perimeter-s3-1/firstPhaseImpulse.npy": {
+      "sha256": "de528066a386b91786927489bcb00841b04c03c1d1ca90a9f3c299bf74fadfea",
+      "bytes": 1048704
+    },
+    "baseline/made-perimeter-s3-1/mask.npy": {
+      "sha256": "36a08c790f670dcc9003068b42521a1919773f7be379685369139b82b33a2428",
+      "bytes": 1048704
+    },
+    "baseline/made-perimeter-s3-1/pressure-inputs.json": {
+      "sha256": "3c2815e7bcc3408e08d4a6a180bc48f5fc818a4739270a5c7d94a91f82f7231a",
+      "bytes": 438
+    },
+    "baseline/made-perimeter-s3-1/pressure-inputs.npy": {
+      "sha256": "691b5337737a3dfb1e92de04bcc7c386c29e67e3243ef76e62d16bbf288c5ed7",
+      "bytes": 347392
+    },
+    "baseline/made-perimeter-s3-1/result.json": {
+      "sha256": "bc411d98e1b7d92bc13b6f13b1bc6e7e343f7cbeb9ccc7fdabf467125a141c6d",
+      "bytes": 2248
+    },
+    "baseline/made-perimeter-s3-1/targets.npy": {
+      "sha256": "057131cae1ab1da7ad6ad42dad1c60e70a0e9580c2ab149612c7dc11c10068ed",
+      "bytes": 2097280
+    },
+    "baseline/made-perimeter-s3-1/trace.json": {
+      "sha256": "ae078b58f1ce7d35cc74f5b6669d7dbe5ed71fc0abfb3be16f1e656480ae7bb3",
+      "bytes": 64681
+    },
+    "baseline/made-perimeter-s3-1/trace.npy": {
+      "sha256": "e7e74b5d0bfd22c1a200135c0cfa6fe4dae972960d007664fec74d4308bc5092",
+      "bytes": 173760
+    },
+    "baseline/made-perimeter-s3-1/worker.log": {
+      "sha256": "bc411d98e1b7d92bc13b6f13b1bc6e7e343f7cbeb9ccc7fdabf467125a141c6d",
+      "bytes": 2248
+    },
+    "baseline/receipt.json": {
+      "sha256": "ff75a9c864ead7d1ddc8b9e4d7c9919080db2f34620f96e806bb263b2782f027",
+      "bytes": 16896
+    },
+    "baseline-controller.json": {
+      "sha256": "61f4009adccd31717eaa3f3de81f91babb20bc4c654166e697888dddbe783184",
+      "bytes": 2424
+    },
+    "baseline-pack/histories/beirut-p0-1.npy": {
+      "sha256": "dc39566351b40b344a9549740a3e631ec1d87eac739736dd3191de06f2c1fd3c",
+      "bytes": 9796
+    },
+    "baseline-pack/histories/made-perimeter-s1-1.npy": {
+      "sha256": "3b4fb8c611b58a6a2a442463ea15034ecd568f913458084395396187fece2f87",
+      "bytes": 10708
+    },
+    "baseline-pack/histories/made-perimeter-s3-1.npy": {
+      "sha256": "519eb4224d2718c14314cfea3b7aff70a9ed9fb71a00f8aac5f633c84142b249",
+      "bytes": 10972
+    },
+    "baseline-pack/manifest.json": {
+      "sha256": "0fb3b9084c7f1ac442e1fa7185f8603b2876d7d7af39e87730f8779722cca950",
+      "bytes": 7147
+    },
+    "baseline-pack/remote_controller.py": {
+      "sha256": "eba25e609f19b59ac58731d67f88336f3ba068e5a8d322ac376671d66853a063",
+      "bytes": 6162
+    },
+    "baseline-pack/worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "baseline-pack/worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "baseline-pack/worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "baseline-pack/worker/run.py": {
+      "sha256": "3f0adf0d63673503dba9c87df483c09411b5e29e05d86d70924a8ed0a37a85bb",
+      "bytes": 21034
+    },
+    "baseline-pack/worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "baseline-pack/worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "baseline-ssh.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cases/beirut-p0-1/clock-plan.json": {
+      "sha256": "8e5ce6bb1ed1f012cb953a1927236b21b16bb23ba52808ba55cffd110f2e526e",
+      "bytes": 1201578
+    },
+    "cases/beirut-p0-1/metal-dt.bin": {
+      "sha256": "3a3377760b9d7d2c2f61c8382bf56b0319f4645feb4e95e5af1a35829fa5b1b9",
+      "bytes": 9668
+    },
+    "cases/beirut-p0-1/metal-dt.npy": {
+      "sha256": "dc39566351b40b344a9549740a3e631ec1d87eac739736dd3191de06f2c1fd3c",
+      "bytes": 9796
+    },
+    "cases/made-perimeter-s1-1/clock-plan.json": {
+      "sha256": "4745ae6bae9655103e64969ae8b6ac4106234a011f11cbaa5516cca7eb78bc10",
+      "bytes": 1315437
+    },
+    "cases/made-perimeter-s1-1/metal-dt.bin": {
+      "sha256": "5e427732b53da900161c9a925844a319f46d66d7b186f6400de90fc5588915f7",
+      "bytes": 10580
+    },
+    "cases/made-perimeter-s1-1/metal-dt.npy": {
+      "sha256": "3b4fb8c611b58a6a2a442463ea15034ecd568f913458084395396187fece2f87",
+      "bytes": 10708
+    },
+    "cases/made-perimeter-s3-1/clock-plan.json": {
+      "sha256": "62916c7c3ff1e576a4c7b52873641798ebaf75400a4bb9ac8d5f64c868566d2e",
+      "bytes": 1347925
+    },
+    "cases/made-perimeter-s3-1/metal-dt.bin": {
+      "sha256": "ec94d08bdc1e43bb90a23475bf6707c91cc1e15fbbbf1a2c63ee7154fca3c193",
+      "bytes": 10844
+    },
+    "cases/made-perimeter-s3-1/metal-dt.npy": {
+      "sha256": "519eb4224d2718c14314cfea3b7aff70a9ed9fb71a00f8aac5f633c84142b249",
+      "bytes": 10972
+    },
+    "clock-controls.log": {
+      "sha256": "e6ec182765cd965f2837d8eeaef5a64af48a104f245cd1a0b7281559194c57c1",
+      "bytes": 102
+    },
+    "datasets/beirut-p0-1/failures.json": {
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    "datasets/beirut-p0-1/inputs.npy": {
+      "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "bytes": 6291584
+    },
+    "datasets/beirut-p0-1/mask.npy": {
+      "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "bytes": 1048704
+    },
+    "datasets/beirut-p0-1/targets.npy": {
+      "sha256": "d7f8b1588fbc36326fdd7d130c6a9f50eaf6ed479da6776103b9ccd8bd590d5f",
+      "bytes": 3145856
+    },
+    "datasets/made-perimeter-s1-1/failures.json": {
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    "datasets/made-perimeter-s1-1/inputs.npy": {
+      "sha256": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+      "bytes": 6291584
+    },
+    "datasets/made-perimeter-s1-1/mask.npy": {
+      "sha256": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+      "bytes": 1048704
+    },
+    "datasets/made-perimeter-s1-1/targets.npy": {
+      "sha256": "92bd169b6be84a00cdcc5c6b25bdf59763aed8129fddbcd7ba88292d2604767c",
+      "bytes": 3145856
+    },
+    "datasets/made-perimeter-s3-1/failures.json": {
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    "datasets/made-perimeter-s3-1/inputs.npy": {
+      "sha256": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+      "bytes": 6291584
+    },
+    "datasets/made-perimeter-s3-1/mask.npy": {
+      "sha256": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+      "bytes": 1048704
+    },
+    "datasets/made-perimeter-s3-1/targets.npy": {
+      "sha256": "d8636aae75f65b30cc1488c31a37d49ba6b05119e79c5cbed916a37e39a70940",
+      "bytes": 3145856
+    },
+    "forced/beirut-p0-1/clock-events.json": {
+      "sha256": "8491fd139fec281a6b2cdb17658e18f63fb4fcb39830dd62b9fe8297418b36b2",
+      "bytes": 672179
+    },
+    "forced/beirut-p0-1/dt.npy": {
+      "sha256": "dc39566351b40b344a9549740a3e631ec1d87eac739736dd3191de06f2c1fd3c",
+      "bytes": 9796
+    },
+    "forced/beirut-p0-1/firstPhaseImpulse.npy": {
+      "sha256": "18bc2a5c66f74f903a3d55dc63c943cdaf330298486e93faf7ca2dfd2a818867",
+      "bytes": 1048704
+    },
+    "forced/beirut-p0-1/mask.npy": {
+      "sha256": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+      "bytes": 1048704
+    },
+    "forced/beirut-p0-1/pressure-inputs.json": {
+      "sha256": "f6190dd967bc1ea1c882fdbed54cb1a7e665a2632f50c338621c6ed80ca2de9b",
+      "bytes": 426
+    },
+    "forced/beirut-p0-1/pressure-inputs.npy": {
+      "sha256": "76fdafa18d4318a15e64b9db754c88cd2c54fa681d383a8470a981b8ce05c204",
+      "bytes": 155008
+    },
+    "forced/beirut-p0-1/result.json": {
+      "sha256": "23b5d85558ce0e035948ef0d2e059c14e6f6270e112b8c89c4bc935b06966967",
+      "bytes": 2297
+    },
+    "forced/beirut-p0-1/targets.npy": {
+      "sha256": "cb6d9267f6090f1cf4795c46d459ca97c125ae3aed62651d1254556970a7f8a2",
+      "bytes": 2097280
+    },
+    "forced/beirut-p0-1/trace.json": {
+      "sha256": "af285fcb7f2df8bf82c10740373bb4e585c69c5b09123b0fcb735e226d72e2ee",
+      "bytes": 57603
+    },
+    "forced/beirut-p0-1/trace.npy": {
+      "sha256": "a729d8a070ad57b1cdfaecbd8b99d0c8fc894c424c272e2e34b7c732340608f6",
+      "bytes": 77568
+    },
+    "forced/beirut-p0-1/worker.log": {
+      "sha256": "23b5d85558ce0e035948ef0d2e059c14e6f6270e112b8c89c4bc935b06966967",
+      "bytes": 2297
+    },
+    "forced/made-perimeter-s1-1/clock-events.json": {
+      "sha256": "ddfd5b9b9ebe6173fbed6e8a40c3f3280f4fac0c481dff4fca21ae402d4b6f79",
+      "bytes": 735936
+    },
+    "forced/made-perimeter-s1-1/dt.npy": {
+      "sha256": "3b4fb8c611b58a6a2a442463ea15034ecd568f913458084395396187fece2f87",
+      "bytes": 10708
+    },
+    "forced/made-perimeter-s1-1/firstPhaseImpulse.npy": {
+      "sha256": "23dd7c9fdc1563507ee820d23e6a20d402a8626e324c2bef6246499b56f5d4a9",
+      "bytes": 1048704
+    },
+    "forced/made-perimeter-s1-1/mask.npy": {
+      "sha256": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+      "bytes": 1048704
+    },
+    "forced/made-perimeter-s1-1/pressure-inputs.json": {
+      "sha256": "00a9469d443f55ea380f3f20f50c83bb4f344eafbdf83e047171415583ef2fb7",
+      "bytes": 425
+    },
+    "forced/made-perimeter-s1-1/pressure-inputs.npy": {
+      "sha256": "d6f1a6bf3bd77812b1798d4075169b85b74d08f6511ff98e7f80111fd7d18767",
+      "bytes": 169600
+    },
+    "forced/made-perimeter-s1-1/result.json": {
+      "sha256": "2a7be801c56c773e347812ecf8d776cc7777e222a17a7af07288d38b69011292",
+      "bytes": 2295
+    },
+    "forced/made-perimeter-s1-1/targets.npy": {
+      "sha256": "1b29e464157994b739e3e13b827e13c86445ce8a9e45ebc6a583991297baaf97",
+      "bytes": 2097280
+    },
+    "forced/made-perimeter-s1-1/trace.json": {
+      "sha256": "ba224da8e6db94e9fa13996c1b574038caf215a9e2145c58820601629c6243a7",
+      "bytes": 63160
+    },
+    "forced/made-perimeter-s1-1/trace.npy": {
+      "sha256": "2456e1ae77fa37eabf8ae47c25407e81e83d17d62048162457857fe66b92452d",
+      "bytes": 84864
+    },
+    "forced/made-perimeter-s1-1/worker.log": {
+      "sha256": "2a7be801c56c773e347812ecf8d776cc7777e222a17a7af07288d38b69011292",
+      "bytes": 2295
+    },
+    "forced/made-perimeter-s3-1/clock-events.json": {
+      "sha256": "0668e12c092f5185c33184a3bc75677649162f1c6e6c4b874bda235f38d60758",
+      "bytes": 754084
+    },
+    "forced/made-perimeter-s3-1/dt.npy": {
+      "sha256": "519eb4224d2718c14314cfea3b7aff70a9ed9fb71a00f8aac5f633c84142b249",
+      "bytes": 10972
+    },
+    "forced/made-perimeter-s3-1/firstPhaseImpulse.npy": {
+      "sha256": "30ecf3aff4fc283f0bcafd29cefaef2df5982a0866122c879b2e84820cf69bfc",
+      "bytes": 1048704
+    },
+    "forced/made-perimeter-s3-1/mask.npy": {
+      "sha256": "36a08c790f670dcc9003068b42521a1919773f7be379685369139b82b33a2428",
+      "bytes": 1048704
+    },
+    "forced/made-perimeter-s3-1/pressure-inputs.json": {
+      "sha256": "3c2815e7bcc3408e08d4a6a180bc48f5fc818a4739270a5c7d94a91f82f7231a",
+      "bytes": 438
+    },
+    "forced/made-perimeter-s3-1/pressure-inputs.npy": {
+      "sha256": "7417fd3fb4df211ef901bf38b2e9c81963082b0addbb6bfde535d66698539401",
+      "bytes": 347392
+    },
+    "forced/made-perimeter-s3-1/result.json": {
+      "sha256": "4553c597b96d6ba6d80dbd0a15337c39b1f858be10f871e75bb19c1d343f6c90",
+      "bytes": 2312
+    },
+    "forced/made-perimeter-s3-1/targets.npy": {
+      "sha256": "77c1cdf6618422a09ea83fbbe5274dbbd694e3afcac33ef383c3175189d31ffe",
+      "bytes": 2097280
+    },
+    "forced/made-perimeter-s3-1/trace.json": {
+      "sha256": "7c41e766436244a50a78eb040fa158af2c2b514432912fa6e1c84628acab1139",
+      "bytes": 64635
+    },
+    "forced/made-perimeter-s3-1/trace.npy": {
+      "sha256": "81883817be197c70a74cf42ec41c2ee3db272ab5bfa7e83a8205ca339bc3b756",
+      "bytes": 173760
+    },
+    "forced/made-perimeter-s3-1/worker.log": {
+      "sha256": "4553c597b96d6ba6d80dbd0a15337c39b1f858be10f871e75bb19c1d343f6c90",
+      "bytes": 2312
+    },
+    "forced/receipt.json": {
+      "sha256": "4bc96b8d0d0d4b5ce3a1da9698986d5c0c17e5e8ed6cc30c2bd235a11fe8ce10",
+      "bytes": 17361
+    },
+    "forced-controller.json": {
+      "sha256": "43283e5fd4b6c708a985ff561019165fd9d90053c6f33ac3aa6ce4f53ea6ba13",
+      "bytes": 2400
+    },
+    "forced-pack/histories/beirut-p0-1.npy": {
+      "sha256": "dc39566351b40b344a9549740a3e631ec1d87eac739736dd3191de06f2c1fd3c",
+      "bytes": 9796
+    },
+    "forced-pack/histories/made-perimeter-s1-1.npy": {
+      "sha256": "3b4fb8c611b58a6a2a442463ea15034ecd568f913458084395396187fece2f87",
+      "bytes": 10708
+    },
+    "forced-pack/histories/made-perimeter-s3-1.npy": {
+      "sha256": "519eb4224d2718c14314cfea3b7aff70a9ed9fb71a00f8aac5f633c84142b249",
+      "bytes": 10972
+    },
+    "forced-pack/manifest.json": {
+      "sha256": "9d33ab8506c101be4ac537f8bcfee394d4595938e12820b4cf6eb8312dd26c7c",
+      "bytes": 7145
+    },
+    "forced-pack/remote_controller.py": {
+      "sha256": "eba25e609f19b59ac58731d67f88336f3ba068e5a8d322ac376671d66853a063",
+      "bytes": 6162
+    },
+    "forced-pack/worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "forced-pack/worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "forced-pack/worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "forced-pack/worker/run.py": {
+      "sha256": "3f0adf0d63673503dba9c87df483c09411b5e29e05d86d70924a8ed0a37a85bb",
+      "bytes": 21034
+    },
+    "forced-pack/worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "forced-pack/worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "forced-ssh.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "preflight.json": {
+      "sha256": "c0b2a04fe37a90b082820a12dabcc24e4e9e7ac8630cfd1d8cf3323a6fd261ae",
+      "bytes": 8449
+    },
+    "publication-checks.json": {
+      "sha256": "fd2da228f02e1920df4469685fe54285a47a0c93563431ef5cdf31ce9b89c499",
+      "bytes": 1306
+    },
+    "remote-verification.json": {
+      "sha256": "5a31e1f34057dc0dc38e9c9a108d7f5ed0f7a92a5cd901e1533716bf6b93823e",
+      "bytes": 14951
+    },
+    "variant/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "variant/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "variant/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "variant/run.py": {
+      "sha256": "3f0adf0d63673503dba9c87df483c09411b5e29e05d86d70924a8ed0a37a85bb",
+      "bytes": 21034
+    },
+    "variant/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "variant/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "worker/run.py": {
+      "sha256": "2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb",
+      "bytes": 18840
+    },
+    "worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "worker-build.json": {
+      "sha256": "cfcee2f2832878d81b905368c3d3cb4ca142d2aa01209fa0ba94a2568d874435",
+      "bytes": 937
+    }
+  },
+  "archives": [
+    {
+      "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-matched-clock-archive/all-raw.tar.gz",
+      "sha256": "f52c08420827e54c236697d8cf190343518b60cf018b09a05d7fcf3befbc37d4",
+      "bytes": 30071393,
+      "members": 146
+    },
+    {
+      "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-matched-clock/evidence/metadata.tar.gz",
+      "sha256": "826397e0dc3fcb4bd90b90736b6dbdde0a663476d3d9638c05bcd4f99cdebe4a",
+      "bytes": 1753529,
+      "members": 85
+    }
+  ],
+  "rawFiles": 146,
+  "rawBytes": 68442168,
+  "limits": "All local raw histories, maps, controls and outcomes retained externally; public archive contains metadata and postprocessing. Complete dense solver fields remain on the PC under the recorded per-file SHA256 inventories; fresh remote rehash verified. No production defaults changed."
+}

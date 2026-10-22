@@ -1,0 +1,447 @@
+{
+  "status": "complete-all-outcomes",
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "clockPassed": true,
+      "clockFailures": [],
+      "activeSteps": 2645,
+      "inactiveEvents": 2,
+      "rawOriginMinusTickOrigin": -3.7832497551404387e-13,
+      "comparison": {
+        "0": {
+          "relativeL2": 8.29222365557857e-09,
+          "maxAbsolute": 4.0,
+          "outsideTolerance": 0,
+          "medianRelative": 2.659116194868544e-06,
+          "p99Relative": 1.9073803357261873e-05
+        },
+        "1": {
+          "relativeL2": 1.4747553732472384e-06,
+          "maxAbsolute": 0.9833984375,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9397635934204905e-06,
+          "p99Relative": 8.691164100856976e-06
+        },
+        "2": {
+          "relativeL2": 5.406000376026477e-07,
+          "maxAbsolute": 0.0732421875,
+          "outsideTolerance": 0,
+          "medianRelative": 2.551583369501509e-06,
+          "p99Relative": 6.040207227743346e-06
+        },
+        "passed": true
+      },
+      "failureCount": 0,
+      "selectedNativeHistories": {
+        "nativeCUDA": [
+          {
+            "column": 62902,
+            "finalImpulse": 1107.3350830078125,
+            "changes": [
+              {
+                "sample": 1298,
+                "rawTime": 2.1083100569909075,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.4042142538528424e-05
+              },
+              {
+                "sample": 1513,
+                "rawTime": 2.4922439883472034,
+                "pressure": -65.9609375,
+                "open": 0.0,
+                "impulse": 1107.3350830078125
+              }
+            ]
+          }
+        ],
+        "matchedClockCUDA": [
+          {
+            "column": 62902,
+            "finalImpulse": 1107.3350830078125,
+            "changes": [
+              {
+                "sample": 1298,
+                "rawTime": 2.10830884976402,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.4042064321984071e-05
+              },
+              {
+                "sample": 1513,
+                "rawTime": 2.4922424112688386,
+                "pressure": -65.9140625,
+                "open": 0.0,
+                "impulse": 1107.3350830078125
+              }
+            ]
+          }
+        ],
+        "nativeMetal": [
+          {
+            "column": 62902,
+            "finalImpulse": 1107.3367919921875,
+            "changes": [
+              {
+                "sample": 1299,
+                "rawTime": 2.1101055481949516,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.4036706488695927e-05
+              },
+              {
+                "sample": 1513,
+                "rawTime": 2.492242411269217,
+                "pressure": -65.8359375,
+                "open": 0.0,
+                "impulse": 1107.3367919921875
+              }
+            ]
+          }
+        ]
+      },
+      "packaging": "Previously validated saved-output assembly; exact shared reference features/masks; native mask covers every valid reference receiver"
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "clockPassed": true,
+      "clockFailures": [],
+      "activeSteps": 2711,
+      "inactiveEvents": 1,
+      "rawOriginMinusTickOrigin": 7.303185833862358e-14,
+      "comparison": {
+        "0": {
+          "relativeL2": 9.826059549518455e-08,
+          "maxAbsolute": 1.71484375,
+          "outsideTolerance": 0,
+          "medianRelative": 3.935254568338647e-06,
+          "p99Relative": 8.031005950196482e-05
+        },
+        "1": {
+          "relativeL2": 5.467973784489529e-06,
+          "maxAbsolute": 1.25390625,
+          "outsideTolerance": 0,
+          "medianRelative": 1.8998683045834323e-06,
+          "p99Relative": 1.5440861408894045e-05
+        },
+        "2": {
+          "relativeL2": 1.5128088360550627e-06,
+          "maxAbsolute": 0.02777099609375,
+          "outsideTolerance": 0,
+          "medianRelative": 2.61367010213587e-06,
+          "p99Relative": 2.3098257685796703e-05
+        },
+        "passed": true
+      },
+      "failureCount": 0,
+      "selectedNativeHistories": {
+        "nativeCUDA": [
+          {
+            "column": 134058,
+            "finalImpulse": 439.7618103027344,
+            "changes": [
+              {
+                "sample": 1060,
+                "rawTime": 1.6770416642558124,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.292950128117809e-05
+              },
+              {
+                "sample": 1276,
+                "rawTime": 2.036535698573134,
+                "pressure": -13.390625,
+                "open": 0.0,
+                "impulse": 439.7618103027344
+              }
+            ]
+          },
+          {
+            "column": 250097,
+            "finalImpulse": 188.5260467529297,
+            "changes": [
+              {
+                "sample": 1449,
+                "rawTime": 2.328011972016684,
+                "pressure": 0.015625,
+                "open": 1.0,
+                "impulse": 2.654840864124708e-05
+              },
+              {
+                "sample": 1593,
+                "rawTime": 2.5741379514821165,
+                "pressure": -1.40625,
+                "open": 0.0,
+                "impulse": 188.5260467529297
+              }
+            ]
+          }
+        ],
+        "matchedClockCUDA": [
+          {
+            "column": 134058,
+            "finalImpulse": 439.7618713378906,
+            "changes": [
+              {
+                "sample": 1060,
+                "rawTime": 1.6770415405136012,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.2929510376125108e-05
+              },
+              {
+                "sample": 1276,
+                "rawTime": 2.0365355718041247,
+                "pressure": -13.359375,
+                "open": 0.0,
+                "impulse": 439.7618713378906
+              }
+            ]
+          },
+          {
+            "column": 250097,
+            "finalImpulse": 188.5252227783203,
+            "changes": [
+              {
+                "sample": 1449,
+                "rawTime": 2.3280117932100257,
+                "pressure": 0.015625,
+                "open": 1.0,
+                "impulse": 2.6548435926088132e-05
+              },
+              {
+                "sample": 1593,
+                "rawTime": 2.5741377438044584,
+                "pressure": -1.4296875,
+                "open": 0.0,
+                "impulse": 188.5252227783203
+              }
+            ]
+          }
+        ],
+        "nativeMetal": [
+          {
+            "column": 134058,
+            "finalImpulse": 439.7640075683594,
+            "changes": [
+              {
+                "sample": 1060,
+                "rawTime": 1.6770415405135282,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.2929510376125108e-05
+              },
+              {
+                "sample": 1276,
+                "rawTime": 2.036535571804052,
+                "pressure": -13.390625,
+                "open": 0.0,
+                "impulse": 439.7640075683594
+              }
+            ]
+          },
+          {
+            "column": 250097,
+            "finalImpulse": 188.52630615234375,
+            "changes": [
+              {
+                "sample": 1450,
+                "rawTime": 2.3297118416612648,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.3281628525874112e-05
+              },
+              {
+                "sample": 1593,
+                "rawTime": 2.5741377438043855,
+                "pressure": -1.40625,
+                "open": 0.0,
+                "impulse": 188.52630615234375
+              }
+            ]
+          }
+        ]
+      },
+      "packaging": "Previously validated saved-output assembly; exact shared reference features/masks; native mask covers every valid reference receiver"
+    },
+    {
+      "id": "beirut-p0-1",
+      "clockPassed": true,
+      "clockFailures": [],
+      "activeSteps": 2417,
+      "inactiveEvents": 2,
+      "rawOriginMinusTickOrigin": -4.146960552731116e-13,
+      "comparison": {
+        "0": {
+          "relativeL2": 7.823031423927281e-08,
+          "maxAbsolute": 5.60546875,
+          "outsideTolerance": 0,
+          "medianRelative": 2.494517164659223e-06,
+          "p99Relative": 0.00012765032124093924
+        },
+        "1": {
+          "relativeL2": 1.9304219072933408e-06,
+          "maxAbsolute": 0.75,
+          "outsideTolerance": 0,
+          "medianRelative": 3.4178996472620754e-06,
+          "p99Relative": 1.883855661297823e-05
+        },
+        "2": {
+          "relativeL2": 6.995265487270229e-07,
+          "maxAbsolute": 0.090087890625,
+          "outsideTolerance": 0,
+          "medianRelative": 2.897970757156684e-06,
+          "p99Relative": 1.9879348506535988e-05
+        },
+        "passed": true
+      },
+      "failureCount": 0,
+      "selectedNativeHistories": {
+        "nativeCUDA": [
+          {
+            "column": 187747,
+            "finalImpulse": 1514.2877197265625,
+            "changes": [
+              {
+                "sample": 655,
+                "rawTime": 1.2255876711720193,
+                "pressure": 0.015625,
+                "open": 1.0,
+                "impulse": 2.884594323404599e-05
+              },
+              {
+                "sample": 827,
+                "rawTime": 1.5420506962259823,
+                "pressure": -0.0078125,
+                "open": 0.0,
+                "impulse": 1514.2877197265625
+              }
+            ]
+          }
+        ],
+        "matchedClockCUDA": [
+          {
+            "column": 187747,
+            "finalImpulse": 1696.1107177734375,
+            "changes": [
+              {
+                "sample": 655,
+                "rawTime": 1.2255867266363056,
+                "pressure": 0.015625,
+                "open": 1.0,
+                "impulse": 2.884592868213076e-05
+              },
+              {
+                "sample": 900,
+                "rawTime": 1.6764549618388118,
+                "pressure": -59.65625,
+                "open": 0.0,
+                "impulse": 1696.1107177734375
+              }
+            ]
+          }
+        ],
+        "nativeMetal": [
+          {
+            "column": 187747,
+            "finalImpulse": 1696.1177978515625,
+            "changes": [
+              {
+                "sample": 655,
+                "rawTime": 1.2255867266367204,
+                "pressure": 0.0078125,
+                "open": 1.0,
+                "impulse": 1.442296434106538e-05
+              },
+              {
+                "sample": 900,
+                "rawTime": 1.6764549618392266,
+                "pressure": -59.75,
+                "open": 0.0,
+                "impulse": 1696.1177978515625
+              }
+            ]
+          }
+        ]
+      },
+      "packaging": "Previously validated saved-output assembly; exact shared reference features/masks; native mask covers every valid reference receiver"
+    }
+  ],
+  "consumed": {
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/preflight.json": "c0b2a04fe37a90b082820a12dabcc24e4e9e7ac8630cfd1d8cf3323a6fd261ae",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/baseline/receipt.json": "ff75a9c864ead7d1ddc8b9e4d7c9919080db2f34620f96e806bb263b2782f027",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/receipt.json": "4bc96b8d0d0d4b5ce3a1da9698986d5c0c17e5e8ed6cc30c2bd235a11fe8ce10",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/analysis/assemble-saved.py": "611e8cfe568aa04d6f8f9c58df5e55b869ad91b30d5431eb27ded5bccd2507f1",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/run.json": "a80e182b4114db37b110583899e7b6506a7dd86e292bd1fcef955c6ffbcfe2e7",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/run.json": "7183b7561ac4686399da8368c1de7f28fb03076c0ff912b6af3aaa8cf297a3d8",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/analysis/cuda/compare_dataset.py": "cae0ce0a6c5ca085523fe5d7cab025beedbc5fa3e0b3a3b4e3c27f60998ee05b",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/dt.npy": "3b4fb8c611b58a6a2a442463ea15034ecd568f913458084395396187fece2f87",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/firstPhaseImpulse.npy": "23dd7c9fdc1563507ee820d23e6a20d402a8626e324c2bef6246499b56f5d4a9",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/mask.npy": "12a110517f5f0b049447d281253ca5f81ffceb079ab2b51fc5eb38d442ffacbc",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/pressure-inputs.npy": "d6f1a6bf3bd77812b1798d4075169b85b74d08f6511ff98e7f80111fd7d18767",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/targets.npy": "1b29e464157994b739e3e13b827e13c86445ce8a9e45ebc6a583991297baaf97",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/trace.npy": "2456e1ae77fa37eabf8ae47c25407e81e83d17d62048162457857fe66b92452d",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/cases/made-perimeter-s1-1/clock-plan.json": "4745ae6bae9655103e64969ae8b6ac4106234a011f11cbaa5516cca7eb78bc10",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/cases/made-perimeter-s1-1/metal-dt.npy": "3b4fb8c611b58a6a2a442463ea15034ecd568f913458084395396187fece2f87",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/clock-events.json": "ddfd5b9b9ebe6173fbed6e8a40c3f3280f4fac0c481dff4fca21ae402d4b6f79",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/made-perimeter-s1-1/input/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/made-perimeter-s1-1/input/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/made-perimeter-s1-1/input/columns.bin": "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/input/columns.bin": "86c7b3b76cd3ad445670e7a31f50c56ff5f5d1155a18682df12368691e906233",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/targets.npy": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/baseline/made-perimeter-s1-1/trace.npy": "7009f18b126a9d4bf6ac91ee82db28e39f35d19c072f25452bfd38e303643f3f",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/baseline/made-perimeter-s1-1/trace.json": "507d8beb8740147a363c40eb73edc24179d89e4865ffd839c120a4a6095f4f76",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s1-1/trace.json": "ba224da8e6db94e9fa13996c1b574038caf215a9e2145c58820601629c6243a7",
+    "$BOMBCAD_DATA/experiments/2026-10-22-metal-pressure-inputs/cases/made-perimeter-s1-1/inputs/pressure-trace.npy": "c35770807df010c418fc95ba13ef5e9e0623d7343949b3c553045b7b52963ce0",
+    "$BOMBCAD_DATA/experiments/2026-10-22-metal-pressure-inputs/cases/made-perimeter-s1-1/inputs/pressure-trace.json": "5ebebf69fa7d354e583b7d01d1e04d5f3cdae4fd472db3085e740e1bad2064f2",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/dt.npy": "519eb4224d2718c14314cfea3b7aff70a9ed9fb71a00f8aac5f633c84142b249",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/firstPhaseImpulse.npy": "30ecf3aff4fc283f0bcafd29cefaef2df5982a0866122c879b2e84820cf69bfc",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/mask.npy": "36a08c790f670dcc9003068b42521a1919773f7be379685369139b82b33a2428",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/pressure-inputs.npy": "7417fd3fb4df211ef901bf38b2e9c81963082b0addbb6bfde535d66698539401",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/targets.npy": "77c1cdf6618422a09ea83fbbe5274dbbd694e3afcac33ef383c3175189d31ffe",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/trace.npy": "81883817be197c70a74cf42ec41c2ee3db272ab5bfa7e83a8205ca339bc3b756",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/cases/made-perimeter-s3-1/clock-plan.json": "62916c7c3ff1e576a4c7b52873641798ebaf75400a4bb9ac8d5f64c868566d2e",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/cases/made-perimeter-s3-1/metal-dt.npy": "519eb4224d2718c14314cfea3b7aff70a9ed9fb71a00f8aac5f633c84142b249",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/clock-events.json": "0668e12c092f5185c33184a3bc75677649162f1c6e6c4b874bda235f38d60758",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/made-perimeter-s3-1/input/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/made-perimeter-s3-1/input/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/made-perimeter-s3-1/input/columns.bin": "44f8b5846bbbe9556678f60b8b34d9da9f2836bea1c4a989867b7d846b9787d3",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/input/columns.bin": "44f8b5846bbbe9556678f60b8b34d9da9f2836bea1c4a989867b7d846b9787d3",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/targets.npy": "45f317d4b117f3d3528f927758ad15c0bf0b866bcc455180d8e0cfdedaffcb4b",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/baseline/made-perimeter-s3-1/trace.npy": "e7e74b5d0bfd22c1a200135c0cfa6fe4dae972960d007664fec74d4308bc5092",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/baseline/made-perimeter-s3-1/trace.json": "ae078b58f1ce7d35cc74f5b6669d7dbe5ed71fc0abfb3be16f1e656480ae7bb3",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/made-perimeter-s3-1/trace.json": "7c41e766436244a50a78eb040fa158af2c2b514432912fa6e1c84628acab1139",
+    "$BOMBCAD_DATA/experiments/2026-10-22-metal-pressure-inputs/cases/made-perimeter-s3-1/inputs/pressure-trace.npy": "ea846f7dab8bd9ebf931c2fa07c8ee21fb15808948ee787a99c53f2cbedc56d4",
+    "$BOMBCAD_DATA/experiments/2026-10-22-metal-pressure-inputs/cases/made-perimeter-s3-1/inputs/pressure-trace.json": "2959b1e73b833d94c5d3749bd0e20cb0bf0c7f4f249eebd6c44ad17502d49f91",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/dt.npy": "dc39566351b40b344a9549740a3e631ec1d87eac739736dd3191de06f2c1fd3c",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/firstPhaseImpulse.npy": "18bc2a5c66f74f903a3d55dc63c943cdaf330298486e93faf7ca2dfd2a818867",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/mask.npy": "311e44635cbf6e7d99d7cfbdbdf5c755f5b3a6181eda5a0fcc408438f4e5e9b0",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/pressure-inputs.npy": "76fdafa18d4318a15e64b9db754c88cd2c54fa681d383a8470a981b8ce05c204",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/targets.npy": "cb6d9267f6090f1cf4795c46d459ca97c125ae3aed62651d1254556970a7f8a2",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/trace.npy": "a729d8a070ad57b1cdfaecbd8b99d0c8fc894c424c272e2e34b7c732340608f6",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/cases/beirut-p0-1/clock-plan.json": "8e5ce6bb1ed1f012cb953a1927236b21b16bb23ba52808ba55cffd110f2e526e",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/cases/beirut-p0-1/metal-dt.npy": "dc39566351b40b344a9549740a3e631ec1d87eac739736dd3191de06f2c1fd3c",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/clock-events.json": "8491fd139fec281a6b2cdb17658e18f63fb4fcb39830dd62b9fe8297418b36b2",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/beirut-p0-1/input/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/beirut-p0-1/input/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/control/beirut-p0-1/input/columns.bin": "b680f2868b3e86b6de50f483e4b73bf910f33c5e7b2c2846eb13f155eef8e344",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/input/columns.bin": "b680f2868b3e86b6de50f483e4b73bf910f33c5e7b2c2846eb13f155eef8e344",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/targets.npy": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/baseline/beirut-p0-1/trace.npy": "c159b850aff2495f5f5d155dbe6b731c11e227b81396e50145465bea94e07735",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/baseline/beirut-p0-1/trace.json": "973a83ff68f28e1fed52c0861f178a7f01267c28b713e7bb67809eb3af1e2fb9",
+    "$BOMBCAD_DATA/experiments/2026-10-22-matched-clock/forced/beirut-p0-1/trace.json": "af285fcb7f2df8bf82c10740373bb4e585c69c5b09123b0fcb735e226d72e2ee",
+    "$BOMBCAD_DATA/experiments/2026-10-22-metal-pressure-inputs/cases/beirut-p0-1/inputs/pressure-trace.npy": "b926ea4bc0003180bc91c84226d81c8a7d2c7a64d7fcd704697bea058634b4a6",
+    "$BOMBCAD_DATA/experiments/2026-10-22-metal-pressure-inputs/cases/beirut-p0-1/inputs/pressure-trace.json": "4fd34e0601d47c5368d0e5d093923eead9c7d88867de66fe1f3da559d1f98882"
+  },
+  "sourceSHA256": "8f553b658b3bee3a1d97a2f0a1859c4097ed6bd324e6f40cd15030dc987617e5",
+  "allClocksPass": true,
+  "allTargetsPass": true,
+  "defaultBulkGeneration": "held; controlled reference-dependent clock experiment only"
+}

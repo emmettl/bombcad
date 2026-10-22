@@ -1,0 +1,22 @@
+{
+  "format": "pass",
+  "lint": "pass",
+  "strictBuild": "host pass: no warnings; initial sandbox Swift-cache denial retained in session",
+  "affected": "plain make check-affected pass, 36 PC tests in 4 suites; existing Python ResourceWarnings",
+  "analyticClockControls": 4,
+  "baselineParityCases": 3,
+  "controlledClockCases": 3,
+  "fullTargetGateCases": 3,
+  "remoteVerification": "all 6 retained field inventories rehashed; selected runtime pins match archived native replay",
+  "sourceSHA256": {
+    "run.py": "7d77da87987ad4d4819a1430dc74e065666bb4346d82ea10d99d3caf83ee97d1",
+    "clock_model.py": "f4b732adfbdaed8191c98987c755f7cc7993b69f5410ecf6f039e4d6aaa265eb",
+    "check_clock.py": "15941e759717182c312c5a96083c36146e58a7d9462e670fdce64fe59e90b6fe",
+    "build_worker.py": "c64093b6c6b8df842f5efcd9cd3ee0001a7e60a1710e21ff845bad0492dae637",
+    "verify_remote.py": "f01047c554c51920bca8f6601d08a9776ff077ead38dc6a04357fa02d55522d5",
+    "remote_controller.py": "eba25e609f19b59ac58731d67f88336f3ba068e5a8d322ac376671d66853a063",
+    "archive.py": "6a1c8709a862bb77d068de1a64fc751e67f0344abc803ffcc1454ab19e86f77b",
+    "prepare.py": "fef248f0168763794c79a051db03c136fe65754a624b81ce41d0603a0c07f481",
+    "analyze.py": "8f553b658b3bee3a1d97a2f0a1859c4097ed6bd324e6f40cd15030dc987617e5"
+  }
+}
