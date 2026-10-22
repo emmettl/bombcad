@@ -7,7 +7,7 @@
     "Tests/BlastCoreTests/FirstPhaseColumnsTests.swift": "88acf6785b9ebd74d0168fe8ff3bce61c9ec66c6e70b4c05d879bcf436f271dc",
     "Scripts/cuda/README.md": "bc2e84b8c17610160e096b6c415e7028a06796781232b2c21051c7650f47727c",
     "docs/release-notes/next/raw-pressure-inputs.md": "98084ede870406a9c08fcce6928ff723e687327507d532846371fc8676cbc700",
-    "Benchmarks/CUDAAcceptance/2026-10-22-metal-pressure-inputs/run.py": "92a85b5bfb1c5c9eaea29921ea92171b7d7cfc4bdf6983b6745df9bd176bc36f",
+    "Benchmarks/CUDAAcceptance/2026-10-22-metal-pressure-inputs/run.py": "11740302e542723700c32b9afd823b89d31378fcf47ec29079015687c2590a63",
     "Benchmarks/CUDAAcceptance/2026-10-22-metal-pressure-inputs/plan.md": "7e767ac1e688e6af5f0fa478c45a82da73c4f88d3718b57d64dac9489d9f2fec"
   },
   "checks": [
@@ -37,6 +37,11 @@
       "command": "capture controller read-only preflight",
       "returncode": 0,
       "scope": "Frozen helper imports, original three jobs, enabled selected columns, existing fused native replay, NumPy core path; no numerical capture"
+    },
+    {
+      "command": "full initial-state hash convention control",
+      "returncode": 0,
+      "scope": "Existing corrected Beirut Metal initial state hash equals original physical job state.bin hash; controller now requires this full-state gate on all three new cases before analysis. No captures rerun."
     }
   ],
   "limits": "Implementation mechanism checks do not establish corrected-case parity or a new CUDA pass. Nine declared Metal commands and all model comparisons remain pending."

@@ -132,6 +132,7 @@ def main():
                 row['modes'].append(dict(mode=mode, datasetSHA256=actual, state=q.read(out / 'diagnostic-state-hashes.json')))
                 save()
             assert all(v['state'] == row['modes'][0]['state'] for v in row['modes']), 'Coarse state parity failed'
+            assert row['modes'][0]['state']['initial']['state'] == physical['files']['state.bin'], 'Original full initial state differs'
             plain_trace = ROOT / 'cases' / name / 'pressure'
             raw = ROOT / 'cases' / name / 'inputs'
             assert q.digest(plain_trace / 'pressure-trace.npy') == q.digest(raw / 'pressure-trace.npy')
