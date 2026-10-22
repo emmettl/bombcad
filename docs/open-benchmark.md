@@ -3,9 +3,10 @@
 Part of BombCAD's validation record written down so that any blast code can run it and be scored
 the same way: ten cases, each a JSON file holding the scene, the charge, the gauges and the
 measured (or reference) values with their uncertainty and full citations; a scorer; and BombCAD's
-own entry, quoted from the record. The cases name no code's options. This is a first step: one
-other code, pyro2, has run two of them ([a second code](#a-second-code-pyro2-20-october-2026)), and
-none has run the rest ([what this doesn't yet do](#what-this-doesnt-yet-do)).
+own entry, quoted from the record. The cases name no code's options. This is a first step: two
+other codes, pyro2 and Clawpack, have run two of them ([a second code](#a-second-code-pyro2-20-october-2026),
+[a third](#a-third-code-clawpack-22-october-2026)), and none has run the rest
+([what this doesn't yet do](#what-this-doesnt-yet-do)).
 
 | Path | What |
 |---|---|
@@ -13,6 +14,7 @@ none has run the rest ([what this doesn't yet do](#what-this-doesnt-yet-do)).
 | `Benchmarks/open/schema/case.schema.json`, `results.schema.json` | JSON Schemas (draft 2020-12) for a case and a results file |
 | `Benchmarks/open/results/bombcad-0.6.0-dev.json` | BombCAD's entry |
 | `Benchmarks/open/results/pyro2-4.5.1.json`, `Benchmarks/open/other-codes/pyro2/` | A second code's entry for two cases, with its scripts and runs |
+| `Benchmarks/open/results/clawpack-5.14.0.json`, `Benchmarks/open/other-codes/clawpack/` | A third code's entry for the same two, from the decks, with its scripts, histories and mesh study |
 | `Scripts/open-benchmark/score.py` | The scorer: Python 3, standard library only |
 | `Scripts/open-benchmark/make_cases.py`, `make_bombcad_results.py` | The generators that write the cases and BombCAD's entry |
 | `Scripts/open-benchmark/test_score.py` | The scorer's tests, and a check that the committed JSON is exactly what the generators write; run by `make ci-test` |
@@ -218,7 +220,8 @@ changed decks and history hash mismatches. Raw histories remain available, with 
 source commit, executable hash and initial-budget logs, separately from their scalar scores.
 
 A second code can implement the documented initial states and CSV contract, then use the same
-import, extraction and scoring commands. **No second code has done so yet.** The handoff no longer
+import, extraction and scoring commands. Clawpack has since run the room's deck as written and the
+free field's physics on its own mesh ([a third code](#a-third-code-clawpack-22-october-2026)). The handoff no longer
 leaves the source and read rules open for these two controls; translation to another solver,
 mesh/time-window convergence and a real independent comparison are still outstanding.
 
@@ -299,9 +302,9 @@ on a finer mesh, which is still to do.
 
 ## What this doesn't yet do
 
-- **One other code has run two cases.** pyro2's 1-D runs of the free field and the room found
-  what the prose left open, and the decks now settle most of it; no other code has run the
-  decks' contract, a 3-D case or any structure.
+- **Two other codes have run two cases.** pyro2's 1-D runs found what the prose left open, and
+  the decks now settle most of it; Clawpack ran the room's deck as written (3-D) and the free
+  field in 2-D. No other code has run the free field on the deck's own mesh, or any structure.
 - **Three of the ten are curves, not tests**: Kingery–Bulmash's two and UFC 3-340-02's, each a
   fit or design chart with little or no stated scatter, labelled as such.
 - **Peaks and integrals only**: the two controls retain raw pressure histories, but no pressure or displacement histories are scored, so a code can
