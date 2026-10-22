@@ -266,6 +266,7 @@ extension BlastSolver {
             "impulse": impulseBuffer, "mask": maskBuffer,
         ]
         if hasSpecies { buffers["species"] = speciesBuffers[current] }
+        if let experiment = compensatedSweep { buffers["compensatedResidual"] = experiment.residuals }
         if let recorder = firstPhaseColumns {
             buffers["firstPhaseColumns"] = recorder.columns
             buffers["firstPhaseRecords"] = recorder.records

@@ -19,6 +19,12 @@ public struct SweepUpdateTrace: Sendable {
         "highMass", "highMx", "highMy", "highMz", "highEnergy",
         "lambda", "dt", "axis", "batchActiveStep",
     ]
+    public static let compensatedFields =
+        fields + [
+            "oldResidualRho", "oldResidualEnergy", "newResidualRho", "newResidualEnergy",
+            "componentMask", "floorEventsBefore", "floorEventsAfter", "densityIncrement", "energyIncrement",
+        ]
+    public let capturedFields: [String]
     public let indices: [Int]
     public let initialStates: [[Float]]
     public let finalStates: [[Float]]
@@ -28,6 +34,7 @@ public struct SweepUpdateTrace: Sendable {
 final class SweepUpdateCapture {
     let indices: [Int]
     let initialStates: [[Float]]
+    let fields: [String]
     let buffer: MTLBuffer
     let outputOffset: Int
     let sweep: MTLComputePipelineState
@@ -37,11 +44,12 @@ final class SweepUpdateCapture {
     var overflow = false
 
     init(
-        indices: [Int], initialStates: [[Float]], buffer: MTLBuffer, outputOffset: Int,
+        indices: [Int], initialStates: [[Float]], fields: [String], buffer: MTLBuffer, outputOffset: Int,
         sweep: MTLComputePipelineState, sweepTiles: MTLComputePipelineState, maxSamples: Int
     ) {
         self.indices = indices
         self.initialStates = initialStates
+        self.fields = fields
         self.buffer = buffer
         self.outputOffset = outputOffset
         self.sweep = sweep
@@ -77,10 +85,11 @@ extension BlastSolver {
             throw BlastError.allocationFailed(
                 "1-D ideal-gas sweep diagnostics, 1–16 distinct cells and bounded samples")
         }
+        let fields = compensatedSweep == nil ? SweepUpdateTrace.fields : SweepUpdateTrace.compensatedFields
         let mask = maskBuffer.contents().bindMemory(to: UInt8.self, capacity: grid.cellCount)
         guard (0..<grid.cellCount).allSatisfy({ mask[$0] == 0 }),
             let buffer = device.makeBuffer(
-                length: (grid.cellCount + indices.count * 24) * 4, options: .storageModeShared)
+                length: (grid.cellCount + indices.count * fields.count) * 4, options: .storageModeShared)
         else { throw BlastError.allocationFailed("unmasked sweep cells and diagnostic buffers") }
         memset(buffer.contents(), 0, buffer.length)
         let mapping = buffer.contents().bindMemory(to: UInt32.self, capacity: grid.cellCount)
@@ -91,14 +100,17 @@ extension BlastSolver {
                 return [c.density, c.momentumX, c.momentumY, c.momentumZ, c.energy]
             }
         }
-        let observed = try ShaderLibrary.make(device: device, sweepUpdates: true)
+        let observed = try ShaderLibrary.make(
+            device: device, sweepUpdates: true, compensatedSweep: compensatedSweep != nil)
+        let suffix = compensatedSweep == nil ? "Updates" : "CompensatedUpdates"
         let constants = MTLFunctionConstantValues()
         var model = configuration.airModel.rawValue
         constants.setConstantValue(&model, type: .uint, index: ShaderLibrary.airModelConstant)
         sweepUpdateCapture = SweepUpdateCapture(
-            indices: indices, initialStates: initial, buffer: buffer, outputOffset: grid.cellCount * 4,
-            sweep: try ShaderLibrary.pipeline("sweepUpdates", in: observed, constants: constants),
-            sweepTiles: try ShaderLibrary.pipeline("sweepTilesUpdates", in: observed, constants: constants),
+            indices: indices, initialStates: initial, fields: fields, buffer: buffer,
+            outputOffset: grid.cellCount * 4,
+            sweep: try ShaderLibrary.pipeline("sweep\(suffix)", in: observed, constants: constants),
+            sweepTiles: try ShaderLibrary.pipeline("sweepTiles\(suffix)", in: observed, constants: constants),
             maxSamples: maxSamples)
     }
 
@@ -116,7 +128,7 @@ extension BlastSolver {
             }
         }
         return SweepUpdateTrace(
-            indices: capture.indices, initialStates: capture.initialStates,
+            capturedFields: capture.fields, indices: capture.indices, initialStates: capture.initialStates,
             finalStates: final, samples: capture.samples)
     }
 
@@ -130,10 +142,11 @@ extension BlastSolver {
             capture.overflow = true
             return
         }
+        let stride = capture.fields.count
         let data = (capture.buffer.contents() + capture.outputOffset).bindMemory(
-            to: Float.self, capacity: capture.indices.count * 24)
+            to: Float.self, capacity: capture.indices.count * stride)
         let values = capture.indices.indices.map { q in
-            Array(UnsafeBufferPointer(start: data + q * 24, count: 24))
+            Array(UnsafeBufferPointer(start: data + q * stride, count: stride))
         }
         capture.samples.append(
             SweepUpdateSample(
@@ -144,7 +157,7 @@ extension BlastSolver {
 
 extension ShaderLibrary {
     /// Appends diagnostic siblings; ordinary functions and their source bytes remain untouched.
-    static func addingSweepUpdateCapture(to source: String) throws -> String {
+    static func addingSweepUpdateCapture(to source: String, compensated: Bool = false) throws -> String {
         func function(_ startText: String) throws -> String {
             guard let start = source.range(of: startText),
                 let end = source.range(of: "\n}", range: start.upperBound..<source.endIndex)
@@ -157,8 +170,24 @@ extension ShaderLibrary {
             }
             return value.replacingOccurrences(of: anchor, with: replacement)
         }
-        var helper = try function("static inline void sweepCell(")
-        helper = try replace(helper, "sweepCell(", "sweepCellUpdates(")
+        let cellName = compensated ? "sweepCellCompensated" : "sweepCell"
+        let fieldCount =
+            compensated ? SweepUpdateTrace.compensatedFields.count : SweepUpdateTrace.fields.count
+        let extra =
+            compensated
+            ? """
+                    updateTrace[q + 24] = as_type<uint>(compensationBefore.x);
+                    updateTrace[q + 25] = as_type<uint>(compensationBefore.y);
+                    updateTrace[q + 26] = as_type<uint>(compensationAfter.x);
+                    updateTrace[q + 27] = as_type<uint>(compensationAfter.y);
+                    updateTrace[q + 28] = as_type<uint>(compensationBefore.z);
+                    updateTrace[q + 29] = as_type<uint>(compensationBefore.w);
+                    updateTrace[q + 30] = as_type<uint>(compensationAfter.w);
+                    updateTrace[q + 31] = as_type<uint>(compensatedDensityIncrement);
+                    updateTrace[q + 32] = as_type<uint>(compensatedEnergyIncrement);
+            """ : ""
+        var helper = try function("static inline void \(cellName)(")
+        helper = try replace(helper, "\(cellName)(", "\(cellName)Updates(")
         helper = try replace(
             helper, "device float4 *structureCutDefects) {",
             "device float4 *structureCutDefects, device uint *updateData) {"
@@ -170,7 +199,7 @@ extension ShaderLibrary {
                 uint updateSlot = updateData[index];
                 device uint *updateTrace = updateData + u.nx * u.ny * u.nz;
                 if (updateSlot != 0) {
-                    uint q = (updateSlot - 1) * 24;
+                    uint q = (updateSlot - 1) * \(fieldCount);
                     updateTrace[q] = as_type<uint>(c.rho);
                     updateTrace[q + 1] = as_type<uint>(c.mx);
                     updateTrace[q + 2] = as_type<uint>(c.my);
@@ -195,18 +224,19 @@ extension ShaderLibrary {
                     updateTrace[q + 21] = as_type<uint>(dt);
                     updateTrace[q + 22] = as_type<uint>(float(u.axis));
                     updateTrace[q + 23] = as_type<uint>(float(control.activeSteps));
+                    \(extra)
                 }
             """)
         var siblings = helper
-        for name in ["sweep", "sweepTiles"] {
+        for name in (compensated ? ["sweepCompensated", "sweepTilesCompensated"] : ["sweep", "sweepTiles"]) {
             var kernel = try function("kernel void \(name)(")
             kernel = try replace(kernel, "kernel void \(name)(", "kernel void \(name)Updates(")
             let position =
-                name == "sweep"
+                !name.hasPrefix("sweepTiles")
                 ? "uint3 tid [[thread_position_in_grid]]) {"
                 : "uint3 group [[threadgroup_position_in_grid]],"
             kernel = try replace(kernel, position, "device uint *updateData [[buffer(30)]],\n" + position)
-            kernel = try replace(kernel, "sweepCell(", "sweepCellUpdates(")
+            kernel = try replace(kernel, "\(cellName)(", "\(cellName)Updates(")
             kernel = try replace(
                 kernel, "structureCutDefects);", "structureCutDefects, updateData);")
             siblings += "\n" + kernel

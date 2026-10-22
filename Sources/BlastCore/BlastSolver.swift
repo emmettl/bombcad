@@ -183,6 +183,7 @@ public final class BlastSolver {
     var terrainCut: TerrainCutBuffers?
     /// `CellKernels` for each gas model used so far, with gravity compiled in or not.
     var sweepUpdateCapture: SweepUpdateCapture?
+    var compensatedSweep: CompensatedSweep?
     var cellKernelsByModel: [Int: CellKernels] = [:]
     let wakeTilesPipeline: MTLComputePipelineState
     let preparePipeline: MTLComputePipelineState

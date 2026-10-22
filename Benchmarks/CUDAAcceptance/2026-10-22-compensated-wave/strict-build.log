@@ -1,0 +1,26 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 3 / 40]
+[8 / 80] SceneModel
+[12 / 110]
+[20 / 109] SceneModel
+[34 / 118] SceneModel
+[46 / 108] SceneView
+[56 / 101] BlastModel
+[58 / 102] BlastModel
+[65 / 102] BlastCore
+[67 / 103] BlastCore
+[72 / 99] BlastRender
+[74 / 100] BlastRender
+[81 / 88] BombCADTests-product
+[81 / 87] blastbench-product
+[83 / 89] blastbench-product
+[83 / 89] BlastCoreTests-product
+[83 / 89] blastbench-product
+[86 / 93] blastbench-product
+[88 / 93] BlastCoreTests-product
+[93 / 97] BlastCoreTests-product
+[95 / 97] BlastCoreTests-product
+Build complete! (13.40 secs)
+build-strict: no warnings

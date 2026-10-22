@@ -1,0 +1,20 @@
+{
+  "status": "complete",
+  "standardFocusedMethods": 6,
+  "releaseFocusedMethods": 6,
+  "pairedComponentPolicyRetentionTilingCases": 24,
+  "macIntegratedTests": 579,
+  "pcIntegratedTests": 253,
+  "pcSuites": 62,
+  "ordinaryDigestVariants": 42,
+  "ordinaryDigestSets": 6,
+  "digestBase": "8515944056f6ec5812655e6b6fc36b283d3108d3",
+  "currentSourcePinsMatch": 524,
+  "currentReleaseExecutableStillMatches": false,
+  "scope": "Implementation only; no scientific wave matrix outcomes.",
+  "postVerificationReleaseExecutable": {
+    "path": "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+    "sha256": "bbaf51be5b6e546b6ebbc17a124df0b0b7594b033fd39b1db0a3cd7d45dd76fb"
+  },
+  "executablePinScope": "The initial pin identifies the release binary used for early CLI refusal checks. Subsequent integrated/release-test builds rebuilt the mutable cache; no scientific matrix used either binary."
+}

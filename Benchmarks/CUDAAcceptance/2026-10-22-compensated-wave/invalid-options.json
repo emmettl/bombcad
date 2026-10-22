@@ -1,0 +1,45 @@
+{
+  "status": "complete",
+  "checks": [
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-0",
+        "--compensated",
+        "invalid"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it\n",
+      "stderr": "",
+      "outputCreated": false
+    },
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-1",
+        "--compensated"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it\n",
+      "stderr": "",
+      "outputCreated": false
+    },
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-2",
+        "--discard-compensation"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it\n",
+      "stderr": "",
+      "outputCreated": false
+    }
+  ]
+}

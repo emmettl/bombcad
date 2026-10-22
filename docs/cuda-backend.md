@@ -888,3 +888,11 @@ it preserves the tested small density/energy increments, but still fails a large
 adversary. emmettl/bombcad-work#81 therefore retains only the protected helper as a bounded
 PDE candidate; full component-wise wave/conservation/stability controls remain. No production
 solver, numerical default or CUDA admission change.
+
+
+The [protected sweep implementation gate](../Benchmarks/CUDAAcceptance/2026-10-22-compensated-wave/implementation.md)
+adds guarded opt-in density/energy compensation and a matching protected-arithmetic
+no-carry control. Residual hashes and actual update words support replay/parity audits;
+ordinary source and numerical defaults are preserved. The predeclared 1296-export wave
+matrix and its independent-reference/conservation analysis remain pending in
+emmettl/bombcad-work#81. Implementation tests alone do not establish improved wave accuracy.

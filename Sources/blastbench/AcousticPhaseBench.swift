@@ -12,6 +12,14 @@ func runAcousticPhase() throws {
     guard let cfl = Float(cflText), [Float(0.45), 0.225].contains(cfl) else {
         throw BlastError.allocationFailed("acoustic-phase --cfl takes 0.45 or 0.225")
     }
+    let componentText = option("compensated")
+    let components = componentText.flatMap(CompensatedSweepComponents.init(rawValue:))
+    let discardResiduals = flag("discard-compensation")
+    guard (!flag("compensated") || components != nil) && (!discardResiduals || components != nil) else {
+        throw BlastError.allocationFailed(
+            "acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it")
+    }
+    let methodName = discardResiduals ? "protected-update-no-carry-v1" : "protected-kahan-v1"
     let resolutions = flag("fine") ? [512, 1024, 2048] : [128, 256, 512]
     let out = URL(fileURLWithPath: destination)
     guard !FileManager.default.fileExists(atPath: out.path) else {
@@ -51,12 +59,15 @@ func runAcousticPhase() throws {
                             velocity: SIMD3(Float(reference.velocity(x: x, time: 0)), 0, 0),
                             pressure: Float(reference.ambientPressure + p))
                     }
+                    if let components {
+                        try solver.configureCompensatedSweep(components, retainResiduals: !discardResiduals)
+                    }
                     try solver.configureFirstPhaseColumns(Array(repeating: SIMD4(0, 0, 0, 1), count: nx))
                     if observed { try solver.configureFirstPhaseDiagnostics(indices, capturePressure: true) }
                     if updates {
-                        try solver.configureSweepUpdateDiagnostics([
-                            0, nx / 4, nx / 2 - 1, nx / 2, nx / 2 + 1,
-                        ])
+                        var cells = [0, nx / 4, nx / 2 - 1, nx / 2, nx / 2 + 1]
+                        if components != nil { cells.append(nx - 1) }
+                        try solver.configureSweepUpdateDiagnostics(cells)
                     }
                     let initialPressure = (0..<nx).map {
                         solver.primitive($0, 0, 0).pressure - configuration.ambientPressure
@@ -65,10 +76,13 @@ func runAcousticPhase() throws {
                         (0..<nx).map { i in [cells[i].density, cells[i].momentumX, cells[i].energy] }
                     }
                     let initial = solver.firstPhaseDiagnosticStateHashes()
+                    let initialResidual = solver.compensatedSweepState()
+                    let started = ContinuousClock.now
                     let advanced = solver.advance(until: reference.stopTime)
+                    let duration = started.duration(to: .now)
                     let final = solver.firstPhaseDiagnosticStateHashes()
                     let records = solver.firstPhaseSnapshot() ?? []
-                    let row: [String: Any] = [
+                    var row: [String: Any] = [
                         "initialHostProjectedOverpressurePa": initialPressure,
                         "initialConservedRhoMxEnergy": initialConserved, "gamma": configuration.gamma,
                         "cfl": cfl,
@@ -79,11 +93,30 @@ func runAcousticPhase() throws {
                             [records[i].x, records[i].y, records[i].z, records[i].w]
                         },
                     ]
+                    if let components, let initialResidual, let finalResidual = solver.compensatedSweepState()
+                    {
+                        row["experimentalMethod"] =
+                            discardResiduals ? "protected-update-no-carry-v1" : "protected-kahan-v1"
+                        row["compensationComponents"] = components.rawValue
+                        row["initialResidualBits"] = initialResidual.map {
+                            [$0.x, $0.y, $0.z, $0.w].map(\.bitPattern)
+                        }
+                        row["finalResidualBits"] = finalResidual.map {
+                            [$0.x, $0.y, $0.z, $0.w].map(\.bitPattern)
+                        }
+                        row["finalConservedRhoMxEnergy"] = solver.withState { cells in
+                            (0..<nx).map { i in [cells[i].density, cells[i].momentumX, cells[i].energy] }
+                        }
+                        row["heldGPUBufferBytes"] = solver.memoryFootprint
+                        row["advanceWallSeconds"] =
+                            Double(duration.components.seconds) + Double(duration.components.attoseconds)
+                            / 1e18
+                    }
                     pair.append(row)
                     try write(row, "\(name)-\(outputMode).json")
                     if observed {
                         let trace = try solver.firstPhasePressureTrace()
-                        let traceRow: [String: Any] = [
+                        var traceRow: [String: Any] = [
                             "format": "bombcad-acoustic-phase-trace-1",
                             "complete": advanced.isStable && solver.time >= reference.stopTime * (1 - 1e-6),
                             "amplitudePa": amplitude, "nx": nx, "dx": dx, "tiled": tiled, "cfl": cfl,
@@ -98,15 +131,21 @@ func runAcousticPhase() throws {
                             },
                             "soundSpeed": reference.soundSpeed,
                         ]
+                        if let components {
+                            traceRow["experimentalMethod"] = methodName
+                            traceRow["compensationComponents"] = components.rawValue
+                        }
                         try write(
                             traceRow, updates ? "\(name)-update-pressure-trace.json" : "\(name)-trace.json")
                     }
                     if updates {
                         let trace = try solver.sweepUpdateTrace()
-                        let row: [String: Any] = [
-                            "format": "bombcad-production-sweep-updates-1",
+                        var row: [String: Any] = [
+                            "format": components == nil
+                                ? "bombcad-production-sweep-updates-1"
+                                : "bombcad-compensated-sweep-updates-1",
                             "complete": advanced.isStable && solver.time >= reference.stopTime * (1 - 1e-6),
-                            "fields": SweepUpdateTrace.fields, "valueEncoding": "uint32-ieee754-binary32",
+                            "fields": trace.capturedFields, "valueEncoding": "uint32-ieee754-binary32",
                             "indices": trace.indices,
                             "initialStates": trace.initialStates, "finalStates": trace.finalStates,
                             "steps": trace.samples.map(\.step), "times": trace.samples.map(\.time),
@@ -117,6 +156,10 @@ func runAcousticPhase() throws {
                             "initialStateBits": trace.initialStates.map { $0.map(\.bitPattern) },
                             "finalStateBits": trace.finalStates.map { $0.map(\.bitPattern) },
                         ]
+                        if let components {
+                            row["experimentalMethod"] = methodName
+                            row["compensationComponents"] = components.rawValue
+                        }
                         try write(row, "\(name)-update-trace.json")
                     }
                 }

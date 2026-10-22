@@ -91,7 +91,9 @@ extension BlastSolver {
     func encodeBatchPart(
         steps: Int, range: Range<Int>, timeLimit: Double?, updateVisualization: Bool
     ) -> MTLCommandBuffer? {
-        guard sweepUpdateCapture == nil || supportsSweepUpdateDiagnostics else { return nil }
+        guard sweepUpdateCapture == nil || supportsSweepUpdateDiagnostics,
+            compensatedSweep == nil || supportsCompensatedSweep
+        else { return nil }
         let first = range.lowerBound == 0
         let last = range.upperBound == steps
         // A charge due now is laid down before the batch, which then stops at the next one's time.
@@ -174,8 +176,9 @@ extension BlastSolver {
         }
 
         let extents = [grid.nx, grid.ny, grid.nz]
-        let sweepPipeline = sweepUpdateCapture?.sweep ?? kernels.sweep
-        let tiledSweepPipeline = sweepUpdateCapture?.sweepTiles ?? kernels.sweepTiles
+        let sweepPipeline = sweepUpdateCapture?.sweep ?? compensatedSweep?.sweep ?? kernels.sweep
+        let tiledSweepPipeline =
+            sweepUpdateCapture?.sweepTiles ?? compensatedSweep?.sweepTiles ?? kernels.sweepTiles
         let tileThreads = Self.tileThreads(for: tiledSweepPipeline)
         if first {
             if stepCount % Self.checkpointInterval == 0 || checkpointSubsteps == 0 {
@@ -305,7 +308,8 @@ extension BlastSolver {
             encoder.setBuffer(structureCut?.index ?? noSpecies, offset: 0, index: 26)
             encoder.setBuffer(structureCut?.records ?? noSpecies, offset: 0, index: 27)
             encoder.setBuffer(structureCut?.walls ?? noSpecies, offset: 0, index: 28)
-            encoder.setBuffer(structureCut?.defects ?? noSpecies, offset: 0, index: 29)
+            encoder.setBuffer(
+                compensatedSweep?.residuals ?? structureCut?.defects ?? noSpecies, offset: 0, index: 29)
             for (n, axis) in axes.enumerated() where !asleep {
                 if configuration.periodicSides { encodePeriodicHalo(encoder, uniforms: uniforms) }
                 uniforms.axis = UInt32(axis)
