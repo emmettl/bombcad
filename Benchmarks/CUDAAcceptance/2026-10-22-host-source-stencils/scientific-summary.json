@@ -1,0 +1,3377 @@
+{
+  "schema": "bombcad-host-source-summary-1",
+  "inputSHA256": "df15f55b2dba03fac9fac0c1552b8ab4b2df6e557a9223399a6ee300ddd002e4",
+  "allObservationAndPriorGates": true,
+  "allFullTiledFinalParity": true,
+  "allFullTiledSourceHistories": true,
+  "all": {
+    "caseGroups": 432,
+    "statuses": {
+      "audited": 432
+    },
+    "eligibleObservationGroups": 432,
+    "executedOpportunities": 8227928,
+    "skippedOpportunities": 814552,
+    "models": {
+      "pair64": {
+        "cases": 432,
+        "reconstructionFallbacks": 0,
+        "nonzeroModelFaceDifferenceCount": [
+          7380696,
+          7380686,
+          7380700
+        ],
+        "equalNativeFacesForNonzeroModelDifference": [
+          468786,
+          3739976,
+          357430
+        ],
+        "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+          0.003931041988898374,
+          7.930600202464894,
+          741.5772599477735
+        ],
+        "maximumAbsoluteFluxDifferenceErrorByComponent": [
+          0.00016786114214061481,
+          0.02495123971311841,
+          47.962222189841896
+        ],
+        "maximumAbsoluteConditionalDeltaErrorByComponent": [
+          2.2197530443803654e-07,
+          3.296742070436388e-05,
+          0.06337154851026566
+        ]
+      },
+      "roundedFaces64": {
+        "cases": 432,
+        "reconstructionFallbacks": 0,
+        "nonzeroModelFaceDifferenceCount": [
+          7367246,
+          7365334,
+          7365772
+        ],
+        "equalNativeFacesForNonzeroModelDifference": [
+          455822,
+          3724626,
+          343924
+        ],
+        "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+          0.0041389308660459544,
+          7.806993481446133,
+          743.157666622092
+        ],
+        "maximumAbsoluteFluxDifferenceErrorByComponent": [
+          0.00016792408771102547,
+          0.030420083887293003,
+          48.66322930516798
+        ],
+        "maximumAbsoluteConditionalDeltaErrorByComponent": [
+          2.2204172997361082e-07,
+          4.0193261533500477e-05,
+          0.06429777553617558
+        ]
+      },
+      "roundedPrimitive64": {
+        "cases": 432,
+        "reconstructionFallbacks": 0,
+        "nonzeroModelFaceDifferenceCount": [
+          7370810,
+          7369702,
+          7369986
+        ],
+        "equalNativeFacesForNonzeroModelDifference": [
+          458910,
+          3728992,
+          347374
+        ],
+        "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+          0.0041632538721436034,
+          7.501551573152527,
+          751.1822804555857
+        ],
+        "maximumAbsoluteFluxDifferenceErrorByComponent": [
+          0.00016522020866311185,
+          0.027230162435444072,
+          45.30367471590113
+        ],
+        "maximumAbsoluteConditionalDeltaErrorByComponent": [
+          2.1848300118551696e-07,
+          3.44115434903966e-05,
+          0.05985886159711917
+        ]
+      },
+      "roundedSlope64": {
+        "cases": 432,
+        "reconstructionFallbacks": 0,
+        "nonzeroModelFaceDifferenceCount": [
+          7376396,
+          7376380,
+          7376396
+        ],
+        "equalNativeFacesForNonzeroModelDifference": [
+          464486,
+          3735670,
+          353128
+        ],
+        "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+          0.004034625715194919,
+          7.838370872927552,
+          751.5221696758928
+        ],
+        "maximumAbsoluteFluxDifferenceErrorByComponent": [
+          0.00016917106444296924,
+          0.02439853234682232,
+          47.962221486222205
+        ],
+        "maximumAbsoluteConditionalDeltaErrorByComponent": [
+          2.2369057544046312e-07,
+          3.192299702757138e-05,
+          0.06337154758058669
+        ]
+      },
+      "separate32": {
+        "cases": 432,
+        "reconstructionFallbacks": 0,
+        "nonzeroModelFaceDifferenceCount": [
+          6929904,
+          3820626,
+          6941720
+        ],
+        "equalNativeFacesForNonzeroModelDifference": [
+          86480,
+          413568,
+          62826
+        ],
+        "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+          0.0024280220146019917,
+          2.5428381002039657,
+          357.00577829916017
+        ],
+        "maximumAbsoluteFluxDifferenceErrorByComponent": [
+          0.00016226491425186396,
+          0.015625,
+          47.853848457336426
+        ],
+        "maximumAbsoluteConditionalDeltaErrorByComponent": [
+          2.1457490823132519e-07,
+          2.06621662073303e-05,
+          0.056249546989193266
+        ],
+        "wholeTraceCapturedFluxWordDifferences": 20908970,
+        "casesWithWholeTraceCapturedFluxEquality": 0
+      },
+      "stored64": {
+        "cases": 432,
+        "reconstructionFallbacks": 0,
+        "nonzeroModelFaceDifferenceCount": [
+          7376396,
+          7376380,
+          7376396
+        ],
+        "equalNativeFacesForNonzeroModelDifference": [
+          464486,
+          3735670,
+          353128
+        ],
+        "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+          0.0040346257149801515,
+          7.838370873939859,
+          751.5221696519467
+        ],
+        "maximumAbsoluteFluxDifferenceErrorByComponent": [
+          0.00016917106477329266,
+          0.024398530324106105,
+          47.96222151149898
+        ],
+        "maximumAbsoluteConditionalDeltaErrorByComponent": [
+          2.2369057587724135e-07,
+          3.1922990682639856e-05,
+          0.06337154761398439
+        ]
+      }
+    }
+  },
+  "strata": {
+    "amplitudePa=1": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 2745909,
+      "skippedOpportunities": 267291,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2468114,
+            2468106,
+            2468114
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            159668,
+            1305818,
+            124160
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013271071111970723,
+            2.7937900071074813,
+            250.75984177742092
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.021433814996271394,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            2.834353173339173e-05,
+            0.05901247722495703
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2460310,
+            2459448,
+            2459622
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            151974,
+            1297162,
+            116118
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013767290121424634,
+            2.731937292747804,
+            243.933684885003
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016013038314658523,
+            0.02185974008170888,
+            43.82089805517484
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1175249452675411e-07,
+            2.7810781759235397e-05,
+            0.05794764600569768
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2461490,
+            2461126,
+            2461164
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            153054,
+            1298838,
+            117376
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013786758236011513,
+            2.623606522342199,
+            244.9624359781248
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.019719885734957643,
+            43.72607699410274
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            2.2636865060960413e-05,
+            0.05782225194510065
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2466702,
+            2466690,
+            2466702
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            158256,
+            1304402,
+            122750
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001361727778267457,
+            2.7585924408023983,
+            251.95225624311837
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016292440101052763,
+            0.021082185543491505,
+            44.7483129356299
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1544708354481211e-07,
+            2.559159578005812e-05,
+            0.05618531718756076
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2316992,
+            1224644,
+            2317538
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            29464,
+            143134,
+            20554
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0008432055515391428,
+            0.8765341640574604,
+            114.91677373589877
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            42.53675079345703
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.06621662073303e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 6951548,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2466702,
+            2466690,
+            2466702
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            158256,
+            1304402,
+            122750
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013617277781568476,
+            2.7585924410543146,
+            251.95225624238023
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016292440089995196,
+            0.021082186067360453,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1544708339858966e-07,
+            2.5591595876273528e-05,
+            0.05618531718756076
+          ]
+        }
+      }
+    },
+    "amplitudePa=10": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 2736059,
+      "skippedOpportunities": 277429,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2446868,
+            2446866,
+            2446872
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            165756,
+            1229142,
+            127474
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012976086804763513,
+            2.595942719994552,
+            246.18475911222993
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001668298554008108,
+            0.021448092316859402,
+            45.07074547546542
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2059485455231212e-07,
+            2.8234948567961674e-05,
+            0.05959589498437133
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2443636,
+            2442708,
+            2442940
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            162846,
+            1224984,
+            124378
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0014018592741756933,
+            2.5758251335280358,
+            255.66715877634257
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.024460192667902447,
+            45.38752543061498
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            3.2343099088311e-05,
+            0.06001476502393
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2444740,
+            2444046,
+            2444258
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            163628,
+            1226322,
+            125340
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0014078639469640387,
+            2.484257101065825,
+            258.3323787223509
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015516219614469435,
+            0.018620554241351783,
+            41.09606668800119
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0516715138454922e-07,
+            2.3652783882998425e-05,
+            0.05434027879441345
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2444886,
+            2444882,
+            2444886
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            163774,
+            1227158,
+            125488
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001347128250353933,
+            2.5676808314974733,
+            254.3378717951266
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.019859552616253495,
+            45.748523978130706
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            2.5856486635682263e-05,
+            0.060492104178192924
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2285082,
+            1278016,
+            2290856
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            27954,
+            136878,
+            20614
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0007773941599499956,
+            0.845797189834002,
+            119.60921269001152
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226485422521364,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1455873123316777e-07,
+            2.0661153030232526e-05,
+            0.056245287258083254
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 6959866,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2444886,
+            2444882,
+            2444886
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            163774,
+            1227158,
+            125488
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013471282503387018,
+            2.5676808313200596,
+            254.33787177824448
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.019859554900904186,
+            45.748524072555
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            2.5856489464202233e-05,
+            0.06049210430304775
+          ]
+        }
+      }
+    },
+    "amplitudePa=100": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 2745960,
+      "skippedOpportunities": 269832,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2465714,
+            2465714,
+            2465714
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            143362,
+            1205016,
+            105796
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013063261972249501,
+            2.5408674753628606,
+            244.63265905812273
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015362662893745146,
+            0.02495123971311841,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0298277684175455e-07,
+            3.296742070436388e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2463300,
+            2463178,
+            2463210
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            141002,
+            1202480,
+            103428
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001360342579727798,
+            2.4992310551702936,
+            243.5568229607465
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001656862797788215,
+            0.030420083887293003,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.189168725936046e-07,
+            4.0193261533500477e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2464580,
+            2464530,
+            2464564
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            142228,
+            1203832,
+            104658
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013767141015784132,
+            2.393687949744504,
+            247.88746575511004
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015658943618379606,
+            0.027230162435444072,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.8938897187965402e-07,
+            3.44115434903966e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2464808,
+            2464808,
+            2464808
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            142456,
+            1204110,
+            104890
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001325769686573529,
+            2.5120976006276803,
+            245.23204163764774
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001536266396303814,
+            0.02439853234682232,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0298279097003832e-07,
+            3.192299702757138e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2327830,
+            1317966,
+            2333326
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            29062,
+            133556,
+            21658
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0008074223031128534,
+            0.8205067463125033,
+            122.47979187324988
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226485604420304,
+            0.015625,
+            42.53677749633789
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.6085327999143517e-07,
+            2.0650770238717087e-05,
+            0.05620291870507099
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 6997556,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2464808,
+            2464808,
+            2464808
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            142456,
+            1204110,
+            104890
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013257696864846023,
+            2.512097601565485,
+            245.23204163132192
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001536266399007297,
+            0.024398530324106105,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0298279132724236e-07,
+            3.1922990682639856e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    },
+    "cfl=0.225": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 5486061,
+      "skippedOpportunities": 540915,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4923288,
+            4923288,
+            4923292
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            351014,
+            2909318,
+            270196
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0018732578711321433,
+            4.6645028661842955,
+            357.82843612919163
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015785578141787763,
+            0.024398530324106105,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.0437229009415593e-07,
+            1.611851189194883e-05,
+            0.02958702318317929
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4911020,
+            4909522,
+            4909848
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            339170,
+            2895554,
+            257796
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.00207233639783885,
+            4.601833542470131,
+            365.4731112198618
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016133124154255052,
+            0.02659639214107301,
+            44.97187300570944
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.06581056507924e-07,
+            1.7570555701939064e-05,
+            0.029710422945549472
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4914056,
+            4913094,
+            4913320
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            341786,
+            2899124,
+            260804
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002083601980880094,
+            4.535141545604068,
+            372.11762538890025
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015658943618379606,
+            0.027230162435444072,
+            42.755306250840846
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.0344845416718222e-07,
+            1.7989407773856938e-05,
+            0.02826867468264755
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4919168,
+            4919150,
+            4919168
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            346894,
+            2905180,
+            266072
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001969877474797348,
+            4.633550464754019,
+            367.32136977226423
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624285514472,
+            0.02439853234682232,
+            44.7483129356299
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.0221624800050325e-07,
+            1.611851322822497e-05,
+            0.029587023189727606
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4582196,
+            2187756,
+            4588896
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            60314,
+            338068,
+            46764
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0011878306572395776,
+            1.7540304556131048,
+            197.89218164251517
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.0728751738334313e-07,
+            1.0331084922654554e-05,
+            0.03163795936852193
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 13929412,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4919168,
+            4919150,
+            4919168
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            346894,
+            2905180,
+            266072
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001969877474926925,
+            4.63355046646969,
+            367.321369784935
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624276582,
+            0.024398530324106105,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.0221624794144719e-07,
+            1.611851189194883e-05,
+            0.02958702318317929
+          ]
+        }
+      }
+    },
+    "cfl=0.45": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 2741867,
+      "skippedOpportunities": 273637,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2457408,
+            2457398,
+            2457408
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            117772,
+            830658,
+            87234
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020577841177662304,
+            3.266097336280599,
+            383.74882381858197
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.02495123971311841,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            3.296742070436388e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2456226,
+            2455812,
+            2455924
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            116652,
+            829072,
+            86128
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020665944682071043,
+            3.205159938976002,
+            377.68455540223033
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.030420083887293003,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            4.0193261533500477e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2456754,
+            2456608,
+            2456666
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            117124,
+            829868,
+            86570
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002079651891263509,
+            2.9664100275484597,
+            379.0646550666854
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.02604429767234251,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            3.44115434903966e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2457228,
+            2457230,
+            2457228
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            117592,
+            830490,
+            87056
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002064748240397571,
+            3.204820408173533,
+            384.2007999036285
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.0241607724892674,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            3.192299702757138e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2347708,
+            1632870,
+            2352824
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            26166,
+            75500,
+            16062
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012401913573624143,
+            0.788807644590861,
+            159.113596656645
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226485058723483,
+            0.015625,
+            42.53677749633789
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.06621662073303e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 6979558,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2457228,
+            2457230,
+            2457228
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            117592,
+            830490,
+            87056
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020647482400532264,
+            3.20482040747017,
+            384.20079986701165
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.024160767687135376,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            3.1922990682639856e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    },
+    "components=both": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 2746290,
+      "skippedOpportunities": 267870,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2467762,
+            2467762,
+            2467762
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            177894,
+            1236696,
+            130628
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0014344265000800329,
+            2.597429614901686,
+            261.60441691631746
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001668298554008108,
+            0.02495123971311841,
+            45.07074547546542
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2059485455231212e-07,
+            3.296742070436388e-05,
+            0.05959589498437133
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2464824,
+            2464236,
+            2464364
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            175046,
+            1233170,
+            127700
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0015471905677250074,
+            2.5396278200322286,
+            266.16915797308224
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.030420083887293003,
+            45.38752543061498
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            4.0193261533500477e-05,
+            0.06001476502393
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2465402,
+            2465072,
+            2465160
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            175542,
+            1234006,
+            128264
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0015487113953441018,
+            2.462195573527356,
+            267.84456711595953
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015658943618379606,
+            0.02557238531881012,
+            42.75440259274954
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0244075664428465e-07,
+            3.305704133853759e-05,
+            0.05434027879441345
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2467230,
+            2467222,
+            2467230
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            177362,
+            1236156,
+            130096
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0014922660587791993,
+            2.539766110022071,
+            267.30195542856546
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.02439853234682232,
+            45.748523978130706
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            3.192299702757138e-05,
+            0.060492104178192924
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2291816,
+            1285014,
+            2298168
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            28686,
+            135162,
+            22598
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0008206489951371448,
+            0.8343774948057927,
+            127.37725219366945
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226485604420304,
+            0.015625,
+            42.53675580024719
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457430737317614e-07,
+            2.06621662073303e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 6979514,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2467230,
+            2467222,
+            2467230
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            177362,
+            1236156,
+            130096
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0014922660586455503,
+            2.539766110776091,
+            267.3019554014368
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.024398530324106105,
+            45.748524072555
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            3.1922990682639856e-05,
+            0.06049210430304775
+          ]
+        }
+      }
+    },
+    "components=density": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 2732878,
+      "skippedOpportunities": 281282,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2440158,
+            2440148,
+            2440162
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            143176,
+            1222974,
+            119056
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012717442748781055,
+            2.7197542944638955,
+            267.8249293571478
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624276582,
+            0.024398530324106105,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0298277684175455e-07,
+            3.097305763100425e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2438158,
+            2437620,
+            2437784
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            141212,
+            1220446,
+            117080
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012542271122873518,
+            2.6822305732200427,
+            259.9151086426062
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001656862797788215,
+            0.027321998961269855,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.189168725936046e-07,
+            3.60997029667273e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2438416,
+            2438046,
+            2438178
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            141436,
+            1220872,
+            117292
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012742347636214935,
+            2.5244488838459334,
+            264.906106773557
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015658943618379606,
+            0.02604429767234251,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.931876501586732e-07,
+            3.44115434903966e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2440142,
+            2440144,
+            2440142
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            143160,
+            1222970,
+            119036
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012717442583380012,
+            2.719754292231953,
+            267.82492890025077
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624285514472,
+            0.02439853234682232,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0298279097003832e-07,
+            3.0973726987187575e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2306870,
+            1289444,
+            2310024
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            29396,
+            143946,
+            21794
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0008498794748282053,
+            0.8780896237233833,
+            130.13978443049652
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457430737317614e-07,
+            2.0662151655415073e-05,
+            0.056202625192777855
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 6886178,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2440142,
+            2440144,
+            2440142
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            143160,
+            1222970,
+            119036
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012717442582542895,
+            2.719754291556412,
+            267.8249288920496
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624276582,
+            0.024398530324106105,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0298279132724236e-07,
+            3.0973732120847565e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    },
+    "components=energy": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 2748760,
+      "skippedOpportunities": 265400,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2472776,
+            2472776,
+            2472776
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            147716,
+            1280306,
+            107746
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012248712139402355,
+            2.6134162930993123,
+            212.1479136743083
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.024398530324106105,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            3.0376485746978592e-05,
+            0.05901247722495703
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2464264,
+            2463478,
+            2463624
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            139564,
+            1271010,
+            99144
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013375131860335955,
+            2.585135088193862,
+            217.0734000064037
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016133124154255052,
+            0.026484975300263613,
+            43.51703893867319
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.092619954012309e-07,
+            3.2343099088311e-05,
+            0.057545820271907376
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2466992,
+            2466584,
+            2466648
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            141932,
+            1274114,
+            101818
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001340307713178008,
+            2.514907115779238,
+            218.4316065660692
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.027230162435444072,
+            43.72607699410274
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            3.230627263842677e-05,
+            0.05782225194510065
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2469024,
+            2469014,
+            2469024
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            143964,
+            1276544,
+            103996
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012706153980777187,
+            2.578850470673528,
+            216.39528534707648
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016292440101052763,
+            0.02439853234682232,
+            44.7483129356299
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1544708354481211e-07,
+            3.0376486881375422e-05,
+            0.05618531718756076
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2331218,
+            1246168,
+            2333528
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            28398,
+            134460,
+            18434
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0007574935446366418,
+            0.8303709816747897,
+            99.48874167499422
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226485604420304,
+            0.015625,
+            42.53677749633789
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.0662157112383284e-05,
+            0.056245287258083254
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 7043278,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2469024,
+            2469014,
+            2469024
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            143964,
+            1276544,
+            103996
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012706153980803119,
+            2.5788504716073564,
+            216.39528535846017
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016292440089995196,
+            0.024398530324106105,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1544708339858966e-07,
+            3.0376485746978592e-05,
+            0.05618531718756076
+          ]
+        }
+      }
+    },
+    "method=protected-kahan-v1": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 4115438,
+      "skippedOpportunities": 405802,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3694502,
+            3694492,
+            3694506
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            273644,
+            1782060,
+            190608
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002281101406897556,
+            3.671790390881184,
+            392.9499217096903
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.02495123971311841,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            3.296742070436388e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3686508,
+            3685400,
+            3685688
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            266108,
+            1772970,
+            182492
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0025307071507442687,
+            3.6142557913978632,
+            410.9619253402404
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.030420083887293003,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            4.0193261533500477e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3689570,
+            3689052,
+            3689212
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            268722,
+            1776620,
+            185506
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002533391906632406,
+            3.541700770802953,
+            413.680571971644
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.027230162435444072,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            3.44115434903966e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3690202,
+            3690186,
+            3690202
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            269344,
+            1777754,
+            186306
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0023846851331577284,
+            3.5795610609511925,
+            402.8948314362116
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.0241607724892674,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            3.192299702757138e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3432522,
+            1954396,
+            3441360
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            50616,
+            176978,
+            35668
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013900383811037596,
+            1.113738106739092,
+            199.24580189412038
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.06621662073303e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 10573464,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3690202,
+            3690186,
+            3690202
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            269344,
+            1777754,
+            186306
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002384685132979334,
+            3.579561062356149,
+            402.8948314138633
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.024160767687135376,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            3.1922990682639856e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    },
+    "method=protected-update-no-carry-v1": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 4112490,
+      "skippedOpportunities": 408750,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3686194,
+            3686194,
+            3686194
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            195142,
+            1957916,
+            166822
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0016499405820008181,
+            4.258809811583711,
+            348.6273382380833
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624276582,
+            0.024398530324106105,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9689985432188337e-07,
+            3.0376485746978592e-05,
+            0.05618531718756076
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3680738,
+            3679934,
+            3680084
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            189714,
+            1951656,
+            161432
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0016082237153016857,
+            4.19273769004827,
+            332.1957412818517
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016133124154255052,
+            0.02659639214107301,
+            42.791162240728944
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9839193306712732e-07,
+            3.2343099088311e-05,
+            0.05569590909536133
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3681240,
+            3680650,
+            3680774
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            190188,
+            1952372,
+            161868
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001629861965511197,
+            3.959850802349574,
+            337.50170848394174
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015658943618379606,
+            0.02557238531881012,
+            42.75440259274954
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.904386356204567e-07,
+            3.230627263842677e-05,
+            0.05143333218619979
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3686194,
+            3686194,
+            3686194
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            195142,
+            1957916,
+            166822
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0016499405820371907,
+            4.258809811976359,
+            348.62733823968114
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624285514472,
+            0.02439853234682232,
+            44.7483129356299
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9689985407500106e-07,
+            3.0376486881375422e-05,
+            0.05618531718756076
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3497382,
+            1866230,
+            3500360
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            35864,
+            236590,
+            27158
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001037983633498232,
+            1.4290999934648738,
+            157.7599764050398
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226485604420304,
+            0.015625,
+            42.53675580024719
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457430737317614e-07,
+            2.0662128008552827e-05,
+            0.056202625192777855
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 10335506,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3686194,
+            3686194,
+            3686194
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            195142,
+            1957916,
+            166822
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0016499405820008181,
+            4.258809811583711,
+            348.6273382380833
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624276582,
+            0.024398530324106105,
+            44.748312925726026
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9689985432188337e-07,
+            3.0376485746978592e-05,
+            0.05618531718756076
+          ]
+        }
+      }
+    },
+    "nx=1024": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 2352828,
+      "skippedOpportunities": 231108,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2111082,
+            2111078,
+            2111082
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            144410,
+            1070410,
+            113850
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012964042785529642,
+            2.2733000030001453,
+            261.4301533615921
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016353482549151568,
+            0.023441662415280007,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1625444565461483e-07,
+            3.097305763100425e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2103454,
+            2102996,
+            2103200
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            137126,
+            1062328,
+            106468
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001324535505758106,
+            2.218442867974724,
+            252.42098109637396
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016013038314658523,
+            0.02542797106434591,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1175249452675411e-07,
+            2.9791496346552766e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2104674,
+            2104390,
+            2104524
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            138006,
+            1063722,
+            107410
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013291666387415747,
+            2.1366395292864127,
+            254.02532100084926
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015516219614469435,
+            0.027230162435444072,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0516715138454922e-07,
+            3.217195242214126e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2109400,
+            2109396,
+            2109400
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            142728,
+            1068728,
+            112168
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013219881804237765,
+            2.2463813121409366,
+            263.6490898060925
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016201539970847503,
+            0.023442169011104852,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1424519423408588e-07,
+            3.0973726987187575e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            1970190,
+            1097116,
+            1974032
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            24826,
+            122332,
+            18656
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0007375946178870784,
+            0.7474999962535094,
+            108.16489802626711
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226485604420304,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1455873123316777e-07,
+            2.0662164388340898e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 5993810,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            2109400,
+            2109396,
+            2109400
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            142728,
+            1068728,
+            112168
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0013219881803421475,
+            2.2463813123964336,
+            263.64908980446495
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016201539951372728,
+            0.023442172896466218,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.142451939765562e-07,
+            3.0973732120847565e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    },
+    "nx=2048": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 4694166,
+      "skippedOpportunities": 471114,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4211572,
+            4211566,
+            4211576
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            244878,
+            2146252,
+            180640
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020007956354643574,
+            4.556187540713577,
+            365.7578034389004
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.02495123971311841,
+            45.07074547546542
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            3.296742070436388e-05,
+            0.05959589498437133
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4206978,
+            4205564,
+            4205790
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            240398,
+            2140252,
+            175740
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0021402479686174875,
+            4.50585565612801,
+            373.5442694001615
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.030420083887293003,
+            45.38752543061498
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            4.0193261533500477e-05,
+            0.06001476502393
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4208902,
+            4208110,
+            4208256
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            242208,
+            2142796,
+            177842
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0021533492512644204,
+            4.3210072007997455,
+            377.77922866515115
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.02604429767234251,
+            43.72607699410274
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            3.44115434903966e-05,
+            0.05782225194510065
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4209688,
+            4209676,
+            4209688
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            242994,
+            2144362,
+            178752
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020691312525327327,
+            4.5025828516150925,
+            372.52347206573796
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.02439853234682232,
+            45.748523978130706
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            3.192299702757138e-05,
+            0.060492104178192924
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3981684,
+            2163994,
+            3986560
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            46186,
+            233554,
+            32480
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012427333634607368,
+            1.4412077501682177,
+            184.80408940262797
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            42.53677749633789
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.0662157112383284e-05,
+            0.056242154930777666
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 11877556,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            4209688,
+            4209676,
+            4209688
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            242994,
+            2144362,
+            178752
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002069131252416749,
+            4.502582852611822,
+            372.52347203766874
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.024398530324106105,
+            45.748524072555
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            3.1922990682639856e-05,
+            0.06049210430304775
+          ]
+        }
+      }
+    },
+    "nx=512": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "eligibleObservationGroups": 144,
+      "executedOpportunities": 1180934,
+      "skippedOpportunities": 112330,
+      "models": {
+        "pair64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            1058042,
+            1058042,
+            1058042
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            79498,
+            523314,
+            62940
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0006338420748810524,
+            1.1011126587511721,
+            114.38930314728105
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015510605961743058,
+            0.02312986648757942,
+            42.61618766614573
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9609285750659976e-07,
+            2.6568989304651472e-05,
+            0.05635458237507042
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            1056814,
+            1056774,
+            1056782
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            78298,
+            522046,
+            61716
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0006741473916703612,
+            1.0826949573433988,
+            117.19241612555663
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015238300719146397,
+            0.024586865183664486,
+            44.97187300570944
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9525252360534215e-07,
+            2.6933849212064202e-05,
+            0.05247184231681117
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            1057234,
+            1057202,
+            1057206
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            78696,
+            522474,
+            62122
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.000680737982137608,
+            1.043904843066369,
+            119.37773078958531
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001546062439044388,
+            0.025018969477969222,
+            42.755306250840846
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.904386356204567e-07,
+            3.305704133853759e-05,
+            0.0523574144871663
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            1057308,
+            1057308,
+            1057308
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            78764,
+            522580,
+            62208
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0006435062822384098,
+            1.0894067091715223,
+            115.34960780406229
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624285514472,
+            0.022088851561420597,
+            42.39464110708876
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9609287086741456e-07,
+            2.7725077260192313e-05,
+            0.05601654479472881
+          ]
+        },
+        "separate32": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            978030,
+            559516,
+            981128
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            15468,
+            57682,
+            11690
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0004476940332541766,
+            0.35413035378223867,
+            64.03679087026508
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001352724248135928,
+            0.015625,
+            39.11654317378998
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.618873065111145e-07,
+            2.06621662073303e-05,
+            0.05052945796120589
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 3037604,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 144,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            1057308,
+            1057308,
+            1057308
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            78764,
+            522580,
+            62208
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0006435062822212553,
+            1.089406708931603,
+            115.34960780981292
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015460624276582,
+            0.022088880592491478,
+            42.39464109868889
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.9609285750659976e-07,
+            2.7725069857742566e-05,
+            0.05601654478362998
+          ]
+        }
+      }
+    },
+    "policy=default": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 4108969,
+      "skippedOpportunities": 412271,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3680924,
+            3680918,
+            3680924
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            260734,
+            1881376,
+            172172
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020705200228257987,
+            3.799207115506456,
+            285.3378812305134
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001668298554008108,
+            0.02312986648757942,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2059485455231212e-07,
+            2.9278818372420815e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3670644,
+            3669972,
+            3670236
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            250848,
+            1870432,
+            162166
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0022076561229765145,
+            3.7598208972635003,
+            276.6900322392299
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.02659639214107301,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            3.013652571736249e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3672646,
+            3672254,
+            3672420
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            252458,
+            1872712,
+            163904
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0022096455733950793,
+            3.6107083314142394,
+            278.11745155368226
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00015310040765337854,
+            0.02526866960397456,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.0244075664428465e-07,
+            3.305704133853759e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3677562,
+            3677552,
+            3677562
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            257372,
+            1878010,
+            168810
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0021175978613863435,
+            3.7617588803812207,
+            284.74314149985656
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.02246479768655263,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            2.968233815829743e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3445254,
+            1800400,
+            3446152
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            37436,
+            2488,
+            8812
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0010260055642481861,
+            0.015472579646484519,
+            52.44372671761068
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00012359660468064249,
+            0.0078125,
+            39.455692291259766
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            1.6077467240448347e-07,
+            1.0331079465686344e-05,
+            0.05052945796120589
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 10978434,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3677562,
+            3677552,
+            3677562
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            257372,
+            1878010,
+            168810
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.002117597861225388,
+            3.7617588818011995,
+            284.7431415168467
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.022464791167294607,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            2.96823295445176e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    },
+    "policy=unfused": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 4118959,
+      "skippedOpportunities": 402281,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3699772,
+            3699768,
+            3699776
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            208052,
+            1858600,
+            185258
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0018605219660725754,
+            4.131393086958438,
+            456.2393787172602
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.02495123971311841,
+            42.61618766614573
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            3.296742070436388e-05,
+            0.05635458237507042
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3696602,
+            3695362,
+            3695536
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            204974,
+            1854194,
+            181758
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0019312747430694401,
+            4.047172584182633,
+            466.46763438286223
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.0001656862797788215,
+            0.030420083887293003,
+            44.97187300570944
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.189168725936046e-07,
+            4.0193261533500477e-05,
+            0.057545820271907376
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3698164,
+            3697448,
+            3697566
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            206452,
+            1856280,
+            183470
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001953608298748524,
+            3.890843241738288,
+            473.0648289019034
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.027230162435444072,
+            42.755306250840846
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            3.44115434903966e-05,
+            0.053266666816024745
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3698834,
+            3698828,
+            3698834
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            207114,
+            1857660,
+            184318
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0019170278538085757,
+            4.076611992546331,
+            466.77902817603615
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016292440101052763,
+            0.02439853234682232,
+            42.48826906091185
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1544708354481211e-07,
+            3.192299702757138e-05,
+            0.05618531718756076
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3484650,
+            2020226,
+            3495568
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            49044,
+            411080,
+            54014
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0014020164503538057,
+            2.527365520557481,
+            304.5620515815495
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.06621662073303e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 9930536,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3698834,
+            3698828,
+            3698834
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            207114,
+            1857660,
+            184318
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0019170278537547635,
+            4.07661199213866,
+            466.7790281350999
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016292440089995196,
+            0.024398530324106105,
+            42.48826906091185
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1544708339858966e-07,
+            3.1922990682639856e-05,
+            0.05618531718756076
+          ]
+        }
+      }
+    },
+    "tiled=False": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 4521240,
+      "skippedOpportunities": 0,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3690348,
+            3690343,
+            3690350
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            234393,
+            1869988,
+            178715
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001965520994449187,
+            3.965300101232447,
+            370.78862997388677
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.02495123971311841,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            3.296742070436388e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3683623,
+            3682667,
+            3682886
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            227911,
+            1862313,
+            171962
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020694654330229772,
+            3.9034967407230665,
+            371.578833311046
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.030420083887293003,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            4.0193261533500477e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3685405,
+            3684851,
+            3684993
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            229455,
+            1864496,
+            173687
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020816269360718017,
+            3.7507757865762636,
+            375.59114022779283
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.027230162435444072,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            3.44115434903966e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3688198,
+            3688190,
+            3688198
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            232243,
+            1867835,
+            176564
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020173128575974595,
+            3.919185436463776,
+            375.7610848379464
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.02439853234682232,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            3.192299702757138e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3464952,
+            1910313,
+            3470860
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            43240,
+            206784,
+            31413
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012140110073009958,
+            1.2714190501019829,
+            178.50288914958008
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.06621662073303e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 10866756,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3688198,
+            3688190,
+            3688198
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            232243,
+            1867835,
+            176564
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020173128574900757,
+            3.9191854369699297,
+            375.76108482597334
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.024398530324106105,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            3.1922990682639856e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    },
+    "tiled=True": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "eligibleObservationGroups": 216,
+      "executedOpportunities": 3706688,
+      "skippedOpportunities": 814552,
+      "models": {
+        "pair64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3690348,
+            3690343,
+            3690350
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            234393,
+            1869988,
+            178715
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.001965520994449187,
+            3.965300101232447,
+            370.78862997388677
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016786114214061481,
+            0.02495123971311841,
+            47.962222189841896
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2197530443803654e-07,
+            3.296742070436388e-05,
+            0.06337154851026566
+          ]
+        },
+        "roundedFaces64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3683623,
+            3682667,
+            3682886
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            227911,
+            1862313,
+            171962
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020694654330229772,
+            3.9034967407230665,
+            371.578833311046
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016792408771102547,
+            0.030420083887293003,
+            48.66322930516798
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2204172997361082e-07,
+            4.0193261533500477e-05,
+            0.06429777553617558
+          ]
+        },
+        "roundedPrimitive64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3685405,
+            3684851,
+            3684993
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            229455,
+            1864496,
+            173687
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020816269360718017,
+            3.7507757865762636,
+            375.59114022779283
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016522020866311185,
+            0.027230162435444072,
+            45.30367471590113
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1848300118551696e-07,
+            3.44115434903966e-05,
+            0.05985886159711917
+          ]
+        },
+        "roundedSlope64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3688198,
+            3688190,
+            3688198
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            232243,
+            1867835,
+            176564
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020173128575974595,
+            3.919185436463776,
+            375.7610848379464
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106444296924,
+            0.02439853234682232,
+            47.962221486222205
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057544046312e-07,
+            3.192299702757138e-05,
+            0.06337154758058669
+          ]
+        },
+        "separate32": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3464952,
+            1910313,
+            3470860
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            43240,
+            206784,
+            31413
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0012140110073009958,
+            1.2714190501019829,
+            178.50288914958008
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016226491425186396,
+            0.015625,
+            47.853848457336426
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.1457490823132519e-07,
+            2.06621662073303e-05,
+            0.056249546989193266
+          ],
+          "wholeTraceCapturedFluxWordDifferences": 10042214,
+          "casesWithWholeTraceCapturedFluxEquality": 0
+        },
+        "stored64": {
+          "cases": 216,
+          "reconstructionFallbacks": 0,
+          "nonzeroModelFaceDifferenceCount": [
+            3688198,
+            3688190,
+            3688198
+          ],
+          "equalNativeFacesForNonzeroModelDifference": [
+            232243,
+            1867835,
+            176564
+          ],
+          "sumAbsoluteConditionalDeltaWhereNativeFacesEqual": [
+            0.0020173128574900757,
+            3.9191854369699297,
+            375.76108482597334
+          ],
+          "maximumAbsoluteFluxDifferenceErrorByComponent": [
+            0.00016917106477329266,
+            0.024398530324106105,
+            47.96222151149898
+          ],
+          "maximumAbsoluteConditionalDeltaErrorByComponent": [
+            2.2369057587724135e-07,
+            3.1922990682639856e-05,
+            0.06337154761398439
+          ]
+        }
+      }
+    }
+  },
+  "failedOutcomes": [],
+  "limits": "Component order rho,mx,E. Full/tiled cases are correlated. Fixed-factor strata overlap and must not be added together. Counts/sums describe observed sample opportunities and local conditional counterfactuals; they are not global conservation, physical dissipation, independent PDE trajectories, GPU intermediate observations or causal peak attribution. Every outcome retained; no model chosen per scalar."
+}

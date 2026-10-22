@@ -63,7 +63,8 @@ inputs. No GPU producer or temporal oracle is rerun to obtain a pass. The new
 added after producer launch and are separately versioned postprocessing; they
 are not part of its frozen numerical pipeline. Archive every raw file and verify
 every decompressed member. Public metadata selection is by file kind, never pass
-status. Full-matrix audit, archive and interpretation are still pending.
+status. Full-matrix audit and archive are now complete; see
+[completed results](scientific-results.md) for the bounded interpretation.
 
 All model intermediates are recomputed counterfactuals, not observed GPU stages
 or independently evolved PDE solutions. Native equal-face counts and conditional
