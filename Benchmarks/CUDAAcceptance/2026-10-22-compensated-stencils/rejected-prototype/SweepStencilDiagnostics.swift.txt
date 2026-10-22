@@ -1,0 +1,92 @@
+import Foundation
+
+extension SweepUpdateTrace {
+    /// Versioned stencil diagnostic: the existing 33 words followed by actual operator inputs/stages.
+    public static let stencilFields =
+        compensatedFields
+        + ["M2", "M1", "C", "P1", "P2"].flatMap { cell in
+            ["Rho", "Mx", "My", "Mz", "Energy"].map { "source\(cell)\($0)" }
+        }
+        + ["M2", "M1", "P1", "P2"].map { "from\($0)" }
+        + ["M2", "M1", "P1", "P2"].map { "mirror\($0)" }
+        + ["M2", "M1", "C", "P1", "P2"].flatMap { cell in
+            ["Rho", "Vx", "Vy", "Vz", "Pressure", "Gamma"].map { "primitive\(cell)\($0)" }
+        }
+        + ["M1", "C", "P1"].flatMap { cell in
+            ["Rho", "Vx", "Vy", "Vz", "Pressure"].map { "slope\(cell)\($0)" }
+        }
+        + ["M1Low", "M1High", "CLow", "CHigh", "P1Low", "P1High"].flatMap { face in
+            ["Rho", "Vx", "Vy", "Vz", "Pressure", "Gamma"].map { "face\(face)\($0)" }
+        }
+}
+
+extension ShaderLibrary {
+    /// Copies the actual operator into an opt-in sibling. Captured locals feed the returned fluxes.
+    static func stencilCaptureParts(function original: String) throws -> (
+        function: String, cellStores: String
+    ) {
+        func replace(_ value: String, _ anchor: String, _ replacement: String) throws -> String {
+            guard value.components(separatedBy: anchor).count == 2 else {
+                throw BlastError.missingShader("unique stencil diagnostic anchor: \(anchor)")
+            }
+            return value.replacingOccurrences(of: anchor, with: replacement)
+        }
+        func stores(_ expressions: [String], offset: Int) -> String {
+            expressions.enumerated().map { i, expression in
+                "updateTrace[q + \(offset + i)] = as_type<uint>(\(expression));"
+            }.joined(separator: "\n")
+        }
+        func primitive(_ name: String) -> [String] {
+            ["rho", "v.x", "v.y", "v.z", "p", "g"].map { "\(name).\($0)" }
+        }
+        var function = try replace(original, "stencilFluxes(", "stencilFluxesCaptured(")
+        function = try replace(
+            function, "thread Flux &low, thread Flux &high) {",
+            "thread Flux &low, thread Flux &high, device uint *updateData, int index) {")
+        let slopes = [
+            ("observedSlopeM1", "slope(wM2, wM1, w0, theta)"),
+            ("observedSlopeC", "slope(wM1, w0, wP1, theta)"),
+            ("observedSlopeP1", "slope(w0, wP1, wP2, theta)"),
+        ]
+        for (name, expression) in slopes { function = try replace(function, expression, name) }
+        function = try replace(
+            function, "    float theta = u.limiterTheta;",
+            "    float theta = u.limiterTheta;\n"
+                + slopes.map { "    Prim \($0.0) = \($0.1);" }.joined(separator: "\n"))
+        // slope() defines only rho, v and p; d.g is unused and uninitialized.
+        let stageStores =
+            stores(slopes.flatMap { Array(primitive($0.0).dropLast()) }, offset: 96) + "\n"
+            + stores(
+                ["facesM1.lo", "facesM1.hi", "faces0.lo", "faces0.hi", "facesP1.lo", "facesP1.hi"]
+                    .flatMap(primitive), offset: 111)
+        let fluxAnchor = "    high = riemannFlux(faces0.hi, facesP1.lo, u);"
+        function = try replace(
+            function, fluxAnchor,
+            fluxAnchor + """
+
+                    uint updateSlot = updateData[index];
+                    if (updateSlot != 0) {
+                        uint q = (updateSlot - 1) * \(SweepUpdateTrace.stencilFields.count);
+                        device uint *updateTrace = updateData + u.nx * u.ny * u.nz;
+                        \(stageStores)
+                    }
+                """)
+        let sourceNames = [
+            "observedSourceM2", "observedSourceM1", "observedSourceC", "observedSourceP1", "observedSourceP2",
+        ]
+        let sourceOffsets = ["from.x", "from.y", "0", "from.z", "from.w"]
+        let sourceLoads = zip(sourceNames, sourceOffsets).map { name, offset in
+            "Cell \(name) = src[index + (\(offset)) * stride];"
+        }.joined(separator: "\n")
+        let sourceStores = stores(
+            sourceNames.flatMap { name in ["rho", "mx", "my", "mz", "energy"].map { "\(name).\($0)" } },
+            offset: 33)
+        let mappingStores =
+            stores(["x", "y", "z", "w"].map { "float(from.\($0))" }, offset: 58)
+            + "\n" + stores(["x", "y", "z", "w"].map { "mirror.\($0)" }, offset: 62)
+        let primitiveStores = stores(["wM2", "wM1", "w0", "wP1", "wP2"].flatMap(primitive), offset: 66)
+        return (
+            function, [sourceLoads, sourceStores, mappingStores, primitiveStores].joined(separator: "\n")
+        )
+    }
+}

@@ -1,0 +1,325 @@
+{
+  "status": "rejected-observation",
+  "controls": 24,
+  "rows": [
+    {
+      "rounding": "standard",
+      "component": "density",
+      "retain": false,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 12
+    },
+    {
+      "rounding": "standard",
+      "component": "density",
+      "retain": false,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 12
+    },
+    {
+      "rounding": "standard",
+      "component": "density",
+      "retain": true,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 40
+    },
+    {
+      "rounding": "standard",
+      "component": "density",
+      "retain": true,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 40
+    },
+    {
+      "rounding": "standard",
+      "component": "energy",
+      "retain": false,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 11
+    },
+    {
+      "rounding": "standard",
+      "component": "energy",
+      "retain": false,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 11
+    },
+    {
+      "rounding": "standard",
+      "component": "energy",
+      "retain": true,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 31
+    },
+    {
+      "rounding": "standard",
+      "component": "energy",
+      "retain": true,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 31
+    },
+    {
+      "rounding": "standard",
+      "component": "both",
+      "retain": false,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 15
+    },
+    {
+      "rounding": "standard",
+      "component": "both",
+      "retain": false,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 15
+    },
+    {
+      "rounding": "standard",
+      "component": "both",
+      "retain": true,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 58
+    },
+    {
+      "rounding": "standard",
+      "component": "both",
+      "retain": true,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 58
+    },
+    {
+      "rounding": "unfused",
+      "component": "density",
+      "retain": false,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "density",
+      "retain": false,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "density",
+      "retain": true,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "density",
+      "retain": true,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "energy",
+      "retain": false,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "energy",
+      "retain": false,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "energy",
+      "retain": true,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "energy",
+      "retain": true,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "both",
+      "retain": false,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "both",
+      "retain": false,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "both",
+      "retain": true,
+      "tiled": false,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 0
+    },
+    {
+      "rounding": "unfused",
+      "component": "both",
+      "retain": true,
+      "tiled": true,
+      "fourModeFinalHashAndClockParity": [
+        true,
+        true,
+        true,
+        false
+      ],
+      "selectedPrefixWordDifferences": 0
+    }
+  ],
+  "completeFinalParity": 12,
+  "completeSelectedPrefixParity": 12,
+  "bothGatesPass": 6,
+  "totalSelectedPrefixWordDifferences": 334,
+  "scientificExportsLaunched": 0,
+  "productionChangeRetained": false,
+  "limits": "Focused nx64/A100/eight-step implementation controls, not the planned scientific matrix. Current source snapshot is post-control, not a pre-run immutable producer receipt. Full observer rejected for intended default/unfused scope; passing selected-prefix or no-carry subsets do not admit it."
+}

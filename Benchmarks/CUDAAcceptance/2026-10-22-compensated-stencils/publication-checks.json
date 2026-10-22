@@ -1,0 +1,19 @@
+{
+  "status": "restored-tree-pass",
+  "scientificStencilExports": 0,
+  "prototypeObservationGate": "failed-rejected",
+  "productionSourceChangesRetained": false,
+  "format": "pass",
+  "lint": "pass",
+  "strict": "pass-warning-free",
+  "checkAffected": "pass",
+  "macTests": 33,
+  "macSuites": 7,
+  "pcLinuxTests": 62,
+  "pcLinuxSuites": 11,
+  "allRestorationAndEvidencePinsRechecked": true,
+  "logSHA256": {
+    "restored-strict.log": "5209449768200b878081defc516b5f628484146c7dd9de9143f817bb161e3234",
+    "restored-check-affected.log": "70de7f820587ad8be341e5e8ef74922df4b88d0e4af133a78203c9f17d036f2f"
+  }
+}

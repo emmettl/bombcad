@@ -911,3 +911,11 @@ mismatch bound. The other eight are inconclusive under that inequality. Saved
 maximum sets expose timing/shape differences but cannot identify a limiter or
 flux cause. emmettl/bombcad-work#82 remains open for separately declared actual
 stencil/primitive/reconstructed-face observations; those exports have not run.
+
+The [full-intermediate observer prototype](../Benchmarks/CUDAAcceptance/2026-10-22-compensated-stencils/summary.md)
+was then rejected by focused transparency controls: every retained-residual
+case changes the complete final hash, even where unfused selected words match.
+The failed observer was removed and its source/logs retained; no scientific
+stencil matrix ran. emmettl/bombcad-work#82 next investigates host-side source
+reads with the existing GPU program unchanged. Those reads would support explicit
+component counterfactuals, not claims of observed GPU intermediates.

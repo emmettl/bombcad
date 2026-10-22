@@ -1,0 +1,10 @@
+{
+  "scope": "Post-control snapshot of rejected implementation; no pre-run frozen-byte or continuous provenance claim. GPU diagnostic generator unchanged between the two focused GPU attempts; the second adds test outcome labels only. No scientific stencil matrix launched.",
+  "sourceSHA256": {
+    "Sources/BlastCore/SweepStencilDiagnostics.swift": "5fa339582c7205960b7196ee4e511eac65579a719a3e8ad991b13e8247197de9",
+    "Sources/BlastCore/SweepUpdateDiagnostics.swift": "ac8e94ecc7935529d6f245c91c619a5d13b04590a5a3e1d47d71c4eeab54b353",
+    "Sources/BlastCore/StructureTypes+GPU.swift": "802114f35ba88b42b6920fce1aed41dc2d2d2c1ebeca5b4acdead289ad3e3845",
+    "Sources/blastbench/AcousticPhaseBench.swift": "4ab8680fb4f11bd74d22833f4fcc7069c7ba332d79177e0e7201f7bf6c0fe924",
+    "Tests/BlastCoreTests/SweepStencilDiagnosticsTests.swift": "b5cac4e650bd8386d591d287ff07c2eebf2270e32a126b37b277c3d5e6ddd1f6"
+  }
+}

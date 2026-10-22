@@ -1,0 +1,30 @@
+{
+  "status": "production-restored",
+  "baseRevision": "68e1377b123dff3e0560130f05c60187111629fb",
+  "restoredProductionSHA256": {
+    "Sources/BlastCore/SweepUpdateDiagnostics.swift": "4e393a4261e799e101e613b88ca5d9c7a4dd6d20420d94bd732af4a27ad0cf1a",
+    "Sources/BlastCore/StructureTypes+GPU.swift": "bde028e21cf0855a00e782b3c9b0f5136300d6d412728aa7122d384697d93aaf",
+    "Sources/blastbench/AcousticPhaseBench.swift": "d2b4ec1db98f86a2af79addbb7effca3ec150d09269428e1c33ebb3d8ec3a64e"
+  },
+  "removedUnshippedFiles": [
+    "Sources/BlastCore/SweepStencilDiagnostics.swift",
+    "Tests/BlastCoreTests/SweepStencilDiagnosticsTests.swift",
+    "docs/release-notes/next/compensated-stencil-diagnostics.md"
+  ],
+  "sourcesAndTestsDiffEmpty": true,
+  "evidenceSHA256": {
+    "rejected-prototype/AcousticPhaseBench.swift.txt": "4ab8680fb4f11bd74d22833f4fcc7069c7ba332d79177e0e7201f7bf6c0fe924",
+    "rejected-prototype/StructureTypes+GPU.swift.txt": "802114f35ba88b42b6920fce1aed41dc2d2d2c1ebeca5b4acdead289ad3e3845",
+    "rejected-prototype/SweepStencilDiagnostics.swift.txt": "5fa339582c7205960b7196ee4e511eac65579a719a3e8ad991b13e8247197de9",
+    "rejected-prototype/SweepStencilDiagnosticsTests.swift.txt": "b5cac4e650bd8386d591d287ff07c2eebf2270e32a126b37b277c3d5e6ddd1f6",
+    "rejected-prototype/SweepUpdateDiagnostics.swift.txt": "ac8e94ecc7935529d6f245c91c619a5d13b04590a5a3e1d47d71c4eeab54b353",
+    "rejected-prototype/plan-as-declared.md": "f9d45720025d796b885102b6bd12b4370f0ea8a17a2bc82f7941ff5f2a7d176e",
+    "prototype-pins.json": "400d89f4a3f6d11f2796bd7a4747e5de67f266b5e93264f1c07ea767f867bf37",
+    "results.json": "109d25cc088dff5f2285fce34d70b4e633f39ac3a795899eafa0cf7903c61331",
+    "full-observer-parity-failure.log": "10be02271d5bb619d08a13a03a6d0d0014fe655d0f0be0bb21f9054a60aeea8b",
+    "initial-test-compile-failure.log": "7c5b5d205c7e18484522a097b20668898577eaa0ce03b15af35dffff0ff1065e",
+    "scoped-parity-failure.log": "d029f6415afa6251f3ace923c31086f3466fa7c79be5d81638b7327f9013d75b"
+  },
+  "scientificStencilExports": 0,
+  "scope": "Rejected focused prototype preserved as a post-control source snapshot and complete failure logs. Producing test binaries were mutable build artifacts, not frozen or retained; this is not a self-contained scientific-runtime receipt."
+}

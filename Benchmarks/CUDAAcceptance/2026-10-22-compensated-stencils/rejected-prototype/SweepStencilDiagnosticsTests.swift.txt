@@ -1,0 +1,173 @@
+import Metal
+import Testing
+
+@testable import BlastCore
+@testable import BlastModel
+
+@Suite("Actual compensated stencil diagnostics", .serialized, .gpuThreads)
+struct SweepStencilDiagnosticsTests {
+    @Test("All four observation modes retain state, recorder and existing update words")
+    func parity() throws {
+        #expect(SweepUpdateTrace.stencilFields.count == 147)
+        #expect(Set(SweepUpdateTrace.stencilFields).count == 147)
+        #expect(Array(SweepUpdateTrace.stencilFields.prefix(33)) == SweepUpdateTrace.compensatedFields)
+        #expect(SweepUpdateTrace.stencilFields[96] == "slopeM1Rho")
+        #expect(SweepUpdateTrace.stencilFields[111] == "faceM1LowRho")
+        #expect(!SweepUpdateTrace.stencilFields.contains("slopeCGamma"))
+        for rounding in [KernelRounding.standard, .unfused] {
+            try KernelRounding.$current.withValue(rounding) {
+                for components in CompensatedSweepComponents.allCases {
+                    for retain in [false, true] {
+                        for tiled in [false, true] {
+                            print(
+                                "STENCIL_CONTROL \(rounding) component=\(components.rawValue) retain=\(retain) tiled=\(tiled)"
+                            )
+                            let solvers = try (0..<4).map { mode in
+                                let solver = try SweepUpdateDiagnosticsTests().solver(tiled: tiled)
+                                try solver.configureCompensatedSweep(components, retainResiduals: retain)
+                                try solver.configureFirstPhaseColumns(
+                                    Array(repeating: SIMD4(0, 0, 0, 1), count: 64))
+                                if mode > 0 {
+                                    try solver.configureFirstPhaseDiagnostics([16, 0], capturePressure: true)
+                                }
+                                if mode > 1 {
+                                    try solver.configureSweepUpdateDiagnostics(
+                                        [0, 16, 31, 32, 33, 63], captureStencil: mode == 3)
+                                }
+                                return solver
+                            }
+                            let initial = solvers[0].firstPhaseDiagnosticStateHashes()
+                            #expect(solvers.allSatisfy { $0.firstPhaseDiagnosticStateHashes() == initial })
+                            for solver in solvers { #expect(solver.advance(steps: 8).isStable) }
+                            let final = solvers[0].firstPhaseDiagnosticStateHashes()
+                            print(
+                                "STENCIL_FINAL_PARITY \(solvers.map { $0.firstPhaseDiagnosticStateHashes() == final && $0.time == solvers[0].time })"
+                            )
+                            #expect(
+                                solvers.allSatisfy {
+                                    $0.firstPhaseDiagnosticStateHashes() == final
+                                        && $0.time == solvers[0].time
+                                })
+                            let pressure = try solvers[1].firstPhasePressureTrace()
+                            for solver in solvers.dropFirst(2) {
+                                let observed = try solver.firstPhasePressureTrace()
+                                #expect(observed.samples.map(\.time) == pressure.samples.map(\.time))
+                                #expect(observed.samples.count == pressure.samples.count)
+                                for (a, b) in zip(observed.samples, pressure.samples) {
+                                    #expect(
+                                        a.values.map { $0.map(\.bitPattern) }
+                                            == b.values.map { $0.map(\.bitPattern) })
+                                }
+                            }
+                            let old = try solvers[2].sweepUpdateTrace()
+                            let stencil = try solvers[3].sweepUpdateTrace()
+                            let prefixDifferences = zip(stencil.samples, old.samples).reduce(0) {
+                                count, samples in
+                                count
+                                    + zip(samples.0.values, samples.1.values).reduce(0) { sum, values in
+                                        sum
+                                            + zip(values.0.prefix(33), values.1).filter {
+                                                $0.bitPattern != $1.bitPattern
+                                            }.count
+                                    }
+                            }
+                            print("STENCIL_PREFIX_WORD_DIFFERENCES \(prefixDifferences)")
+                            #expect(stencil.capturedFields == SweepUpdateTrace.stencilFields)
+                            #expect(
+                                stencil.initialStates == old.initialStates
+                                    && stencil.finalStates == old.finalStates)
+                            #expect(stencil.samples.count == 8)
+                            for (a, b) in zip(stencil.samples, old.samples) {
+                                #expect(a.executed == b.executed && a.time == b.time && a.dt == b.dt)
+                                for q in a.values.indices {
+                                    #expect(
+                                        Array(a.values[q].prefix(33)).map(\.bitPattern)
+                                            == b.values[q].map(\.bitPattern))
+                                    #expect(a.values[q].count == 147 && a.values[q].allSatisfy(\.isFinite))
+                                    if !a.executed[q] { #expect(a.values[q].allSatisfy { $0 == 0 }) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test("Source words and wall/copy ghost primitives refer to the actual pre-step stencil")
+    func ghosts() throws {
+        let solver = try SweepUpdateDiagnosticsTests().solver(tiled: false)
+        solver.fill { i, _, _ in
+            Primitive(
+                density: 1.1 + Float(i) * 0.001, velocity: SIMD3(0.01 + Float(i) * 0.001, 0, 0),
+                pressure: 101325 + Float(i) * 10)
+        }
+        let indices = [0, 1, 2, 31, 62, 63]
+        let before = SweepUpdateDiagnosticsTests().states(solver, Array(0..<64))
+        try solver.configureCompensatedSweep(.both)
+        try solver.configureSweepUpdateDiagnostics(indices, captureStencil: true)
+        #expect(solver.advance(steps: 1).isStable)
+        let trace = try solver.sweepUpdateTrace()
+        let sample = try #require(trace.samples.first)
+        for (q, index) in indices.enumerated() {
+            #expect(sample.executed[q])
+            let v = sample.values[q]
+            let offsets = [Int(v[58]), Int(v[59]), 0, Int(v[60]), Int(v[61])]
+            for slot in 0..<5 {
+                #expect(
+                    Array(v[(33 + 5 * slot)..<(38 + 5 * slot)]).map(\.bitPattern)
+                        == before[index + offsets[slot]].map(\.bitPattern))
+                #expect(v[66 + slot * 6] == before[index + offsets[slot]][0])
+                #expect(v[71 + slot * 6] == solver.configuration.gamma)
+            }
+            if index == 0 {
+                #expect(Array(v[58..<66]) == [1, 0, 1, 2, -1, -1, 1, 1])
+                #expect(v[73].bitPattern == (-v[79]).bitPattern)
+                #expect(v[67].bitPattern == (-v[85]).bitPattern)
+                #expect(v[76] == v[82] && v[70] == v[88])
+            }
+            if index == 1 { #expect(Array(v[58..<66]) == [-1, -1, 1, 2, -1, 1, 1, 1]) }
+            if index == 62 {
+                #expect(Array(v[58..<66]) == [-2, -1, 1, 1, 1, 1, 1, 1])
+                #expect(Array(v[84..<90]).map(\.bitPattern) == Array(v[90..<96]).map(\.bitPattern))
+            }
+            if index == 63 {
+                #expect(Array(v[58..<66]) == [-2, -1, 0, 0, 1, 1, 1, 1])
+                #expect(Array(v[78..<84]).map(\.bitPattern) == Array(v[84..<90]).map(\.bitPattern))
+                #expect(Array(v[84..<90]).map(\.bitPattern) == Array(v[90..<96]).map(\.bitPattern))
+            }
+        }
+    }
+
+    @Test("Constant interior slopes and predicted faces stay defined; skips and truncation remain explicit")
+    func constantAndRefusal() throws {
+        let ordinary = try SweepUpdateDiagnosticsTests().solver(tiled: false)
+        #expect(throws: BlastError.self) {
+            try ordinary.configureSweepUpdateDiagnostics([32], captureStencil: true)
+        }
+        let solver = try SweepUpdateDiagnosticsTests().solver(tiled: false)
+        solver.fill(uniform: Primitive(density: 1.225, velocity: SIMD3(0.1, 0, 0), pressure: 101325))
+        try solver.configureCompensatedSweep(.both)
+        try solver.configureSweepUpdateDiagnostics([32], maxSamples: 1, captureStencil: true)
+        #expect(solver.advance(steps: 1).isStable)
+        let v = try #require(solver.sweepUpdateTrace().samples.first).values[0]
+        #expect(v[96..<111].allSatisfy { $0 == 0 })
+        for face in 1..<6 {
+            #expect(
+                Array(v[(111 + face * 6)..<(117 + face * 6)]).map(\.bitPattern)
+                    == Array(v[111..<117]).map(\.bitPattern))
+        }
+        _ = solver.advance(steps: 1)
+        #expect(throws: BlastError.self) { try solver.sweepUpdateTrace() }
+        solver.restart()
+        #expect(solver.sweepUpdateCapture == nil)
+        let sleeping = try SweepUpdateDiagnosticsTests().solver(tiled: true)
+        sleeping.fill(uniform: Primitive(density: 1.225, pressure: 101325))
+        try sleeping.configureCompensatedSweep(.both)
+        try sleeping.configureSweepUpdateDiagnostics([0, 32, 63], captureStencil: true)
+        #expect(sleeping.advance(steps: 1).isStable)
+        let skipped = try sleeping.sweepUpdateTrace().samples[0]
+        #expect(skipped.executed == [false, false, false])
+        #expect(skipped.values.allSatisfy { $0.count == 147 && $0.allSatisfy { $0 == 0 } })
+    }
+}
