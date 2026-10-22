@@ -1,0 +1,1693 @@
+{
+  "format": "open-blast-benchmark-deck",
+  "format_version": 1,
+  "protocol": "ideal-gas-balloon-v1",
+  "case_id": "ufc-closed-room-gas-pressure",
+  "case_sha256": "6b032b8d053b0908ac074a297c9b55d29244aa5d5a4fc87fda2871085c54537d",
+  "ambient": {
+    "pressure_Pa": 101325,
+    "density_kg_m3": 1.225
+  },
+  "physics": {
+    "eos": "ideal-gas",
+    "gamma": 1.4,
+    "afterburning": false,
+    "gravity": false,
+    "radiation": false,
+    "mapped_start": false
+  },
+  "numerics": {
+    "riemann_solver": "HLLC",
+    "limiter_theta": 1.5,
+    "cfl": 0.45,
+    "startup_steps": 6,
+    "density_floor": 1e-06,
+    "pressure_floor_Pa": 0.001
+  },
+  "mesh": {
+    "counts": [
+      24,
+      24,
+      24
+    ],
+    "cell_size_m": 0.25,
+    "origin_m": [
+      0,
+      0,
+      0
+    ]
+  },
+  "boundaries": {
+    "reflecting_faces": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "other_faces": "zero-gradient"
+  },
+  "sampling": {
+    "interval_s": 5e-05,
+    "stop_s": 0.12,
+    "time_tolerance_s": 2e-08,
+    "observable": "volume-mean-overpressure"
+  },
+  "extraction": {
+    "kind": "room-window",
+    "window_s": [
+      0.1,
+      0.12
+    ]
+  },
+  "runs": [
+    {
+      "id": "0.25kg-m3",
+      "source": {
+        "reference_charge_kg": 54.0,
+        "represented_charge_kg": 54.0,
+        "centre_m": [
+          3,
+          3,
+          3
+        ],
+        "radius_m": 0.20047569263579637,
+        "excess_energy_J": 225936000.0,
+        "excess_mass_kg": 53.95865625
+      },
+      "initial_cells": [
+        {
+          "index": [
+            11,
+            11,
+            11
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        },
+        {
+          "index": [
+            12,
+            11,
+            11
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        },
+        {
+          "index": [
+            11,
+            12,
+            11
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        },
+        {
+          "index": [
+            12,
+            12,
+            11
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        },
+        {
+          "index": [
+            11,
+            11,
+            12
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        },
+        {
+          "index": [
+            12,
+            11,
+            12
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        },
+        {
+          "index": [
+            11,
+            12,
+            12
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        },
+        {
+          "index": [
+            12,
+            12,
+            12
+          ],
+          "density_kg_m3": 432.89425,
+          "internal_energy_J_m3": 1807741312.5
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null
+        }
+      ]
+    },
+    {
+      "id": "0.5kg-m3",
+      "source": {
+        "reference_charge_kg": 108.0,
+        "represented_charge_kg": 108.0,
+        "centre_m": [
+          3,
+          3,
+          3
+        ],
+        "radius_m": 0.2525835451440945,
+        "excess_energy_J": 451872000.0,
+        "excess_mass_kg": 107.9173125
+      },
+      "initial_cells": [
+        {
+          "index": [
+            11,
+            11,
+            11
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        },
+        {
+          "index": [
+            12,
+            11,
+            11
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        },
+        {
+          "index": [
+            11,
+            12,
+            11
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        },
+        {
+          "index": [
+            12,
+            12,
+            11
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        },
+        {
+          "index": [
+            11,
+            11,
+            12
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        },
+        {
+          "index": [
+            12,
+            11,
+            12
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        },
+        {
+          "index": [
+            11,
+            12,
+            12
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        },
+        {
+          "index": [
+            12,
+            12,
+            12
+          ],
+          "density_kg_m3": 864.5635,
+          "internal_energy_J_m3": 3615229312.5
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null
+        }
+      ]
+    },
+    {
+      "id": "1kg-m3",
+      "source": {
+        "reference_charge_kg": 216.0,
+        "represented_charge_kg": 216.0,
+        "centre_m": [
+          3,
+          3,
+          3
+        ],
+        "radius_m": 0.3182353253841166,
+        "excess_energy_J": 903744000.0,
+        "excess_mass_kg": 215.834625
+      },
+      "initial_cells": [
+        {
+          "index": [
+            11,
+            11,
+            10
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            11,
+            10
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            12,
+            10
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            12,
+            10
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            10,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            10,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            10,
+            11,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            11,
+            11
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            12,
+            11,
+            11
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            13,
+            11,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            10,
+            12,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            12,
+            11
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            12,
+            12,
+            11
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            13,
+            12,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            13,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            13,
+            11
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            10,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            10,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            10,
+            11,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            11,
+            12
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            12,
+            11,
+            12
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            13,
+            11,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            10,
+            12,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            12,
+            12
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            12,
+            12,
+            12
+          ],
+          "density_kg_m3": 1399.4580054347825,
+          "internal_energy_J_m3": 5854942703.804348
+        },
+        {
+          "index": [
+            13,
+            12,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            13,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            13,
+            12
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            11,
+            13
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            11,
+            13
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            11,
+            12,
+            13
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        },
+        {
+          "index": [
+            12,
+            12,
+            13
+          ],
+          "density_kg_m3": 110.70633152173913,
+          "internal_energy_J_m3": 458674182.0652174
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null
+        }
+      ]
+    },
+    {
+      "id": "2kg-m3",
+      "source": {
+        "reference_charge_kg": 432.0,
+        "represented_charge_kg": 432.0,
+        "centre_m": [
+          3,
+          3,
+          3
+        ],
+        "radius_m": 0.40095138527159274,
+        "excess_energy_J": 1807488000.0,
+        "excess_mass_kg": 431.66925
+      },
+      "initial_cells": [
+        {
+          "index": [
+            11,
+            10,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            12,
+            10,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            11,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            11,
+            10
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            11,
+            10
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            11,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            12,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            12,
+            10
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            12,
+            10
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            12,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            13,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            12,
+            13,
+            10
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            10,
+            11
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            10,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            10,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            10,
+            11
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            11,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            11,
+            11,
+            11
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            12,
+            11,
+            11
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            13,
+            11,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            10,
+            12,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            11,
+            12,
+            11
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            12,
+            12,
+            11
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            13,
+            12,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            10,
+            13,
+            11
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            13,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            13,
+            11
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            13,
+            11
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            10,
+            12
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            10,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            10,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            10,
+            12
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            11,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            11,
+            11,
+            12
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            12,
+            11,
+            12
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            13,
+            11,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            10,
+            12,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            11,
+            12,
+            12
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            12,
+            12,
+            12
+          ],
+          "density_kg_m3": 1615.7390841720035,
+          "internal_energy_J_m3": 6760556097.495425
+        },
+        {
+          "index": [
+            13,
+            12,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            10,
+            13,
+            12
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            13,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            13,
+            12
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            13,
+            12
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            10,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            12,
+            10,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            11,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            11,
+            13
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            11,
+            13
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            11,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            10,
+            12,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            12,
+            13
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            12,
+            12,
+            13
+          ],
+          "density_kg_m3": 595.2145260750228,
+          "internal_energy_J_m3": 2487409718.721409
+        },
+        {
+          "index": [
+            13,
+            12,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            11,
+            13,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        },
+        {
+          "index": [
+            12,
+            13,
+            13
+          ],
+          "density_kg_m3": 20.18211253430924,
+          "internal_energy_J_m3": 79630644.61344922
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null
+        }
+      ]
+    },
+    {
+      "id": "4kg-m3",
+      "source": {
+        "reference_charge_kg": 864.0,
+        "represented_charge_kg": 864.0,
+        "centre_m": [
+          3,
+          3,
+          3
+        ],
+        "radius_m": 0.505167090288189,
+        "excess_energy_J": 3614976000.0,
+        "excess_mass_kg": 863.3385
+      },
+      "initial_cells": [
+        {
+          "index": [
+            10,
+            10,
+            10
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        },
+        {
+          "index": [
+            11,
+            10,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            12,
+            10,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            13,
+            10,
+            10
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        },
+        {
+          "index": [
+            10,
+            11,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            11,
+            10
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            11,
+            10
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            11,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            12,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            12,
+            10
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            12,
+            10
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            12,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            13,
+            10
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        },
+        {
+          "index": [
+            11,
+            13,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            12,
+            13,
+            10
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            13,
+            13,
+            10
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        },
+        {
+          "index": [
+            10,
+            10,
+            11
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            10,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            10,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            10,
+            11
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            11,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            11,
+            11,
+            11
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            12,
+            11,
+            11
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            13,
+            11,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            10,
+            12,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            11,
+            12,
+            11
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            12,
+            12,
+            11
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            13,
+            12,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            10,
+            13,
+            11
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            13,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            13,
+            11
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            13,
+            11
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            10,
+            12
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            10,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            10,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            10,
+            12
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            11,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            11,
+            11,
+            12
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            12,
+            11,
+            12
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            13,
+            11,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            10,
+            12,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            11,
+            12,
+            12
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            12,
+            12,
+            12
+          ],
+          "density_kg_m3": 1591.9737611336031,
+          "internal_energy_J_m3": 6661045798.32996
+        },
+        {
+          "index": [
+            13,
+            12,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            10,
+            13,
+            12
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            13,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            13,
+            12
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            13,
+            12
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            10,
+            13
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        },
+        {
+          "index": [
+            11,
+            10,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            12,
+            10,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            13,
+            10,
+            13
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        },
+        {
+          "index": [
+            10,
+            11,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            11,
+            13
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            11,
+            13
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            11,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            12,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            11,
+            12,
+            13
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            12,
+            12,
+            13
+          ],
+          "density_kg_m3": 1352.7400607287448,
+          "internal_energy_J_m3": 5659325053.390688
+        },
+        {
+          "index": [
+            13,
+            12,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            10,
+            13,
+            13
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        },
+        {
+          "index": [
+            11,
+            13,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            12,
+            13,
+            13
+          ],
+          "density_kg_m3": 411.3399149797571,
+          "internal_energy_J_m3": 1717488875.2530365
+        },
+        {
+          "index": [
+            13,
+            13,
+            13
+          ],
+          "density_kg_m3": 32.29431174089069,
+          "internal_energy_J_m3": 130346915.7388664
+        }
+      ],
+      "gauges": [
+        {
+          "id": "room",
+          "position_m": null
+        }
+      ]
+    }
+  ]
+}

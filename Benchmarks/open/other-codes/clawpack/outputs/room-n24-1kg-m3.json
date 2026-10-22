@@ -1,0 +1,67 @@
+{
+ "case": "ufc-closed-room-gas-pressure",
+ "run": "1kg-m3",
+ "label": "room-n24-1kg-m3",
+ "code": {
+  "name": "Clawpack (PyClaw)",
+  "version": "5.14.0"
+ },
+ "python": "3.13.16",
+ "numpy": "2.5.4",
+ "parameters": {
+  "geometry": "the whole 6 m cube, walls on its six faces",
+  "cells_per_side_of_cube": 24,
+  "cell_m": 0.25,
+  "cells": [
+   24,
+   24,
+   24
+  ],
+  "initial_state": "the deck's initial_cells",
+  "source_cells_placed": 32,
+  "riemann_solver": "euler_3D (Roe, entropy fix)",
+  "limiter": "minmod",
+  "dimensional_split": false,
+  "transverse_waves": 22,
+  "cfl_desired": 0.45,
+  "cfl_max": 0.5,
+  "density_floor_kg_m3": 1e-06,
+  "pressure_floor_Pa": 0.001
+ },
+ "budget": {
+  "excess_energy_J_initial": 903744000.0,
+  "excess_energy_J_declared": 903744000.0,
+  "total_energy_final_over_initial": 1.0000083540177058,
+  "excess_energy_final_over_initial": 1.0000088597961738,
+  "floor_mass_added_kg": 0.0,
+  "floor_energy_added_J": 8006.987634140437,
+  "floored_cell_steps": 4368
+ },
+ "energy_bound_kPa": 1673.5999999999997,
+ "initial_mean_overpressure_kPa": 1673.5999999999997,
+ "mean_overpressure_kPa": {
+  "10ms": 1619.386839319383,
+  "30ms": 1669.5552946311757,
+  "80ms": 1673.0021396977054,
+  "100ms": 1673.347385304517,
+  "120ms": 1673.5144539549324
+ },
+ "kinetic_share_of_energy": {
+  "10ms": 0.030552015109202593,
+  "20ms": 0.0028638846072032184,
+  "30ms": 0.0022871384484252594,
+  "40ms": 0.0011607895635637599,
+  "50ms": 0.0003629089907134308,
+  "60ms": 0.0006732111511104376,
+  "70ms": 5.0255371674202245e-05,
+  "80ms": 0.000345188072062965,
+  "90ms": 1.4449547887588901e-05,
+  "100ms": 0.00015067691094492158,
+  "110ms": 1.957643018666729e-05,
+  "120ms": 5.6550536741561596e-05
+ },
+ "window_mean_kPa": 1673.5117322295825,
+ "relative_half_window_drift": 1.7184950301812986e-05,
+ "steps": 2426,
+ "wall_s": 151.3
+}

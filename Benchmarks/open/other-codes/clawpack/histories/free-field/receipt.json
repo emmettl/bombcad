@@ -1,0 +1,30 @@
+{
+  "format": "open-blast-benchmark-history-receipt",
+  "format_version": 1,
+  "protocol": "ideal-gas-balloon-v1",
+  "code": {
+    "name": "Clawpack (PyClaw)",
+    "version": "5.14.0"
+  },
+  "prepared": "2026-10-21",
+  "histories": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "run": "100kg",
+      "path": "kb-surface-burst-free-field--100kg.csv",
+      "sha256": "d1205bd3a1653d79cdf9bda7fdc6025b3777fa124f4bbaa19c0f2b3b36436b93"
+    }
+  ],
+  "decks": {
+    "kb-surface-burst-free-field": {
+      "path": "kb-surface-burst-free-field.deck.json",
+      "sha256": "2884564266f1efed782bafbeddfb3bb130280c05764c28ba031fe130ce86ea87"
+    }
+  },
+  "requested_runs": [
+    [
+      "kb-surface-burst-free-field",
+      "100kg"
+    ]
+  ]
+}

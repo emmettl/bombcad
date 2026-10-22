@@ -3,9 +3,10 @@
 Part of BombCAD's validation record written down so that any blast code can run it and be scored
 the same way: ten cases, each a JSON file holding the scene, the charge, the gauges and the
 measured (or reference) values with their uncertainty and full citations; a scorer; and BombCAD's
-own entry, quoted from the record. The cases name no code's options. This is a first step: one
-other code, pyro2, has run two of them ([a second code](#a-second-code-pyro2-20-october-2026)), and
-none has run the rest ([what this doesn't yet do](#what-this-doesnt-yet-do)).
+own entry, quoted from the record. The cases name no code's options. This is a first step: two
+other codes, pyro2 and Clawpack, have run two of them
+([a second code](#a-second-code-pyro2-20-october-2026), [a third](#a-third-code-clawpack-22-october-2026)),
+and none has run the rest ([what this doesn't yet do](#what-this-doesnt-yet-do)).
 
 | Path | What |
 |---|---|
@@ -13,6 +14,7 @@ none has run the rest ([what this doesn't yet do](#what-this-doesnt-yet-do)).
 | `Benchmarks/open/schema/case.schema.json`, `results.schema.json` | JSON Schemas (draft 2020-12) for a case and a results file |
 | `Benchmarks/open/results/bombcad-0.6.0-dev.json` | BombCAD's entry |
 | `Benchmarks/open/results/pyro2-4.5.1.json`, `Benchmarks/open/other-codes/pyro2/` | A second code's entry for two cases, with its scripts and runs |
+| `Benchmarks/open/results/clawpack-5.14.0.json`, `Benchmarks/open/other-codes/clawpack/` | A third code's entry for the same two, with its scripts, histories and mesh study |
 | `Scripts/open-benchmark/score.py` | The scorer: Python 3, standard library only |
 | `Scripts/open-benchmark/make_cases.py`, `make_bombcad_results.py` | The generators that write the cases and BombCAD's entry |
 | `Scripts/open-benchmark/test_score.py` | The scorer's tests, and a check that the committed JSON is exactly what the generators write; run by `make ci-test` |
@@ -219,7 +221,8 @@ source commit, executable hash and initial-budget logs, separately from their sc
 
 A second code can implement the documented initial states and CSV contract, then use the same
 import, extraction and scoring commands. **pyro2 has done so, 1-D spherical**
-([below](#to-the-decks-contract-21-october-2026)). The handoff no longer
+([below](#to-the-decks-contract-21-october-2026)), and Clawpack has run the room's deck as
+written and the free field in 2-D ([a third code](#a-third-code-clawpack-22-october-2026)). The handoff no longer
 leaves the source and read rules open for these two controls; translation to another solver,
 mesh/time-window convergence and a real independent comparison are still outstanding.
 
@@ -320,11 +323,61 @@ Z = 2 and within 1.5% beyond, and its rooms within 0.7%. Against 40 mm cells pyr
   the last gauge's positive phase (pyro2's outflow at 36 m does not, by its shock's speed); and
   decks for the other eight cases.
 
+## A third code: Clawpack, 22 October 2026
+
+A cloud session ran the two decks in [Clawpack](https://www.clawpack.org) 5.14.0 (BSD-3-Clause,
+PyPI `clawpack`, used unchanged), through PyClaw's wave-propagation solver: Roe's Riemann solver,
+unsplit with transverse waves, the decks' floors and CFL. Its histories were imported and
+extracted by `run_decks.py` and scored by `score.py` unchanged; the scripts, histories, receipts
+and mesh study are in [`Benchmarks/open/other-codes/clawpack/`](../Benchmarks/open/other-codes/clawpack/README.md).
+The room is the deck as written; the free field is the deck's physics, gauges, sampling and read
+rules on a **2-D axisymmetric mesh over rigid ground**, a stated deviation from its 3-D mesh.
+
+| Case | Code | Score | Passed | Coverage | Geometric mean ratio | Typical factor |
+|---|---|---|---|---|---|---|
+| `kb-surface-burst-free-field` | Clawpack, 2-D, 62.5 mm | 0.96 | 23/24 | 24/24 | 0.92 | 1.12 |
+| | pyro2, the decks' contract, 1-D, 20 mm | 0.96 | 23/24 | 24/24 | 0.94 | 1.13 |
+| | BombCAD's control, the deck, 3-D, 0.5 m | 0.50 | 12/24 | 24/24 | 0.77 | 1.40 |
+| `ufc-closed-room-gas-pressure` | Clawpack, the deck, 3-D | 0.60 | 3/5 | 5/5 | 0.74 | 1.55 |
+| | pyro2 and BombCAD's control | 0.60 | 3/5 | 5/5 | 0.74 | 1.55 |
+
+- **The free field over the ground.** The hemisphere is centred on the ground, so the ground is a
+  plane of symmetry and the exact answer is the 1-D sphere's: the 2-D run tests a code that has
+  the ground as a boundary, on a grid the wave crosses, not different physics. **The score is
+  unchanged**: Clawpack fails the value pyro2 fails (the impulse at Z = 1.5, 0.74 of the fit, the
+  balloon's missing afterburning). Over 0.5, 0.25, 0.125 and 0.0625 m cells the score is 0.54,
+  0.79, 0.96 and 0.96: on the deck's own 0.5 m a second code scores about what the control does.
+  The impulses and arrivals converge, at about second order, to pyro2's 1-D values (Richardson
+  estimates within 1% and 0.05 ms); the peaks converge at first order or less and on the finest
+  meshes run (to 31 mm close in) are 1–7% below pyro2's. Two things only a 2-D run shows: PyClaw's
+  standard axisymmetric source terms are not conservative and gained 41% of the charge's energy on
+  0.5 m cells (2% on 62.5 mm), which the extractor cannot see; and on 16 mm cells the two nearest
+  ground gauges read low and early (1,279 kPa at Z = 1, against 1,629 on the axis), an artefact of
+  the scheme along the ground.
+- **The room**, the whole cube on the deck's 24-cell mesh from its `initial_cells`, differs from
+  the deck only in the numerics it names for BombCAD (Roe and minmod, not HLLC). At 0.25–4 kg/m³
+  its means are within 0.03% of the energy bound and within 0.07% of BombCAD's control. The
+  octant reads the whole cube's mean to 10⁻⁹ on 24 and 48 cells, and from 24 to 96 cells a side
+  the means move by at most 0.07%. The two lightest charges fail, as for the other two codes,
+  because an ideal gas without afterburning cannot reach the UFC curve.
+- **Clawpack and PyClaw issues found**, each worked around in the drivers: the 2-D HLLE solver
+  (`rpn2_euler_hlle.f90`) gives NaN within a millisecond (its one-sided sound speeds and right
+  state's enthalpy look mis-formed), so Roe's was used; a step whose CFL number is NaN is accepted,
+  since PyClaw rejects only CFL above its maximum; and `dt_initial` is ignored without PyClaw's
+  Controller, so the first runs tried a 50 µs first step. These could be reported upstream; they
+  have not been. They are as the session found them on 5.14.0, not rechecked here.
+
+The README there also lists what the decks' contract left open for a code they were not written
+for: no rule for another mesh or dimension, or field in the receipt for a deviation; no stated
+resolution or mesh study; no bound on energy drift; floors and startup steps named but not
+defined; and no case with a height of burst, the only way the ground could change the score.
+
 ## What this doesn't yet do
 
-- **One other code has run two cases.** pyro2 ran the free field and the room, first from the
-  prose and then to the decks' contract, 1-D spherical; no other code has run a 3-D case or any
-  structure.
+- **Two other codes have run two cases.** pyro2 ran the free field and the room, first from the
+  prose and then to the decks' contract, 1-D spherical; Clawpack ran the room's deck as written,
+  in 3-D, and the free field in 2-D. No other code has run the free field on the deck's own 3-D
+  mesh, or any structure.
 - **Three of the ten are curves, not tests**: Kingery–Bulmash's two and UFC 3-340-02's, each a
   fit or design chart with little or no stated scatter, labelled as such.
 - **Peaks and integrals only**: the two controls retain raw pressure histories, but no pressure or displacement histories are scored, so a code can

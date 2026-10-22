@@ -1,0 +1,153 @@
+{
+  "format": "open-blast-benchmark-deck",
+  "format_version": 1,
+  "protocol": "ideal-gas-balloon-v1",
+  "case_id": "kb-surface-burst-free-field",
+  "case_sha256": "dfac3d8e58b2c51ca4b9a2d9abf53447530ac2a96a7b8dbef43de66a4dd00ca0",
+  "ambient": {
+    "pressure_Pa": 101325,
+    "density_kg_m3": 1.225
+  },
+  "physics": {
+    "eos": "ideal-gas",
+    "gamma": 1.4,
+    "afterburning": false,
+    "gravity": false,
+    "radiation": false,
+    "mapped_start": false
+  },
+  "numerics": {
+    "riemann_solver": "HLLC",
+    "limiter_theta": 1.5,
+    "cfl": 0.45,
+    "startup_steps": 6,
+    "density_floor": 1e-06,
+    "pressure_floor_Pa": 0.001
+  },
+  "mesh": {
+    "counts": [
+      128,
+      128,
+      128
+    ],
+    "cell_size_m": 0.5,
+    "origin_m": [
+      0,
+      0,
+      0
+    ]
+  },
+  "boundaries": {
+    "reflecting_faces": [
+      0,
+      2,
+      4
+    ],
+    "other_faces": "zero-gradient"
+  },
+  "sampling": {
+    "interval_s": 5e-05,
+    "stop_s": 0.1,
+    "time_tolerance_s": 2e-08,
+    "observable": "trilinear-cell-centre-overpressure"
+  },
+  "extraction": {
+    "kind": "first-positive-phase",
+    "arrival_peak_fraction": 0.5,
+    "zero_deadband_Pa": 0.1
+  },
+  "runs": [
+    {
+      "id": "100kg",
+      "source": {
+        "reference_charge_kg": 100.0,
+        "represented_charge_kg": 25.0,
+        "centre_m": [
+          0,
+          0,
+          0
+        ],
+        "radius_m": 0.31017524544970004,
+        "excess_energy_J": 104600000.0,
+        "excess_mass_kg": 24.980859375
+      },
+      "initial_cells": [
+        {
+          "index": [
+            0,
+            0,
+            0
+          ],
+          "density_kg_m3": 201.071875,
+          "internal_energy_J_m3": 837053312.5
+        }
+      ],
+      "gauges": [
+        {
+          "id": "Z0.75",
+          "position_m": [
+            3.481,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "Z1",
+          "position_m": [
+            4.642,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "Z1.5",
+          "position_m": [
+            6.962,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "Z2",
+          "position_m": [
+            9.283,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "Z3",
+          "position_m": [
+            13.925,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "Z4",
+          "position_m": [
+            18.566,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "Z5",
+          "position_m": [
+            23.208,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "Z6",
+          "position_m": [
+            27.85,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

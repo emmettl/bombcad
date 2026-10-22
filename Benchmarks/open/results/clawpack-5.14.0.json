@@ -1,0 +1,252 @@
+{
+  "format": "open-blast-benchmark-results",
+  "format_version": 1,
+  "code": {
+    "name": "Clawpack (PyClaw)",
+    "version": "5.14.0",
+    "url": "https://www.clawpack.org"
+  },
+  "prepared": "2026-10-21",
+  "notes": [
+    "Clawpack 5.14.0 from PyPI (sdist sha256 b9f3208fe9e1d834122ae86e2af536a3010435d0d65e6629f360416ea9cffe89), built with gfortran 13.3 and used unchanged; the drivers are Benchmarks/open/other-codes/clawpack/blast_axi.py and room3d.py.",
+    "The ideal-gas balloon of ideal-gas-balloon-v1: no afterburning, radiation, gravity or mapped start. Histories imported and extracted with Scripts/open-benchmark/run_decks.py; receipt and hashes in Benchmarks/open/other-codes/clawpack/histories/."
+  ],
+  "cases": [
+    {
+      "case": "kb-surface-burst-free-field",
+      "configuration": "Clawpack 5.14.0 PyClaw ClassicClaw, unsplit wave propagation with transverse correction waves, Roe solver with entropy fix (riemann.euler_4wave_2D), MC limiter, CFL 0.45 (rejected above 0.5); the deck's density and pressure floors. NOT the deck's mesh: 2-D axisymmetric r-z, 62.5 mm square cells, 48 m in r and z; the axis and the rigid ground reflect, the outer faces extrapolate (zero gradient). Geometric source terms of cylindrical symmetry by a two-stage Runge-Kutta step, Godunov-split. The deck's balloon (1600 kg/m^3, 4.184 MJ/kg, gamma 1.4, released at t = 0, its mass and excess energy added to ambient air) built by the deck's sampling rule on r-z cells, each midpoint sample weighted by its radius; the 100 kg hemisphere, radius 0.3102 m. The deck's observable (pressure interpolated between cell centres, clamped, so a ground gauge reads the first row of cells), 50 us samples to 100 ms, and its read rules.",
+      "predictions": [
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 2326.0453639404745
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 858.1936419013465
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z0.75",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 1.263040010197096
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 1408.097641309442
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 880.8448779865707
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 2.0239313315811556
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 544.6644499872928
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 612.911113536223
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z1.5",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 4.22003913184886
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 268.26244029717935
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 496.4133667965108
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z2",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 7.373648999750355
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 109.12757483346783
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 373.86172968516547
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z3",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 15.89513966185652
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 62.27462038714503
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 294.47646928923973
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z4",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 26.199703392093625
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 41.87924060520242
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 240.63267560976556
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z5",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 37.474492956796276
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "peak_incident_overpressure",
+          "unit": "kPa",
+          "value": 30.88334063128219
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "incident_positive_impulse",
+          "unit": "kPa*ms",
+          "value": 202.6471268562201
+        },
+        {
+          "run": "100kg",
+          "gauge": "Z6",
+          "quantity": "arrival_time",
+          "unit": "ms",
+          "value": 49.319493453380886
+        }
+      ],
+      "notes": [
+        "A deviation from ideal-gas-balloon-v1, not an import of it: the deck fixes a 3-D Cartesian octant on 0.5 m cells and its discrete start; this is the same physics on a 2-D axisymmetric mesh.",
+        "The hemisphere is centred on the rigid ground, so the ground is a plane of symmetry: the reflected wave is the mirror image of the incident one, and the exact solution is the free-air sphere's. The run tests a 2-D grid with the ground as a boundary, not a different physics.",
+        "The cylindrical source terms are not conservative: the domain gained 2.08% of the charge's energy by the stop (0.016% from the floors), most of it in the first millisecond; see the README's mesh study.",
+        "100kg: deck sha256 2884564266f1efed782bafbeddfb3bb130280c05764c28ba031fe130ce86ea87; history sha256 d1205bd3a1653d79cdf9bda7fdc6025b3777fa124f4bbaa19c0f2b3b36436b93"
+      ],
+      "recorded_in": "Benchmarks/open/other-codes/clawpack/outputs/free-field-dx0.0625.json"
+    },
+    {
+      "case": "ufc-closed-room-gas-pressure",
+      "configuration": "Clawpack 5.14.0 PyClaw ClassicClaw 3-D, unsplit wave propagation with transverse increment and correction waves, Roe solver with entropy fix (riemann.euler_3D), minmod limiter, CFL 0.45 (rejected above 0.5); the deck's density and pressure floors. The deck's mesh (the whole 6 m cube, 24 cells a side), walls on all six faces, the deck's initial_cells as given, its volume-mean observable, 50 us samples to 120 ms, and its 100-120 ms window. Differs from the deck only in the numerics it names for BombCAD's adapter (Roe and minmod, not HLLC with limiter theta 1.5; no startup steps).",
+      "predictions": [
+        {
+          "run": "0.25kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 418.38487511960994
+        },
+        {
+          "run": "0.5kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 836.8723489521949
+        },
+        {
+          "run": "1kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 1673.5117322295825
+        },
+        {
+          "run": "2kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 3347.0726033925944
+        },
+        {
+          "run": "4kg-m3",
+          "gauge": "room",
+          "quantity": "quasi_static_gas_pressure",
+          "unit": "kPa",
+          "value": 6694.216728561617
+        }
+      ],
+      "notes": [
+        "Total energy rose by 0.000% to 0.028% of the charge's over the 120 ms, all of it from the deck's pressure floor in the near-vacuum at the charge's centre; the scheme itself conserves it.",
+        "0.25kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 f69cb49826deb0456fb51ded36e420553b045037ab46573431e2c4f14c350048",
+        "0.25kg-m3: fixed 100-120 ms room proxy; relative half-window drift 0.000118461; not an assertion of equilibrium",
+        "0.5kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 2a1feafef151dadc714bc7732f36ef0d27240f12b3f880490ec1e1b68f5cf121",
+        "0.5kg-m3: fixed 100-120 ms room proxy; relative half-window drift 4.22607e-05; not an assertion of equilibrium",
+        "1kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 3f22ee2c161353e86a2c8e93699212c2f140a331771de2e8e7abda321cd679e1",
+        "1kg-m3: fixed 100-120 ms room proxy; relative half-window drift 1.7185e-05; not an assertion of equilibrium",
+        "2kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 270064adde82fd91e4192117fd6be3207d20f2e5cd6ca27ea6d326bc220cc31d",
+        "2kg-m3: fixed 100-120 ms room proxy; relative half-window drift 1.54505e-05; not an assertion of equilibrium",
+        "4kg-m3: deck sha256 87fd28617d469e056434faeae156aa71ce41b1f2fc7b28d05d54b5843307b214; history sha256 5c15b088bb2940cbeee67666cce5fe38899c335f4e78a5e6ca58d8bc4c614aa1",
+        "4kg-m3: fixed 100-120 ms room proxy; relative half-window drift 9.61592e-06; not an assertion of equilibrium"
+      ],
+      "recorded_in": "Benchmarks/open/other-codes/clawpack/outputs/room-n24-*.json"
+    }
+  ]
+}
