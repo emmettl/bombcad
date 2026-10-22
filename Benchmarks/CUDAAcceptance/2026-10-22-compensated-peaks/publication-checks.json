@@ -1,0 +1,32 @@
+{
+  "status": "pass",
+  "baseRevision": "17f7b57d260af3048318430979f28a53fb148c3f",
+  "analyticalControls": 3,
+  "caseGroups": 432,
+  "receiverHistories": 864,
+  "consumedInputsVerified": 1023,
+  "numericalProducerOrOracleReruns": 0,
+  "parentSourcePins": 537,
+  "parentRuntimePins": 33,
+  "parentOriginalAnalysisPins": 15,
+  "format": "pass",
+  "lint": "pass",
+  "strict": "pass-warning-free",
+  "checkAffected": "pass",
+  "macTests": 33,
+  "macSuites": 7,
+  "pcLinuxTests": 62,
+  "pcLinuxSuites": 11,
+  "afterChecks": {
+    "allConsumedInputHashesMatch": true,
+    "allFrozenHelpersMatch": true,
+    "externalArchiveHashMatches": true,
+    "publishedArchiveHashMatches": true,
+    "allRawOutputHashesMatch": true
+  },
+  "logSHA256": {
+    "check-affected.log": "c33f861dab79ca86a70d3ef34720640b98ccfd186b0c314fbee730e3437b2df7",
+    "strict.log": "203624360130d0445223e0b0b3c7d1446a75f8222e317dc774e40d29322d0ac3",
+    "controls.log": "7f651a454b7b284efe70fac28605ab5d9c389d39a8b6c9aae1f2193f021e78e2"
+  }
+}

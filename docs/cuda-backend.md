@@ -902,3 +902,12 @@ Keep it as a bounded research candidate; stronger-pulse regressions and conserva
 residuals remain explicit. emmettl/bombcad-work#82 tracks the remaining peak mechanism;
 emmettl/bombcad-work#80 retains broader accuracy/product validation. Defaults and CUDA
 admission are unchanged.
+
+The [saved-history peak decomposition](../Benchmarks/CUDAAcceptance/2026-10-22-compensated-peaks/summary.md)
+then analyzes every preceding receiver history without another GPU/reference run.
+For combined compensation at A1, pressure-projection bounds remain much smaller
+than the largest Float64 peak gap; 40/48 histories retain a positive remaining
+mismatch bound. The other eight are inconclusive under that inequality. Saved
+maximum sets expose timing/shape differences but cannot identify a limiter or
+flux cause. emmettl/bombcad-work#82 remains open for separately declared actual
+stencil/primitive/reconstructed-face observations; those exports have not run.

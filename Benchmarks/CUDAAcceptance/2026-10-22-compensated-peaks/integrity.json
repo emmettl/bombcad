@@ -1,0 +1,16 @@
+{
+  "status": "pass",
+  "consumedInputs": 1023,
+  "parentProducingSourcePinsVerified": 537,
+  "parentRuntimePinsVerified": 33,
+  "parentOriginalAnalysisPinsVerified": 15,
+  "allConsumedInputPinsRechecked": true,
+  "allPublishedHelpersMatchExecutedCopies": true,
+  "postprocessingAndArchiveSHA256": {
+    "summarize.py": "ab3c421e727bf9871c68c4cc1ecfd088836125527335640e74fa81e021f5c060",
+    "archive.py": "c88ec3409f52e0e96a585094f5a9d9b049fc02e6ec5f18baa299d0bff2238bbc",
+    "next-stencil-plan.md": "0869acbb1afb0c5898082b36bbf560b5f77703b48a937273c7b14184f51e3e59"
+  },
+  "analyticalControls": 3,
+  "numericalExportsRerun": 0
+}
