@@ -53,3 +53,19 @@ Publication validation: required format/lint and strict build pass without
 compiler warnings. Plain `make check-affected` passes scripts/reference/docs,
 seven selected Mac tests/one suite and 36 PC tests/four suites. This is a tooling
 and reference checkpoint; it does not replace the pending CUDA numerical gate.
+
+The [target auditor](audit-targets.py) independently enumerates every failed valid
+value and verifies its counts against the frozen existing comparator. It retains
+location, reference/candidate values, permitted error and excess, alongside every
+planned pilot outcome. It verifies source/worker provenance and consumed-file
+hashes; descriptive old-reference counts never replace the new gate.
+[Hand-calculated controls](auditor-controls.json) pass for exact and next-Float32
+tolerance boundaries, negative references, masked large errors, complete failure
+retention and exact-feature mismatch refusal. These are synthetic audit controls,
+not CUDA/Metal acceptance evidence. Raw controls remain under
+`$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-auditor-controls`.
+All 37 synthetic-control fixture/output/source files are retained in the
+[verified control archive](evidence/auditor-controls.tar.gz) (8,554 bytes), with
+[per-file receipts](auditor-controls-archive.json). Every decompressed member was
+independently checked and original files rehashed afterward, including the
+explicit feature-mutation negative control.
