@@ -44,8 +44,8 @@ and are 1–7% below the 1-D peaks on the finest meshes run.
 **One exception, and it is numerical.** On 16 mm cells the two nearest ground gauges read peaks
 well below the 31 mm run's (1,279 kPa at Z = 1, against 1,565), and the shock reaches Z = 1
 0.08 ms early, while gauges at the same distances on the axis and 45° up read 1,629 and 1,637 kPa
-and arrive on time, with pyro2's 1,700 kPa on 5 mm cells. On 31 mm cells the three directions
-agree within 0.5%. So on the finest mesh the rigid ground, as a boundary along which a strong
+and arrive on time, with pyro2's 1,700 kPa on 5 mm cells. On 31 mm cells, with the same startup
+steps, the three directions agree within 0.5%. So on the finest mesh the rigid ground, as a boundary along which a strong
 shock runs aligned with the grid, gives a low, early ground reading: the signature of Roe's
 odd-even instability on grid-aligned shocks, though the mechanism was not isolated. Scored, it
 fails two more values (the impulse and the arrival at Z = 1). The ground changes the score, here,
@@ -62,7 +62,7 @@ NumPy 2.5.
 **Free field** (`blast_axi.py`).
 
 - *Mesh.* x the radius from the charge's vertical axis, y the height; square cells from 0.5 m to
-  31.25 mm, 48 m in r and z (16 m for the near-field runs). The axis and the ground are PyClaw
+  15.625 mm, 48 m in r and z (16 m for the near-field runs). The axis and the ground are PyClaw
   walls; the two outer faces extrapolate (zero gradient, the deck's outflow).
 - *Equations.* Euler, one ideal gas, γ 1.4, written in r-z with the geometric source terms
   −(1/r)(ρu, ρu², ρuv, u(E + p)), added after each step by the two-stage Runge-Kutta step of
@@ -295,7 +295,7 @@ field's 2-D translation, which the deck does not provide for; the rest would mee
    2-D HLLE is in error; a second code will differ here, as the decks' README expects.
 6. **A ground-flush gauge reads the first row of cells**, dx/2 above the ground, by the clamp
    rule. Gauges at the same distances 45° above the ground read raw peaks 1–3% higher on 31 mm
-   cells. They cannot be read by the deck's rule: on a shock oblique to the grid the scheme
+   cells (within 0.5% with the startup steps; 22% higher at Z = 1 on 16 mm, above). They cannot be read by the deck's rule: on a shock oblique to the grid the scheme
    undershoots, 1–6 kPa below ambient just ahead of it, and before that rises half a pascal above,
    which the extractor refuses as an earlier positive pulse (its deadband is 0.1 Pa). A rule for
    a numerical precursor (a deadband relative to the peak, say) would be needed off the axes.
@@ -316,15 +316,25 @@ From this folder, with the virtual environment above as `$PY` (each run on one c
 ```bash
 $PY blast_axi.py --dx 0.0625 --label free-field-dx0.0625 --history-dir NEW-FOLDER   # the entry, 42 min
 for dx in 0.5 0.25 0.125; do $PY blast_axi.py --dx $dx --label free-field-dx$dx; done
-for dx in 0.0625 0.03125; do
-  $PY blast_axi.py --dx $dx --extent 16 --tmax 0.02 --gauges Z0.75 Z1 Z1.5 Z2 --label near-dx$dx
-done
+NEAR="--extent 16 --tmax 0.02 --gauges Z0.75 Z1 Z1.5 Z2 --directions"
+for dx in 0.0625 0.03125; do $PY blast_axi.py --dx $dx $NEAR --label near-dx$dx; done
+$PY blast_axi.py --dx 0.03125 $NEAR --startup-steps 6 --label startup6-near-dx0.03125
 $PY blast_axi.py --dx 0.015625 --extent 16 --tmax 0.02 --gauges Z0.75 Z1 Z1.5 Z2 \
-  --startup-steps 6 --label near-dx0.015625
+  --startup-steps 6 --label near-dx0.015625                                          # 81 min
+$PY blast_axi.py --dx 0.015625 --extent 10 --tmax 0.007 --gauges Z0.75 Z1 --directions \
+  --startup-steps 6 --label directions-dx0.015625                                    # 12 min
+$PY blast_axi.py --dx 0.125 --extent 16 --tmax 0.02 --gauges Z0.75 Z1 Z1.5 Z2 --directions \
+  --label directions-dx0.125
 for dx in 0.5 0.25; do $PY blast_axi.py --dx $dx --extent 36 --label boundary-36m-dx$dx; done
 for run in 0.25kg-m3 0.5kg-m3 1kg-m3 2kg-m3 4kg-m3; do
   $PY room3d.py --run $run --cells 24 --label room-n24-$run --history-dir NEW-ROOM-FOLDER
   $PY room3d.py --run $run --cells 48 --octant --label room-n48-octant-$run
+done
+$PY room3d.py --run 4kg-m3 --cells 24 --octant --label room-n24-octant-4kg-m3
+$PY room3d.py --run 0.25kg-m3 --cells 24 --octant --label room-n24-octant-0.25kg-m3
+$PY room3d.py --run 1kg-m3 --cells 48 --label room-n48-1kg-m3                        # 36 min
+for run in 0.25kg-m3 4kg-m3; do                                                      # 55-66 min each
+  $PY room3d.py --run $run --cells 96 --octant --label room-n96-octant-$run
 done
 python3 -I mesh_study.py
 ```
