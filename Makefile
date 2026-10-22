@@ -1,4 +1,4 @@
-.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected ship test-impact release-check release
+.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected ship test-impact release-check release perf perf-compare
 
 CONFIGURATION ?= release
 # Tests settle many throwaway structures; on the Studio keep their settle cache on StudioData,
@@ -142,6 +142,17 @@ ship:
 # there); the last three are kept.
 test-impact:
 	python3 Scripts/test-impact.py build $(ARGS)
+
+# The standard performance list (Scripts/perf/run-standard.py): waits for a quiet window (no
+# other gpu-slot holder, load under 8, swap steady; five hours at most), runs each scenario twice
+# in gpu-slot and appends to Benchmarks/perf/history.jsonl. On the Studio, weekly and after
+# anything that touches the solver's speed. ARGS takes --now, --only ids, --wait-from HH:MM.
+perf:
+	python3 Scripts/perf/run-standard.py $(ARGS)
+
+# Each scenario's latest figure against its previous one; more than 10% slower is flagged.
+perf-compare:
+	python3 Scripts/perf/compare.py $(ARGS)
 
 release-check:
 	python3 Scripts/release.py check

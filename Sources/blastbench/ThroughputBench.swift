@@ -107,6 +107,10 @@ func runThroughput() throws {
             wallTime = totalSteps / stepRate * swept
         }
         let slowMotion = wallTime / event
+        // The structure's size, for Scripts/perf/run-standard.py's record.
+        if let summary = solver.bodySummary() {
+            print("  structure: \(summary.activeElements + summary.erodedElements) elements")
+        }
         print(
             pad("\(format(Double(cellSize), 3)) m", 8)
                 + pad("\(format(Double(cells) / 1e6, 1)) M", 12)

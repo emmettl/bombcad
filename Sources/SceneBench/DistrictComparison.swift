@@ -383,8 +383,15 @@ enum DistrictComparison {
             var buildings: [Building] = []
             let byOwner = Dictionary(grouping: loads.indices, by: { loads[$0].owner })
             let objects = scene.envelopeObjects
+            let judging = ContinuousClock.now
             let assessed = EnvelopeDamageAssessment.assess(
                 loads: loads, constructions: { scene.envelopeConstruction(for: $0) })
+            // The end-of-run judgement as the app makes it, timed for Scripts/perf/run-standard.py.
+            print(
+                String(
+                    format: "Judged %d buildings from %d components, as the app does, in %.2f s",
+                    assessed.count,
+                    loads.count, DistrictBenchmark.seconds(judging)))
             let concrete = Dictionary(
                 uniqueKeysWithValues: assessed.map { ($0.id, $0.structuralLevels.upperBound) })
             let stone = Dictionary(

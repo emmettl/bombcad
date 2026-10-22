@@ -45,6 +45,7 @@ func runSnapshot() throws {
     let height = option("height").flatMap { Int($0) } ?? 1000
 
     let solver = try makeAirSolver(scenario, cellSize: cellSize)
+    print("Air: \(solver.grid.cellCount) cells of \(format(Double(cellSize), 3)) m")
     solver.configuration.movingWalls = !flag("stationary-walls")
     // `--blast-hazards`: the safety distances and the injury at standing height, as the app draws them.
     if flag("blast-hazards") { try solver.configureExposurePlane(heightM: 1.5, arrivalThresholdPa: 1_000) }
