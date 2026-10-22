@@ -1,0 +1,30 @@
+{
+  "status": "pass",
+  "scope": "CPU packaging preflight on copies; no Metal/CUDA solver run. Physical buffers aliased read-only and independently rehashed.",
+  "controls": [
+    {
+      "id": "made-perimeter-s1-1",
+      "physicalJobFieldsAndBuffersUnchanged": true,
+      "frozenCPUValidatorPassedBeforeAndAfter": true,
+      "featureMaskBytesUnchanged": true,
+      "uncomputedTemplateMarkedUnstable": true
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "physicalJobFieldsAndBuffersUnchanged": true,
+      "frozenCPUValidatorPassedBeforeAndAfter": true,
+      "featureMaskBytesUnchanged": true,
+      "uncomputedTemplateMarkedUnstable": true
+    },
+    {
+      "id": "beirut-p0-1",
+      "physicalJobFieldsAndBuffersUnchanged": true,
+      "frozenCPUValidatorPassedBeforeAndAfter": true,
+      "featureMaskBytesUnchanged": true,
+      "uncomputedTemplateMarkedUnstable": true
+    }
+  ],
+  "unstableReferenceRefusedBeforeWrites": true,
+  "runnerSHA256": "a0e4ff5c46e2407ad1970cd659898ab9067fc164037ca6ce3d236a276bd12e86",
+  "validatorSHA256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e"
+}

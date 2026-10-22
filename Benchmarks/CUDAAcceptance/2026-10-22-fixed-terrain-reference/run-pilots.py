@@ -36,6 +36,21 @@ def files(root):
             if not any(x in n.lower() for x in ['blind','vasudev']):yield Path(folder)/n
 
 
+
+def attach_dataset_templates(folder,reference):
+    """Attach only static dataset packaging; leave every physical job field/buffer unchanged."""
+    folder=Path(folder);reference=Path(reference)
+    job=json.loads((folder/'job.json').read_text());details=json.loads((reference/'meta.json').read_text())
+    if details.get('stable') is not True or len(details.get('targets',[]))!=3:raise ValueError('stable three-channel reference required')
+    if details['columns']!=job['shape'][0] or details['rows']!=job['shape'][1]:raise ValueError('template grid does not match physical job')
+    if 'dataset' in job or any((folder/n).exists() for n in ['inputs.npy','mask.npy','meta.json']):raise ValueError('dataset templates already exist')
+    for name in ['inputs.npy','mask.npy']:shutil.copyfile(reference/name,folder/name)
+    details.update(stable=False,steps=0,wallS=0,configuration='recommended; awaiting CUDA')
+    save(folder/'meta.json',details)
+    job['dataset']={name:sha(folder/name) for name in ['inputs.npy','mask.npy','meta.json']}
+    save(folder/'job.json',job)
+
+
 def main():
     revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
     subprocess.run(['git','merge-base','--is-ancestor','aff21dff',revision],cwd=REPO,check=True)
@@ -93,6 +108,7 @@ def main():
             entry['status']='complete' if entry['returncode']==0 else 'failed';save(ROOT/'run.json',report)
             if entry['returncode']:
                 report['rows'].append(dict(id=name,status='metal-failed',eligible=False));continue
+            attach_dataset_templates(folder/'input',folder/'metal')
             # Use the deployed worker from the checkout: remote.generate() must resolve original sources.
             command=[sys.executable,'-B',str(REPO/'Scripts/cuda/remote.py'),'bombcad-pc',str(folder/'input'),'--out',str(folder/'cuda'),'--dataset-only']
             entry=dict(id=name,backend='cuda',command=command,status='running');report['commands'].append(entry);save(ROOT/'run.json',report)

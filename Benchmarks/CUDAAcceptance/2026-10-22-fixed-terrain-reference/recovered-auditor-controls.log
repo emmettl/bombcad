@@ -1,0 +1,63 @@
+{
+  "allThreePilotsPass": false,
+  "cases": [
+    {
+      "id": "made-perimeter-s1-1",
+      "status": "compared",
+      "eligible": false,
+      "failureCountsByChannel": [
+        2,
+        2,
+        2
+      ],
+      "originalReferenceFailureCountsByChannel": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "status": "compared",
+      "eligible": false,
+      "failureCountsByChannel": [
+        2,
+        2,
+        2
+      ],
+      "originalReferenceFailureCountsByChannel": [
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "id": "beirut-p0-1",
+      "status": "compared",
+      "eligible": false,
+      "failureCountsByChannel": [
+        2,
+        2,
+        2
+      ],
+      "originalReferenceFailureCountsByChannel": [
+        3,
+        0,
+        3
+      ]
+    }
+  ]
+}
+{
+  "status": "pass",
+  "scope": "Synthetic hand-calculated audit controls, not CUDA/Metal numerical evidence",
+  "expectedFailuresPerCaseAndChannel": [
+    2,
+    2,
+    2
+  ],
+  "allFailedIndicesRetained": true,
+  "exactFeatureMismatchRefused": true,
+  "auditorSHA256": "718c36b32874588fc7217d251bb06d4ab39d58429661971f7fe808664ef1e87f",
+  "comparatorSHA256": "cae0ce0a6c5ca085523fe5d7cab025beedbc5fa3e0b3a3b4e3c27f60998ee05b"
+}

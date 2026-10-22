@@ -1,0 +1,166 @@
+{
+  "schema": "bombcad-recovered-auditor-controls-archive-1",
+  "rawRoot": "$BOMBCAD_DATA/experiments/2026-10-22-recovered-auditor-controls",
+  "files": {
+    "analysis/cuda/compare_dataset.py": {
+      "sha256": "cae0ce0a6c5ca085523fe5d7cab025beedbc5fa3e0b3a3b4e3c27f60998ee05b",
+      "bytes": 2411
+    },
+    "boundary-results.json": {
+      "sha256": "4830662b4ecb5304bcfe4f1dc325eb35f9c60ed5076cdef3161e31e83eda5878",
+      "bytes": 16424
+    },
+    "cases/beirut-p0-1/input/initial-diagnostic.json": {
+      "sha256": "3f6f28081ab8cdb0f75572cdb3002c0db7e1243e046f6fa5412eaad661e9a4ba",
+      "bytes": 23
+    },
+    "cases/beirut-p0-1/metal/inputs.npy": {
+      "sha256": "5c31743a26208d453fe942fbd7bb9d6649307ef77cc2ce41e1636d14e126550f",
+      "bytes": 224
+    },
+    "cases/beirut-p0-1/metal/mask.npy": {
+      "sha256": "af03578c0f112d56835602e8a594b2d07cc98e4c28e8772a982026dd2a6f299f",
+      "bytes": 104
+    },
+    "cases/beirut-p0-1/metal/meta.json": {
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3
+    },
+    "cases/beirut-p0-1/metal/targets.npy": {
+      "sha256": "08a5664eb9e25a08f1649ae16e93acacdddfaa24bfb32c5c6ee38ca0ea5a931c",
+      "bytes": 152
+    },
+    "cases/made-perimeter-s1-1/input/initial-diagnostic.json": {
+      "sha256": "3f6f28081ab8cdb0f75572cdb3002c0db7e1243e046f6fa5412eaad661e9a4ba",
+      "bytes": 23
+    },
+    "cases/made-perimeter-s1-1/metal/inputs.npy": {
+      "sha256": "5c31743a26208d453fe942fbd7bb9d6649307ef77cc2ce41e1636d14e126550f",
+      "bytes": 224
+    },
+    "cases/made-perimeter-s1-1/metal/mask.npy": {
+      "sha256": "af03578c0f112d56835602e8a594b2d07cc98e4c28e8772a982026dd2a6f299f",
+      "bytes": 104
+    },
+    "cases/made-perimeter-s1-1/metal/meta.json": {
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3
+    },
+    "cases/made-perimeter-s1-1/metal/targets.npy": {
+      "sha256": "08a5664eb9e25a08f1649ae16e93acacdddfaa24bfb32c5c6ee38ca0ea5a931c",
+      "bytes": 152
+    },
+    "cases/made-perimeter-s3-1/input/initial-diagnostic.json": {
+      "sha256": "3f6f28081ab8cdb0f75572cdb3002c0db7e1243e046f6fa5412eaad661e9a4ba",
+      "bytes": 23
+    },
+    "cases/made-perimeter-s3-1/metal/inputs.npy": {
+      "sha256": "5c31743a26208d453fe942fbd7bb9d6649307ef77cc2ce41e1636d14e126550f",
+      "bytes": 224
+    },
+    "cases/made-perimeter-s3-1/metal/mask.npy": {
+      "sha256": "af03578c0f112d56835602e8a594b2d07cc98e4c28e8772a982026dd2a6f299f",
+      "bytes": 104
+    },
+    "cases/made-perimeter-s3-1/metal/meta.json": {
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3
+    },
+    "cases/made-perimeter-s3-1/metal/targets.npy": {
+      "sha256": "08a5664eb9e25a08f1649ae16e93acacdddfaa24bfb32c5c6ee38ca0ea5a931c",
+      "bytes": 152
+    },
+    "control-sources/audit-targets-recovered.py": {
+      "sha256": "718c36b32874588fc7217d251bb06d4ab39d58429661971f7fe808664ef1e87f",
+      "bytes": 5672
+    },
+    "control-sources/check-recovered-auditor.py": {
+      "sha256": "a3b116f4e8eee48fe84221a7e5be25826c9e35123b6ae36b74ceacb003e538c1",
+      "bytes": 4351
+    },
+    "controls.json": {
+      "sha256": "52ba2e068c447a28e97db4fb1d2f9c91af0e1b21980f767741b9c11764bfc4b4",
+      "bytes": 399
+    },
+    "recovery/analysis/assemble-saved.py": {
+      "sha256": "2e872263e12593bf0c92feeb8cad3a84609a638af7515696ed3356631249a6d8",
+      "bytes": 18
+    },
+    "recovery/current/beirut-p0-1/dataset/inputs.npy": {
+      "sha256": "5c31743a26208d453fe942fbd7bb9d6649307ef77cc2ce41e1636d14e126550f",
+      "bytes": 224
+    },
+    "recovery/current/beirut-p0-1/dataset/mask.npy": {
+      "sha256": "af03578c0f112d56835602e8a594b2d07cc98e4c28e8772a982026dd2a6f299f",
+      "bytes": 104
+    },
+    "recovery/current/beirut-p0-1/dataset/meta.json": {
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3
+    },
+    "recovery/current/beirut-p0-1/dataset/targets.npy": {
+      "sha256": "3779a67c934f876d631056db71d8771c0111098708d78d42fec30abfe66ab118",
+      "bytes": 152
+    },
+    "recovery/current/beirut-p0-1/result.json": {
+      "sha256": "e0f9af1d6e5a6d8c24f83b4a7e8581e3bb95e4ebd4cf38202ba637078c3f38b8",
+      "bytes": 164
+    },
+    "recovery/current/made-perimeter-s1-1/dataset/inputs.npy": {
+      "sha256": "2526a848dbb33425c6f95213a9749c4967aa61ba55f657748e4f89d321abef57",
+      "bytes": 224
+    },
+    "recovery/current/made-perimeter-s1-1/dataset/mask.npy": {
+      "sha256": "af03578c0f112d56835602e8a594b2d07cc98e4c28e8772a982026dd2a6f299f",
+      "bytes": 104
+    },
+    "recovery/current/made-perimeter-s1-1/dataset/meta.json": {
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3
+    },
+    "recovery/current/made-perimeter-s1-1/dataset/targets.npy": {
+      "sha256": "3779a67c934f876d631056db71d8771c0111098708d78d42fec30abfe66ab118",
+      "bytes": 152
+    },
+    "recovery/current/made-perimeter-s1-1/result.json": {
+      "sha256": "e0f9af1d6e5a6d8c24f83b4a7e8581e3bb95e4ebd4cf38202ba637078c3f38b8",
+      "bytes": 164
+    },
+    "recovery/current/made-perimeter-s3-1/dataset/inputs.npy": {
+      "sha256": "5c31743a26208d453fe942fbd7bb9d6649307ef77cc2ce41e1636d14e126550f",
+      "bytes": 224
+    },
+    "recovery/current/made-perimeter-s3-1/dataset/mask.npy": {
+      "sha256": "af03578c0f112d56835602e8a594b2d07cc98e4c28e8772a982026dd2a6f299f",
+      "bytes": 104
+    },
+    "recovery/current/made-perimeter-s3-1/dataset/meta.json": {
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3
+    },
+    "recovery/current/made-perimeter-s3-1/dataset/targets.npy": {
+      "sha256": "3779a67c934f876d631056db71d8771c0111098708d78d42fec30abfe66ab118",
+      "bytes": 152
+    },
+    "recovery/current/made-perimeter-s3-1/result.json": {
+      "sha256": "e0f9af1d6e5a6d8c24f83b4a7e8581e3bb95e4ebd4cf38202ba637078c3f38b8",
+      "bytes": 164
+    },
+    "recovery/run.json": {
+      "sha256": "304047fa694c1c44b7cdf77596259ffacc09ad9876fa93c2fcf41fa6416e949a",
+      "bytes": 2474
+    },
+    "run.json": {
+      "sha256": "56309bf10fd2e161251e2f662973d6587c89c7a77f639552abee6721ee419218",
+      "bytes": 456
+    }
+  },
+  "archive": {
+    "path": "evidence/recovered-auditor-controls.tar.gz",
+    "files": 38,
+    "bytes": 9113,
+    "sha256": "c10ece3061971361a74940c8c595704c6541ea2d85b533c8c8e4fdb06b81cf22",
+    "everyDecompressedMemberVerified": true
+  },
+  "scope": "All synthetic recovered-receipt routing and hand-calculated threshold/refusal controls retained, including explicit feature mutation. Not numerical CUDA evidence."
+}

@@ -1,0 +1,11 @@
+scp: bombcad-cuda/c58f4f0a7ab5563b/jobs/d734215dd66f4ea8a57cb81d35a572fa/out/dataset: No such file or directory
+Traceback (most recent call last):
+  File "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-fixed-terrain-reference/queue-pilots.py", line 53, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-fixed-terrain-reference/queue-pilots.py", line 46, in main
+    for remote,target in [('out/dataset',dest/'dataset'),('out/result.json',dest/'result.json')]:subprocess.run(['scp','-r','bombcad-pc:'+result['remote']+'/'+remote,str(target)],check=True)
+                                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/louisemmett/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['scp', '-r', 'bombcad-pc:bombcad-cuda/c58f4f0a7ab5563b/jobs/d734215dd66f4ea8a57cb81d35a572fa/out/dataset', '/Volumes/StudioData/bombcad/experiments/2026-10-22-fixed-terrain-reference/queued-cuda/made-perimeter-s1-1/dataset']' returned non-zero exit status 1.

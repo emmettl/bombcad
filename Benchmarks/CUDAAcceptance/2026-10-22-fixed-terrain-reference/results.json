@@ -1,0 +1,232 @@
+{
+  "schema": "bombcad-fixed-reference-recovered-target-audit-1",
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "status": "compared",
+      "eligible": true,
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "allPerValueFailures": [],
+      "failureCountsByChannel": [
+        0,
+        0,
+        0
+      ],
+      "originalReferenceFailureCountsByChannel": [
+        0,
+        0,
+        0
+      ],
+      "validPixels": 158013,
+      "targetShape": [
+        3,
+        512,
+        512
+      ],
+      "featureByteIdentity": true,
+      "maskByteIdentity": true,
+      "initial": {
+        "executionPath": "tiled",
+        "format": "bombcad-field-initial-diagnostic-1",
+        "requestedContraction": "default",
+        "requestedMathMode": "default",
+        "scope": "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+        "stepCount": 0,
+        "time": 0.003934389986701742
+      }
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "status": "compared",
+      "eligible": true,
+      "comparison": {
+        "0": {
+          "relativeL2": 7.698813128669745e-08,
+          "maxAbsolute": 1.5,
+          "outsideTolerance": 0,
+          "medianRelative": 3.859689641312783e-06,
+          "p99Relative": 5.214409842267551e-05
+        },
+        "1": {
+          "relativeL2": 6.373657493479914e-06,
+          "maxAbsolute": 1.6875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.8586629137912403e-06,
+          "p99Relative": 1.1217134969518532e-05
+        },
+        "2": {
+          "relativeL2": 1.416372537847365e-06,
+          "maxAbsolute": 0.0244140625,
+          "outsideTolerance": 0,
+          "medianRelative": 2.6706544370023902e-06,
+          "p99Relative": 1.5179557247878614e-05
+        },
+        "passed": true
+      },
+      "allPerValueFailures": [],
+      "failureCountsByChannel": [
+        0,
+        0,
+        0
+      ],
+      "originalReferenceFailureCountsByChannel": [
+        0,
+        0,
+        2
+      ],
+      "validPixels": 153610,
+      "targetShape": [
+        3,
+        512,
+        512
+      ],
+      "featureByteIdentity": true,
+      "maskByteIdentity": true,
+      "initial": {
+        "executionPath": "tiled",
+        "format": "bombcad-field-initial-diagnostic-1",
+        "requestedContraction": "default",
+        "requestedMathMode": "default",
+        "scope": "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+        "stepCount": 0,
+        "time": 0.007832608726021408
+      }
+    },
+    {
+      "id": "beirut-p0-1",
+      "status": "compared",
+      "eligible": false,
+      "comparison": {
+        "0": {
+          "relativeL2": 9.476082239234982e-08,
+          "maxAbsolute": 8.568359375,
+          "outsideTolerance": 0,
+          "medianRelative": 2.518342187929397e-06,
+          "p99Relative": 0.0001258228839238636
+        },
+        "1": {
+          "relativeL2": 1.817675682392886e-06,
+          "maxAbsolute": 0.5,
+          "outsideTolerance": 0,
+          "medianRelative": 3.1957115377284564e-06,
+          "p99Relative": 1.9428936156050985e-05
+        },
+        "2": {
+          "relativeL2": 3.997262051870742e-05,
+          "maxAbsolute": 181.830078125,
+          "outsideTolerance": 1,
+          "medianRelative": 2.678948615704821e-06,
+          "p99Relative": 2.171638540763343e-05
+        },
+        "passed": false
+      },
+      "allPerValueFailures": [
+        {
+          "channel": 2,
+          "index": 187747,
+          "row": 366,
+          "column": 355,
+          "reference": 1696.1177978515625,
+          "candidate": 1514.2877197265625,
+          "absoluteError": 181.830078125,
+          "allowedError": 3.4422355957031248,
+          "excess": 178.38784252929688
+        }
+      ],
+      "failureCountsByChannel": [
+        0,
+        0,
+        1
+      ],
+      "originalReferenceFailureCountsByChannel": [
+        3,
+        0,
+        3
+      ],
+      "validPixels": 223548,
+      "targetShape": [
+        3,
+        512,
+        512
+      ],
+      "featureByteIdentity": true,
+      "maskByteIdentity": true,
+      "initial": {
+        "executionPath": "tiled",
+        "format": "bombcad-field-initial-diagnostic-1",
+        "requestedContraction": "default",
+        "requestedMathMode": "default",
+        "scope": "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+        "stepCount": 0,
+        "time": 0.025454009796289062
+      }
+    }
+  ],
+  "allThreePilotsPass": false,
+  "gate": "Exact numeric features/masks and every valid target abs(error)<=0.05+0.002*abs(reference), matching existing compare_dataset.py; additional byte-identity observations do not replace the gate.",
+  "channelOrder": [
+    "peakOverpressure",
+    "impulse",
+    "firstPhaseImpulse"
+  ],
+  "consumedFilesSHA256": {
+    "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-21-training-pilots.json": "2eac7560ed8908cacf234db4ee8cf617530c157ebeeaadf1f9b8e4dbcd04e2f7",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/run.json": "a80e182b4114db37b110583899e7b6506a7dd86e292bd1fcef955c6ffbcfe2e7",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/run.json": "7183b7561ac4686399da8368c1de7f28fb03076c0ff912b6af3aaa8cf297a3d8",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/analysis/cuda/compare_dataset.py": "cae0ce0a6c5ca085523fe5d7cab025beedbc5fa3e0b3a3b4e3c27f60998ee05b",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/targets.npy": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/meta.json": "750eae8e5205e54e1f336b4d3595dc2629821a3f103b7177fb1d772ebdf20df2",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s1-1/dataset/inputs.npy": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s1-1/dataset/targets.npy": "22d01be661132a8d6773d01dbd67f867bbc0184cf85937bb97b91c35d279387a",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s1-1/dataset/mask.npy": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s1-1/dataset/meta.json": "13f41ba6ece9599d762bd4ddc0239657701becef072a8fff38a3cd4f111befa6",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s1-1/result.json": "6fde2241aa9f420fb8abe9f183171655cbc3758b958088d9a3d67717ef4927f8",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/input/initial-diagnostic.json": "691b68918bbdf571f66bea782f3b9f48a67c28fbe83ec684d5bfa03711e0461e",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/targets.npy": "45f317d4b117f3d3528f927758ad15c0bf0b866bcc455180d8e0cfdedaffcb4b",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/meta.json": "9992e3b4af45ab022cc248dea620778322550acbd1e65b7b0310ba20b8c6f5e3",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s3-1/dataset/inputs.npy": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s3-1/dataset/targets.npy": "fbfdecddbe9ba9ab5dc5893e86e7e7bfd6048f37c3f5d287d768488bfdd3ec11",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s3-1/dataset/mask.npy": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s3-1/dataset/meta.json": "58fde1152dad98c44036793cd44d72d71f19f70410d96239eb35250730876401",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s3-1/result.json": "9d165f4c0fc7a767e4982b0e1e3436840e7c95237cfb686140ff6bc6bffae055",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/input/initial-diagnostic.json": "b2da42a9c9bd7cf8f649ae0a92407b592bbb185f69d794d459ad4d6879f17b15",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/targets.npy": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/meta.json": "2294b52c0734a24ebe9a65dfbf648624f48e92b6a464ff94780c18497a592d82",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/beirut-p0-1/dataset/inputs.npy": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/beirut-p0-1/dataset/targets.npy": "60491db60d635a9079776250e5351e4d83c9097be590dc279e26a6958c466d37",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/beirut-p0-1/dataset/mask.npy": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/beirut-p0-1/dataset/meta.json": "da5273074f98916e81f7d80cbb36ae34e87981d146e41161fdfce22801a93d28",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/recovery/current/beirut-p0-1/result.json": "ac4e3dcb44b62d8bd0a75e830a3d670bb92a1412db2dbd3609ad28f3b2b9aae3",
+    "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/input/initial-diagnostic.json": "43dcf8c4bc941cda950a96311089e3f24816647f35612321d18d1c4f3ee63ae7"
+  },
+  "limits": "Every planned pilot and every failed valid value retained. Original balloon-reference counts are descriptive history, not same-solution byte parity. Three pilots do not independently validate physics or waive gates on future cases. Datasets assembled from saved raw outputs after a packaging failure, with three complete normal-worker array-word controls and unchanged template/column proofs. No tolerance/label/mask/default/training-index change."
+}

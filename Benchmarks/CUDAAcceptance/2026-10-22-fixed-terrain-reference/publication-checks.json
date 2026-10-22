@@ -1,0 +1,26 @@
+{
+  "schema": "bombcad-fixed-reference-publication-checks-1",
+  "formatLint": true,
+  "macStrictBuildNoWarnings": true,
+  "plainCheckAffected": true,
+  "macSelectedSuites": [
+    "CompensatedSweepTests",
+    "GroundShockRunTests",
+    "NearbyBulkTests",
+    "PeopleInSceneTests",
+    "RemoteRunTests",
+    "StandingRunTests",
+    "SweepSourceDiagnosticsTests",
+    "SweepUpdateDiagnosticsTests"
+  ],
+  "linuxTests": 62,
+  "linuxSuites": 11,
+  "rawFilesRehashedAfterChecks": 958,
+  "bothFinalArchiveHashesMatch": true,
+  "allAuditorConsumedPinsMatch": true,
+  "testedPackagingAndAuditorSourcePinsMatch": true,
+  "allThreeNumericalWorkersCompletedOnce": true,
+  "gateResult": "flat and slope pass; one Beirut first-phase value rejected",
+  "numericalRerunsForPackaging": 0,
+  "scope": "Observed completed required checks plus post-check raw/archive/input/source verification. This does not replace numerical gate results or claim a hermetic environment. PC full-state files remain at recorded remote paths and hashes."
+}

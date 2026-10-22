@@ -1,0 +1,123 @@
+{
+  "status": "complete-all-outcomes",
+  "scope": "Saved-output packaging only; no Metal/CUDA/oracle rerun. Original retrieval failure retained.",
+  "controls": [
+    {
+      "id": "made-perimeter-s1-1",
+      "wholeControlTargetWordEquality": true,
+      "unchangedTemplateFeatureMaskBytes": true,
+      "unchangedReceiverColumnBytes": true,
+      "allSelectedPixelsNativeValid": true
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "wholeControlTargetWordEquality": true,
+      "unchangedTemplateFeatureMaskBytes": true,
+      "unchangedReceiverColumnBytes": true,
+      "allSelectedPixelsNativeValid": true
+    },
+    {
+      "id": "beirut-p0-1",
+      "wholeControlTargetWordEquality": true,
+      "unchangedTemplateFeatureMaskBytes": true,
+      "unchangedReceiverColumnBytes": true,
+      "allSelectedPixelsNativeValid": true
+    }
+  ],
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "status": "compared",
+      "eligible": true,
+      "comparison": {
+        "0": {
+          "relativeL2": 8.653548373308e-09,
+          "maxAbsolute": 2.5,
+          "outsideTolerance": 0,
+          "medianRelative": 2.7317378770025916e-06,
+          "p99Relative": 2.22629026170042e-05
+        },
+        "1": {
+          "relativeL2": 1.4437471857944405e-06,
+          "maxAbsolute": 1.388671875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.9032420662783494e-06,
+          "p99Relative": 7.436845008326852e-06
+        },
+        "2": {
+          "relativeL2": 5.321219592109486e-07,
+          "maxAbsolute": 0.0703125,
+          "outsideTolerance": 0,
+          "medianRelative": 2.5258627294641046e-06,
+          "p99Relative": 5.579321484765934e-06
+        },
+        "passed": true
+      },
+      "datasetDirectory": "recovery/current/made-perimeter-s1-1/dataset"
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "status": "compared",
+      "eligible": true,
+      "comparison": {
+        "0": {
+          "relativeL2": 7.698813128669745e-08,
+          "maxAbsolute": 1.5,
+          "outsideTolerance": 0,
+          "medianRelative": 3.859689641312783e-06,
+          "p99Relative": 5.214409842267551e-05
+        },
+        "1": {
+          "relativeL2": 6.373657493479914e-06,
+          "maxAbsolute": 1.6875,
+          "outsideTolerance": 0,
+          "medianRelative": 1.8586629137912403e-06,
+          "p99Relative": 1.1217134969518532e-05
+        },
+        "2": {
+          "relativeL2": 1.416372537847365e-06,
+          "maxAbsolute": 0.0244140625,
+          "outsideTolerance": 0,
+          "medianRelative": 2.6706544370023902e-06,
+          "p99Relative": 1.5179557247878614e-05
+        },
+        "passed": true
+      },
+      "datasetDirectory": "recovery/current/made-perimeter-s3-1/dataset"
+    },
+    {
+      "id": "beirut-p0-1",
+      "status": "compared",
+      "eligible": false,
+      "comparison": {
+        "0": {
+          "relativeL2": 9.476082239234982e-08,
+          "maxAbsolute": 8.568359375,
+          "outsideTolerance": 0,
+          "medianRelative": 2.518342187929397e-06,
+          "p99Relative": 0.0001258228839238636
+        },
+        "1": {
+          "relativeL2": 1.817675682392886e-06,
+          "maxAbsolute": 0.5,
+          "outsideTolerance": 0,
+          "medianRelative": 3.1957115377284564e-06,
+          "p99Relative": 1.9428936156050985e-05
+        },
+        "2": {
+          "relativeL2": 3.997262051870742e-05,
+          "maxAbsolute": 181.830078125,
+          "outsideTolerance": 1,
+          "medianRelative": 2.678948615704821e-06,
+          "p99Relative": 2.171638540763343e-05
+        },
+        "passed": false
+      },
+      "datasetDirectory": "recovery/current/beirut-p0-1/dataset"
+    }
+  ],
+  "sourceSHA256": "611e8cfe568aa04d6f8f9c58df5e55b869ad91b30d5431eb27ded5bccd2507f1",
+  "pythonVersion": "3.12.14 (main, Aug 25 2026, 13:50:33) [Clang 22.1.3 ]",
+  "numpyVersion": "2.3.5",
+  "allPilotsPass": false
+}

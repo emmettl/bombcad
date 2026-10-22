@@ -1,5 +1,9 @@
 # Fixed-main Metal references complete; CUDA comparison queued
 
+> Completed outcome: [fixed-reference results](summary.md). Flat and slope pass;
+> one Beirut first-phase value fails the unchanged gate. Bulk generation stays held.
+> Earlier waiting/running descriptions below are historical checkpoints.
+
 22 October 2026. Tracking: emmettl/bombcad-work#39, emmettl/bombcad-work#47,
 emmettl/bombcad-work#62, emmettl/bombcad-work#63 and emmettl/bombcad-work#80.
 

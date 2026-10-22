@@ -1,11 +1,15 @@
 # Scientific pipeline and matrix launch — 22 October 2026
 
-> **Paused by user direction, 22 October 2026:** all 432 producer commands completed,
-> but the full auditor is stopped with SIGSTOP at its verified owned PID83120.
-> Partial audit output is preserved. No weak-wave work resumes until fresh
-> slope/Beirut acceptance pilots use Metal main containing `aff21dff`.
-> See [the fixed-reference prerequisite](../2026-10-22-fixed-terrain-reference/plan.md).
-> Earlier launch/check descriptions below are historical checkpoints.
+> **Pause prerequisite completed, 22 October 2026:** the corrected-main
+> [fixed-reference pilots](../2026-10-22-fixed-terrain-reference/summary.md) pass flat
+> and slope, but retain one Beirut first-phase rejection under the unchanged gate.
+> Per the user's "if they persist" branch, the exact owned CPU auditor PID83120 /
+> exec94445 was resumed with SIGCONT after verifying boot, birth and command.
+> The completed 432-command producer was not rerun. The resumed audit is now
+> terminal: all 432 observation/prior-wave gates, 216 full/tiled final pairs and
+> all entire source-history pairs pass. Component interpretation and publication
+> follow separately; earlier launch/wait descriptions below are historical.
+
 
 Tracking: emmettl/bombcad-work#82 remains open and claimed; parent
 emmettl/bombcad-work#80. The remaining peak mechanism is unresolved.
