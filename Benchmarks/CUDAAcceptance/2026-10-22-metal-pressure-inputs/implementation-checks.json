@@ -1,0 +1,43 @@
+{
+  "status": "implementation-verified-captures-pending",
+  "files": {
+    "Sources/BlastCore/FirstPhaseColumns.swift": "77fef4d7483486a3f0004ec53576aff99502ab7c02c8b7dba7e53dc494bbccbe",
+    "Sources/BlastCore/FirstPhaseInputDiagnostics.swift": "deab7b1e8bcb38f3b90818c8279cc27f02ce8f6cb8f1ea35bbb29edce89d6df5",
+    "Sources/SceneBench/FieldExport.swift": "ef766fbf0aa85116fcb62ce56b82d11cfb9a6d94b033ec5cfd906d79b5675353",
+    "Tests/BlastCoreTests/FirstPhaseColumnsTests.swift": "88acf6785b9ebd74d0168fe8ff3bce61c9ec66c6e70b4c05d879bcf436f271dc",
+    "Scripts/cuda/README.md": "bc2e84b8c17610160e096b6c415e7028a06796781232b2c21051c7650f47727c",
+    "docs/release-notes/next/raw-pressure-inputs.md": "98084ede870406a9c08fcce6928ff723e687327507d532846371fc8676cbc700",
+    "Benchmarks/CUDAAcceptance/2026-10-22-metal-pressure-inputs/run.py": "92a85b5bfb1c5c9eaea29921ea92171b7d7cfc4bdf6983b6745df9bd176bc36f",
+    "Benchmarks/CUDAAcceptance/2026-10-22-metal-pressure-inputs/plan.md": "7e767ac1e688e6af5f0fa478c45a82da73c4f88d3718b57d64dac9489d9f2fec"
+  },
+  "checks": [
+    {
+      "command": "make check-affected",
+      "session": 87948,
+      "returncode": 0,
+      "scope": "Broad initial implementation; final endpoint API/binding restoration checked separately below. Selected Mac suites and PC Linux lane passed.",
+      "pcTests": 128,
+      "pcSuites": 36
+    },
+    {
+      "command": "make format && make lint && make build-strict",
+      "session": 77216,
+      "returncode": 0,
+      "scope": "Final implementation; no compiler warnings"
+    },
+    {
+      "command": "BOMBCAD_SETTLE_CACHE=$BOMBCAD_DATA/settle-cache ~/.local/bin/gpu-slot --mem 2 swift test --filter FirstPhaseColumnsTests",
+      "session": 77216,
+      "returncode": 0,
+      "tests": 8,
+      "suites": 1,
+      "scope": "Final endpoint API and binding restoration, layered/tail grids, mapped/balloon starts, native pressure bit parity, independent endpoint words and overflow refusal"
+    },
+    {
+      "command": "capture controller read-only preflight",
+      "returncode": 0,
+      "scope": "Frozen helper imports, original three jobs, enabled selected columns, existing fused native replay, NumPy core path; no numerical capture"
+    }
+  ],
+  "limits": "Implementation mechanism checks do not establish corrected-case parity or a new CUDA pass. Nine declared Metal commands and all model comparisons remain pending."
+}

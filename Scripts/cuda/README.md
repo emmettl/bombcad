@@ -92,3 +92,16 @@ evaluations, while retaining the original clock/reset and numerical equations.
 `test_cooling_bounds.py` exercises CPU tensors in the PC PyTorch environment (no GPU needed);
 the ordinary contract suite includes these tests and marks them skipped if PyTorch is absent.
 Full-field/timestep paired evidence and scope are in the backend documentation.
+
+Production Metal raw-cell observation adds `--trace-pressure --trace-pressure-inputs` to
+`field-export --first-phase --trace-columns i,j`. It writes `pressure-inputs.npy` with
+shape [samples, selected columns, 16]: column descriptor (4), interpolation weights (2),
+then low/high cells (density, three momenta, energy). The matching JSON records column indices,
+steps and physical times, including initialization. Independent host endpoint reads are written
+to `pressure-input-endpoints.npy` ([initial/final, selected columns, 16]) for trace validation.
+Indices flatten all export layers.
+A separate read-only Metal library reads these words after the existing pressure producer;
+its source and pipeline are unchanged. The paired pressure trace supplies the original recorder
+seed and native pressure. `--trace-pressure-max-samples` bounds both traces; overflow refuses
+complete readback. Verify ordinary arrays, state hashes and native trace parity on each new
+control before interpreting raw inputs. These diagnostics do not change dataset admission.

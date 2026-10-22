@@ -36,6 +36,7 @@ final class FirstPhasePressureCapture {
     let slots: MTLBuffer
     let output: MTLBuffer
     let pipeline: MTLComputePipelineState
+    var inputs: FirstPhaseInputCapture?
     let seeds: [[Float]]
     let initialTime: Double
     let maxSamples: Int
@@ -120,7 +121,8 @@ final class FirstPhaseColumns {
 
     var memoryFootprint: Int {
         columns.length + records.length + open.length
-            + (pressureCapture.map { $0.slots.length + $0.output.length } ?? 0)
+            + (pressureCapture.map { $0.slots.length + $0.output.length + ($0.inputs?.output.length ?? 0) }
+                ?? 0)
     }
 
     func reset() {
@@ -205,11 +207,17 @@ extension BlastSolver {
     /// batch is split into one-step command buffers; its control and clock are not reset between
     /// parts. `capturePressure` additionally compiles an instrumented recorder and retains at most
     /// `maxPressureSamples` including initialization; overflow refuses a trace rather than truncating it.
+    /// `captureInputs` additionally reads raw Cells through a separate library after the producer;
+    /// it requires pressure capture and shares its sample limit. The producer source is unchanged.
     /// Indices are flattened across export layers. Samples may include sensitive model output.
     public func configureFirstPhaseDiagnostics(
-        _ indices: [Int], capturePressure: Bool = false, maxPressureSamples: Int = 32768
+        _ indices: [Int], capturePressure: Bool = false, maxPressureSamples: Int = 32768,
+        captureInputs: Bool = false
     ) throws {
         precondition(!batchInFlight && stepCount == 0, "Configure diagnostics before stepping")
+        guard !captureInputs || capturePressure else {
+            throw BlastError.allocationFailed("raw inputs require pressure capture")
+        }
         guard let recorder = firstPhaseColumns, !indices.isEmpty, indices.count <= 64,
             Set(indices).count == indices.count,
             indices.allSatisfy({
@@ -246,6 +254,9 @@ extension BlastSolver {
                 slots: slots, output: output,
                 pipeline: try ShaderLibrary.pipeline("sampleFirstPhasePressure", in: observedLibrary),
                 seeds: seeds, initialTime: time, maxSamples: maxPressureSamples)
+        }
+        if captureInputs {
+            capture?.inputs = try FirstPhaseInputCapture(device: device, count: indices.count)
         }
         recorder.pressureCapture = capture
         recorder.diagnosticIndices = indices
@@ -312,7 +323,8 @@ extension BlastSolver {
                     Array(UnsafeBufferPointer(start: output + q * 16 + offset, count: 8))
                 }
             }
-            if capture.samples.isEmpty {
+            let firstSample = capture.samples.isEmpty
+            if firstSample {
                 capture.samples.append(
                     FirstPhasePressureSample(step: 0, time: capture.initialTime, values: values(0)))
             }
@@ -323,6 +335,10 @@ extension BlastSolver {
             capture.samples.append(
                 FirstPhasePressureSample(
                     step: step, time: Double(control.clock) / 1_099_511_627_776, values: values(8)))
+            capture.inputs?.collect(
+                count: recorder.diagnosticIndices.count, initial: firstSample,
+                step: step, time: Double(control.clock) / 1_099_511_627_776,
+                initialTime: capture.initialTime)
         }
         let records = recorder.records.contents().bindMemory(
             to: SIMD4<Float>.self, capacity: recorder.layers * recorder.nx * recorder.ny)
@@ -373,6 +389,23 @@ extension BlastSolver {
             encoder.dispatchThreads(
                 MTLSize(width: recorder.nx, height: recorder.ny, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+        }
+        if let capture = recorder.pressureCapture, let inputs = capture.inputs {
+            inputs.encode(
+                encoder, state: stateBuffers[current], control: controlBuffer,
+                columns: recorder.columns, slots: capture.slots,
+                nx: recorder.nx, ny: recorder.ny, layers: recorder.layers, initial: initial)
+            // Leave the encoder bindings exactly as the existing producer did.
+            let offset = (recorder.layers - 1) * plan
+            encoder.setComputePipelineState(capture.pipeline)
+            encoder.setBuffer(stateBuffers[current], offset: 0, index: 0)
+            encoder.setBuffer(controlBuffer, offset: 0, index: 1)
+            encoder.setBuffer(
+                recorder.columns, offset: offset * MemoryLayout<SIMD4<Float>>.stride, index: 2)
+            encoder.setBuffer(
+                recorder.records, offset: offset * MemoryLayout<SIMD4<Float>>.stride, index: 3)
+            encoder.setBuffer(recorder.open, offset: offset * MemoryLayout<Float>.stride, index: 4)
+            encoder.setBytes(&uniforms, length: MemoryLayout<SolverUniforms>.stride, index: 5)
         }
     }
 }

@@ -123,18 +123,29 @@ struct FirstPhaseColumnsTests {
             let plain = try make()
             let legacy = try make()
             let observed = try make()
+            let raw = try make()
             let plan = plain.grid.nx * plain.grid.ny
             let cells =
                 Array(repeating: SIMD4<Float>(1, 2, 0.25, 1), count: plan)
                 + Array(repeating: SIMD4<Float>(3, 4, 0.5, 1), count: plan)
-            for solver in [plain, legacy, observed] { try solver.configureFirstPhaseColumns(cells) }
+            for solver in [plain, legacy, observed, raw] { try solver.configureFirstPhaseColumns(cells) }
             let nearCharge = 4 + plain.grid.nx * 8
             let indices = [nearCharge, plan - 1, plan + nearCharge, 2 * plan - 1]
             try legacy.configureFirstPhaseDiagnostics(Array(indices.prefix(2)))
             try observed.configureFirstPhaseDiagnostics(indices, capturePressure: true)
+            try raw.configureFirstPhaseDiagnostics(indices, capturePressure: true, captureInputs: true)
+            func cellWords(_ solver: BlastSolver) -> [UInt32] {
+                let buffer = solver.stateBuffers[solver.current]
+                return Array(
+                    UnsafeBufferPointer(
+                        start: buffer.contents().bindMemory(to: UInt32.self, capacity: buffer.length / 4),
+                        count: buffer.length / 4))
+            }
+            let initialWords = cellWords(raw)
+            let initialSnapshot = try raw.firstPhaseInputStateSnapshot()
             #expect(plain.firstPhaseColumns?.pressureCapture == nil)
             #expect(legacy.firstPhaseColumns?.pressureCapture == nil)
-            for solver in [plain, legacy, observed] {
+            for solver in [plain, legacy, observed, raw] {
                 let result = solver.advance(until: 0.006)
                 #expect(result.isStable && result.steps > 0)
             }
@@ -144,7 +155,39 @@ struct FirstPhaseColumnsTests {
             #expect(plain.stateDigest() == legacy.stateDigest())
             #expect(plain.firstPhaseSnapshot() == observed.firstPhaseSnapshot())
             #expect(plain.firstPhaseSnapshot() == legacy.firstPhaseSnapshot())
+            #expect(raw.firstPhaseDiagnosticStateHashes() == plain.firstPhaseDiagnosticStateHashes())
             let trace = try observed.firstPhasePressureTrace()
+            let paired = try raw.firstPhasePressureTrace()
+            #expect(
+                paired.samples.map { $0.values.map { $0.map(\.bitPattern) } }
+                    == trace.samples.map { $0.values.map { $0.map(\.bitPattern) } })
+            let inputs = try raw.firstPhaseInputTrace()
+            let finalSnapshot = try raw.firstPhaseInputStateSnapshot()
+            #expect(
+                initialSnapshot.map { $0.map(\.bitPattern) }
+                    == inputs.samples.first?.values.map { $0.map(\.bitPattern) })
+            #expect(
+                finalSnapshot.map { $0.map(\.bitPattern) }
+                    == inputs.samples.last?.values.map { $0.map(\.bitPattern) })
+            #expect(inputs.columns == indices)
+            #expect(inputs.samples.map(\.step) == paired.samples.map(\.step))
+            #expect(inputs.samples.map(\.time) == paired.samples.map(\.time))
+            for (sample, words) in [
+                (try #require(inputs.samples.first), initialWords),
+                (try #require(inputs.samples.last), cellWords(raw)),
+            ] {
+                for (q, n) in indices.enumerated() {
+                    let c = cells[n]
+                    let values = sample.values[q]
+                    #expect(Array(values.prefix(6)) == [c.x, c.y, c.z, c.w, 1 - c.z, c.z])
+                    for (side, k) in [Int(c.x), Int(c.y)].enumerated() {
+                        let start = 5 * (n % plan + plan * k)
+                        #expect(
+                            Array(values[(6 + 5 * side)..<(11 + 5 * side)]).map(\.bitPattern)
+                                == Array(words[start..<(start + 5)]))
+                    }
+                }
+            }
             #expect(trace.columns == indices)
             if mapped { #expect(trace.seedRecords.contains { $0[1] > 0 }) }
             #expect(trace.samples.count == observed.stepCount + 1)
@@ -188,11 +231,16 @@ struct FirstPhaseColumnsTests {
         #expect(throws: BlastError.self) {
             try observed.configureFirstPhaseDiagnostics([17], capturePressure: true, maxPressureSamples: 1)
         }
-        try observed.configureFirstPhaseDiagnostics([17], capturePressure: true, maxPressureSamples: 2)
+        #expect(throws: BlastError.self) {
+            try observed.configureFirstPhaseDiagnostics([17], captureInputs: true)
+        }
+        try observed.configureFirstPhaseDiagnostics(
+            [17], capturePressure: true, maxPressureSamples: 2, captureInputs: true)
         let result = observed.advance(steps: 3)
         #expect(result.isStable && result.steps == 3)
         #expect(observed.firstPhaseColumns?.pressureCapture?.samples.count == 2)
         #expect(throws: BlastError.self) { try observed.firstPhasePressureTrace() }
+        #expect(throws: BlastError.self) { try observed.firstPhaseInputTrace() }
     }
 
     @Test("Disabled columns cannot expose invalid cell indices to host diagnostics")

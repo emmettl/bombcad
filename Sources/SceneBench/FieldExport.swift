@@ -216,6 +216,10 @@ enum FieldExport {
                 "production --trace-columns requires --first-phase and excludes --cuda-job")
         }
         let tracePressure = args.contains("--trace-pressure")
+        let traceInputs = args.contains("--trace-pressure-inputs")
+        guard !traceInputs || tracePressure else {
+            throw BlastError.allocationFailed("--trace-pressure-inputs requires --trace-pressure")
+        }
         let diagnosticStateHashes = args.contains("--diagnostic-state-hashes")
         guard !diagnosticStateHashes || !args.contains("--cuda-job") else {
             throw BlastError.allocationFailed("--diagnostic-state-hashes requires a production run")
@@ -261,7 +265,8 @@ enum FieldExport {
                 throw BlastError.allocationFailed("comma-separated integer trace columns")
             }
             try solver.configureFirstPhaseDiagnostics(
-                traceIndices, capturePressure: tracePressure, maxPressureSamples: pressureBudget)
+                traceIndices, capturePressure: tracePressure, maxPressureSamples: pressureBudget,
+                captureInputs: traceInputs)
         } else {
             traceIndices = []
         }
@@ -334,6 +339,7 @@ enum FieldExport {
             try writeTimings(folder: folder, mode: "cuda-prepare", solve: 0, outputStart: outputStart)
             return
         }
+        let initialInputSnapshot = traceInputs ? try solver.firstPhaseInputStateSnapshot() : nil
         let initialStateHashes = diagnosticStateHashes ? solver.firstPhaseDiagnosticStateHashes() : nil
         let initialDiagnosticTime = solver.time
         let start = ContinuousClock.now
@@ -426,6 +432,36 @@ enum FieldExport {
             ]
             try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
                 .write(to: folder.appending(path: "pressure-trace.json"))
+        }
+        if traceInputs {
+            let trace = try solver.firstPhaseInputTrace()
+            if let initialInputSnapshot {
+                let endpoints = initialInputSnapshot + (try solver.firstPhaseInputStateSnapshot())
+                try NPY.write(
+                    endpoints.flatMap { $0 },
+                    shape: [2, trace.columns.count, 16],
+                    to: folder.appending(path: "pressure-input-endpoints.npy"))
+            }
+            try NPY.write(
+                trace.samples.flatMap { $0.values.flatMap { $0 } },
+                shape: [trace.samples.count, trace.columns.count, 16],
+                to: folder.appending(path: "pressure-inputs.npy"))
+            let info: [String: Any] = [
+                "format": "bombcad-pressure-inputs-1", "columns": trace.columns,
+                "steps": trace.samples.map(\.step), "times": trace.samples.map(\.time),
+                "fields": [
+                    "k0", "k1", "fraction", "enabled", "weight0", "weight1",
+                    "rho0", "mx0", "my0", "mz0", "energy0",
+                    "rho1", "mx1", "my1", "mz1", "energy1",
+                ],
+                "sampling":
+                    "separate read-only pipeline after native pressure producer; initialization and active steps",
+                "maxSamples": pressureBudget, "complete": true,
+                "planShape": [solver.grid.ny, solver.grid.nx],
+                "layers": levels.count + 1,
+            ]
+            try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
+                .write(to: folder.appending(path: "pressure-inputs.json"))
         }
         try writeTimings(folder: folder, mode: "metal", solve: wall, outputStart: outputStart)
         guard stable else { throw BlastError.allocationFailed("a stable run (written with stable: false)") }
