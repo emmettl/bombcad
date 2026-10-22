@@ -23,8 +23,13 @@ first reproduces all 375,672 archived Metal output words, then eliminates all sa
 timestep/stop differences on 15,653 records using safe arithmetic and precise FP32 functions.
 This is conditional scalar agreement, not a new evolved trajectory or an acceptance pass.
 Later physical maxima differ; no reference, phase rule, tolerance or production default changes.
-emmettl/bombcad-work#89 tracks independent physical/refinement controls and a selector-only
-trajectory experiment that retains the existing fixed-reference gate.
+The [selector-only trajectory experiment](../Benchmarks/CUDAAcceptance/2026-10-22-selector-trajectories/summary.md)
+in emmettl/bombcad-work#89 passes its independent Sod/Sedov controls and all original/observer
+parity gates, but is rejected by the existing reference: flat passes, slope gains one phase
+failure and Beirut gains61 peak failures. Metal still closes the monitored Beirut phase
+at900, versus native CUDA827. Correct scalar selection alone does not fix acceptance.
+emmettl/bombcad-work#90 tracks histories at the new failure locations;
+emmettl/bombcad-work#91 tracks the upstream maximum-speed inputs to remaining clock differences.
 
 ## What runs where
 

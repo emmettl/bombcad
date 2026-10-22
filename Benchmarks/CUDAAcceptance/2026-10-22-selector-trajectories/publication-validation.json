@@ -1,0 +1,23 @@
+{
+  "status": "passed-complete-trajectory-artifacts",
+  "format": "passed",
+  "lint": "passed",
+  "strictHostBuild": "passed-no-warnings",
+  "affected": {
+    "command": "make check-affected",
+    "status": "passed",
+    "tier": "covered",
+    "selectedSuites": 5,
+    "pcTests": 36,
+    "pcSuites": 4
+  },
+  "numericalCommands": 9,
+  "allNumericalCommandsTerminalZero": true,
+  "allBaselineAndPlainCaptureParityGatesPass": true,
+  "candidateRejected": true,
+  "notes": [
+    "All per-value failures retained; no tolerance/reference/default/phase/admission change.",
+    "One CPU analysis archive-path preflight failure preserved; no numerical retry.",
+    "Existing Python ResourceWarnings retained."
+  ]
+}

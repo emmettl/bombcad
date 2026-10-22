@@ -1,5 +1,8 @@
 # Selector-only diagnostic: implementation controls — 22 October 2026
 
+Final district result: [candidate rejected](summary.md). The district stage is complete;
+the text below preserves the earlier implementation checkpoint and its then-pending gates.
+
 Tracking: emmettl/bombcad-work#89 under emmettl/bombcad-work#62; related
 emmettl/bombcad-work#63 and emmettl/bombcad-work#80. This is a prerequisite checkpoint;
 the corrected district baselines and selector-only district target gates remain outstanding.

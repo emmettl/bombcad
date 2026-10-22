@@ -30,9 +30,12 @@ The [explicit native selector experiment](../Benchmarks/CUDAAcceptance/2026-10-2
 eliminates timestep/stop differences against CUDA on all 15,653 actual captured scalar records
 with Metal safe/precise options, after reproducing every archived baseline output word.
 The later physical input histories differ, so this is a candidate arithmetic contract rather
-than trajectory equivalence or a new reference policy. emmettl/bombcad-work#89 tracks bounded
-selector-only trajectory validation with independent analytic/refinement controls and the
-existing full target gate. Production defaults and training admission remain unchanged.
+than trajectory equivalence or a new reference policy. The [selector-only trajectory validation](../Benchmarks/CUDAAcceptance/2026-10-22-selector-trajectories/summary.md)
+in emmettl/bombcad-work#89 passes independent analytic/refinement controls and every observer
+parity gate, but introduces one slope phase failure and61 Beirut peak failures against the
+existing reference. Native CUDA's Beirut phase failure persists. The candidate is rejected
+for adoption; emmettl/bombcad-work#90 and emmettl/bombcad-work#91 track bounded receiver-history
+and upstream speed-producer follow-ups. Production defaults and training admission remain unchanged.
 
 ## Options and order
 

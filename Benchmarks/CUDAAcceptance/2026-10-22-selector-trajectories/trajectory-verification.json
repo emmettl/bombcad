@@ -1,0 +1,26 @@
+{
+  "status": "fresh-all-inventories-and-gates-verified",
+  "numericalCommands": 9,
+  "allOwnedNumericalCommandsTerminalZero": true,
+  "allBaselineAndCaptureGatesExact": true,
+  "all542ImplementationCheckpointMembersUnchanged": true,
+  "fixedReferenceCandidateFailureCounts": {
+    "made-perimeter-s1-1": [
+      0,
+      0,
+      0
+    ],
+    "made-perimeter-s3-1": [
+      0,
+      0,
+      1
+    ],
+    "beirut-p0-1": [
+      61,
+      0,
+      0
+    ]
+  },
+  "sourceSHA256": "0d5832734bf566a3fa0d5ca09de5322a9a6e9856a0aa67f23dba22c9d4b0a7c2",
+  "limits": "Local complete output inventories and frozen inputs/context verified. Full analytic states retained; district 3D state fidelity uses whole-buffer hashes, not locally saved full district states. No instruction/continuum/throughput/global-idle or admission claim."
+}

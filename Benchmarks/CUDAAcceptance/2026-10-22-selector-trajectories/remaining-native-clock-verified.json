@@ -1,0 +1,79 @@
+{
+  "status": "verified-conditional-input-partition",
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "activeSteps": 2645,
+      "differentNativeDTWords": 2584,
+      "firstDifferentActiveStep": 4,
+      "firstRows": [
+        3,
+        3
+      ],
+      "fastestWords": [
+        1163367390,
+        1163367389
+      ],
+      "dtWords": [
+        968255153,
+        968255154
+      ],
+      "uniformDifferences": {},
+      "bothDTEqualUnclippedProposal": true,
+      "pairedFastestDifferences": 2597
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "activeSteps": 2711,
+      "differentNativeDTWords": 2459,
+      "firstDifferentActiveStep": 2,
+      "firstRows": [
+        1,
+        1
+      ],
+      "fastestWords": [
+        1161045875,
+        1161045876
+      ],
+      "dtWords": [
+        962217016,
+        962217015
+      ],
+      "uniformDifferences": {},
+      "bothDTEqualUnclippedProposal": true,
+      "pairedFastestDifferences": 2460
+    },
+    {
+      "id": "beirut-p0-1",
+      "activeSteps": 2417,
+      "differentNativeDTWords": 2390,
+      "firstDifferentActiveStep": 3,
+      "firstRows": [
+        2,
+        2
+      ],
+      "fastestWords": [
+        1156366961,
+        1156366960
+      ],
+      "dtWords": [
+        972627879,
+        972627880
+      ],
+      "uniformDifferences": {},
+      "bothDTEqualUnclippedProposal": true,
+      "pairedFastestDifferences": 2394
+    }
+  ],
+  "consumed": {
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-trajectories/capture/made-perimeter-s1-1/clock-inputs.bin": "a56c3d57cb57b1e3e19752129a9b4a971a5724625c972864cd81db930348e3ed",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-clock-inputs/capture/made-perimeter-s1-1/clock-inputs.bin": "cb8c123c89c544410b7fd58a758d5546295a4765b34ec9c2ff58d3e90fd84da8",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-trajectories/capture/made-perimeter-s3-1/clock-inputs.bin": "3dd6b07af3f425bd237a4e56e8ad831e70982178f10465869d1535f11495ac4c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-clock-inputs/capture/made-perimeter-s3-1/clock-inputs.bin": "d400b255698b5469cfe8dba118d9667bf02cc34c9f4628fc8d63b67a7518a993",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-trajectories/capture/beirut-p0-1/clock-inputs.bin": "a0110b1364ad44aac476fda506645c206961800ec2a09a6683c1cc78aa6e173c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-clock-inputs/capture/beirut-p0-1/clock-inputs.bin": "ff82c87678dedd3863a11d859182061fb9f11242da9dc2b8eeac7e56e34b308a"
+  },
+  "limits": "Actual native scalar inputs and exact written-expression model; different physical histories/batch contexts, not an instruction or contributing-cell attribution. No new PDE work.",
+  "sourceSHA256": "a4053b3ad0b2144607187af050611151c1fe2f2b303fc5da5ac7047590613d3e",
+  "recomputationExact": true
+}

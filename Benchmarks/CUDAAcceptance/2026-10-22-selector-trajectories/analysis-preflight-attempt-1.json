@@ -1,0 +1,9 @@
+{
+  "status": "host-analysis-preflight-failed",
+  "returncode": 1,
+  "source": "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-trajectories/analysis/selector_analyze_pilots.py",
+  "sourceSHA256": "ecb8fc084aa6b96aa73860b50e46459d5bac512a2e900dd8484dcfc16f7500fe",
+  "error": "FileNotFoundError: selector-contract/analysis/reference.py; original frozen model actually belongs to clock-selector-replay archive",
+  "physicalRunsRerun": false,
+  "limits": "No GPU dispatch or numerical helper change; all nine terminal district outcomes retained."
+}
