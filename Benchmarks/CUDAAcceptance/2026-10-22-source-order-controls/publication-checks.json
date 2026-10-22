@@ -1,0 +1,18 @@
+{
+  "schema": "bombcad-written-order-publication-checks-1",
+  "formatLint": true,
+  "strictBuildNoWarnings": true,
+  "plainCheckAffected": true,
+  "macSelectedSuitesPass": true,
+  "pcTests": 62,
+  "pcSuites": 11,
+  "frozenMathControls": 5,
+  "all452OwnRawFilesRehashed": true,
+  "bothArchiveHashesVerified": true,
+  "allConsumedPriorInputFilesVerified": 1728,
+  "allRuntimeImportedHelperAndAnalysisPinsVerified": true,
+  "producingAndPostprocessingSourceSnapshotsMatch": true,
+  "numericalProducerReruns": 0,
+  "gpuUseForScientificStudy": false,
+  "scope": "Artifact/model study, not a production solver intervention or unchanged ordinary-digest rerun. Existing unrelated Python test ResourceWarnings do not change the warning-free compiler result."
+}

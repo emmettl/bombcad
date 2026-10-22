@@ -1,0 +1,1092 @@
+{
+  "schema": "bombcad-written-order-summary-1",
+  "inputSHA256": "5aa86ef4898b55ab24a1f443c1dae67922ba7f13ae0d0a409a116606b8e0df93",
+  "allRowsAudited": true,
+  "allCommonExecutedFullTiledModelParity": true,
+  "fullTiledPairs": 216,
+  "all": {
+    "caseGroups": 432,
+    "statuses": {
+      "audited": 432
+    },
+    "executed": 8227928,
+    "skipped": 814552,
+    "models": {
+      "written32": {
+        "cases": 432,
+        "wholeTraceRoundedWordCompatibleCases": 0,
+        "reconstructionFallbacks": 0,
+        "roundedToFloat32WordDifferencesByComponent": [
+          5948836,
+          951526,
+          14008608
+        ],
+        "roundedToFloat32NumericDifferencesByComponent": [
+          5948836,
+          951526,
+          14008608
+        ],
+        "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+          86480,
+          413568,
+          62826
+        ],
+        "maximumAbsoluteFluxErrorByComponent": [
+          9.849840716924518e-05,
+          0.0078125,
+          31.90256667137146
+        ]
+      },
+      "written64": {
+        "cases": 432,
+        "wholeTraceRoundedWordCompatibleCases": 0,
+        "reconstructionFallbacks": 0,
+        "roundedToFloat32WordDifferencesByComponent": [
+          14127034,
+          3318756,
+          15485146
+        ],
+        "roundedToFloat32NumericDifferencesByComponent": [
+          14127034,
+          3318756,
+          15485146
+        ],
+        "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+          464486,
+          3735670,
+          353128
+        ],
+        "maximumAbsoluteFluxErrorByComponent": [
+          0.0001061559953180356,
+          0.018532062691519968,
+          27.518353559758367
+        ]
+      }
+    }
+  },
+  "strata": {
+    "amplitudePa=1": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 2745909,
+      "skipped": 267291,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            1951770,
+            317362,
+            4682416
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            1951770,
+            317362,
+            4682416
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            29464,
+            143134,
+            20554
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            8.272408194898162e-05,
+            0.0078125,
+            31.90255355834961
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4710778,
+            1079360,
+            5167396
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4710778,
+            1079360,
+            5167396
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            158256,
+            1304402,
+            122750
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.00010061178820339905,
+            0.015401076409034431,
+            27.385890080468464
+          ]
+        }
+      }
+    },
+    "amplitudePa=10": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 2736059,
+      "skipped": 277429,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            1971928,
+            315694,
+            4672244
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            1971928,
+            315694,
+            4672244
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            27954,
+            136878,
+            20614
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.283921826863661e-05,
+            0.0078125,
+            31.902562141418457
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4686456,
+            1076948,
+            5147730
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4686456,
+            1076948,
+            5147730
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            163774,
+            1227158,
+            125488
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.00010072452048031505,
+            0.015653027658117935,
+            26.926090245098408
+          ]
+        }
+      }
+    },
+    "amplitudePa=100": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 2745960,
+      "skipped": 269832,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2025138,
+            318470,
+            4653948
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2025138,
+            318470,
+            4653948
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            29062,
+            133556,
+            21658
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4729800,
+            1162448,
+            5170020
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4729800,
+            1162448,
+            5170020
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            142456,
+            1204110,
+            104890
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.018532062691519968,
+            27.518353559758367
+          ]
+        }
+      }
+    },
+    "cfl=0.225": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 5486061,
+      "skipped": 540915,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            3859542,
+            680824,
+            9389046
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            3859542,
+            680824,
+            9389046
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            60314,
+            338068,
+            46764
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            31.902562618255615
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            9421416,
+            2157672,
+            10336904
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            9421416,
+            2157672,
+            10336904
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            346894,
+            2905180,
+            266072
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.00010072452048031505,
+            0.018532062691519968,
+            26.798205539505034
+          ]
+        }
+      }
+    },
+    "cfl=0.45": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 2741867,
+      "skipped": 273637,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2089294,
+            270702,
+            4619562
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2089294,
+            270702,
+            4619562
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            26166,
+            75500,
+            16062
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.283921826863661e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4705618,
+            1161084,
+            5148242
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4705618,
+            1161084,
+            5148242
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            117592,
+            830490,
+            87056
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.01808270138280932,
+            27.518353559758367
+          ]
+        }
+      }
+    },
+    "components=both": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 2746290,
+      "skipped": 267870,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            1972244,
+            318316,
+            4688954
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            1972244,
+            318316,
+            4688954
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            28686,
+            135162,
+            22598
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.337911615148187e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4712624,
+            1090890,
+            5164540
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4712624,
+            1090890,
+            5164540
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            177362,
+            1236156,
+            130096
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.01808270138280932,
+            27.518353559758367
+          ]
+        }
+      }
+    },
+    "components=density": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 2732878,
+      "skipped": 281282,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            1961384,
+            316414,
+            4608380
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            1961384,
+            316414,
+            4608380
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            29396,
+            143946,
+            21794
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            31.90256643295288
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4685570,
+            1157208,
+            5139568
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4685570,
+            1157208,
+            5139568
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            143160,
+            1222970,
+            119036
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.888336996933275e-05,
+            0.018532062691519968,
+            27.385890080468464
+          ]
+        }
+      }
+    },
+    "components=energy": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 2748760,
+      "skipped": 265400,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2015208,
+            316796,
+            4711274
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2015208,
+            316796,
+            4711274
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            28398,
+            134460,
+            18434
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.842586587183177e-05,
+            0.0078125,
+            31.90256643295288
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4728840,
+            1070658,
+            5181038
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4728840,
+            1070658,
+            5181038
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            143964,
+            1276544,
+            103996
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.818094452174102e-05,
+            0.01824555498023983,
+            27.518352958035216
+          ]
+        }
+      }
+    },
+    "method=protected-kahan-v1": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 4115438,
+      "skipped": 405802,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            3010594,
+            468830,
+            7094040
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            3010594,
+            468830,
+            7094040
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            50616,
+            176978,
+            35668
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            7052986,
+            1576164,
+            7744282
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            7052986,
+            1576164,
+            7744282
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            269344,
+            1777754,
+            186306
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.018532062691519968,
+            27.40310166464519
+          ]
+        }
+      }
+    },
+    "method=protected-update-no-carry-v1": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 4112490,
+      "skipped": 408750,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2938242,
+            482696,
+            6914568
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2938242,
+            482696,
+            6914568
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            35864,
+            236590,
+            27158
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.423928713658825e-05,
+            0.0078125,
+            31.90256643295288
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            7074048,
+            1742592,
+            7740864
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            7074048,
+            1742592,
+            7740864
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            195142,
+            1957916,
+            166822
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.818094452174102e-05,
+            0.017418342467863113,
+            27.518353559758367
+          ]
+        }
+      }
+    },
+    "nx=1024": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 2352828,
+      "skipped": 231108,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            1703836,
+            277380,
+            4012594
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            1703836,
+            277380,
+            4012594
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            24826,
+            122332,
+            18656
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            31.902562618255615
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            4032082,
+            951054,
+            4424572
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            4032082,
+            951054,
+            4424572
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            142728,
+            1068728,
+            112168
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.01824555498023983,
+            27.40310166464519
+          ]
+        }
+      }
+    },
+    "nx=2048": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 4694166,
+      "skipped": 471114,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            3355152,
+            535586,
+            7986818
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            3355152,
+            535586,
+            7986818
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            46186,
+            233554,
+            32480
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            8.673605771036819e-05,
+            0.0078125,
+            31.90256643295288
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            8063286,
+            1886846,
+            8840736
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            8063286,
+            1886846,
+            8840736
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            242994,
+            2144362,
+            178752
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.888336996933275e-05,
+            0.018532062691519968,
+            27.518353559758367
+          ]
+        }
+      }
+    },
+    "nx=512": {
+      "caseGroups": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "executed": 1180934,
+      "skipped": 112330,
+      "models": {
+        "written32": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            889848,
+            138560,
+            2009196
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            889848,
+            138560,
+            2009196
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            15468,
+            57682,
+            11690
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.423928713658825e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 144,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2031666,
+            480856,
+            2219838
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2031666,
+            480856,
+            2219838
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            78764,
+            522580,
+            62208
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.692208812676011e-05,
+            0.017577818071004003,
+            26.798205539505034
+          ]
+        }
+      }
+    },
+    "policy=default": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 4108969,
+      "skipped": 412271,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2755854,
+            4810,
+            8217770
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2755854,
+            4810,
+            8217770
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            37436,
+            2488,
+            8812
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            28.718461990356445
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            7037452,
+            1567758,
+            8217812
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            7037452,
+            1567758,
+            8217812
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            257372,
+            1878010,
+            168810
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.00010072452048031505,
+            0.018532062691519968,
+            27.518353559758367
+          ]
+        }
+      }
+    },
+    "policy=unfused": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 4118959,
+      "skipped": 402281,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            3192982,
+            946716,
+            5790838
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            3192982,
+            946716,
+            5790838
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            49044,
+            411080,
+            54014
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            8.272408194898162e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            7089582,
+            1750998,
+            7267334
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            7089582,
+            1750998,
+            7267334
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            207114,
+            1857660,
+            184318
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.01824555498023983,
+            27.40310166464519
+          ]
+        }
+      }
+    },
+    "tiled=False": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 4521240,
+      "skipped": 0,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2974418,
+            475763,
+            7416575
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2974418,
+            475763,
+            7416575
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            43240,
+            206784,
+            31413
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            7063517,
+            1659378,
+            8154844
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            7063517,
+            1659378,
+            8154844
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            232243,
+            1867835,
+            176564
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.018532062691519968,
+            27.518353559758367
+          ]
+        }
+      }
+    },
+    "tiled=True": {
+      "caseGroups": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "executed": 3706688,
+      "skipped": 814552,
+      "models": {
+        "written32": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            2974418,
+            475763,
+            6592033
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            2974418,
+            475763,
+            6592033
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            43240,
+            206784,
+            31413
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            9.849840716924518e-05,
+            0.0078125,
+            31.90256667137146
+          ]
+        },
+        "written64": {
+          "cases": 216,
+          "wholeTraceRoundedWordCompatibleCases": 0,
+          "reconstructionFallbacks": 0,
+          "roundedToFloat32WordDifferencesByComponent": [
+            7063517,
+            1659378,
+            7330302
+          ],
+          "roundedToFloat32NumericDifferencesByComponent": [
+            7063517,
+            1659378,
+            7330302
+          ],
+          "modelNonzeroFaceDifferenceWithEqualNativeFaces": [
+            232243,
+            1867835,
+            176564
+          ],
+          "maximumAbsoluteFluxErrorByComponent": [
+            0.0001061559953180356,
+            0.018532062691519968,
+            27.518353559758367
+          ]
+        }
+      }
+    }
+  },
+  "failedOutcomes": [],
+  "decision": "Neither model is eligible for instruction-exact component attribution unless whole-trace word compatibility holds for every declared case. Any remaining gap stays unresolved; no production precision intervention follows from these counterfactuals.",
+  "limits": "Component order rho,mx,E. Float64 compatibility means rounded-to-Float32 flux words only. Full/tiled observations are correlated; fixed-factor strata overlap. Equal native faces and nonzero modeled differences are conditional sample counts, not physical dissipation, global conservation, GPU intermediate observations or a peak-cause bound."
+}

@@ -37,9 +37,11 @@ Every decompressed member was verified. Public metadata comprises 3164 files
 in 25 verified archives (110052184 bytes). Numerical arrays, full traces and runtime
 binaries remain external by kind; no outcomes were excluded by status.
 
-The next discriminating work on emmettl/bombcad-work#82 is a predeclared
-operation-order compatibility control before drawing component-level causal
-conclusions. Separately, emmettl/bombcad-work#62 retains the corrected Beirut
+The [written-order compatibility controls](../2026-10-22-source-order-controls/summary.md)
+are now complete: both model flux arrays remain bit-identical to their earlier
+CPU counterparts in all 432 cases, and neither matches an entire GPU trace.
+These tested rearrangements do not resolve model compatibility; component-level
+causal attribution and a precision intervention remain unsupported. Separately, emmettl/bombcad-work#62 retains the corrected Beirut
 first-phase receiver failure and needs a corrected-reference pressure trace.
 Existing old-start traces are historical evidence only. Bulk CUDA generation
 remains gated; no tolerance, mask, label, default or training-index change.
