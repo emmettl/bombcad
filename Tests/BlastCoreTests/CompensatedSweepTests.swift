@@ -98,20 +98,24 @@ struct CompensatedSweepTests {
         floors.reflectiveFaces = [.xMin, .xMax, .yMin, .yMax, .zMin, .zMax]
         floors.densityFloor = 2
         floors.pressureFloor = 200000
-        let clamped = try BlastSolver(
-            device: #require(MTLCreateSystemDefaultDevice()),
-            grid: Grid(nx: 64, ny: 1, nz: 1, cellSize: 0.25), configuration: floors)
-        clamped.fill(uniform: Primitive(density: 1.225, pressure: 101325))
-        try clamped.configureCompensatedSweep(.both)
-        let buffer = try #require(clamped.compensatedSweep).residuals.contents()
-            .bindMemory(to: SIMD4<Float>.self, capacity: 64)
-        buffer[32] = SIMD4(0.03125, 0.00390625, 3, 0)
-        try clamped.configureSweepUpdateDiagnostics([32])
-        #expect(clamped.advance(steps: 1).isStable)
-        let sample = try #require(clamped.sweepUpdateTrace().samples.first).values[0]
-        #expect(sample[24] == 0.03125 && sample[25] == 0.00390625)
-        #expect(sample[26] == 0 && sample[27] == 0 && sample[30] == 2)
-        #expect(try #require(clamped.compensatedSweepState())[32] == SIMD4(0, 0, 3, 2))
+        for components in CompensatedSweepComponents.allCases {
+            let clamped = try BlastSolver(
+                device: #require(MTLCreateSystemDefaultDevice()),
+                grid: Grid(nx: 64, ny: 1, nz: 1, cellSize: 0.25), configuration: floors)
+            clamped.fill(uniform: Primitive(density: 1.225, pressure: 101325))
+            try clamped.configureCompensatedSweep(components)
+            let buffer = try #require(clamped.compensatedSweep).residuals.contents()
+                .bindMemory(to: SIMD4<Float>.self, capacity: 64)
+            let seedRho: Float = components == .energy ? 0 : 0.03125
+            let seedEnergy: Float = components == .density ? 0 : 0.00390625
+            buffer[32] = SIMD4(seedRho, seedEnergy, components.mask, 0)
+            try clamped.configureSweepUpdateDiagnostics([32])
+            #expect(clamped.advance(steps: 1).isStable)
+            let sample = try #require(clamped.sweepUpdateTrace().samples.first).values[0]
+            #expect(sample[24] == seedRho && sample[25] == seedEnergy)
+            #expect(sample[26] == 0 && sample[27] == 0 && sample[30] == 2)
+            #expect(try #require(clamped.compensatedSweepState())[32] == SIMD4(0, 0, components.mask, 2))
+        }
     }
 
     @Test("Unsupported scope and configuring after observation are refused")

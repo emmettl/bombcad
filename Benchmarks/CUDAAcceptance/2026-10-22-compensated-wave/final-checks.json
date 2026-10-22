@@ -1,0 +1,20 @@
+{
+  "status": "complete",
+  "scope": "Final combined implementation verification; scientific wave matrix pending",
+  "upstreamDigestBase": "aff21dff0944eab205b39def06a22de35f4e1bf4",
+  "macAppTests": 238,
+  "macCoreTests": 351,
+  "pcTests": 253,
+  "pcSuites": 62,
+  "releaseFocusedMethods": 20,
+  "releaseFocusedSuites": 4,
+  "invalidInputChecks": 6,
+  "ordinaryDigestVariants": 42,
+  "ordinaryDigestSets": 6,
+  "matchingSourcePins": 524,
+  "currentExecutable": {
+    "path": "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+    "sha256": "b1e8640d8a683d2f321f0d8caecf6ba47a883fed67396fc29c1649c984cda18d"
+  },
+  "initialFinalExecutablePinStillMatches": false
+}

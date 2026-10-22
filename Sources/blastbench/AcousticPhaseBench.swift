@@ -21,6 +21,17 @@ func runAcousticPhase() throws {
     }
     let methodName = discardResiduals ? "protected-update-no-carry-v1" : "protected-kahan-v1"
     let resolutions = flag("fine") ? [512, 1024, 2048] : [128, 256, 512]
+    let onlyCase = option("only-case")
+    let caseNames = Set(
+        [1, 10, 100].flatMap { amplitude in
+            resolutions.flatMap { nx in
+                ["a\(amplitude)-n\(nx)-full", "a\(amplitude)-n\(nx)-tiled"]
+            }
+        })
+    guard !flag("only-case") || onlyCase.map({ caseNames.contains($0) }) == true else {
+        throw BlastError.allocationFailed(
+            "acoustic-phase --only-case requires an exact case in the selected resolution matrix")
+    }
     let out = URL(fileURLWithPath: destination)
     guard !FileManager.default.fileExists(atPath: out.path) else {
         throw BlastError.allocationFailed("acoustic-phase refuses to overwrite output")
@@ -38,6 +49,7 @@ func runAcousticPhase() throws {
             let indices = [Int(4 / dx), 0]
             for tiled in [false, true] {
                 let name = "a\(Int(amplitude))-n\(nx)-\(tiled ? "tiled" : "full")"
+                if let onlyCase, onlyCase != name { continue }
                 var pair: [[String: Any]] = []
                 let modes = flag("trace-updates") ? ["plain", "pressure", "updates"] : ["plain", "pressure"]
                 for mode in modes {

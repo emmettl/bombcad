@@ -8,6 +8,8 @@ exe = str(Path(sys.argv[1]).resolve())
 rows = []
 for index, arguments in enumerate([
     ['--compensated', 'invalid'], ['--compensated'], ['--discard-compensation'],
+    ['--only-case', 'invalid'], ['--only-case'],
+    ['--fine', '--only-case', 'a1-n128-full'],
 ]):
     destination = Path('/private/tmp/bombcad-compensated-cli-refusal-' + str(index))
     assert not destination.exists(), destination

@@ -12,8 +12,7 @@ analysis remain pending.
 ## Numerical method and scope
 
 `configureCompensatedSweep` accepts density-only, energy-only or both. A separate per-cell
-Float4 buffer holds density error, energy error, a component mask and a floor-event count for the enabled
-components. A helper scoped to safe math and contraction-off computes the rounded flux
+Float4 buffer holds density error, energy error, a component mask and a count of all density/energy floor events, including unselected components. A helper scoped to safe math and contraction-off computes the rounded flux
 difference, signed increment, corrected increment, new sum and new error. The surrounding
 sibling sweep retains its selected default/unfused arithmetic. Unselected components use
 the original update statements, not a compensated substitute.
@@ -81,18 +80,18 @@ records the implementation inputs before integrated verification. The scientific
 has not run. Integrated checks and ordinary digest results are recorded below.
 
 
-## Full integration verification
+## Initial integration verification (before rebase/instrumentation)
 
 The plain [make check-affected](check-affected.log.gz) passes at core tier: 228 app tests
 plus 351 core tests on the Mac, 253 PC Linux tests in 62 suites, and reference/script/doc
 checks. All 42 ordinary digest variants in six sets are bit-identical to base
 `8515944056f6ec5812655e6b6fc36b283d3108d3`. All source pins still match. The full check used the standard test profile; the separate optimized-release result is recorded below.
 
-Before the scientific matrix, extend the floor counter to include unselected components
-and isolate individual CLI cases so an adverse case cannot prevent the remaining cases
-from being attempted. The present counter covers floors on enabled compensated components;
-it must not be interpreted as a global floor-event count. These observability/runner changes
-and the full physical/reference/conservation audit remain in emmettl/bombcad-work#81.
+Before the scientific matrix, the floor counter and per-case selection were extended
+so an adverse case cannot prevent the remaining cases from being attempted. The initial implementation counter covered only enabled components. A subsequent
+instrumentation change counts all density/energy floors and adds exact case selection;
+the earlier receipts above describe the pre-change snapshot. The full scientific matrix and physical/reference/conservation audit remain in
+emmettl/bombcad-work#81.
 
 
 The [optimized-release focused test run](release-focused-tests.log.gz) also passes all six
@@ -108,3 +107,42 @@ so its current hash differs from the initial CLI-check pin; both hashes are reco
 The initial pin is historical, not a frozen executable copy. All 524 producing source
 pins still match. The scientific stage must freeze its actual executable/resources
 before execution; no scientific outcome is attributed to this mutable-cache checkpoint.
+
+
+## Final instrumentation and concurrent integration
+
+The incoming terrain mapped-start change in `aff21dff` changes `Scenario+GPU.swift`,
+one of the initial source pins. The nearby-session change in `fb237073` touches only app
+code. Both were preserved by the clean rebase. The final source snapshot and fresh checks
+are recorded separately from the pre-rebase receipts above; the original 42-digest check
+is not claimed as verification of the new combined solver.
+
+The final counter records both density and energy floor activity even when a component
+is unselected; only selected component errors are cleared. The floor fixture now tests
+all selectors with both floors active. `--only-case a1-n512-full` (or another exact case
+in the selected resolution matrix) permits one planned case per command, leaving the
+default full matrix unchanged. Unknown/missing/out-of-matrix selectors refuse before output.
+No scientific wave export has run.
+
+
+The [final strict build](final-strict-build.log) passes without warnings. The
+[combined optimized-release tests](final-release-tests.log.gz) pass all 20 methods in
+four suites, covering both diagnostic suites and the incoming mapped-charge/start tests.
+All three selectors now verify both density and energy floor counts. All six
+[final invalid-option checks](final-invalid-options.json) refuse before output creation.
+[The final source/executable pins](final-source-pins.json) replace the initial snapshot
+for the fresh combined verification; they explicitly list four changed source/test paths.
+The fresh combined ordinary-digest/integration verification is recorded below; the scientific matrix remains pending.
+
+
+## Final combined verification — passed
+
+The [fresh plain affected check](final-check-affected.log.gz) passes: 238 app plus 351 core
+Mac tests, 253 PC Linux tests in 62 suites, reference/script/doc checks, and all 42 ordinary
+digest variants in six sets bit-identical to upstream
+`aff21dff0944eab205b39def06a22de35f4e1bf4`. This includes both incoming commits and the
+final all-floor counter/case selector. All 524 final source pins still match.
+[The final check receipt](final-checks.json) records the counts and current cached binary
+hash. Both verification jobs are terminal. The optimized-release and six input-refusal
+checks above also pass. No scientific wave export, performance win, operating range or
+CUDA admission is claimed by this implementation checkpoint.

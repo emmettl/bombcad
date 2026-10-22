@@ -1,0 +1,87 @@
+{
+  "status": "complete",
+  "checks": [
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-0",
+        "--compensated",
+        "invalid"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it\n",
+      "stderr": "",
+      "outputCreated": false
+    },
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-1",
+        "--compensated"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it\n",
+      "stderr": "",
+      "outputCreated": false
+    },
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-2",
+        "--discard-compensation"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it\n",
+      "stderr": "",
+      "outputCreated": false
+    },
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-3",
+        "--only-case",
+        "invalid"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --only-case requires an exact case in the selected resolution matrix\n",
+      "stderr": "",
+      "outputCreated": false
+    },
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-4",
+        "--only-case"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --only-case requires an exact case in the selected resolution matrix\n",
+      "stderr": "",
+      "outputCreated": false
+    },
+    {
+      "command": [
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--out",
+        "/private/tmp/bombcad-compensated-cli-refusal-5",
+        "--fine",
+        "--only-case",
+        "a1-n128-full"
+      ],
+      "returncode": 1,
+      "stdout": "Error: Could not allocate acoustic-phase --only-case requires an exact case in the selected resolution matrix\n",
+      "stderr": "",
+      "outputCreated": false
+    }
+  ]
+}

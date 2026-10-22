@@ -16,7 +16,7 @@ public enum CompensatedSweepComponents: String, Sendable, CaseIterable {
 
 final class CompensatedSweep {
     let components: CompensatedSweepComponents
-    /// Per cell: density error, energy error, component mask, component-floor event count.
+    /// Per cell: density error, energy error, component mask, density/energy floor event count.
     let residuals: MTLBuffer
     let sweep: MTLComputePipelineState
     let sweepTiles: MTLComputePipelineState
@@ -126,8 +126,8 @@ extension ShaderLibrary {
         helper = try replace(
             helper, "    rho = max(rho, u.densityFloor);",
             """
-                if (rho < u.densityFloor && (compensationMask & 1u) != 0u) {
-                    compensationAfter.x = 0.0f;
+                if (rho < u.densityFloor) {
+                    if ((compensationMask & 1u) != 0u) compensationAfter.x = 0.0f;
                     compensationAfter.w += 1.0f;
                 }
                 rho = max(rho, u.densityFloor);
@@ -136,10 +136,8 @@ extension ShaderLibrary {
             helper, "    if (pressure < u.pressureFloor) {",
             """
                 if (pressure < u.pressureFloor) {
-                    if ((compensationMask & 2u) != 0u) {
-                        compensationAfter.y = 0.0f;
-                        compensationAfter.w += 1.0f;
-                    }
+                    if ((compensationMask & 2u) != 0u) compensationAfter.y = 0.0f;
+                    compensationAfter.w += 1.0f;
             """)
         helper = try replace(
             helper, "    dst[index] = result;",
