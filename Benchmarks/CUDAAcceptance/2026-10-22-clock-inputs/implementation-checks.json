@@ -1,0 +1,17 @@
+{
+  "status": "implementation-checks-pass-captures-pending",
+  "focusedGPUControls": 4,
+  "format": "pass",
+  "lint": "pass",
+  "hostStrictBuild": "pass, no warnings",
+  "affected": "plain make check-affected pass (core); 154 selected suites including 44 Linux suites; existing Python ResourceWarnings retained",
+  "digestComparison": {
+    "base": "05bd762cb7439b377b9881d25fec8183aab380eb",
+    "variants": 42,
+    "sets": 6,
+    "bitIdentical": true
+  },
+  "cudaDisabledFeatureBaselines": "3/3 every original numeric byte exact",
+  "developmentFixtureFailure": "retained in development-attempt-1.json; aggregate result flag assumption corrected, actual native control already correct",
+  "noPhysicalMetalCaptureYet": true
+}

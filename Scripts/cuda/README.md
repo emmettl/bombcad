@@ -105,3 +105,13 @@ its source and pipeline are unchanged. The paired pressure trace supplies the or
 seed and native pressure. `--trace-pressure-max-samples` bounds both traces; overflow refuses
 complete readback. Verify ordinary arrays, state hashes and native trace parity on each new
 control before interpreting raw inputs. These diagnostics do not change dataset admission.
+
+Adding `--trace-clock-inputs` copies native maximum-speed, tile-count/dispatch, prepare-uniform
+and complete pre/post-control words through a separate read-only library. It writes `clock-inputs.bin`
+(little-endian UInt32 records) and `clock-inputs.json` with sizes, offsets and encoded/batch
+indices. Every encoded prepare dispatch is retained, including inactive zero-dt dispatches;
+derive the active index from the batch base plus pre-control `activeSteps`. The same
+`--trace-pressure-max-samples` limits these records; overflow refuses export. This requires
+`--trace-pressure` and preserves original producer compilation, bindings and batch selection.
+Require byte-identical ordinary outputs, complete coarse-state hashes and native traces before
+using the clock inputs for attribution. Evidence belongs under `$BOMBCAD_DATA/experiments/…`.

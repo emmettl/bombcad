@@ -1,0 +1,12 @@
+{
+  "status": "initial-development-fixture-failure-retained",
+  "tests": 4,
+  "passed": [
+    "full-field/native-pressure/consumed-clock parity for mapped and balloon",
+    "budget overflow preserves solver and refuses trace",
+    "restart/late configuration lifecycle"
+  ],
+  "failed": "Clipped/inactive fixture asserted aggregate advance result.reachedLimit, which advance(steps:) does not propagate; captured native controls already showed stopped2 and inactive dt0 correctly.",
+  "resolution": "Assert actual captured terminal control.stopped2 and aggregate steps/stability; no producer/solver behavior change. Add actual tile count/dispatch to observer because full native selector replay needs those consumed inputs. First physical acceptance captures have not run.",
+  "numericAcceptanceRerun": false
+}

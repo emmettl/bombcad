@@ -217,8 +217,12 @@ enum FieldExport {
         }
         let tracePressure = args.contains("--trace-pressure")
         let traceInputs = args.contains("--trace-pressure-inputs")
+        let traceClock = args.contains("--trace-clock-inputs")
         guard !traceInputs || tracePressure else {
             throw BlastError.allocationFailed("--trace-pressure-inputs requires --trace-pressure")
+        }
+        guard !traceClock || tracePressure else {
+            throw BlastError.allocationFailed("--trace-clock-inputs requires --trace-pressure")
         }
         let diagnosticStateHashes = args.contains("--diagnostic-state-hashes")
         guard !diagnosticStateHashes || !args.contains("--cuda-job") else {
@@ -270,6 +274,7 @@ enum FieldExport {
         } else {
             traceIndices = []
         }
+        if traceClock { try solver.configureClockInputDiagnostics(maxSamples: pressureBudget) }
         phaseSeconds["recorderSetupSeconds"] = (ContinuousClock.now - recorderSetupStart) / .seconds(1)
         print(
             String(
@@ -367,6 +372,7 @@ enum FieldExport {
         let outputStart = ContinuousClock.now
         print(String(format: "Ran to %.3f s in %d steps, %.0f s", solver.time, steps, wall))
         let pressureTrace = tracePressure ? try solver.firstPhasePressureTrace() : nil
+        let clockTrace = traceClock ? try solver.clockInputTrace() : nil
         let folder = URL(filePath: out)
         try write(
             solver: solver, scene: scene, folder: folder, id: value("id") ?? folder.lastPathComponent,
@@ -462,6 +468,29 @@ enum FieldExport {
             ]
             try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
                 .write(to: folder.appending(path: "pressure-inputs.json"))
+        }
+        if let trace = clockTrace {
+            let words = trace.words.map(\.littleEndian)
+            try words.withUnsafeBytes { Data($0) }.write(to: folder.appending(path: "clock-inputs.bin"))
+            let c = trace.controlWords
+            let u = trace.uniformWords
+            let info: [String: Any] = [
+                "format": "bombcad-native-clock-inputs-1", "dtype": "<u4", "complete": true,
+                "samples": trace.encodedSteps.count, "recordWords": trace.recordWords,
+                "controlWords": c, "uniformWords": u,
+                "encodedSteps": trace.encodedSteps, "batchBaseSteps": trace.batchBaseSteps,
+                "offsets": [
+                    "speedBefore": 0, "tilesBefore": 2, "controlBefore": 6, "uniforms": 6 + c,
+                    "controlAfter": 6 + c + u, "speedAfter": 6 + 2 * c + u,
+                    "tilesAfter": 8 + 2 * c + u,
+                    "markers": trace.recordWords - 2,
+                ],
+                "maxSamples": pressureBudget,
+                "sampling":
+                    "copy-only separate library immediately before/after native prepare; all encoded iterations including zero-dt/stopped dispatches; actual active-step count is batchBaseSteps + pre-control activeSteps; original epochs and batches retained",
+            ]
+            try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
+                .write(to: folder.appending(path: "clock-inputs.json"))
         }
         try writeTimings(folder: folder, mode: "metal", solve: wall, outputStart: outputStart)
         guard stable else { throw BlastError.allocationFailed("a stable run (written with stable: false)") }

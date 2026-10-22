@@ -234,6 +234,10 @@ extension BlastSolver {
                         depth: 1))
             }
 
+            let clockSlot = clockInputCapture?.begin(
+                encoder, control: controlBuffer, speed: maxSpeedBuffer,
+                tileCount: tileCountBuffer, tileDispatch: tileDispatchBuffer, uniforms: &uniforms,
+                encodedStep: globalStep, batchBaseStep: stepCount)
             encoder.setComputePipelineState(gravityVariant(preparePipeline, "prepareStep"))
             // Not read without gravity.
             encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 15)
@@ -256,6 +260,12 @@ extension BlastSolver {
                 MTLSize(width: 1, height: 1, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
 
+            if let clockSlot {
+                clockInputCapture?.end(
+                    encoder, control: controlBuffer, speed: maxSpeedBuffer,
+                    tileCount: tileCountBuffer, tileDispatch: tileDispatchBuffer, uniforms: &uniforms,
+                    slot: clockSlot)
+            }
             if !asleep { encodeEddyViscosity(encoder, uniforms: uniforms) }
             let refining = refinement != nil && !asleep
             if let refinement, refining, ownLevelSteps {

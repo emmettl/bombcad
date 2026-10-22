@@ -73,6 +73,7 @@ public final class BlastSolver {
     var envelopeVenting: EnvelopeVenting?
     var componentsNeedInitialSample = false
     var gpuProfiler: BatchGPUProfiler?
+    var clockInputCapture: ClockInputCapture?
     public internal(set) var lastBatchGPUProfile: BatchGPUProfile?
 
     /// The air beside the component recorder's faces (their fluid cells and a cell round them),
