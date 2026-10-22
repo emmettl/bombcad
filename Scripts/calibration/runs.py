@@ -4,9 +4,10 @@ Mac, as `make check-remote` runs a check there (Scripts/remote.py: its lock, its
 runners and the quiet window), and appends each run's outputs to a JSON-lines file here
 (docs/calibration.md).
 
-    python3 Scripts/calibration/runs.py <case>[,<case>…] --out runs.jsonl [--here]
+    python3 Scripts/calibration/runs.py <case>[,<case>…] --out runs.jsonl [--design file.json] [--here]
 
-`--here` runs on this Mac instead (inside `gpu-slot` when there is one).
+`--design` takes another design than Scripts/calibration/design.json (in the repository, as the
+remote's copy has it); `--here` runs on this Mac instead (inside `gpu-slot` when there is one).
 """
 import json
 import os
@@ -21,10 +22,10 @@ import remote  # noqa: E402
 DESIGN = "Scripts/calibration/design.json"
 
 
-def command(cases):
+def command(cases, design=DESIGN):
     return ["bash", "-c",
             "swift build -c release --product BombCAD >/dev/null && "
-            ".build/release/BombCAD ensemble %s --design %s --no-default-workers" % (cases, DESIGN)]
+            ".build/release/BombCAD ensemble %s --design %s --no-default-workers" % (cases, design)]
 
 
 def main(arguments):
@@ -33,8 +34,9 @@ def main(arguments):
         return 2
     cases = arguments[0]
     out = arguments[arguments.index("--out") + 1]
+    design = arguments[arguments.index("--design") + 1] if "--design" in arguments else DESIGN
     if "--here" in arguments:
-        wrapped = command(cases)
+        wrapped = command(cases, design)
         if shutil.which("gpu-slot"):
             wrapped = ["gpu-slot", "--mem", "8"] + wrapped
         process = subprocess.Popen(wrapped, cwd=ROOT, stdout=subprocess.PIPE, text=True)
@@ -49,7 +51,7 @@ def main(arguments):
         if child == 0:
             os.close(read)
             os.dup2(write, 1)
-            code = remote.check_remote(host, settings, "calibration", wait=7200, command=command(cases))
+            code = remote.check_remote(host, settings, "calibration", wait=7200, command=command(cases, design))
             sys.stdout.flush()
             os._exit(code)
         os.close(write)

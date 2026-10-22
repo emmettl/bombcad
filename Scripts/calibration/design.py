@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """The calibration's design (docs/calibration.md): today's values, then a Latin hypercube over
-the three parameters, uniform in their logarithms, as a JSON list for `BombCAD ensemble --design`.
+the parameters, uniform in their logarithms, as a JSON list for `BombCAD ensemble --design`.
 
-    python3 Scripts/calibration/design.py [--points 12] [--seed 1] > design.json
+    python3 Scripts/calibration/design.py [--points 12] [--seed 1] [--parameters ft,gf] > design.json
+
+`--parameters` spreads only those (the ones a case reads); the others are left to the case's own
+middle values, which are today's.
 """
 import json
 import math
@@ -15,6 +18,9 @@ PARAMETERS = [
     ("afterburnTime", 0.003, 0.03, 0.01),
     # A factor on every concrete's tensile strength (`ValidationEnsemble.perturbed`).
     ("ft", 0.6, 1.6, 1.0),
+    # A factor on every concrete's fracture and crushing energies, on their correlation with its
+    # strength (`ValidationEnsemble.perturbed`): the ensemble's 30% log-normal, about twice over.
+    ("gf", 0.5, 2.0, 1.0),
     # A factor on the glass flaw constant k, or the share of a pane at its largest stress.
     ("glassK", 0.01, 3.0, 1.0),
 ]
@@ -32,13 +38,14 @@ def latin_hypercube(points, dimensions, seed):
     return [[columns[d][n] for d in range(dimensions)] for n in range(points)]
 
 
-def design(points, seed):
-    today = {key: value for key, _, _, value in PARAMETERS}
+def design(points, seed, keys=None):
+    chosen = [p for p in PARAMETERS if keys is None or p[0] in keys]
+    today = {key: value for key, _, _, value in chosen}
     rows = [today]
-    for unit in latin_hypercube(points, len(PARAMETERS), seed):
+    for unit in latin_hypercube(points, len(chosen), seed):
         rows.append({
             key: math.exp(math.log(low) + u * (math.log(high) - math.log(low)))
-            for (key, low, high, _), u in zip(PARAMETERS, unit)
+            for (key, low, high, _), u in zip(chosen, unit)
         })
     return rows
 
@@ -46,7 +53,9 @@ def design(points, seed):
 def main(arguments):
     def option(name, default):
         return arguments[arguments.index(name) + 1] if name in arguments else default
-    print(json.dumps(design(int(option("--points", "12")), int(option("--seed", "1"))), indent=1))
+    keys = option("--parameters", None)
+    print(json.dumps(design(int(option("--points", "12")), int(option("--seed", "1")),
+                            keys.split(",") if keys else None), indent=1))
     return 0
 
 

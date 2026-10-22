@@ -23,6 +23,12 @@ the spread that 21 comparisons allow, and asks three questions:
 - What would narrow it most: tests that pin a regime's own error. For glass, panes that only
   just break (68% narrower); for the air, open-air impulses with their scatter by distance (48%).
   Those figures are for an error known exactly; known to ±10% they are 41% and 17%.
+- **Step 2 (22 October)** added the concrete's fracture energy and two slabs that read the air and
+  the concrete together, and took E1300's thresholds out of the likelihood
+  ([step 2](#step-2-fracture-energy-and-slabs-that-read-the-air-and-the-concrete-22-october-2026)).
+  The fracture energy is not learnt, the slabs add no information, and without E1300 the glass is
+  barely constrained. Today's values all lie inside the posteriors. What would narrow them most is
+  a regime's error known to within a few per cent, or repeats of the impact tests and Wu's slab.
 
 ## The choice
 
@@ -275,14 +281,125 @@ are correct as written. Its report is kept outside the repository, at
   see: three or four runs between 0.85 and 1.0 would settle it. Peterson's D-2d-S90 force is
   238.0 kN in the script against the tests' mean 238.5.
 
+## Step 2: fracture energy, and slabs that read the air and the concrete (22 October 2026)
+
+The second step does three things (emmettl/bombcad-work#35):
+- adds the concrete's fracture energy as a fourth parameter, which the ensemble found moves OA1
+  and Saatci's beam most;
+- joins two cases that read the air and the concrete together;
+- folds in the review's points.
+
+Nothing changes a default.
+
+**What changed.**
+- **The fracture energy**, `gf`: a factor on every concrete's fracture and crushing energies,
+  0.5–2, uniform in its logarithm (the ensemble's 30% log-normal, about twice over). The concrete
+  cases now have emulators over the tension and the fracture energy together. Their design is 16
+  points and today's.
+- **Saatci's change of failure.** Five more runs at tension 0.85–1.0 (`design-saatci-gap.json`),
+  each in its own slice, at fracture energies spread over their range.
+- **Wu's S8**, under 1.6 kg at 0.5 m, peak and residual deflection: a regime of its own,
+  "concrete, close-in blast", over the afterburning time, the tension and the fracture energy (12
+  points and today's). Its runs took about 40 minutes each on the mini.
+- **Chiquito's gauges** at 1 and 2 m: "air, close-in gauges", over the afterburning time (8 points
+  and today's). The ensemble case and `CloseInSlabTest.run` now take the afterburning time.
+- **The review's points:**
+  - E1300's thresholds are out of the likelihood. They are reported only as the stressed share at
+    which BombCAD's flaw model reproduces them: 0.045–0.14 of a pane, median 0.056.
+  - Monk and Clubley's two-repeat scatter is floored at their series' pooled value.
+  - Kingery–Bulmash's errors at its three distances are correlated at 0.7.
+  - Peterson's D-2d-S90 force is the tests' mean, 238.5 kN.
+  - Each posterior gives a split R̂.
+  - The ranking also pins a regime's error to within ±5, 10 and 20%.
+- **The runs.** 129 on the CI mini, kept in `Scripts/calibration/runs-2026-10-21/`; the air's and
+  glass's are 20 October's, which read no other parameter. The posterior runs 20,000 steps. Split
+  R̂ is 1.007–1.015 without discrepancy and 1.04–1.07 with it.
+
+```bash
+python3 Scripts/calibration/calibrate.py Scripts/calibration/runs-2026-10-20/runs.jsonl Scripts/calibration/runs-2026-10-21/runs.jsonl --steps 20000 [--bias-sd 0.3]
+```
+
+**The emulators.** Leave-one-out errors are 0.0–0.5% for Peterson's, the contest slab, Wu's peak
+and Chiquito's gauges, and 3–5% for Janney's, OA1's and Saatci's peaks. Saatci's residual is at
+13%, with the change of failure now among the runs, and Wu's residual at 17%: both scatter from
+run to run as much as they trend.
+
+**The parameters** at a discrepancy prior of 0.3, median (90% interval), width against the
+prior's (in the logarithm):
+
+| Parameter | Today | No discrepancy | Width | With discrepancy | Width |
+|---|---|---|---|---|---|
+| Afterburning time, ms/kg^⅓ | 10 | 13.6 (8.8–23.4) | 0.44 | 18.2 (6.5–28.6) | 0.71 |
+| Concrete tension, factor | 1 | 1.04 (0.71–1.51) | 0.88 | 1.15 (0.71–1.55) | 0.91 |
+| Concrete fracture energy, factor | 1 | 0.90 (0.53–1.84) | 1.03 | 1.01 (0.55–1.89) | 1.00 |
+| Glass flaw factor (break times only) | 1 | 0.16 (0.018–1.5) | 0.82 | 0.21 (0.015–2.3) | 0.98 |
+
+At a discrepancy prior of 0.1 the widths are 0.63, 0.89, 1.00 and 0.92; at 0.5 they are 0.71,
+0.93, 0.99 and 0.99.
+
+The new regimes' shared discrepancies, model over measured: Wu's slab 0.93 (0.77–1.17) and
+Chiquito's gauges 0.67 (0.56–0.86). The other regimes are within 0.03 of step 1's.
+
+**The answers.**
+- **Today's values lie inside every posterior,** the fracture energy's at its middle.
+- **The fracture energy is not learnt at all.** It moves the comparisons:
+  - Janney's moment by −0.41 a unit of its log range;
+  - OA1's peak by +0.27;
+  - Saatci's peak hardly.
+
+  They pull against each other, and each regime's own discrepancy takes up the rest. The ensemble
+  was right that it moves the responses; the record cannot say by how much it should.
+- **The tension is wider than in step 1** (0.88–0.93 of its prior, against 0.71–0.74). Saatci's
+  change of failure is a line across the two, not a value of the tension:
+  - the beam fails (peak 42–46 mm) wherever the fracture energy is 0.73 or less, even at tension
+    0.92–1.04;
+  - with the fracture energy at 1.3 or more, it holds (peak 37–40 mm) down to tension 0.81;
+  - at today's fracture energy the change lies between tension 0.70 and 0.99, the gap's runs
+    filling it.
+
+  The test (37.9 mm) rules out the corner where both are low, which no longer pins either alone.
+- **Wu's slab does not tie the air to the concrete.** Its peak moves alike with all three
+  parameters (−0.11 to −0.13 a unit). Its residual moves with the tension (−0.47) but scatters by
+  17% from run to run. Together they add one weak constraint, which the regime's own discrepancy
+  absorbs. The afterburning time is as in step 1 (0.44 and 0.71).
+- **Chiquito's gauges are almost all discrepancy.** The model reads two-thirds of them: the grid's
+  under-resolution close in ([close in](validation.md#close-in)). The afterburning time moves them
+  by 4–6% over its whole range.
+- **Without E1300, the glass is barely constrained** (0.82–0.98 of its prior). Monk and Clubley's
+  break times move by only 25–44% over a factor of 300 in the flaw constant. E1300 is reproduced
+  at a stressed share of 0.045–0.14. That is a property of the flaw model, which step 1's posterior
+  took for evidence about the glass.
+- **The stop rule.** The joint calibration does not swamp the parameters any further, but it adds
+  no information beyond step 1. The coupled slabs read the parameters too much alike to separate
+  them. More cases of the same kind are not the way forward: the record's discrepancy must be
+  pinned, or the tests repeated.
+
+**What would narrow them most** (linearised at the medians, the discrepancy's prior 0.3):
+
+| Parameter | Exactly | ±5% | ±10% | Repeats halving the scatter |
+|---|---|---|---|---|
+| Afterburning time: the incident air's error pinned | 45% | 31% | 15% | 2–7% |
+| Glass: the break-time regime's error pinned | 23% | 19% | 11% | 3% |
+| Concrete tension: the close-in blast's error pinned | 8% | 7% | – | **18%** (Wu's slab repeated) |
+| Fracture energy: the impact regime's error pinned | 10% | 7% | – | **29%** (Saatci's and Peterson's repeated) |
+
+- **For the air and the glass,** only a regime's error known to within a few per cent narrows
+  them much. For the air that means Kingery's data by distance with their scatter (Snowball's and
+  Dial Pack's gauge reports, [data wanted](data-wanted.md#to-fetch)). For the glass it means the
+  break times' own error (Monk's thesis trials with their repeats). Johns and Clubley's panes,
+  held beside panes broken, would be a new regime of tests at the threshold, which this
+  linearisation cannot score; they stay the glass to fetch first.
+- **Beauchamp and Matalucci's panes, read since** (SAND98-0598), are not a threshold series:
+  eleven of twelve were weakened and broke. They do not pin the glass.
+- **For the concrete,** repeats of the impact tests and of Wu's slab narrow it more than any pin
+  of a regime's error. Each repeat halves the run-to-run scatter, which is now the larger part of
+  those comparisons' error.
+
 ## What this does not do, and next
 
-- **Three parameters, chosen so they barely interact.** Joint calibration across parameters pays
-  where cases read several: Wu's and Chiquito's slabs read the afterburning time and the
-  concrete's tension together, at 20–30 and 5–13 minutes a run on the mini.
-- **The concrete's other parameters.** The [ensemble](validation.md#the-models-spread-from-uncertain-inputs)
-  found that the fracture energy, not the tension, moves OA1 and Saatci most. It is the better
-  concrete parameter for a second step.
+- **Parameters read alike.** Step 2 joined two cases that read several parameters, and both read
+  them too much alike to separate them. A case that pays would move one parameter much more than
+  the others.
 - **Specimens at their middle inputs.** Their spread is carried as each comparison's error, not
   sampled with the parameters; it included the tension, so it is counted twice, on the safe side.
 - **A scalar discrepancy per comparison.** Kennedy and O'Hagan's discrepancy is a function over

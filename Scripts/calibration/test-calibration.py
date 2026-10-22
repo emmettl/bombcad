@@ -28,11 +28,17 @@ class DesignTests(unittest.TestCase):
     def test_today_first_then_one_point_in_each_slice_of_every_axis(self):
         rows = design.design(12, 1)
         self.assertEqual(len(rows), 13)
-        self.assertEqual(rows[0], {"afterburnTime": 0.01, "ft": 1.0, "glassK": 1.0})
+        self.assertEqual(rows[0], {"afterburnTime": 0.01, "ft": 1.0, "gf": 1.0, "glassK": 1.0})
         for key, low, high, _ in design.PARAMETERS:
             slices = sorted(int(12 * (math.log(r[key]) - math.log(low)) / (math.log(high) - math.log(low)))
                             for r in rows[1:])
             self.assertEqual(slices, list(range(12)), key)
+
+
+    def test_a_design_over_some_parameters_spreads_only_those(self):
+        rows = design.design(8, 1, ["ft", "gf"])
+        self.assertEqual(len(rows), 9)
+        self.assertTrue(all(set(r) == {"ft", "gf"} for r in rows))
 
 
 @unittest.skipIf(np is None, "numpy is not installed")
@@ -85,6 +91,23 @@ class PosteriorTests(unittest.TestCase):
         tight = calibrate.Posterior(items, discrepancy=False).sample(600, seed=2)
         loose = calibrate.Posterior(items, discrepancy=True).sample(600, seed=2)
         self.assertGreater(float(np.std(loose[:, 0])), 1.5 * float(np.std(tight[:, 0])))
+
+
+@unittest.skipIf(np is None, "numpy is not installed")
+class ComparisonTests(unittest.TestCase):
+    def test_each_regime_reads_its_own_parameters(self):
+        keys = [p[0] for p in calibrate.PARAMETERS]
+        named = lambda regime: [keys[i] for i in calibrate.active(regime)]
+        self.assertEqual(named("air, incident"), ["afterburnTime"])
+        self.assertEqual(named("air, close-in gauges"), ["afterburnTime"])
+        self.assertEqual(named("concrete, impact"), ["ft", "gf"])
+        self.assertEqual(named("concrete, close-in blast"), ["afterburnTime", "ft", "gf"])
+        self.assertEqual(named("glass, threshold"), ["glassK"])
+
+    def test_a_run_without_a_parameter_has_it_at_today(self):
+        u = calibrate.unit({"ft": 1.0})
+        self.assertEqual(len(u), len(calibrate.PARAMETERS))
+        self.assertTrue(all(0 < x < 1 for x in u))
 
 
 if __name__ == "__main__":

@@ -42,6 +42,20 @@ much they would narrow the model's parameters, each by pinning a regime's own er
 - **Kingery's BRL 1344 (below).** Its data by distance, with their scatter, would narrow the
   afterburning time about 48%.
 
+The calibration's [step 2](calibration.md#step-2-fracture-energy-and-slabs-that-read-the-air-and-the-concrete-22-october-2026)
+(22 October) reranks them. Each figure is for a regime's error known to within ±5%, and in
+brackets known exactly:
+- **The air:** the incident impulse's scatter by distance (BRL 1344, or Snowball's and Dial
+  Pack's gauge reports) narrows the afterburning time 31% (45%).
+- **The glass:** E1300 is out of the likelihood, as a model, not a test.
+  - The break times' own error pinned, which Monk's thesis trials with their repeats might do,
+    narrows the flaw constant 19% (23%).
+  - Johns and Clubley's threshold panes would be a new regime, which the linearised ranking cannot
+    score: they remain the glass to fetch first.
+- **The concrete:** wanted are repeated tests, not new kinds:
+  - repeats of drop-weight beams such as Saatci's and Peterson's narrow the fracture energy 29%;
+  - repeats of Wu's slab narrow the tension 18%.
+
 A second cloud session searched for both on 20 October 2026, and for two further gaps: near-field
 impulse from charges on or in soil ([cratering](cratering.md#limitations)), and blast along street
 canyons ([hybrid far field](hybrid-far-field.md#limitations)). It could again only search, not

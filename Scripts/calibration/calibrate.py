@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """The calibration's emulators and posterior (docs/calibration.md): a Gaussian process for each
-comparison over the three parameters, fitted to the runs of the design, and a Kennedy–O'Hagan
-posterior with a discrepancy for each regime.
+comparison over the parameters its case reads, fitted to the runs of the design (a case run in
+several files, the last file's), and a
+Kennedy–O'Hagan posterior with a discrepancy for each regime.
 
-    python3 Scripts/calibration/calibrate.py runs.jsonl [--json out.json] [--steps 4000] [--seed 1]
-        [--bias-sd 0.3]
+    python3 Scripts/calibration/calibrate.py runs.jsonl [more.jsonl …] [--json out.json] [--steps 4000]
+        [--seed 1] [--bias-sd 0.3] [--with-threshold]
 
 The runs are those `Scripts/calibration/runs.py` gathers: one JSON line a run, its case, the
-parameters' values and its outputs; measured.json beside them gives what the cases themselves
-are compared with (Kingery–Bulmash's impulses, the panes' break times and their repeats'
-scatter, E1300's load resistances). Only numpy is needed.
+parameters' values and its outputs (a parameter a run does not give is at today's value); the
+measured.json beside each file gives what the cases themselves are compared with
+(Kingery–Bulmash's impulses, the panes' break times and their repeats' scatter, E1300's load
+resistances). Only numpy is needed.
+
+E1300's thresholds are left out of the likelihood unless `--with-threshold` is given: they are
+E1300's own flaw model (Beason and Morgan's), not tests, so against BombCAD's copy of it they
+measure only the stressed share that makes one reproduce the other, which is reported apart
+(the review of 20 October, docs/calibration.md).
 """
 import json
 import math
@@ -21,20 +28,29 @@ import numpy as np
 PARAMETERS = [
     ("afterburnTime", 0.003, 0.03, 0.01, "afterburning time (s/kg^1/3)"),
     ("ft", 0.6, 1.6, 1.0, "concrete tensile strength (factor)"),
+    ("gf", 0.5, 2.0, 1.0, "concrete fracture energy (factor)"),
     ("glassK", 0.01, 3.0, 1.0, "glass flaw constant x stressed share (factor)"),
 ]
 
 # Each comparison: case, output, measured value, regime, the measurement's scatter (log; the
 # repeats' where there are some, else assumed) and the model's spread from its own uncertain
 # inputs (log; docs/validation.md, "The model's spread from uncertain inputs", where recorded).
-# Its regime names the one parameter its case reads (`ACTIVE`): the air's cases read only the
-# afterburning time, the concrete's only the tensile strength, the glass's only the flaw factor, so
-# each emulator is over that one axis and the others cannot leak into it through noise.
-ACTIVE = {"air": 0, "concrete": 1, "glass": 2}
+# Its regime names the parameters its case reads (`ACTIVE`, by the regime or its first word): the
+# air's cases read only the afterburning time, the concrete's the tensile strength and fracture
+# energy, the glass's the flaw factor, and Wu's slab under its charge the afterburning time and
+# the concrete's both. Each emulator is over those axes alone, so that the others cannot leak
+# into it through the runs' noise.
+ACTIVE = {"air": [0], "concrete": [1, 2], "glass": [3], "concrete, close-in blast": [0, 1, 2]}
+
+
+def active(regime):
+    return ACTIVE.get(regime, ACTIVE[regime.split(",")[0]])
 # Kingery-Bulmash's incident impulse against the 1966 tests: two-thirds within ±6.7% (Swisdak 1994;
 # docs/data-survey.md, 3g). Its reflected curves were calculated, not measured: 10%, assumed.
 KB_INCIDENT_SCATTER = 0.067
 KB_REFLECTED_SCATTER = 0.10
+# One curve's errors at its three distances are not independent: correlated, as the review asks.
+KB_CORRELATION = 0.7
 ASSUMED = 0.10     # one test, no repeat
 
 
@@ -49,8 +65,14 @@ def comparisons():
         ("saatci", "peak", 37.9, "concrete, impact", ASSUMED, 0.06),
         ("saatci", "residual", 18.5, "concrete, impact", ASSUMED, 0.25),
         ("peterson-d-1d-nos", "impact", 289.0, "concrete, impact", 0.04, 0.15),
-        ("peterson-d-2d-s90", "impact", 238.0, "concrete, impact", 0.18, 0.14),
+        ("peterson-d-2d-s90", "impact", 238.5, "concrete, impact", 0.18, 0.14),
         ("contest-slab", "peak", 109.0, "concrete, blast", 0.032, 0.12),
+        # Wu's S8 under 1.6 kg at 0.5 m, one test; the gauges on Chiquito's slab, their repeats'
+        # scatter (docs/validation.md, "The model's spread from uncertain inputs").
+        ("wu-s8", "peak", 18.0, "concrete, close-in blast", ASSUMED, 0.04),
+        ("wu-s8", "residual", 5.6, "concrete, close-in blast", ASSUMED, 0.21),
+        ("chiquito-s1", "near", 2.5, "air, close-in gauges", 0.05, 0.07),
+        ("chiquito-s1", "far", 0.5, "air, close-in gauges", 0.12, 0.06),
     ]
     for aspect in ["1-1", "1-1.3", "1-1.7", "1-2"]:
         rows.append(("glass-monk", "t" + aspect, None, "glass, break time", None, 0.0))
@@ -59,10 +81,15 @@ def comparisons():
     return rows
 
 
+def outputs_of(case):
+    """The case's comparisons: (regime, output)."""
+    return [(regime, output) for c, output, _, regime, _, _ in comparisons() if c == case]
+
+
 def unit(values):
     """The parameters' values on the unit cube, uniform in their logarithms."""
-    return np.array([(math.log(values[key]) - math.log(low)) / (math.log(high) - math.log(low))
-                     for key, low, high, _, _ in PARAMETERS])
+    return np.array([(math.log(values.get(key, today)) - math.log(low)) / (math.log(high) - math.log(low))
+                     for key, low, high, today, _ in PARAMETERS])
 
 
 def from_unit(u):
@@ -148,7 +175,7 @@ class Emulator:
         return sf ** 2 * np.exp(-0.5 * np.sum(d * d, axis=2))
 
     def predict(self, x):
-        """The trend's mean and variance at `x` (all three axes), the runs' own scatter added."""
+        """The trend's mean and variance at `x` (every parameter's axis), the runs' own scatter added."""
         x = np.atleast_2d(x)[:, self.active]
         ks = self.kernel(x, self.x, self.lengths, self.sf)
         mean = self.basis(x) @ self.beta + ks @ self.alpha
@@ -163,6 +190,7 @@ class Emulator:
 
 # MARK: - The posterior
 
+P = len(PARAMETERS)
 BIAS_SD = 0.3     # a regime's shared discrepancy, prior
 SPREAD_SD = 0.15  # a regime's discrepancy from one comparison to the next: half-normal, its scale
 
@@ -176,15 +204,15 @@ class Posterior:
 
     @property
     def dimensions(self):
-        return 3 + (len(self.regimes) if self.discrepancy else 0)
+        return P + (len(self.regimes) if self.discrepancy else 0)
 
     def log_posterior(self, theta):
-        u = theta[:3]
+        u = theta[:P]
         if np.any(u < 0) or np.any(u > 1):
             return -np.inf
         total = 0.0
         if self.discrepancy:
-            logs = theta[3:]
+            logs = theta[P:]
             if np.any(logs < math.log(1e-3)) or np.any(logs > math.log(2)):
                 return -np.inf
             spreads = np.exp(logs)
@@ -200,6 +228,9 @@ class Posterior:
                 d[k] = mean[0] - item["logMeasured"]
                 variance[k] = v[0] + item["sigma"] ** 2
             cov = np.diag(variance)
+            # Kingery–Bulmash's distances: the curve's own error correlated between them.
+            curve = np.array([self.items[i].get("curveScatter", 0.0) for i in members])
+            cov += KB_CORRELATION * (np.outer(curve, curve) - np.diag(curve ** 2))
             if self.discrepancy:
                 cov += np.diag(np.full(len(members), spreads[n] ** 2)) + BIAS_SD ** 2
             sign, logdet = np.linalg.slogdet(cov)
@@ -210,9 +241,9 @@ class Posterior:
         generator = np.random.default_rng(seed)
         dims = self.dimensions
         start = np.empty((walkers, dims))
-        start[:, :3] = generator.uniform(0.05, 0.95, (walkers, 3))
+        start[:, :P] = generator.uniform(0.05, 0.95, (walkers, P))
         if self.discrepancy:
-            start[:, 3:] = np.log(generator.uniform(0.02, 0.2, (walkers, dims - 3)))
+            start[:, P:] = np.log(generator.uniform(0.02, 0.2, (walkers, dims - P)))
         values = np.array([self.log_posterior(w) for w in start])
         chain = []
         accepted = 0
@@ -232,6 +263,13 @@ class Posterior:
             if step >= steps // 2:
                 chain.append(start.copy())
         self.acceptance = accepted / (steps * walkers)
+        # Split R-hat for each parameter, each walker's kept half split in two (near 1: mixed).
+        kept = np.array(chain)  # steps × walkers × dims
+        n = kept.shape[0] // 2
+        halves = np.concatenate([kept[:n], kept[n:2 * n]], axis=1)
+        within = np.mean(np.var(halves, axis=0, ddof=1), axis=0)
+        between = n * np.var(np.mean(halves, axis=0), axis=0, ddof=1)
+        self.rhat = np.sqrt(((n - 1) / n * within + between / n) / np.maximum(within, 1e-300))
         return np.concatenate(chain)
 
 
@@ -242,15 +280,15 @@ def percentiles(values):
 # MARK: - Which data would narrow the bands
 
 def linearised(items, regimes, u, spreads):
-    """The posterior's precision on the three parameters (unit cube, log) at `u`, linearised:
-    each regime's sensitivities through its covariance, its shared discrepancy marginalised."""
-    precision = np.zeros((3, 3))
+    """The posterior's precision on the parameters (unit cube, log) at `u`, linearised: each
+    regime's sensitivities through its covariance, its shared discrepancy marginalised."""
+    precision = np.zeros((P, P))
     gradients = []
     for item in items:
         e = item["emulator"]
-        g = np.empty(3)
-        for d in range(3):
-            step = np.zeros(3)
+        g = np.empty(P)
+        for d in range(P):
+            step = np.zeros(P)
             step[d] = 0.02
             g[d] = (e.predict(np.clip(u + step, 0, 1))[0][0] - e.predict(np.clip(u - step, 0, 1))[0][0]) / (
                 np.clip(u + step, 0, 1)[d] - np.clip(u - step, 0, 1)[d])
@@ -274,13 +312,29 @@ def main(arguments):
     global BIAS_SD
     BIAS_SD = float(option("--bias-sd", str(BIAS_SD)))
     seed = int(option("--seed", "1"))
-    runs = [json.loads(line) for line in open(arguments[0]) if line.strip()]
     import os
-    path = os.path.join(os.path.dirname(os.path.abspath(arguments[0])), "measured.json")
-    measured = json.load(open(path)) if os.path.exists(path) else {}
+    files = []
+    for argument in arguments:
+        if argument.startswith("--"):
+            break
+        files.append(argument)
+    # A case run in more than one file takes the last file's runs only: a later step's design.
+    runs = []
+    for name in reversed(files):
+        mine = [json.loads(line) for line in open(name) if line.strip()]
+        known = {r["sample"]["caseID"] for r in runs}
+        runs += [r for r in mine if r["sample"]["caseID"] not in known]
+    measured = {}
+    for name in files:
+        path = os.path.join(os.path.dirname(os.path.abspath(name)), "measured.json")
+        if os.path.exists(path):
+            for case, outputs in json.load(open(path)).items():
+                measured.setdefault(case, {}).update(outputs)
 
     items = []
-    print("Emulators (log output over its parameter's unit interval): runs, leave-one-out error (log), "
+    thresholds = []
+    with_threshold = "--with-threshold" in arguments
+    print("Emulators (log output over its parameters' unit intervals): runs, leave-one-out error (log), "
           "its predicted sd, length, the runs' own scatter (log)")
     for case, output, value, regime, scatter, spread in comparisons():
         points = [(unit(r["sample"]["values"]), r["outcome"]["outputs"].get(output)) for r in runs
@@ -291,29 +345,56 @@ def main(arguments):
             continue
         x = np.array([p[0] for p in points])
         y = np.log([p[1] for p in points])
-        emulator = Emulator(x, y, active=[ACTIVE[regime.split(",")[0]]])
+        emulator = Emulator(x, y, active=active(regime))
         loo, sd = emulator.leave_one_out()
         known = measured.get(case, {}).get(output, [])
         target = value if value is not None else (known[0] if known else None)
         if target is None:
             print("  %s %s: no measurement, left out" % (case, output))
             continue
-        # The glass's break times carry the repeats' scatter as `measuredVariation` in the case.
+        # The glass's break times carry the repeats' scatter as `measuredVariation` in the case,
+        # floored at the series' pooled scatter: two repeats give it one degree of freedom.
         if scatter is None:
-            scatter = known[1] if len(known) > 1 else ASSUMED
+            series = [measured.get(case, {}).get(o, []) for _, o in outputs_of(case)]
+            pooled = [v[1] for v in series if len(v) > 1]
+            own = known[1] if len(known) > 1 else ASSUMED
+            scatter = max(own, math.sqrt(sum(x * x for x in pooled) / len(pooled))) if pooled else own
         sigma = math.sqrt(scatter ** 2 + spread ** 2)
+        if regime == "glass, threshold" and not with_threshold:
+            thresholds.append((case, output, emulator, target))
+            print("  %-18s %-9s %2d runs, LOO rms %.3f; a model against a model: left out of the likelihood"
+                  % (case, output, len(points), float(np.sqrt(np.mean(loo ** 2)))))
+            continue
         items.append(dict(case=case, output=output, regime=regime, emulator=emulator,
+                          curveScatter=scatter if case.startswith("kb-") else 0.0,
                           logMeasured=math.log(target), sigma=sigma, measured=target,
                           today=math.exp(emulator.predict(unit({k: v for k, _, _, v, _ in PARAMETERS}))[0][0])))
         print("  %-18s %-9s %2d runs, LOO rms %.3f (sd %.3f), length %s, scatter %.3f; today %.4g against %.4g" % (
             case, output, len(points), float(np.sqrt(np.mean(loo ** 2))), float(np.mean(sd)),
             " ".join("%.2g" % l for l in emulator.lengths), emulator.nugget, items[-1]["today"], target))
 
-    results = {}
+    # E1300's thresholds, apart: the stressed share (flaw factor) at which BombCAD's flaw model
+    # gives each pane's load resistance.
+    shares = []
+    grid = np.linspace(0, 1, 401)
+    glass_axis = [p[0] for p in PARAMETERS].index("glassK")
+    for case, output, emulator, target in thresholds:
+        u = np.tile(unit({}), (len(grid), 1))
+        u[:, glass_axis] = grid
+        gap = np.abs(emulator.predict(u)[0] - math.log(target))
+        share = from_unit(u[int(np.argmin(gap))])[glass_axis]
+        shares.append(share)
+        print("  E1300 %s: reproduced at a flaw factor of %.3g" % (output, share))
+    if shares:
+        print("  E1300's thresholds, as BombCAD's flaw model reproduces them: a stressed share of %.3g-%.3g "
+              "(median %.3g)" % (min(shares), max(shares), float(np.median(shares))))
+
+    results = {"thresholdShares": shares}
     for label, discrepancy in [("no discrepancy", False), ("Kennedy-O'Hagan", True)]:
         posterior = Posterior(items, discrepancy)
         chain = posterior.sample(steps, seed=seed)
-        print("\n%s: %d samples, acceptance %.2f" % (label, len(chain), posterior.acceptance))
+        print("\n%s: %d samples, acceptance %.2f, split R-hat %s" % (
+            label, len(chain), posterior.acceptance, " ".join("%.3f" % r for r in posterior.rhat[:P])))
         entry = {"parameters": {}, "spreads": {}, "biases": {}}
         for d, (key, low, high, today, name) in enumerate(PARAMETERS):
             values = np.exp(np.log(low) + chain[:, d] * (np.log(high) - np.log(low)))
@@ -325,7 +406,7 @@ def main(arguments):
                   % (name, p[50], p[5], p[95], p[16], p[84], today, width))
         if discrepancy:
             for n, regime in enumerate(posterior.regimes):
-                s = percentiles(np.exp(chain[:, 3 + n]))
+                s = percentiles(np.exp(chain[:, P + n]))
                 entry["spreads"][regime] = s
             # Each regime's shared discrepancy given each sample: drawn from its conditional
             # distribution (normal, given the sample's parameters and spread).
@@ -336,10 +417,10 @@ def main(arguments):
                 biases = []
                 n = posterior.regimes.index(regime)
                 for theta in thin:
-                    d = np.array([items[i]["emulator"].predict(theta[:3])[0][0] - items[i]["logMeasured"]
+                    d = np.array([items[i]["emulator"].predict(theta[:P])[0][0] - items[i]["logMeasured"]
                                   for i in members])
-                    v = np.array([items[i]["sigma"] ** 2 + math.exp(theta[3 + n]) ** 2 for i in members])
-                    v = v + np.array([items[i]["emulator"].predict(theta[:3])[1][0] for i in members])
+                    v = np.array([items[i]["sigma"] ** 2 + math.exp(theta[P + n]) ** 2 for i in members])
+                    v = v + np.array([items[i]["emulator"].predict(theta[:P])[1][0] for i in members])
                     precision = 1 / BIAS_SD ** 2 + np.sum(1 / v)
                     biases.append(np.sum(d / v) / precision + draws.normal() / math.sqrt(precision))
                 b = percentiles(np.exp(biases))
@@ -353,9 +434,9 @@ def main(arguments):
 
     # What would narrow the parameters most, linearised at the Kennedy-O'Hagan medians.
     koh = results["Kennedy-O'Hagan"]
-    u = np.array(koh["chainMedian"][:3])
+    u = np.array(koh["chainMedian"][:P])
     spreads = {r: koh["spreads"][r][50] for r in koh["regimes"]}
-    prior = np.eye(3) * 12  # uniform on the unit interval: variance 1/12
+    prior = np.eye(P) * 12  # uniform on the unit interval: variance 1/12
     base, gradients = linearised(items, koh["regimes"], u, spreads)
     base_sd = np.sqrt(np.diag(np.linalg.inv(prior + base)))
     print("\nSensitivities (d log output / d unit parameter) at the medians, and what would narrow "
@@ -365,11 +446,14 @@ def main(arguments):
     candidates = []
     for regime in koh["regimes"]:
         members = [i for i, item in enumerate(items) if item["regime"] == regime]
-        # A regime's shared discrepancy known (a reference that pins it): the bias term gone.
+        # A regime's shared discrepancy known (a reference that pins it): exactly, or to within
+        # ±5, 10 or 20% (the review: a pin is never exact, and the gain falls fast with it).
         j = np.array([gradients[i] for i in members])
         cov = np.diag([items[i]["sigma"] ** 2 + spreads[regime] ** 2 for i in members])
-        other = base - j.T @ np.linalg.solve(cov + BIAS_SD ** 2, j) + j.T @ np.linalg.solve(cov, j)
-        candidates.append(("%s: its shared discrepancy pinned" % regime, other))
+        for pin in (0.0, 0.05, 0.10, 0.20):
+            other = base - j.T @ np.linalg.solve(cov + BIAS_SD ** 2, j) + j.T @ np.linalg.solve(cov + pin ** 2, j)
+            candidates.append(("%s: its shared discrepancy pinned%s" % (
+                regime, " exactly" if pin == 0 else " to ±%.0f%%" % (100 * pin)), other))
         # Twice the comparisons, like the ones it has (each new one as its regime's average).
         mean = np.mean(j, axis=0)
         sigma = np.mean([items[i]["sigma"] for i in members])

@@ -13,7 +13,8 @@ extension CloseInSlabTest {
         heldLengthwise: Bool = true, stepsPerSample: Int = 16, roomy: Bool = false,
         balloonStart: Bool = false,
         adjust: (inout Scenario) -> Void = { _ in }, progress: ((String) -> Void)? = nil,
-        inspect: ((StructureSolver, Double) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil
+        inspect: ((StructureSolver, Double) -> Void)? = nil, prepare: ((StructureSolver) -> Void)? = nil,
+        configure: (inout SolverConfiguration) -> Void = { _ in }
     ) throws -> Result {
         // `roomy`: every open face moved out to `Scenario.structureFaceClearance`, the scene with
         // it; probes that `adjust` and `inspect` place by the static coordinates do not follow.
@@ -36,6 +37,7 @@ extension CloseInSlabTest {
         // As the app's "Afterburning and hot air": both or neither.
         solver.configuration.airModel = airModel ?? (afterburning ? .thermallyPerfect : .idealGas)
         solver.configuration.refinement = refinement
+        configure(&solver.configuration)
         try solver.load(scenario)
         guard let structure = solver.structure else { throw BlastError.allocationFailed("structure") }
         // For benchmarks: a hook before the run, such as a shorter step.

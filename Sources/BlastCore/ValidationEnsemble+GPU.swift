@@ -223,7 +223,7 @@ extension ValidationEnsemble {
     }
 
     /// `case` run at each of `points`, its own inputs at their middle values and each point's
-    /// values over them (a calibration's design: `afterburnTime`, `ft`, `glassK`).
+    /// values over them (a calibration's design: `afterburnTime`, `ft`, `gf`, `glassK`).
     public static func designSamples(case id: String, points: [[String: Double]]) throws -> [EnsembleSample] {
         let middle = try samples(case: id, count: 0, seed: 0)[0]
         return points.enumerated().map { number, point in
@@ -261,6 +261,11 @@ extension ValidationEnsemble {
             outputs: outputs,
             seconds: Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18,
             device: device.name)
+    }
+
+    /// A calibration's afterburning time (`afterburnTime`, s/kg^(1/3)), where a sample gives one.
+    static func burning(_ configuration: inout SolverConfiguration, _ values: [String: Double]) {
+        if let time = values["afterburnTime"] { configuration.afterburnTime = Float(time) }
     }
 
     static func outputs(_ sample: EnsembleSample, device: MTLDevice) throws -> [String: Double] {
@@ -327,7 +332,7 @@ extension ValidationEnsemble {
                     if let material = scenario.structure?.material {
                         scenario.structure?.material = perturbed(material, concrete)
                     }
-                })
+                }, configure: { Self.burning(&$0, values) })
             return ["peak": Double(result.peaks[0]) * 1000, "residual": Double(result.residuals[0]) * 1000]
         case "chiquito-s1":
             var test = chiquitoTest
@@ -339,7 +344,7 @@ extension ValidationEnsemble {
                     if let material = scenario.structure?.material {
                         scenario.structure?.material = perturbed(material, values)
                     }
-                })
+                }, configure: { Self.burning(&$0, values) })
             func peak(_ prefix: String) -> Double {
                 Double(result.gaugePeaks.first { $0.name.hasPrefix(prefix) }?.pressure ?? .nan) / 1e6
             }
