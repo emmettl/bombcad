@@ -1,0 +1,28 @@
+{
+  "status": "all-capture-publication-checks-pass",
+  "implementation": "78cc5b66badee5ab5b43a6804c2e616f8507bb87",
+  "launcherFix": "dbfe83bb",
+  "format": "pass",
+  "lint": "pass",
+  "hostStrictBuild": "pass, no warnings",
+  "focusedGPUControls": 4,
+  "coreAffected": "154 selected suites including44 Linux suites; passed",
+  "defaultDigestComparison": "42 variants / 6 sets bit-identical to05bd762c",
+  "artifactAffected": "plain check passed with36 PC tests /4 suites after retained source-staging refusal; no physical field rerun",
+  "ownBackendCaptureGates": 6,
+  "cudaDisabledFeatureBaselines": 3,
+  "rawClockRecords": 15653,
+  "initialPhysicalBufferHashesPerCase": 8,
+  "remoteVerification": "fresh all6 field/auxiliary/worker/input/runtime inventories verified",
+  "nativeSelectorReplay": "pending; no cross-backend acceptance or causal claim",
+  "warnings": "Existing Python test ResourceWarnings retained; strict build warning-free",
+  "sourceSHA256": {
+    "audit_capture.py": "a70d8433c6307a164be7a69fbc156d294f839c8949b7c20354878f1689391caf",
+    "run_metal.py": "dc221fe2208f194b7fe72449fbd99bd26bda128459a17271de2136002c9a7525",
+    "prepare_cuda.py": "52fe9f5eed4b0c4b5f72e86ca8e794fed13747b5cf2a853edfba74f987b95f6e",
+    "run_cuda.py": "b4dfcb21ad8426782cd6a4e326517429ac81c405d0173b9546d0abdc121206a2",
+    "verify_remote.py": "f7f46bc04cd08c1d87a4310dbbc4325abe471fd317cf1c6b72d300dd2ef19e06",
+    "remote_controller.py": "9d3790e2d40ca94336cd47b46288a56154d80d32ec73c99954830e8654395900",
+    "archive.py": "63a32d84267eb2cafb385f20a2f21a312386320e5d7729e1675c1b3c55c18c9b"
+  }
+}
