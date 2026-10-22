@@ -300,6 +300,58 @@ on a finer mesh, which is still to do.
   the last gauge's positive phase (pyro2's outflow at 36 m does not, by its shock's speed); and
   decks for the other eight cases.
 
+## A third code: Clawpack, 22 October 2026
+
+A cloud session ran the two decks in [Clawpack](https://www.clawpack.org) 5.14.0 (BSD-3-Clause,
+PyPI `clawpack`, built with gfortran and used unchanged), through PyClaw's wave-propagation
+solver: Roe's Riemann solver, unsplit with transverse waves, the deck's floors and CFL. The
+histories were imported and extracted with `run_decks.py`; the scripts, histories, receipts and
+mesh study are in [`Benchmarks/open/other-codes/clawpack/`](../Benchmarks/open/other-codes/clawpack/README.md).
+
+- **The room** is the deck as written: the whole cube on its 24-cell mesh from its
+  `initial_cells`, its volume mean and window, differing only in the numerics the deck names for
+  BombCAD (Roe and minmod, not HLLC). Its means agree with BombCAD's control within 0.07% and sit
+  on the energy bound; from 24 to 96 cells a side they move by at most 0.07%.
+- **The free field** is the deck's physics, gauges, sampling and read rules on a 2-D axisymmetric
+  mesh with the rigid ground as a boundary: a deviation from the deck's 3-D mesh, and labelled so.
+  The run was meant to test whether the ground reflection, which a 1-D run cannot have, changes
+  the score. It cannot here: a hemisphere centred on the ground has the ground as a plane of
+  symmetry, so its reflection is the mirror image and the exact answer is the 1-D sphere's. What
+  the 2-D run tests is a code that has the ground as a boundary, on a grid the wave crosses.
+
+| Case | Code | Score | Passed | Coverage | Geometric mean ratio | Typical factor |
+|---|---|---|---|---|---|---|
+| `kb-surface-burst-free-field` | Clawpack, 2-D, 62.5 mm | 0.96 | 23/24 | 24/24 | 0.92 | 1.12 |
+| | pyro2, 1-D, 10 mm | 0.96 | 23/24 | 24/24 | 0.95 | 1.14 |
+| | BombCAD's control, the deck, 0.5 m | 0.50 | 12/24 | 24/24 | 0.77 | 1.40 |
+| `ufc-closed-room-gas-pressure` | Clawpack, the deck | 0.60 | 3/5 | 5/5 | 0.74 | 1.55 |
+
+**The mesh study** (0.5 m to 62.5 mm over all gauges to 100 ms, and to 16 mm for the four nearest
+on a 16 m domain): the free-field score is 0.54, 0.79, 0.96 and 0.96 on 0.5, 0.25, 0.125 and
+0.0625 m cells. On the deck's own 0.5 m a second code scores about what BombCAD's control does,
+with the same low peaks and early arrivals. The impulses and arrivals converge at about second
+order to pyro2's 1-D values (Richardson estimates within 1% and 0.05 ms); the peaks converge at
+first order or less and on the finest meshes are 1–7% below pyro2's. The far boundary returns
+nothing: a 36 m domain reads every value as the 48 m domain does to five digits.
+
+**What the run found about the contract.** In the README there, in full; the main points:
+
+- No rule for **another mesh or dimension**, and no field in the receipt for a deviation: the
+  extractor labels any imported history as the protocol.
+- No stated **resolution** or mesh study, though the score depends on it (0.54 to 0.96).
+- No bound on **energy drift**: PyClaw's standard axisymmetric source terms are not conservative
+  and gained 41% of the charge's energy on 0.5 m cells (2% on 62.5 mm), which the extractor
+  cannot see.
+- **Floors and startup steps** are named but not defined, and decided whether runs survived; six
+  first-order startup steps move near peaks by up to 3.4% on 31 mm cells.
+- The **numerics** named are BombCAD's (HLLC), which Clawpack lacks; its 2-D HLLE solver is in
+  error and fails within a millisecond.
+- **Off the axes** the read rule refuses a scheme's precursor (half a pascal above ambient ahead
+  of an undershoot), and ground-flush gauges, read in the first row of cells, read raw peaks 1–3%
+  below gauges at the same distance 45° up.
+- The 50 µs **sampling** still moves resolved peaks by about 3%.
+- The ground can only be tested by a case with a **height of burst**.
+
 ## What this doesn't yet do
 
 - **Two other codes have run two cases.** pyro2's 1-D runs found what the prose left open, and

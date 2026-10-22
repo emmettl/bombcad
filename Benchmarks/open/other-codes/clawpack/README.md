@@ -89,7 +89,66 @@ the three finest meshes of a gauge, and the Richardson estimate is given where 0
 pyro2's column is its 1-D spherical run of the same balloon on 10 mm cells, its 50 µs history read
 by the same rule: the answer the 2-D run should approach if the ground adds nothing.
 
-MESH-STUDY
+**peak, kPa** (deck rule, 50 µs samples)
+
+| Gauge | 500 mm | 250 mm | 125 mm | 62.5 mm | 62.5 mm near | 31.25 mm near | p | Richardson | pyro2 1-D 10 mm |
+|---|---|---|---|---|---|---|---|---|---|
+| Z0.75 | 1,354 | 1,803 | 1,992 | 2,326 | 2,326 | 2,648 | 0.05 | – | 2,860 |
+| Z1 | 980 | 1,141 | 1,199 | 1,408 | 1,408 | 1,500 | 1.19 | 1,572 | 1,514 |
+| Z1.5 | 413 | 448 | 498 | 545 | 545 | 576 | 0.57 | 640 | 589 |
+| Z2 | 217 | 233 | 253 | 268 | 268 | 281 | 0.23 | – | 293 |
+| Z3 | 86 | 101 | 106 | 109 | – | – | 0.43 | – | 116 |
+| Z4 | 53 | 60 | 60 | 62 | – | – | -1.16 | – | 65 |
+| Z5 | 37 | 40 | 40 | 42 | – | – | -1.86 | – | 44 |
+| Z6 | 28 | 30 | 30 | 31 | – | – | -3.16 | – | 33 |
+
+**impulse, kPa ms** (deck rule, 50 µs samples)
+
+| Gauge | 500 mm | 250 mm | 125 mm | 62.5 mm | 62.5 mm near | 31.25 mm near | p | Richardson | pyro2 1-D 10 mm |
+|---|---|---|---|---|---|---|---|---|---|
+| Z0.75 | 920 | 867 | 890 | 858 | 858 | 853 | 2.67 | 852 | 859 |
+| Z1 | 1,148 | 1,016 | 874 | 881 | 881 | 885 | 0.73 | 891 | 878 |
+| Z1.5 | 871 | 714 | 632 | 613 | 613 | 609 | 2.40 | 608 | 615 |
+| Z2 | 604 | 543 | 510 | 496 | 496 | 494 | 2.42 | 493 | 492 |
+| Z3 | 442 | 413 | 381 | 374 | – | – | 2.18 | 372 | 370 |
+| Z4 | 360 | 329 | 300 | 294 | – | – | 2.41 | 293 | 291 |
+| Z5 | 299 | 270 | 245 | 241 | – | – | 2.45 | 240 | 238 |
+| Z6 | 254 | 228 | 207 | 203 | – | – | 2.46 | 202 | 200 |
+
+**arrival, ms** (deck rule, 50 µs samples)
+
+| Gauge | 500 mm | 250 mm | 125 mm | 62.5 mm | 62.5 mm near | 31.25 mm near | p | Richardson | pyro2 1-D 10 mm |
+|---|---|---|---|---|---|---|---|---|---|
+| Z0.75 | 0.86 | 1.07 | 1.24 | 1.26 | 1.26 | 1.27 | 0.99 | 1.29 | 1.27 |
+| Z1 | 1.52 | 1.78 | 2.01 | 2.02 | 2.02 | 2.03 | 2.23 | 2.03 | 2.02 |
+| Z1.5 | 3.24 | 3.79 | 4.19 | 4.22 | 4.22 | 4.23 | 1.95 | 4.23 | 4.23 |
+| Z2 | 5.94 | 6.78 | 7.30 | 7.37 | 7.37 | 7.39 | 1.93 | 7.40 | 7.42 |
+| Z3 | 13.69 | 14.97 | 15.72 | 15.90 | – | – | 2.12 | 15.95 | 15.98 |
+| Z4 | 23.65 | 25.02 | 25.95 | 26.20 | – | – | 1.91 | 26.29 | 26.32 |
+| Z5 | 34.61 | 36.04 | 37.17 | 37.47 | – | – | 1.91 | 37.58 | 37.63 |
+| Z6 | 46.11 | 47.72 | 48.99 | 49.32 | – | – | 1.94 | 49.44 | 49.49 |
+
+**With six first-order startup steps** (near field; the 16 mm mesh needs them)
+
+| Gauge | 31.25 mm, peak | 15.625 mm, peak | 31.25 mm, impulse | 15.625 mm, impulse | 31.25 mm, arrival | 15.625 mm, arrival |
+|---|---|---|---|---|---|---|
+| Z0.75 | 2,668 | 2,511 | 834 | 868 | 1.27 | 1.24 |
+| Z1 | 1,551 | 1,279 | 890 | 852 | 2.02 | 1.96 |
+| Z1.5 | 578 | 534 | 616 | 601 | 4.20 | 4.22 |
+| Z2 | 282 | 289 | 496 | 494 | 7.36 | 7.42 |
+
+**Energy** (the domain's total energy gained, as a share of the charge's 418.4 MJ, at the stop)
+
+| Run | Cells | Steps | Wall, s | Energy gained | of which floors |
+|---|---|---|---|---|---|
+| free-field-dx0.5 | 96² | 2,001 | 14 | +40.74% | 0.146% |
+| free-field-dx0.25 | 192² | 2,034 | 66 | +22.07% | 0.094% |
+| free-field-dx0.125 | 384² | 2,426 | 288 | +5.17% | 0.125% |
+| free-field-dx0.0625 | 768² | 5,145 | 2,494 | +2.08% | 0.016% |
+| near-dx0.0625 | 256² | 1,507 | 80 | +1.62% | 0.016% |
+| near-dx0.03125 | 512² | 3,134 | 606 | +0.92% | 0.008% |
+| startup6-near-dx0.03125 | 512² | 3,293 | 738 | +1.88% | 0.000% |
+| near-dx0.015625 | 1024² | 5,900 | 4,844 | +0.79% | 0.000% |
 
 - **The near-field domain changes nothing**: on 62.5 mm cells the 16 m, 20 ms runs read the same
   values as the 48 m, 100 ms run to the digits shown. **Nor does the far boundary**: on 36 m
@@ -123,7 +182,15 @@ that has stopped moving must be, and within 0.07% of BombCAD's control on the sa
 (418.1, 836.5, 1,673.2, 3,346.6, 6,693.3 kPa). The kinetic energy left at 100 ms is under 0.04%
 of the gas's; the relative half-window drift is at most 1.2 × 10⁻⁴.
 
-ROOMTABLE
+**Room**: the 100–120 ms volume-mean overpressure, kPa (relative half-window drift)
+
+| Run | Energy bound | 24³ | 24³ octant | 48³ | 48³ octant | 96³ octant |
+|---|---|---|---|---|---|---|
+| 0.25kg-m3 | 418.4 | 418.4 (+1.2e-04) | 418.4 (+1.2e-04) | – | 418.2 (+9.9e-05) | 418.1 (+8.3e-05) |
+| 0.5kg-m3 | 836.8 | 836.9 (+4.2e-05) | – | – | 836.5 (+6.8e-05) | – |
+| 1kg-m3 | 1,673.6 | 1,673.5 (+1.7e-05) | – | 1,673.3 (+5.8e-05) | 1,673.3 (+5.8e-05) | – |
+| 2kg-m3 | 3,347.2 | 3,347.1 (+1.5e-05) | – | – | 3,346.5 (+4.0e-05) | – |
+| 4kg-m3 | 6,694.4 | 6,694.2 (+9.6e-06) | 6,694.2 (+9.6e-06) | – | 6,693.7 (+1.5e-05) | 6,693.1 (+2.8e-05) |
 
 - **The mesh does not matter**: from 24 to 96 cells a side the means move by at most 0.07% (the
   lightest charge, whose reverberations hold a little more kinetic energy on the finer mesh).
