@@ -1,0 +1,143 @@
+{
+  "status": "complete-all-outcomes",
+  "controllerPID": 90477,
+  "workerSHA256": {
+    "run.py": "2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb",
+    "trace_columns.py": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "solver.cu": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "remote-train.py": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "pins": {
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/analysis/run.py": "1453f3c5590629d9cfdccf1a7cc577bf654d217d2fb087a9dfa5d4b4af9065c1",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/analysis/pressure_model.py": "e7acf4718906d4145f392d9afea8a8ea5c4b08bd70cc3090eba3091c265d2ade",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/analysis/build_worker.py": "d4b9603e41375af79a6f55f760be3234e1822f16e8c7dea4a26902380e6e67f8",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/analysis/check_model.py": "0fe969a84a5bc5330b4d796276e89208399f798906b1be17fbbc6dae68bad904",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/analysis/plan.md": "0115293397f4ea37217d6667d87051a5dd73f4e9db785d40e9da743c532a3700",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/worker/run.py": "2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/worker/trace_columns.py": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/worker/job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/worker/solver.cu": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/worker/remote-train.py": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/worker/compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb"
+  },
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "status": "captured-parity-pass",
+      "columns": [
+        62902
+      ],
+      "baselineRemote": "bombcad-cuda/c58f4f0a7ab5563b/jobs/d734215dd66f4ea8a57cb81d35a572fa",
+      "remote": "bombcad-cuda/c58f4f0a7ab5563b/jobs/7b5cf6b4d4424fda92d143b4d1debf8e",
+      "returncode": 0,
+      "allOriginalNumericAndDtBytesEqual": true,
+      "extraNumericFiles": [
+        "trace.npy",
+        "pressure-inputs.npy"
+      ]
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "status": "captured-parity-pass",
+      "columns": [
+        134058,
+        250097
+      ],
+      "baselineRemote": "bombcad-cuda/c58f4f0a7ab5563b/jobs/1c482daed9024953bbe0232528c74b69",
+      "remote": "bombcad-cuda/c58f4f0a7ab5563b/jobs/9f2ee86d3d7242c3b365a43f70c2aa9b",
+      "returncode": 0,
+      "allOriginalNumericAndDtBytesEqual": true,
+      "extraNumericFiles": [
+        "trace.npy",
+        "pressure-inputs.npy"
+      ]
+    },
+    {
+      "id": "beirut-p0-1",
+      "status": "captured-parity-pass",
+      "columns": [
+        187747
+      ],
+      "baselineRemote": "bombcad-cuda/c58f4f0a7ab5563b/jobs/1b4412a84059482b85a0005d139c8e22",
+      "remote": "bombcad-cuda/c58f4f0a7ab5563b/jobs/efe73481bc2744b69c14ff0ca9e40b6f",
+      "returncode": 0,
+      "allOriginalNumericAndDtBytesEqual": true,
+      "extraNumericFiles": [
+        "trace.npy",
+        "pressure-inputs.npy"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "made-perimeter-s1-1",
+      "columns": [
+        62902
+      ]
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "columns": [
+        134058,
+        250097
+      ]
+    },
+    {
+      "id": "beirut-p0-1",
+      "columns": [
+        187747
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "label": "math-controls",
+      "pid": 90478,
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "-B",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/analysis/check_model.py"
+      ],
+      "returncode": 0
+    },
+    {
+      "label": "made-perimeter-s1-1",
+      "pid": 90486,
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "bombcad-pc",
+        "python3 -c 'import hashlib,json,os,pathlib,signal,subprocess\nc={'\"'\"'remote'\"'\"': '\"'\"'bombcad-cuda/c58f4f0a7ab5563b/jobs/7b5cf6b4d4424fda92d143b4d1debf8e'\"'\"', '\"'\"'baseline'\"'\"': '\"'\"'bombcad-cuda/c58f4f0a7ab5563b/jobs/d734215dd66f4ea8a57cb81d35a572fa'\"'\"', '\"'\"'columns'\"'\"': [62902], '\"'\"'worker'\"'\"': {'\"'\"'run.py'\"'\"': '\"'\"'2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb'\"'\"', '\"'\"'trace_columns.py'\"'\"': '\"'\"'77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7'\"'\"', '\"'\"'job.py'\"'\"': '\"'\"'3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e'\"'\"', '\"'\"'solver.cu'\"'\"': '\"'\"'c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094'\"'\"', '\"'\"'remote-train.py'\"'\"': '\"'\"'fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a'\"'\"', '\"'\"'compile.py'\"'\"': '\"'\"'2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb'\"'\"'}};root=pathlib.Path.home();remote=root/c['\"'\"'remote'\"'\"'];base=root/c['\"'\"'baseline'\"'\"']\ndef digest(p):\n h=hashlib.sha256()\n with p.open('\"'\"'rb'\"'\"') as f:\n  for b in iter(lambda:f.read(1048576),b'\"'\"''\"'\"'):h.update(b)\n return h.hexdigest()\nfor n,h in c['\"'\"'worker'\"'\"'].items():assert digest(remote/'\"'\"'worker'\"'\"'/n)==h\nj=json.loads((base/'\"'\"'input/job.json'\"'\"').read_text());assert j['\"'\"'sourceSHA256'\"'\"']==c['\"'\"'worker'\"'\"']['\"'\"'solver.cu'\"'\"']\nfor n,h in j['\"'\"'files'\"'\"'].items():assert digest(base/'\"'\"'input'\"'\"'/n)==h\nargs=[str(root/'\"'\"'bombcad-ml/venv/bin/python'\"'\"'),str(remote/'\"'\"'worker/run.py'\"'\"'),str(base/'\"'\"'input'\"'\"'),'\"'\"'--source'\"'\"',str(remote/'\"'\"'worker/solver.cu'\"'\"'),'\"'\"'--out'\"'\"',str(remote/'\"'\"'out'\"'\"'),'\"'\"'--trace-columns'\"'\"','\"'\"','\"'\"'.join(map(str,c['\"'\"'columns'\"'\"'])),'\"'\"'--lock'\"'\"',str(root/'\"'\"'bombcad-ml/lock'\"'\"'),'\"'\"'--cache-dir'\"'\"',str(root/'\"'\"'bombcad-cuda/ptx-cache'\"'\"')]\np=subprocess.Popen(args,start_new_session=True);boot=pathlib.Path('\"'\"'/proc/sys/kernel/random/boot_id'\"'\"').read_text().strip();birth=pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]\nreceipt=dict(pid=p.pid,boot=boot,birthTicks=birth,command=args)\n(remote/'\"'\"'controller.json'\"'\"').write_text(json.dumps(receipt,indent=2)+'\"'\"'\\n'\"'\"')\ntry:code=p.wait(timeout=4800)\nexcept subprocess.TimeoutExpired:\n assert pathlib.Path('\"'\"'/proc/sys/kernel/random/boot_id'\"'\"').read_text().strip()==boot and pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]==birth\n os.killpg(p.pid,signal.SIGTERM)\n try:code=p.wait(timeout=10)\n except subprocess.TimeoutExpired:\n  assert pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]==birth\n  os.killpg(p.pid,signal.SIGKILL);code=p.wait()\n receipt['\"'\"'timedOut'\"'\"']=True\nreceipt.update(returncode=code,status='\"'\"'terminal'\"'\"');(remote/'\"'\"'controller.json'\"'\"').write_text(json.dumps(receipt,indent=2)+'\"'\"'\\n'\"'\"')\nraise SystemExit(code)\n'"
+      ],
+      "returncode": 0
+    },
+    {
+      "label": "made-perimeter-s3-1",
+      "pid": 90795,
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "bombcad-pc",
+        "python3 -c 'import hashlib,json,os,pathlib,signal,subprocess\nc={'\"'\"'remote'\"'\"': '\"'\"'bombcad-cuda/c58f4f0a7ab5563b/jobs/9f2ee86d3d7242c3b365a43f70c2aa9b'\"'\"', '\"'\"'baseline'\"'\"': '\"'\"'bombcad-cuda/c58f4f0a7ab5563b/jobs/1c482daed9024953bbe0232528c74b69'\"'\"', '\"'\"'columns'\"'\"': [134058, 250097], '\"'\"'worker'\"'\"': {'\"'\"'run.py'\"'\"': '\"'\"'2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb'\"'\"', '\"'\"'trace_columns.py'\"'\"': '\"'\"'77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7'\"'\"', '\"'\"'job.py'\"'\"': '\"'\"'3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e'\"'\"', '\"'\"'solver.cu'\"'\"': '\"'\"'c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094'\"'\"', '\"'\"'remote-train.py'\"'\"': '\"'\"'fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a'\"'\"', '\"'\"'compile.py'\"'\"': '\"'\"'2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb'\"'\"'}};root=pathlib.Path.home();remote=root/c['\"'\"'remote'\"'\"'];base=root/c['\"'\"'baseline'\"'\"']\ndef digest(p):\n h=hashlib.sha256()\n with p.open('\"'\"'rb'\"'\"') as f:\n  for b in iter(lambda:f.read(1048576),b'\"'\"''\"'\"'):h.update(b)\n return h.hexdigest()\nfor n,h in c['\"'\"'worker'\"'\"'].items():assert digest(remote/'\"'\"'worker'\"'\"'/n)==h\nj=json.loads((base/'\"'\"'input/job.json'\"'\"').read_text());assert j['\"'\"'sourceSHA256'\"'\"']==c['\"'\"'worker'\"'\"']['\"'\"'solver.cu'\"'\"']\nfor n,h in j['\"'\"'files'\"'\"'].items():assert digest(base/'\"'\"'input'\"'\"'/n)==h\nargs=[str(root/'\"'\"'bombcad-ml/venv/bin/python'\"'\"'),str(remote/'\"'\"'worker/run.py'\"'\"'),str(base/'\"'\"'input'\"'\"'),'\"'\"'--source'\"'\"',str(remote/'\"'\"'worker/solver.cu'\"'\"'),'\"'\"'--out'\"'\"',str(remote/'\"'\"'out'\"'\"'),'\"'\"'--trace-columns'\"'\"','\"'\"','\"'\"'.join(map(str,c['\"'\"'columns'\"'\"'])),'\"'\"'--lock'\"'\"',str(root/'\"'\"'bombcad-ml/lock'\"'\"'),'\"'\"'--cache-dir'\"'\"',str(root/'\"'\"'bombcad-cuda/ptx-cache'\"'\"')]\np=subprocess.Popen(args,start_new_session=True);boot=pathlib.Path('\"'\"'/proc/sys/kernel/random/boot_id'\"'\"').read_text().strip();birth=pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]\nreceipt=dict(pid=p.pid,boot=boot,birthTicks=birth,command=args)\n(remote/'\"'\"'controller.json'\"'\"').write_text(json.dumps(receipt,indent=2)+'\"'\"'\\n'\"'\"')\ntry:code=p.wait(timeout=4800)\nexcept subprocess.TimeoutExpired:\n assert pathlib.Path('\"'\"'/proc/sys/kernel/random/boot_id'\"'\"').read_text().strip()==boot and pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]==birth\n os.killpg(p.pid,signal.SIGTERM)\n try:code=p.wait(timeout=10)\n except subprocess.TimeoutExpired:\n  assert pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]==birth\n  os.killpg(p.pid,signal.SIGKILL);code=p.wait()\n receipt['\"'\"'timedOut'\"'\"']=True\nreceipt.update(returncode=code,status='\"'\"'terminal'\"'\"');(remote/'\"'\"'controller.json'\"'\"').write_text(json.dumps(receipt,indent=2)+'\"'\"'\\n'\"'\"')\nraise SystemExit(code)\n'"
+      ],
+      "returncode": 0
+    },
+    {
+      "label": "beirut-p0-1",
+      "pid": 91237,
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "bombcad-pc",
+        "python3 -c 'import hashlib,json,os,pathlib,signal,subprocess\nc={'\"'\"'remote'\"'\"': '\"'\"'bombcad-cuda/c58f4f0a7ab5563b/jobs/efe73481bc2744b69c14ff0ca9e40b6f'\"'\"', '\"'\"'baseline'\"'\"': '\"'\"'bombcad-cuda/c58f4f0a7ab5563b/jobs/1b4412a84059482b85a0005d139c8e22'\"'\"', '\"'\"'columns'\"'\"': [187747], '\"'\"'worker'\"'\"': {'\"'\"'run.py'\"'\"': '\"'\"'2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb'\"'\"', '\"'\"'trace_columns.py'\"'\"': '\"'\"'77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7'\"'\"', '\"'\"'job.py'\"'\"': '\"'\"'3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e'\"'\"', '\"'\"'solver.cu'\"'\"': '\"'\"'c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094'\"'\"', '\"'\"'remote-train.py'\"'\"': '\"'\"'fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a'\"'\"', '\"'\"'compile.py'\"'\"': '\"'\"'2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb'\"'\"'}};root=pathlib.Path.home();remote=root/c['\"'\"'remote'\"'\"'];base=root/c['\"'\"'baseline'\"'\"']\ndef digest(p):\n h=hashlib.sha256()\n with p.open('\"'\"'rb'\"'\"') as f:\n  for b in iter(lambda:f.read(1048576),b'\"'\"''\"'\"'):h.update(b)\n return h.hexdigest()\nfor n,h in c['\"'\"'worker'\"'\"'].items():assert digest(remote/'\"'\"'worker'\"'\"'/n)==h\nj=json.loads((base/'\"'\"'input/job.json'\"'\"').read_text());assert j['\"'\"'sourceSHA256'\"'\"']==c['\"'\"'worker'\"'\"']['\"'\"'solver.cu'\"'\"']\nfor n,h in j['\"'\"'files'\"'\"'].items():assert digest(base/'\"'\"'input'\"'\"'/n)==h\nargs=[str(root/'\"'\"'bombcad-ml/venv/bin/python'\"'\"'),str(remote/'\"'\"'worker/run.py'\"'\"'),str(base/'\"'\"'input'\"'\"'),'\"'\"'--source'\"'\"',str(remote/'\"'\"'worker/solver.cu'\"'\"'),'\"'\"'--out'\"'\"',str(remote/'\"'\"'out'\"'\"'),'\"'\"'--trace-columns'\"'\"','\"'\"','\"'\"'.join(map(str,c['\"'\"'columns'\"'\"'])),'\"'\"'--lock'\"'\"',str(root/'\"'\"'bombcad-ml/lock'\"'\"'),'\"'\"'--cache-dir'\"'\"',str(root/'\"'\"'bombcad-cuda/ptx-cache'\"'\"')]\np=subprocess.Popen(args,start_new_session=True);boot=pathlib.Path('\"'\"'/proc/sys/kernel/random/boot_id'\"'\"').read_text().strip();birth=pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]\nreceipt=dict(pid=p.pid,boot=boot,birthTicks=birth,command=args)\n(remote/'\"'\"'controller.json'\"'\"').write_text(json.dumps(receipt,indent=2)+'\"'\"'\\n'\"'\"')\ntry:code=p.wait(timeout=4800)\nexcept subprocess.TimeoutExpired:\n assert pathlib.Path('\"'\"'/proc/sys/kernel/random/boot_id'\"'\"').read_text().strip()==boot and pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]==birth\n os.killpg(p.pid,signal.SIGTERM)\n try:code=p.wait(timeout=10)\n except subprocess.TimeoutExpired:\n  assert pathlib.Path(f'\"'\"'/proc/{p.pid}/stat'\"'\"').read_text().split()[21]==birth\n  os.killpg(p.pid,signal.SIGKILL);code=p.wait()\n receipt['\"'\"'timedOut'\"'\"']=True\nreceipt.update(returncode=code,status='\"'\"'terminal'\"'\"');(remote/'\"'\"'controller.json'\"'\"').write_text(json.dumps(receipt,indent=2)+'\"'\"'\\n'\"'\"')\nraise SystemExit(code)\n'"
+      ],
+      "returncode": 0
+    }
+  ],
+  "allThreeCaptured": true
+}

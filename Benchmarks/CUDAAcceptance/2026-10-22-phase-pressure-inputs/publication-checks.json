@@ -1,0 +1,21 @@
+{
+  "schema": "bombcad-phase-pressure-input-publication-checks-1",
+  "formatLint": true,
+  "strictBuildNoWarnings": true,
+  "plainCheckAffected": true,
+  "macSelectedSuitesPass": true,
+  "pcTests": 62,
+  "pcSuites": 11,
+  "mathControlsPerRuntime": 4,
+  "mathControlRuntimes": 2,
+  "all49OwnRawFilesRehashed": true,
+  "bothArchivesVerified": true,
+  "allSelectedCaptureAnalysisAndRuntimePinsMatch": true,
+  "allThreeRemoteNumericInventoriesIndependentlyRehashed": true,
+  "originalNumericFilesPerCase": 9,
+  "allNativeRecorderWordsReplayedExactly": true,
+  "initialFinalCellAndColumnWordsVerified": true,
+  "beirutPriorEightFieldTraceByteEqual": true,
+  "conditionalWiderPressureFixRejected": true,
+  "scope": "Artifact diagnostics with three declared observational solves, no retry. Not a new CUDA pass, physical validation or ordinary-solver digest rerun. Existing unrelated Python test ResourceWarnings do not alter the warning-free compiler result."
+}

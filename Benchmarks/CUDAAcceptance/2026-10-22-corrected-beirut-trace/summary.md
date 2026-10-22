@@ -71,3 +71,10 @@ pass, including selected Mac suites and 62 PC tests in 11 suites. All 32 raw
 files, both archives, consumed inputs and helper snapshots still match after
 checks. [publication-checks.json](publication-checks.json) records this artifact
 stage; it does not claim an unrelated ordinary-solver digest rerun.
+
+A [raw CUDA pressure-input study](../2026-10-22-phase-pressure-inputs/summary.md)
+now evaluates the same represented cells using Double thermally perfect source
+and independent-root formulas. Both still give negative pressure at CUDA's
+early closure, and all four fixed counterfactuals remain rejected at Beirut.
+The earlier zero substitution is a sensitivity demonstration, not a prediction
+from those wider evaluations. No phase rule or admission gate changed.

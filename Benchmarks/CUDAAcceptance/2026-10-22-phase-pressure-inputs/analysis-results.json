@@ -1,0 +1,876 @@
+{
+  "status": "complete-all-outcomes",
+  "allThreeInputAndNativeReplayGatesPass": true,
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "nativeColumns": [
+        {
+          "column": 62902,
+          "seed": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "nativeReplay": {
+            "final": [
+              7203.234375,
+              1463.33984375,
+              1107.3350830078125,
+              7203.234375,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1298,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.4042142538528424e-05
+              },
+              {
+                "sample": 1513,
+                "open": 0.0,
+                "pressure": -65.9609375,
+                "firstPhaseImpulse": 1107.3350830078125
+              }
+            ]
+          },
+          "metalFirstPhase": 1107.3367919921875,
+          "cudaFirstPhase": 1107.3350830078125
+        }
+      ],
+      "models": [
+        {
+          "model": "source64-native",
+          "columns": [
+            {
+              "column": 62902,
+              "conditionalRecorder": {
+                "final": [
+                  7203.2421875,
+                  1463.3575439453125,
+                  1107.3505859375,
+                  7203.2421875,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1513,
+                    "open": 0.0,
+                    "pressure": -65.95796203613281,
+                    "firstPhaseImpulse": 1107.3505859375
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1513,
+                  "time": 2.4922439883472034,
+                  "nativePressure": -65.9609375,
+                  "doublePressure": -65.95796536080888,
+                  "roundedDoublePressure": -65.95796203613281
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0137939453125,
+              "unchangedAllowance": 2.264673583984375,
+              "maximumPressureDifference": 0.024411282283836044
+            }
+          ]
+        },
+        {
+          "model": "source64-column64",
+          "columns": [
+            {
+              "column": 62902,
+              "conditionalRecorder": {
+                "final": [
+                  7203.2421875,
+                  1463.3575439453125,
+                  1107.3505859375,
+                  7203.2421875,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1513,
+                    "open": 0.0,
+                    "pressure": -65.95796203613281,
+                    "firstPhaseImpulse": 1107.3505859375
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1513,
+                  "time": 2.4922439883472034,
+                  "nativePressure": -65.9609375,
+                  "doublePressure": -65.95796536080888,
+                  "roundedDoublePressure": -65.95796203613281
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0137939453125,
+              "unchangedAllowance": 2.264673583984375,
+              "maximumPressureDifference": 0.024411282283836044
+            }
+          ]
+        },
+        {
+          "model": "root64-native",
+          "columns": [
+            {
+              "column": 62902,
+              "conditionalRecorder": {
+                "final": [
+                  7203.2421875,
+                  1463.3575439453125,
+                  1107.3505859375,
+                  7203.2421875,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1513,
+                    "open": 0.0,
+                    "pressure": -65.95796203613281,
+                    "firstPhaseImpulse": 1107.3505859375
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1513,
+                  "time": 2.4922439883472034,
+                  "nativePressure": -65.9609375,
+                  "doublePressure": -65.95796564123884,
+                  "roundedDoublePressure": -65.95796203613281
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0137939453125,
+              "unchangedAllowance": 2.264673583984375,
+              "maximumPressureDifference": 0.02441099392308388
+            }
+          ]
+        },
+        {
+          "model": "root64-column64",
+          "columns": [
+            {
+              "column": 62902,
+              "conditionalRecorder": {
+                "final": [
+                  7203.2421875,
+                  1463.3575439453125,
+                  1107.3505859375,
+                  7203.2421875,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1513,
+                    "open": 0.0,
+                    "pressure": -65.95796203613281,
+                    "firstPhaseImpulse": 1107.3505859375
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1513,
+                  "time": 2.4922439883472034,
+                  "nativePressure": -65.9609375,
+                  "doublePressure": -65.95796564123884,
+                  "roundedDoublePressure": -65.95796203613281
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0137939453125,
+              "unchangedAllowance": 2.264673583984375,
+              "maximumPressureDifference": 0.02441099392308388
+            }
+          ]
+        }
+      ],
+      "inputAndSeededNativeReplayGatesPass": true
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "nativeColumns": [
+        {
+          "column": 134058,
+          "seed": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "nativeReplay": {
+            "final": [
+              3364.5234375,
+              831.4840087890625,
+              439.7618103027344,
+              3364.5234375,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1060,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.292950128117809e-05
+              },
+              {
+                "sample": 1276,
+                "open": 0.0,
+                "pressure": -13.390625,
+                "firstPhaseImpulse": 439.7618103027344
+              }
+            ]
+          },
+          "metalFirstPhase": 439.7640075683594,
+          "cudaFirstPhase": 439.7618103027344
+        },
+        {
+          "column": 250097,
+          "seed": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "nativeReplay": {
+            "final": [
+              1783.96875,
+              683.8806762695312,
+              188.5260467529297,
+              1783.96875,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1449,
+                "open": 1.0,
+                "pressure": 0.015625,
+                "firstPhaseImpulse": 2.654840864124708e-05
+              },
+              {
+                "sample": 1593,
+                "open": 0.0,
+                "pressure": -1.40625,
+                "firstPhaseImpulse": 188.5260467529297
+              }
+            ]
+          },
+          "metalFirstPhase": 188.52630615234375,
+          "cudaFirstPhase": 188.5260467529297
+        }
+      ],
+      "models": [
+        {
+          "model": "source64-native",
+          "columns": [
+            {
+              "column": 134058,
+              "conditionalRecorder": {
+                "final": [
+                  3364.532958984375,
+                  831.5025634765625,
+                  439.774658203125,
+                  3364.532958984375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1276,
+                    "open": 0.0,
+                    "pressure": -13.383004188537598,
+                    "firstPhaseImpulse": 439.774658203125
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535698573134,
+                  "nativePressure": -13.390625,
+                  "doublePressure": -13.383004098679521,
+                  "roundedDoublePressure": -13.383004188537598
+                }
+              ],
+              "finalDifferenceFromMetal": 0.010650634765625,
+              "unchangedAllowance": 0.9295280151367188,
+              "maximumPressureDifference": 0.022877225070260465
+            },
+            {
+              "column": 250097,
+              "conditionalRecorder": {
+                "final": [
+                  1783.96337890625,
+                  683.9012451171875,
+                  188.54249572753906,
+                  1783.96337890625,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1593,
+                    "open": 0.0,
+                    "pressure": -1.4003428220748901,
+                    "firstPhaseImpulse": 188.54249572753906
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741379514821165,
+                  "nativePressure": -1.40625,
+                  "doublePressure": -1.4003427778952755,
+                  "roundedDoublePressure": -1.4003428220748901
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0161895751953125,
+              "unchangedAllowance": 0.4270526123046875,
+              "maximumPressureDifference": 0.02257386162818875
+            }
+          ]
+        },
+        {
+          "model": "source64-column64",
+          "columns": [
+            {
+              "column": 134058,
+              "conditionalRecorder": {
+                "final": [
+                  3364.532958984375,
+                  831.5025634765625,
+                  439.774658203125,
+                  3364.532958984375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1276,
+                    "open": 0.0,
+                    "pressure": -13.383004188537598,
+                    "firstPhaseImpulse": 439.774658203125
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535698573134,
+                  "nativePressure": -13.390625,
+                  "doublePressure": -13.383004098679521,
+                  "roundedDoublePressure": -13.383004188537598
+                }
+              ],
+              "finalDifferenceFromMetal": 0.010650634765625,
+              "unchangedAllowance": 0.9295280151367188,
+              "maximumPressureDifference": 0.022877225070260465
+            },
+            {
+              "column": 250097,
+              "conditionalRecorder": {
+                "final": [
+                  1783.96337890625,
+                  683.9012451171875,
+                  188.54249572753906,
+                  1783.96337890625,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1593,
+                    "open": 0.0,
+                    "pressure": -1.4003428220748901,
+                    "firstPhaseImpulse": 188.54249572753906
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741379514821165,
+                  "nativePressure": -1.40625,
+                  "doublePressure": -1.4003427778952755,
+                  "roundedDoublePressure": -1.4003428220748901
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0161895751953125,
+              "unchangedAllowance": 0.4270526123046875,
+              "maximumPressureDifference": 0.02257386162818875
+            }
+          ]
+        },
+        {
+          "model": "root64-native",
+          "columns": [
+            {
+              "column": 134058,
+              "conditionalRecorder": {
+                "final": [
+                  3364.532958984375,
+                  831.5025634765625,
+                  439.774658203125,
+                  3364.532958984375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1276,
+                    "open": 0.0,
+                    "pressure": -13.383004188537598,
+                    "firstPhaseImpulse": 439.774658203125
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535698573134,
+                  "nativePressure": -13.390625,
+                  "doublePressure": -13.383004380244529,
+                  "roundedDoublePressure": -13.383004188537598
+                }
+              ],
+              "finalDifferenceFromMetal": 0.010650634765625,
+              "unchangedAllowance": 0.9295280151367188,
+              "maximumPressureDifference": 0.02287695516133681
+            },
+            {
+              "column": 250097,
+              "conditionalRecorder": {
+                "final": [
+                  1783.96337890625,
+                  683.9012451171875,
+                  188.54249572753906,
+                  1783.96337890625,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1593,
+                    "open": 0.0,
+                    "pressure": -1.4003430604934692,
+                    "firstPhaseImpulse": 188.54249572753906
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741379514821165,
+                  "nativePressure": -1.40625,
+                  "doublePressure": -1.4003430597367696,
+                  "roundedDoublePressure": -1.4003430604934692
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0161895751953125,
+              "unchangedAllowance": 0.4270526123046875,
+              "maximumPressureDifference": 0.022573582245968282
+            }
+          ]
+        },
+        {
+          "model": "root64-column64",
+          "columns": [
+            {
+              "column": 134058,
+              "conditionalRecorder": {
+                "final": [
+                  3364.532958984375,
+                  831.5025634765625,
+                  439.774658203125,
+                  3364.532958984375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1276,
+                    "open": 0.0,
+                    "pressure": -13.383004188537598,
+                    "firstPhaseImpulse": 439.774658203125
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535698573134,
+                  "nativePressure": -13.390625,
+                  "doublePressure": -13.383004380244529,
+                  "roundedDoublePressure": -13.383004188537598
+                }
+              ],
+              "finalDifferenceFromMetal": 0.010650634765625,
+              "unchangedAllowance": 0.9295280151367188,
+              "maximumPressureDifference": 0.02287695516133681
+            },
+            {
+              "column": 250097,
+              "conditionalRecorder": {
+                "final": [
+                  1783.96337890625,
+                  683.9012451171875,
+                  188.54249572753906,
+                  1783.96337890625,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 1593,
+                    "open": 0.0,
+                    "pressure": -1.4003430604934692,
+                    "firstPhaseImpulse": 188.54249572753906
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741379514821165,
+                  "nativePressure": -1.40625,
+                  "doublePressure": -1.4003430597367696,
+                  "roundedDoublePressure": -1.4003430604934692
+                }
+              ],
+              "finalDifferenceFromMetal": 0.0161895751953125,
+              "unchangedAllowance": 0.4270526123046875,
+              "maximumPressureDifference": 0.022573582245968282
+            }
+          ]
+        }
+      ],
+      "inputAndSeededNativeReplayGatesPass": true
+    },
+    {
+      "id": "beirut-p0-1",
+      "nativeColumns": [
+        {
+          "column": 187747,
+          "seed": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "nativeReplay": {
+            "final": [
+              12078.7578125,
+              1842.307861328125,
+              1514.2877197265625,
+              12078.7578125,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 655,
+                "open": 1.0,
+                "pressure": 0.015625,
+                "firstPhaseImpulse": 2.884594323404599e-05
+              },
+              {
+                "sample": 827,
+                "open": 0.0,
+                "pressure": -0.0078125,
+                "firstPhaseImpulse": 1514.2877197265625
+              }
+            ]
+          },
+          "metalFirstPhase": 1696.1177978515625,
+          "cudaFirstPhase": 1514.2877197265625
+        }
+      ],
+      "models": [
+        {
+          "model": "source64-native",
+          "columns": [
+            {
+              "column": 187747,
+              "conditionalRecorder": {
+                "final": [
+                  12078.7568359375,
+                  1842.3238525390625,
+                  1514.297607421875,
+                  12078.7568359375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 827,
+                    "open": 0.0,
+                    "pressure": -0.001808767905458808,
+                    "firstPhaseImpulse": 1514.297607421875
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 827,
+                  "time": 1.5420506962259823,
+                  "nativePressure": -0.0078125,
+                  "doublePressure": -0.0018087679636664689,
+                  "roundedDoublePressure": -0.001808767905458808
+                }
+              ],
+              "finalDifferenceFromMetal": 181.8201904296875,
+              "unchangedAllowance": 3.4422355957031248,
+              "maximumPressureDifference": 0.02342649776255712
+            }
+          ]
+        },
+        {
+          "model": "source64-column64",
+          "columns": [
+            {
+              "column": 187747,
+              "conditionalRecorder": {
+                "final": [
+                  12078.7568359375,
+                  1842.3238525390625,
+                  1514.297607421875,
+                  12078.7568359375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718946620821953,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 827,
+                    "open": 0.0,
+                    "pressure": -0.001808767905458808,
+                    "firstPhaseImpulse": 1514.297607421875
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 827,
+                  "time": 1.5420506962259823,
+                  "nativePressure": -0.0078125,
+                  "doublePressure": -0.0018087679636664689,
+                  "roundedDoublePressure": -0.001808767905458808
+                }
+              ],
+              "finalDifferenceFromMetal": 181.8201904296875,
+              "unchangedAllowance": 3.4422355957031248,
+              "maximumPressureDifference": 0.02342649776255712
+            }
+          ]
+        },
+        {
+          "model": "root64-native",
+          "columns": [
+            {
+              "column": 187747,
+              "conditionalRecorder": {
+                "final": [
+                  12078.7568359375,
+                  1842.3238525390625,
+                  1514.297607421875,
+                  12078.7568359375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 827,
+                    "open": 0.0,
+                    "pressure": -0.00180905032902956,
+                    "firstPhaseImpulse": 1514.297607421875
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 827,
+                  "time": 1.5420506962259823,
+                  "nativePressure": -0.0078125,
+                  "doublePressure": -0.0018090502708218992,
+                  "roundedDoublePressure": -0.00180905032902956
+                }
+              ],
+              "finalDifferenceFromMetal": 181.8201904296875,
+              "unchangedAllowance": 3.4422355957031248,
+              "maximumPressureDifference": 0.023426215062499978
+            }
+          ]
+        },
+        {
+          "model": "root64-column64",
+          "columns": [
+            {
+              "column": 187747,
+              "conditionalRecorder": {
+                "final": [
+                  12078.7568359375,
+                  1842.3238525390625,
+                  1514.297607421875,
+                  12078.7568359375,
+                  0.0
+                ],
+                "recordWordDifferences": 0,
+                "transitions": [
+                  {
+                    "sample": 0,
+                    "open": 1.0,
+                    "pressure": 0.006718664895743132,
+                    "firstPhaseImpulse": 0.0
+                  },
+                  {
+                    "sample": 827,
+                    "open": 0.0,
+                    "pressure": -0.00180905032902956,
+                    "firstPhaseImpulse": 1514.297607421875
+                  }
+                ]
+              },
+              "pressureAtEveryNativeClosing": [
+                {
+                  "sample": 827,
+                  "time": 1.5420506962259823,
+                  "nativePressure": -0.0078125,
+                  "doublePressure": -0.0018090502708218992,
+                  "roundedDoublePressure": -0.00180905032902956
+                }
+              ],
+              "finalDifferenceFromMetal": 181.8201904296875,
+              "unchangedAllowance": 3.4422355957031248,
+              "maximumPressureDifference": 0.023426215062499978
+            }
+          ]
+        }
+      ],
+      "inputAndSeededNativeReplayGatesPass": true
+    }
+  ],
+  "consumed": {
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/cases/made-perimeter-s1-1/trace.npy": "7009f18b126a9d4bf6ac91ee82db28e39f35d19c072f25452bfd38e303643f3f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/cases/made-perimeter-s1-1/pressure-inputs.npy": "fdc1ca974f7cc85974d0b65b7a8740fb80501c936067fefbfff2c39248968381",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s1-1/metal/targets.npy": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s1-1/out/firstPhaseImpulse.npy": "5b010862b642a78c18a9dcd9aca2a99a62d169acd04ff9e2d737ff9dfe53f62e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/cases/made-perimeter-s3-1/trace.npy": "e7e74b5d0bfd22c1a200135c0cfa6fe4dae972960d007664fec74d4308bc5092",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/cases/made-perimeter-s3-1/pressure-inputs.npy": "691b5337737a3dfb1e92de04bcc7c386c29e67e3243ef76e62d16bbf288c5ed7",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-fixed-terrain-reference/cases/made-perimeter-s3-1/metal/targets.npy": "45f317d4b117f3d3528f927758ad15c0bf0b866bcc455180d8e0cfdedaffcb4b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-fixed-terrain-reference/recovery/current/made-perimeter-s3-1/out/firstPhaseImpulse.npy": "de528066a386b91786927489bcb00841b04c03c1d1ca90a9f3c299bf74fadfea",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/cases/beirut-p0-1/trace.npy": "c159b850aff2495f5f5d155dbe6b731c11e227b81396e50145465bea94e07735",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-phase-pressure-inputs/cases/beirut-p0-1/pressure-inputs.npy": "ce3d11d4378f7d2c9d176a8727d1d906b3d00cfd5fa6b228c87816f3cbfb5b0c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-corrected-beirut-trace/cuda/trace.npy": "c159b850aff2495f5f5d155dbe6b731c11e227b81396e50145465bea94e07735",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-fixed-terrain-reference/cases/beirut-p0-1/metal/targets.npy": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-fixed-terrain-reference/recovery/current/beirut-p0-1/out/firstPhaseImpulse.npy": "8b16e09d6af58c8300922ddd8f1059bbf8303dd1c9b99697ae628f25e5490453"
+  },
+  "analysisSHA256": "ed9b8b4ab43a79ca6b366f6645f519753ed5e17ff32a4828de782f5f3468e3a3",
+  "modelSHA256": "e7acf4718906d4145f392d9afea8a8ea5c4b08bd70cc3090eba3091c265d2ade",
+  "limits": "Double evaluation uses represented CUDA inputs and promoted Float32 source parameters; it is conditional, not native instruction emulation, continuum truth or a Metal-state observation. Initial native recorder seeds and every sample including initial were replayed. Counterfactual labels change no actual output, rule, mask, tolerance or admission."
+}
