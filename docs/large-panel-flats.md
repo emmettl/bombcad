@@ -147,6 +147,11 @@ below rather than from the eighteenth floor.
   within 0.05 s (with node contact or ground contact off it did not); under 500 kg it did so
   after 2 s. A bare element pressed flat on the hard ground was left with no volume; it is now
   removed (df4baa88), and the 500 kg run goes to 4 s.
+- **Past the collapse, the energy does not hold** ([whole-event simulation](whole-event.md),
+  22 October 2026). Carried on with rubble and the air awake, and measured, the street charge's
+  run reaches 3.4 s, but from about 1.5 s work the elements' trace does not count grows to 50 MJ
+  against the blast's 2, and on the three-storey block the failed flank wall opposite the charge
+  blows up at 0.6 s, with rubble or without.
 
 ## Its standing
 

@@ -83,6 +83,7 @@ let commands: [String: @Sendable () throws -> Void] = [
     "mendonca-static": { try runMendoncaStatic(device: device) },
     "reynolds": { try runReynolds(device: device) },
     "panelblock": { try runPanelBlock(device: device) },
+    "wholeevent": { try runWholeEvent(device: device) },
     "buckling": { try runBuckling(device: device) },
     "deflagration": { try runDeflagration() },
     "merge": { try runMerge(device: device) },

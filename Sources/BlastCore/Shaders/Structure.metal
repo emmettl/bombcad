@@ -3685,6 +3685,17 @@ kernel void structurePairs(device const StructureNode *nodes [[buffer(0)]],
         float2 slipBefore = state.xy;
         float3 traction = jointTraction(state, settlement, displacement, velocity, damper, law);
         force = -area * traction;
+        if (rubbleParticles) {
+            // With rubble, the concrete round a joint's node turns into particles and takes its
+            // mass, down to the few grams of its bars: the pair's stiffness, set for the node as it
+            // was, would then ring far beyond the step (on the large-panel block, a node so left
+            // was driven to 18 km/s; docs/whole-event.md). So the joint bears in proportion to the
+            // pair's reduced mass left, which keeps its frequency, and lets go with the concrete.
+            float left = a.mass * b.mass / max(a.mass + b.mass, 1e-30f);
+            float share = extra.z > 0.0f ? min(left / extra.z, 1.0f) : 1.0f;
+            force *= share;
+            traction *= share;
+        }
         float3 normal = all(float3(law.normal[0], law.normal[1], law.normal[2]) == 0.0f)
             ? float3(0.0f, 0.0f, 1.0f) : float3(law.normal[0], law.normal[1], law.normal[2]);
         extra.w += area * length(state.xy - slipBefore) * length(traction - dot(traction, normal) * normal);

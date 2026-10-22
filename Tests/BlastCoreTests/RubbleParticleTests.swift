@@ -112,6 +112,70 @@ struct RubbleParticleTests {
         #expect(looseLowest < 0.2 - 0.5 * h)
     }
 
+    @Test("A joint between parts eases as the concrete at it turns to rubble, and its bare nodes stay steady")
+    func jointAtRubble() throws {
+        // A block seated across a gap on another (`Anchorage.betweenParts`), floating, pressed on
+        // it, and its bottom row's concrete gone at once, leaving its bars: the joint's nodes keep
+        // a few per cent of their mass. With the pairs as stiff as for whole nodes they rang far
+        // beyond the step; on the large-panel block a node was driven to 18 km/s (#36).
+        let h: Float = 0.05
+        let lower = Box(min: SIMD3(0, 0, 1), max: SIMD3(0.5, 0.5, 1.25))
+        let upper = Box(min: SIMD3(0, 0, 1.25 + h), max: SIMD3(0.5, 0.5, 1.5 + h))
+        let steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        let material = StructureMaterial.concrete(name: "C30", compressiveStrength: 30e6, steel: steel)
+        var model = StructureModel(
+            solids: [lower, upper], material: material, elementSize: h, fixedBase: false)
+        model.addMat(to: upper, thicknessAxis: 2, areaPerMetre: 5e-4, depth: 0.025)
+        model.supports = [
+            Box(min: SIMD3(-0.01, -0.01, 1.24), max: SIMD3(0.51, 0.51, 1.26 + h))
+        ]
+        var joint = Anchorage.constructionJoint
+        joint.betweenParts = true
+        model.supportAnchorages = [joint]
+        model.rubbleParticles = true
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    for i in 0...solver.ex {
+                        guard let n = solver.storedNode(i, j, k),
+                            solver.referencePosition(i, j, k).z > 1.25 + h / 2
+                        else { continue }
+                        nodes[n].velocity = SIMD3(0, 0, -0.1)
+                    }
+                }
+            }
+        }
+        solver.advance(steps: 200)
+        for k in 0..<solver.ez {
+            for j in 0..<solver.ey {
+                for i in 0..<solver.ex where solver.flag(i, j, k) == .active {
+                    if abs(solver.referencePosition(i, j, k).z - (1.25 + h)) < h / 2 {
+                        solver.failElement(i, j, k, leavingBars: true)
+                    }
+                }
+            }
+        }
+        solver.advance(steps: 2000)
+        var largest: Float = 0
+        var lightest = Float.infinity
+        for k in 0...solver.ez {
+            for j in 0...solver.ey {
+                for i in 0...solver.ex where solver.storedNode(i, j, k) != nil {
+                    let node = solver.node(i, j, k)
+                    largest = max(largest, simd_length(node.velocity))
+                    if node.mass > 0 { lightest = min(lightest, node.mass) }
+                }
+            }
+        }
+        // The joint's nodes kept only their bars' share.
+        #expect(lightest < 0.1 * 2400 * h * h * h / 4)
+        #expect(largest.isFinite && largest < 1, "fastest node \(largest) m/s")
+    }
+
     @Test("Bars left bare when their concrete becomes rubble hold their nodes steadily")
     func bareBars() throws {
         let h: Float = 0.05

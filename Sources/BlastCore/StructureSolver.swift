@@ -203,8 +203,8 @@ public final class StructureSolver {
     /// Per table entry, the last substep's stamp at which it held a node that had moved far
     /// enough to touch one that had not (see `contactMoved` in Structure.metal).
     let contactMovedBuffer: MTLBuffer
-    private let contactPeriod: SIMD3<Int>
-    private let contactGridOrigin: SIMD3<Float>
+    let contactPeriod: SIMD3<Int>
+    let contactGridOrigin: SIMD3<Float>
     /// Contact force on each listed node.
     let contactForceBuffer: MTLBuffer
     /// Non-zero once any element has failed.
@@ -231,7 +231,7 @@ public final class StructureSolver {
     /// Rigid footings under connections that have them (`Footing`).
     private(set) var footings: FootingSystem?
     /// Connections between two parts of the body (`Anchorage.betweenParts`), when it has any.
-    private var pairs: PartPairs?
+    private(set) var pairs: PartPairs?
     /// The discrete bars (`StructureModel.discreteBars`), when the body has any.
     private(set) var discreteBarSystem: DiscreteBarSystem?
     private var barSegmentPipeline: MTLComputePipelineState?
@@ -348,7 +348,14 @@ public final class StructureSolver {
         turnedNodePipeline = { [library] in
             try? ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
         }
-        pairPipeline = try pipeline("structurePairs")
+        // With rubble, a joint's pair eases as its nodes' concrete turns to rubble (`structurePairs`);
+        // without, the kernel is built as before.
+        let pairConstants = MTLFunctionConstantValues()
+        pairConstants.setConstantValue(&rubble, type: .bool, index: 12)
+        pairPipeline =
+            rubble
+            ? try ShaderLibrary.pipeline("structurePairs", in: library, constants: pairConstants)
+            : try pipeline("structurePairs")
         terrain = try StructureTerrain(device: device, terrain: model.ground)
         terrainLandingPipeline = model.ground == nil ? nil : try pipeline("structureTerrainLanding")
         let contactConstants = MTLFunctionConstantValues()
