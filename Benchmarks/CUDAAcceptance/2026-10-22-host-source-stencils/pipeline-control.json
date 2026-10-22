@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "legacyParserAndReplay": true,
+  "sourceParser": true,
+  "allSixLocalModelsFinite": true,
+  "float32SpacingSummaryFinite": true,
+  "preStepPressureAlignmentExact": true,
+  "scope": "Version2 end-to-end parser/model control with pinned nx128 implementation fixture and self-fixture initial baseline; no independent ordinary-wave acceptance or accuracy attribution.",
+  "sourceSHA256": {
+    "components.py": "ddfa8c88664178863d04213352005a2b30f81fd1afcc3fd182a060ba42c001d0",
+    "source-audit.py": "4703963764f39e6482227110b1470094a1a3eb20f09da6db74fba5d7bb1f3749"
+  }
+}

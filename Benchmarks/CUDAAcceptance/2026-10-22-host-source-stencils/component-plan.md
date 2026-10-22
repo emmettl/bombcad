@@ -1,4 +1,7 @@
-# Next scientific component analysis — not executed
+# Scientific component analysis — original prelaunch requirements
+
+Current execution state is recorded in [scientific-status.md](scientific-status.md).
+The requirements below preceded implementation and remain in force.
 
 Tracking: emmettl/bombcad-work#82. Host-source implementation controls do not
 identify the remaining peak mechanism. Do not launch a scientific matrix until

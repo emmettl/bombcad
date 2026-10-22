@@ -1,0 +1,14 @@
+{
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.019s\n\nOK\n",
+  "sourceSHA256": {
+    "components.py": "ddfa8c88664178863d04213352005a2b30f81fd1afcc3fd182a060ba42c001d0",
+    "check-components.py": "7d36bf0ab0be214c844fc06795f5985f3d931465f27393048810ecf07114c7d6",
+    "planar_euler.py": "c2ec3a40f7b1bd0f92b784024ec1cf902ba415eab807833d15f475eac3b7aa71"
+  },
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "numpy": "2.5.2",
+  "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "scope": "Isolated ephemeral CPU model controls; no GPU or shared source/input mutation, no cross-host numeric-equality/throughput claim"
+}

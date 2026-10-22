@@ -7,7 +7,7 @@ The host-side alternative passes focused and optimized transparency controls.
 It observes actual conserved source-cell and residual words without changing the
 existing GPU update-observer program. This succeeds where the rejected
 full-intermediate observer changed outputs. It does not observe GPU primitives,
-slopes or predicted faces, and is not yet the planned scientific matrix.
+slopes or predicted faces, and does not establish scientific matrix acceptance.
 
 ## Capture and safety contract
 
@@ -103,7 +103,9 @@ Implementation tests alone do not establish scientific coverage.
 checked local operator models needed before freezing a 432-group/1728-export
 scientific matrix. All original amplitudes, policies, selectors, retention,
 resolutions and tilings remain in scope, including adverse outcomes and exact
-prior-wave gates. Those scientific exports and component analyses have **not run**.
+prior-wave gates. The parser/models and Mac/PC component controls are now implemented; the separately
+frozen scientific matrix launched on 22 October 2026. Full-matrix audit and causal
+conclusions remain pending. See [scientific-status.md](scientific-status.md).
 Recomputed primitive/limiter/predictor/flux values must be labeled counterfactuals,
 not observed GPU intermediates or independently evolved PDE solutions.
 
