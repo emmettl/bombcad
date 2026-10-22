@@ -1,0 +1,931 @@
+{
+  "status": "all-members-and-raw-rehash-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-clock-selector-replay",
+  "manifest": {
+    "analysis/analyze.py": {
+      "sha256": "646344a75dda582912ce652f604851c4953d6834e49ebee1cea9cba92797fbc5",
+      "bytes": 7386
+    },
+    "analysis/check_reference.py": {
+      "sha256": "9b02fa4c6eab8103d757f018432cb6ebc888ed4da99ead65c2f0d14d7239d9df",
+      "bytes": 1318
+    },
+    "analysis/cuda_replay.py": {
+      "sha256": "bee2e79dc16c47062d45a2b745bbb4cfe351052eaee88eb9f984c607045ddcab",
+      "bytes": 5736
+    },
+    "analysis/exact_division.py": {
+      "sha256": "7e5e5c1397b0e765ce829d4a96a3cb2232525f08f72170c46c1c087673e6cf62",
+      "bytes": 960
+    },
+    "analysis/plan.md": {
+      "sha256": "9bc26db3119b96215c4fb1e3225d1df8952c662339a0d4ab484bca7341725f68",
+      "bytes": 2214
+    },
+    "analysis/prepare.py": {
+      "sha256": "20df39929eb82ff9547ed4a06d8d3a800e92e4aaa4fd5f0b2139637ca0adfbb8",
+      "bytes": 4153
+    },
+    "analysis/producer-main.metal": {
+      "sha256": "9b71ace9e68302d44903ae6d6d391932384e29efc51db3189c34a41b04fb9eed",
+      "bytes": 890641
+    },
+    "analysis/producer-maker.swift": {
+      "sha256": "bde028e21cf0855a00e782b3c9b0f5136300d6d412728aa7122d384697d93aaf",
+      "bytes": 9940
+    },
+    "analysis/reference.py": {
+      "sha256": "d4789cb676ce08be3777b6d96b08a73a6aa398089ddf8fbf6325c9d3f8ccf2ca",
+      "bytes": 1096
+    },
+    "analysis/replay.swift": {
+      "sha256": "23abcc72f65c5654c1dabdeb2802f1a205efa62088b26531a9934d27ccfdc49e",
+      "bytes": 6885
+    },
+    "analysis/run_cuda-cross.py": {
+      "sha256": "e873ed2713f979cd25b9e6977da9aafc4e1bbab8b2328d8cec2808c8cfc1ffdc",
+      "bytes": 4675
+    },
+    "analysis/run_cuda-own.py": {
+      "sha256": "e873ed2713f979cd25b9e6977da9aafc4e1bbab8b2328d8cec2808c8cfc1ffdc",
+      "bytes": 4675
+    },
+    "analysis/run_cuda.py": {
+      "sha256": "e873ed2713f979cd25b9e6977da9aafc4e1bbab8b2328d8cec2808c8cfc1ffdc",
+      "bytes": 4675
+    },
+    "analysis/run_metal.py": {
+      "sha256": "1e0db96884fc1931a3cfaf768b938716f97166d6a26817aa2d45355e3d684021",
+      "bytes": 1662
+    },
+    "analysis/stage_cuda.py": {
+      "sha256": "67fb5b222bd5b36939f841495a8de57e22eb8dd51acbf45b77896a8e7cb0184d",
+      "bytes": 1726
+    },
+    "banks/beirut-p0-1-cuda/context.json": {
+      "sha256": "89791debbdae94b17f8d82eb4acbdfcb44363453a2b8ffc82ea274c40a21b7c6",
+      "bytes": 42307
+    },
+    "banks/beirut-p0-1-cuda/control.bin": {
+      "sha256": "d27c7efd53c113308ed67eaf1e6873fd8dd35919571c5b5836c01d26651805d8",
+      "bytes": 174168
+    },
+    "banks/beirut-p0-1-cuda/expectedControl.bin": {
+      "sha256": "30b8e5a3894170a94ab278767f843a960d504e512f4913ced43afb07eb35e776",
+      "bytes": 174168
+    },
+    "banks/beirut-p0-1-cuda/expectedSpeed.bin": {
+      "sha256": "24aab71a698ce525c0ebf89fce955aeefef0070dad29e7fd56f185f9b620259b",
+      "bytes": 19352
+    },
+    "banks/beirut-p0-1-cuda/expectedTiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "banks/beirut-p0-1-cuda/source-order.npy": {
+      "sha256": "37eb2c9e5d687035093b3ad3dca92f2554b2b60d7056c12484fcb2fed80b79ba",
+      "bytes": 29156
+    },
+    "banks/beirut-p0-1-cuda/speed.bin": {
+      "sha256": "492d51978335b3fc029ff7bc3d47d3c9afce28b9fde049726cf07b4cd07a5339",
+      "bytes": 19352
+    },
+    "banks/beirut-p0-1-cuda/tiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "banks/beirut-p0-1-cuda/uniforms.bin": {
+      "sha256": "7af1e662e09d37cdb54ad6cc72a8b22c3f26bf54d685e31d4bf79e5fbc6a9336",
+      "bytes": 667644
+    },
+    "banks/beirut-p0-1-metal/context.json": {
+      "sha256": "322434d1e4253f9fd1a53a12725cbbe3b6da22883b2eb3720103c012915fa89a",
+      "bytes": 48638
+    },
+    "banks/beirut-p0-1-metal/control.bin": {
+      "sha256": "71e55f9f56796598d03e68c59d2c1c097caf68f6c85019cfa39465394921107a",
+      "bytes": 175176
+    },
+    "banks/beirut-p0-1-metal/expectedControl.bin": {
+      "sha256": "b9ed4b628d8a95255f0a322f9920672ee06b27c794ef33995a35fb928c8107a6",
+      "bytes": 175176
+    },
+    "banks/beirut-p0-1-metal/expectedSpeed.bin": {
+      "sha256": "0138241f9d7410f9fd7358e34999ce0aaa305269c6022eb4369c33c9956c9212",
+      "bytes": 19464
+    },
+    "banks/beirut-p0-1-metal/expectedTiles.bin": {
+      "sha256": "f142587cf3464ec0eeee0b1c2e092269e4448031b09ac90544dd6dce1ea74519",
+      "bytes": 38928
+    },
+    "banks/beirut-p0-1-metal/source-order.npy": {
+      "sha256": "8181b9efd204ce70ea8d2181174b5383f95cb70b4ae0bd409f0ac6d4cfd7e255",
+      "bytes": 29324
+    },
+    "banks/beirut-p0-1-metal/speed.bin": {
+      "sha256": "129531bc4fa3eb373ccd2c1d34c8834f5ed5b4ff0656731efc52c608bcb73789",
+      "bytes": 19464
+    },
+    "banks/beirut-p0-1-metal/tiles.bin": {
+      "sha256": "56d5fc66ee3c5998602681fcaf97a53acf77e85d46b9b4ed7f754b279e6aaa43",
+      "bytes": 38928
+    },
+    "banks/beirut-p0-1-metal/uniforms.bin": {
+      "sha256": "5c2af3c5b35cf85245e1cdd0d9e4a9a683790f6910a5bd9b91583c65ed951775",
+      "bytes": 671508
+    },
+    "banks/made-perimeter-s1-1-cuda/context.json": {
+      "sha256": "26cc2e5830268db81940119b59d4c0554b323c45980b803cefe99e85c8ad57ed",
+      "bytes": 46183
+    },
+    "banks/made-perimeter-s1-1-cuda/control.bin": {
+      "sha256": "fed51f5b8e060f0a7a76822b9fefecc71b1fb3817152514655913b9d5d246271",
+      "bytes": 190584
+    },
+    "banks/made-perimeter-s1-1-cuda/expectedControl.bin": {
+      "sha256": "aa87503469cc3be233042952dddf4f2a6c4762d33f680a9102576f2b5c1e2be3",
+      "bytes": 190584
+    },
+    "banks/made-perimeter-s1-1-cuda/expectedSpeed.bin": {
+      "sha256": "0d7ad1b2c9c636e3fee7a7e69a1e757d30abe7a7652fecd9d2869c7e60d3e009",
+      "bytes": 21176
+    },
+    "banks/made-perimeter-s1-1-cuda/expectedTiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "banks/made-perimeter-s1-1-cuda/source-order.npy": {
+      "sha256": "75f5d8a48d999b7be5a12fce668e9dab4d099e7d2c0ee95e70c88c54726184fc",
+      "bytes": 31892
+    },
+    "banks/made-perimeter-s1-1-cuda/speed.bin": {
+      "sha256": "394d30ecb85805fd5e654e05226352461c3259d2d430b7b9c244c5b547978f37",
+      "bytes": 21176
+    },
+    "banks/made-perimeter-s1-1-cuda/tiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "banks/made-perimeter-s1-1-cuda/uniforms.bin": {
+      "sha256": "4581eca95fd0e1881675b71871737595e43fd94eaf5c8ff48302cdf664688759",
+      "bytes": 730572
+    },
+    "banks/made-perimeter-s1-1-metal/context.json": {
+      "sha256": "16ad3a2f3766778987b770e6e68bd6087f3aab821f73d3f4399dd41f35958d01",
+      "bytes": 53757
+    },
+    "banks/made-perimeter-s1-1-metal/control.bin": {
+      "sha256": "fcd2df3fa0d69fac28eda2f13e751121e95a3fa700a6a5e0da07dfc1f1288dab",
+      "bytes": 193608
+    },
+    "banks/made-perimeter-s1-1-metal/expectedControl.bin": {
+      "sha256": "c32a406e1611ba37e4065273f7bfc5673dae81119c5a0f5c1b96eecf0e0404ed",
+      "bytes": 193608
+    },
+    "banks/made-perimeter-s1-1-metal/expectedSpeed.bin": {
+      "sha256": "4cf6b6fab7a40cbb81889c4f452ee37f6182c2f1ba498ea13859fcede045a327",
+      "bytes": 21512
+    },
+    "banks/made-perimeter-s1-1-metal/expectedTiles.bin": {
+      "sha256": "a447dfeb362b9bcf909ae5d93ecfa19e591bddeb01de37ec6b5e867fb8990655",
+      "bytes": 43024
+    },
+    "banks/made-perimeter-s1-1-metal/source-order.npy": {
+      "sha256": "31f658e813d8b376d41e152b76c183d6aef2080f164671962e2c70b08753a3f3",
+      "bytes": 32396
+    },
+    "banks/made-perimeter-s1-1-metal/speed.bin": {
+      "sha256": "4e71d0890762d45e675a365dc9185a1294e790d380af6349e8934b6e8287f8de",
+      "bytes": 21512
+    },
+    "banks/made-perimeter-s1-1-metal/tiles.bin": {
+      "sha256": "9b52054dafe981191780e4a42432119d8842aedd3f8ee6569c70457c6423b669",
+      "bytes": 43024
+    },
+    "banks/made-perimeter-s1-1-metal/uniforms.bin": {
+      "sha256": "8b35b2c231fb99c5b0de41bc6d1a827eb4afd26e3bd5893041d84c751628afe8",
+      "bytes": 742164
+    },
+    "banks/made-perimeter-s3-1-cuda/context.json": {
+      "sha256": "7605a78e148487d8d5a9ae2955535fdf4d36e2ef6bf549d1621791861b588a63",
+      "bytes": 47288
+    },
+    "banks/made-perimeter-s3-1-cuda/control.bin": {
+      "sha256": "3de09e123a075ced72fd3cd0e65e4430bc9297312a2d1a110c9c3864ca40e7f8",
+      "bytes": 195264
+    },
+    "banks/made-perimeter-s3-1-cuda/expectedControl.bin": {
+      "sha256": "0604847004951d0e209f5ee698b3f30754097eadb0ca323c55a9d568d5b456e7",
+      "bytes": 195264
+    },
+    "banks/made-perimeter-s3-1-cuda/expectedSpeed.bin": {
+      "sha256": "2607778243f068ed01a388b451dd4a69c42304a61f1b031018676cf15a864a0a",
+      "bytes": 21696
+    },
+    "banks/made-perimeter-s3-1-cuda/expectedTiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "banks/made-perimeter-s3-1-cuda/source-order.npy": {
+      "sha256": "af890d6ddab680759dec3aa41e9ba62c42868ec748b190e715aa55500ddaca0c",
+      "bytes": 32672
+    },
+    "banks/made-perimeter-s3-1-cuda/speed.bin": {
+      "sha256": "03ed7af7d3163c0d36f5c0781acbaf74cf36a16fddd75a5932c842d288ab5505",
+      "bytes": 21696
+    },
+    "banks/made-perimeter-s3-1-cuda/tiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "banks/made-perimeter-s3-1-cuda/uniforms.bin": {
+      "sha256": "08d0dd3f7b88567570f9d9dbba8b9207270cb8973aee36b0a9f970e2a7f6c613",
+      "bytes": 748512
+    },
+    "banks/made-perimeter-s3-1-metal/context.json": {
+      "sha256": "11effe822f0c106113ee395eac29b33f1907bad1dd80f266005f1727e5d413bc",
+      "bytes": 55037
+    },
+    "banks/made-perimeter-s3-1-metal/control.bin": {
+      "sha256": "b0468b39798dcb611b7510598d59e02cadf0f820790da8435be7220923c116df",
+      "bytes": 198216
+    },
+    "banks/made-perimeter-s3-1-metal/expectedControl.bin": {
+      "sha256": "4627db4deb7c747d56dbc443bf2e7c26ef427efae196fa21ddb82f7bc9666146",
+      "bytes": 198216
+    },
+    "banks/made-perimeter-s3-1-metal/expectedSpeed.bin": {
+      "sha256": "9812b8cfb5dabb1891f301a3e5bea240b0db3eab427bef1c682f2967d1a71766",
+      "bytes": 22024
+    },
+    "banks/made-perimeter-s3-1-metal/expectedTiles.bin": {
+      "sha256": "f0a05ed8c4824353735ba313b2c67fde30617bfec95a5fc5973274c29cf3611d",
+      "bytes": 44048
+    },
+    "banks/made-perimeter-s3-1-metal/source-order.npy": {
+      "sha256": "4913dab6c5336b884399020c7ac7a08fa8f6d3c581cbcedbe23aa47e3d4a075e",
+      "bytes": 33164
+    },
+    "banks/made-perimeter-s3-1-metal/speed.bin": {
+      "sha256": "d64a0713b3a4a00441011481a89dc0629ba091da23c9d7e10ce3e64a1d1df9c0",
+      "bytes": 22024
+    },
+    "banks/made-perimeter-s3-1-metal/tiles.bin": {
+      "sha256": "fe003e661600a3b9e8f86b6d9268280a4c37b2e8ee65cd67b421b8060e3ccae5",
+      "bytes": 44048
+    },
+    "banks/made-perimeter-s3-1-metal/uniforms.bin": {
+      "sha256": "0804c5fcb8487b071d8529d20735fdea84864953f36b4b1984be6f566260aa40",
+      "bytes": 759828
+    },
+    "compile.json": {
+      "sha256": "88b75aadf1194c8a1c1bdcda10a3b9849434edb414b7636bc076a0f7c84911b1",
+      "bytes": 890
+    },
+    "compile.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cuda-cross/beirut-p0-1-metal/outputs.bin": {
+      "sha256": "6ceeff166f66e5091318c50e0ceca55d4af0396a921fe4599e2cd1cbbe08a34b",
+      "bytes": 194640
+    },
+    "cuda-cross/cut-0.ptx": {
+      "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+      "bytes": 611788
+    },
+    "cuda-cross/cut-1.ptx": {
+      "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+      "bytes": 1269128
+    },
+    "cuda-cross/made-perimeter-s1-1-metal/outputs.bin": {
+      "sha256": "c1f9e0becf05f226d2d828455060d7119e0bd1e6bbab37ce9f6faf38cb447798",
+      "bytes": 215120
+    },
+    "cuda-cross/made-perimeter-s3-1-metal/outputs.bin": {
+      "sha256": "f5d88d10b60e351c0cc710ec82d909f91bd2d4b293e7f981a103285c9dcd33e9",
+      "bytes": 220240
+    },
+    "cuda-cross/receipt.json": {
+      "sha256": "6990b5253a155c427104aca2ebc1eaec977a370dc8bf72185e0b516c944372f3",
+      "bytes": 2317
+    },
+    "cuda-cross-controller.json": {
+      "sha256": "f39835bb545b5aa3c6099a5de14abb299f7f82b95e4a19dee7e8a732850f8940",
+      "bytes": 641
+    },
+    "cuda-cross-remote.json": {
+      "sha256": "16026a5dfa3c59791043622cceca144fd6312292d04beca698e82ffda08a7b1d",
+      "bytes": 2288
+    },
+    "cuda-cross-remote.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cuda-cross-ssh.log": {
+      "sha256": "38624f9286e10535b39a2e2ffc936f357608d92b02c71075e66eeb67b4a36697",
+      "bytes": 587
+    },
+    "cuda-own/beirut-p0-1-cuda/outputs.bin": {
+      "sha256": "62f3f5318b1fe47660c215763c471fec5562fdc1e849364fc087bc4e13ed7c00",
+      "bytes": 193520
+    },
+    "cuda-own/cut-0.ptx": {
+      "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+      "bytes": 611788
+    },
+    "cuda-own/cut-1.ptx": {
+      "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+      "bytes": 1269128
+    },
+    "cuda-own/made-perimeter-s1-1-cuda/outputs.bin": {
+      "sha256": "b5e2103252bebfaf3f587820637aadbd754b66b469ad91cbaadcc2feb4bf0ee0",
+      "bytes": 211760
+    },
+    "cuda-own/made-perimeter-s3-1-cuda/outputs.bin": {
+      "sha256": "437bdadc631632f0929658196a663343026cbfd630c17c191447815974c18a62",
+      "bytes": 216960
+    },
+    "cuda-own/receipt.json": {
+      "sha256": "3074a8025a282889e417adedcc1d1fce24b8d2f253d81af3577df7113eb0abbc",
+      "bytes": 2485
+    },
+    "cuda-own-controller.json": {
+      "sha256": "c3826f907d7bdb30d22fb4ac7a9fa5bcffe3e7f9212f075343cd05fdf8b7f91e",
+      "bytes": 637
+    },
+    "cuda-own-remote.json": {
+      "sha256": "4c9979e22db457d8e1d84e44d574cbf2c2ce4151f66e675fc29c8f94b914748f",
+      "bytes": 2284
+    },
+    "cuda-own-remote.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cuda-own-ssh.log": {
+      "sha256": "136736425649b4516396f88b12503e1982c94c8f720f9f3b5258350dbe5836ce",
+      "bytes": 583
+    },
+    "cuda-staging-cross.json": {
+      "sha256": "437a72019ab2df27c8465185e02a936303402136b6c5f1f3b081ecdb141e835e",
+      "bytes": 11800
+    },
+    "cuda-staging-own.json": {
+      "sha256": "eb9055059c6510b0523b204faf363693f4d142e3542c0bdccd9f410753dc2dc8",
+      "bytes": 11307
+    },
+    "metal-cross/beirut-p0-1-cuda/outputs.bin": {
+      "sha256": "90e8a6f25bef67d0f04172490cef7be078401689093956996530941b7e1812ac",
+      "bytes": 232224
+    },
+    "metal-cross/made-perimeter-s1-1-cuda/outputs.bin": {
+      "sha256": "82ef8ba7b35c5cfa109af8628911c5b8c249eb566c6913244195fd4ea1753ee2",
+      "bytes": 254112
+    },
+    "metal-cross/made-perimeter-s3-1-cuda/outputs.bin": {
+      "sha256": "77c45531097d128c9af4787dfdaf14b9336c2929f332745ddbedca485416be44",
+      "bytes": 260352
+    },
+    "metal-cross/receipt.json": {
+      "sha256": "f38178dcb7f27a55d23c9bb80518a7b0babae985d694f1b6126fc229a0610208",
+      "bytes": 1004
+    },
+    "metal-cross-process.json": {
+      "sha256": "40231eaa2afdae176b6732a86c407ef0a547f792602f36d5dc98e678d888dcd9",
+      "bytes": 423
+    },
+    "metal-cross.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "metal-own/beirut-p0-1-metal/outputs.bin": {
+      "sha256": "059119e3d9380a2eff6d2b6da7a26aaa8fc75c2a0a8997b8ec64bf50838952b0",
+      "bytes": 233568
+    },
+    "metal-own/made-perimeter-s1-1-metal/outputs.bin": {
+      "sha256": "fc4ce89c491cab140bee58f24292c294ab4227ceae86d3ebe90c61ae57777715",
+      "bytes": 258144
+    },
+    "metal-own/made-perimeter-s3-1-metal/outputs.bin": {
+      "sha256": "1a32d0dae65ab5c10d479eb6e7152bd1416abfb588c5e841f55e7ff84bb8b1b7",
+      "bytes": 264288
+    },
+    "metal-own/receipt.json": {
+      "sha256": "08f05de5dced002cff732f67ce1e3d2154b485a27b798dbaf7787642c5a65c32",
+      "bytes": 1208
+    },
+    "metal-own-process.json": {
+      "sha256": "7be2a29c805d2e1074db128f246273de16b6d108263cf422b0ee25638dbb7c33",
+      "bytes": 421
+    },
+    "metal-own.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "preparation.json": {
+      "sha256": "1ec6c9a729a303bc91ed06dd4b2cf36f766ab0b84bce2045a71d57d666d940ac",
+      "bytes": 26260
+    },
+    "reference-controls.log": {
+      "sha256": "e6ec182765cd965f2837d8eeaef5a64af48a104f245cd1a0b7281559194c57c1",
+      "bytes": 102
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/context.json": {
+      "sha256": "89791debbdae94b17f8d82eb4acbdfcb44363453a2b8ffc82ea274c40a21b7c6",
+      "bytes": 42307
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/control.bin": {
+      "sha256": "d27c7efd53c113308ed67eaf1e6873fd8dd35919571c5b5836c01d26651805d8",
+      "bytes": 174168
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/expectedControl.bin": {
+      "sha256": "30b8e5a3894170a94ab278767f843a960d504e512f4913ced43afb07eb35e776",
+      "bytes": 174168
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/expectedSpeed.bin": {
+      "sha256": "24aab71a698ce525c0ebf89fce955aeefef0070dad29e7fd56f185f9b620259b",
+      "bytes": 19352
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/expectedTiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/speed.bin": {
+      "sha256": "492d51978335b3fc029ff7bc3d47d3c9afce28b9fde049726cf07b4cd07a5339",
+      "bytes": 19352
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/tiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "remote-input-cross/banks/beirut-p0-1-cuda/uniforms.bin": {
+      "sha256": "7af1e662e09d37cdb54ad6cc72a8b22c3f26bf54d685e31d4bf79e5fbc6a9336",
+      "bytes": 667644
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/context.json": {
+      "sha256": "322434d1e4253f9fd1a53a12725cbbe3b6da22883b2eb3720103c012915fa89a",
+      "bytes": 48638
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/control.bin": {
+      "sha256": "71e55f9f56796598d03e68c59d2c1c097caf68f6c85019cfa39465394921107a",
+      "bytes": 175176
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/expectedControl.bin": {
+      "sha256": "b9ed4b628d8a95255f0a322f9920672ee06b27c794ef33995a35fb928c8107a6",
+      "bytes": 175176
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/expectedSpeed.bin": {
+      "sha256": "0138241f9d7410f9fd7358e34999ce0aaa305269c6022eb4369c33c9956c9212",
+      "bytes": 19464
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/expectedTiles.bin": {
+      "sha256": "f142587cf3464ec0eeee0b1c2e092269e4448031b09ac90544dd6dce1ea74519",
+      "bytes": 38928
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/speed.bin": {
+      "sha256": "129531bc4fa3eb373ccd2c1d34c8834f5ed5b4ff0656731efc52c608bcb73789",
+      "bytes": 19464
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/tiles.bin": {
+      "sha256": "56d5fc66ee3c5998602681fcaf97a53acf77e85d46b9b4ed7f754b279e6aaa43",
+      "bytes": 38928
+    },
+    "remote-input-cross/banks/beirut-p0-1-metal/uniforms.bin": {
+      "sha256": "5c2af3c5b35cf85245e1cdd0d9e4a9a683790f6910a5bd9b91583c65ed951775",
+      "bytes": 671508
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/context.json": {
+      "sha256": "26cc2e5830268db81940119b59d4c0554b323c45980b803cefe99e85c8ad57ed",
+      "bytes": 46183
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/control.bin": {
+      "sha256": "fed51f5b8e060f0a7a76822b9fefecc71b1fb3817152514655913b9d5d246271",
+      "bytes": 190584
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/expectedControl.bin": {
+      "sha256": "aa87503469cc3be233042952dddf4f2a6c4762d33f680a9102576f2b5c1e2be3",
+      "bytes": 190584
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/expectedSpeed.bin": {
+      "sha256": "0d7ad1b2c9c636e3fee7a7e69a1e757d30abe7a7652fecd9d2869c7e60d3e009",
+      "bytes": 21176
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/expectedTiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/speed.bin": {
+      "sha256": "394d30ecb85805fd5e654e05226352461c3259d2d430b7b9c244c5b547978f37",
+      "bytes": 21176
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/tiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-cuda/uniforms.bin": {
+      "sha256": "4581eca95fd0e1881675b71871737595e43fd94eaf5c8ff48302cdf664688759",
+      "bytes": 730572
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/context.json": {
+      "sha256": "16ad3a2f3766778987b770e6e68bd6087f3aab821f73d3f4399dd41f35958d01",
+      "bytes": 53757
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/control.bin": {
+      "sha256": "fcd2df3fa0d69fac28eda2f13e751121e95a3fa700a6a5e0da07dfc1f1288dab",
+      "bytes": 193608
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/expectedControl.bin": {
+      "sha256": "c32a406e1611ba37e4065273f7bfc5673dae81119c5a0f5c1b96eecf0e0404ed",
+      "bytes": 193608
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/expectedSpeed.bin": {
+      "sha256": "4cf6b6fab7a40cbb81889c4f452ee37f6182c2f1ba498ea13859fcede045a327",
+      "bytes": 21512
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/expectedTiles.bin": {
+      "sha256": "a447dfeb362b9bcf909ae5d93ecfa19e591bddeb01de37ec6b5e867fb8990655",
+      "bytes": 43024
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/speed.bin": {
+      "sha256": "4e71d0890762d45e675a365dc9185a1294e790d380af6349e8934b6e8287f8de",
+      "bytes": 21512
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/tiles.bin": {
+      "sha256": "9b52054dafe981191780e4a42432119d8842aedd3f8ee6569c70457c6423b669",
+      "bytes": 43024
+    },
+    "remote-input-cross/banks/made-perimeter-s1-1-metal/uniforms.bin": {
+      "sha256": "8b35b2c231fb99c5b0de41bc6d1a827eb4afd26e3bd5893041d84c751628afe8",
+      "bytes": 742164
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/context.json": {
+      "sha256": "7605a78e148487d8d5a9ae2955535fdf4d36e2ef6bf549d1621791861b588a63",
+      "bytes": 47288
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/control.bin": {
+      "sha256": "3de09e123a075ced72fd3cd0e65e4430bc9297312a2d1a110c9c3864ca40e7f8",
+      "bytes": 195264
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/expectedControl.bin": {
+      "sha256": "0604847004951d0e209f5ee698b3f30754097eadb0ca323c55a9d568d5b456e7",
+      "bytes": 195264
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/expectedSpeed.bin": {
+      "sha256": "2607778243f068ed01a388b451dd4a69c42304a61f1b031018676cf15a864a0a",
+      "bytes": 21696
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/expectedTiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/speed.bin": {
+      "sha256": "03ed7af7d3163c0d36f5c0781acbaf74cf36a16fddd75a5932c842d288ab5505",
+      "bytes": 21696
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/tiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-cuda/uniforms.bin": {
+      "sha256": "08d0dd3f7b88567570f9d9dbba8b9207270cb8973aee36b0a9f970e2a7f6c613",
+      "bytes": 748512
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/context.json": {
+      "sha256": "11effe822f0c106113ee395eac29b33f1907bad1dd80f266005f1727e5d413bc",
+      "bytes": 55037
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/control.bin": {
+      "sha256": "b0468b39798dcb611b7510598d59e02cadf0f820790da8435be7220923c116df",
+      "bytes": 198216
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/expectedControl.bin": {
+      "sha256": "4627db4deb7c747d56dbc443bf2e7c26ef427efae196fa21ddb82f7bc9666146",
+      "bytes": 198216
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/expectedSpeed.bin": {
+      "sha256": "9812b8cfb5dabb1891f301a3e5bea240b0db3eab427bef1c682f2967d1a71766",
+      "bytes": 22024
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/expectedTiles.bin": {
+      "sha256": "f0a05ed8c4824353735ba313b2c67fde30617bfec95a5fc5973274c29cf3611d",
+      "bytes": 44048
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/speed.bin": {
+      "sha256": "d64a0713b3a4a00441011481a89dc0629ba091da23c9d7e10ce3e64a1d1df9c0",
+      "bytes": 22024
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/tiles.bin": {
+      "sha256": "fe003e661600a3b9e8f86b6d9268280a4c37b2e8ee65cd67b421b8060e3ccae5",
+      "bytes": 44048
+    },
+    "remote-input-cross/banks/made-perimeter-s3-1-metal/uniforms.bin": {
+      "sha256": "0804c5fcb8487b071d8529d20735fdea84864953f36b4b1984be6f566260aa40",
+      "bytes": 759828
+    },
+    "remote-input-cross/cross.json": {
+      "sha256": "7d2e7200666f3140db9a63b855f8c1c16c07fa3c1ceb76617b97fce876ba16fc",
+      "bytes": 9094
+    },
+    "remote-input-cross/cuda-own/receipt.json": {
+      "sha256": "3074a8025a282889e417adedcc1d1fce24b8d2f253d81af3577df7113eb0abbc",
+      "bytes": 2485
+    },
+    "remote-input-cross/metal-own/receipt.json": {
+      "sha256": "08f05de5dced002cff732f67ce1e3d2154b485a27b798dbaf7787642c5a65c32",
+      "bytes": 1208
+    },
+    "remote-input-cross/worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "remote-input-cross/worker/cuda_replay.py": {
+      "sha256": "bee2e79dc16c47062d45a2b745bbb4cfe351052eaee88eb9f984c607045ddcab",
+      "bytes": 5736
+    },
+    "remote-input-cross/worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "remote-input-cross/worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "remote-input-cross/worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "remote-input-cross/worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/context.json": {
+      "sha256": "89791debbdae94b17f8d82eb4acbdfcb44363453a2b8ffc82ea274c40a21b7c6",
+      "bytes": 42307
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/control.bin": {
+      "sha256": "d27c7efd53c113308ed67eaf1e6873fd8dd35919571c5b5836c01d26651805d8",
+      "bytes": 174168
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/expectedControl.bin": {
+      "sha256": "30b8e5a3894170a94ab278767f843a960d504e512f4913ced43afb07eb35e776",
+      "bytes": 174168
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/expectedSpeed.bin": {
+      "sha256": "24aab71a698ce525c0ebf89fce955aeefef0070dad29e7fd56f185f9b620259b",
+      "bytes": 19352
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/expectedTiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/speed.bin": {
+      "sha256": "492d51978335b3fc029ff7bc3d47d3c9afce28b9fde049726cf07b4cd07a5339",
+      "bytes": 19352
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/tiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "remote-input-own/banks/beirut-p0-1-cuda/uniforms.bin": {
+      "sha256": "7af1e662e09d37cdb54ad6cc72a8b22c3f26bf54d685e31d4bf79e5fbc6a9336",
+      "bytes": 667644
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/context.json": {
+      "sha256": "322434d1e4253f9fd1a53a12725cbbe3b6da22883b2eb3720103c012915fa89a",
+      "bytes": 48638
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/control.bin": {
+      "sha256": "71e55f9f56796598d03e68c59d2c1c097caf68f6c85019cfa39465394921107a",
+      "bytes": 175176
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/expectedControl.bin": {
+      "sha256": "b9ed4b628d8a95255f0a322f9920672ee06b27c794ef33995a35fb928c8107a6",
+      "bytes": 175176
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/expectedSpeed.bin": {
+      "sha256": "0138241f9d7410f9fd7358e34999ce0aaa305269c6022eb4369c33c9956c9212",
+      "bytes": 19464
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/expectedTiles.bin": {
+      "sha256": "f142587cf3464ec0eeee0b1c2e092269e4448031b09ac90544dd6dce1ea74519",
+      "bytes": 38928
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/speed.bin": {
+      "sha256": "129531bc4fa3eb373ccd2c1d34c8834f5ed5b4ff0656731efc52c608bcb73789",
+      "bytes": 19464
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/tiles.bin": {
+      "sha256": "56d5fc66ee3c5998602681fcaf97a53acf77e85d46b9b4ed7f754b279e6aaa43",
+      "bytes": 38928
+    },
+    "remote-input-own/banks/beirut-p0-1-metal/uniforms.bin": {
+      "sha256": "5c2af3c5b35cf85245e1cdd0d9e4a9a683790f6910a5bd9b91583c65ed951775",
+      "bytes": 671508
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/context.json": {
+      "sha256": "26cc2e5830268db81940119b59d4c0554b323c45980b803cefe99e85c8ad57ed",
+      "bytes": 46183
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/control.bin": {
+      "sha256": "fed51f5b8e060f0a7a76822b9fefecc71b1fb3817152514655913b9d5d246271",
+      "bytes": 190584
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/expectedControl.bin": {
+      "sha256": "aa87503469cc3be233042952dddf4f2a6c4762d33f680a9102576f2b5c1e2be3",
+      "bytes": 190584
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/expectedSpeed.bin": {
+      "sha256": "0d7ad1b2c9c636e3fee7a7e69a1e757d30abe7a7652fecd9d2869c7e60d3e009",
+      "bytes": 21176
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/expectedTiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/speed.bin": {
+      "sha256": "394d30ecb85805fd5e654e05226352461c3259d2d430b7b9c244c5b547978f37",
+      "bytes": 21176
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/tiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-cuda/uniforms.bin": {
+      "sha256": "4581eca95fd0e1881675b71871737595e43fd94eaf5c8ff48302cdf664688759",
+      "bytes": 730572
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/context.json": {
+      "sha256": "16ad3a2f3766778987b770e6e68bd6087f3aab821f73d3f4399dd41f35958d01",
+      "bytes": 53757
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/control.bin": {
+      "sha256": "fcd2df3fa0d69fac28eda2f13e751121e95a3fa700a6a5e0da07dfc1f1288dab",
+      "bytes": 193608
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/expectedControl.bin": {
+      "sha256": "c32a406e1611ba37e4065273f7bfc5673dae81119c5a0f5c1b96eecf0e0404ed",
+      "bytes": 193608
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/expectedSpeed.bin": {
+      "sha256": "4cf6b6fab7a40cbb81889c4f452ee37f6182c2f1ba498ea13859fcede045a327",
+      "bytes": 21512
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/expectedTiles.bin": {
+      "sha256": "a447dfeb362b9bcf909ae5d93ecfa19e591bddeb01de37ec6b5e867fb8990655",
+      "bytes": 43024
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/speed.bin": {
+      "sha256": "4e71d0890762d45e675a365dc9185a1294e790d380af6349e8934b6e8287f8de",
+      "bytes": 21512
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/tiles.bin": {
+      "sha256": "9b52054dafe981191780e4a42432119d8842aedd3f8ee6569c70457c6423b669",
+      "bytes": 43024
+    },
+    "remote-input-own/banks/made-perimeter-s1-1-metal/uniforms.bin": {
+      "sha256": "8b35b2c231fb99c5b0de41bc6d1a827eb4afd26e3bd5893041d84c751628afe8",
+      "bytes": 742164
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/context.json": {
+      "sha256": "7605a78e148487d8d5a9ae2955535fdf4d36e2ef6bf549d1621791861b588a63",
+      "bytes": 47288
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/control.bin": {
+      "sha256": "3de09e123a075ced72fd3cd0e65e4430bc9297312a2d1a110c9c3864ca40e7f8",
+      "bytes": 195264
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/expectedControl.bin": {
+      "sha256": "0604847004951d0e209f5ee698b3f30754097eadb0ca323c55a9d568d5b456e7",
+      "bytes": 195264
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/expectedSpeed.bin": {
+      "sha256": "2607778243f068ed01a388b451dd4a69c42304a61f1b031018676cf15a864a0a",
+      "bytes": 21696
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/expectedTiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/speed.bin": {
+      "sha256": "03ed7af7d3163c0d36f5c0781acbaf74cf36a16fddd75a5932c842d288ab5505",
+      "bytes": 21696
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/tiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-cuda/uniforms.bin": {
+      "sha256": "08d0dd3f7b88567570f9d9dbba8b9207270cb8973aee36b0a9f970e2a7f6c613",
+      "bytes": 748512
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/context.json": {
+      "sha256": "11effe822f0c106113ee395eac29b33f1907bad1dd80f266005f1727e5d413bc",
+      "bytes": 55037
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/control.bin": {
+      "sha256": "b0468b39798dcb611b7510598d59e02cadf0f820790da8435be7220923c116df",
+      "bytes": 198216
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/expectedControl.bin": {
+      "sha256": "4627db4deb7c747d56dbc443bf2e7c26ef427efae196fa21ddb82f7bc9666146",
+      "bytes": 198216
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/expectedSpeed.bin": {
+      "sha256": "9812b8cfb5dabb1891f301a3e5bea240b0db3eab427bef1c682f2967d1a71766",
+      "bytes": 22024
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/expectedTiles.bin": {
+      "sha256": "f0a05ed8c4824353735ba313b2c67fde30617bfec95a5fc5973274c29cf3611d",
+      "bytes": 44048
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/speed.bin": {
+      "sha256": "d64a0713b3a4a00441011481a89dc0629ba091da23c9d7e10ce3e64a1d1df9c0",
+      "bytes": 22024
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/tiles.bin": {
+      "sha256": "fe003e661600a3b9e8f86b6d9268280a4c37b2e8ee65cd67b421b8060e3ccae5",
+      "bytes": 44048
+    },
+    "remote-input-own/banks/made-perimeter-s3-1-metal/uniforms.bin": {
+      "sha256": "0804c5fcb8487b071d8529d20735fdea84864953f36b4b1984be6f566260aa40",
+      "bytes": 759828
+    },
+    "remote-input-own/own.json": {
+      "sha256": "fc28f5e605b89df256d9b01e6a56cc795e03f801ec7713648b3f032a7e244815",
+      "bytes": 8899
+    },
+    "remote-input-own/worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "remote-input-own/worker/cuda_replay.py": {
+      "sha256": "bee2e79dc16c47062d45a2b745bbb4cfe351052eaee88eb9f984c607045ddcab",
+      "bytes": 5736
+    },
+    "remote-input-own/worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "remote-input-own/worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "remote-input-own/worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "remote-input-own/worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "results.json": {
+      "sha256": "8ff5354e3fa4613213329aa8712bf9e9f8d02ebdd3ad7eadd2751f907a26465d",
+      "bytes": 32977
+    },
+    "runtime/replay": {
+      "sha256": "7653b3368aa68f370556a63a11f2109f51be1ec7f1b825386bc7e40f30ccac52",
+      "bytes": 103960
+    },
+    "verification.json": {
+      "sha256": "ae9b54eff03767688a7110d344f77f1c43ab541213d33ba0c1ac63a8bd18ee85",
+      "bytes": 3953
+    },
+    "worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    }
+  },
+  "archives": [
+    {
+      "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-clock-selector-replay-archive/all-raw.tar.gz",
+      "sha256": "c548fdc0a5f0a53a3b5104f4b5e0d521f5b42122b6f6780e18b4ac235d9fa389",
+      "bytes": 5327006,
+      "members": 227
+    },
+    {
+      "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-clock-selector-replay/evidence/metadata.tar.gz",
+      "sha256": "94f77e6a830322dc1eeb17ba94815e5962da3de3fa6da5641fcdfaefca4191ad",
+      "bytes": 225637,
+      "members": 72
+    }
+  ],
+  "rawFiles": 227,
+  "rawBytes": 31267017,
+  "limits": "Actual pre-prepare scalar banks and complete native own/cross outputs, producer source/PTX and all local evidence retained externally; public archive contains metadata/postprocessing. Conditional independent frame replay; no new PDE evolution or trajectory attribution. Parent clock-capture archive retains physical provenance. Fresh local/remote hashes verified."
+}

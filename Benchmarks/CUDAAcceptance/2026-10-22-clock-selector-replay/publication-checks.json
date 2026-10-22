@@ -1,0 +1,18 @@
+{
+  "format": "passed",
+  "lint": "passed",
+  "strictHostBuild": "passed-no-warnings",
+  "affected": {
+    "command": "make check-affected",
+    "status": "passed",
+    "macTests": 7,
+    "pcTests": 36,
+    "pcSuites": 4,
+    "invocation": "8a678a2661f24f29b9b9bf9c59a8753c"
+  },
+  "notes": [
+    "Initial sandbox strict build cache permission denial; host retry passed.",
+    "Existing Python ResourceWarnings retained.",
+    "No production source, policy or admission changes."
+  ]
+}
