@@ -210,8 +210,10 @@ field's 2-D translation, which the deck does not provide for; the rest would mee
    2-D HLLE is in error; a second code will differ here, as the decks' README expects.
 6. **A ground-flush gauge reads the first row of cells**, dx/2 above the ground, by the clamp
    rule. Gauges at the same distances 45° above the ground read raw peaks 1–3% higher on 31 mm
-   cells. A precursor of a few pascals ahead of the shock there trips the extractor's refusal of
-   an earlier positive pulse, since the deadband is 0.1 Pa.
+   cells. They cannot be read by the deck's rule: on a shock oblique to the grid the scheme
+   undershoots, 1–6 kPa below ambient just ahead of it, and before that rises half a pascal above,
+   which the extractor refuses as an earlier positive pulse (its deadband is 0.1 Pa). A rule for
+   a numerical precursor (a deadband relative to the peak, say) would be needed off the axes.
 7. **Sampling.** The 50 µs samples still move resolved peaks: on 31 mm cells the peak at Z = 1 is
    1,500 kPa from the samples and 1,549 kPa from every step (3%); on 62.5 mm at Z = 0.75, 2.5%.
 8. **The far boundary**, an open item for pyro2's run, is settled for this code: on a 36 m domain

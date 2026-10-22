@@ -49,7 +49,7 @@
   "max_overpressure_at_outer_faces_final_Pa": 0.001622101670363918
  },
  "steps": 3293,
- "wall_s": 642.8,
+ "wall_s": 738.4,
  "excess_energy_over_declared": [
   [
    0.001,
