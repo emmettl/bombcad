@@ -83,3 +83,10 @@ files, both archives, consumed reference/input and selected runtime/source pins
 still match. Every new remote numeric inventory was independently rehashed
 after checks. See [publication-checks.json](publication-checks.json). Full archive:
 578,569 bytes; public metadata: 40 files / 156,526 bytes.
+
+## Corresponding Metal inputs
+
+The [paired Metal/CUDA study](../2026-10-22-metal-pressure-inputs/summary.md) now captures
+the corresponding Metal cells without altering producer compilation. All four wider evaluators
+retain opposite pressure signs near CUDA's early closure and preserve the native backend
+impulse gap181.830078125 Pa s. See that report for exact physical-time displacement and limits.

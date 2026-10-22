@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "pressureModelControls": 4,
+  "replayControls": 3,
+  "controls": [
+    "temperature source/root bounds",
+    "density and velocity consistency",
+    "ideal analytic pressure",
+    "interpolation/refusal",
+    "Float32 fused residual against exact product",
+    "seeded two-phase contract and one-word refusal",
+    "zero-dt initial sample retained"
+  ],
+  "modelUnchanged": true,
+  "selectedRuntimePinsVerified": true,
+  "limits": "Controls ran before capture completion, using frozen postprocessing; no unfinished case arrays were analyzed."
+}
