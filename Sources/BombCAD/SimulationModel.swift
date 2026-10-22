@@ -388,6 +388,9 @@ final class SimulationModel {
     var runHost: String?
     /// The blast running on another Mac and watched here, or the last one, until put away.
     var remoteRun: RemoteRun?
+    /// The connection the last remote run finished on, left open for the next run on that Mac, so
+    /// that a rerun with edits sends only what changed (emmettl/bombcad-work#73 stage 3).
+    @ObservationIgnored var remoteSession: (host: String, client: SweepWorkerClient)?
     /// How a remote run reaches its Mac, given the host and a held run to resume; tests reach a
     /// server in their own process.
     @ObservationIgnored var remoteConnect: @MainActor (String, UUID?) async throws -> SweepWorkerClient =

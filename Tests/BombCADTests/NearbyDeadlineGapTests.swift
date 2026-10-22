@@ -266,12 +266,63 @@ struct NearbyDeadlineGapTests {
         let answered = await serverSide
         if clientRunsOut {
             #expect(throws: ranOut) { try clientSide.get() }
-            // The server had the client's proof before the client's wait ran out.
-            #expect(try answered.get().peer == laptop)
+            // The server had the client's proof before the client's wait ran out, but the client was
+            // gone by the time it could keep the key, so it kept nothing either
+            // (emmettl/bombcad-work#76).
+            #expect(throws: NearbyError.self) { try answered.get() }
         } else {
             #expect(throws: ranOut) { try answered.get() }
             // The server's end closed with its time-out, so the client is not left waiting.
             #expect(throws: NearbyError.closed) { try clientSide.get() }
+        }
+    }
+
+    /// emmettl/bombcad-work#76: the sharing Mac's user allows the pairing only after the other Mac
+    /// has stopped waiting for them (five minutes on a real connection, here a check made to run
+    /// out). Before, the sharing Mac kept the key as it sent its proof and said it was paired, with
+    /// a Mac that had kept nothing. Now neither keeps it; and both do when the user is in time.
+    @Test("Allowed after the other Mac gave up, neither Mac keeps the pairing; in time, both do")
+    func allowedTooLate() async throws {
+        let laptop = NearbyPairing.Peer(id: UUID(), name: "Laptop")
+        let studio = NearbyPairing.Peer(id: UUID(), name: "Studio")
+        for late in [true, false] {
+            let (client, server) = CheckingChannel.pair()
+            if late {
+                client.checkRunsOut = .timedOut("The code was not checked on Studio within 5 minutes.")
+            }
+            let serverStore = MemoryPairingStore(name: studio.name, id: studio.id)
+            let clientStore = MemoryPairingStore(name: laptop.name, id: laptop.id)
+            // The user allows it only once the client's side has finished, given up or not.
+            let (gaveUp, clientDone) = AsyncStream<Void>.makeStream()
+            async let serverSide = Result {
+                try await NearbyPairing.answer(
+                    over: server, me: studio,
+                    allow: { _, _ in
+                        if late {
+                            var done = gaveUp.makeAsyncIterator()
+                            _ = await done.next()
+                        }
+                        return true
+                    },
+                    keep: { try serverStore.keep($0) }, forget: { try? serverStore.forget($0.peer.id) })
+            }
+            let clientSide = await Result {
+                let pairing = try await NearbyPairing.pair(over: client, me: laptop) { _, _ in true }
+                try clientStore.keep(pairing)
+                return pairing
+            }
+            clientDone.yield()
+            clientDone.finish()
+            let answered = await serverSide
+            if late {
+                #expect((try? clientSide.get()) == nil && (try? answered.get()) == nil)
+                #expect(serverStore.pairings().isEmpty && clientStore.pairings().isEmpty)
+            } else {
+                let kept = try clientSide.get()
+                #expect(try answered.get().key == kept.key)
+                #expect(serverStore.pairing(laptop.id)?.key == kept.key)
+                #expect(clientStore.pairing(studio.id)?.key == kept.key)
+            }
         }
     }
 

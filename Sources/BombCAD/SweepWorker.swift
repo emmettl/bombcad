@@ -81,18 +81,38 @@ enum SweepWorker {
                         try? writer.send(.failed(job.id, "The worker is already running \(running.id)."))
                         continue
                     }
+                    var job = job
+                    // The files a job in this session sent already, named by their digests rather
+                    // than sent again (`WatchJob.reused`).
+                    if let reused = job.reused {
+                        let missing = reused.filter { jobs.files[$0.value] == nil }.keys.sorted()
+                        guard missing.isEmpty else {
+                            try? writer.send(.failed(job.id, SweepWorkerMessage.missingFiles))
+                            continue
+                        }
+                        for (path, digest) in reused { job.project.files[path] = jobs.files[digest] }
+                        job.reused = nil
+                    }
+                    jobs.files = Dictionary(
+                        job.project.files.values.map { (WatchJob.digest($0), $0) },
+                        uniquingKeysWith: { a, _ in a })
                     let sender = job.view.map { ViewSender(id: job.id, writer: writer, spec: $0) }
+                    let paused = Locked(false)
                     jobs.viewers[job.id] = sender
+                    jobs.pauses[job.id] = paused
                     jobs.current = (
                         job.id,
-                        Task {
-                            await watch(job, sender: sender, writer: writer)
+                        Task { [job] in
+                            await watch(job, sender: sender, writer: writer, paused: paused)
                             jobs.viewers[job.id] = nil
+                            jobs.pauses[job.id] = nil
                             if jobs.current?.id == job.id { jobs.current = nil }
                         }
                     )
                 case .viewAck(let id, let frame):
                     jobs.viewers[id]?.acknowledge(frame)
+                case .pause(let id, let on):
+                    jobs.pauses[id]?.value = on
                 case .cancel(let id):
                     if let running = jobs.current, running.id == id { running.task.cancel() }
                     jobs.sessions.removeValue(forKey: id)?.cancel()
@@ -109,6 +129,20 @@ enum SweepWorker {
                         continue
                     }
                     runner.finish(frameInterval: interval)
+                case .probe(let id, let count):
+                    guard count >= 0, count <= SweepWorkerFrame.maximumBytes else {
+                        writer.enqueue(.failed(id, "A probe of \(count) bytes cannot be sent."))
+                        continue
+                    }
+                    writer.enqueue(.probed(id)) {
+                        // A random megabyte over and over, so that nothing on the way could make it
+                        // smaller, and making it costs the measurement little.
+                        var block = Data(count: 1 << 20)
+                        block.withUnsafeMutableBytes { arc4random_buf($0.baseAddress, $0.count) }
+                        var bytes = Data(capacity: count)
+                        while bytes.count < count { bytes.append(block.prefix(count - bytes.count)) }
+                        return bytes
+                    }
                 default:
                     continue
                 }
@@ -124,6 +158,10 @@ enum SweepWorker {
         var sessions: [UUID: ConsumerRunner] = [:]
         /// Watched runs' senders, for their acknowledgements.
         var viewers: [UUID: ViewSender] = [:]
+        /// Watched runs' pauses.
+        var pauses: [UUID: Locked<Bool>] = [:]
+        /// The last watched job's files, by digest, for the next to name rather than send again.
+        var files: [String: Data] = [:]
 
         func stop() async {
             guard let task = current?.task else { return }
@@ -157,13 +195,16 @@ enum SweepWorker {
 
     /// Runs a watched project, sending its frames as `sender` allows, then what that cost and
     /// the result.
-    private static func watch(_ job: WatchJob, sender: ViewSender?, writer: SweepWorkerWriter) async {
+    private static func watch(
+        _ job: WatchJob, sender: ViewSender?, writer: SweepWorkerWriter, paused: Locked<Bool>
+    ) async {
         do {
             var document = try ProjectDocument(archive: job.project.archive())
             document.savedRuns = []
             var options = HeadlessRun.Options(project: URL(filePath: "/dev/null"))
             options.name = job.name
             options.frameInterval = job.frameInterval
+            options.asApp = job.asApp
             let start = ContinuousClock.now
             let result = try await HeadlessRun.perform(
                 document, options: options,
@@ -171,7 +212,8 @@ enum SweepWorker {
                 view: sender.map { sender in
                     { solver, frame, last in sender.frame(solver, number: frame, last: last) }
                 },
-                viewRequest: sender.map { sender in { sender.frameRequest($0) } }
+                viewRequest: sender.map { sender in { sender.frameRequest($0) } },
+                paused: { paused.value }
             )
             let took = start.duration(to: .now)
             if let sender {

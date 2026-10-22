@@ -15,7 +15,7 @@ final class SessionRelay: @unchecked Sendable {
     private let toWorker: FileHandle
     private let fromWorker: FileHandle
     private let writes = DispatchQueue(label: "dev.bombcad.nearby.relay")
-    private var connection: NWConnection?
+    private var connection: RelayLink?
     /// The worker's greeting, as sent.
     private var hello: Data?
     /// Runs to keep going should the connection drop, those still running, and for each what a
@@ -26,6 +26,8 @@ final class SessionRelay: @unchecked Sendable {
     /// Frames sent on and not yet acknowledged, which the relay acknowledges itself if the
     /// connection drops, so that the worker goes on building them.
     private var unacknowledged: [UUID: Set<Int>] = [:]
+    /// Runs the app has paused.
+    private var paused: Set<UUID> = []
     private var workerInputClosed = false
     private var workerEnded = false
     private var ended = false
@@ -47,7 +49,7 @@ final class SessionRelay: @unchecked Sendable {
     }
 
     /// Starts relaying between the worker and `connection`, which is ready.
-    func start(_ connection: NWConnection) {
+    func start(_ connection: RelayLink) {
         lock.withLock { self.connection = connection }
         receive(from: connection, buffer: Data())
         Thread { [self] in readWorker() }.start()
@@ -60,7 +62,7 @@ final class SessionRelay: @unchecked Sendable {
     var isDetached: Bool { lock.withLock { connection == nil } }
 
     /// Hands a resuming session what the held runs have sent that it needs, then relays as before.
-    func resume(_ connection: NWConnection) {
+    func resume(_ connection: RelayLink) {
         let frames: [(UUID, Int)] = lock.withLock {
             self.connection?.cancel()
             self.connection = connection
@@ -72,7 +74,7 @@ final class SessionRelay: @unchecked Sendable {
                 guard let kept = kept[id] else { continue }
                 replay += [kept.setup, kept.progress, kept.stats, kept.end].compactMap { $0 }
             }
-            for raw in replay { connection.send(content: raw, completion: .idempotent) }
+            for raw in replay { connection.send(raw) }
             log("Session resumed: \(held.count) held run\(held.count == 1 ? "" : "s").")
             return frames
         }
@@ -99,7 +101,7 @@ final class SessionRelay: @unchecked Sendable {
                 let sent: DispatchSemaphore? = lock.withLock {
                     guard let target = route(message, raw: raw) else { return nil }
                     let done = DispatchSemaphore(value: 0)
-                    target.send(content: raw, completion: .contentProcessed { _ in done.signal() })
+                    target.send(raw) { done.signal() }
                     return done
                 }
                 // One message on the wire at a time, as the bridge before it sent a chunk at a time.
@@ -116,7 +118,7 @@ final class SessionRelay: @unchecked Sendable {
 
     /// Keeps what a resuming session would need of `message`, and says where it goes now: the
     /// connection, or nowhere (a frame no one is there to see, acknowledged here).
-    private func route(_ message: SweepWorkerMessage, raw: Data) -> NWConnection? {
+    private func route(_ message: SweepWorkerMessage, raw: Data) -> RelayLink? {
         switch message {
         case .hello: hello = raw
         case .viewSetup(let id): if held.contains(id) { kept[id, default: Kept()].setup = raw }
@@ -143,14 +145,23 @@ final class SessionRelay: @unchecked Sendable {
 
     // MARK: - The connection's messages
 
-    private func receive(from connection: NWConnection, buffer: Data) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 1 << 20) {
-            [self] data, _, complete, error in
+    /// What has arrived of a connection's next message, touched only on `writes`: one buffer for the
+    /// connection's life, not one passed on by value, which copied the message so far at every
+    /// chunk (a 100 MB message in 64 kB chunks copied about 80 GB).
+    private final class Incoming: @unchecked Sendable { var data = Data() }
+
+    private func receive(from connection: RelayLink, buffer: Data) {
+        let incoming = Incoming()
+        incoming.data = buffer
+        receive(from: connection, into: incoming)
+    }
+
+    private func receive(from connection: RelayLink, into incoming: Incoming) {
+        connection.receive { [self] data, complete, error in
             writes.async { [self] in
-                var buffer = buffer
-                if let data { buffer.append(data) }
+                if let data { incoming.data.append(data) }
                 do {
-                    while let (raw, message) = try SweepWorkerFrame.rawPacket(from: &buffer) {
+                    while let (raw, message) = try SweepWorkerFrame.rawPacket(from: &incoming.data) {
                         lock.withLock { inspect(message) }
                         writeToWorker(raw)
                     }
@@ -163,7 +174,7 @@ final class SessionRelay: @unchecked Sendable {
                 if complete || error != nil {
                     dropped(connection)
                 } else {
-                    receive(from: connection, buffer: buffer)
+                    receive(from: connection, into: incoming)
                 }
             }
         }
@@ -173,12 +184,25 @@ final class SessionRelay: @unchecked Sendable {
     private func inspect(_ message: SweepWorkerMessage) {
         switch message {
         case .watch(let job):
+            // A new job in the same session: the app has moved on from those that ended.
+            for id in held where kept[id]?.end != nil {
+                held.remove(id)
+                kept[id] = nil
+            }
             running.insert(job.id)
             if job.keepsRunning {
                 held.insert(job.id)
                 kept[job.id] = Kept()
             }
         case .viewAck(let id, let frame): unacknowledged[id]?.remove(frame)
+        case .pause(let id, let on):
+            if on { paused.insert(id) } else { paused.remove(id) }
+        case .release(let id):
+            if kept[id]?.end != nil {
+                held.remove(id)
+                kept[id] = nil
+                settle()
+            }
         case .shutdown:
             // The app has what it was waiting for, or no longer wants it.
             held = []
@@ -190,7 +214,7 @@ final class SessionRelay: @unchecked Sendable {
 
     /// The connection ended: with a held run still going, or ended and not yet collected, the
     /// worker carries on; otherwise it is told to stop, as its input closing always told it.
-    private func dropped(_ connection: NWConnection) {
+    private func dropped(_ connection: RelayLink) {
         let frames: [(UUID, Int)] = lock.withLock {
             guard self.connection === connection else { return [] }
             self.connection = nil
@@ -199,6 +223,14 @@ final class SessionRelay: @unchecked Sendable {
             if going || !kept.isEmpty { log("Connection dropped; holding \(held.count) run(s).") }
             let frames = unacknowledged.flatMap { id, frames in frames.map { (id, $0) } }
             unacknowledged = [:]
+            // A held run paused from the app goes on: with no one to let it go, it would hold the
+            // GPU for ever; it finishes, and its result waits for the app.
+            for id in paused.intersection(held).intersection(running) {
+                if let raw = try? SweepWorkerFrame.encode(.pause(id, false)) {
+                    writes.async { [self] in writeToWorker(raw) }
+                }
+            }
+            paused = []
             settle()
             return frames
         }
@@ -214,10 +246,7 @@ final class SessionRelay: @unchecked Sendable {
         }
         let collected = held.allSatisfy { kept[$0]?.end == nil } || held.isEmpty
         guard workerEnded, !ended else { return }
-        if let connection, collected {
-            connection.send(
-                content: nil, contentContext: .finalMessage, isComplete: true, completion: .idempotent)
-        }
+        if let connection, collected { connection.finish() }
         if connection == nil ? held.isEmpty || collected : collected {
             ended = true
             let onEnd = onEnd
@@ -242,4 +271,78 @@ final class SessionRelay: @unchecked Sendable {
         workerInputClosed = true
         try? toWorker.close()
     }
+}
+
+/// Where a relay sends a session's messages and reads the app's: the session's TLS connection, or
+/// the sealed socket beside it (`NearbyBulk`).
+protocol RelayLink: AnyObject, Sendable {
+    /// Sends `raw` after whatever was sent before it, telling `done` once it has been taken.
+    func send(_ raw: Data, done: @escaping @Sendable () -> Void)
+    /// The next bytes to arrive: `handler` is told them, whether the stream has ended, and any
+    /// error; once a call.
+    func receive(_ handler: @escaping @Sendable (Data?, Bool, Error?) -> Void)
+    /// Ends this side's stream after whatever was sent.
+    func finish()
+    func cancel()
+}
+
+extension RelayLink {
+    func send(_ raw: Data) { send(raw) {} }
+}
+
+/// A session's TLS connection, as a relay's link.
+final class ConnectionLink: RelayLink, @unchecked Sendable {
+    let connection: NWConnection
+
+    init(_ connection: NWConnection) { self.connection = connection }
+
+    func send(_ raw: Data, done: @escaping @Sendable () -> Void) {
+        connection.send(content: raw, completion: .contentProcessed { _ in done() })
+    }
+
+    func receive(_ handler: @escaping @Sendable (Data?, Bool, Error?) -> Void) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1 << 20) { data, _, complete, error in
+            handler(data, complete, error)
+        }
+    }
+
+    func finish() {
+        connection.send(
+            content: nil, contentContext: .finalMessage, isComplete: true, completion: .idempotent)
+    }
+
+    func cancel() { connection.cancel() }
+}
+
+/// The sealed socket beside a session's TLS connection, as a relay's link: sends in order on a
+/// queue of their own, reads on another.
+final class SocketLink: RelayLink, @unchecked Sendable {
+    let socket: SealedSocket
+    private let sends = DispatchQueue(label: "dev.bombcad.nearby.socket.send")
+    private let reads = DispatchQueue(label: "dev.bombcad.nearby.socket.read")
+
+    init(_ socket: SealedSocket) { self.socket = socket }
+
+    func send(_ raw: Data, done: @escaping @Sendable () -> Void) {
+        sends.async { [socket] in
+            // A failure shuts the socket, which the reader then sees as the link dropping.
+            if (try? socket.send(raw)) == nil { socket.shutdown() }
+            done()
+        }
+    }
+
+    func receive(_ handler: @escaping @Sendable (Data?, Bool, Error?) -> Void) {
+        reads.async { [socket] in
+            do {
+                let data = try socket.receive()
+                handler(data, data == nil, nil)
+            } catch {
+                handler(nil, false, error)
+            }
+        }
+    }
+
+    func finish() { sends.async { [socket] in try? socket.sendEnd() } }
+
+    func cancel() { socket.shutdown() }
 }

@@ -11,8 +11,11 @@ import simd
 extension SimulationModel {
     func toggleRun() {
         guard !sweep.isActive else { return }
-        // A run on another Mac is stopped, not paused (`stopRemoteRun`).
-        if remoteRun?.isActive == true { return }
+        // A run on another Mac is paused there (`toggleRemotePause`).
+        if remoteRun?.isActive == true {
+            toggleRemotePause()
+            return
+        }
         if !isRunning, let host = runHost {
             startRemoteRun(on: host)
             return

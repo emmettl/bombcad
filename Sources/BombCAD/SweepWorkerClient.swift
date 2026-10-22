@@ -31,6 +31,8 @@ final class SweepWorkerClient {
     private var viewSetups: [UUID: (Data) -> Void] = [:]
     private var viewStats: [UUID: (ViewStats, ContinuousClock.Instant)] = [:]
     private var closedError: Error?
+    /// How its messages travel, for a Mac nearby (`NearbyWorkers.Transport`); empty otherwise.
+    var transport = ""
     /// Why the worker stopped, for messages: what it last wrote to standard error, if anything.
     var diagnostics: () -> String = { "" }
     /// How long a worker has to greet before it is taken as not answering: a minute, as the app
@@ -171,6 +173,9 @@ final class SweepWorkerClient {
     /// it (`viewAck`) for more to come, and a scene view's setup, before its first frame, to
     /// `setup`.
     /// `progress` is told the fraction of its simulated time the run has reached, now and then.
+    ///
+    /// The project's files the last job on this connection sent already are named, not sent again
+    /// (`WatchJob.reused`); should the worker not have them, the job goes again whole.
     func watch(
         _ job: WatchJob, setup: @escaping (Data) -> Void = { _ in },
         progress: @escaping (Double) -> Void = { _ in },
@@ -178,8 +183,38 @@ final class SweepWorkerClient {
     ) async throws
         -> WatchResult
     {
-        try await follow(job.id, setup: setup, progress: progress, frame: frame, send: .watch(job))
+        let digests = job.project.files.mapValues(WatchJob.digest)
+        var slim = job
+        let had = Set(sentFiles.values)
+        let reused = digests.filter { had.contains($0.value) }
+        if !reused.isEmpty {
+            slim.reused = reused
+            for path in reused.keys { slim.project.files[path] = nil }
+        }
+        sentFiles = digests
+        projectBytes = (
+            slim.project.files.values.reduce(0) { $0 + $1.count },
+            reused.keys.reduce(0) { $0 + (job.project.files[$1]?.count ?? 0) }
+        )
+        do {
+            return try await follow(
+                job.id, setup: setup, progress: progress, frame: frame, send: .watch(slim))
+        } catch let error as ProjectFileError {
+            guard slim.reused != nil, case .invalid(let reason) = error,
+                reason.hasSuffix(SweepWorkerMessage.missingFiles)
+            else { throw error }
+            projectBytes = (job.project.files.values.reduce(0) { $0 + $1.count }, 0)
+            return try await follow(job.id, setup: setup, progress: progress, frame: frame, send: .watch(job))
+        }
     }
+
+    /// The files of the last project sent on this connection, by path, as their digests.
+    private var sentFiles: [String: String] = [:]
+    /// The last watched project's bytes sent, and those of its files named as sent before.
+    private(set) var projectBytes = (sent: 0, reused: 0)
+
+    /// Holds a watched run between its batches, or lets it go on.
+    func pause(_ id: UUID, _ on: Bool) { writer.enqueue(.pause(id, on)) }
 
     /// Takes up a watched run that a Mac nearby kept going after an earlier connection dropped
     /// (`NearbyWorkers.connect(resume:)`): its view's setup again, its latest progress, then its
@@ -226,6 +261,25 @@ final class SweepWorkerClient {
         }
         let stats = viewStats[id]
         return WatchResult(archive: archive, stats: stats?.0, statsArrived: stats?.1, finished: .now)
+    }
+
+    /// Sends `sending` bytes to the worker and has it send `receiving` back, and returns how long
+    /// that took, from the send to the last byte back: to measure the link.
+    func probe(sending: Int, receiving: Int) async throws -> Duration {
+        let id = UUID()
+        var payload = Data(count: sending)
+        payload.withUnsafeMutableBytes { arc4random_buf($0.baseAddress, $0.count) }
+        let writer = self.writer
+        let start = ContinuousClock.now
+        _ = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+            if let closedError {
+                continuation.resume(throwing: closedError)
+                return
+            }
+            outcomeWaiters[id] = continuation
+            writer.enqueue(.probe(id, receiving), payload: payload)
+        }
+        return start.duration(to: .now)
     }
 
     /// Whether the connection has closed, or failed: a job that fails then failed with it, not on
@@ -290,7 +344,7 @@ final class SweepWorkerClient {
             reports[id]?(report, seconds)
         case .live(let id, let header):
             liveFrames[id]?(header, payload)
-        case .outcome(let id):
+        case .outcome(let id), .probed(let id):
             outcomeWaiters.removeValue(forKey: id)?.resume(returning: payload)
         case .hello(let hello):
             self.hello = hello

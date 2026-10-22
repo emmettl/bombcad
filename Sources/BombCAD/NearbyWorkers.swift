@@ -189,11 +189,25 @@ enum NearbyWorkers {
         /// A watched run the sharing Mac kept going after an earlier session's connection dropped,
         /// to take up again (`SessionRelay`); the gate is not asked again.
         var resume: UUID?
+        /// The client asks for the session's messages on a socket of their own (`NearbyBulk`).
+        var bulk: NearbyBulk.Offer?
     }
 
     struct SessionAnswer: Codable, Sendable {
         var accepted: Bool
         var reason: String?
+        /// Where the socket the client asked for listens, if the sharing Mac could open one.
+        var bulk: NearbyBulk.Grant?
+    }
+
+    /// How a session's messages travel once it is set up: on a sealed socket beside the TLS
+    /// connection, falling back to the connection if the socket cannot be opened (`.automatic`); on
+    /// the connection alone (`.connection`, and `BOMBCAD_NEARBY_BULK=off`); or, for tests, as if the
+    /// socket could not be opened (`.failingSocket`).
+    enum Transport: Sendable {
+        case automatic, connection, failingSocket
+
+        static var standard: Transport { NearbyBulk.enabled ? .automatic : .connection }
     }
 
     /// A worker on the paired Mac `host` names (`nearby:<name>`), over the fastest link it is seen
@@ -204,7 +218,8 @@ enum NearbyWorkers {
     @MainActor
     static func connect(
         host: String, gate: RemoteGate? = nil, resume: UUID? = nil, store: PairingStore = NearbyWorkers.store,
-        discovery: Duration = .seconds(10), resolve: Resolve = NearbyBrowser.find, limits: Limits = .app
+        discovery: Duration = .seconds(10), resolve: Resolve = NearbyBrowser.find, limits: Limits = .app,
+        transport: Transport = .standard
     ) async throws -> SweepWorkerClient {
         let name = name(of: host)
         guard let pairing = store.pairing(named: name) else {
@@ -220,9 +235,14 @@ enum NearbyWorkers {
         if let link = found.bestInterface { parameters.requiredInterface = link }
         let connection = NWConnection(to: found.endpoint, using: parameters)
         let channel = ConnectionChannel(connection, peer: name, limits: limits)
+        let offer =
+            transport == .connection ? nil : NearbyBulk.Offer(client: store.me.id, nonce: NearbyBulk.nonce())
+        var opened: SealedSocket?
+        var fellBack: String?
         do {
             try await channel.start()
-            try await channel.sendFrame(JSONEncoder().encode(SessionRequest(gate: gate, resume: resume)))
+            try await channel.sendFrame(
+                JSONEncoder().encode(SessionRequest(gate: gate, resume: resume, bulk: offer)))
             let answer = try JSONDecoder().decode(SessionAnswer.self, from: try await channel.receiveFrame())
             guard answer.accepted else {
                 throw NearbyError.refused(
@@ -230,14 +250,43 @@ enum NearbyWorkers {
                         ? "\(name) is not taking work now: \(answer.reason ?? "no reason given")."
                         : answer.reason ?? "\(name) no longer holds that run.")
             }
+            if let offer, let grant = answer.bulk {
+                do {
+                    guard transport != .failingSocket else {
+                        throw NearbyError.refused("The socket was not to be opened (a test).")
+                    }
+                    guard case .hostPort(let address, _) = connection.currentPath?.remoteEndpoint else {
+                        throw NearbyError.refused("The session's address is not known.")
+                    }
+                    let keys = NearbyBulk.keys(
+                        pairingKey: pairing.key, client: offer.client, server: pairing.peer.id,
+                        clientNonce: offer.nonce, serverNonce: grant.nonce)
+                    opened = try await NearbyBulk.open(
+                        to: address, port: grant.port,
+                        interface: connection.currentPath?.availableInterfaces.first, keys: keys,
+                        limit: limits.connect)
+                } catch {
+                    fellBack = error.localizedDescription
+                }
+                try await channel.sendFrame(
+                    JSONEncoder().encode(NearbyBulk.Choice(socket: opened != nil, reason: fellBack)))
+            }
         } catch {
+            opened?.shutdown()
             connection.cancel()
             throw error
         }
         let toWorker = Pipe()
         let fromWorker = Pipe()
-        StreamBridge.attach(
-            connection, sending: toWorker.fileHandleForReading, receiving: fromWorker.fileHandleForWriting)
+        let socket = opened
+        if let socket {
+            SealedBridge.attach(
+                socket, sending: toWorker.fileHandleForReading, receiving: fromWorker.fileHandleForWriting)
+        } else {
+            StreamBridge.attach(
+                connection, sending: toWorker.fileHandleForReading, receiving: fromWorker.fileHandleForWriting
+            )
+        }
         let link = found.bestInterface.map(linkName) ?? "the network"
         let client = SweepWorkerClient(
             name: "\(name) over \(link)", input: fromWorker.fileHandleForReading,
@@ -247,10 +296,18 @@ enum NearbyWorkers {
             // it and then the end, and the sharing Mac closes the connection once its worker exits.
             // A held run is let go only on `shutdown`, so it must not be cut off.
             try? toWorker.fileHandleForWriting.close()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 30) { connection.cancel() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+                socket?.shutdown()
+                connection.cancel()
+            }
         }
+        client.transport =
+            socket != nil
+            ? "a sealed socket"
+            : "the TLS connection" + (fellBack.map { " (the socket failed: \($0))" } ?? "")
         client.onDrop = {
             try? toWorker.fileHandleForWriting.close()
+            socket?.shutdown()
             connection.cancel()
         }
         client.helloTimeout = limits.hello
@@ -757,11 +814,12 @@ final class NearbyServer {
             do {
                 try await channel.start()
                 // The key opens sessions before the client is told it holds: a client that
-                // connects straight away must not reach the listener being replaced.
-                let pairing = try await NearbyPairing.answer(over: channel, me: store.me, allow: allow) {
-                    pairing in
-                    try await self.keep(pairing)
-                }
+                // connects straight away must not reach the listener being replaced. Kept only once
+                // the client is known to be still there (emmettl/bombcad-work#76).
+                let pairing = try await NearbyPairing.answer(
+                    over: channel, me: store.me, allow: allow,
+                    keep: { pairing in try await self.keep(pairing) },
+                    forget: { pairing in try? await self.forget(pairing.peer.id) })
                 log("Paired with \(pairing.peer.name).")
                 paired(pairing.peer)
             } catch {
@@ -773,6 +831,7 @@ final class NearbyServer {
     private func serveSession(_ connection: NWConnection) {
         let channel = ConnectionChannel(connection, limits: limits)
         Task { @MainActor in
+            var workerInput: FileHandle?
             do {
                 try await channel.start()
                 let request = try JSONDecoder().decode(
@@ -789,10 +848,9 @@ final class NearbyServer {
                         connection.cancel()
                         return
                     }
-                    try await channel.sendFrame(
-                        JSONEncoder().encode(NearbyWorkers.SessionAnswer(accepted: true)))
-                    relay.resume(connection)
-                    log("Session resumed a held run.")
+                    let link = try await accept(request, over: channel)
+                    relay.resume(link)
+                    log("Session resumed a held run, over \(link is SocketLink ? "a sealed socket" : "TLS").")
                     return
                 }
                 if let reason = request.gate?.refusal() {
@@ -804,21 +862,75 @@ final class NearbyServer {
                 let toWorker = Pipe()
                 let fromWorker = Pipe()
                 try startWorker(toWorker.fileHandleForReading, fromWorker.fileHandleForWriting, request.gate)
-                try await channel.sendFrame(JSONEncoder().encode(NearbyWorkers.SessionAnswer(accepted: true)))
+                workerInput = toWorker.fileHandleForWriting
+                let link = try await accept(request, over: channel)
                 relay(
-                    connection, toWorker: toWorker.fileHandleForWriting,
-                    fromWorker: fromWorker.fileHandleForReading)
-                log("Session started.")
+                    link, toWorker: toWorker.fileHandleForWriting, fromWorker: fromWorker.fileHandleForReading
+                )
+                log("Session started, over \(link is SocketLink ? "a sealed socket" : "TLS").")
             } catch {
                 log("Session refused: \(error.localizedDescription)")
+                // A worker started for it has no one to answer.
+                try? workerInput?.close()
                 connection.cancel()
             }
         }
     }
 
-    /// Relays a session's messages between its connection and its worker, message by message, so
-    /// that a watched run can outlive its connection (`SessionRelay`).
-    private func relay(_ connection: NWConnection, toWorker: FileHandle, fromWorker: FileHandle) {
+    /// Whether sessions may have a socket of their own (`NearbyBulk`); off, every session's
+    /// messages go on its TLS connection, as a Mac that cannot open one would.
+    var socketsAllowed = true
+
+    /// Accepts a session that asked for `request` and returns where its messages go: the socket
+    /// beside the connection, if the client asked for one and it opened, else the connection.
+    private func accept(_ request: NearbyWorkers.SessionRequest, over channel: ConnectionChannel) async throws
+        -> RelayLink
+    {
+        let connection = channel.connection
+        var listener: BulkListener?
+        var keys: NearbyBulk.Keys?
+        var grant: NearbyBulk.Grant?
+        if socketsAllowed, let offer = request.bulk, let pairing = store.pairing(offer.client) {
+            var local: NWEndpoint.Host?
+            if case .hostPort(let host, _) = connection.currentPath?.localEndpoint { local = host }
+            do {
+                let opened = try BulkListener(on: local)
+                let nonce = NearbyBulk.nonce()
+                keys = NearbyBulk.keys(
+                    pairingKey: pairing.key, client: offer.client, server: store.me.id,
+                    clientNonce: offer.nonce,
+                    serverNonce: nonce)
+                grant = NearbyBulk.Grant(port: opened.port, nonce: nonce)
+                listener = opened
+            } catch {
+                log("No socket for a session: \(error.localizedDescription)")
+            }
+        }
+        defer { listener?.cancel() }
+        // Waiting from now, so that the client's greeting is answered while it waits.
+        let accepting = listener.map { listener in
+            Task { [keys, limits] in try await listener.accept(keys: keys!, limit: limits.message) }
+        }
+        try await channel.sendFrame(
+            JSONEncoder().encode(NearbyWorkers.SessionAnswer(accepted: true, bulk: grant)))
+        guard let accepting else { return ConnectionLink(connection) }
+        let choice = try JSONDecoder().decode(NearbyBulk.Choice.self, from: try await channel.receiveFrame())
+        guard choice.socket else {
+            accepting.cancel()
+            listener?.cancel()
+            log("A session's socket did not open (\(choice.reason ?? "no reason given")); over TLS instead.")
+            return ConnectionLink(connection)
+        }
+        // The client has had the greeting back, so the socket is in.
+        let socket = try await accepting.value
+        // Nothing more goes on the connection.
+        connection.cancel()
+        return SocketLink(socket)
+    }
+
+    /// Relays a session's messages between its link and its worker, message by message, so that a
+    /// watched run can outlive its connection (`SessionRelay`).
+    private func relay(_ connection: RelayLink, toWorker: FileHandle, fromWorker: FileHandle) {
         let relay = SessionRelay(toWorker: toWorker, fromWorker: fromWorker)
         relay.log = { [weak self] line in Task { @MainActor in self?.log(line) } }
         relay.onEnd = { [weak self] ended in

@@ -1,5 +1,6 @@
 import BlastCore
 import BlastRender
+import CryptoKit
 import DocumentKit
 import Foundation
 import ImageIO
@@ -22,6 +23,20 @@ struct WatchJob: Codable, Equatable, Sendable {
     /// for the app to watch again or fetch the result later (`SessionRelay`); a run asked for over
     /// SSH, or by `BombCAD watch`, stops with its connection.
     var keepsRunning = false
+    /// Whether the run goes as the app's own would (`HeadlessRun.Options.asApp`): the project's
+    /// fragments, thermal radiation, ground points and cloud alongside, their results in the kept
+    /// run, and envelopes vented. The app asks for it; `BombCAD watch` runs the blast alone.
+    var asApp = false
+    /// Files of the project left out because the last job in the same session sent them: each
+    /// path's SHA-256, hex (`digest`). A rerun with a moved charge then sends only the scene, not
+    /// the imports and terrain again (emmettl/bombcad-work#73). A worker that no longer has one fails
+    /// the job with `SweepWorkerMessage.missingFiles`, and the client sends it whole.
+    var reused: [String: String]?
+
+    /// A file's SHA-256, hex.
+    static func digest(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
 }
 
 struct ViewSpec: Codable, Equatable, Sendable {

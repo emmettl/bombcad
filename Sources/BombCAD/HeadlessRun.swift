@@ -131,6 +131,12 @@ enum HeadlessRun {
         /// Seconds of each component's history kept from when the blast reaches it; nil for the
         /// whole run from t = 0.
         var envelopeWindow: Double?
+        /// The run as the app runs it (a run sent from the app to a Mac nearby,
+        /// emmettl/bombcad-work#73): the project's own fragments, thermal radiation, ground points
+        /// and cloud fed alongside here, the envelopes' component histories kept (and so their
+        /// glazing vented and close-in charges breaching, as a run in the app does), and the run
+        /// kept once they have all caught up, their results in it.
+        var asApp = false
         /// Where the structures' debris landings and their hazard go, as JSON.
         var debrisResults: URL?
         var groundResults: URL?
@@ -572,6 +578,7 @@ enum HeadlessRun {
         consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
         view: ((BlastSolver, Int, Bool) -> Void)? = nil,
         viewRequest: ((BlastSolver) -> FrameRequest)? = nil,
+        paused: (() -> Bool)? = nil,
         probeTimeout: Duration? = .seconds(30),
         connect: (String) async throws -> SweepWorkerClient = {
             try await RemoteSweepWorker.connect(host: $0)
@@ -619,11 +626,13 @@ enum HeadlessRun {
         start.scenario = inputs.scenario
         start.runSettings = inputs.settings
         let model = SimulationModel(document: start, playbackSpeed: .unlimited)
-        // A run here flies fragments as `options` says, not as the project's live view does.
-        model.fragmentSpec = nil
-        // Its fragments still hole the panes they strike, with glazing vented.
-        model.paneHoleSpec = options.fragments
-        model.groundShockSpec = nil
+        if !options.asApp {
+            // A run here flies fragments as `options` says, not as the project's live view does.
+            model.fragmentSpec = nil
+            // Its fragments still hole the panes they strike, with glazing vented.
+            model.paneHoleSpec = options.fragments
+            model.groundShockSpec = nil
+        }
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
         // so exporting does not change the run. Without a structure, only volumes, fragments, the
@@ -636,7 +645,8 @@ enum HeadlessRun {
         // Before the inputs load, which sets the first sample time. The cloud needs only the
         // last sample, at the end of the run, which then stops nowhere else.
         model.airSampleInterval = framed || options.cloud == nil ? interval : inputs.settings.duration
-        model.envelopeHistoriesByDefault = false
+        // As the app, envelopes keep their components' histories, which also vent their glazing.
+        model.envelopeHistoriesByDefault = options.asApp
         model.envelopeHistoryOptions =
             options.envelopeHistories == nil && options.envelopeDamage == nil
             ? nil
@@ -739,6 +749,14 @@ enum HeadlessRun {
                     hold = hold || behind
                 }
                 return hold
+            }
+        }
+        if let paused {
+            // Held between batches while paused, as for a consumer behind: the steps are the same.
+            let consumers = model.holdBatches
+            model.holdBatches = {
+                let behind = consumers?() ?? false
+                return paused() || behind
             }
         }
         if framed, fragmentFeed != nil || options.thermal != nil || viewRequest != nil {
@@ -854,6 +872,10 @@ enum HeadlessRun {
                 progress(min(model.time / model.duration, 1))
             }
             return !model.isRunning && !model.hasPendingGPUWork
+        }
+        if options.asApp {
+            // Kept as the app keeps a run: once the models fed alongside have caught up.
+            try await waitUntil(model) { model.companionsCaughtUp }
         }
         if let exportError { throw exportError }
         try model.keepRun(named: name)

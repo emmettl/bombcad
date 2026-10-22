@@ -8,6 +8,7 @@ enum HeadlessNearby {
         Usage: BombCAD serve [--name <name>] [--store <file>]
                BombCAD pair [<name>] [--code <code>] [--store <file>]
                BombCAD nearby [--store <file>]
+               BombCAD nearby probe <name> [--megabytes <n>] [--rounds <n>] [--store <file>]
 
         serve shares this Mac's GPU with Macs on the local network until stopped: it advertises
         itself by Bonjour, runs each paired Mac's sessions in a worker of its own, and asks on
@@ -18,7 +19,9 @@ enum HeadlessNearby {
         BombCAD watch --on nearby:<name> or BombCAD sweep --worker nearby:<name>. nearby lists the
         Macs serving on the network and those paired. Pairings are kept in the Keychain, or with
         --store (or BOMBCAD_NEARBY_STORE) in a file only its owner can read, as for a Mac worked
-        over SSH, whose Keychain may be locked.
+        over SSH, whose Keychain may be locked. nearby probe measures the link to a paired Mac:
+        --megabytes (100 by default) each way, --rounds times (3), for a session's sealed socket and
+        then its TLS connection alone, with the time a message takes there and back.
         """
 
     static func main(_ command: String, _ arguments: [String]) async -> Int32 {
@@ -32,7 +35,8 @@ enum HeadlessNearby {
         while index < arguments.count {
             let argument = arguments[index]
             if argument.hasPrefix("--") {
-                guard index + 1 < arguments.count, ["name", "store", "code"].contains(argument.dropFirst(2))
+                guard index + 1 < arguments.count,
+                    ["name", "store", "code", "megabytes", "rounds"].contains(argument.dropFirst(2))
                 else {
                     FileHandle.standardError.write(Data("Unknown option \(argument).\n\n\(usage)\n".utf8))
                     return 2
@@ -51,7 +55,15 @@ enum HeadlessNearby {
             switch command {
             case "serve": return try await serve(name: values["name"])
             case "pair": return try await pair(positional.first, code: values["code"])
-            default: return try await list()
+            default:
+                guard positional.first == "probe" else { return try await list() }
+                guard positional.count == 2, let megabytes = Double(values["megabytes"] ?? "100"),
+                    megabytes > 0, megabytes <= 400, let rounds = Int(values["rounds"] ?? "3"), rounds > 0
+                else {
+                    FileHandle.standardError.write(Data("Name one paired Mac to probe.\n\n\(usage)\n".utf8))
+                    return 2
+                }
+                return try await probe(positional[1], bytes: Int(megabytes * 1e6), rounds: rounds)
             }
         } catch {
             FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
@@ -128,6 +140,34 @@ enum HeadlessNearby {
         return 0
     }
 
+    /// Measures the link to the paired Mac `name` (emmettl/bombcad-work#29): `bytes` there and back
+    /// `rounds` times, over a session's sealed socket and then over its TLS connection alone.
+    private static func probe(_ name: String, bytes: Int, rounds: Int) async throws -> Int32 {
+        let host = NearbyWorkers.isNearby(name) ? name : NearbyWorkers.host(name)
+        for transport in [NearbyWorkers.Transport.automatic, .connection] {
+            let client = try await NearbyWorkers.connect(host: host, transport: transport)
+            defer { client.close() }
+            print("\(client.name), on \(client.transport):")
+            var trips: [Double] = []
+            for _ in 0..<5 { trips.append(try await client.probe(sending: 0, receiving: 0).seconds) }
+            let trip = trips.sorted()[trips.count / 2]
+            print(String(format: "  a message there and back: median %.1f ms", trip * 1000))
+            for round in 1...rounds {
+                let out = try await client.probe(sending: bytes, receiving: 0).seconds
+                let back = try await client.probe(sending: 0, receiving: bytes).seconds
+                let megabytes = Double(bytes) / 1e6
+                print(
+                    String(
+                        format: "  round %d: %.0f MB out in %.2f s, %.1f MB/s; back in %.2f s, %.1f MB/s",
+                        round,
+                        megabytes, out, megabytes / max(out - trip, 1e-6), back,
+                        megabytes / max(back - trip, 1e-6)
+                    ))
+            }
+        }
+        return 0
+    }
+
     /// The Macs found sharing within a few seconds.
     private static func discover() async throws -> [NearbyBrowser.Found] {
         let browser = NearbyBrowser()
@@ -135,5 +175,11 @@ enum HeadlessNearby {
         defer { browser.stop() }
         try await Task.sleep(for: .seconds(3))
         return browser.found
+    }
+}
+
+extension Duration {
+    fileprivate var seconds: Double {
+        Double(components.seconds) + Double(components.attoseconds) * 1e-18
     }
 }

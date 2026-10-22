@@ -46,6 +46,17 @@ final class RemoteRun {
     var bytesReceived = 0
     /// What it came to, for the overlay once finished: what crossing the link cost.
     var summary: String?
+    /// Held there between batches (emmettl/bombcad-work#73 stage 3); the scene here can be edited
+    /// meanwhile, and the run started again with the edits (`rerunRemoteWithEdits`).
+    var paused = false
+    /// The project's bytes sent for it, and those of its files named as sent before.
+    var projectBytes = (sent: 0, reused: 0)
+
+    /// The settings, the scene among them, it was sent with, to tell whether they have been edited
+    /// here since.
+    @ObservationIgnored var sentSettings: SimulationSettings?
+    /// Whether its connection goes on to the next run (a rerun with edits) rather than closing.
+    @ObservationIgnored var handingOver = false
 
     var isActive: Bool { phase == .connecting || phase == .running }
     var canResume: Bool {
@@ -79,6 +90,11 @@ final class RemoteRun {
     func describe(_ stats: ViewStats?) -> String {
         let intervals = zip(arrivals.dropFirst(), arrivals).map { ($0.0 - $0.1).seconds * 1000 }
         var line = String(
+            format: "The project out %.0f kB%@; ", Double(projectBytes.sent) / 1e3,
+            projectBytes.reused > 0
+                ? String(format: " (%.0f kB more named as sent before)", Double(projectBytes.reused) / 1e3)
+                : "")
+        line += String(
             format:
                 "%d frames shown, %.0f kB each on average, %.1f MB in all; an update every %@; drawing here %.1f ms a frame",
             framesShown, Double(bytesReceived) / 1e3 / Double(max(framesShown, 1)),
@@ -197,11 +213,18 @@ extension SimulationModel {
         return nil
     }
 
-    /// Sends the blast to `host` and watches it here (see `RemoteRun`).
-    func startRemoteRun(on host: String) {
+    /// Sends the blast to `host` and watches it here (see `RemoteRun`), over `session` if given (a
+    /// rerun's), else the session the last run there left open, else a new one.
+    func startRemoteRun(on host: String, over session: SweepWorkerClient? = nil) {
         if let reason = remoteRunUnavailable {
+            session?.close()
             errorMessage = reason
             return
+        }
+        // A session left open to another Mac goes.
+        if let open = remoteSession, open.host != host || open.client.isClosed || session != nil {
+            if open.client !== session { open.client.close() }
+            remoteSession = nil
         }
         isRunning = false
         stopReplay()
@@ -221,15 +244,18 @@ extension SimulationModel {
                 .first { !taken.contains($0.lowercased()) }!
             let job = WatchJob(
                 id: UUID(), name: name, project: SweepWorkerArchive(try document.makeArchive()),
-                frameInterval: 1, view: ViewSpec(sceneStride: stride), keepsRunning: true)
+                frameInterval: 1, view: ViewSpec(sceneStride: stride), keepsRunning: true, asApp: true)
             let remote = RemoteRun(
                 host: host, name: name, scenario: inputs.scenario, inputs: inputs, job: job)
+            remote.sentSettings = settings
             remoteRun?.timeline?.discard()
             remoteRun = remote
             errorMessage = nil
             time = 0
             stepCount = 0
-            remote.task = Task { await drive(remote, resuming: false) }
+            let client = session ?? remoteSession?.client
+            remoteSession = nil
+            remote.task = Task { await drive(remote, resuming: false, over: client) }
         } catch {
             errorMessage = "The run could not be sent: \(error.localizedDescription)"
         }
@@ -251,6 +277,62 @@ extension SimulationModel {
         guard let remote = remoteRun, case .lost = remote.phase else { return }
         remote.phase = .waiting
         restoreLiveView()
+    }
+
+    /// Holds the remote run there between its batches, or lets it go on; held, the scene here can
+    /// be edited, and the run started again with the edits (`rerunRemoteWithEdits`).
+    func toggleRemotePause() {
+        guard let remote = remoteRun, remote.phase == .running, let client = remote.client else { return }
+        remote.paused.toggle()
+        client.pause(remote.id, remote.paused)
+        if !remote.paused, let upload = remote.upload, let renderer {
+            // Back to the run's view, should an edit here have shown this Mac's scene.
+            fenceGPU()
+            renderer.setScene(remote.scenario, view: upload.view)
+            sceneVersion += 1
+        }
+    }
+
+    /// Whether the scene or its settings have been edited here since the remote run was sent.
+    var remoteRunEdited: Bool {
+        guard let remote = remoteRun, let sent = remote.sentSettings else { return false }
+        // The settings hold the scene as edited.
+        return sent != settings
+    }
+
+    /// Stops the remote run there and sends the scene as it is now, edits and all, over the same
+    /// connection: the project's files sent already are named rather than sent again, so a moved
+    /// charge sends only the scene.
+    func rerunRemoteWithEdits() {
+        guard let remote = remoteRun, remote.phase == .running, remote.client != nil else { return }
+        if isLoadingInputs || rebuildPending || isPreparingImports || importsNeedResampling {
+            errorMessage = "The scene is still being prepared; rerun once it is."
+            return
+        }
+        remote.handingOver = true
+        remote.stopping = true
+        remote.client?.writer.enqueue(.cancel(remote.id))
+    }
+
+    /// Lets go of a session the last remote run left open for the next.
+    func closeRemoteSession() {
+        remoteSession?.client.close()
+        remoteSession = nil
+    }
+
+    /// How long a session left open waits for the next run before it is let go: its worker there
+    /// holds no GPU memory between jobs, but is a process all the same.
+    static let remoteSessionIdle = Duration.seconds(300)
+
+    /// Leaves `client` open for the next run on `host`, for a while.
+    private func keepRemoteSession(host: String, _ client: SweepWorkerClient) {
+        closeRemoteSession()
+        remoteSession = (host, client)
+        Task { [weak self, weak client] in
+            try? await Task.sleep(for: Self.remoteSessionIdle)
+            guard let self, let client, self.remoteSession?.client === client else { return }
+            self.closeRemoteSession()
+        }
     }
 
     /// Stops the remote run there, and shows this Mac's scene again.
@@ -283,9 +365,14 @@ extension SimulationModel {
         remoteRun = nil
     }
 
-    private func drive(_ remote: RemoteRun, resuming: Bool) async {
+    private func drive(_ remote: RemoteRun, resuming: Bool, over session: SweepWorkerClient? = nil) async {
         do {
-            let client = try await remoteConnect(remote.host, resuming ? remote.id : nil)
+            let client: SweepWorkerClient
+            if let session, !session.isClosed {
+                client = session
+            } else {
+                client = try await remoteConnect(remote.host, resuming ? remote.id : nil)
+            }
             if remote.stopping {
                 // Stopped while connecting: a new run goes no further; a held one is stopped there.
                 if resuming { client.writer.enqueue(.cancel(remote.id)) }
@@ -306,7 +393,10 @@ extension SimulationModel {
                 }
             }
             defer { watchdog?.cancel() }
-            let setup: (Data) -> Void = { [weak self] payload in self?.remoteSetup(remote, payload) }
+            let setup: (Data) -> Void = { [weak self] payload in
+                if !resuming { remote.projectBytes = client.projectBytes }
+                self?.remoteSetup(remote, payload)
+            }
             let frame: (WatchFrame.Header, Data) -> Void = { [weak self] header, payload in
                 self?.remoteFrame(remote, header, payload)
             }
@@ -318,13 +408,32 @@ extension SimulationModel {
                 resuming
                 ? try await client.resumeWatch(remote.id, setup: setup, progress: progress, frame: frame)
                 : try await client.watch(remote.job, setup: setup, progress: progress, frame: frame)
+            if !resuming { remote.projectBytes = client.projectBytes }
             let run = try client.checkedRun(result.archive, name: remote.name, inputs: remote.inputs)
             remote.summary = remote.describe(result.stats)
-            client.close()
+            remote.client = nil
+            // The sharing Mac need keep its result no longer.
+            client.writer.enqueue(.release(remote.id))
+            if remote.handingOver {
+                // Finished before the stop reached it: kept, and the rerun goes on regardless.
+                await finishRemoteRun(remote, run)
+                startRemoteRun(on: remote.host, over: client)
+                return
+            }
+            // Left open for the next run there, so that a rerun sends only what changed.
+            keepRemoteSession(host: remote.host, client)
             await finishRemoteRun(remote, run)
         } catch {
             let connected = remote.client != nil
             let closed = remote.client?.isClosed ?? true
+            if remote.handingOver, let client = remote.client, !client.isClosed {
+                // Stopped to run again with the edits, over the same connection.
+                remote.client = nil
+                remote.timeline?.discard()
+                remote.phase = .stopped
+                startRemoteRun(on: remote.host, over: client)
+                return
+            }
             if let client = remote.client, !client.isClosed { client.close() }
             remote.client = nil
             guard remoteRun === remote else { return }

@@ -669,7 +669,13 @@ wrong way round: the Studio here takes no SSH logins. Built in October 2026 (`Ne
   the middle cannot choose keys after seeing both. Both derive the same six-digit code from the
   shared secret and the whole exchange (HKDF). The sharing Mac's user allows it, seeing the code;
   the sending Mac's user confirms the sharing Mac shows the same; each side then proves it holds
-  the key (HMAC over the exchange) before either keeps it. A Mac in the middle pairing with each
+  the key (HMAC over the exchange) before either keeps it. Both keep it or neither does
+  (22 October 2026, emmettl/bombcad-work#76): the sharing Mac keeps it once the other, holding its
+  proof, says it is still there, and the other once the sharing Mac says it has. Before, the sharing
+  Mac kept it as it sent its proof, so a user taking longer over Allow than the other Mac waits
+  (5 minutes) left it paired with a Mac that had given up. Only the link failing between the
+  sharing Mac keeping it and the other hearing so can now leave one side with it, the sharing Mac,
+  with a key no one uses, which pairing again replaces. A Mac in the middle pairing with each
   side separately has a different secret with each, so the two codes differ but for one chance in
   a million. The key, 256 bits, is kept in the Keychain, or a file readable only by its owner.
 - **Sessions.** TLS 1.2 with that key as a pre-shared key (`TLS_PSK_WITH_AES_128_GCM_SHA256`), the
@@ -716,8 +722,9 @@ little. The city block with every 2nd cell of the air as a volume, 1.7 MB a fram
   plain socket, 43 MB/s. So it is Network.framework sending on the mini, over Wi-Fi only. Its
   interfaces use the user-space network stack (`CHANNEL_IO`), whose work runs in the sending
   process: with the mini at loads near 100 that would starve it where the kernel's sockets are not,
-  but it is not yet shown. **Open**: measure again in the mini's quiet window; if it holds, carry a
-  session's bulk on a plain socket keyed by the pairing.
+  but it is not yet shown. Measured again on 22 October 2026 with the mini quiet (load 2), the
+  slowness held, on and off, receiving as well; so a session's bulk now goes on a sealed socket
+  ([below](#the-bulk-on-a-socket-and-the-thin-clients-controls-22-october-2026)).
 - **The Studio as the sharing Mac**, the thin client's own direction, waited on the Studio's
   firewall until 21 October 2026, when a signed build turned out to need no one at the Studio
   ([below](#the-thin-client-in-the-app-21-october-2026)).
@@ -822,13 +829,118 @@ runs of each:
   through a worker here, with no relay, giving the same gauges and steps; the link dropped at the
   first frame, then the result fetched later; and Stop.
 
-**Not yet (stage 3).** Pause, edits and a new charge mid-run, and rerunning with edits on the
-Studio. Pause needs the worker's run to wait between batches on a message; edits mean a new job,
+**Not yet (stage 3)**, as it stood on 21 October; built on 22 October
+([below](#the-bulk-on-a-socket-and-the-thin-clients-controls-22-october-2026)), but for the
+companions' live view and a laptop's measurement. Pause, edits and a new charge mid-run, and
+rerunning with edits on the Studio. Pause needs the worker's run to wait between batches on a message; edits mean a new job,
 which the app can already send once the old one stops. The models fed alongside (fragments,
 thermal radiation, ground points) and the envelope damage are left out of a run elsewhere, since
 the worker's watched run does not feed them; carrying them on the Studio, as `--consumer` does
 for a headless run, and sending their state back is the next step for them. Nor is a laptop
 measured yet: that needs the user's MacBook, paired with the Studio, running the app.
+
+### The bulk on a socket, and the thin client's controls, 22 October 2026
+
+emmettl/bombcad-work#29 and #73's stage 3.
+
+**Why a socket.** Measured again with the mini quiet (load 2, the Studio 5), Network.framework was
+still slow over Wi-Fi, but not always: 100 MB from the Studio to the mini over a session's TLS
+connection took 8 to 12 MB/s in one probe and 41 to 46 in the next, and a session's first 100 MB
+was usually the slow one (10 to 12 MB/s, then 25 to 33). Frames, a few megabytes each with gaps
+between, did worst: 4 to 7 MB/s whatever the probe gave. The kernel's sockets on the same link, the
+same minutes, carried 40 to 45 steadily. So a session's messages go on a socket of their own.
+
+**How.** `NearbyBulk.swift`. The session request, over TLS as before, offers a fresh 32-byte nonce
+and names the pairing; the sharing Mac answers with a port it listens on for that session alone
+(on the address the TLS connection came in on) and a nonce of its own. Each side derives a key
+each way with HKDF-SHA256 from the pairing's 256-bit key, salted with both identifiers and both
+nonces, so every session has its own keys and nothing on the wire but the nonces, which travel
+inside TLS. Every record on the socket is AES-256-GCM (CryptoKit): the sealed bytes' length, the
+bytes and the tag, the length authenticated with them; the nonce is the record's number in its
+direction, never sent, so a record replayed, dropped, reordered or changed does not open, and an
+empty record ends the stream, so a connection cut short is told from one finished. The first record
+each way is a fixed greeting, proving the key before anything is taken: a stranger on the network
+that connects to the port first is closed, each connection being heard on a thread of its own, so
+one that never speaks holds up no other. The client then says on TLS whether the socket opened;
+if it did, the TLS connection closes and the session (`SessionRelay` on the sharing Mac, through a
+`RelayLink`, and the app's pipes) runs on the socket; if not (no listener, a firewall, a link it
+cannot cross), on the TLS connection as before. `BOMBCAD_NEARBY_BULK=off` asks for the connection
+alone, to measure. No new primitives: X25519 pairing as before, then HKDF and AES-GCM.
+
+**Measured**, the Studio serving a signed build (`BombCAD serve`, in a GPU slot), the mini over
+Wi-Fi (`BOMBCAD_NEARBY_LINK=wifi`), the mini quiet (load 1.8 to 2.7), the Studio at 5 to 6.
+`BombCAD nearby probe` (new: 100 MB each way, three times, on the socket and then on TLS), four
+probes; a message there and back 7.5 to 10 ms on both:
+
+| 100 MB | Sealed socket | TLS connection |
+|---|---|---|
+| Studio to mini (frames' way) | 40 to 45 MB/s | 8 to 46 MB/s |
+| mini to Studio | 34 to 38 MB/s | 32 to 36 MB/s |
+
+The first probe's socket upload was 22 to 26 MB/s: the relay kept a message's bytes so far in a
+value passed from one receive to the next, so each chunk copied the whole message again (100 MB in
+the socket's 64 kB records is about 80 GB copied; Network.framework's 1 MB receives hid it). One
+buffer for the connection's life fixed it.
+
+**#73's rounds**, as on 21 October (`watch --on nearby:… --scene <stride> --render` on the mini),
+each scene on the socket and then on TLS, twice; the second round with nothing else on the Studio,
+the first while this build compiled there (so its runs took longer, which leaves more frames time
+to cross):
+
+| Scene, field | Frame | Shown, socket | Shown, TLS | Lag median, socket | Lag median, TLS | Average, socket | Average, TLS |
+|---|---|---|---|---|---|---|---|
+| street canyon, every 2nd cell | 3.2 to 4.5 MB | 99, 68 of 171 | 37, 21 | 171, 225 ms | 517, 832 ms | 33 to 37 MB/s | 7.2 to 7.4 MB/s |
+| city block, every 4th cell | 1.2 MB | 162, 160 of 171 | 165, 119 | 59, 72 ms | 149, 137 ms | 10 to 12 MB/s | 6.1 to 6.9 MB/s |
+| city block, every 2nd cell | 4.8 to 7.2 MB | 161, 99 of 171 | 55, 30 | 210, 250 ms | 465, 600 ms | 32 to 39 MB/s | 6.9 to 7.1 MB/s |
+| three-storey building, every 2nd cell | 4.7 MB | 50 of 50, 30 of 50 | 8, 9 | 150, 200 ms | 1.28, 1.09 s | 8.8 to 9.0 MB/s | 3.9 to 4.4 MB/s |
+
+- **Two and a half to six times the frames** of the larger fields, at a half to an eighth of the lag, and
+  the link near Wi-Fi's own rate (the city block at every 2nd cell 39 MB/s on average). Every 4th
+  cell of the city block, the thin client's own setting, was already nearly every frame; on the
+  socket its lag halved, and its 95th percentile went from 0.56 to 0.65 s to 0.14 to 0.16 s.
+  A frame held the Studio's run as long either way (1.3 to 8.3 ms).
+- **Every 2nd cell is now usable** on the city block (an update every 0.14 to 0.19 s, a quarter of
+  a second behind); the app's stride (`RunTimelineRecorder.stride`) is unchanged. Whether to send
+  finer fields by default over a fast link is the user's decision; the numbers are here.
+- **Not measured: the laptop**, running the app, which is the real case (emmettl/bombcad-work#73).
+
+**Stage 3, the controls.**
+
+- **Pause.** `pause(id, on)` (protocol 17) holds the watched run between its batches, through the
+  hold the consumers already use (`holdBatches`), so its steps are those of a run never paused (a
+  test checks gauges and steps alike); held, it still reports progress, so the app's minute of
+  silence does not count it dropped. The app's Pause (and Space) sends it; the sidebar unlocks
+  while paused.
+- **Rerun with edits.** Paused, an edit here enables **Rerun with Edits**: the run there is
+  stopped and the scene as it is now sent over the same connection. The project's files are named
+  by their SHA-256 when the last job on the connection sent them (`WatchJob.reused`): a moved or
+  resized charge sends the scene's few kilobytes, not an imported model or terrain again. A worker
+  without them fails the job (`missingFiles`) and the app sends it whole. The connection is kept
+  for five minutes after a run comes back (the relay letting go of the result on `release`), so
+  Run after an edit does the same. Projects in #73's rounds were 4 to 64 kB, so for most scenes
+  this saves little; it matters for imports.
+- **A dropped link** still leaves the run going there: a paused run whose link drops is let go by
+  the relay, since no one else could, and its result is kept to fetch.
+- **The companions.** A run sent from the app now runs as the app would (`WatchJob.asApp`,
+  `HeadlessRun.Options.asApp`): the project's fragments, thermal radiation, ground points and cloud
+  fed alongside there, the run kept once they have caught up, so their results come back in the
+  kept run as a run here keeps them. It also corrects a fault in #73's runs: the worker's run kept
+  no envelope component histories (headless runs keep them only when asked), and the glazing's
+  venting and close-in breaching hang off those, so a remote run of a vented scene ran different
+  air from the same run here, with the same fingerprint. Now it keeps them, and the envelopes'
+  damage is judged there too.
+- **What still does not come.** The viewport, during the run and in its recording, draws the
+  field and the structures: the fragments' dots, the thermal paint, the ground points and the
+  envelopes' damage colours are not in the frames, which would need them added to `ViewFrame` and
+  the streamed recording's layers. The envelopes' damage, which even a run here keeps only in its
+  recording, therefore does not come back at all.
+- **Tests**: NearbyBulkTests (records round-trip, an end told from a cut; a record changed,
+  replayed, reordered, dropped or under another key refused; keys by pairing, nonce and direction;
+  a listener taking the client past a silent stranger, rubbish and a wrong key; sessions on the
+  socket and on TLS; falling back when either side cannot open it), and in RemoteRunTests a pause
+  that holds and comes to the same run, a paused run whose link drops, a rerun with edits over one
+  connection naming the unchanged files, and a run bringing back thermal and ground results. All
+  through a loopback server found at its port, with no deadlines.
 
 ## Better first
 

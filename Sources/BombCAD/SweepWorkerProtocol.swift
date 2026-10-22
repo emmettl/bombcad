@@ -57,12 +57,26 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     /// Worker to app, before a watched run's first frame with a scene view: its `ViewSetup`, in the
     /// payload (see `SceneViewCodec`), compressed as the frames are.
     case viewSetup(UUID)
+    /// App to worker: hold the watched run between its batches (true), or let it go on (false).
+    /// Held, it still says how far it has got, as it does running.
+    case pause(UUID, Bool)
+    /// App to a sharing Mac's relay (`SessionRelay`): the held run's result has arrived, so what is
+    /// kept for it can go, though the session stays open for another job. A worker ignores it.
+    case release(UUID)
+    /// App to worker, to measure the link (`BombCAD nearby probe`): its payload is dropped, and
+    /// `probed` sent back with this many bytes.
+    case probe(UUID, Int)
+    /// Worker to app: the bytes a probe asked for, in the payload.
+    case probed(UUID)
 
     static let cancelled = "cancelled"
+    /// Why a watched job naming files sent before (`WatchJob.reused`) failed: the worker has not
+    /// got them.
+    static let missingFiles = "missing files sent before"
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 16
+    static let protocolVersion = 17
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String

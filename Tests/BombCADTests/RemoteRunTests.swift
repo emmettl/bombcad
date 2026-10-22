@@ -220,6 +220,165 @@ struct RemoteRunTests {
         #expect(model.savedRuns.last?.name == remote.name)
     }
 
+    /// The test scene run for longer, so that a pause reaches the worker well before the end.
+    private func longer() -> ProjectDocument {
+        var document = document()
+        document.runSettings?.duration = 0.03
+        return document
+    }
+
+    @Test(
+        "Paused there, the run holds while it reports; let go, it comes to the same run as one never paused")
+    func pauseHolds() async throws {
+        let pair = try Pair()
+        defer { pair.server.stop() }
+        let document = longer()
+        let job = try job(document, name: "Paused")
+        let client = try await pair.connect()
+        var paused = false
+        var reportsWhilePaused = 0
+        var framesWhilePaused = 0
+        var finishedWhilePaused = true
+        let result = try await client.watch(
+            job,
+            setup: { _ in
+                // Before its first frame.
+                paused = true
+                client.pause(job.id, true)
+            },
+            progress: { _ in
+                guard paused else { return }
+                reportsWhilePaused += 1
+                if reportsWhilePaused == 3 {
+                    // Still going, held: it reports, and has not ended.
+                    finishedWhilePaused = false
+                    paused = false
+                    client.pause(job.id, false)
+                }
+            },
+            frame: { header, _ in
+                if paused { framesWhilePaused += 1 }
+                client.writer.enqueue(.viewAck(job.id, header.frame))
+            })
+        #expect(!finishedWhilePaused)
+        // Those on their way when the pause arrived, at most the window's.
+        #expect(framesWhilePaused <= 2)
+        let inputs = try HeadlessRun.inputs(
+            for: document, options: HeadlessRun.Options(project: URL(filePath: "/dev/null")))
+        let run = try client.checkedRun(result.archive, name: "Paused", inputs: inputs)
+
+        // The same job never paused: holding between batches changed nothing.
+        var again = try self.job(document, name: "Paused")
+        again.keepsRunning = false
+        let unpaused = try await client.watch(again) { header, _ in
+            client.writer.enqueue(.viewAck(again.id, header.frame))
+        }
+        let same = try client.checkedRun(unpaused.archive, name: "Paused", inputs: inputs)
+        #expect(same.gauges == run.gauges && same.stepCount == run.stepCount)
+        client.close()
+    }
+
+    @Test("A paused run whose link drops goes on there, and its result is fetched later")
+    func pausedDrop() async throws {
+        let pair = try Pair()
+        defer { pair.server.stop() }
+        let document = longer()
+        let job = try job(document, name: "Dropped while paused")
+        let first = try await pair.connect()
+        var paused = false
+        do {
+            _ = try await first.watch(
+                job,
+                setup: { _ in
+                    paused = true
+                    first.pause(job.id, true)
+                },
+                progress: { _ in if paused { first.drop() } },
+                frame: { header, _ in first.writer.enqueue(.viewAck(job.id, header.frame)) })
+            Issue.record("The watch went on after its connection dropped.")
+        } catch {
+            #expect(first.isClosed)
+        }
+        // Nobody to let it go: the sharing Mac does, so that it ends rather than holding the GPU.
+        let second = try await pair.connect(resume: job.id)
+        let result = try await second.resumeWatch(job.id) { header, _ in
+            second.writer.enqueue(.viewAck(job.id, header.frame))
+        }
+        let inputs = try HeadlessRun.inputs(
+            for: document, options: HeadlessRun.Options(project: URL(filePath: "/dev/null")))
+        #expect(try second.checkedRun(result.archive, name: job.name, inputs: inputs).stepCount > 0)
+        second.close()
+    }
+
+    @Test(
+        "Paused, edited and run again: the new run goes over the same connection, sending only what changed")
+    func rerunWithEdits() async throws {
+        let pair = try Pair()
+        defer { pair.server.stop() }
+        let model = SimulationModel(document: longer(), playbackSpeed: .unlimited)
+        model.remoteConnect = { _, resume in try await pair.connect(resume: resume) }
+        model.remoteSilenceLimit = nil
+        model.runHost = pair.host
+        while !model.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        model.onRemoteFrame = { remote in
+            if !remote.paused, !remote.handingOver, remote.framesShown == 1 { model.toggleRun() }
+        }
+        model.toggleRun()
+        let first = try #require(model.remoteRun)
+        while !first.paused {
+            try #require(first.isActive)
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(!model.remoteRunEdited)
+        // Edited here while it is held there.
+        model.onRemoteFrame = nil
+        model.settings.scenario.charge.mass = 0.02
+        model.settingsChanged()
+        #expect(model.remoteRunEdited)
+        while !model.experimentIsReady || model.rebuildPending { try await Task.sleep(for: .milliseconds(5)) }
+        model.rerunRemoteWithEdits()
+        while model.remoteRun === first { try await Task.sleep(for: .milliseconds(5)) }
+        let second = try #require(model.remoteRun)
+        #expect(first.phase == .stopped)
+        try await waitWhileActive(second)
+        #expect(second.phase == .finished)
+        let run = try #require(model.savedRuns.last)
+        #expect(run.name == second.name && run.scenario.charge.mass == 0.02)
+        // The scene went again; the files unchanged were named, not sent.
+        #expect(second.projectBytes.sent > 0 && second.projectBytes.reused > 0)
+        // One connection all along, still open for the next.
+        #expect(pair.server.sessionCount == 1 && model.remoteSession?.client.isClosed == false)
+        model.closeRemoteSession()
+        while pair.server.sessionCount > 0 { try await Task.sleep(for: .milliseconds(10)) }
+    }
+
+    @Test("A run sent from the app brings back the project's thermal radiation and ground points")
+    func companions() async throws {
+        let pair = try Pair()
+        defer { pair.server.stop() }
+        var document = document()
+        var thermal = ThermalSpec()
+        thermal.luminousTemperature = 1000
+        thermal.samples = 16
+        document.thermal = thermal
+        var ground = GroundShockSpec()
+        ground.line = .init(from: SIMD2(0.5, 2), to: SIMD2(2, 2), count: 3)
+        ground.depths = [0, 1]
+        document.groundShock = ground
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.remoteConnect = { _, resume in try await pair.connect(resume: resume) }
+        model.remoteSilenceLimit = nil
+        model.runHost = pair.host
+        while !model.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        model.toggleRun()
+        let remote = try #require(model.remoteRun)
+        try await waitWhileActive(remote)
+        if case .failed(let reason) = remote.phase { Issue.record("Failed: \(reason)") }
+        let run = try #require(model.savedRuns.last)
+        #expect(run.thermal != nil && run.groundShock != nil)
+        #expect(run.groundShock?.result.points.isEmpty == false)
+    }
+
     @Test("Stopped, the run ends there and nothing is kept")
     func appStop() async throws {
         let pair = try Pair()

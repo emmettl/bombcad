@@ -14,6 +14,14 @@ import Security
 /// so a Mac in the middle, with a different secret on each side, is caught but for one chance in
 /// a million. Each side then proves it holds the key (an HMAC over the exchange) before either
 /// stores it.
+///
+/// Both keep it or neither does (emmettl/bombcad-work#76): the server once the client, having the
+/// server's proof, says it is still there (`ready`), and the client once the server says it has
+/// kept it (`kept`). Before, the server kept it as it sent its proof, and a user who took longer
+/// to allow it than the client waits (five minutes) left the server with a pairing the client had
+/// given up on. Only a link failing between the server keeping it and the client hearing so can
+/// leave one side with it now, and then it is the server, holding a key no one uses, which
+/// pairing again replaces.
 enum NearbyPairing {
     static let codeDigits = 6
 
@@ -40,6 +48,10 @@ enum NearbyPairing {
         case confirm(Data)
         /// Either way: refused, and why.
         case refuse(String)
+        /// Client to server: it has the server's proof, and keeps the key once the server has.
+        case ready
+        /// Server to client: it has kept the key, and its sessions open with it.
+        case kept
     }
 
     /// One side's half of the exchange, and the key and code once both halves are in.
@@ -108,20 +120,28 @@ enum NearbyPairing {
         // Sent once the server's user has allowed it too.
         switch try await channel.receiveAfterCheck() {
         case .confirm(let proof) where Exchange.check(proof, key, "server", transcript):
-            return Pairing(peer: server, key: key.withUnsafeBytes { Data($0) })
+            break
         case .refuse(let reason): throw NearbyError.refused(reason)
         default: throw NearbyError.refused("\(server.name) did not prove it holds the key.")
         }
+        // Still here: the server keeps it, and says so, before this Mac does.
+        try await channel.send(.ready)
+        guard case .kept = try await channel.receive() else {
+            throw NearbyError.refused("\(server.name) did not keep the pairing.")
+        }
+        return Pairing(peer: server, key: key.withUnsafeBytes { Data($0) })
     }
 
     /// The server's side: answers a request to pair; `allow` is shown who asks and the code, and
     /// returns whether this Mac's user allows it. Returns the pairing.
     ///
-    /// `keep` is given the pairing before the client is told it holds, so that a session the client
-    /// opens straight after finds the key in use.
+    /// `keep` is given the pairing once the client, having this Mac's proof, says it is still there,
+    /// and before the client is told it holds, so that a session the client opens straight after
+    /// finds the key in use; `forget` takes it back if the client cannot then be told.
     static func answer(
         over channel: PairingChannel, me: Peer, allow: @escaping @Sendable (Peer, String) async -> Bool,
-        keep: @Sendable (Pairing) async throws -> Void = { _ in }
+        keep: @Sendable (Pairing) async throws -> Void = { _ in },
+        forget: @Sendable (Pairing) async -> Void = { _ in }
     ) async throws -> Pairing {
         guard case .request(let client, let commitment) = try await channel.receive() else {
             throw NearbyError.refused("Not a request to pair.")
@@ -150,8 +170,28 @@ enum NearbyPairing {
             throw NearbyError.refused("\(client.name) did not prove it holds the key.")
         }
         let pairing = Pairing(peer: client, key: key.withUnsafeBytes { Data($0) })
-        try await keep(pairing)
         try await channel.send(.confirm(Exchange.proof(key, "server", transcript)))
+        // The client may have given up while this Mac's user decided: keep nothing unless it is
+        // still there.
+        let ready: Message
+        do {
+            ready = try await channel.receive()
+        } catch {
+            throw NearbyError.refused(
+                "\(client.name) stopped waiting before pairing finished, so neither Mac keeps it: \(error.localizedDescription)"
+            )
+        }
+        guard case .ready = ready else {
+            if case .refuse(let reason) = ready { throw NearbyError.refused(reason) }
+            throw NearbyError.refused("\(client.name) did not finish pairing.")
+        }
+        try await keep(pairing)
+        do {
+            try await channel.send(.kept)
+        } catch {
+            await forget(pairing)
+            throw error
+        }
         return pairing
     }
 }

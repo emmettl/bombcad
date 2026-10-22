@@ -152,7 +152,9 @@ A Mac on the same network can share its GPU without SSH, found by Bonjour and pa
    and the links it is seen on. Choose **Pair…**.
 3. **Both Macs show a six-digit code.** Choose **Allow** on the sharing Mac only if the code is the
    one the other Mac shows, and **It Matches** on the other. (Headless, `BombCAD pair` shows the
-   code and asks, or takes the sharing Mac's code with `--code`.)
+   code and asks, or takes the sharing Mac's code with `--code`.) The other Mac waits five minutes
+   for **Allow**; chosen later, neither Mac keeps the pairing, and the sharing Mac says so: pair
+   again.
 
 The paired Mac then joins the list of other Macs as `nearby:<its name>`, and is used wherever a
 Mac reached by SSH is: shared sweeps, the models fed alongside a run (**Run on**), and
@@ -182,7 +184,7 @@ A laptop can edit the scene and watch while a Studio's GPU runs the blast.
 3. The viewport draws the run as the other Mac sends it: the blast's field, every few cells, and
    every structure's mesh, as fast as the link carries them. A note over the viewport says which
    Mac and link it is on, how far it has got and how many frames have arrived. The sidebar is
-   locked while it runs; **Stop** (or Reset) stops it there.
+   locked while it runs, unless it is paused (below); **Stop** (or Reset) stops it there.
 4. When it finishes, the run comes back and is kept, named "On <that Mac>", with the frames that
    arrived as its recording: it opens at its last frame, to scrub and replay like a run made here,
    its gauges and deflection are on the charts, and it can be compared with any other run. The
@@ -195,10 +197,31 @@ this Mac's scene and leaves a **Fetch Result** button to connect again later, wh
 finished or not. The other Mac holds the run, and its result, until this Mac collects it or
 stops it, or it stops sharing (quitting BombCAD there, or `BombCAD serve`, loses it).
 
-What the other Mac runs is the blast and the structures. The fragments, the thermal radiation,
-the ground points and the envelope damage run only on the Mac showing the scene for now, so they
-are left out of a run sent elsewhere. Pause, edits mid-run and **Continue from here** are not
-offered for a run elsewhere yet.
+**Pause, edit, run again.** **Pause** (or Space) holds the run on the other Mac between its
+batches; it still reports how far it has got, and **Resume** lets it go on, to the same result as
+a run never paused. While it is paused the sidebar is unlocked: move or resize the charge, or
+change anything else, and **Rerun with Edits** stops that run there and sends the scene as it is
+now, over the same connection. Only what changed goes again (the files already sent, such as an
+imported model or the terrain, are named rather than sent), and the note gives the project's
+size out and what was named. The connection is kept for five minutes after a run comes back, so
+that editing the scene and choosing **Run** again does the same. A paused run whose link drops
+goes on there rather than waiting for ever, and its result is kept to fetch, as above.
+
+**What the other Mac runs** is the run as this Mac would: the blast, the structures, and the
+project's fragments, thermal radiation, ground points and cloud alongside, with the envelopes'
+glazing vented as here. Their results come back in the kept run (the fragments' hazard, the
+thermal comparison, the ground points' shaking, the envelopes' surface loads), shown when the run
+is selected, as for a run here. What the viewport draws as it goes is the blast's field and the
+structures only: the fragments' dots, the thermal paint, the ground points and the envelopes'
+damage colours are not sent, so they are not drawn during the run or in its recording. The
+envelopes' damage is judged there too, but, as for a run here, only a recording keeps it, and the
+recording of a run elsewhere is made from the frames that arrive. **Continue from here** is not
+offered for a run elsewhere.
+
+**The link.** A session's frames and results go on a socket of their own beside the encrypted
+connection, sealed with keys from the pairing, since macOS's network framework carried them at a
+fifth of the Wi-Fi's speed; if that socket cannot be opened, they go on the connection as before.
+`BombCAD nearby probe <Mac>` measures the link both ways, on each.
 
 ## Measurements and interpretation
 

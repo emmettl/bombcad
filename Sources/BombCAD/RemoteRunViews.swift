@@ -17,7 +17,7 @@ struct RunOnPicker: View {
                 }
                 .disabled(model.remoteRun?.isActive == true)
                 .help(
-                    "Where the blast runs. On a Mac nearby, its GPU runs the blast and the structures and sends the view here as it goes; the run comes back with its recording, to replay and compare. The fragments, thermal radiation, ground points and envelope damage run only on this Mac for now."
+                    "Where the blast runs. On a Mac nearby, its GPU runs the blast, the structures and the fragments, thermal radiation and ground points the project has, and sends the view here as it goes; the run comes back with its recording and their results, to replay and compare. The view shows the blast and the structures only."
                 )
             }
         }
@@ -43,8 +43,27 @@ struct RemoteRunOverlay: View {
                 HStack {
                     ProgressView(value: remote.fraction).frame(width: 120)
                     Text(running).monospacedDigit()
+                    Button(remote.paused ? "Resume" : "Pause") { model.toggleRemotePause() }
+                        .help(
+                            remote.paused
+                                ? "Let the run go on."
+                                : "Hold the run there; the scene here can then be edited, and run again with the edits."
+                        )
                     Button("Stop") { model.stopRemoteRun() }
                         .help("Stop the run on \(remote.macName); nothing comes back.")
+                }
+                if remote.paused {
+                    HStack {
+                        Text(
+                            model.remoteRunEdited
+                                ? "Paused. The scene has been edited here since it was sent."
+                                : "Paused. Edit the scene to run it again with the edits.")
+                        Button("Rerun with Edits") { model.rerunRemoteWithEdits() }
+                            .disabled(!model.remoteRunEdited)
+                            .help(
+                                "Stop this run on \(remote.macName) and run the scene as it is now there, over the same connection; only what changed is sent."
+                            )
+                    }
                 }
             case .lost(let reason):
                 Text(reason).fixedSize(horizontal: false, vertical: true)

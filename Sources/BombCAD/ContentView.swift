@@ -19,7 +19,11 @@ struct ContentView: View {
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(model: model)
-                .disabled(model.sweep.isActive || model.remoteRun?.isActive == true)
+                // A run elsewhere, paused, leaves the scene to edit for a rerun.
+                .disabled(
+                    model.sweep.isActive
+                        || (model.remoteRun?.isActive == true && model.remoteRun?.paused != true)
+                )
                 .frame(width: 310)
             Divider()
             VStack(spacing: 0) {
@@ -122,6 +126,16 @@ struct ContentView: View {
                 Toggle("Place Charge", systemImage: "scope", isOn: $model.isPlacingCharge)
                     .help("Click the ground in the view to move the charge")
                 if let remote = model.remoteRun, remote.isActive {
+                    Button(
+                        remote.paused ? "Resume" : "Pause",
+                        systemImage: remote.paused ? "play.fill" : "pause.fill"
+                    ) { model.toggleRemotePause() }
+                    .disabled(remote.phase != .running)
+                    .help(
+                        remote.paused
+                            ? "Let the run on \(remote.macName) go on (Space)"
+                            : "Pause the run on \(remote.macName); the scene can then be edited and run again (Space)"
+                    )
                     Button("Stop", systemImage: "stop.fill") { model.stopRemoteRun() }
                         .help("Stop the run on \(remote.macName)")
                 } else {
