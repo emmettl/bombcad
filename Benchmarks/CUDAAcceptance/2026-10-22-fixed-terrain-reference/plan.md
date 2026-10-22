@@ -48,3 +48,20 @@ parent owns the shared lease throughout. Verify worker/source hashes and refuse
 any existing numerical output before waiting. Keep all numerical failures;
 no retry or replacement solve. Retrieve into a separate `queued-cuda` directory
 and apply the original gate to every outcome. Queue time is not a benchmark.
+
+
+## Second lease window — declared after the first queue terminated
+
+The first queue reached its 80-minute budget without acquiring a lease. Original
+exec62933 is terminal, exit1. Logs show no worker start, and a fresh read-only PC
+check confirms all three staged output directories are absent. Preserve the
+entire first attempt at `queued-cuda-attempt-1`, including its unchanged run.json,
+logs, copied helpers/configuration and a separate terminal receipt.
+
+After that inspection, authorize one further 80-minute lease window using the
+same published queue helper and unchanged staged physical inputs/workers. This
+is a new scheduling window, not a numerical retry: none of the three solves has
+run. Recheck source/worker hashes and refuse preexisting numerical output before
+waiting. The new window writes a fresh `queued-cuda`; do not overwrite old data.
+Retain every failed scheduling and numerical outcome. Training is not interrupted,
+the lock is not bypassed, and the original per-value gate remains unchanged.

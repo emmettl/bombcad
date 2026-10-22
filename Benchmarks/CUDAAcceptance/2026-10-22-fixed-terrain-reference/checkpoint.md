@@ -78,3 +78,19 @@ original input geodata and Python caches by kind, never by acceptance status.
 The complete local archive stays under `$BOMBCAD_DATA/experiments`; PC full-state
 outputs remain at their identified remote job paths, a separate retention scope.
 The final pilot archive has **not run** while the CUDA queue is waiting.
+
+
+Queue update: the first queued attempt (exec62933) reached its 80-minute limit
+without acquiring the GPU lease. It is terminal, exit1, not a failed numerical
+solve. [Terminal receipt](queue-attempt-1.json) records the log hashes; read-only
+inspection confirms none of the three staged workers created output. The complete
+attempt remains under `queued-cuda-attempt-1` at the raw root. A separately declared
+second 80-minute lease window uses the same unchanged workers/inputs in a fresh
+`queued-cuda`. Earlier live-handle descriptions above are historical. No numerical
+retry, reference replacement, tolerance or admission change; weak-wave work stays
+paused until the fixed-reference comparisons complete.
+All seven files from the first terminal queue attempt are also published in
+[its complete verified archive](evidence/queue-attempt-1.tar.gz) (4,361 bytes),
+with [per-file archive receipts](queue-attempt-1-archive.json). This includes the
+unchanged stale running receipt plus the separate authoritative terminal receipt;
+every decompressed member and original file was independently rehashed.

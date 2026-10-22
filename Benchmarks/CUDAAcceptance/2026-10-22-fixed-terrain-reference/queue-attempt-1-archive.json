@@ -1,0 +1,42 @@
+{
+  "schema": "bombcad-fixed-reference-queue-attempt-archive-1",
+  "rawRoot": "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference/queued-cuda-attempt-1",
+  "files": {
+    "controller.log": {
+      "sha256": "614086794b5cf312e872f8e7bdbc5c1cc490e82214c2d27fe28710c922c52f79",
+      "bytes": 635
+    },
+    "inputs.json": {
+      "sha256": "22a52321372616f8b507d6934fd6e2aade17fe8c0db05a6a700ae070ec89466c",
+      "bytes": 955
+    },
+    "queue-pilots.py": {
+      "sha256": "497536c95a34ef3fb23e6f83e169bf5517adbd8dcfe6ffec5b12ce5a8deb5a0d",
+      "bytes": 3651
+    },
+    "queued-worker.py": {
+      "sha256": "3a6c542c0ebd9f4e398d5adebf4e2dc74640302f382c5786d97e79707985d82d",
+      "bytes": 1744
+    },
+    "remote.log": {
+      "sha256": "c96935a8463f7effd399cac0eb0502c77ce9dddf0529dde4d62b99f5591e15d0",
+      "bytes": 27976
+    },
+    "run.json": {
+      "sha256": "eaacd69287f745a16cd63db4381559a4ecb59454bad8e154a574c9ba49ab8d8b",
+      "bytes": 676
+    },
+    "terminal-receipt.json": {
+      "sha256": "960a79a9f97767240ac26a42334707da87747a8b366ded6eab998d96507267c1",
+      "bytes": 473
+    }
+  },
+  "archive": {
+    "path": "evidence/queue-attempt-1.tar.gz",
+    "files": 7,
+    "bytes": 4361,
+    "sha256": "9f617275aa5e06c07468178de9e099945ca8c02bbbfc9b70f89327240cb50ac3",
+    "everyDecompressedMemberVerified": true
+  },
+  "scope": "Entire terminal scheduling attempt, including unchanged stale running receipt plus authoritative terminal receipt and complete timeout logs/config/helpers. No numerical worker started or numerical result rejected."
+}

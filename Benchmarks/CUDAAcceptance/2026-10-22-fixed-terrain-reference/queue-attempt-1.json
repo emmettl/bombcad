@@ -1,0 +1,10 @@
+{
+  "status": "terminal-before-lease",
+  "execSession": 62933,
+  "exitCode": 1,
+  "observedUTC": "2026-10-22T06:58:03.358915+00:00",
+  "reason": "Declared 80-minute queue budget exceeded; no lease acquired and no numerical worker started.",
+  "remoteLogSHA256": "c96935a8463f7effd399cac0eb0502c77ce9dddf0529dde4d62b99f5591e15d0",
+  "controllerLogSHA256": "614086794b5cf312e872f8e7bdbc5c1cc490e82214c2d27fe28710c922c52f79",
+  "allThreeRemoteOutputDirectoriesAbsent": true
+}
