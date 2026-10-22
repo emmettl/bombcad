@@ -1,0 +1,21 @@
+{
+  "schema": "bombcad-metal-replay-publication-checks-1",
+  "formatLint": true,
+  "strictBuildNoWarnings": true,
+  "standaloneSwiftWarningsAsErrorsBuild": true,
+  "plainCheckAffected": true,
+  "macSelectedSuitesPass": true,
+  "pcTests": 62,
+  "pcSuites": 11,
+  "analyticControlsPass": 6,
+  "scientificCasesByteCompatible": 432,
+  "comparedFloat32Words": 82279280,
+  "wordDifferences": 0,
+  "all3264OwnRawFilesRehashedAfterChecks": true,
+  "bothFinalArchiveHashesVerified": true,
+  "allSelectedRuntimeCompilerHelperAndConsumedSourcePinsMatch": true,
+  "consumedSourceCaseFiles": 1296,
+  "frozenAndPostprocessingSourcesMatch": true,
+  "productionPDETrajectoryRerunsForStudy": 0,
+  "scope": "Standalone compatible replay/artifact stage. Required checks include ordinary test fixtures; this does not claim an ordinary-solver digest rerun, production intermediate observation, emitted-instruction attestation or CUDA dataset admission. Existing unrelated Python test ResourceWarnings do not alter the warning-free compiler result."
+}

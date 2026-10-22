@@ -1,0 +1,797 @@
+{
+  "schema": "bombcad-metal-stencil-replay-summary-1",
+  "inputSHA256": "ba67bf362906ce4eac7fdbdb5ab240270050b5277f081f195731789988114f43",
+  "all432ByteCompatible": true,
+  "allRowsAudited": true,
+  "all": {
+    "cases": 432,
+    "statuses": {
+      "audited": 432
+    },
+    "audited": 432,
+    "compatibleCases": 432,
+    "executed": 8227928,
+    "skipped": 814552,
+    "wordDifferencesByComponent": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "numericDifferencesByComponent": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "maximumAbsoluteErrorByComponent": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "comparedFloat32Words": 82279280,
+  "fullTiledPairs": 216,
+  "commonExecuted": 3706688,
+  "allCommonExecutedFullTiledReplayParity": true,
+  "analyticControls": [
+    {
+      "label": "default-stationary",
+      "passed": true,
+      "actual": [
+        [
+          0.0,
+          101325.0,
+          0.0,
+          0.0,
+          -2.6318271160125732
+        ],
+        [
+          0.0,
+          101325.0,
+          0.0,
+          0.0,
+          -2.6318271160125732
+        ]
+      ],
+      "definition": {
+        "kind": "stationary",
+        "analytic": [
+          0.0,
+          101325.000210559,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bound": [
+          0.001606339746074698,
+          0.9276580737669576,
+          3.814697265625e-06,
+          3.814697265625e-06,
+          455.7346697086828
+        ]
+      }
+    },
+    {
+      "label": "default-moving",
+      "passed": true,
+      "actual": [
+        [
+          0.15625,
+          101325.015625,
+          0.0,
+          0.0,
+          44327.0625
+        ],
+        [
+          0.15625,
+          101325.015625,
+          0.0,
+          0.0,
+          44327.0625
+        ]
+      ],
+      "definition": {
+        "kind": "moving",
+        "analytic": [
+          0.15625,
+          101325.02208555886,
+          0.0,
+          0.0,
+          44329.69172553861
+        ],
+        "bound": [
+          0.0016069358111005844,
+          0.9280597546715975,
+          3.814697265625e-06,
+          3.814697265625e-06,
+          455.90380242443035
+        ]
+      }
+    },
+    {
+      "label": "default-wall",
+      "passed": true,
+      "actual": [
+        [
+          -1.5661120414733887e-05,
+          101272.359375,
+          0.0,
+          0.0,
+          -5.76270866394043
+        ],
+        [
+          0.15625,
+          101325.015625,
+          0.0,
+          0.0,
+          44327.0625
+        ]
+      ],
+      "definition": {
+        "kind": "wall",
+        "analytic": [
+          0.15625,
+          101325.02208555886,
+          0.0,
+          0.0,
+          44329.69172553861
+        ],
+        "bound": [
+          0.0016069358111005844,
+          0.9280597546715975,
+          3.814697265625e-06,
+          3.814697265625e-06,
+          455.90380242443035
+        ]
+      }
+    },
+    {
+      "label": "unfused-stationary",
+      "passed": true,
+      "actual": [
+        [
+          0.0,
+          101325.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          101325.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "definition": {
+        "kind": "stationary",
+        "analytic": [
+          0.0,
+          101325.000210559,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "bound": [
+          0.001606339746074698,
+          0.9276580737669576,
+          3.814697265625e-06,
+          3.814697265625e-06,
+          455.7346697086828
+        ]
+      }
+    },
+    {
+      "label": "unfused-moving",
+      "passed": true,
+      "actual": [
+        [
+          0.15625,
+          101325.015625,
+          0.0,
+          0.0,
+          44324.43359375
+        ],
+        [
+          0.15625,
+          101325.015625,
+          0.0,
+          0.0,
+          44324.43359375
+        ]
+      ],
+      "definition": {
+        "kind": "moving",
+        "analytic": [
+          0.15625,
+          101325.02208555886,
+          0.0,
+          0.0,
+          44329.69172553861
+        ],
+        "bound": [
+          0.0016069358111005844,
+          0.9280597546715975,
+          3.814697265625e-06,
+          3.814697265625e-06,
+          455.90380242443035
+        ]
+      }
+    },
+    {
+      "label": "unfused-wall",
+      "passed": true,
+      "actual": [
+        [
+          -1.5661120414733887e-05,
+          101272.359375,
+          0.0,
+          0.0,
+          -9.078125
+        ],
+        [
+          0.15625,
+          101325.015625,
+          0.0,
+          0.0,
+          44324.43359375
+        ]
+      ],
+      "definition": {
+        "kind": "wall",
+        "analytic": [
+          0.15625,
+          101325.02208555886,
+          0.0,
+          0.0,
+          44329.69172553861
+        ],
+        "bound": [
+          0.0016069358111005844,
+          0.9280597546715975,
+          3.814697265625e-06,
+          3.814697265625e-06,
+          455.90380242443035
+        ]
+      }
+    }
+  ],
+  "strata": {
+    "amplitudePa=1": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 2745909,
+      "skipped": 267291,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "amplitudePa=10": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 2736059,
+      "skipped": 277429,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "amplitudePa=100": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 2745960,
+      "skipped": 269832,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "cfl=0.225": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 5486061,
+      "skipped": 540915,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "cfl=0.45": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 2741867,
+      "skipped": 273637,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "components=both": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 2746290,
+      "skipped": 267870,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "components=density": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 2732878,
+      "skipped": 281282,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "components=energy": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 2748760,
+      "skipped": 265400,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "method=protected-kahan-v1": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 4115438,
+      "skipped": 405802,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "method=protected-update-no-carry-v1": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 4112490,
+      "skipped": 408750,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "nx=1024": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 2352828,
+      "skipped": 231108,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "nx=2048": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 4694166,
+      "skipped": 471114,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "nx=512": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "compatibleCases": 144,
+      "executed": 1180934,
+      "skipped": 112330,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "policy=default": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 4108969,
+      "skipped": 412271,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "policy=unfused": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 4118959,
+      "skipped": 402281,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "tiled=False": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 4521240,
+      "skipped": 0,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "tiled=True": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "compatibleCases": 216,
+      "executed": 3706688,
+      "skipped": 814552,
+      "wordDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "numericDifferencesByComponent": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumAbsoluteErrorByComponent": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "failedOutcomes": [],
+  "decision": "Keep as a byte-compatible separate face-flux recomputation for the complete declared corpus only. Any intermediate-output variant needs its own full compatibility controls. No production-intermediate, emitted-instruction or evolved-peak-cause attribution.",
+  "limits": "Flux component order rho,mx,my,mz,E; both faces counted. Full/tiled cases are correlated and strata overlap. This replay uses stored physical source words and lambda; it evolves no PDE and observes no production intermediates. No precision/default/admission change."
+}

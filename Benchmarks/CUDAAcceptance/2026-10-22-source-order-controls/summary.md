@@ -70,3 +70,8 @@ verification covers all 452 own raw files, both archives, every consumed prior
 input and all selected runtime/helper/source pins. See
 [publication-checks.json](publication-checks.json). The full archive is
 349,934,615 bytes; public metadata is 20 files / 231,420 bytes.
+
+A subsequent [separate Metal replay](../2026-10-22-metal-stencil-replay/summary.md)
+now matches every captured face-flux word in all 432 cases. This establishes a
+compatible GPU recomputation while preserving the CPU-model limitations above.
+Any intermediate-output variant still needs its own complete compatibility gate.
