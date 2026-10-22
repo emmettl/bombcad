@@ -1,0 +1,608 @@
+{
+  "schema": "bombcad-metal-stage-replay-summary-1",
+  "inputSHA256": "dabf32dc1c8241c609474d3eac8798efc0bdfe9abe5fbf9aa19ab2e62c952ebf",
+  "all432FluxByteCompatible": false,
+  "eligibleForSubsequentStageComparison": false,
+  "fullTiledPairs": 216,
+  "allCommonFullTiledPayloadParity": true,
+  "comparedFluxWords": 82279280,
+  "all": {
+    "cases": 432,
+    "statuses": {
+      "audited": 432
+    },
+    "audited": 432,
+    "byteCompatibleCases": 0,
+    "numericallyCompatibleCases": 0,
+    "executed": 8227928,
+    "skipped": 814552,
+    "allFieldsFinite": true,
+    "wordDifferencesByComponent": [
+      318262,
+      98,
+      23348,
+      23348,
+      289146
+    ],
+    "numericDifferencesByComponent": [
+      318262,
+      98,
+      0,
+      0,
+      289146
+    ],
+    "maximumAbsoluteFluxErrorByComponent": [
+      0.00013480550842359662,
+      0.0078125,
+      0.0,
+      0.0,
+      37.45199775695801
+    ]
+  },
+  "strata": {
+    "amplitudePa=1": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2745909,
+      "skipped": 267291,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        92690,
+        42,
+        10010,
+        10010,
+        83512
+      ],
+      "numericDifferencesByComponent": [
+        92690,
+        42,
+        0,
+        0,
+        83512
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00011729095422197133,
+        0.0078125,
+        0.0,
+        0.0,
+        35.97376251220703
+      ]
+    },
+    "amplitudePa=10": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2736059,
+      "skipped": 277429,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        106646,
+        28,
+        9022,
+        9022,
+        97120
+      ],
+      "numericDifferencesByComponent": [
+        106646,
+        28,
+        0,
+        0,
+        97120
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013340507575776428,
+        0.0078125,
+        0.0,
+        0.0,
+        37.074031829833984
+      ]
+    },
+    "amplitudePa=100": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2745960,
+      "skipped": 269832,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        118926,
+        28,
+        4316,
+        4316,
+        108514
+      ],
+      "numericDifferencesByComponent": [
+        118926,
+        28,
+        0,
+        0,
+        108514
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    },
+    "cfl=0.225": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 5486061,
+      "skipped": 540915,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        174162,
+        60,
+        13258,
+        13258,
+        159892
+      ],
+      "numericDifferencesByComponent": [
+        174162,
+        60,
+        0,
+        0,
+        159892
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        37.074031829833984
+      ]
+    },
+    "cfl=0.45": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2741867,
+      "skipped": 273637,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        144100,
+        38,
+        10090,
+        10090,
+        129254
+      ],
+      "numericDifferencesByComponent": [
+        144100,
+        38,
+        0,
+        0,
+        129254
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013340507575776428,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    },
+    "components=both": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2746290,
+      "skipped": 267870,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        102896,
+        32,
+        7492,
+        7492,
+        93602
+      ],
+      "numericDifferencesByComponent": [
+        102896,
+        32,
+        0,
+        0,
+        93602
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.0001299016148550436,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    },
+    "components=density": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2732878,
+      "skipped": 281282,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        112278,
+        26,
+        7988,
+        7988,
+        102406
+      ],
+      "numericDifferencesByComponent": [
+        112278,
+        26,
+        0,
+        0,
+        102406
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.000129902342450805,
+        0.0078125,
+        0.0,
+        0.0,
+        37.074031829833984
+      ]
+    },
+    "components=energy": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2748760,
+      "skipped": 265400,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        103088,
+        40,
+        7868,
+        7868,
+        93138
+      ],
+      "numericDifferencesByComponent": [
+        103088,
+        40,
+        0,
+        0,
+        93138
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        37.074031829833984
+      ]
+    },
+    "method=protected-kahan-v1": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 4115438,
+      "skipped": 405802,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        149150,
+        64,
+        11156,
+        11156,
+        134306
+      ],
+      "numericDifferencesByComponent": [
+        149150,
+        64,
+        0,
+        0,
+        134306
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013340507575776428,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    },
+    "method=protected-update-no-carry-v1": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 4112490,
+      "skipped": 408750,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        169112,
+        34,
+        12192,
+        12192,
+        154840
+      ],
+      "numericDifferencesByComponent": [
+        169112,
+        34,
+        0,
+        0,
+        154840
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        37.074031829833984
+      ]
+    },
+    "nx=1024": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 2352828,
+      "skipped": 231108,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        92196,
+        28,
+        5942,
+        5942,
+        83622
+      ],
+      "numericDifferencesByComponent": [
+        92196,
+        28,
+        0,
+        0,
+        83622
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00012352931662462652,
+        0.0078125,
+        0.0,
+        0.0,
+        35.373233795166016
+      ]
+    },
+    "nx=2048": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 4694166,
+      "skipped": 471114,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        175462,
+        64,
+        15114,
+        15114,
+        159090
+      ],
+      "numericDifferencesByComponent": [
+        175462,
+        64,
+        0,
+        0,
+        159090
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.000129902342450805,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    },
+    "nx=512": {
+      "cases": 144,
+      "statuses": {
+        "audited": 144
+      },
+      "audited": 144,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 1180934,
+      "skipped": 112330,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        50604,
+        6,
+        2292,
+        2292,
+        46434
+      ],
+      "numericDifferencesByComponent": [
+        50604,
+        6,
+        0,
+        0,
+        46434
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        36.94875717163086
+      ]
+    },
+    "policy=default": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 4108969,
+      "skipped": 412271,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        240696,
+        80,
+        23348,
+        23348,
+        215238
+      ],
+      "numericDifferencesByComponent": [
+        240696,
+        80,
+        0,
+        0,
+        215238
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    },
+    "policy=unfused": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 4118959,
+      "skipped": 402281,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        77566,
+        18,
+        0,
+        0,
+        73908
+      ],
+      "numericDifferencesByComponent": [
+        77566,
+        18,
+        0,
+        0,
+        73908
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        8.112192153930664e-05,
+        0.0078125,
+        0.0,
+        0.0,
+        15.9453125
+      ]
+    },
+    "tiled=False": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 4521240,
+      "skipped": 0,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        159131,
+        49,
+        11674,
+        11674,
+        144573
+      ],
+      "numericDifferencesByComponent": [
+        159131,
+        49,
+        0,
+        0,
+        144573
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    },
+    "tiled=True": {
+      "cases": 216,
+      "statuses": {
+        "audited": 216
+      },
+      "audited": 216,
+      "byteCompatibleCases": 0,
+      "numericallyCompatibleCases": 0,
+      "executed": 3706688,
+      "skipped": 814552,
+      "allFieldsFinite": true,
+      "wordDifferencesByComponent": [
+        159131,
+        49,
+        11674,
+        11674,
+        144573
+      ],
+      "numericDifferencesByComponent": [
+        159131,
+        49,
+        0,
+        0,
+        144573
+      ],
+      "maximumAbsoluteFluxErrorByComponent": [
+        0.00013480550842359662,
+        0.0078125,
+        0.0,
+        0.0,
+        37.45199775695801
+      ]
+    }
+  },
+  "failedAudits": [],
+  "decision": "Reject the component-output replay for component or peak-cause attribution on the complete declared corpus. Preserve every payload. The separately accepted face-only replay is unchanged; no policy/scalar subset promotion.",
+  "limits": "Only compatibility of the ten flux words, finiteness and common-input determinism are analyzed. Rejected primitive/slope/face values are not compared with independent models. The transformation both names slope locals and adds stores; this does not isolate one source transformation or instruction as the cause. No production precision/default/admission change."
+}

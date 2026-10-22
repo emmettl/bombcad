@@ -1,0 +1,89 @@
+{
+  "binarySHA256" : "c13a753e1aab8ebc627c46eff99e3e5bea61fdde993a215f82bbb4032dfca9dc",
+  "compileOptions" : "nil; unfused prefix contract(off); function constant2 UInt32=0",
+  "device" : "Apple M4 Max",
+  "manifestSHA256" : "9b077827ae9f123b8ec7e3c7bd8aef7b60afcaf817ac881c6b24c9e62d910198",
+  "os" : "Version 27.0.1 (Build 26A434)",
+  "recordWords" : 91,
+  "registryID" : "4294968412",
+  "rows" : [
+    {
+      "count" : 1,
+      "inputSHA256" : {
+        "lambda.bin" : "0f2f3591427956b004ca17393783192e0f81858c06bb5496aa2cea004f1ee863",
+        "signs.bin" : "c8c362c52a33bdd8c9fa09b44caf5284e23fd17e4976103c51b9f2fadf957033",
+        "state.bin" : "f2b76c385f1145253b917dad8aa5a6f3c0e373f690ffe3ce8ec390a15c608353",
+        "uniforms.bin" : "1bf303fa475291af00223c658a77eaecd6a877d4ead4438ddebd4894d3fafde3"
+      },
+      "label" : "default-stationary",
+      "outputSHA256" : "0d07bf3648d1b414e4a3060e2a1140e3c27b8c2306bf36ecbf30b932e1b7d7eb",
+      "status" : "complete"
+    },
+    {
+      "count" : 1,
+      "inputSHA256" : {
+        "lambda.bin" : "0f2f3591427956b004ca17393783192e0f81858c06bb5496aa2cea004f1ee863",
+        "signs.bin" : "c8c362c52a33bdd8c9fa09b44caf5284e23fd17e4976103c51b9f2fadf957033",
+        "state.bin" : "c2b58cef464cb39545293b6935bc903c63d484713c4999e6de01565c49a7d1de",
+        "uniforms.bin" : "1bf303fa475291af00223c658a77eaecd6a877d4ead4438ddebd4894d3fafde3"
+      },
+      "label" : "default-moving",
+      "outputSHA256" : "2a66261862f739e6be557a39bc332c0a226c2548f4d1037d523524d890d94eaa",
+      "status" : "complete"
+    },
+    {
+      "count" : 1,
+      "inputSHA256" : {
+        "lambda.bin" : "0f2f3591427956b004ca17393783192e0f81858c06bb5496aa2cea004f1ee863",
+        "signs.bin" : "16d3147aa4082b805969daba5e0516bb9d6041342e8c3433b69bfa2ff5e6b3ee",
+        "state.bin" : "c2b58cef464cb39545293b6935bc903c63d484713c4999e6de01565c49a7d1de",
+        "uniforms.bin" : "1bf303fa475291af00223c658a77eaecd6a877d4ead4438ddebd4894d3fafde3"
+      },
+      "label" : "default-wall",
+      "outputSHA256" : "e39cb5cd8f095bd097c9351f44f9e3155640c4959d82762be83a1f7bc958384e",
+      "status" : "complete"
+    },
+    {
+      "count" : 1,
+      "inputSHA256" : {
+        "lambda.bin" : "0f2f3591427956b004ca17393783192e0f81858c06bb5496aa2cea004f1ee863",
+        "signs.bin" : "c8c362c52a33bdd8c9fa09b44caf5284e23fd17e4976103c51b9f2fadf957033",
+        "state.bin" : "f2b76c385f1145253b917dad8aa5a6f3c0e373f690ffe3ce8ec390a15c608353",
+        "uniforms.bin" : "1bf303fa475291af00223c658a77eaecd6a877d4ead4438ddebd4894d3fafde3"
+      },
+      "label" : "unfused-stationary",
+      "outputSHA256" : "dd7189bba8c4b860549177bef14b68a0346f0e9a32ecb6c26abd5398a1701ffa",
+      "status" : "complete"
+    },
+    {
+      "count" : 1,
+      "inputSHA256" : {
+        "lambda.bin" : "0f2f3591427956b004ca17393783192e0f81858c06bb5496aa2cea004f1ee863",
+        "signs.bin" : "c8c362c52a33bdd8c9fa09b44caf5284e23fd17e4976103c51b9f2fadf957033",
+        "state.bin" : "c2b58cef464cb39545293b6935bc903c63d484713c4999e6de01565c49a7d1de",
+        "uniforms.bin" : "1bf303fa475291af00223c658a77eaecd6a877d4ead4438ddebd4894d3fafde3"
+      },
+      "label" : "unfused-moving",
+      "outputSHA256" : "f37ad01647188b9ba297da7f96c8470c3c6cb5dd9f78cd57ff701ab4e98de115",
+      "status" : "complete"
+    },
+    {
+      "count" : 1,
+      "inputSHA256" : {
+        "lambda.bin" : "0f2f3591427956b004ca17393783192e0f81858c06bb5496aa2cea004f1ee863",
+        "signs.bin" : "16d3147aa4082b805969daba5e0516bb9d6041342e8c3433b69bfa2ff5e6b3ee",
+        "state.bin" : "c2b58cef464cb39545293b6935bc903c63d484713c4999e6de01565c49a7d1de",
+        "uniforms.bin" : "1bf303fa475291af00223c658a77eaecd6a877d4ead4438ddebd4894d3fafde3"
+      },
+      "label" : "unfused-wall",
+      "outputSHA256" : "550553fa1335812bd915ca5e8158b268f66445c8b718215ff7146337995563e4",
+      "status" : "complete"
+    }
+  ],
+  "scope" : "Separate stencil recomputation, not production intermediate observation or instruction attestation",
+  "sourceSHA256" : {
+    "default" : "6a5fc5329569fcfccfbba138c81435fc3b1803a417540ed004cf64dbbcd3f5a1",
+    "unfused" : "11f305c152a18eac84d521a014b6c0e4286276d112c0c999a82dbc47427849ef"
+  },
+  "status" : "complete-all-outcomes"
+}

@@ -70,3 +70,9 @@ all 3,264 own raw files, both archives, consumed source cases and every selected
 runtime/compiler/helper/source pin; see [publication-checks.json](publication-checks.json).
 The full archive is 266,355,916 bytes; public metadata is 202 files / 1,211,880
 bytes. Numerical data and runtime binaries remain external.
+
+The subsequent [91-word component-output variant](../2026-10-22-metal-stage-replay/summary.md)
+was tested on the complete corpus and failed flux compatibility in all 432 cases.
+Its payloads are retained and rejected for component attribution. This face-only
+replay remains accepted; finiteness and full/tiled reproducibility do not waive
+the observer's separate compatibility gate.

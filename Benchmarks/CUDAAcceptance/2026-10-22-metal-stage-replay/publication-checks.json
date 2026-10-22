@@ -1,0 +1,22 @@
+{
+  "schema": "bombcad-metal-stage-publication-checks-1",
+  "formatLint": true,
+  "strictBuildNoWarnings": true,
+  "standaloneSwiftWarningsAsErrorsBuild": true,
+  "plainCheckAffected": true,
+  "macSelectedSuitesPass": true,
+  "pcTests": 62,
+  "pcSuites": 11,
+  "analyticControls": 6,
+  "all432CasesAudited": true,
+  "compatibleCases": 0,
+  "stageAttributionRejected": true,
+  "all470OwnRawFilesRehashedAfterChecks": true,
+  "bothOwnArchiveHashesVerified": true,
+  "parentFullArchiveHashVerified": true,
+  "allConsumedParentFilePinsVerified": 3071,
+  "selectedCompilerRuntimeHelperPinsVerified": true,
+  "frozenAndPostprocessingSourcesMatch": true,
+  "productionPDETrajectoryRerunsForStudy": 0,
+  "scope": "Repository checks pass; the scientific compatibility gate fails and remains rejected. This is not an ordinary solver digest rerun, physical validation or data admission. Existing unrelated Python test ResourceWarnings do not change the warning-free compiler result."
+}
