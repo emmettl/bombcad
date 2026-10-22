@@ -1,0 +1,179 @@
+{
+ "case": "kb-surface-burst-free-field",
+ "run": "100kg",
+ "label": "directions-dx0.015625",
+ "code": {
+  "name": "Clawpack (PyClaw)",
+  "version": "5.14.0"
+ },
+ "python": "3.13.16",
+ "numpy": "2.5.4",
+ "parameters": {
+  "geometry": "2-D axisymmetric r-z, x = radius, y = height; axis and ground reflecting (PyClaw wall), outer faces extrap",
+  "cell_m": 0.015625,
+  "cells": [
+   640,
+   640
+  ],
+  "extent_m": 10.0,
+  "stop_s": 0.007,
+  "riemann_solver": "euler_4wave_2D (Roe, entropy fix)",
+  "limiter": "MC",
+  "transverse_waves": 2,
+  "first_order_startup_steps": 6,
+  "cfl_desired": 0.45,
+  "cfl_max": 0.5,
+  "source_split": "Godunov, geometric source by two-stage Runge-Kutta",
+  "dimensional_split": false,
+  "density_floor_kg_m3": 1e-06,
+  "pressure_floor_Pa": 0.001,
+  "gamma": 1.4,
+  "ambient_pressure_Pa": 101325,
+  "ambient_density_kg_m3": 1.225,
+  "hemisphere_mass_kg": 100.0,
+  "charge_radius_m": 0.31017524544970004,
+  "source_cells": 326,
+  "sample_interval_s": 5e-05
+ },
+ "budget": {
+  "excess_mass_kg_initial": 99.92343750000055,
+  "excess_mass_kg_declared": 99.9234375,
+  "excess_energy_J_initial": 418400000.0000001,
+  "excess_energy_J_declared": 418400000.0,
+  "total_mass_final_over_initial": 1.0001547770446533,
+  "total_energy_final_over_initial": 1.0023762336610125,
+  "excess_energy_final_over_initial": 1.006895874888885,
+  "floor_mass_added_kg": 0.0,
+  "floor_energy_added_J": 559.198091044392,
+  "floored_cell_steps": 2795,
+  "max_overpressure_at_outer_faces_final_Pa": 0.0
+ },
+ "steps": 2729,
+ "wall_s": 718.0,
+ "excess_energy_over_declared": [
+  [
+   0.001,
+   1.002372362093775
+  ],
+  [
+   0.002,
+   1.0044231772043333
+  ],
+  [
+   0.003,
+   1.0054681991690135
+  ],
+  [
+   0.004,
+   1.0060560566159793
+  ],
+  [
+   0.005,
+   1.0064310793143636
+  ],
+  [
+   0.006,
+   1.0066928807660909
+  ],
+  [
+   0.007,
+   1.006895874888885
+  ]
+ ],
+ "gauges_at_samples": {
+  "Z0.75": {
+   "peak_incident_overpressure": 2510.958541121702,
+   "incident_positive_impulse": 867.6551926198612,
+   "arrival_time": 1.2392144013394335,
+   "phase_start_s": 0.0012000000197728861,
+   "phase_end_s": 0.002142991039891337,
+   "max_overpressure_kPa": 2510.958541121702
+  },
+  "Z1": {
+   "peak_incident_overpressure": 1279.491785910756,
+   "incident_positive_impulse": 851.8577447732163,
+   "arrival_time": 1.9619027543626701,
+   "phase_start_s": 0.0019,
+   "phase_end_s": 0.005009462187709835,
+   "max_overpressure_kPa": 1279.491785910756
+  }
+ },
+ "gauges_every_step": {
+  "Z0.75": {
+   "peak_incident_overpressure": 2575.2225320033194,
+   "incident_positive_impulse": 830.7165586538202,
+   "arrival_time": 1.2382982923780403,
+   "phase_start_s": 0.0012162292474406085,
+   "phase_end_s": 0.0021212169666766883,
+   "max_overpressure_kPa": 2575.2225320033194
+  },
+  "Z1": {
+   "peak_incident_overpressure": 1279.491785910756,
+   "incident_positive_impulse": 855.7408622642266,
+   "arrival_time": 1.9514943914649465,
+   "phase_start_s": 0.0019272323379302162,
+   "phase_end_s": 0.005008939658091446,
+   "max_overpressure_kPa": 1279.491785910756
+  }
+ },
+ "directions_at_samples": {
+  "Z0.75@45deg": {
+   "peak_incident_overpressure": 2835.87102711708,
+   "incident_positive_impulse": 868.213050355,
+   "arrival_time": 1.2750000000000001,
+   "phase_start_s": 0.00125,
+   "phase_end_s": 0.002112493700035427,
+   "max_overpressure_kPa": 2835.87102711708
+  },
+  "Z0.75@axis": {
+   "peak_incident_overpressure": 2804.312036067339,
+   "incident_positive_impulse": 875.4441848763103,
+   "arrival_time": 1.2749999124766873,
+   "phase_start_s": 0.0012000000000000001,
+   "phase_end_s": 0.002511339859857715,
+   "max_overpressure_kPa": 2804.312036067339
+  },
+  "Z1@45deg": {
+   "peak_incident_overpressure": 1511.443096352338,
+   "incident_positive_impulse": 886.9810759080565,
+   "arrival_time": 2.030403865993031,
+   "phase_start_s": 0.0019500000000000001,
+   "phase_end_s": 0.0051932762289347584,
+   "max_overpressure_kPa": 1511.443096352338
+  },
+  "Z1@axis": {
+   "peak_incident_overpressure": 1609.1844555483972,
+   "incident_positive_impulse": 890.808233734536,
+   "arrival_time": 2.0249998734436065,
+   "phase_start_s": 0.0019500000000000001,
+   "phase_end_s": 0.00514074024079608,
+   "max_overpressure_kPa": 1609.1844555483972
+  }
+ },
+ "directions_every_step": {
+  "Z0.75@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 2837.4910385100698
+  },
+  "Z0.75@axis": {
+   "peak_incident_overpressure": 2944.7024735637087,
+   "incident_positive_impulse": 879.8563641825119,
+   "arrival_time": 1.2721559438262418,
+   "phase_start_s": 0.001243182073942585,
+   "phase_end_s": 0.002364860118085567,
+   "max_overpressure_kPa": 2944.7024735637087
+  },
+  "Z1@45deg": {
+   "error": "Earlier positive pulse precedes the dominant peak",
+   "max_overpressure_kPa": 1636.859285708405
+  },
+  "Z1@axis": {
+   "peak_incident_overpressure": 1629.4746449591498,
+   "incident_positive_impulse": 881.3314122356219,
+   "arrival_time": 2.031520691646339,
+   "phase_start_s": 0.0019914954727849443,
+   "phase_end_s": 0.005141162798443368,
+   "max_overpressure_kPa": 1629.4746449591498
+  }
+ }
+}

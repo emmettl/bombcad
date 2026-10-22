@@ -41,6 +41,16 @@ balloon's missing afterburning). Its impulses and arrivals converge, at about se
 pyro2's 1-D values (the Richardson estimates within 1% and 0.05 ms); its peaks converge slowly,
 and are 1–7% below the 1-D peaks on the finest meshes run.
 
+**One exception, and it is numerical.** On 16 mm cells the two nearest ground gauges read peaks
+well below the 31 mm run's (1,279 kPa at Z = 1, against 1,565), and the shock reaches Z = 1
+0.08 ms early, while gauges at the same distances on the axis and 45° up read 1,629 and 1,637 kPa
+and arrive on time, with pyro2's 1,700 kPa on 5 mm cells. On 31 mm cells the three directions
+agree within 0.5%. So on the finest mesh the rigid ground, as a boundary along which a strong
+shock runs aligned with the grid, gives a low, early ground reading: the signature of Roe's
+odd-even instability on grid-aligned shocks, though the mechanism was not isolated. Scored, it
+fails two more values (the impulse and the arrival at Z = 1). The ground changes the score, here,
+only through the scheme.
+
 ## The set-up
 
 **Install.** Clawpack builds Fortran kernels: gfortran 13.3 (Ubuntu's package), then in a virtual
@@ -160,6 +170,12 @@ by the same rule: the answer the 2-D run should approach if the ground adds noth
   cells, read at a cell centre and every 50 µs. On 31.25 mm cells the peak at Z = 0.75 is 7%
   below pyro2's on 10 mm, at Z = 1–2 1–4%; the far gauges' peaks, run only to 62.5 mm, are 4–6%
   below, and their changes between meshes are too small and irregular to give an order.
+- **16 mm** (with startup steps; against the 31 mm run with them): the ground readings at
+  Z = 0.75–1.5 move the wrong way, the peaks 6%, 18% and 8% lower and the arrivals up to 3% early
+  (impulses within 4%), while Z = 2's peak rises 2.5% as it should: the ground artefact above.
+  Off the ground (`outputs/directions-dx0.015625.json`, a 10 m, 7 ms run of
+  the two nearest gauges, its ground values identical to the 16 m run's) the peaks rise with
+  refinement as they should: at Z = 0.75 to 2,945 kPa on the axis, against pyro2's 2,918 on 5 mm.
 - **Energy.** PyClaw's geometric source terms are not conservative: they use the flux at the
   cell's centre where a conservative scheme uses its faces. With the charge in a few cells at
   the axis, the domain gains energy, almost all of it in the first millisecond: 41% of the
@@ -245,7 +261,9 @@ its effect on a score.
   a non-finite CFL number; every run reported here was made after that fix.
 - **The 16 mm mesh** drove a cell at the balloon's edge to negative density in the first full
   step, and the floored cell's speed ran the time step to 10⁻³⁵ s. Six first-order startup steps
-  (`--startup-steps 6`) get past it. STARTUP
+  (`--startup-steps 6`) get past it. They are not neutral: on 31 mm cells they move the near
+  peaks and impulses by up to 3.4%, so the 16 mm run is compared with a 31 mm run that has them
+  too (the mesh study's second table).
 - **The room with MC** ran its time step down to nanoseconds by 1.8 ms: a cell floored to 10⁻⁶
   kg/m³ that keeps its energy has a pressure of a gigapascal. With minmod the heaviest charge
   needs no floor at all and the lightest's floors add 0.03% of its energy. The room's observable,

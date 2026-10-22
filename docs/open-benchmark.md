@@ -332,7 +332,10 @@ on a 16 m domain): the free-field score is 0.54, 0.79, 0.96 and 0.96 on 0.5, 0.2
 with the same low peaks and early arrivals. The impulses and arrivals converge at about second
 order to pyro2's 1-D values (Richardson estimates within 1% and 0.05 ms); the peaks converge at
 first order or less and on the finest meshes are 1–7% below pyro2's. The far boundary returns
-nothing: a 36 m domain reads every value as the 48 m domain does to five digits.
+nothing: a 36 m domain reads every value as the 48 m domain does to five digits. On 16 mm cells
+alone the two nearest ground gauges read low and early (at Z = 1, 1,279 kPa against 1,629 on the
+axis at the same distance, and 0.08 ms early), an artefact of the scheme at the ground boundary,
+which fails two more values: the one way, here, that the ground changed the score.
 
 **What the run found about the contract.** In the README there, in full; the main points:
 
