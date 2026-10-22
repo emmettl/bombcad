@@ -1,0 +1,25 @@
+{
+  "format": "pass",
+  "lint": "pass",
+  "hostStrictBuild": "pass, no warnings",
+  "standaloneSwift": "warnings-as-errors pass; original xcrun SDK27 invocation restored after compile-only SDK14 failure",
+  "affected": "plain make check-affected pass; 36 PC tests / 4 suites; existing Python ResourceWarnings retained",
+  "nativeFirstDTGates": 6,
+  "ownCrossControlBytes": "all own-bank control bytes exact per backend",
+  "exactDivisionControls": 3,
+  "remoteVerification": "fresh own/cross output, physical state/mask and selected runtime pins verified",
+  "PDEAdvanced": false,
+  "sourceSHA256": {
+    "exact_division.py": "7e5e5c1397b0e765ce829d4a96a3cb2232525f08f72170c46c1c087673e6cf62",
+    "run_metal.py": "3eeb67e3638390adecb33ab381404cb101587c4e65ed8be70d51ee2fc99152cf",
+    "replay.swift": "a705efbfaa431e86fd237ea72c87796f6a2ec6625c78e5e87d45a0451b7682ed",
+    "stage_cuda.py": "8dd471b74b126d04a0d9527739fe670c603c09b0f477ddf19846fcd0caf6f887",
+    "cuda_replay.py": "3fd97d50339d1e187068ea12408d931b5674436de8a84932af36e0047cb6f91f",
+    "run_cuda.py": "d54d7a57f9b506f3d478090e563df0e1bdff0ccf5691482f44d3afbd2601557a",
+    "archive.py": "6c9c91051694c0d835def7a1083eab41135074790e1b1b1f162b58e55efc1093",
+    "verify.py": "51427dee64f11642209710184d44de722a036e4f9c91f6087d390785d6ba3b7f",
+    "prepare.py": "4dc51e37106dd8dae40fe2d133f139b9af0212e2893afe3fc450d4351d58ab72",
+    "analyze.py": "503a7ae4ad8116c57cc446dd5b1f046c8439e5c6939d5b37eae61ff8af5eae44",
+    "check_division.py": "600eea17ba572bc7c236e05c5f5fa0096b79882193f5eb73a0a4adc045c8cbfa"
+  }
+}

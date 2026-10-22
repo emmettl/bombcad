@@ -1,0 +1,266 @@
+{
+  "status": "complete-all-outcomes",
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "history": {
+        "activeSteps": 2645,
+        "differentWords": 2587,
+        "firstDifferentActiveStep": 3,
+        "firstMetalWord": 965173314,
+        "firstCUDAWord": 965173313,
+        "allPreparedCFLWordsEqual": true,
+        "firstCFL": 0.07500000298023224,
+        "firstSixCFL": [
+          0.07500000298023224,
+          0.15000000596046448,
+          0.22499999403953552,
+          0.30000001192092896,
+          0.3749999701976776,
+          0.44999998807907104
+        ]
+      },
+      "measuredSpeedWords": {
+        "metal": [
+          1163625554,
+          1286762315
+        ],
+        "cuda": [
+          1163625554,
+          1286762315
+        ]
+      },
+      "measuredSpeeds": {
+        "metal": 3512.27001953125,
+        "cuda": 3512.27001953125
+      },
+      "sameMeasuredFastestWord": true,
+      "selectionInputs": {
+        "cfl": 0.07500000298023224,
+        "dx": 4.0,
+        "maxStep": 0,
+        "forcedStep": 0,
+        "timeLimit": 4.506065845489502,
+        "batchTime": 0,
+        "stepIndex": 0,
+        "stopped": 0
+      },
+      "crossSelection": {
+        "metal": {
+          "correctlyRoundedFloat32Word": 951263423,
+          "correctlyRoundedFloat32": 8.541484567103907e-05,
+          "metal": {
+            "dtWord": 951263423,
+            "dt": 8.541484567103907e-05,
+            "ulpsFromCorrectRounding": 0
+          },
+          "cuda": {
+            "dtWord": 951263423,
+            "dt": 8.541484567103907e-05,
+            "ulpsFromCorrectRounding": 0
+          }
+        },
+        "cuda": {
+          "correctlyRoundedFloat32Word": 951263423,
+          "correctlyRoundedFloat32": 8.541484567103907e-05,
+          "metal": {
+            "dtWord": 951263423,
+            "dt": 8.541484567103907e-05,
+            "ulpsFromCorrectRounding": 0
+          },
+          "cuda": {
+            "dtWord": 951263423,
+            "dt": 8.541484567103907e-05,
+            "ulpsFromCorrectRounding": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "history": {
+        "activeSteps": 2711,
+        "differentWords": 2498,
+        "firstDifferentActiveStep": 1,
+        "firstMetalWord": 953740701,
+        "firstCUDAWord": 953740700,
+        "allPreparedCFLWordsEqual": true,
+        "firstCFL": 0.07500000298023224,
+        "firstSixCFL": [
+          0.07500000298023224,
+          0.15000000596046448,
+          0.22499999403953552,
+          0.30000001192092896,
+          0.3749999701976776,
+          0.44999998807907104
+        ]
+      },
+      "measuredSpeedWords": {
+        "metal": [
+          1161118715,
+          1243078780
+        ],
+        "cuda": [
+          1161118715,
+          1243078780
+        ]
+      },
+      "measuredSpeeds": {
+        "metal": 2900.248779296875,
+        "cuda": 2900.248779296875
+      },
+      "sameMeasuredFastestWord": true,
+      "selectionInputs": {
+        "cfl": 0.07500000298023224,
+        "dx": 4.0,
+        "maxStep": 0,
+        "forcedStep": 0,
+        "timeLimit": 4.57216739654541,
+        "batchTime": 0,
+        "stepIndex": 0,
+        "stopped": 0
+      },
+      "crossSelection": {
+        "metal": {
+          "correctlyRoundedFloat32Word": 953740700,
+          "correctlyRoundedFloat32": 0.00010343940812163055,
+          "metal": {
+            "dtWord": 953740701,
+            "dt": 0.00010343941539758816,
+            "ulpsFromCorrectRounding": 1
+          },
+          "cuda": {
+            "dtWord": 953740700,
+            "dt": 0.00010343940812163055,
+            "ulpsFromCorrectRounding": 0
+          }
+        },
+        "cuda": {
+          "correctlyRoundedFloat32Word": 953740700,
+          "correctlyRoundedFloat32": 0.00010343940812163055,
+          "metal": {
+            "dtWord": 953740701,
+            "dt": 0.00010343941539758816,
+            "ulpsFromCorrectRounding": 1
+          },
+          "cuda": {
+            "dtWord": 953740700,
+            "dt": 0.00010343940812163055,
+            "ulpsFromCorrectRounding": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "beirut-p0-1",
+      "history": {
+        "activeSteps": 2417,
+        "differentWords": 2388,
+        "firstDifferentActiveStep": 2,
+        "firstMetalWord": 967115816,
+        "firstCUDAWord": 967115815,
+        "allPreparedCFLWordsEqual": true,
+        "firstCFL": 0.07500000298023224,
+        "firstSixCFL": [
+          0.07500000298023224,
+          0.15000000596046448,
+          0.22499999403953552,
+          0.30000001192092896,
+          0.3749999701976776,
+          0.44999998807907104
+        ]
+      },
+      "measuredSpeedWords": {
+        "metal": [
+          1156510765,
+          1236060096
+        ],
+        "cuda": [
+          1156510766,
+          1236060098
+        ]
+      },
+      "measuredSpeeds": {
+        "metal": 1911.6304931640625,
+        "cuda": 1911.630615234375
+      },
+      "sameMeasuredFastestWord": false,
+      "selectionInputs": {
+        "cfl": 0.07500000298023224,
+        "dx": 4.0,
+        "maxStep": 0,
+        "forcedStep": 0,
+        "timeLimit": 4.484546184539795,
+        "batchTime": 0,
+        "stepIndex": 0,
+        "stopped": 0
+      },
+      "crossSelection": {
+        "metal": {
+          "correctlyRoundedFloat32Word": 958697133,
+          "correctlyRoundedFloat32": 0.0001569340965943411,
+          "metal": {
+            "dtWord": 958697133,
+            "dt": 0.0001569340965943411,
+            "ulpsFromCorrectRounding": 0
+          },
+          "cuda": {
+            "dtWord": 958697133,
+            "dt": 0.0001569340965943411,
+            "ulpsFromCorrectRounding": 0
+          }
+        },
+        "cuda": {
+          "correctlyRoundedFloat32Word": 958697133,
+          "correctlyRoundedFloat32": 0.0001569340965943411,
+          "metal": {
+            "dtWord": 958697133,
+            "dt": 0.0001569340965943411,
+            "ulpsFromCorrectRounding": 0
+          },
+          "cuda": {
+            "dtWord": 958697133,
+            "dt": 0.0001569340965943411,
+            "ulpsFromCorrectRounding": 0
+          }
+        }
+      }
+    }
+  ],
+  "consumed": {
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-own/receipt.json": "733f38aac399bd249417e31f923574b51057c2e6d9bad4f00b6fdeacedc33b79",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-cross/receipt.json": "a26a68754c0b9d8d1f2badfbf5c7dc01807e6a411f97d06a2cca73deab626bb8",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-own/receipt.json": "bf24376f82b1ca7246d46efb7a6337f905620e77b4925b715ed895fe279c3d49",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-cross/receipt.json": "6b8d8d1121b5da913c50ad57f776c7489843f12e581213dbe86b839162396b9d",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-own/made-perimeter-s1-1/measured-speed.bin": "632535eb1001b133d4249ac8a7f6f6d38bb2c8a2c15814991bc8fe3f8b1243d2",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-cross/made-perimeter-s1-1/selected-metal.bin": "f09371a3a480d43a9c9bd1ee71edfb3e396a727ed5542b2d30160bfd08b43b12",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-own/made-perimeter-s1-1/selected-metal.bin": "f09371a3a480d43a9c9bd1ee71edfb3e396a727ed5542b2d30160bfd08b43b12",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-cross/made-perimeter-s1-1/selected-metal.bin": "ef23b503c35d4ba8247837fc16b7ff56eb45843edcfb386a96687205cad06f22",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-own/made-perimeter-s1-1/measured-speed.bin": "632535eb1001b133d4249ac8a7f6f6d38bb2c8a2c15814991bc8fe3f8b1243d2",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-cross/made-perimeter-s1-1/selected-cuda.bin": "f09371a3a480d43a9c9bd1ee71edfb3e396a727ed5542b2d30160bfd08b43b12",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-cross/made-perimeter-s1-1/selected-cuda.bin": "ef23b503c35d4ba8247837fc16b7ff56eb45843edcfb386a96687205cad06f22",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-own/made-perimeter-s1-1/selected-cuda.bin": "ef23b503c35d4ba8247837fc16b7ff56eb45843edcfb386a96687205cad06f22",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-own/made-perimeter-s3-1/measured-speed.bin": "87c7554a4825acbfb347051d45239c54de9ea758014949d9edfacf536ea7b201",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-cross/made-perimeter-s3-1/selected-metal.bin": "f5294050ad98db7d79d5d274bc9434ad91dd208be414efab99160b6e4c0957f4",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-own/made-perimeter-s3-1/selected-metal.bin": "f5294050ad98db7d79d5d274bc9434ad91dd208be414efab99160b6e4c0957f4",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-cross/made-perimeter-s3-1/selected-metal.bin": "184574db53d480f73d4f377a5965691f17c00e3681a8a2d4a04fcffe7bc3ba1f",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-own/made-perimeter-s3-1/measured-speed.bin": "87c7554a4825acbfb347051d45239c54de9ea758014949d9edfacf536ea7b201",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-cross/made-perimeter-s3-1/selected-cuda.bin": "f5294050ad98db7d79d5d274bc9434ad91dd208be414efab99160b6e4c0957f4",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-cross/made-perimeter-s3-1/selected-cuda.bin": "184574db53d480f73d4f377a5965691f17c00e3681a8a2d4a04fcffe7bc3ba1f",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-own/made-perimeter-s3-1/selected-cuda.bin": "184574db53d480f73d4f377a5965691f17c00e3681a8a2d4a04fcffe7bc3ba1f",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-own/beirut-p0-1/measured-speed.bin": "d70c41eb9c8bad1bd47ec1ff2bd1181eba1100aa6bace64b0228807ebe2ce449",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-cross/beirut-p0-1/selected-metal.bin": "c11fc1f47db9e474cd9287f6a4b19c58657411331e414f89e0bf74a3b033daf8",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-own/beirut-p0-1/selected-metal.bin": "c11fc1f47db9e474cd9287f6a4b19c58657411331e414f89e0bf74a3b033daf8",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-cross/beirut-p0-1/selected-metal.bin": "2f4b37c242c72236f06914c2d19b58195fb6b1388d7602a3ba192be8975b9773",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-own/beirut-p0-1/measured-speed.bin": "fee991f2935018344345a9f2e29f80dac0816834330a1e5b15f73926e3061f11",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/metal-cross/beirut-p0-1/selected-cuda.bin": "78b269f48cccd8847a55988ba5bb949b44d1ff7d84667ebba2074ab67efef149",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-cross/beirut-p0-1/selected-cuda.bin": "3eb26512e8ecb2f693d84f07f72e03dbfaeb5c0517fde661a607bd7e3b7fedc2",
+    "$BOMBCAD_DATA/experiments/2026-10-22-clock-selection/cuda-own/beirut-p0-1/selected-cuda.bin": "3eb26512e8ecb2f693d84f07f72e03dbfaeb5c0517fde661a607bd7e3b7fedc2"
+  },
+  "analyticControls": 3,
+  "sourceSHA256": "503a7ae4ad8116c57cc446dd5b1f046c8439e5c6939d5b37eae61ff8af5eae44",
+  "allSixFirstDTGatesPass": true,
+  "allOwnCrossControlBytesEqual": true,
+  "PDEAdvanced": false,
+  "limits": "Initial same-state measurement/selection only. Original full consumed controls/maxima were not captured; native first-dt parity is an end-to-end gate. No instruction, full argmax/tie, later-step or continuum attribution. No default policy change."
+}

@@ -1,0 +1,703 @@
+{
+  "status": "all-members-and-raw-rehash-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-clock-selection",
+  "manifest": {
+    "analysis/0117-BlastSolver+State.swift": {
+      "sha256": "9f98f5d3265fd821f99cecc9eb4b20e253bac35b36e38be4ee35a2615752a8c9",
+      "bytes": 18814
+    },
+    "analysis/0118-BlastSolver+Stepping.swift": {
+      "sha256": "826dd15a79d6bea324468664d42a1d7ba6365f50b482dfd08780730fc927733a",
+      "bytes": 53958
+    },
+    "analysis/0121-BlastSolver.swift": {
+      "sha256": "3a926b1a3fb6d6a2f3eb18c8110fd14cad388ef66516fed04473debd49f37a9b",
+      "bytes": 26817
+    },
+    "analysis/0210-StructureTypes+GPU.swift": {
+      "sha256": "bde028e21cf0855a00e782b3c9b0f5136300d6d412728aa7122d384697d93aaf",
+      "bytes": 9940
+    },
+    "analysis/analyze.py": {
+      "sha256": "503a7ae4ad8116c57cc446dd5b1f046c8439e5c6939d5b37eae61ff8af5eae44",
+      "bytes": 5611
+    },
+    "analysis/archive.py": {
+      "sha256": "6c9c91051694c0d835def7a1083eab41135074790e1b1b1f162b58e55efc1093",
+      "bytes": 3474
+    },
+    "analysis/check_division.py": {
+      "sha256": "600eea17ba572bc7c236e05c5f5fa0096b79882193f5eb73a0a4adc045c8cbfa",
+      "bytes": 767
+    },
+    "analysis/cuda_replay.py": {
+      "sha256": "3fd97d50339d1e187068ea12408d931b5674436de8a84932af36e0047cb6f91f",
+      "bytes": 7665
+    },
+    "analysis/exact_division.py": {
+      "sha256": "7e5e5c1397b0e765ce829d4a96a3cb2232525f08f72170c46c1c087673e6cf62",
+      "bytes": 960
+    },
+    "analysis/plan.md": {
+      "sha256": "a5f7fd09122aa34dad3a26dd0cf03c94bc2f4a512566bbc381f798ccac3dea23",
+      "bytes": 2192
+    },
+    "analysis/prepare.py": {
+      "sha256": "4dc51e37106dd8dae40fe2d133f139b9af0212e2893afe3fc450d4351d58ab72",
+      "bytes": 6901
+    },
+    "analysis/producer-library.metal": {
+      "sha256": "20110cf2fc2a4331717e0c10216e91a81e8e8bbd58571569b83d062d5b0e24e2",
+      "bytes": 893159
+    },
+    "analysis/replay.swift": {
+      "sha256": "a705efbfaa431e86fd237ea72c87796f6a2ec6625c78e5e87d45a0451b7682ed",
+      "bytes": 7219
+    },
+    "analysis/run_cuda-cross.py": {
+      "sha256": "d54d7a57f9b506f3d478090e563df0e1bdff0ccf5691482f44d3afbd2601557a",
+      "bytes": 4665
+    },
+    "analysis/run_cuda-own.py": {
+      "sha256": "d54d7a57f9b506f3d478090e563df0e1bdff0ccf5691482f44d3afbd2601557a",
+      "bytes": 4665
+    },
+    "analysis/run_cuda.py": {
+      "sha256": "d54d7a57f9b506f3d478090e563df0e1bdff0ccf5691482f44d3afbd2601557a",
+      "bytes": 4665
+    },
+    "analysis/run_metal.py": {
+      "sha256": "3eeb67e3638390adecb33ab381404cb101587c4e65ed8be70d51ee2fc99152cf",
+      "bytes": 1547
+    },
+    "analysis/stage_cuda.py": {
+      "sha256": "8dd471b74b126d04a0d9527739fe670c603c09b0f477ddf19846fcd0caf6f887",
+      "bytes": 1918
+    },
+    "analysis/summary.md": {
+      "sha256": "25fb3787a621abe2c51e5634cc07a599b22088784e10c838d86325150a88d5a4",
+      "bytes": 5790
+    },
+    "analysis/verify.py": {
+      "sha256": "51427dee64f11642209710184d44de722a036e4f9c91f6087d390785d6ba3b7f",
+      "bytes": 2564
+    },
+    "cases/beirut-p0-1/control-cuda.bin": {
+      "sha256": "a9869dbd05d0d9b351aa63fc9873c9afad188221e116d78609304401719e2512",
+      "bytes": 72
+    },
+    "cases/beirut-p0-1/control-metal.bin": {
+      "sha256": "4279d043576cccf9c7975ad29238ac9f913dc0b0e12d9ab1c58d48b60afefbd3",
+      "bytes": 72
+    },
+    "cases/beirut-p0-1/measure-cuda.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "cases/beirut-p0-1/measure-metal.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "cases/beirut-p0-1/prepare-cuda.bin": {
+      "sha256": "c963bef55f1ad7b1b32667109646db9b371e4d179931b40efa1c19d0ed290ae3",
+      "bytes": 276
+    },
+    "cases/beirut-p0-1/prepare-metal.bin": {
+      "sha256": "c963bef55f1ad7b1b32667109646db9b371e4d179931b40efa1c19d0ed290ae3",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1/control-cuda.bin": {
+      "sha256": "10db2c47ec49b661d7963f0e314e0e091efec2be8f235d123ba9936f41fbfd47",
+      "bytes": 72
+    },
+    "cases/made-perimeter-s1-1/control-metal.bin": {
+      "sha256": "64e7f06ef8b597b8eb772e0a1b5f0c549839b3961fffc7cf85dbcaf59db53444",
+      "bytes": 72
+    },
+    "cases/made-perimeter-s1-1/measure-cuda.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1/measure-metal.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1/prepare-cuda.bin": {
+      "sha256": "cf673f174b9aa35adca2c853b5d6b4ae0966715c5431ca5cb5641348f26d8259",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1/prepare-metal.bin": {
+      "sha256": "cf673f174b9aa35adca2c853b5d6b4ae0966715c5431ca5cb5641348f26d8259",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1/control-cuda.bin": {
+      "sha256": "220ae1247cf8eb0a0841176e429d44ba2743631b985b3a52b39cc03287ad9b56",
+      "bytes": 72
+    },
+    "cases/made-perimeter-s3-1/control-metal.bin": {
+      "sha256": "c8d9f71c65e74d1e2929474ce95bc5c5eed2d2379aa9f2323eeff0953a3669a6",
+      "bytes": 72
+    },
+    "cases/made-perimeter-s3-1/measure-cuda.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1/measure-metal.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1/prepare-cuda.bin": {
+      "sha256": "12d5f16171e6b849b3e35665616ec118d37986f9e0d843eed9ab370bfde598b6",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1/prepare-metal.bin": {
+      "sha256": "12d5f16171e6b849b3e35665616ec118d37986f9e0d843eed9ab370bfde598b6",
+      "bytes": 276
+    },
+    "compile-attempt-1.json": {
+      "sha256": "d5e965f5c14592d1a43bc2a2567723909b488d17568a22474cc1eca8c5cb4f59",
+      "bytes": 762
+    },
+    "compile-attempt-1.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "compile.json": {
+      "sha256": "0c1d7fc615f8e0657041413ea72b30ef3b588f58c1ded29022888f21de14b083",
+      "bytes": 723
+    },
+    "compile.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cuda-cross/beirut-p0-1/selected-cuda.bin": {
+      "sha256": "3eb26512e8ecb2f693d84f07f72e03dbfaeb5c0517fde661a607bd7e3b7fedc2",
+      "bytes": 72
+    },
+    "cuda-cross/beirut-p0-1/selected-metal.bin": {
+      "sha256": "2f4b37c242c72236f06914c2d19b58195fb6b1388d7602a3ba192be8975b9773",
+      "bytes": 72
+    },
+    "cuda-cross/cut-0.ptx": {
+      "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+      "bytes": 611788
+    },
+    "cuda-cross/cut-1.ptx": {
+      "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+      "bytes": 1269128
+    },
+    "cuda-cross/made-perimeter-s1-1/selected-cuda.bin": {
+      "sha256": "ef23b503c35d4ba8247837fc16b7ff56eb45843edcfb386a96687205cad06f22",
+      "bytes": 72
+    },
+    "cuda-cross/made-perimeter-s1-1/selected-metal.bin": {
+      "sha256": "ef23b503c35d4ba8247837fc16b7ff56eb45843edcfb386a96687205cad06f22",
+      "bytes": 72
+    },
+    "cuda-cross/made-perimeter-s3-1/selected-cuda.bin": {
+      "sha256": "184574db53d480f73d4f377a5965691f17c00e3681a8a2d4a04fcffe7bc3ba1f",
+      "bytes": 72
+    },
+    "cuda-cross/made-perimeter-s3-1/selected-metal.bin": {
+      "sha256": "184574db53d480f73d4f377a5965691f17c00e3681a8a2d4a04fcffe7bc3ba1f",
+      "bytes": 72
+    },
+    "cuda-cross/receipt.json": {
+      "sha256": "6b8d8d1121b5da913c50ad57f776c7489843f12e581213dbe86b839162396b9d",
+      "bytes": 3807
+    },
+    "cuda-cross-controller.json": {
+      "sha256": "64118e90b7607a6590445749dcf2c1888137801bf4ba5a6b37d29c5ab4e3a511",
+      "bytes": 623
+    },
+    "cuda-cross-remote.json": {
+      "sha256": "06ab269efec2bbd1ea99b472a80b828a08dbe9254c3479c2c3788165e5407f1f",
+      "bytes": 2276
+    },
+    "cuda-cross-remote.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cuda-cross-ssh.log": {
+      "sha256": "ba196219c24346ac7e0cd1d84beb1793794aa3ae76b670e890590cd512cb2e9e",
+      "bytes": 569
+    },
+    "cuda-own/beirut-p0-1/measured-speed.bin": {
+      "sha256": "fee991f2935018344345a9f2e29f80dac0816834330a1e5b15f73926e3061f11",
+      "bytes": 8
+    },
+    "cuda-own/beirut-p0-1/selected-cuda.bin": {
+      "sha256": "3eb26512e8ecb2f693d84f07f72e03dbfaeb5c0517fde661a607bd7e3b7fedc2",
+      "bytes": 72
+    },
+    "cuda-own/cut-0.ptx": {
+      "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+      "bytes": 611788
+    },
+    "cuda-own/cut-1.ptx": {
+      "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+      "bytes": 1269128
+    },
+    "cuda-own/made-perimeter-s1-1/measured-speed.bin": {
+      "sha256": "632535eb1001b133d4249ac8a7f6f6d38bb2c8a2c15814991bc8fe3f8b1243d2",
+      "bytes": 8
+    },
+    "cuda-own/made-perimeter-s1-1/selected-cuda.bin": {
+      "sha256": "ef23b503c35d4ba8247837fc16b7ff56eb45843edcfb386a96687205cad06f22",
+      "bytes": 72
+    },
+    "cuda-own/made-perimeter-s3-1/measured-speed.bin": {
+      "sha256": "87c7554a4825acbfb347051d45239c54de9ea758014949d9edfacf536ea7b201",
+      "bytes": 8
+    },
+    "cuda-own/made-perimeter-s3-1/selected-cuda.bin": {
+      "sha256": "184574db53d480f73d4f377a5965691f17c00e3681a8a2d4a04fcffe7bc3ba1f",
+      "bytes": 72
+    },
+    "cuda-own/receipt.json": {
+      "sha256": "bf24376f82b1ca7246d46efb7a6337f905620e77b4925b715ed895fe279c3d49",
+      "bytes": 2802
+    },
+    "cuda-own-controller.json": {
+      "sha256": "82f59634828660e71425092ef89af09ebd0504aca7d984b1d1a40baeebbe2a1e",
+      "bytes": 619
+    },
+    "cuda-own-remote.json": {
+      "sha256": "18c0e9b1e8a0b797ad46acb51ad7654d2be8a11e67270085ad6a94826a58dc10",
+      "bytes": 2272
+    },
+    "cuda-own-remote.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cuda-own-ssh.log": {
+      "sha256": "4316894a4b8c09ebcb857f692ebfb4e26152bbbf93ca2f8e1fe61a9b1f21736c",
+      "bytes": 565
+    },
+    "cuda-staging-cross.json": {
+      "sha256": "8a2531bf4d63583d58285b811996372161e25e9d0c377f9194af598368dc227d",
+      "bytes": 8134
+    },
+    "cuda-staging-own.json": {
+      "sha256": "fb82345ba1ff5e6ea03071dd54f63e9ccd00e71e120449bb8b47ea46b05d8005",
+      "bytes": 4874
+    },
+    "division-controls.log": {
+      "sha256": "33060fd73862c5e1af97335504d5b45211fce6d229657f556d8deceeadc52ce4",
+      "bytes": 101
+    },
+    "metal-cross/beirut-p0-1/selected-cuda.bin": {
+      "sha256": "78b269f48cccd8847a55988ba5bb949b44d1ff7d84667ebba2074ab67efef149",
+      "bytes": 72
+    },
+    "metal-cross/beirut-p0-1/selected-metal.bin": {
+      "sha256": "c11fc1f47db9e474cd9287f6a4b19c58657411331e414f89e0bf74a3b033daf8",
+      "bytes": 72
+    },
+    "metal-cross/made-perimeter-s1-1/selected-cuda.bin": {
+      "sha256": "f09371a3a480d43a9c9bd1ee71edfb3e396a727ed5542b2d30160bfd08b43b12",
+      "bytes": 72
+    },
+    "metal-cross/made-perimeter-s1-1/selected-metal.bin": {
+      "sha256": "f09371a3a480d43a9c9bd1ee71edfb3e396a727ed5542b2d30160bfd08b43b12",
+      "bytes": 72
+    },
+    "metal-cross/made-perimeter-s3-1/selected-cuda.bin": {
+      "sha256": "f5294050ad98db7d79d5d274bc9434ad91dd208be414efab99160b6e4c0957f4",
+      "bytes": 72
+    },
+    "metal-cross/made-perimeter-s3-1/selected-metal.bin": {
+      "sha256": "f5294050ad98db7d79d5d274bc9434ad91dd208be414efab99160b6e4c0957f4",
+      "bytes": 72
+    },
+    "metal-cross/receipt.json": {
+      "sha256": "a26a68754c0b9d8d1f2badfbf5c7dc01807e6a411f97d06a2cca73deab626bb8",
+      "bytes": 2547
+    },
+    "metal-cross-process.json": {
+      "sha256": "33e4811f551ed2d04376079e2b1cabb532f0241470eea1e0d773fc18c3da40f1",
+      "bytes": 411
+    },
+    "metal-cross.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "metal-own/beirut-p0-1/measured-speed.bin": {
+      "sha256": "d70c41eb9c8bad1bd47ec1ff2bd1181eba1100aa6bace64b0228807ebe2ce449",
+      "bytes": 8
+    },
+    "metal-own/beirut-p0-1/selected-metal.bin": {
+      "sha256": "c11fc1f47db9e474cd9287f6a4b19c58657411331e414f89e0bf74a3b033daf8",
+      "bytes": 72
+    },
+    "metal-own/made-perimeter-s1-1/measured-speed.bin": {
+      "sha256": "632535eb1001b133d4249ac8a7f6f6d38bb2c8a2c15814991bc8fe3f8b1243d2",
+      "bytes": 8
+    },
+    "metal-own/made-perimeter-s1-1/selected-metal.bin": {
+      "sha256": "f09371a3a480d43a9c9bd1ee71edfb3e396a727ed5542b2d30160bfd08b43b12",
+      "bytes": 72
+    },
+    "metal-own/made-perimeter-s3-1/measured-speed.bin": {
+      "sha256": "87c7554a4825acbfb347051d45239c54de9ea758014949d9edfacf536ea7b201",
+      "bytes": 8
+    },
+    "metal-own/made-perimeter-s3-1/selected-metal.bin": {
+      "sha256": "f5294050ad98db7d79d5d274bc9434ad91dd208be414efab99160b6e4c0957f4",
+      "bytes": 72
+    },
+    "metal-own/receipt.json": {
+      "sha256": "733f38aac399bd249417e31f923574b51057c2e6d9bad4f00b6fdeacedc33b79",
+      "bytes": 1524
+    },
+    "metal-own-attempt-1.log": {
+      "sha256": "a9a79584ff57de8532adde3a90678bb1450f0d1fc320951bb94ffec422030215",
+      "bytes": 5238
+    },
+    "metal-own-process-attempt-1.json": {
+      "sha256": "45a13c1b29ba2b85a658f79b2e4f43f38f6da77eb93a84a9ae30104cc6dfb800",
+      "bytes": 409
+    },
+    "metal-own-process.json": {
+      "sha256": "3b7ec7ff41e42aee647fc24f5ad91d318f6eeffacc22c3c0df5576af1fe07906",
+      "bytes": 409
+    },
+    "metal-own.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "preflight-failures.json": {
+      "sha256": "7bb94ac744e664a49bc4f4bbeed48fa3b3eaf4973cd66364d2530ee65d6d833f",
+      "bytes": 581
+    },
+    "preparation.json": {
+      "sha256": "e3d5fd976b4b78108be3a19b20cb03822a2809e6dad2c90156ad7507a40db3c7",
+      "bytes": 17728
+    },
+    "publication-checks.json": {
+      "sha256": "9cffab8250c61be3a241d4d437ec8b7f8a5cc35b16b6dbb5d0b6226a1b48a238",
+      "bytes": 1577
+    },
+    "remote-input-cross/cases/beirut-p0-1/control-cuda.bin": {
+      "sha256": "a9869dbd05d0d9b351aa63fc9873c9afad188221e116d78609304401719e2512",
+      "bytes": 72
+    },
+    "remote-input-cross/cases/beirut-p0-1/control-metal.bin": {
+      "sha256": "4279d043576cccf9c7975ad29238ac9f913dc0b0e12d9ab1c58d48b60afefbd3",
+      "bytes": 72
+    },
+    "remote-input-cross/cases/beirut-p0-1/measure-cuda.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/beirut-p0-1/measure-metal.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/beirut-p0-1/prepare-cuda.bin": {
+      "sha256": "c963bef55f1ad7b1b32667109646db9b371e4d179931b40efa1c19d0ed290ae3",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/beirut-p0-1/prepare-metal.bin": {
+      "sha256": "c963bef55f1ad7b1b32667109646db9b371e4d179931b40efa1c19d0ed290ae3",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s1-1/control-cuda.bin": {
+      "sha256": "10db2c47ec49b661d7963f0e314e0e091efec2be8f235d123ba9936f41fbfd47",
+      "bytes": 72
+    },
+    "remote-input-cross/cases/made-perimeter-s1-1/control-metal.bin": {
+      "sha256": "64e7f06ef8b597b8eb772e0a1b5f0c549839b3961fffc7cf85dbcaf59db53444",
+      "bytes": 72
+    },
+    "remote-input-cross/cases/made-perimeter-s1-1/measure-cuda.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s1-1/measure-metal.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s1-1/prepare-cuda.bin": {
+      "sha256": "cf673f174b9aa35adca2c853b5d6b4ae0966715c5431ca5cb5641348f26d8259",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s1-1/prepare-metal.bin": {
+      "sha256": "cf673f174b9aa35adca2c853b5d6b4ae0966715c5431ca5cb5641348f26d8259",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s3-1/control-cuda.bin": {
+      "sha256": "220ae1247cf8eb0a0841176e429d44ba2743631b985b3a52b39cc03287ad9b56",
+      "bytes": 72
+    },
+    "remote-input-cross/cases/made-perimeter-s3-1/control-metal.bin": {
+      "sha256": "c8d9f71c65e74d1e2929474ce95bc5c5eed2d2379aa9f2323eeff0953a3669a6",
+      "bytes": 72
+    },
+    "remote-input-cross/cases/made-perimeter-s3-1/measure-cuda.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s3-1/measure-metal.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s3-1/prepare-cuda.bin": {
+      "sha256": "12d5f16171e6b849b3e35665616ec118d37986f9e0d843eed9ab370bfde598b6",
+      "bytes": 276
+    },
+    "remote-input-cross/cases/made-perimeter-s3-1/prepare-metal.bin": {
+      "sha256": "12d5f16171e6b849b3e35665616ec118d37986f9e0d843eed9ab370bfde598b6",
+      "bytes": 276
+    },
+    "remote-input-cross/cross.json": {
+      "sha256": "ad59cc08f05a3d6efe658c4fcbb6a33e91376a29d4c90276eadc00c72b130ccf",
+      "bytes": 11951
+    },
+    "remote-input-cross/cuda-own/beirut-p0-1/measured-speed.bin": {
+      "sha256": "fee991f2935018344345a9f2e29f80dac0816834330a1e5b15f73926e3061f11",
+      "bytes": 8
+    },
+    "remote-input-cross/cuda-own/beirut-p0-1/selected-cuda.bin": {
+      "sha256": "3eb26512e8ecb2f693d84f07f72e03dbfaeb5c0517fde661a607bd7e3b7fedc2",
+      "bytes": 72
+    },
+    "remote-input-cross/cuda-own/cut-0.ptx": {
+      "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+      "bytes": 611788
+    },
+    "remote-input-cross/cuda-own/cut-1.ptx": {
+      "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+      "bytes": 1269128
+    },
+    "remote-input-cross/cuda-own/made-perimeter-s1-1/measured-speed.bin": {
+      "sha256": "632535eb1001b133d4249ac8a7f6f6d38bb2c8a2c15814991bc8fe3f8b1243d2",
+      "bytes": 8
+    },
+    "remote-input-cross/cuda-own/made-perimeter-s1-1/selected-cuda.bin": {
+      "sha256": "ef23b503c35d4ba8247837fc16b7ff56eb45843edcfb386a96687205cad06f22",
+      "bytes": 72
+    },
+    "remote-input-cross/cuda-own/made-perimeter-s3-1/measured-speed.bin": {
+      "sha256": "87c7554a4825acbfb347051d45239c54de9ea758014949d9edfacf536ea7b201",
+      "bytes": 8
+    },
+    "remote-input-cross/cuda-own/made-perimeter-s3-1/selected-cuda.bin": {
+      "sha256": "184574db53d480f73d4f377a5965691f17c00e3681a8a2d4a04fcffe7bc3ba1f",
+      "bytes": 72
+    },
+    "remote-input-cross/cuda-own/receipt.json": {
+      "sha256": "bf24376f82b1ca7246d46efb7a6337f905620e77b4925b715ed895fe279c3d49",
+      "bytes": 2802
+    },
+    "remote-input-cross/metal-own/beirut-p0-1/measured-speed.bin": {
+      "sha256": "d70c41eb9c8bad1bd47ec1ff2bd1181eba1100aa6bace64b0228807ebe2ce449",
+      "bytes": 8
+    },
+    "remote-input-cross/metal-own/beirut-p0-1/selected-metal.bin": {
+      "sha256": "c11fc1f47db9e474cd9287f6a4b19c58657411331e414f89e0bf74a3b033daf8",
+      "bytes": 72
+    },
+    "remote-input-cross/metal-own/made-perimeter-s1-1/measured-speed.bin": {
+      "sha256": "632535eb1001b133d4249ac8a7f6f6d38bb2c8a2c15814991bc8fe3f8b1243d2",
+      "bytes": 8
+    },
+    "remote-input-cross/metal-own/made-perimeter-s1-1/selected-metal.bin": {
+      "sha256": "f09371a3a480d43a9c9bd1ee71edfb3e396a727ed5542b2d30160bfd08b43b12",
+      "bytes": 72
+    },
+    "remote-input-cross/metal-own/made-perimeter-s3-1/measured-speed.bin": {
+      "sha256": "87c7554a4825acbfb347051d45239c54de9ea758014949d9edfacf536ea7b201",
+      "bytes": 8
+    },
+    "remote-input-cross/metal-own/made-perimeter-s3-1/selected-metal.bin": {
+      "sha256": "f5294050ad98db7d79d5d274bc9434ad91dd208be414efab99160b6e4c0957f4",
+      "bytes": 72
+    },
+    "remote-input-cross/metal-own/receipt.json": {
+      "sha256": "733f38aac399bd249417e31f923574b51057c2e6d9bad4f00b6fdeacedc33b79",
+      "bytes": 1524
+    },
+    "remote-input-cross/worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "remote-input-cross/worker/cuda_replay.py": {
+      "sha256": "3fd97d50339d1e187068ea12408d931b5674436de8a84932af36e0047cb6f91f",
+      "bytes": 7665
+    },
+    "remote-input-cross/worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "remote-input-cross/worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "remote-input-cross/worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "remote-input-cross/worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "remote-input-own/cases/beirut-p0-1/control-cuda.bin": {
+      "sha256": "a9869dbd05d0d9b351aa63fc9873c9afad188221e116d78609304401719e2512",
+      "bytes": 72
+    },
+    "remote-input-own/cases/beirut-p0-1/control-metal.bin": {
+      "sha256": "4279d043576cccf9c7975ad29238ac9f913dc0b0e12d9ab1c58d48b60afefbd3",
+      "bytes": 72
+    },
+    "remote-input-own/cases/beirut-p0-1/measure-cuda.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "remote-input-own/cases/beirut-p0-1/measure-metal.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "remote-input-own/cases/beirut-p0-1/prepare-cuda.bin": {
+      "sha256": "c963bef55f1ad7b1b32667109646db9b371e4d179931b40efa1c19d0ed290ae3",
+      "bytes": 276
+    },
+    "remote-input-own/cases/beirut-p0-1/prepare-metal.bin": {
+      "sha256": "c963bef55f1ad7b1b32667109646db9b371e4d179931b40efa1c19d0ed290ae3",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s1-1/control-cuda.bin": {
+      "sha256": "10db2c47ec49b661d7963f0e314e0e091efec2be8f235d123ba9936f41fbfd47",
+      "bytes": 72
+    },
+    "remote-input-own/cases/made-perimeter-s1-1/control-metal.bin": {
+      "sha256": "64e7f06ef8b597b8eb772e0a1b5f0c549839b3961fffc7cf85dbcaf59db53444",
+      "bytes": 72
+    },
+    "remote-input-own/cases/made-perimeter-s1-1/measure-cuda.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s1-1/measure-metal.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s1-1/prepare-cuda.bin": {
+      "sha256": "cf673f174b9aa35adca2c853b5d6b4ae0966715c5431ca5cb5641348f26d8259",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s1-1/prepare-metal.bin": {
+      "sha256": "cf673f174b9aa35adca2c853b5d6b4ae0966715c5431ca5cb5641348f26d8259",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s3-1/control-cuda.bin": {
+      "sha256": "220ae1247cf8eb0a0841176e429d44ba2743631b985b3a52b39cc03287ad9b56",
+      "bytes": 72
+    },
+    "remote-input-own/cases/made-perimeter-s3-1/control-metal.bin": {
+      "sha256": "c8d9f71c65e74d1e2929474ce95bc5c5eed2d2379aa9f2323eeff0953a3669a6",
+      "bytes": 72
+    },
+    "remote-input-own/cases/made-perimeter-s3-1/measure-cuda.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s3-1/measure-metal.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s3-1/prepare-cuda.bin": {
+      "sha256": "12d5f16171e6b849b3e35665616ec118d37986f9e0d843eed9ab370bfde598b6",
+      "bytes": 276
+    },
+    "remote-input-own/cases/made-perimeter-s3-1/prepare-metal.bin": {
+      "sha256": "12d5f16171e6b849b3e35665616ec118d37986f9e0d843eed9ab370bfde598b6",
+      "bytes": 276
+    },
+    "remote-input-own/own.json": {
+      "sha256": "1087522e322fcf51ffdd329e3a5551390ed35a6a56790b17aae41cca57d3eda2",
+      "bytes": 10121
+    },
+    "remote-input-own/worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "remote-input-own/worker/cuda_replay.py": {
+      "sha256": "3fd97d50339d1e187068ea12408d931b5674436de8a84932af36e0047cb6f91f",
+      "bytes": 7665
+    },
+    "remote-input-own/worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "remote-input-own/worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "remote-input-own/worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "remote-input-own/worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "results.json": {
+      "sha256": "b3f9b783804382d9a50ba09e86ab84e1e097a57e1c015315988fe327f939fb96",
+      "bytes": 11828
+    },
+    "runtime/replay": {
+      "sha256": "3e8829056a5477a55d3205b10298954c4a5a590230625c8010ff1282ff20141d",
+      "bytes": 85448
+    },
+    "runtime/replay-attempt-1": {
+      "sha256": "f34879fc772be406c32bfce761375c4a8fada56d3893a56204f4349c30a00353",
+      "bytes": 85448
+    },
+    "source-audit.json": {
+      "sha256": "e2979481f7eadfb68f889901a1646b5266cfdc1c8b439f5c3aff1bf937b2587e",
+      "bytes": 4625
+    },
+    "verification.json": {
+      "sha256": "80930e5e6f212669c8f094ee843dc959b4ebe625080deff168e2e115727f51f4",
+      "bytes": 4915
+    },
+    "worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    }
+  },
+  "archives": [
+    {
+      "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-clock-selection-archive/all-raw.tar.gz",
+      "sha256": "0b05414a88169c35260f97192dd65ee9566ce81b1163847d8ae1e168d462e13d",
+      "bytes": 1610986,
+      "members": 170
+    },
+    {
+      "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-clock-selection/evidence/metadata.tar.gz",
+      "sha256": "651ec792ebce43983d49c6beebf82770b911518eb6c4135b25f52d0afa920bc1",
+      "bytes": 84487,
+      "members": 63
+    }
+  ],
+  "rawFiles": 170,
+  "rawBytes": 7529822,
+  "limits": "Native initial-speed/control outputs, full producer source/PTX, build failures and all local evidence retained externally; public archive contains metadata/postprocessing. No PDE evolution. Complete initial state/mask files remain in the pinned parent archive and original PC jobs; fresh local/remote hashes verified. No exhaustive argmax/tie capture or later-state attribution."
+}
