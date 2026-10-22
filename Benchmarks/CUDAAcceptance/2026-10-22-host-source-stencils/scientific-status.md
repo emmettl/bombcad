@@ -1,5 +1,12 @@
 # Scientific pipeline and matrix launch — 22 October 2026
 
+> **Paused by user direction, 22 October 2026:** all 432 producer commands completed,
+> but the full auditor is stopped with SIGSTOP at its verified owned PID83120.
+> Partial audit output is preserved. No weak-wave work resumes until fresh
+> slope/Beirut acceptance pilots use Metal main containing `aff21dff`.
+> See [the fixed-reference prerequisite](../2026-10-22-fixed-terrain-reference/plan.md).
+> Earlier launch/check descriptions below are historical checkpoints.
+
 Tracking: emmettl/bombcad-work#82 remains open and claimed; parent
 emmettl/bombcad-work#80. The remaining peak mechanism is unresolved.
 

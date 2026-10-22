@@ -1,0 +1,181 @@
+{
+  "schema": "bombcad-fixed-terrain-reference-checkpoint-1",
+  "revision": "c78451c099a5899ca2e95b4e375280e56f6f486a",
+  "fix": "aff21dff",
+  "metalProducerStatus": "complete-all-outcomes",
+  "sourceFiles": 709,
+  "frozenFiles": 784,
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "metalStable": true,
+      "metalSteps": 2645,
+      "initial": {
+        "executionPath": "tiled",
+        "format": "bombcad-field-initial-diagnostic-1",
+        "requestedContraction": "default",
+        "requestedMathMode": "default",
+        "scope": "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+        "stepCount": 0,
+        "time": 0.003934389986701742
+      },
+      "jobStartTime": 0.003934389986701742,
+      "metalFiles": {
+        "inputs.npy": {
+          "sha256": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+          "bytes": 6291584
+        },
+        "targets.npy": {
+          "sha256": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+          "bytes": 3145856
+        },
+        "mask.npy": {
+          "sha256": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+          "bytes": 1048704
+        },
+        "meta.json": {
+          "sha256": "750eae8e5205e54e1f336b4d3595dc2629821a3f103b7177fb1d772ebdf20df2",
+          "bytes": 3128
+        }
+      },
+      "cudaInitialAttempt": "shared-lock-refused-before-solve",
+      "cudaLogSHA256": "e28b4561e3c711cc5d989cc4710d32c3ba347557d8bc873b17f7d45c7d080e4c",
+      "originalReferencePins": {
+        "inputs.npy": {
+          "sha256": "1ca617cfc77db4c3dc6901d31dbc8ad46c03c5f6ec7a4b0c9e0026ab2e829308",
+          "bytes": 6291584
+        },
+        "targets.npy": {
+          "sha256": "0911076346efec8d9100177ac7e238bddfaede884d3a348fdc89e4ccbea2ce27",
+          "bytes": 3145856
+        },
+        "mask.npy": {
+          "sha256": "d6b00cb3f5f5866f5e07cc7c61263222622dacf46feacee04fc77e352f8530db",
+          "bytes": 1048704
+        }
+      },
+      "originalReferenceByteEquality": {
+        "inputs.npy": true,
+        "targets.npy": true,
+        "mask.npy": true
+      }
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "metalStable": true,
+      "metalSteps": 2711,
+      "initial": {
+        "executionPath": "tiled",
+        "format": "bombcad-field-initial-diagnostic-1",
+        "requestedContraction": "default",
+        "requestedMathMode": "default",
+        "scope": "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+        "stepCount": 0,
+        "time": 0.007832608726021408
+      },
+      "jobStartTime": 0.007832608726021408,
+      "metalFiles": {
+        "inputs.npy": {
+          "sha256": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+          "bytes": 6291584
+        },
+        "targets.npy": {
+          "sha256": "45f317d4b117f3d3528f927758ad15c0bf0b866bcc455180d8e0cfdedaffcb4b",
+          "bytes": 3145856
+        },
+        "mask.npy": {
+          "sha256": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+          "bytes": 1048704
+        },
+        "meta.json": {
+          "sha256": "9992e3b4af45ab022cc248dea620778322550acbd1e65b7b0310ba20b8c6f5e3",
+          "bytes": 3269
+        }
+      },
+      "cudaInitialAttempt": "shared-lock-refused-before-solve",
+      "cudaLogSHA256": "5fc6faeb429a4ef344f2f9b4754fd259d792eb135427b083021b13890d493f53",
+      "originalReferencePins": {
+        "inputs.npy": {
+          "sha256": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+          "bytes": 6291584
+        },
+        "targets.npy": {
+          "sha256": "1e6b6ea2a36cc3d1567aa8132dd5771e7ed7f4084f34abd3e7e48f56bad9b54a",
+          "bytes": 3145856
+        },
+        "mask.npy": {
+          "sha256": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+          "bytes": 1048704
+        }
+      },
+      "originalReferenceByteEquality": {
+        "inputs.npy": true,
+        "targets.npy": false,
+        "mask.npy": true
+      }
+    },
+    {
+      "id": "beirut-p0-1",
+      "metalStable": true,
+      "metalSteps": 2417,
+      "initial": {
+        "executionPath": "tiled",
+        "format": "bombcad-field-initial-diagnostic-1",
+        "requestedContraction": "default",
+        "requestedMathMode": "default",
+        "scope": "Read-only portable physical buffers before stepping; no final dataset targets or admission. Work-selection buffers are not exported.",
+        "stepCount": 0,
+        "time": 0.025454009796289062
+      },
+      "jobStartTime": 0.025454009796289062,
+      "metalFiles": {
+        "inputs.npy": {
+          "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+          "bytes": 6291584
+        },
+        "targets.npy": {
+          "sha256": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13",
+          "bytes": 3145856
+        },
+        "mask.npy": {
+          "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+          "bytes": 1048704
+        },
+        "meta.json": {
+          "sha256": "2294b52c0734a24ebe9a65dfbf648624f48e92b6a464ff94780c18497a592d82",
+          "bytes": 3399
+        }
+      },
+      "cudaInitialAttempt": "shared-lock-refused-before-solve",
+      "cudaLogSHA256": "0a176c9b1084626823f1b84684f7082ac9267712b83f7ef5b39b14a21632f920",
+      "originalReferencePins": {
+        "inputs.npy": {
+          "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+          "bytes": 6291584
+        },
+        "targets.npy": {
+          "sha256": "47b294f960e3d617d7508ba0ca74839ca9249d01e2806d543715f076ff893dc9",
+          "bytes": 3145856
+        },
+        "mask.npy": {
+          "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+          "bytes": 1048704
+        }
+      },
+      "originalReferenceByteEquality": {
+        "inputs.npy": true,
+        "targets.npy": false,
+        "mask.npy": true
+      }
+    }
+  ],
+  "rawRoot": "$BOMBCAD_DATA/experiments/2026-10-22-fixed-terrain-reference",
+  "cudaStatus": "queued-after-existing-training-lease",
+  "acceptance": "pending; no changed tolerance or bulk admission",
+  "scope": "Fresh production Metal references and queued unchanged CUDA jobs; not a completed CUDA comparison or physical validation. Original lock refusals and all raw arrays retained.",
+  "frozenExecutable": {
+    "sha256": "e02c0801de616ff79cd5916937ed235d2a79ceb8b746993bc91b17fdbc3b76cf",
+    "bytes": 26780696
+  },
+  "generatedCUDAHash": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094"
+}
