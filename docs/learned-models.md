@@ -1194,7 +1194,7 @@ the same charge (half sides 512 m and 384 m), at 4, 2 and 1 m. Uniform cells wer
 corridors or ceilings, so that nothing but the cell size differs. 3afdd0c9 saw a refined level of
 its own over terrain read impulse 12–17% low.
 
-The 4 m runs agree to the bit with the dataset's. The 2 m runs took 3–9 minutes each on a shared
+The 4 m runs agree to the bit with the dataset's. Beirut's three started as the balloon, as every run on terrain did before aff21dff ([below](#round-3-fields-at-more-heights-22-october-2026)), at both sizes alike; the three made-up layouts are flat and had the mapped start. The 2 m runs took 3–9 minutes each on a shared
 Studio, the 1 m runs 6–7 minutes. `field_bias.py analyse` compares each coarse cell with the
 mean of the finer cells it holds, at each level, wherever all of them are in the mask. It also
 compares each façade strip's front cells, as judge_field.py reads them: each storey at the level
@@ -1302,16 +1302,278 @@ two layers each record as that layer alone would, and leave the run as it was to
 `train_field.py --levels all` learns every level: a log peak and a log impulse for each, as
 corrections to Kingery–Bulmash's incident logs at the cell's distance, each over its own mask.
 
+## Round 3: fields at more heights (22 October 2026)
+
+emmettl/bombcad-work#69, stages 2 and 3. The first models knew only the 2 m field, so roofs and
+upper storeys stayed on the façade surrogate. This round trains the model on nine levels and
+judges it at every storey and over the roofs.
+
+**These data are from before the terrain fix.** f5d0fd97 found that a charge on shaped terrain
+never got the mapped start: it started as the balloon (aff21dff, emmettl/bombcad-work#78). That
+covers every Beirut run and every made-up layout with terrain, in `main-fp` and in `main-levels`
+alike. At 4 m those runs read impulse about 9% low and peaks a little low. The judgement below
+compares models trained and judged on the same pre-fix runs, so it says how the heights and the
+validation split behave. Its absolute numbers will move. Round 4 re-exports the dataset from the
+fixed main and retrains, and that is the round for the app to ship.
+
+### The dataset: `main-levels`
+
+`field-runs.py run --set main --first-phase --levels 6,10,14,18,22,26,30 --roof` exported the 200
+runs again, into `/Volumes/StudioData/bombcad/ml/datasets/main-levels`, 10.7 GB. The levels are 4 m
+apart, so that every storey of 4 m up to 32 m spans one. Each level has the peak, the all-phases
+impulse and the first phase's impulse, and there is the roof level, 2 m over each building's top.
+
+- **Stable:** all 200 runs.
+- **The 2 m targets** are bit-identical to `main-fp`'s on all 200, so the recorder runs of
+  `compare-first` still match them.
+- **Cost:** 3.1 GPU hours of solving on the shared Studio (`main-fp`: 2.7), 4.5 hours of wall
+  time.
+
+### Training
+
+Three models on bombcad-pc, the U-Net of round 2 (crop 256, batch 16, 300 epochs, first-phase
+impulse, `--levels all`): 18 outputs, a log peak and a log impulse for each of the nine levels.
+
+| Model | Trained on | Held out | Chooses its epoch on | Time |
+|---|---|---|---|---|
+| `field-unet-l3-strict` | 100 runs | 75 (Beirut, made-*-s6) | 25 validation runs: made-perimeter-s1, grid-s2, towers-s3, industrial-s4 and mixed-s5 (`--validate-layouts`) | 2.5 h, after 40 min sending the dataset |
+| `field-unet-l3-strict-125` | 125 runs | the same 75 | the held-out runs, as rounds 1 and 2 did | 2.3 h |
+| `field-unet-l3-byrun` | 160 runs | 40, by run (10 of Beirut's) | the held-out runs | 1.6 h |
+
+**Choosing the epoch on a validation set** (the orchestrator's request): `train_field.py
+--validate-layouts` sets those layouts' runs apart. They are not trained on, and the epoch kept in
+`best.pt` is the one with the least validation loss. `best-heldout.pt` keeps the epoch the old
+picking would have chosen. The held-out runs are then only judged, never chosen by. Without the
+option nothing changes. For the strict model:
+
+- **Validation chose epoch 227.** Its held-out loss was 0.0253 (validation 0.0169).
+- **The held-out runs would have chosen epoch 146,** at 0.0244 (validation 0.0187).
+- **Between the two, the held-out numbers hardly move.** Per level against the run's field, the
+  ratio and log-SD agree within 0.02. Against the recorder at Beirut's façades, 0.98 / 0.25
+  against 0.98 / 0.24. Glass by side at every storey: 0.932 / 0.72 for both. The old picking
+  flattered the held-out judge by about 0.001 in loss, and by nothing a judgement shows.
+- **What the validation set costs is its 25 runs.** Trained on all 125 runs and picked on the
+  held-out runs, the same model reached a held-out loss of 0.0228. At Beirut's ground floor its
+  glass is 0.939 / 0.71, against 0.928 / 0.68 with 100 runs. Round 2's single-level model reached
+  0.942 / 0.72. So the ground floor's loss is the training runs', not the heights'.
+
+Held out, against the run's field over every judged cell (the validation-picked strict model):
+
+| Level | Cells | Peak | First-phase impulse | Kingery–Bulmash's peak |
+|---|---|---|---|---|
+| 2 m | 18.0 M | 1.01 / 0.16 | 1.00 / 0.16 | 1.21 / 0.27 |
+| 6, 10, 14 m | 18.0–19.6 M | 0.99–1.01 / 0.15–0.16 | 1.00 / 0.16 | 1.22–1.25 / 0.26–0.27 |
+| 18–30 m | 20.3–23.0 M | 0.99 / 0.15 | 0.99–1.00 / 0.16 | 1.27–1.36 / 0.26 |
+| Roofs (2 m over the top) | 5.3 M | 1.00 / 0.17 | 0.97 / 0.19 | 1.40 / 0.29 |
+
+### Façades at every storey, against the recorder
+
+`judge_field.py --storeys all` matches each façade strip to the level its storey spans: 7.6 M
+strips of the 50 Beirut recorder runs (`compare-first`) and two made-up ones. The run's own field
+at the strip reads the recorder's peak at 1.00 / 0.04–0.11 at every level. So the levels are the
+recorder's quantity, as the 2 m field was. Beirut never seen, 50–700 m, the recorder's peak and
+first-phase impulse:
+
+| Level | Strips | Strict model, peak | Impulse | Surrogate, peak | Impulse | KB incident, peak |
+|---|---|---|---|---|---|---|
+| Ground floor (2 m) | 598,743 | 1.02 / 0.28 | 0.98 / 0.18 | 1.09 / 0.44 | 0.95 / 0.31 | 1.26 / 0.42 |
+| 6 m | 608,022 | 1.01 / 0.29 | 0.98 / 0.18 | 1.10 / 0.46 | 0.95 / 0.31 | 1.30 / 0.43 |
+| 10 m | 600,537 | 1.01 / 0.28 | 0.98 / 0.18 | 1.14 / 0.46 | 0.96 / 0.32 | 1.36 / 0.43 |
+| 14 m | 534,886 | 1.01 / 0.29 | 0.98 / 0.18 | 1.22 / 0.47 | 0.97 / 0.34 | 1.48 / 0.44 |
+| 18 m | 433,047 | 1.02 / 0.29 | 0.98 / 0.18 | 1.30 / 0.46 | 0.98 / 0.35 | 1.60 / 0.42 |
+| 22 m | 257,231 | 1.03 / 0.29 | 0.98 / 0.18 | 1.36 / 0.46 | 0.97 / 0.34 | 1.70 / 0.41 |
+| 26 m | 92,773 | 1.03 / 0.34 | 0.98 / 0.22 | 1.45 / 0.48 | 0.98 / 0.40 | 1.81 / 0.45 |
+| 30 m | 22,766 | 1.05 / 0.36 | 0.98 / 0.25 | 1.45 / 0.49 | 0.98 / 0.44 | 1.81 / 0.50 |
+
+- **At every storey the model holds the ground floor's standing:** 1.01–1.05 / 0.28–0.36 in
+  peak and 0.98 / 0.18–0.25 in impulse. The surrogate runs higher with every storey, from 1.09 at
+  the ground floor to 1.45 at 26–30 m, with 0.44–0.49 of scatter.
+- **Over all 7.6 M strips** the model gives 0.98 / 0.25 and 0.96 / 0.19, and the surrogate 1.04 /
+  0.40 and 0.92 / 0.26.
+- **By-run** (`field-unet-l3-byrun`, its 10 Beirut runs and its made-up ones, 1.6 M strips):
+  0.97–0.99 / 0.17–0.22 in peak and 1.02–1.03 / 0.11–0.19 in impulse at every level, against
+  the surrogate's 0.95–1.24 / 0.39–0.43.
+- **Close in it runs high,** as the ground floor did: over every storey, against the run's field,
+  1.27 at 50–200 m (the surrogate 1.84–2.31).
+
+**Roofs against the recorder.** The roof level's mean over each recorded roof's cells, 494,442
+roofs:
+
+| | All | Z 3–5 | Z 5–7 | Z 7–14 | Z 14–20 | Z 20–28 |
+|---|---|---|---|---|---|---|
+| The run's roof level | 1.00 / 0.05, impulse 1.00 / 0.02 | 1.01 | 1.01 | 1.00 | 1.00 | 1.00 |
+| Strict model, peak | 1.03 / 0.19 | 1.19 / 0.19 | 1.10 / 0.16 | 1.01–1.03 / 0.14–0.15 | 0.99 / 0.14 | 0.90 / 0.18 |
+| Strict model, impulse | 0.95 / 0.17 | 0.99 | 0.99 | 0.95–0.98 | 0.85 | 0.63 |
+
+The roof level is the recorder's roof load: a roof model is possible. The network's roof impulse
+falls away beyond Z 14, to 0.63 at Z 20–28.
+
+### Glass and walls through the SDOF
+
+As the [first-phase judgement](#walls-and-roofs-through-the-envelope-sdof) did: `field-glass` and
+`judge_field.py walls` on the recorder runs. The loads are the surrogate's triangle with each
+predictor's peak (its impulse and rise kept). The roofs, where a variant has them, take the model's
+roof level (`field-walls --roof-peaks`). The predictors:
+
+- **Surrogate:** the surrogate everywhere.
+- **Model at the ground floor:** the strict model's peak at ground-floor strips, the surrogate's
+  above. This is what #67's option does today, called `l3g` in the files.
+- **Model at every storey:** the strict model's peak at every strip it spans.
+- **Run's field:** the run's own field at every storey, the best a field model could give.
+
+**Glass by side** (52 runs, 616,754 sides when every storey is judged; exact / Heidke skill /
+mean error of the share broken):
+
+| Strips judged | Surrogate | Model at the ground floor | Model at every storey | 125-run model, every storey | Run's field |
+|---|---|---|---|---|---|
+| Every storey | 0.924 / 0.68 / 0.044 | 0.931 / 0.71 / 0.040 | **0.932 / 0.72 / 0.045** | not run | 0.950 / 0.79 / 0.033 |
+| Upper storeys only | 0.923 / 0.68 / 0.044 | (the surrogate's) | 0.929 / 0.72 / 0.047 | **0.942 / 0.76 / 0.037** | 0.949 / 0.79 / 0.034 |
+| Ground floor, Beirut's 50 runs | 0.916 / 0.62 / 0.043 | 0.928 / 0.68 / 0.040 | (the same) | 0.939 / 0.71 / 0.033 | 0.946 / 0.75 / 0.031 |
+
+Round 2's ground-floor model (`field-unet-fp-strict`) on the same ground-floor strips: 0.942 /
+0.72 / 0.034, as in 8701c269.
+
+- **Upper storeys' glass gains with the model, most with the 125-run one.** That model takes
+  exactly right from 0.923 to 0.942, skill from 0.68 to 0.76, and the mean error of the share
+  broken from 0.044 to 0.037. That is three quarters of the way to the run's own field (0.949,
+  0.79). The 100-run model gains less: 0.929, 0.72, and no fall in the share's error.
+- **The gain is at the low yields and far out.** With the 125-run model, at 1,000–1,500 m exactly
+  right is 0.944 against the surrogate's 0.919. At 0.05–0.1 kt it is 0.826 against 0.787.
+
+**Walls** (concrete, moderate or worse, each building's worst wall over every judged storey;
+156,569 building-runs, 19,627 damaged; each charge point held out with the factor and scatter
+chosen on the other nine; 20 draws):
+
+| Load | Moderate+: Brier / skill / tenths | At ×1.0 (the app's until 87ea4c9c) | Heavy+ (14,374) | At ×1.0 |
+|---|---|---|---|---|
+| Surrogate | 0.0344 / 0.69 / fail | 0.0449 / 0.59 | 0.0270 / 0.68 / fail | 0.0383 / 0.54 |
+| Model at the ground floor | 0.0332 / 0.70 / fail | 0.0512 / 0.53 | 0.0267 / 0.68 / fail | 0.0404 / 0.52 |
+| **Model at every storey** | **0.0236 / 0.78 / pass** | 0.0344 / 0.69 | 0.0165 / 0.80 / pass | 0.0217 / 0.74 |
+| 125-run model, every storey | 0.0245 / 0.78 / pass | 0.0351 / 0.68 | 0.0172 / 0.79 / pass | 0.0223 / 0.73 |
+| Run's field | 0.0079 / 0.93 / pass | 0.0263 / 0.76 | 0.0062 / 0.93 / fail | 0.0145 / 0.83 |
+
+These walls are judged against the 4 m runs, as 8701c269's were. Since 87ea4c9c the app's walls take ×1.3, and ×1.15 in peak with ×0.95 in impulse where the model gives the peak, from #19's 2 m references; round 4 should judge against those.
+
+**Roofs** (moderate or worse, 155,588, 34,612 damaged): the surrogate 0.0448 / 0.74; the model's
+roof level 0.0444 / 0.74; the run's roof level 0.0322 / 0.81. All fail the tenths test.
+
+- **The 125-run model's peaks run a little higher** against the recorder at Beirut's façades,
+  1.05–1.10 / 0.27–0.34 by level, against the 100-run model's 1.01–1.05.
+- **Walls need the upper storeys.** When a building's walls are judged at every storey, the
+  ground floor alone no longer decides them. The model at the ground floor only gives 0.70, the
+  surrogate's 0.69. The model at every storey gives 0.78 and passes the tenths test, which is what
+  the ground floor alone gave in 8701c269. At the ground floor alone, with 50 draws, the new
+  model gives 0.79 against round 2's 0.78.
+- **Roofs gain nothing from the model.** The run's own roof level would take the roofs from 0.74
+  to 0.81. The network's roof peak, at a log-SD of 0.19, is not good enough to show it.
+
+### In the app (the option stays off)
+
+The quick estimate's code reads a weights file with levels (`LearnedField.Weights.Header.levels`):
+
+- **The network** gives each level's log peak, the head's outputs 0, 2, 4…
+  (`LearnedFieldNetwork.peakChannels`). On two held-out runs it matches PyTorch within 6 × 10⁻⁶
+  in the log peak at every level (`scenebench field-predict`).
+- **`PeakMap`** reads each façade strip at the level its storey spans, and each roof at the roof
+  level, as far as its `reach`.
+- **The estimator's default reach** for a levels model is what the judge supports: every
+  storey's façade strips, not the roofs (`Reach.judged`). The first model's weights reach the
+  ground floor alone, read as before to the bit (`LearnedFieldTests`).
+- **The weights** are exported as `field-unet-l3-strict.bcfw` and `field-unet-l3-strict-125.bcfw`,
+  15.7 MB each, on StudioData in `ml/field-unet-l3-strict*/app/`. It is a new file name, not the release's, and it is used only
+  when `BOMBCAD_FIELD_MODEL` or the setting names it. The download and its pin
+  (`field-model-1`) are unchanged.
+
+The option's name and standing in the sidebar still speak of the ground floor. They are for
+round 4, once its weights are judged.
+
+### The shape with height against Alsubaei's columns
+
+Alsubaei 2015's pipe columns ([perimeter walls](validation.md#perimeter-walls-under-field-blasts),
+`Fixtures/Alsubaei2015`) are the measured peak-against-height profiles in the repository: four
+gauges up each column, 8.2–16.4 m from 2–102 kg of TNT, with and without a wall in front. Their
+gauges span 0.32–4.2 m/kg^(1/3) of scaled height. The levels the network learns span 0.05–0.8 at
+50 t and 0.02–0.24 at 2 kt. So the network's own profile can be set against only the lowest gauge
+of each column, which gives the ratio its denominator and nothing more.
+
+What can be tested is the solver's profile at the training runs' resolution: the targets the
+network learns. `field_bias.py profile` runs 50 t of TNT on flat rigid ground with nothing near it,
+with a level at each gauge's height scaled by Hopkinson's rule (12–153 m). At each shot's scaled
+distance, the ring of cells gives each level's incident peak, reflected square-on as the gauges
+face the charge. Each gauge's peak over the lowest's, gauges from the second up:
+
+| Shot (ANFO) | Measured | 4 m cells | 2 m cells |
+|---|---|---|---|
+| 2.44, 6.46, 14 kg at 8.2 m | 0.86–0.98, 0.79–0.93, 0.83–1.05 | 0.93–0.95, 0.81–0.87, 0.69–0.77 | 0.93–0.95, 0.84–0.87, 0.72–0.78 |
+| 2.44, 6.46, 14 kg at 11.85 m | 1.02–1.09, 0.59–0.80, 0.92–1.09 | 0.97–0.98, 0.92–0.95, 0.85–0.91 | 0.98, 0.93–0.94, 0.87–0.89 |
+| 7.25, 15.05 kg at 9.2 m | 0.93, 0.89–0.93, 0.93–0.96 | 0.94–0.95, 0.85–0.87, 0.74–0.77 | 0.96, 0.88–0.89, 0.78–0.80 |
+| 7.25, 15.05 kg at 12.85 m | 0.95–0.96, 0.80–0.88, 1.08–1.09 | 0.98, 0.93–0.95, 0.73–0.90 | 0.98, 0.94–0.95, 0.89–0.90 |
+| 125 kg at 16.4 m | 0.64, 0.61, 0.68 | 0.93, 0.81, 0.68 | 0.92, 0.81, 0.69 |
+
+- **The shape hardly depends on the cells.** 4 m and 2 m give each ratio within 0.01–0.04. The
+  exception is one top gauge, at 0.73 against 0.89. So the ratios carry little of the 4 m
+  under-read, as expected.
+- **The second gauge agrees.** It is 0.93–0.98, measured 0.86–1.09.
+- **The upper gauges fall more with height than measured.** The model's top gauge is at 0.69–0.91.
+  The measured top gauge reads 0.83–1.09, often higher than the gauge below it. The 125 kg shot,
+  whose lower records were interrupted, is the other way. [The validation page](validation.md#perimeter-walls-under-field-blasts)
+  saw the same at 50 mm cells and put it down to the narrow pipes.
+- **Behind the walls,** and above all the canopied wall's 1.5–10.5 m profile, the comparison is not
+  made. A district layout cannot hold the canopy's overhang, and the wing walls' length, which
+  decides the low gauges, is unknown.
+
+For the 4 m under-read itself, the open measured references are the Sheffield clearing tests:
+Rigby's 2014 thesis, and Rigby and Sielicki 2014, listed in data-wanted.md. They are not in the
+repository yet. A factor fitted on them would stand on measurements rather than on 1 m runs.
+
+### What it says
+
+- **Fields at more heights work.** The model holds 1.01–1.05 / 0.28–0.36 against the recorder at
+  every storey to 30 m, where the surrogate drifts to 1.45 high. Walls judged over every storey go
+  from skill 0.69 to 0.78 and pass the tenths test. Upper storeys' glass goes from 0.923 to 0.942
+  exactly right, skill 0.68 to 0.76, with the 125-run model.
+- **Roofs:** a roof level that is right would help (0.74 → 0.81), but this network's is not good
+  enough yet. Its impulse falls away far out.
+- **The validation split:** choosing the epoch on it moves the held-out judgement by nothing a
+  judgement shows. Its 25 runs cost glass 0.011–0.013 in exactness, at the ground floor and above.
+  For round 4: train on all 125 runs and pick on the held-out runs, the picking this round found
+  harmless. Or keep a smaller validation set.
+- **The data are pre-fix.** Round 4 re-exports from the fixed main (about 5 GPU hours), retrains,
+  and judges again. That is the round the app's option should ship.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/judge/l3/`:
+
+- `judge-all.txt`, `judge-byrun.txt` and `judge-125.txt` for the façades;
+- `glass-*.txt` and `walls-*-d20.txt` for glass and walls;
+- `walls-ground-fp.txt` for the regression against round 2.
+
+The models are in `ml/field-unet-l3-*`.
+
+```bash
+python3 -I Scripts/ml/field-runs.py run --set main --first-phase --levels 6,10,14,18,22,26,30 --roof \
+    --dataset /Volumes/StudioData/bombcad/ml/datasets/main-levels
+python3 -I Scripts/ml/remote-train.py bombcad-pc /Volumes/StudioData/bombcad/ml/datasets/main-levels Scripts/ml/train_field.py \
+    --job field-unet-l3-strict --wait 8h --args --model unet --crop 256 --batch 16 --epochs 300 --impulse first \
+    --levels all --holdout-layouts 'beirut,made-*-s6' \
+    --validate-layouts made-perimeter-s1,made-grid-s2,made-towers-s3,made-industrial-s4,made-mixed-s5 < /dev/null
+python -I Scripts/ml/judge_field.py --data …/main-levels --model l3=…/best.pt --model l3h=…/best-heldout.pt --impulse first \
+    --storeys all --recorded …/judge/compare-first --peaks-out l3/peaks --roofs-out l3/roofs --out l3/judge-all.json
+python -I Scripts/ml/judge_field.py walls --peaks l3/mixed/all --roofs l3/roofs --out-dir l3/walls-all-d20 --draws 20 \
+    --variants surrogate,l3g:surrogate,l3:surrogate,runField:surrogate
+```
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **Fields at more heights**, for roofs and upper storeys: the first-phase models leave both on
-  the surrogate ([above](#the-first-phase-models-at-walls-and-roofs-21-october-2026)). Measured
-  heights to judge them on (emmettl/bombcad-work#69; routes, not readings, from the search of
-  21 October in [data wanted](data-wanted.md#to-fetch)):
-  - first, at no fetch cost, Alsubaei 2015's gauges at 1.5–10.5 m up the pipe columns, already in
-    the fixture ([validation](validation.md#perimeter-walls-under-field-blasts)), peaks only;
+- **Round 4**, on data from after the terrain fix (aff21dff): `main-levels` exported again from
+  the fixed main (about 5 GPU hours), the strict model trained on all 125 runs, and the judgement
+  of [round 3](#round-3-fields-at-more-heights-22-october-2026) repeated. Then the option's
+  weights, name and standing, if it holds. A roof model needs a better roof level than round 3's.
+- **Measured heights** to judge the levels on (emmettl/bombcad-work#69; routes, not readings, from
+  the search of 21 October in [data wanted](data-wanted.md#to-fetch)). Alsubaei 2015's columns are
+  [done](#the-shape-with-height-against-alsubaeis-columns), as far as their scaled heights overlap.
+  Still to fetch:
   - Ma Long et al. 2026 (*Explosion and Shock Waves* 46(4)): front and rear faces against height
     from a surface burst, if it proves measured, not numerical;
   - Sheffield's clearing tests (Rigby's 2014 thesis, Rigby and Sielicki 2014, Bogosian, Rigby and

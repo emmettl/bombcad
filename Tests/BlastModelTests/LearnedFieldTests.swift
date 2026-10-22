@@ -310,6 +310,15 @@ struct LearnedFieldTests {
         // And an estimator whose weights have no levels reaches the ground floor only.
         let estimator = LearnedField.Estimator(scene: scene, network: StandIn(), reach: .all)
         #expect(estimator.reach == .groundFloor)
+        // With levels, every storey by default and not the roofs, as round 3's judge found them.
+        final class Leveled: LearnedField.Network, @unchecked Sendable {
+            var header = StandIn().header
+            func peakChannel(inputs: [Float], rows: Int, columns: Int) throws -> [Float] { [] }
+        }
+        let leveled = Leveled()
+        leveled.header.levels = levels
+        #expect(
+            LearnedField.Estimator(scene: scene, network: leveled).reach == [.groundFloor, .upperStoreys])
     }
 
     @Test("The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support")

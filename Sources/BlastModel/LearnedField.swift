@@ -296,6 +296,10 @@ public enum LearnedField {
         /// Roofs, at the roof level over them.
         public static let roofs = Reach(rawValue: 4)
         public static let all: Reach = [.groundFloor, .upperStoreys, .roofs]
+        /// What round 3's judge found the levels worth (docs/learned-models.md, "Round 3: fields at
+        /// more heights"): every storey's façade strips; roofs gained nothing and stay on the
+        /// surrogate.
+        public static let judged: Reach = [.groundFloor, .upperStoreys]
     }
 
     // MARK: - The plan
@@ -627,12 +631,13 @@ public enum LearnedField {
         public let plan: Plan
         public let network: any Network
         /// The components given the network's peak: the ground floor's façade strips for the
-        /// first model's weights, and with more levels what `reach` allows of them.
+        /// first model's weights, and with more levels what `reach` allows of them (by default
+        /// every storey's façade strips, not the roofs).
         public let reach: Reach
         /// How long laying out the plan took, s.
         public let seconds: Double
 
-        public init(scene: Scenario, network: any Network, reach: Reach = .all) {
+        public init(scene: Scenario, network: any Network, reach: Reach = .judged) {
             let start = ContinuousClock.now
             plan = Plan(scene: scene)
             self.network = network
