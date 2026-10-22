@@ -139,6 +139,56 @@ both of which should take energy out, not put it in. Instantaneous samples of ri
 noisy, but both lean positive throughout. The other 7 MW is in the air, the ground or the trace's
 own count, which the census cannot yet tell apart.
 
+### 3. Elements distorted past the step's reach (fixed, 23 October 2026)
+
+What blew up the three-storey block's flank wall at 0.6 s was the fixed step. Without rubble, the
+kinetic energy went from 0.06 to 317 MJ within one air step (0.415 ms, 41 structure substeps), and
+nodes went from 5 m/s to 14 km/s (`blastbench wholeevent --step-by 1 --nodes …`, resumed from a
+checkpoint at 0.604 s).
+
+- **All six thrown nodes were corners of one element.** It was the only active one among their
+  neighbours, the rest bare or eroded. The step before, it was squashed across to 3–4 cm of its
+  87.5 mm and stretched along to 15 cm; its volume was barely changed, so the volume rule (a
+  quarter) never removed it.
+- **The cause.** The structure's step, 0.5 of an element's transit time, is set once from whole
+  elements. A one-point hexahedron's highest frequency is at most c √(8 Σ|∇N_a|²) (Flanagan and
+  Belytschko, 1981). A whole cube sits at 0.866 of the stable limit, 2 over it. Squeezed or
+  sheared past about 13%, the substep is past its reach, and the element rings unstably:
+  growth of about ×1.3 a substep took its corners from 0.15 m/s to 14 km/s in an air step.
+- **The fix.** A concrete or masonry element past that limit is removed each substep, or left as
+  its bars where it has any, as failed concrete is (`StructureSolver.stabilitySpeed`, the fastest
+  wave the step is set from). Such an element has long since failed. A bare element past it keeps
+  its bars and loses its hourglass control, whose mode shapes grow with the same gradients: that
+  threw corners at about 100 m/s on the same wall a few hundredths of a second later. Metals are
+  left alone, since they may strain that far before they fail and would need a shorter step, not
+  removal. Elements that never get there are unchanged.
+  - Test: `StepLimitTests`. At 0.55 of the transit time no whole element goes, at 0.6 all do.
+    Without the check the second fails.
+
+**After it**, on the three-storey block from the start to 1.5 s, the air asleep:
+
+| | Fastest node, 0.3–1.5 s | Kinetic energy | Net external work, 0.3 → 1.5 s |
+|---|---|---|---|
+| Without rubble, before | 14,350 m/s from 0.63 s | 0.12 → 307 MJ | 1.36 → 274 MJ |
+| Without rubble, after | 62–65 m/s, or 1,190 m/s (one corner node) | 0.01–0.34 MJ | 1.35 → 1.39 MJ (+3%), or → 1.76 MJ |
+| With rubble, after | 11 m/s, or 1,317 m/s | up to 0.3 MJ | 1.41 → 2.14 MJ, or → 3.26 MJ |
+
+Two builds of the same logic, whose arithmetic rounds differently (a shader edit's fast-math
+codegen), give the two figures in each row: past failure the runs are chaotic.
+
+- **The blow-up is gone.** The 14 km/s, 300 MJ event doesn't happen in either build.
+- **A second mechanism remains: a corner node at the panel's free edge.** A 0.2–0.4 kg corner node,
+  its only element failing, is thrown in the air step where that element turns bare.
+  - At the switch, the element's stresses are under half a megapascal and its geometry is whole,
+    so it is not the distortion.
+  - One build threw it at 88 m/s, coasting at 62–65 m/s (about 400 J); the other at 1,190 m/s
+    (0.3 MJ).
+  - Not yet traced: it needs a per-substep trace of the kernel. The probe kit is above.
+- **So the gate is not met:** a node passes 50 m/s. Without rubble, the budget holds to ±5% only
+  in the build where that node stays slow.
+- **With rubble the budget also drifts up without a fast node** (1.4 to 2.1 MJ to 1.5 s). That
+  is the census's own question, below: the air's and the ground's work aren't yet counted apart.
+
 ### Contact, the step and the memory: not near a limit
 
 - **Contact.** Of the 1.07 million nodes, 774,000–795,000 are listed for contact (not buried in

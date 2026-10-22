@@ -262,6 +262,46 @@ func runWholeEvent(device: MTLDevice) throws {
                     crushing / 1e6, steel / 1e6, hourglass / 1e6, residual / 1e6, c.fastestNode,
                     c.fastestParticle,
                     c.notFinite || summary.hasBlownUp ? " NOT FINITE" : ""))
+            // `--nodes i,j,k;…`: those nodes at each sample, and how near each is to the others.
+            if let list = option("nodes") {
+                let picked = list.split(separator: ";").map {
+                    $0.split(separator: ",").compactMap { Int($0) }
+                }
+                .filter { $0.count == 3 }
+                let places = picked.map { solids.position($0[0], $0[1], $0[2]) }
+                for (n, ijk) in picked.enumerated() {
+                    let node = solids.node(ijk[0], ijk[1], ijk[2])
+                    var around: [String] = []
+                    for a in 0..<8 {
+                        let (i, j, k) = (ijk[0] - (a & 1), ijk[1] - ((a >> 1) & 1), ijk[2] - ((a >> 2) & 1))
+                        guard i >= 0, j >= 0, k >= 0, i < solids.ex, j < solids.ey, k < solids.ez else {
+                            continue
+                        }
+                        let flag = solids.flag(i, j, k)
+                        guard flag != .empty else {
+                            around.append("empty")
+                            continue
+                        }
+                        // Its stress (MPa: xx yy zz xy yz zx) and steel ratios.
+                        let sigma = solids.stress(i, j, k).map { String(format: "%.0f", $0 / 1e6) }.joined(
+                            separator: " ")
+                        let steel = solids.steelRatio(i, j, k)
+                        around.append(
+                            "\(flag)[\(sigma)|" + String(format: "%.3f %.3f %.3f", steel.x, steel.y, steel.z)
+                                + "]")
+                    }
+                    let nearest =
+                        places.indices.filter { $0 != n }.map { simd_distance(places[$0], places[n]) }.min()
+                        ?? 0
+                    print(
+                        String(
+                            format:
+                                "  node (%d,%d,%d): at (%.3f, %.3f, %.3f), v (%.2f, %.2f, %.2f), %.3g kg, nearest listed %.3f m; %@",
+                            ijk[0], ijk[1], ijk[2], places[n].x, places[n].y, places[n].z, node.vx, node.vy,
+                            node.vz,
+                            node.mass, nearest, around.joined(separator: " ")))
+                }
+            }
             // `--watch 20`: the fastest nodes, whenever one is faster than 20 m/s.
             if let watch = option("watch").flatMap({ Float($0) }), c.fastestNode > watch {
                 inspectFastest(solids, time: solver.time, count: 6)
@@ -293,7 +333,11 @@ func runWholeEvent(device: MTLDevice) throws {
     var stopped = "reached the end"
     while solver.time < end - 1e-9 {
         let interval = BlastSolver.checkpointInterval
-        let result = autoreleasepool { solver.advance(steps: interval - solver.stepCount % interval) }
+        // `--step-by n`: batches of n air steps, to see inside a 64-step batch (no checkpoints then).
+        let stepBy = option("step-by").flatMap { Int($0) }
+        let result = autoreleasepool {
+            solver.advance(steps: stepBy ?? (interval - solver.stepCount % interval))
+        }
         if result.steps > 0 { lastAirStep = result.lastTimeStep }
         if solver.time >= state.nextSample - 1e-9 || !result.isStable || result.steps == 0 {
             sample()
@@ -308,7 +352,7 @@ func runWholeEvent(device: MTLDevice) throws {
             inspectFastest(solids, time: solver.time)
             break
         }
-        if solver.time >= state.nextCheckpoint - 1e-9 {
+        if option("step-by") == nil, solver.time >= state.nextCheckpoint - 1e-9 {
             while state.nextCheckpoint <= solver.time + 1e-9 { state.nextCheckpoint += checkpointEvery }
             try save()
         } else if wall() - state.wallSeconds >= budget {
@@ -318,7 +362,7 @@ func runWholeEvent(device: MTLDevice) throws {
         }
     }
     let last = dir.appending(path: String(format: "step-%07d", solver.stepCount))
-    if solver.time >= end - 1e-9, !fm.fileExists(atPath: last.path) { try save() }
+    if option("step-by") == nil, solver.time >= end - 1e-9, !fm.fileExists(atPath: last.path) { try save() }
     out.closeFile()
     print(
         String(

@@ -118,6 +118,9 @@ struct StructureUniforms {
     float groundCoulomb;    // > 0: the ground's Coulomb friction coefficient (else `groundFriction`'s decay)
     float groundStiffness;  // > 0: soft ground, Pa/m over a node's h² (else the hard ground)
     uint fluidCutCells;     // 1: the air holds structures' outlines as cut cells (`structureCutCells`)
+    // m/s: the wave speed an element distorted out of the step's reach is judged by
+    // (`StructureSolver.stabilitySpeed`); 0: never judged.
+    float stabilitySpeed;
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -2105,6 +2108,26 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         ly += v[a].y * b[a];
         lz += v[a].z * b[a];
     }
+    // Distorted past the step's reach. The step was set for whole elements, h across; a one-point
+    // hexahedron's highest frequency is at most c sqrt(8 sum |grad N_a|^2) (Flanagan and
+    // Belytschko, 1981), which squeezed or sheared grows until the substep is past its stable
+    // limit of 2 over it, and the element rings unstably: its nodes thrown at kilometres a second
+    // within a few dozen substeps (emmettl/bombcad-work#36). A whole element sits at 0.87 of the
+    // limit, so this is reached about 13% squeezed, long after concrete has failed. Such an
+    // element is removed, or left as its bars where it has any, as failed concrete is; a bare
+    // element (its bars alone) so distorted keeps its bars and loses its hourglass control, whose
+    // mode shapes grow with the same gradients (below). Concrete and masonry only: metals may
+    // strain that far before they fail, and would need a shorter step, not removal.
+    bool pastStepLimit = false;
+    if (u.stabilitySpeed > 0.0f && !flattened && m.materialModel == 1u) {
+        float gradientSquares = 0.0f;
+        for (uint a = 0; a < 8; ++a) {
+            gradientSquares += dot(b[a], b[a]);
+        }
+        float reach = u.stabilitySpeed * dt;
+        pastStepLimit = 8.0f * gradientSquares * reach * reach > 4.0f;
+        eroded = eroded || pastStepLimit;
+    }
 
     // Rate of deformation and spin.
     float dxx = lx.x;
@@ -2839,6 +2862,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
         // around a crater, stay.
         bool hourglassReleased = releasesCrushedBareHourglass && bare && volume < u.minVolumeRatio * referenceVolume;
         if (releasesCrushedBareHourglass && hourglassReleased) {
+            for (uint mode = 0; mode < 4; ++mode) {
+                state.hourglass[mode] = float3(0.0f);
+                rate[mode] = float3(0.0f);
+                atCap[mode] = false;
+            }
+        }
+
+        // So does a bare element distorted past the step's reach (above), whatever the option: on the
+        // large-panel block's flank wall such elements, crushed and sheared, threw their nodes at
+        // 100 m/s through the same forces (emmettl/bombcad-work#36). Its modes' state zeroed, they
+        // push nothing.
+        if (bare && pastStepLimit) {
             for (uint mode = 0; mode < 4; ++mode) {
                 state.hourglass[mode] = float3(0.0f);
                 rate[mode] = float3(0.0f);

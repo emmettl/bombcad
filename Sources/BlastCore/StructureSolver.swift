@@ -1692,6 +1692,23 @@ public final class StructureSolver {
     /// Largest stable time step of this body alone, in seconds: the time a compression wave takes
     /// to cross an element, its speed raised by the bars where they are densest.
     public var stableTimeStep: Float {
+        let step = timeStepSafety * model.elementSize / fastestWaveSpeed
+        // A node on a stiff connection to the ground: its frequency on the connection adds to
+        // the highest the elements alone can give it, 2 c / h; the bearing's damping shortens the
+        // stable step by √(1 + ζ²) − ζ, and the step keeps a tenth in hand.
+        let footingFrequencySquared = footings?.frequencySquared ?? 0
+        guard anchorFrequencySquared > 0 || footingFrequencySquared > 0 else { return step }
+        let elementFrequency = 2 * fastestWaveSpeed / model.elementSize
+        let frequency =
+            (elementFrequency * elementFrequency + anchorFrequencySquared + footingFrequencySquared)
+            .squareRoot()
+        let damping = (1 + contactDamping * contactDamping).squareRoot() - contactDamping
+        return min(step, 0.9 * 2 * damping / frequency)
+    }
+
+    /// The fastest compression wave in the body's elements, m/s, raised by the bars where they are
+    /// densest: what the stable step is set from.
+    public var fastestWaveSpeed: Float {
         let speeds = materials.enumerated().map { n, material -> Float in
             guard let steel = material.steel, n < densestSteel.count,
                 max(densestSteel[n], discreteBarSystem?.densestRatio ?? 0) > 0
@@ -1703,19 +1720,12 @@ public final class StructureSolver {
             let modulus = material.lameLambda + 2 * material.shearModulus + steel.youngsModulus * ratio
             return (modulus / material.density).squareRoot()
         }
-        let step = timeStepSafety * model.elementSize / (speeds.max() ?? 1)
-        // A node on a stiff connection to the ground: its frequency on the connection adds to
-        // the highest the elements alone can give it, 2 c / h; the bearing's damping shortens the
-        // stable step by √(1 + ζ²) − ζ, and the step keeps a tenth in hand.
-        let footingFrequencySquared = footings?.frequencySquared ?? 0
-        guard anchorFrequencySquared > 0 || footingFrequencySquared > 0 else { return step }
-        let elementFrequency = 2 * (speeds.max() ?? 1) / model.elementSize
-        let frequency =
-            (elementFrequency * elementFrequency + anchorFrequencySquared + footingFrequencySquared)
-            .squareRoot()
-        let damping = (1 + contactDamping * contactDamping).squareRoot() - contactDamping
-        return min(step, 0.9 * 2 * damping / frequency)
+        return speeds.max() ?? 1
     }
+
+    /// The wave speed, m/s, an element distorted out of the step's reach is judged by: removed
+    /// once the substep passes its stable limit at this speed (see Structure.metal).
+    public var stabilitySpeed: Float { fastestWaveSpeed }
 
     /// Substeps to encode per fluid step so that a fluid step of `fluidStepBound` seconds can be
     /// covered within the structural stability limit.
@@ -2170,6 +2180,9 @@ public final class StructureSolver {
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0
+        // Only stepping in time: a step set past the body's own stable one is a static solve
+        // (the tests' `stepOverride` of a second), whose "velocities" are increments.
+        uniforms.stabilitySpeed = criticalTimeStep <= stableTimeStep * 1.0001 ? stabilitySpeed : 0
         uniforms.fragmentOpening = fragmentOpening
         uniforms.fragmentStrain = fragmentStrain
         uniforms.crackSlip = model.crackSlip ? 1 : 0
