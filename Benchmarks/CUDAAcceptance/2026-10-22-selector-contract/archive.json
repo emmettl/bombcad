@@ -1,0 +1,395 @@
+{
+  "status": "all-members-and-raw-rehash-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-contract",
+  "manifest": {
+    "analysis/analyze.py": {
+      "sha256": "c44f08609ad57b1486a11bc0e0a2b48718bef8d5188b0d83e5bb0e372f6bdbd9",
+      "bytes": 5486
+    },
+    "analysis/archive.py": {
+      "sha256": "9c32245938587bdb4565a9d1745b45b06e5ead3fdd1a502a2cab4b3687a12505",
+      "bytes": 3498
+    },
+    "analysis/compile.py": {
+      "sha256": "201f7adb58630b3c8d961b2bf67be4ae29d4f668bfb6a57f0c4118c912cf286a",
+      "bytes": 1607
+    },
+    "analysis/compile_sdk15.py": {
+      "sha256": "b934f465f01cbe2413a07ed552465eee4fe6a5facc51372784b518018e6b2bfd",
+      "bytes": 2377
+    },
+    "analysis/plan.md": {
+      "sha256": "f869e7f9f8bfc105a6dd3c481a7b9651353b87d3daf40fc28ff3b7ee558387ed",
+      "bytes": 2630
+    },
+    "analysis/prepare.py": {
+      "sha256": "f204added17be2170eb1f2b0f3d82d039c96898e1555ae5fd66fd781286547ab",
+      "bytes": 3992
+    },
+    "analysis/producer-main.metal": {
+      "sha256": "9b71ace9e68302d44903ae6d6d391932384e29efc51db3189c34a41b04fb9eed",
+      "bytes": 890641
+    },
+    "analysis/publication-checks.json": {
+      "sha256": "db2025b85814872c13cf7cb8c653ee4500f692845c195686e04b4bfc5df13f2b",
+      "bytes": 522
+    },
+    "analysis/replay.swift": {
+      "sha256": "34fed7fb4bb93380d329d7f3654c02ec1e487d596e712a4c503a91e20bc9e1a9",
+      "bytes": 7350
+    },
+    "analysis/run_metal.py": {
+      "sha256": "63c497677d29ea5b6df6ab84c4553edbb2fc1a5ee7289e27478d8877f392228e",
+      "bytes": 1821
+    },
+    "analysis/summary.md": {
+      "sha256": "c6b810557d75f63b7bb019082f240cda301f1717a4d5bebaab0544e18f1751c4",
+      "bytes": 4996
+    },
+    "analysis/verify.py": {
+      "sha256": "0ffb642ac996723ff233f20a832b0170b1c90c30041ea93392ba17f6ddee4904",
+      "bytes": 4662
+    },
+    "banks/beirut-p0-1-cuda/context.json": {
+      "sha256": "89791debbdae94b17f8d82eb4acbdfcb44363453a2b8ffc82ea274c40a21b7c6",
+      "bytes": 42307
+    },
+    "banks/beirut-p0-1-cuda/control.bin": {
+      "sha256": "d27c7efd53c113308ed67eaf1e6873fd8dd35919571c5b5836c01d26651805d8",
+      "bytes": 174168
+    },
+    "banks/beirut-p0-1-cuda/expected-cuda.bin": {
+      "sha256": "62f3f5318b1fe47660c215763c471fec5562fdc1e849364fc087bc4e13ed7c00",
+      "bytes": 193520
+    },
+    "banks/beirut-p0-1-cuda/expected-metal.bin": {
+      "sha256": "90e8a6f25bef67d0f04172490cef7be078401689093956996530941b7e1812ac",
+      "bytes": 232224
+    },
+    "banks/beirut-p0-1-cuda/source-order.npy": {
+      "sha256": "37eb2c9e5d687035093b3ad3dca92f2554b2b60d7056c12484fcb2fed80b79ba",
+      "bytes": 29156
+    },
+    "banks/beirut-p0-1-cuda/speed.bin": {
+      "sha256": "492d51978335b3fc029ff7bc3d47d3c9afce28b9fde049726cf07b4cd07a5339",
+      "bytes": 19352
+    },
+    "banks/beirut-p0-1-cuda/tiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "banks/beirut-p0-1-cuda/uniforms.bin": {
+      "sha256": "7af1e662e09d37cdb54ad6cc72a8b22c3f26bf54d685e31d4bf79e5fbc6a9336",
+      "bytes": 667644
+    },
+    "banks/beirut-p0-1-metal/context.json": {
+      "sha256": "322434d1e4253f9fd1a53a12725cbbe3b6da22883b2eb3720103c012915fa89a",
+      "bytes": 48638
+    },
+    "banks/beirut-p0-1-metal/control.bin": {
+      "sha256": "71e55f9f56796598d03e68c59d2c1c097caf68f6c85019cfa39465394921107a",
+      "bytes": 175176
+    },
+    "banks/beirut-p0-1-metal/expected-cuda.bin": {
+      "sha256": "6ceeff166f66e5091318c50e0ceca55d4af0396a921fe4599e2cd1cbbe08a34b",
+      "bytes": 194640
+    },
+    "banks/beirut-p0-1-metal/expected-metal.bin": {
+      "sha256": "059119e3d9380a2eff6d2b6da7a26aaa8fc75c2a0a8997b8ec64bf50838952b0",
+      "bytes": 233568
+    },
+    "banks/beirut-p0-1-metal/source-order.npy": {
+      "sha256": "8181b9efd204ce70ea8d2181174b5383f95cb70b4ae0bd409f0ac6d4cfd7e255",
+      "bytes": 29324
+    },
+    "banks/beirut-p0-1-metal/speed.bin": {
+      "sha256": "129531bc4fa3eb373ccd2c1d34c8834f5ed5b4ff0656731efc52c608bcb73789",
+      "bytes": 19464
+    },
+    "banks/beirut-p0-1-metal/tiles.bin": {
+      "sha256": "56d5fc66ee3c5998602681fcaf97a53acf77e85d46b9b4ed7f754b279e6aaa43",
+      "bytes": 38928
+    },
+    "banks/beirut-p0-1-metal/uniforms.bin": {
+      "sha256": "5c2af3c5b35cf85245e1cdd0d9e4a9a683790f6910a5bd9b91583c65ed951775",
+      "bytes": 671508
+    },
+    "banks/made-perimeter-s1-1-cuda/context.json": {
+      "sha256": "26cc2e5830268db81940119b59d4c0554b323c45980b803cefe99e85c8ad57ed",
+      "bytes": 46183
+    },
+    "banks/made-perimeter-s1-1-cuda/control.bin": {
+      "sha256": "fed51f5b8e060f0a7a76822b9fefecc71b1fb3817152514655913b9d5d246271",
+      "bytes": 190584
+    },
+    "banks/made-perimeter-s1-1-cuda/expected-cuda.bin": {
+      "sha256": "b5e2103252bebfaf3f587820637aadbd754b66b469ad91cbaadcc2feb4bf0ee0",
+      "bytes": 211760
+    },
+    "banks/made-perimeter-s1-1-cuda/expected-metal.bin": {
+      "sha256": "82ef8ba7b35c5cfa109af8628911c5b8c249eb566c6913244195fd4ea1753ee2",
+      "bytes": 254112
+    },
+    "banks/made-perimeter-s1-1-cuda/source-order.npy": {
+      "sha256": "75f5d8a48d999b7be5a12fce668e9dab4d099e7d2c0ee95e70c88c54726184fc",
+      "bytes": 31892
+    },
+    "banks/made-perimeter-s1-1-cuda/speed.bin": {
+      "sha256": "394d30ecb85805fd5e654e05226352461c3259d2d430b7b9c244c5b547978f37",
+      "bytes": 21176
+    },
+    "banks/made-perimeter-s1-1-cuda/tiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "banks/made-perimeter-s1-1-cuda/uniforms.bin": {
+      "sha256": "4581eca95fd0e1881675b71871737595e43fd94eaf5c8ff48302cdf664688759",
+      "bytes": 730572
+    },
+    "banks/made-perimeter-s1-1-metal/context.json": {
+      "sha256": "16ad3a2f3766778987b770e6e68bd6087f3aab821f73d3f4399dd41f35958d01",
+      "bytes": 53757
+    },
+    "banks/made-perimeter-s1-1-metal/control.bin": {
+      "sha256": "fcd2df3fa0d69fac28eda2f13e751121e95a3fa700a6a5e0da07dfc1f1288dab",
+      "bytes": 193608
+    },
+    "banks/made-perimeter-s1-1-metal/expected-cuda.bin": {
+      "sha256": "c1f9e0becf05f226d2d828455060d7119e0bd1e6bbab37ce9f6faf38cb447798",
+      "bytes": 215120
+    },
+    "banks/made-perimeter-s1-1-metal/expected-metal.bin": {
+      "sha256": "fc4ce89c491cab140bee58f24292c294ab4227ceae86d3ebe90c61ae57777715",
+      "bytes": 258144
+    },
+    "banks/made-perimeter-s1-1-metal/source-order.npy": {
+      "sha256": "31f658e813d8b376d41e152b76c183d6aef2080f164671962e2c70b08753a3f3",
+      "bytes": 32396
+    },
+    "banks/made-perimeter-s1-1-metal/speed.bin": {
+      "sha256": "4e71d0890762d45e675a365dc9185a1294e790d380af6349e8934b6e8287f8de",
+      "bytes": 21512
+    },
+    "banks/made-perimeter-s1-1-metal/tiles.bin": {
+      "sha256": "9b52054dafe981191780e4a42432119d8842aedd3f8ee6569c70457c6423b669",
+      "bytes": 43024
+    },
+    "banks/made-perimeter-s1-1-metal/uniforms.bin": {
+      "sha256": "8b35b2c231fb99c5b0de41bc6d1a827eb4afd26e3bd5893041d84c751628afe8",
+      "bytes": 742164
+    },
+    "banks/made-perimeter-s3-1-cuda/context.json": {
+      "sha256": "7605a78e148487d8d5a9ae2955535fdf4d36e2ef6bf549d1621791861b588a63",
+      "bytes": 47288
+    },
+    "banks/made-perimeter-s3-1-cuda/control.bin": {
+      "sha256": "3de09e123a075ced72fd3cd0e65e4430bc9297312a2d1a110c9c3864ca40e7f8",
+      "bytes": 195264
+    },
+    "banks/made-perimeter-s3-1-cuda/expected-cuda.bin": {
+      "sha256": "437bdadc631632f0929658196a663343026cbfd630c17c191447815974c18a62",
+      "bytes": 216960
+    },
+    "banks/made-perimeter-s3-1-cuda/expected-metal.bin": {
+      "sha256": "77c45531097d128c9af4787dfdaf14b9336c2929f332745ddbedca485416be44",
+      "bytes": 260352
+    },
+    "banks/made-perimeter-s3-1-cuda/source-order.npy": {
+      "sha256": "af890d6ddab680759dec3aa41e9ba62c42868ec748b190e715aa55500ddaca0c",
+      "bytes": 32672
+    },
+    "banks/made-perimeter-s3-1-cuda/speed.bin": {
+      "sha256": "03ed7af7d3163c0d36f5c0781acbaf74cf36a16fddd75a5932c842d288ab5505",
+      "bytes": 21696
+    },
+    "banks/made-perimeter-s3-1-cuda/tiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "banks/made-perimeter-s3-1-cuda/uniforms.bin": {
+      "sha256": "08d0dd3f7b88567570f9d9dbba8b9207270cb8973aee36b0a9f970e2a7f6c613",
+      "bytes": 748512
+    },
+    "banks/made-perimeter-s3-1-metal/context.json": {
+      "sha256": "11effe822f0c106113ee395eac29b33f1907bad1dd80f266005f1727e5d413bc",
+      "bytes": 55037
+    },
+    "banks/made-perimeter-s3-1-metal/control.bin": {
+      "sha256": "b0468b39798dcb611b7510598d59e02cadf0f820790da8435be7220923c116df",
+      "bytes": 198216
+    },
+    "banks/made-perimeter-s3-1-metal/expected-cuda.bin": {
+      "sha256": "f5d88d10b60e351c0cc710ec82d909f91bd2d4b293e7f981a103285c9dcd33e9",
+      "bytes": 220240
+    },
+    "banks/made-perimeter-s3-1-metal/expected-metal.bin": {
+      "sha256": "1a32d0dae65ab5c10d479eb6e7152bd1416abfb588c5e841f55e7ff84bb8b1b7",
+      "bytes": 264288
+    },
+    "banks/made-perimeter-s3-1-metal/source-order.npy": {
+      "sha256": "4913dab6c5336b884399020c7ac7a08fa8f6d3c581cbcedbe23aa47e3d4a075e",
+      "bytes": 33164
+    },
+    "banks/made-perimeter-s3-1-metal/speed.bin": {
+      "sha256": "d64a0713b3a4a00441011481a89dc0629ba091da23c9d7e10ce3e64a1d1df9c0",
+      "bytes": 22024
+    },
+    "banks/made-perimeter-s3-1-metal/tiles.bin": {
+      "sha256": "fe003e661600a3b9e8f86b6d9268280a4c37b2e8ee65cd67b421b8060e3ccae5",
+      "bytes": 44048
+    },
+    "banks/made-perimeter-s3-1-metal/uniforms.bin": {
+      "sha256": "0804c5fcb8487b071d8529d20735fdea84864953f36b4b1984be6f566260aa40",
+      "bytes": 759828
+    },
+    "capability/MTLLibrary.h": {
+      "sha256": "476081df0bf347bb66397578427692ef9ee94551eb070b7f6358823731937323",
+      "bytes": 25084
+    },
+    "capability/Metal-Shading-Language-Specification.pdf": {
+      "sha256": "41538b30d2f1140a5b2a0c84ce0a9f7b67bf0c707e224cfea0bfe5a44aa26cf5",
+      "bytes": 14564497
+    },
+    "capability/Metal-Shading-Language-Specification.txt": {
+      "sha256": "6b5e4c211e45ca42b1412fa4cb54029f1e414b15ec0b8dc35d12beef268ff8ee",
+      "bytes": 861188
+    },
+    "capability/receipt.json": {
+      "sha256": "13254e9e13f541a373234c79ffc58be83863546c5c49bb9cacbf6f8d928d1946",
+      "bytes": 880
+    },
+    "compile.json": {
+      "sha256": "020861614a5074841ecbbf49656c5d6e9fa38bb86557a1e02a158874b62df14b",
+      "bytes": 1305
+    },
+    "compile.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "linked-sdk.txt": {
+      "sha256": "149059aba9e71a96ca72487a740d36fbc1601524b741460d9e0426c3a0e99081",
+      "bytes": 9587
+    },
+    "metal-baseline/beirut-p0-1-cuda/outputs.bin": {
+      "sha256": "90e8a6f25bef67d0f04172490cef7be078401689093956996530941b7e1812ac",
+      "bytes": 232224
+    },
+    "metal-baseline/beirut-p0-1-metal/outputs.bin": {
+      "sha256": "059119e3d9380a2eff6d2b6da7a26aaa8fc75c2a0a8997b8ec64bf50838952b0",
+      "bytes": 233568
+    },
+    "metal-baseline/made-perimeter-s1-1-cuda/outputs.bin": {
+      "sha256": "82ef8ba7b35c5cfa109af8628911c5b8c249eb566c6913244195fd4ea1753ee2",
+      "bytes": 254112
+    },
+    "metal-baseline/made-perimeter-s1-1-metal/outputs.bin": {
+      "sha256": "fc4ce89c491cab140bee58f24292c294ab4227ceae86d3ebe90c61ae57777715",
+      "bytes": 258144
+    },
+    "metal-baseline/made-perimeter-s3-1-cuda/outputs.bin": {
+      "sha256": "77c45531097d128c9af4787dfdaf14b9336c2929f332745ddbedca485416be44",
+      "bytes": 260352
+    },
+    "metal-baseline/made-perimeter-s3-1-metal/outputs.bin": {
+      "sha256": "1a32d0dae65ab5c10d479eb6e7152bd1416abfb588c5e841f55e7ff84bb8b1b7",
+      "bytes": 264288
+    },
+    "metal-baseline/receipt.json": {
+      "sha256": "f27b0f68af01a0eb166e2d5cc446c6831fbe8dd178539f56c2e1de48720e1c15",
+      "bytes": 2393
+    },
+    "metal-baseline-process.json": {
+      "sha256": "552fb1b64b3cf667f8ec2df23a2806570bad0a344c69be2d66836434f25d6e14",
+      "bytes": 416
+    },
+    "metal-baseline.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "metal-safe-precise/beirut-p0-1-cuda/outputs.bin": {
+      "sha256": "06cb7226b8151f08ad47e461fadedd57057f05b6531beb12bb4f043f7928def2",
+      "bytes": 232224
+    },
+    "metal-safe-precise/beirut-p0-1-metal/outputs.bin": {
+      "sha256": "38d0d3388800b0f257e60612d6aee9ab5c8a778749da6e2987d34f31d1207eaf",
+      "bytes": 233568
+    },
+    "metal-safe-precise/made-perimeter-s1-1-cuda/outputs.bin": {
+      "sha256": "152428a0743233e5faf97a812755407b0032b7bb86fc5df9972ebf71696f20f4",
+      "bytes": 254112
+    },
+    "metal-safe-precise/made-perimeter-s1-1-metal/outputs.bin": {
+      "sha256": "c6da2a2ca8be963e88c819b9b466ca27745af06b395f8c1edc5c5441bf2e0d57",
+      "bytes": 258144
+    },
+    "metal-safe-precise/made-perimeter-s3-1-cuda/outputs.bin": {
+      "sha256": "7dd54100e118d301bf425029628b2d9d1f165ef03fbf4d2f521f7a99979719c9",
+      "bytes": 260352
+    },
+    "metal-safe-precise/made-perimeter-s3-1-metal/outputs.bin": {
+      "sha256": "39b47436d0e07984722f3bb0c53fc1ced5593a2b355be93183ccdbfa933ca4e8",
+      "bytes": 264288
+    },
+    "metal-safe-precise/receipt.json": {
+      "sha256": "5a49ec4587f9793038f0d17b4f88da18e6960f8b4ac2db94bec769bdac35460b",
+      "bytes": 13057
+    },
+    "metal-safe-precise-process.json": {
+      "sha256": "4b869541971cca58b3f5d1123c0559bb032c700fc956c941134b34f7cf9cbd78",
+      "bytes": 420
+    },
+    "metal-safe-precise.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "preflight-attempt-1/compile.json": {
+      "sha256": "159ef127ae0ec7fb5d63815672d2537447b03c84d53a2dae4cd2ecafae01db9b",
+      "bytes": 878
+    },
+    "preflight-attempt-1/compile.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "preflight-attempt-1/linked-sdk.txt": {
+      "sha256": "298dff23bfbd6c6016b60ff5da9552d06c4799052d850fa4862c019f8a15dae0",
+      "bytes": 9587
+    },
+    "preflight-attempt-1/replay": {
+      "sha256": "bac05b1d36194a7feb1e1d25c5759139b5c53aa95039a961d20c1711cfa49bc7",
+      "bytes": 103976
+    },
+    "preparation.json": {
+      "sha256": "ba481eead4bbce621d94148d2e2cf8d1fa5267b6d5e1a3d3e9491dfa101cb5b0",
+      "bytes": 27160
+    },
+    "results.json": {
+      "sha256": "b00dfc07c51ab0cd1bfedab398c8af84f8f665a02a922c5d2a76391dcace3f38",
+      "bytes": 23086
+    },
+    "runtime/replay": {
+      "sha256": "5e56cce605228fe63fbd400144c9d4e9b66398c8dc62b0ce24f9274ca7100051",
+      "bytes": 103976
+    },
+    "verification.json": {
+      "sha256": "24d7ffdc2a8cf7e87c989c1b05ed3d48424d8509da4c7feb9576aa27ce022181",
+      "bytes": 601
+    }
+  },
+  "archives": [
+    {
+      "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-contract-archive/all-raw.tar.gz",
+      "sha256": "363e1e896144b4cfcfca5b8e61c12f65db6d447fb88926fda3dc687d499f1214",
+      "bytes": 16966848,
+      "members": 93
+    },
+    {
+      "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-selector-contract/evidence/metadata.tar.gz",
+      "sha256": "45c338e4e16d8b71a915987db600fd8b0656762517104639bd1ebbc00f7c4773",
+      "bytes": 69132,
+      "members": 30
+    }
+  ],
+  "rawFiles": 93,
+  "rawBytes": 28742707,
+  "limits": "Actual scalar banks, full native baseline/candidate outputs, unchanged Metal producer, harness, toolchain/capability evidence and SDK27 preflight refusal retained externally; public archive contains metadata/postprocessing only. No PDF committed. Conditional scalar replay, no new PDE trajectory or physical/admission claim. Parent archives immutable; all local pins and terminal controllers verified."
+}

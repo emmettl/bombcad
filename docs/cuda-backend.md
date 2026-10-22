@@ -4,6 +4,28 @@ An optional headless worker for generating learned-model reference fields on an 
 It executes BombCAD's numerical method; it does not use a learned approximation. The app and
 its default Metal solver are unchanged.
 
+## Current acceptance — 22 October 2026
+
+The [corrected terrain-reference pilots](../Benchmarks/CUDAAcceptance/2026-10-22-fixed-terrain-reference/summary.md)
+use rebuilt main after `aff21dff`, including the mapped start on shaped terrain. Flat and
+slope pass every valid target in all three channels. Beirut's old three peak and three
+first-phase failures shrink to one first-phase impulse failure: 1514.2877197265625 Pa s
+on CUDA versus 1696.1177978515625 on Metal, with permitted error 3.4422355957031248.
+Features/masks agree exactly. The per-value gate remains `0.05 + 0.002 * abs(reference)`;
+bulk generation stays held under emmettl/bombcad-work#39 and emmettl/bombcad-work#47.
+Older pilot records below retain their original references and outcomes.
+
+The [actual native selector replay](../Benchmarks/CUDAAcceptance/2026-10-22-clock-selector-replay/summary.md)
+reproduces all captured own-output words before crossing the real pre-prepare inputs.
+Slope's first timestep difference and Beirut's active-step2 difference occur on identical
+relevant scalar inputs. A subsequent [explicit selector-options experiment](../Benchmarks/CUDAAcceptance/2026-10-22-selector-contract/summary.md)
+first reproduces all 375,672 archived Metal output words, then eliminates all same-input
+timestep/stop differences on 15,653 records using safe arithmetic and precise FP32 functions.
+This is conditional scalar agreement, not a new evolved trajectory or an acceptance pass.
+Later physical maxima differ; no reference, phase rule, tolerance or production default changes.
+emmettl/bombcad-work#89 tracks independent physical/refinement controls and a selector-only
+trajectory experiment that retains the existing fixed-reference gate.
+
 ## What runs where
 
 The Mac loads the district, constructs the grid and fixed-obstacle mask, and initializes the

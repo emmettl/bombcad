@@ -1,0 +1,18 @@
+{
+  "format": "passed",
+  "lint": "passed",
+  "strictHostBuild": "passed-no-warnings",
+  "affected": {
+    "command": "make check-affected",
+    "status": "passed",
+    "macTests": 7,
+    "pcTests": 36,
+    "pcSuites": 4,
+    "invocation": "758f34e2b5934cf99d18751ec83ba3bd"
+  },
+  "notes": [
+    "Existing Python ResourceWarnings retained.",
+    "Both numerical stages run once; compiler context preflight refusal retained separately.",
+    "No production source, reference, numerical policy or admission changes."
+  ]
+}

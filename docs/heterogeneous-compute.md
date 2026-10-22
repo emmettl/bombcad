@@ -1,6 +1,6 @@
 # Heterogeneous compute: Mac and NVIDIA PCs
 
-Status and first experiments, 21 October 2026. The desktop PC adds an independent CUDA execution
+Status through 22 October 2026. The desktop PC adds an independent CUDA execution
 resource; it does not automatically pool its 12 GB VRAM with the Studio's unified memory.
 Prefer whole jobs and infrequent handovers first. Splitting a tightly coupled simulation remains
 an experiment, not an established speedup.
@@ -20,11 +20,19 @@ an experiment, not an established speedup.
 
 The retained CUDA acceptance includes small fixtures, static terrain and a 256 × 256 × 44 district.
 That district's 5.7 s solve excludes setup, compilation and transfers. It is not an end-to-end
-speedup measurement. A concurrent session's broader dataset pilot found two first-phase impulse
-values outside the existing tolerance on a terrain case; a fresh production-Metal reference
-reproduces the stored reference. [#47](https://github.com/emmettl/bombcad-work/issues/47) owns
-that investigation. Passing existing fixtures does not authorize generalizing acceptance to all
-training cases, and scheduling must keep that gate.
+speedup measurement. The [rebuilt terrain-reference pilots](../Benchmarks/CUDAAcceptance/2026-10-22-fixed-terrain-reference/summary.md)
+include the corrected mapped start from `aff21dff`: flat and slope now pass the complete
+unchanged target gate, while Beirut retains one first-phase impulse failure. Bulk CUDA
+generation remains held under emmettl/bombcad-work#39 and emmettl/bombcad-work#47. Passing
+other fixtures does not establish acceptance for all training cases.
+
+The [explicit native selector experiment](../Benchmarks/CUDAAcceptance/2026-10-22-selector-contract/summary.md)
+eliminates timestep/stop differences against CUDA on all 15,653 actual captured scalar records
+with Metal safe/precise options, after reproducing every archived baseline output word.
+The later physical input histories differ, so this is a candidate arithmetic contract rather
+than trajectory equivalence or a new reference policy. emmettl/bombcad-work#89 tracks bounded
+selector-only trajectory validation with independent analytic/refinement controls and the
+existing full target gate. Production defaults and training admission remain unchanged.
 
 ## Options and order
 
