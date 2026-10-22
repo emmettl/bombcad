@@ -218,6 +218,30 @@ extension SimulationModel {
         /// Each building by the share of its people expected hurt (`OccupantInjury`): illustrative.
         case peopleHurt = "Share of people hurt (illustrative)"
         var id: Self { self }
+        /// Its name in the sidebar's picker, short enough for the sidebar's width; what the
+        /// longer names add is `note`, shown beneath.
+        var title: String {
+            switch self {
+            case .thrownPast3b: "Chance glass past 3 m"
+            case .openingsBlownOut: "Chance openings blown out"
+            case .wallsModerate: "Chance walls damaged"
+            case .wallsHeavy: "Chance walls heavy"
+            case .roofModerate: "Chance roof damaged"
+            case .peopleHurt: "Share of people hurt"
+            default: rawValue
+            }
+        }
+        /// What the full name says that `title` leaves out.
+        var note: String? {
+            switch self {
+            case .thrownPast3b: "Glass past 3 m: thrown as far as GSA's condition 3b."
+            case .openingsBlownOut: "Openings blown out: fitted to Beirut's survey, not physics."
+            case .wallsModerate: "Walls damaged: moderate or worse."
+            case .wallsHeavy: "Walls heavy: heavy or worse, illustrative for concrete."
+            case .roofModerate: "Roof damaged: moderate or worse."
+            default: nil
+            }
+        }
         /// Each building side's glass chance, from the quick estimate or the far field.
         var isChance: Bool { self != .damage && self != .couldFlip && self != .peopleHurt && !isStructure }
         /// Each building's walls' or roof's chance, from the quick estimate.

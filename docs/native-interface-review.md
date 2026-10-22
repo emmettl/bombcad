@@ -261,9 +261,89 @@ accessibility elements to read, so the labels themselves are read at each screen
 ContinuumKit's `SceneRenderTests` the orbit view's place in the Tab loop. The new labels, the
 sheets' first focus and the menus have not yet been seen on the real screen.
 
+## Since 0.6.0 (23 October 2026)
+
+What reached users after 0.6.0 was captured offscreen and looked at by eye: before this, sessions
+had only app tests. `InterfaceReviewSince060Tests.swift` adds four captures to the suite, in light
+and dark at the sidebar's 310 points, whole, at the short height (580 points) and in 900-point
+parts: `BOMBCAD_INTERFACE_REVIEW=<dir> swift test --filter
+'InterfaceSnapshotTests/(estimateAndPeople|learnedField|remoteRun|archingAndTerraces)'`, under
+`gpu-slot`. The view itself is drawn once through the renderer (`view/`), with the hazard rings,
+stand-off lines and refined outlines as the viewport sets them.
+
+- **The quick estimate and the drag:** six glazed buildings round 50 kg with a fence 10 m off; the
+  close calls refining (bar, Cancel, 2 min budget) and refined (the "refined" mark, the green
+  outline), every building opened, the selected building, the walls' colouring, then the charge
+  dragged across the fence (the preview's two orange lines, the amber line, the rings moved, Pin
+  This Instead disabled) and the whole Run sidebar with the Hazards section.
+- **The learned field option:** off, the first-use dialog (drawn as the alert SwiftUI presents for
+  it), declined, downloading, a checksum that fails, a file not found, cancelled, a corrupt file at
+  the estimate, and on with a stand-in's weights.
+- **People in the scene:** the warning and pickers, shares by band, no baseline, pinned at night and
+  changed to the evening, Clear Baseline, Show counts open, coloured by people hurt.
+- **A run on a Mac nearby:** Run on in the sidebar, the overlay connecting, running, paused (Rerun
+  with Edits off, then on after an edit), lost (Keep Watching, Fetch Result Later), waiting,
+  finished, failed and stopped, and the kept run "On Studio" in Compare Runs.
+- **Masonry and the terraced sample:** Arching between returns in the construction editor, and the
+  solid-brick terraced sample's Run and Edit tabs.
+
+Found and fixed:
+
+- **Colour by** cut the walls' and openings' choices short ("Chance walls dam…"). The picker sits on
+  its own row and its choices have shorter names; what the long names added ("moderate or worse",
+  "fitted to Beirut's survey", "GSA's condition 3b") is shown under the legend.
+- **The walls' and roofs' colourings had no legend.** They show the chance's ramp, with a line of
+  their own.
+- **The glass chances' line said "Walls and roofs are not given chances"**, beside the walls' and
+  roofs' chances. It now says where those are and that they are not to be relied on.
+- **A building's rows** were named "Facade 3.0" twice, once for the wall and once for its glass;
+  they read "Façade 3" and "Façade 3 glass".
+- **A rotation that rounds to nought** read "-0.00°"; it reads "0.00°".
+- **A building's construction and chances lines** were centred when short and indented when long;
+  they are set at the leading edge, as are Show counts' lines.
+- **The close calls' line** said "their damage" for one building, and "1 further close calls were".
+- **The Glass picker** cut "As designed (weathered, E1300)" short; it reads "As designed (E1300)",
+  the weathering in its help.
+- **A failed download** read "not found on this server.. The learned field option stays off."; the
+  system's reason now ends without its own full stop and starts in lower case after the colon.
+- **The lost connection's Stop It** is **Stop**, as in the running overlay, with the same help.
+- **"On Studio came back from Studio"** quotes the run's name: "“On Studio” came back from Studio
+  and is kept", and likewise while it runs on.
+- **Show counts** read "72 people placed (evening (5 pm))"; it reads "72 people placed, evening
+  (5 pm)".
+
+Passed without change: the drag preview's marking, the hazard rings and the stand-off line (amber
+once crossed), the refinement's budget and progress, the refined mark and outline, the learned
+field option's dialog and its other messages, the people's pickers, bands and baseline buttons,
+Run on, the overlay's other states, the kept run's name, and the arching switch.
+
+Left, with the reason:
+
+- The learned field switch's title wraps at the hyphen, "ground-" over "floor peaks": readable, and
+  a shorter title would lose what the option is.
+- A corrupt weights file reads "could not be read: version 1953459744, not 1": the number is the
+  file's bytes. The message is `LearnedField`'s, which the field model's work (emmettl/bombcad-work#69)
+  is changing; left to it.
+- A building's line gives two pane counts, "11 of 12 panes broken" (the panes the estimate judges)
+  and "glass 97% of 74 panes broken" (the construction's mix). Both are right; which to show is a
+  decision for the user, not a layout fix. Its mix also nests brackets, "(apartments (assumed))".
+- Layout's menu cuts a long sample's name in the middle ("Terraced house…1919 solid brick"); its
+  help holds the whole name. A menu button keeps to one line.
+- While the charge is dragged, the burst's start stays drawn where the charge was until it is let
+  go, since the scene is loaded again only then; the charge's marker and the rings follow it.
+- In the overlay, Pause becoming Resume widens the button and moves Stop.
+
 ## Remaining checks
 
 For a person at a real screen:
+
+- The panels above on the real screen: Colour by on its own row, the drag preview while dragging,
+  the learned field model's real download dialog (its icon, the app's, is a folder offscreen), and
+  the Mac nearby overlay over the viewport while a run streams.
+- Keyboard focus and VoiceOver on the new controls: Pin as Baseline, Clear Baseline, Show counts,
+  Colour Buildings by People Hurt, Refine close calls and Up to, the learned field switch and Cancel
+  Download, Run on, and the overlay's Pause, Rerun with Edits, Keep Watching, Fetch Result Later and
+  Stop, and Arching between returns.
 
 - The fixes above, on the screen: the labels as the accessibility tree reads them, each sheet
   opening in its field, Tab no longer stopping on the 3D view, and the new menu items.

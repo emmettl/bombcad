@@ -5,9 +5,15 @@ import SwiftUI
 /// simply supported edges, the panes broken and when, and the inside through them.
 struct EnvelopeDamageSection: View {
     @Bindable var model: SimulationModel
-    @State private var expanded: Set<UUID> = []
+    @State private var expanded: Set<UUID>
     @State private var export: EnvelopeResultsDocument?
     @State private var exportError: String?
+
+    /// `expanded`: the buildings whose components are shown to begin with.
+    init(model: SimulationModel, expanded: Set<UUID> = []) {
+        self.model = model
+        _expanded = State(initialValue: expanded)
+    }
 
     var body: some View {
         if !model.settings.scenario.envelopeObjects.isEmpty {
@@ -19,30 +25,44 @@ struct EnvelopeDamageSection: View {
                 let doubt = model.canJudgeEnvelopeDoubt || model.envelopeDoubt != nil
                 // The damage's colours whenever the chosen colouring has nothing to show yet.
                 let colouring = model.envelopeColouring
-                if colouring == .damage || (colouring == .couldFlip ? model.envelopeDoubt == nil : !chances) {
+                // The walls' and roofs' chances colour the view once the full estimate has them.
+                let structure = colouring.isStructure && !model.envelopeStructureChances.isEmpty
+                if colouring == .damage || (colouring.isStructure && !structure)
+                    || (colouring == .couldFlip ? model.envelopeDoubt == nil : !chances)
+                {
                     Legend()
                 }
                 if chances || doubt {
-                    Picker("Colour by", selection: $model.envelopeColouring) {
-                        ForEach(
-                            SimulationModel.EnvelopeColouring.allCases.filter {
-                                $0 == .damage || ($0 == .couldFlip ? doubt : chances)
-                            }
-                        ) { Text($0.rawValue).tag($0) }
+                    // On a row of its own: the choices' names are too long to share one with the label.
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Colour by")
+                        Picker("Colour by", selection: $model.envelopeColouring) {
+                            ForEach(
+                                SimulationModel.EnvelopeColouring.allCases.filter {
+                                    $0 == .damage || ($0 == .couldFlip ? doubt : chances)
+                                }
+                            ) { Text($0.title).tag($0) }
+                        }
+                        .labelsHidden()
                     }
                     .help(
-                        "Each building side's chance, from the quick estimate's draws or, beyond the hand-over, the "
-                            + "far field's: the glass only. Or whether cells twice as fine could change each "
+                        "Each building side's glass chance, from the quick estimate's draws or, beyond the hand-over, "
+                            + "the far field's; each building's walls' or roof's chance, or the share of its people "
+                            + "hurt, from the quick estimate; or whether cells twice as fine could change each "
                             + "building's outcome.")
                 }
-                if chances, model.envelopeColouring.isChance {
+                if chances, colouring.isChance || structure {
                     ChanceLegend()
                     Text(
-                        "Chances for the glass only, drawn over the yield, each building's glass strength and the "
-                            + "estimate's own scatter. Walls and roofs are not given chances: the estimate's are not "
-                            + "to be relied on."
+                        (colouring.note.map { $0 + " " } ?? "")
+                            + (structure
+                                ? "Each building by its walls' or roof's chance, from the quick estimate's draws over the "
+                                    + "yield and an assumed strength scatter: not to be relied on (their standing is below)."
+                                : "Chances for the glass, drawn over the yield, each building's glass strength and the "
+                                    + "estimate's own scatter. The walls' and roofs' are under Colour by and each "
+                                    + "building; they are not to be relied on.")
                     )
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 if model.envelopeColouring == .couldFlip {
                     DoubtSummary(model: model)
@@ -80,15 +100,13 @@ struct EnvelopeDamageSection: View {
                         + "; without them, turning it on offers to download them."
                 )
                 .confirmationDialog(
-                    "Download the learned field model?",
+                    Self.learnedDownloadTitle,
                     isPresented: Binding(
                         get: { model.offersLearnedDownload },
                         set: { if !$0, model.offersLearnedDownload { model.declineLearnedDownload() } }),
                     titleVisibility: .visible
                 ) {
-                    Button(
-                        String(format: "Download %.1f MB", Double(LearnedField.Release.bytes) / 1e6)
-                    ) { model.downloadLearnedWeights() }
+                    Button(Self.learnedDownloadButton) { model.downloadLearnedWeights() }
                     Button("Cancel", role: .cancel) { model.declineLearnedDownload() }
                 } message: {
                     Text(LearnedField.Release.offer)
@@ -161,20 +179,24 @@ struct EnvelopeDamageSection: View {
                             }
                             .font(.caption)
                         }
-                        Text(building.construction.detail).font(.caption).foregroundStyle(.secondary)
-                        let sides = model.envelopeGlassChances.filter { $0.owner == building.id }
-                        if !sides.isEmpty {
-                            Text(
-                                "Chances (glass breaks, blown out, thrown past 3 m; openings blown out, fitted to Beirut): "
-                                    + Self.chances(sides)
-                            )
-                            .font(.caption).foregroundStyle(.secondary)
+                        // Set to the leading edge: a short line in a disclosure is otherwise centred.
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(building.construction.detail)
+                            let sides = model.envelopeGlassChances.filter { $0.owner == building.id }
+                            if !sides.isEmpty {
+                                Text(
+                                    "Chances (glass breaks, blown out, thrown past 3 m; openings blown out, fitted to Beirut): "
+                                        + Self.chances(sides))
+                            }
+                            if let structure = model.envelopeStructureChances.first(where: {
+                                $0.owner == building.id
+                            }) {
+                                Text(Self.structureLine(structure))
+                            }
                         }
-                        if let structure = model.envelopeStructureChances.first(where: {
-                            $0.owner == building.id
-                        }) {
-                            Text(Self.structureLine(structure)).font(.caption).foregroundStyle(.secondary)
-                        }
+                        .font(.caption).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
@@ -250,6 +272,12 @@ struct EnvelopeDamageSection: View {
                 Text(exportError ?? "")
             }
         }
+    }
+
+    /// The learned field model's first-use download dialog: its title and its button.
+    static let learnedDownloadTitle = "Download the learned field model?"
+    static var learnedDownloadButton: String {
+        String(format: "Download %.1f MB", Double(LearnedField.Release.bytes) / 1e6)
     }
 
     /// Its façades' glass, by the construction's mix: the share of panes broken, and how many of
@@ -446,9 +474,33 @@ struct EnvelopeDamageSection: View {
             ? range.lowerBound.label : "\(range.lowerBound.label) to \(range.upperBound.label.lowercased())"
     }
 
+    /// A component's row: "Façade 3", its glass "Façade 3 glass", "Roof 0", "Pane 2", numbered as
+    /// in the exported JSON's ids.
     static func name(_ component: EnvelopeComponentDamage) -> String {
         let parts = component.id.split(separator: "/")
-        return parts.count >= 3 ? "\(parts[1].capitalized) \(parts[2])" : component.id
+        guard parts.count >= 3 else { return component.id }
+        let kind = parts[1] == "facade" ? "Façade" : parts[1].capitalized
+        let number = parts[2].hasSuffix(".0") ? parts[2].dropLast(2) : parts[2]
+        let glass =
+            switch component.material {
+            case .annealedGlass, .toughenedGlass, .laminatedGlass, .filmedGlass: parts[1] != "pane"
+            default: false
+            }
+        return "\(kind) \(number)" + (glass ? " glass" : "")
+    }
+
+    /// A rotation in degrees to two places; one that rounds to nought reads "0.00°", not "-0.00°".
+    static func degrees(_ value: some BinaryFloatingPoint) -> String {
+        let value = Double(value)
+        return String(format: "%.2f°", abs(value) < 0.005 ? 0 : value)
+    }
+
+    /// A component's rotation, or its range between fixed and simply supported edges.
+    static func rotation(_ component: EnvelopeComponentDamage) -> String {
+        let range = component.rotationDeg
+        return range.lowerBound == range.upperBound
+            ? degrees(range.upperBound)
+            : String(degrees(range.lowerBound).dropLast()) + "–" + degrees(range.upperBound)
     }
 
     static func describe(_ component: EnvelopeComponentDamage) -> String {
@@ -462,12 +514,7 @@ struct EnvelopeDamageSection: View {
             return component.crackedAtS.map { String(format: "cracked at %.1f ms, held", $0 * 1000) }
                 ?? "whole"
         case .reinforcedConcrete, .reinforcedBlockwork:
-            let rotation =
-                component.rotationDeg.lowerBound == component.rotationDeg.upperBound
-                ? String(format: "%.2f°", component.rotationDeg.upperBound)
-                : String(
-                    format: "%.2f–%.2f°", component.rotationDeg.lowerBound, component.rotationDeg.upperBound)
-            return rotation + ", " + levels(component.levels).lowercased()
+            return rotation(component) + ", " + levels(component.levels).lowercased()
                 + (component.cantilever == true ? " (standing free)" : "")
                 + (component.closeIn.map { ", \($0) (UFC 3-340-02)" } ?? "")
                 + (component.holesOpened.map { ", \($0) hole\($0 == 1 ? "" : "s") open" } ?? "")
@@ -475,23 +522,18 @@ struct EnvelopeDamageSection: View {
             if let failed = component.failedAtS {
                 return String(format: "blown off its fixings at %.1f ms", failed * 1000)
             }
-            let rotation =
-                component.rotationDeg.lowerBound == component.rotationDeg.upperBound
-                ? String(format: "%.2f°", component.rotationDeg.upperBound)
-                : String(
-                    format: "%.2f–%.2f°", component.rotationDeg.lowerBound, component.rotationDeg.upperBound)
-            return rotation + ", " + levels(component.levels).lowercased()
+            return rotation(component) + ", " + levels(component.levels).lowercased()
         case .crossLaminatedTimber:
             if let failed = component.failedAtS {
                 return String(format: "blown out at %.1f ms", failed * 1000)
             }
-            return String(format: "%.2f°", component.rotationDeg.upperBound) + ", "
+            return degrees(component.rotationDeg.upperBound) + ", "
                 + levels(component.levels).lowercased()
                 + (component.cantilever == true ? " (standing free)" : "")
         case .unreinforcedMasonry:
             return component.failedAtS.map { String(format: "fallen at %.1f ms", $0 * 1000) }
                 ?? (component.levels.upperBound == .none ? "uncracked" : "cracked")
-                + String(format: ", %.2f° (illustrative)", component.rotationDeg.upperBound)
+                + ", \(degrees(component.rotationDeg.upperBound)) (illustrative)"
         }
     }
 }

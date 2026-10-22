@@ -136,9 +136,12 @@ extension SimulationModel {
         let refined = final.refined.buildings.count
         let all = run.plan.buildings.count
         let left =
-            run.plan.leftOut > 0 ? " \(run.plan.leftOut) further close calls were left to the estimate." : ""
+            run.plan.leftOut == 1
+            ? " 1 further close call was left to the estimate."
+            : run.plan.leftOut > 1
+                ? " \(run.plan.leftOut) further close calls were left to the estimate." : ""
         let what =
-            "outlined in the view: their damage and chances are the run's, at the scene's charge (no yield drawn), in place of the estimate's."
+            "outlined in the view: \(refined == 1 ? "its" : "their") damage and chances are the run's, at the scene's charge (no yield drawn), in place of the estimate's."
         closeCallStatus =
             switch ending {
             case .finished:

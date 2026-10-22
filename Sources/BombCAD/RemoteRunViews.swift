@@ -72,18 +72,19 @@ struct RemoteRunOverlay: View {
                         .help("Connect again and watch the run where it has got to.")
                     Button("Fetch Result Later") { model.fetchRemoteResultLater() }
                         .help("Go back to this Mac's scene; the run carries on there.")
-                    Button("Stop It") { model.stopRemoteRun() }
+                    Button("Stop") { model.stopRemoteRun() }
+                        .help("Stop the run on \(remote.macName); nothing comes back.")
                 }
             case .waiting:
                 HStack {
-                    Text("\(remote.name) runs on, on \(remote.macName).")
+                    Text("“\(remote.name)” runs on, on \(remote.macName).")
                     Button("Fetch Result") { model.resumeRemoteRun() }
                         .help("Connect again: the result if it has finished, or the run where it has got to.")
                     Button("Forget") { model.stopRemoteRun() }
                 }
             case .finished:
                 HStack(alignment: .firstTextBaseline) {
-                    Text("\(remote.name) came back from \(remote.macName) and is kept.")
+                    Text("“\(remote.name)” came back from \(remote.macName) and is kept.")
                     Button("Dismiss") { model.dismissRemoteRun() }
                 }
                 if let summary = remote.summary {

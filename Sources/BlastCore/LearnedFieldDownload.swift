@@ -27,7 +27,7 @@ public enum LearnedFieldDownload {
             if Task.isCancelled || (error as? URLError)?.code == .cancelled || error is CancellationError {
                 throw LearnedFieldError.cancelled
             }
-            throw LearnedFieldError.download(error.localizedDescription)
+            throw LearnedFieldError.download(reason(error))
         }
         defer { try? FileManager.default.removeItem(at: downloaded) }
         if Task.isCancelled { throw LearnedFieldError.cancelled }
@@ -51,9 +51,21 @@ public enum LearnedFieldDownload {
         } catch {
             try? FileManager.default.removeItem(at: staged)
             throw LearnedFieldError.download(
-                "it could not be kept at \(destination.path): \(error.localizedDescription)")
+                "it could not be kept at \(destination.path): \(reason(error))")
         }
         return destination
+    }
+
+    /// A system error's sentence as a clause after a colon: its own full stop dropped, and its
+    /// first letter lowered unless it begins a word in capitals ("URL").
+    static func reason(_ error: Error) -> String {
+        var text = error.localizedDescription.trimmingCharacters(in: .whitespaces)
+        while text.hasSuffix(".") { text.removeLast() }
+        let start = text.prefix(2)
+        if start.count == 2, start.first!.isUppercase, start.last!.isLowercase {
+            text = text.prefix(1).lowercased() + text.dropFirst()
+        }
+        return text
     }
 
     /// A file's SHA-256, in lower-case hex, read a megabyte at a time.

@@ -102,7 +102,7 @@ public enum GlassCondition: String, Codable, Hashable, Sendable, CaseIterable {
 
     public var label: String {
         switch self {
-        case .asDesigned: "As designed (weathered, E1300)"
+        case .asDesigned: "As designed (E1300)"
         case .newOrTested: "New or tested (×1.55)"
         }
     }

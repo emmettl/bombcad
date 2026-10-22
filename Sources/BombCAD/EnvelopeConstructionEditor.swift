@@ -10,6 +10,13 @@ import SwiftUI
 struct EnvelopeConstructionEditor: View {
     let model: SimulationModel
     let id: UUID
+    @State private var isExpanded: Bool
+
+    init(model: SimulationModel, id: UUID, isExpanded: Bool = false) {
+        self.model = model
+        self.id = id
+        _isExpanded = State(initialValue: isExpanded)
+    }
 
     var body: some View {
         let construction = model.settings.scenario.envelopeConstruction(for: id)
@@ -17,7 +24,7 @@ struct EnvelopeConstructionEditor: View {
             construction.walls == .reinforcedConcrete || construction.walls == .reinforcedBlockwork
         let sheeted =
             construction.walls == .profiledSteelSheeting || construction.roof == .profiledSteelSheeting
-        DisclosureGroup("Construction") {
+        DisclosureGroup("Construction", isExpanded: $isExpanded) {
             Picker(
                 "Roof",
                 selection: Binding(get: { construction.roof }, set: { kind in edit { $0.roof = kind } })

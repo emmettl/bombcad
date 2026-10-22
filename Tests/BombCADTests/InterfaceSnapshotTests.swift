@@ -426,7 +426,7 @@ struct InterfaceSnapshotTests {
         #expect(ProjectDocument(model: model) == original)
     }
 
-    private func snapshot<V: View>(
+    func snapshot<V: View>(
         _ view: V, size: CGSize, appearance: NSAppearance.Name, to file: URL,
         expandToFit: Bool = true
     ) throws {

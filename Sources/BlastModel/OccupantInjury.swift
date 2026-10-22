@@ -334,7 +334,7 @@ public enum OccupantInjury {
         public var summary: String {
             String(
                 format:
-                    "%@ people placed (%@). Expected hurt %@ (%@–%@), severely or killed %@ (%@–%@), killed %@: by glass %@, the walls and roofs %@, the blast itself %@.",
+                    "%@ people placed, %@. Expected hurt %@ (%@–%@), severely or killed %@ (%@–%@), killed %@: by glass %@, the walls and roofs %@, the blast itself %@.",
                 OccupantInjury.count(people), assumptions.time.label.lowercased(),
                 OccupantInjury.count(expected),
                 OccupantInjury.count(low), OccupantInjury.count(high), OccupantInjury.count(severe),

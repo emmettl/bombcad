@@ -7,7 +7,12 @@ import SwiftUI
 /// record, are behind a disclosure with that warning.
 struct PeopleSection: View {
     @Bindable var model: SimulationModel
-    @State private var showsCounts = false
+    @State private var showsCounts: Bool
+
+    init(model: SimulationModel, showsCounts: Bool = false) {
+        self.model = model
+        _showsCounts = State(initialValue: showsCounts)
+    }
 
     var body: some View {
         if model.envelopeDamageIsEstimate, !model.envelopeGlassChances.isEmpty {
@@ -44,8 +49,11 @@ struct PeopleSection: View {
                     shares(people)
                     DisclosureGroup("Show counts", isExpanded: $showsCounts) {
                         Text(OccupantInjury.warning).font(.caption).foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(people.summary).font(.caption).fixedSize(horizontal: false, vertical: true)
+                        Text(people.summary).font(.caption)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
                         ForEach(Self.worst(people), id: \.owner) { building in
                             LabeledContent(name(building)) {
                                 Text(
@@ -55,8 +63,10 @@ struct PeopleSection: View {
                             }
                             .font(.caption)
                         }
+                        // Set to the leading edge: a short line in a disclosure is otherwise centred.
                         ForEach(OccupantInjury.countsStanding, id: \.self) {
                             Text($0).font(.caption).foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
