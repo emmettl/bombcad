@@ -1562,14 +1562,178 @@ python -I Scripts/ml/judge_field.py walls --peaks l3/mixed/all --roofs l3/roofs 
     --variants surrogate,l3g:surrogate,l3:surrogate,runField:surrogate
 ```
 
+## Round 4: fields at more heights on the fixed terrain start (23 October 2026)
+
+emmettl/bombcad-work#69. This is round 3 again, on data from after aff21dff, which gives a charge on
+terrain the mapped start. The strict model trains on all 125 runs and keeps the best epoch on the
+held-out runs, as rounds 1 and 2 did. The walls are also judged on #19's fixed 2 m references.
+The proposed resolution factor is shown beside each result, applied nowhere.
+
+### Data and training
+
+- **`datasets/main-levels-fixed`**: the 200 runs from 5a9bff94, with the same levels as round 3.
+  All 200 are stable. 3.3 GPU hours of solving, on the Studio shared with other work.
+- **What the fix moved:** 77 runs. These are the 25 Beirut runs at charge points 0, 1, 4, 7 and
+  9, where the ground under the charge slopes, and the 52 made-up runs on slopes, hills and
+  valleys. The flat runs are unchanged to the bit. On 4 m cells the fix moves each changed run's
+  peak and impulse by a median of −2% to +2.5%.
+- **The recorder's truth**, `judge/compare-fixed`: the 52 recorder runs of `compare-first` run
+  again on the fixed main (`Scripts/ml/recorder_runs.py`), about 2.0 GPU hours of air. Each
+  run's field is bit-identical to the new dataset's.
+- **The models** (bombcad-pc, as round 3's):
+  - `field-unet-l4-strict`: 125 runs, 75 held out, best epoch 130 (held-out loss 0.0237); 3.8
+    hours, 1.2 of them sending the dataset;
+  - `field-unet-l4-byrun`: 160 runs, 40 held out; 1.6 hours.
+- **The weights:** `ml/field-unet-l4-strict/app/field-unet-l4-strict.bcfw`, 15,718,128 bytes,
+  SHA-256 `bc8f9f76…a219ca8`. It is a new file name. The release's pin and the download are
+  unchanged. On two held-out runs the Swift network matches PyTorch within 4 × 10⁻⁶ in the log
+  peak at every level.
+
+### Façades and roofs against the recorder
+
+Beirut never seen, 50–700 m (median / log-SD of predicted over recorded):
+
+| Level | Strict, peak | Impulse | Surrogate, peak | Impulse |
+|---|---|---|---|---|
+| Ground floor | 1.02 / 0.28 | 0.97 / 0.18 | 1.09 / 0.44 | 0.95 / 0.31 |
+| 6–14 m | 1.00 / 0.27–0.28 | 0.95–0.96 / 0.18 | 1.10–1.21 / 0.46–0.47 | 0.95–0.97 / 0.32–0.34 |
+| 18–22 m | 1.02–1.03 / 0.28 | 0.94–0.95 / 0.19 | 1.29–1.35 / 0.46–0.47 | 0.96–0.97 / 0.34–0.35 |
+| 26–30 m | 1.06–1.07 / 0.32–0.34 | 0.93–0.94 / 0.23–0.26 | 1.44–1.45 / 0.48–0.49 | 0.97–0.98 / 0.40–0.44 |
+
+- **Over all 7.6 M strips** of every storey, the strict model gives 0.99 / 0.25 and 0.96 / 0.19.
+  The surrogate gives 1.04 / 0.39 and 0.92 / 0.26.
+- **The by-run model** (its 10 Beirut runs and the made-up ones, 1.6 M strips) gives
+  0.97–1.00 / 0.16–0.21 and 1.01–1.02 / 0.11–0.18 at every level.
+- **Roofs:** the roof level reads the recorded roofs at 1.09 / 0.19, impulse 0.98 / 0.17. It runs
+  1.12–1.22 at Z 3–10. Its impulse falls to 0.65 at Z 20–28.
+
+### Glass by side
+
+Against the 4 m recorder runs (exact / Heidke skill / mean error of the share broken):
+
+| Strips judged | Surrogate | Strict model | Model with the factor (peak ×1.2) | Round 2 (ground) | Run's own field |
+|---|---|---|---|---|---|
+| Ground floor, Beirut's 50 | 0.917 / 0.62 / 0.043 | 0.927 / 0.67 / 0.040 | 0.941 / 0.67 / 0.029 | **0.943 / 0.73 / 0.034** | 0.946 / 0.76 / 0.031 |
+| Upper storeys, 52 runs | 0.924 / 0.68 / 0.044 | 0.934 / 0.73 / 0.044 | **0.948 / 0.75 / 0.030** | – | 0.949 / 0.79 / 0.034 |
+| Every storey, 52 runs | 0.926 / 0.68 / 0.043 | 0.936 / 0.73 / 0.043 | 0.948 / 0.75 / 0.030 | – | 0.950 / 0.79 / 0.033 |
+| Every storey, Beirut: round 2 at the ground, round 4 above | 0.923 / 0.68 / 0.045 | 0.933 / 0.73 / 0.045 | | 0.936 / 0.74 / 0.043 combined | 0.949 / 0.79 / 0.034 |
+
+- **Round 4 at the ground floor only**, the surrogate above, gives every storey 0.932 / 0.71 / 0.039. The storeys above add 0.004 and 0.02 of skill.
+- **The ground floor is round 4's weak point.** At Beirut's ground floor the strict model is
+  unbiased but scatters more than round 2 beyond 500 m: log-SD 0.22–0.24 against 0.18–0.19.
+  Round 2 also read 1–4% high there, which the glass's triangle rewards. Round 3's 125-run model
+  reached 0.939, so how much of the gap is the epoch is uncertain. This round's best epoch came
+  early, at 130 of 300.
+- **The factor helps glass against the 4 m runs, for the wrong reason.** A peak ×1.2 against 4 m
+  truth is 20% high. It gains because the glass's single triangle misses the later reflections
+  that break panes ([glass by side](#glass-by-building-side-the-product-test)). That is a
+  calibration effect, not the resolution's. No 2 m glass reference exists to tell them apart.
+
+### Walls and roofs
+
+**Against the 4 m recorder runs** (concrete, moderate or worse, worst over every storey; 156,569
+building-runs, 19,652 damaged; 20 draws; each charge point held out):
+
+| Load | Moderate+ | Heavy+ | Roofs, moderate+ |
+|---|---|---|---|
+| Surrogate | 0.0344 / 0.69 / fail | 0.0270 / 0.68 / fail | 0.0447 / 0.74 / fail |
+| Model at the ground floor only | 0.0327 / 0.70 / fail | 0.0264 / 0.68 / fail | 0.0447 / 0.74 / fail |
+| **Model at every storey and the roofs** | **0.0229 / 0.79 / pass** | 0.0161 / 0.81 / fail | **0.0394 / 0.77 / pass** |
+| The same with the factor | 0.0228 / 0.79 / fail (it picks ×0.8) | 0.0170 / 0.80 / pass | 0.0449 / 0.74 / fail |
+| Round 2 at the ground, round 4 above | 0.0247 / 0.77 / fail | 0.0158 / 0.81 / pass | 0.0481 / 0.72 / fail |
+| Run's own field | 0.0079 / 0.93 / pass | 0.0062 / 0.93 / fail | 0.0322 / 0.81 / fail |
+
+On the fixed data the roof level helps for the first time: roofs 0.74 → 0.77, passing the tenths
+test. Round 3's gave nothing.
+
+**Against #19's fixed 2 m references** (14707293: Beirut's ten near boxes refined to 2 m on the
+mapped start, 20,530 building-yields; through the app's own estimate, `wall-calibrate
+--learned`, 50 draws; roofs at the app's ×1.3, ×0.5):
+
+| Concrete walls, moderate or worse | Round 4, every storey's façades | Round 2, ground floor |
+|---|---|---|
+| ×1.0 | 0.020 / 0.63 / fail | 0.021 / 0.62 / fail |
+| The app's adopted (peak ×1.15, impulse ×0.95) | 0.023 / 0.58 / fail | **0.018 / 0.66 / pass** |
+| The proposed factor (peak ×1.2, impulse ×0.93) | 0.026 / 0.52 / fail | 0.019 / 0.65 / fail |
+| Refit, each yield held out | 0.020 / 0.63 / fail (×1.0, impulse ×0.78) | 0.019 / 0.66 / pass (×1.3) |
+
+The surrogate alone at its adopted ×1.3 gives 0.023 / 0.59, tenths pass
+([the first look](surrogate-first-look.md#the-walls-chances-re-judged-on-2-m-references-22-october-2026)).
+Roofs give 0.74 with every model.
+
+- **On the 2 m references, round 4 does not beat round 2 for walls.** Raw they are level (0.63
+  against 0.62). Round 2 gains from the adopted ×1.15 (0.66, pass), and round 4 loses (0.58). Its
+  refit wants no peak factor. In round 2's estimate the storeys above the ground floor are the
+  surrogate's, which runs 1.1–1.45 high there. That excess seems to be part of what the 2 m
+  references reward, and round 4's accurate upper storeys take it away. The factor at ×1.2 makes
+  round 4 worse still (0.52).
+- **Against the 4 m runs the order is the other way:** round 4 at every storey scores 0.79 and
+  passes, round 2's estimate 0.70. The two truths disagree on what a correct upper storey is worth.
+  The 2 m references are the user's adopted standard.
+
+### The resolution factor
+
+Shown, applied nowhere:
+
+- **Against the 4 m runs** it helps glass (0.934 → 0.948 at upper storeys), through the
+  triangle's calibration, not through resolution. It changes walls little once their factor is
+  refit (0.79 either way), and it hurts at the app's pairs.
+- **Against the 2 m references** it hurts round 4's walls (0.63 → 0.52) and leaves round 2's
+  level (0.66 → 0.65).
+- **It is not the correction the 2 m references want for these models.** Do not adopt it as
+  measured here.
+
+### What it says, and the decision for the user
+
+- **The heights work against the 4 m truth.** Every storey to 30 m holds 1.00–1.07 / 0.27–0.34
+  against the recorder, where the surrogate drifts to 1.45 high. Upper storeys' glass goes from
+  0.924 to 0.934 (skill 0.68 → 0.73), walls over every storey from 0.69 to 0.79, and the roofs
+  from 0.74 to 0.77.
+- **But round 4 is not ready to replace round 2 as the shipped model:**
+  - at the ground floor its glass is 0.927 against round 2's 0.943;
+  - on the 2 m wall references, the user's adopted walls truth, it scores 0.58–0.63 against
+    round 2's 0.66.
+- **The recommendation: do not publish round 4 as field-model-2 yet.** Keep `field-model-1`.
+  Round 4's weights are on StudioData for testing (`BOMBCAD_FIELD_MODEL`), with the option off.
+  What would settle it:
+  - a 2 m reference for the storeys above the ground floor, and for glass, so that the two truths
+    stop disagreeing;
+  - a ground-floor head as sharp as round 2's: a seed or epoch study, or a loss weighted toward
+    the ground floor.
+- **If the user wants upper storeys now,** combining round 2 at the ground floor with round 4
+  above scores glass 0.936 / 0.74 and walls 0.77 against the 4 m runs. It would need two networks
+  in the app, which is not built.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/judge/l4/`:
+
+- `judge-all.txt` and `judge-byrun.txt`;
+- `glass-*.txt`;
+- `walls-all-d20.txt` and `walls-comb-d20.txt`;
+- `walls-2m-x/` for the 2 m references.
+
+```bash
+python3 -I Scripts/ml/field-runs.py run --set main --first-phase --levels 6,10,14,18,22,26,30 --roof \
+    --dataset /Volumes/StudioData/bombcad/ml/datasets/main-levels-fixed
+python3 -I Scripts/ml/recorder_runs.py --like /Volumes/StudioData/bombcad/ml/judge/compare-first \
+    --out /Volumes/StudioData/bombcad/ml/judge/compare-fixed
+python3 -I Scripts/ml/remote-train.py bombcad-pc …/main-levels-fixed Scripts/ml/train_field.py --job field-unet-l4-strict \
+    --wait 8h --args --model unet --crop 256 --batch 16 --epochs 300 --impulse first --levels all \
+    --holdout-layouts 'beirut,made-*-s6' < /dev/null
+scenebench wall-calibrate <Beirut's inputs> --dx 4 --height 320 --radius 1320 --runs <the ten 2 m near boxes> \
+    --factors 0.8,1,1.15,1.2,1.3,1.5 --scales 0.5,1 --impulse-ratios 0.775,0.826,1 --draws 50 \
+    --learned field-unet-l4-strict.bcfw --held-out \
+    --fixed raw=1:1:1/1.3:0.5:1,adopted=1.15:1:0.826/1.3:0.5:1,factor=1.2:1:0.775/1.3:0.5:1
+```
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **Round 4**, on data from after the terrain fix (aff21dff): `main-levels` exported again from
-  the fixed main (about 5 GPU hours), the strict model trained on all 125 runs, and the judgement
-  of [round 3](#round-3-fields-at-more-heights-22-october-2026) repeated. Then the option's
-  weights, name and standing, if it holds. A roof model needs a better roof level than round 3's.
+- **A model to ship after round 2** ([round 4](#round-4-fields-at-more-heights-on-the-fixed-terrain-start-23-october-2026)):
+  - a ground-floor head as sharp as round 2's;
+  - 2 m references for upper storeys and glass, to settle which truth the upper storeys are
+    judged on;
+  - then the option's weights, name and standing.
 - **Measured heights** to judge the levels on (emmettl/bombcad-work#69; routes, not readings, from
   the search of 21 October in [data wanted](data-wanted.md#to-fetch)). Alsubaei 2015's columns are
   [done](#the-shape-with-height-against-alsubaeis-columns), as far as their scaled heights overlap.
