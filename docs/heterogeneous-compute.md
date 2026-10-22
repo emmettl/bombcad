@@ -37,6 +37,16 @@ existing reference. Native CUDA's Beirut phase failure persists. The candidate i
 for adoption; emmettl/bombcad-work#90 and emmettl/bombcad-work#91 track bounded receiver-history
 and upstream speed-producer follow-ups. Production defaults and training admission remain unchanged.
 
+
+The [expanded failure histories](../Benchmarks/CUDAAcceptance/2026-10-22-selector-failure-histories/summary.md)
+complete emmettl/bombcad-work#90 with four parity-qualified observations. The new slope
+phase failure comes from crossing the existing half-peak qualification threshold at a
+later peak, reopening the candidate phase; the initial negative-pressure closure is shared.
+Selected Beirut pressure maxima differ, but their recorder peak is distinct from the
+exported accumulated-cell peak. That target history and the upstream cause remain unobserved; emmettl/bombcad-work#92
+tracks a bounded capture of the actual exported-peak quantity.
+No phase rule, tolerance, reference or admission change follows from these diagnostics.
+
 ## Options and order
 
 | Option | Status and next useful experiment |

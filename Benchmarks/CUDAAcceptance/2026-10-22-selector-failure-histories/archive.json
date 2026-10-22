@@ -1,0 +1,310 @@
+{
+  "status": "all-members-and-local-raw-rehash-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-failure-histories",
+  "manifest": {
+    "analysis/plan.md": {
+      "sha256": "2908faf02630ba5f6cc1fe32581d0aabbec9fc44625327b47f969ae0c0267454",
+      "bytes": 2554
+    },
+    "analysis/prepare.py": {
+      "sha256": "cdc70642caa75c41b26ba7da6acfbb7044e7d8ca41d239c223b83a707a7e6485",
+      "bytes": 2759
+    },
+    "analysis/run.py": {
+      "sha256": "8212c40a793db28e994f1fbe8589c8f285a291142448f8700563e89743062cd8",
+      "bytes": 5774
+    },
+    "capture-resume.json": {
+      "sha256": "83b0875189d273e7c6e7e5f360575e00f368f9dfc83dc7aa05f6805f604113ad",
+      "bytes": 157686
+    },
+    "capture.json": {
+      "sha256": "c247a6c2e1006f803220c6ae095cd8ed99b687fa2a95e9df2c7a166d606509bd",
+      "bytes": 163246
+    },
+    "histories.json": {
+      "sha256": "78832681e51506455e3d6c1f5fb6f42d3d6a7b4c34142569d5cf9c2439eec5f2",
+      "bytes": 224858
+    },
+    "linked-sdk.txt": {
+      "sha256": "561f7e27012df5378a65756e835faa3e434bad3526797b1e8d8e39131a3d015d",
+      "bytes": 17598
+    },
+    "original/beirut-p0-1/clock-inputs.bin": {
+      "sha256": "373f46ed3a931b8560a7ca8558062c62cb60fa1d57207bc7fa1a964ac852fca2",
+      "bytes": 1158108
+    },
+    "original/beirut-p0-1/clock-inputs.json": {
+      "sha256": "ece655ef984ec716539ca94033da7f9bf348cd93298fd7197c371825d0027671",
+      "bytes": 47049
+    },
+    "original/beirut-p0-1/diagnostic-state-hashes.json": {
+      "sha256": "5a9f11f6a298406f80a7bd6addb212525747f1681724e75ae59396d51e58f7bd",
+      "bytes": 1741
+    },
+    "original/beirut-p0-1/inputs.npy": {
+      "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "bytes": 6291584
+    },
+    "original/beirut-p0-1/mask.npy": {
+      "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "bytes": 1048704
+    },
+    "original/beirut-p0-1/meta.json": {
+      "sha256": "3028cdcb093ff738f869708e1ff6afa456f407db3dcc14fcb148f19bb5b47514",
+      "bytes": 3305
+    },
+    "original/beirut-p0-1/pressure-input-endpoints.npy": {
+      "sha256": "9d93d195fe867dcb1e67e9f51c63baae77587bdb2d836efd5a3c81d7a9f8993b",
+      "bytes": 640
+    },
+    "original/beirut-p0-1/pressure-inputs.json": {
+      "sha256": "9752cb0ae022442631fbc188d679af9bc88ff3bf8fe1dc8398d268feb1d71c57",
+      "bytes": 81978
+    },
+    "original/beirut-p0-1/pressure-inputs.npy": {
+      "sha256": "aabb3c3b084c8c570edb109b9db54dc485c44a87886fd048a710fdef61040e56",
+      "bytes": 619136
+    },
+    "original/beirut-p0-1/pressure-trace.json": {
+      "sha256": "20ffe18d23ed63082936901f11e738324c15a7bae30ecfdde3a937e9c2f83ea9",
+      "bytes": 82270
+    },
+    "original/beirut-p0-1/pressure-trace.npy": {
+      "sha256": "aff2cdf58f7455336cf660e5e2a18b03a91d5228f9cfe1c0f2b32b919e51c257",
+      "bytes": 309632
+    },
+    "original/beirut-p0-1/targets.npy": {
+      "sha256": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13",
+      "bytes": 3145856
+    },
+    "original/made-perimeter-s3-1/clock-inputs.bin": {
+      "sha256": "38312447002808d38d4ed540541b44cbaea49e1bb9885c50b38e4b1a692ba80d",
+      "bytes": 1310428
+    },
+    "original/made-perimeter-s3-1/clock-inputs.json": {
+      "sha256": "bcb1d5eb36d6ab05081cfd866d489bd36036b209d8639efca2450a01feb43304",
+      "bytes": 53449
+    },
+    "original/made-perimeter-s3-1/diagnostic-state-hashes.json": {
+      "sha256": "592c3ed249dfb7759102fa10965808fcad5ca8a6c9b8140d69a2517f99121627",
+      "bytes": 1743
+    },
+    "original/made-perimeter-s3-1/inputs.npy": {
+      "sha256": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+      "bytes": 6291584
+    },
+    "original/made-perimeter-s3-1/mask.npy": {
+      "sha256": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+      "bytes": 1048704
+    },
+    "original/made-perimeter-s3-1/meta.json": {
+      "sha256": "71c20a29c177fd4de7f0defb5c9ef6e150cee10ccc3fee85059e914ebb336ce2",
+      "bytes": 3162
+    },
+    "original/made-perimeter-s3-1/pressure-input-endpoints.npy": {
+      "sha256": "97ba5e9ede86c3444d6b077002d0fdefa81874a07bb7c72ea7a1eda4d7f9580a",
+      "bytes": 512
+    },
+    "original/made-perimeter-s3-1/pressure-inputs.json": {
+      "sha256": "504e87ae07e759ca81b7de5bfc50bef8a0e23a415343adb7a5cc74576f332768",
+      "bytes": 92118
+    },
+    "original/made-perimeter-s3-1/pressure-inputs.npy": {
+      "sha256": "8f6bbd9717aa256e6cee98061e8cc9f1d65f5875e69589be9a8a1302c262c8e4",
+      "bytes": 520832
+    },
+    "original/made-perimeter-s3-1/pressure-trace.json": {
+      "sha256": "2b307027e934ec5ce317ea8f04900e24a313c6140554132232778b5b0ae95bf0",
+      "bytes": 92353
+    },
+    "original/made-perimeter-s3-1/pressure-trace.npy": {
+      "sha256": "fb821958b9d21ce42c35c3f08d8ac9ed3a48f548a634429c6a637610e264c384",
+      "bytes": 260480
+    },
+    "original/made-perimeter-s3-1/targets.npy": {
+      "sha256": "45f317d4b117f3d3528f927758ad15c0bf0b866bcc455180d8e0cfdedaffcb4b",
+      "bytes": 3145856
+    },
+    "original-beirut-p0-1.log": {
+      "sha256": "33c6fcfea024808f7f945891f837e4898a37698079e5dfdc5e3985dfb68a279b",
+      "bytes": 513
+    },
+    "original-made-perimeter-s3-1.log": {
+      "sha256": "4653e53584c6fc32d01d188b270bac11b58cc47a80da07a33113095c34f2728f",
+      "bytes": 414
+    },
+    "preparation.json": {
+      "sha256": "c0661530d4159b71056f764cc036c9ca7e9620e16caa65dcd11595139c74e21b",
+      "bytes": 164412
+    },
+    "publication-sources/analyze.py": {
+      "sha256": "2b3a912bc2e22ec802750d03c97d3a50698f86cc096640d1d98527dcb93c827a",
+      "bytes": 3856
+    },
+    "publication-sources/archive.py": {
+      "sha256": "4477a555d8ad3362367dd0706742737440156b200cc745f964d5e5d38853562c",
+      "bytes": 3025
+    },
+    "publication-sources/plan.md": {
+      "sha256": "2908faf02630ba5f6cc1fe32581d0aabbec9fc44625327b47f969ae0c0267454",
+      "bytes": 2554
+    },
+    "publication-sources/prepare.py": {
+      "sha256": "cdc70642caa75c41b26ba7da6acfbb7044e7d8ca41d239c223b83a707a7e6485",
+      "bytes": 2759
+    },
+    "publication-sources/resume.py": {
+      "sha256": "ffd9464b0eb87164d827b33998d810af3b8b7c004000ce3aa5059072f236afd4",
+      "bytes": 5858
+    },
+    "publication-sources/run.py": {
+      "sha256": "8212c40a793db28e994f1fbe8589c8f285a291142448f8700563e89743062cd8",
+      "bytes": 5774
+    },
+    "publication-sources/summary.md": {
+      "sha256": "72c83e17820ef9c86907e55f932ef6827949daaebe55cd2616367b9aeb7bcb52",
+      "bytes": 5094
+    },
+    "publication-sources/verify.py": {
+      "sha256": "8df1f1989c387d7fda70e7ee92aa703a42abfdbfbcb139afbdd39531a8101cf6",
+      "bytes": 3142
+    },
+    "selector/beirut-p0-1/clock-inputs.bin": {
+      "sha256": "a0110b1364ad44aac476fda506645c206961800ec2a09a6683c1cc78aa6e173c",
+      "bytes": 1158108
+    },
+    "selector/beirut-p0-1/clock-inputs.json": {
+      "sha256": "ece655ef984ec716539ca94033da7f9bf348cd93298fd7197c371825d0027671",
+      "bytes": 47049
+    },
+    "selector/beirut-p0-1/diagnostic-state-hashes.json": {
+      "sha256": "63be9568f71aae4b11caeb2e9b73e1f642edf4ba01fe594a1622b4e097d92a77",
+      "bytes": 1741
+    },
+    "selector/beirut-p0-1/inputs.npy": {
+      "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+      "bytes": 6291584
+    },
+    "selector/beirut-p0-1/mask.npy": {
+      "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+      "bytes": 1048704
+    },
+    "selector/beirut-p0-1/meta.json": {
+      "sha256": "ec1a7a9e6e0acc62f04439ab87876b8466d931ee2b237a015b247a85f2f220b3",
+      "bytes": 3395
+    },
+    "selector/beirut-p0-1/pressure-input-endpoints.npy": {
+      "sha256": "e56b1eaf106d4daee38a608bce8cfbd6095f9cd05787fc60b3ac7173b218f699",
+      "bytes": 640
+    },
+    "selector/beirut-p0-1/pressure-inputs.json": {
+      "sha256": "ff83c783f95b0c1f5b129a08ae662ab892089b1e0a69594921e6d1a42c6ac2e7",
+      "bytes": 82021
+    },
+    "selector/beirut-p0-1/pressure-inputs.npy": {
+      "sha256": "ed261ad9c14493d1477b29970d720e77db360e28cde55a83981e4a5c2cb1ec39",
+      "bytes": 619136
+    },
+    "selector/beirut-p0-1/pressure-trace.json": {
+      "sha256": "0a861d45d82f849d68f55bbe49355f55f9aa847a6b3c2643f3aa2bc9ab8800bd",
+      "bytes": 82313
+    },
+    "selector/beirut-p0-1/pressure-trace.npy": {
+      "sha256": "5c4792e1ab99cb93a6153f6f2d61e75600b5ce576377e58e15e9991de039c703",
+      "bytes": 309632
+    },
+    "selector/beirut-p0-1/step-selector.json": {
+      "sha256": "9b71450bc0f0c0bbd6bf09c9c130a4dd56d3bd135d624ece1c0766e49a26161f",
+      "bytes": 216
+    },
+    "selector/beirut-p0-1/targets.npy": {
+      "sha256": "86c67037f60526004b34d23009b850bb24c7de64990169c452eb088e575d1c85",
+      "bytes": 3145856
+    },
+    "selector/made-perimeter-s3-1/clock-inputs.bin": {
+      "sha256": "3dd6b07af3f425bd237a4e56e8ad831e70982178f10465869d1535f11495ac4c",
+      "bytes": 1310428
+    },
+    "selector/made-perimeter-s3-1/clock-inputs.json": {
+      "sha256": "bcb1d5eb36d6ab05081cfd866d489bd36036b209d8639efca2450a01feb43304",
+      "bytes": 53449
+    },
+    "selector/made-perimeter-s3-1/diagnostic-state-hashes.json": {
+      "sha256": "a07e7fada97134a48c9ff2bedd163e6f7e7e70c17d5ed772fa8a0c4b0419dd1d",
+      "bytes": 1743
+    },
+    "selector/made-perimeter-s3-1/inputs.npy": {
+      "sha256": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+      "bytes": 6291584
+    },
+    "selector/made-perimeter-s3-1/mask.npy": {
+      "sha256": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+      "bytes": 1048704
+    },
+    "selector/made-perimeter-s3-1/meta.json": {
+      "sha256": "391d18da29712b00126b39f9f94973cb9d509dc44c29b13d0cce134ba1ad89cb",
+      "bytes": 3251
+    },
+    "selector/made-perimeter-s3-1/pressure-input-endpoints.npy": {
+      "sha256": "bdbbdb2aff827206186946e388402a6c755c4c60bec227f92336f49afb39733f",
+      "bytes": 512
+    },
+    "selector/made-perimeter-s3-1/pressure-inputs.json": {
+      "sha256": "2fd1c4018ed0bd57834ea89b605baaa1754fada07ca3c227f0d14fec1b9952c1",
+      "bytes": 92124
+    },
+    "selector/made-perimeter-s3-1/pressure-inputs.npy": {
+      "sha256": "924a55f7005cd400b494c4c54c718769f04eec81a8567d05a75d01a30682c4eb",
+      "bytes": 520832
+    },
+    "selector/made-perimeter-s3-1/pressure-trace.json": {
+      "sha256": "5c0a3c1b11126840f090fdf16eb9b039277960da63d45a2bb428d62e3cf59607",
+      "bytes": 92359
+    },
+    "selector/made-perimeter-s3-1/pressure-trace.npy": {
+      "sha256": "1f5812fbb3b49409a621032896060e754fea2d2ad984f2602b011edd05a3ec1f",
+      "bytes": 260480
+    },
+    "selector/made-perimeter-s3-1/step-selector.json": {
+      "sha256": "10e29a57259d06c94a948c899ae3763ed36b8de86799e46f3ba57d65241e8b76",
+      "bytes": 216
+    },
+    "selector/made-perimeter-s3-1/targets.npy": {
+      "sha256": "c13aacd4734d98f2fb7b626b6d73e9b3502dc8ab3b439d8ecddde797097a7277",
+      "bytes": 3145856
+    },
+    "selector-beirut-p0-1.log": {
+      "sha256": "f2bbefc32853fd3fcfb82322ee42415a7cf300f001f92ef2e1eac7e38de7175a",
+      "bytes": 513
+    },
+    "selector-made-perimeter-s3-1.log": {
+      "sha256": "3339bb133cb611af7e032824770dd055031ddee2eb25122de51fc18828114075",
+      "bytes": 414
+    },
+    "verification.json": {
+      "sha256": "a3838fabcbf0ea70a07e3bff71314e7706de18ea2e9a73e92c6ae6f6a111fcfb",
+      "bytes": 10688
+    }
+  },
+  "rawFiles": 71,
+  "rawBytes": 52006648,
+  "archives": [
+    {
+      "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-failure-histories-complete-archive/all-raw.tar.gz",
+      "bytes": 23754450,
+      "sha256": "715b3f1b2030763d078c49c5941deffec7ad1ea7c82856d78a6b560a5773e0ee",
+      "members": 71
+    },
+    {
+      "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-selector-failure-histories/evidence/metadata.tar.gz",
+      "bytes": 478356,
+      "sha256": "f67833353a0e58c34844e777bd67ca85e9f2220402151861c388fe086460ffb6",
+      "members": 43
+    }
+  ],
+  "parentFilesVerifiedUnchanged": 1461,
+  "physicalJobs": 4,
+  "numericalRetries": 0,
+  "limits": "Complete selected histories/ordinary arrays/state hashes/clock streams retained. Full district3D states and per-cell peak argmax histories not captured. Original JSON-order controller stop retained. No source/default/reference/tolerance/phase/admission change."
+}

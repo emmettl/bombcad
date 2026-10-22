@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "format": "passed",
+  "lint": "passed",
+  "strictBuild": "passed-no-warnings",
+  "affected": {
+    "command": "make check-affected",
+    "status": "passed",
+    "tier": "covered",
+    "selectedSuites": 23,
+    "macTests": 18,
+    "macSuites": 7,
+    "pcTests": 62,
+    "pcSuites": 11
+  },
+  "physicalCommands": 4,
+  "numericalRetries": 0,
+  "allFourParityGatesPass": true,
+  "limits": [
+    "Two environment-gated archived-bank/analytic tests skipped as expected; no source change.",
+    "Existing Python ResourceWarnings retained.",
+    "Artifact-only; no source/default/reference/tolerance/phase/admission change."
+  ]
+}

@@ -1,0 +1,318 @@
+{
+  "allFourExpandedGatesPass": true,
+  "allFourPhysicalCommandsTerminal0": true,
+  "controllerStop": "Original controller stopped on JSON key order, not numerical parity; three completed jobs preserved, only missing fourth dispatched by resume.py.",
+  "noNumericalRetries": true,
+  "rows": [
+    {
+      "mode": "original",
+      "id": "made-perimeter-s3-1",
+      "ordinaryExact": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": true,
+        "diagnostic-state-hashes.json": true,
+        "clock-inputs.bin": true,
+        "clock-inputs.json": true
+      },
+      "histories": {
+        "pressure-trace": {
+          "oldWordsExact": true,
+          "axesExact": true
+        },
+        "pressure-inputs": {
+          "oldWordsExact": true,
+          "axesExact": true
+        }
+      },
+      "oldEndpointsExact": true,
+      "selectorMetadata": null,
+      "files": {
+        "pressure-trace.npy": {
+          "sha256": "fb821958b9d21ce42c35c3f08d8ac9ed3a48f548a634429c6a637610e264c384",
+          "bytes": 260480
+        },
+        "diagnostic-state-hashes.json": {
+          "sha256": "592c3ed249dfb7759102fa10965808fcad5ca8a6c9b8140d69a2517f99121627",
+          "bytes": 1743
+        },
+        "mask.npy": {
+          "sha256": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+          "bytes": 1048704
+        },
+        "pressure-trace.json": {
+          "sha256": "2b307027e934ec5ce317ea8f04900e24a313c6140554132232778b5b0ae95bf0",
+          "bytes": 92353
+        },
+        "pressure-inputs.json": {
+          "sha256": "504e87ae07e759ca81b7de5bfc50bef8a0e23a415343adb7a5cc74576f332768",
+          "bytes": 92118
+        },
+        "pressure-inputs.npy": {
+          "sha256": "8f6bbd9717aa256e6cee98061e8cc9f1d65f5875e69589be9a8a1302c262c8e4",
+          "bytes": 520832
+        },
+        "clock-inputs.json": {
+          "sha256": "bcb1d5eb36d6ab05081cfd866d489bd36036b209d8639efca2450a01feb43304",
+          "bytes": 53449
+        },
+        "targets.npy": {
+          "sha256": "45f317d4b117f3d3528f927758ad15c0bf0b866bcc455180d8e0cfdedaffcb4b",
+          "bytes": 3145856
+        },
+        "inputs.npy": {
+          "sha256": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+          "bytes": 6291584
+        },
+        "pressure-input-endpoints.npy": {
+          "sha256": "97ba5e9ede86c3444d6b077002d0fdefa81874a07bb7c72ea7a1eda4d7f9580a",
+          "bytes": 512
+        },
+        "clock-inputs.bin": {
+          "sha256": "38312447002808d38d4ed540541b44cbaea49e1bb9885c50b38e4b1a692ba80d",
+          "bytes": 1310428
+        },
+        "meta.json": {
+          "sha256": "71c20a29c177fd4de7f0defb5c9ef6e150cee10ccc3fee85059e914ebb336ce2",
+          "bytes": 3162
+        }
+      }
+    },
+    {
+      "mode": "original",
+      "id": "beirut-p0-1",
+      "ordinaryExact": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": true,
+        "diagnostic-state-hashes.json": true,
+        "clock-inputs.bin": true,
+        "clock-inputs.json": true
+      },
+      "histories": {
+        "pressure-trace": {
+          "oldWordsExact": true,
+          "axesExact": true
+        },
+        "pressure-inputs": {
+          "oldWordsExact": true,
+          "axesExact": true
+        }
+      },
+      "oldEndpointsExact": true,
+      "selectorMetadata": null,
+      "files": {
+        "pressure-trace.npy": {
+          "sha256": "aff2cdf58f7455336cf660e5e2a18b03a91d5228f9cfe1c0f2b32b919e51c257",
+          "bytes": 309632
+        },
+        "diagnostic-state-hashes.json": {
+          "sha256": "5a9f11f6a298406f80a7bd6addb212525747f1681724e75ae59396d51e58f7bd",
+          "bytes": 1741
+        },
+        "mask.npy": {
+          "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+          "bytes": 1048704
+        },
+        "pressure-trace.json": {
+          "sha256": "20ffe18d23ed63082936901f11e738324c15a7bae30ecfdde3a937e9c2f83ea9",
+          "bytes": 82270
+        },
+        "pressure-inputs.json": {
+          "sha256": "9752cb0ae022442631fbc188d679af9bc88ff3bf8fe1dc8398d268feb1d71c57",
+          "bytes": 81978
+        },
+        "pressure-inputs.npy": {
+          "sha256": "aabb3c3b084c8c570edb109b9db54dc485c44a87886fd048a710fdef61040e56",
+          "bytes": 619136
+        },
+        "clock-inputs.json": {
+          "sha256": "ece655ef984ec716539ca94033da7f9bf348cd93298fd7197c371825d0027671",
+          "bytes": 47049
+        },
+        "targets.npy": {
+          "sha256": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13",
+          "bytes": 3145856
+        },
+        "inputs.npy": {
+          "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+          "bytes": 6291584
+        },
+        "pressure-input-endpoints.npy": {
+          "sha256": "9d93d195fe867dcb1e67e9f51c63baae77587bdb2d836efd5a3c81d7a9f8993b",
+          "bytes": 640
+        },
+        "clock-inputs.bin": {
+          "sha256": "373f46ed3a931b8560a7ca8558062c62cb60fa1d57207bc7fa1a964ac852fca2",
+          "bytes": 1158108
+        },
+        "meta.json": {
+          "sha256": "3028cdcb093ff738f869708e1ff6afa456f407db3dcc14fcb148f19bb5b47514",
+          "bytes": 3305
+        }
+      }
+    },
+    {
+      "mode": "selector",
+      "id": "made-perimeter-s3-1",
+      "ordinaryExact": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": true,
+        "diagnostic-state-hashes.json": true,
+        "clock-inputs.bin": true,
+        "clock-inputs.json": true
+      },
+      "histories": {
+        "pressure-trace": {
+          "oldWordsExact": true,
+          "axesExact": true
+        },
+        "pressure-inputs": {
+          "oldWordsExact": true,
+          "axesExact": true
+        }
+      },
+      "oldEndpointsExact": true,
+      "selectorMetadata": {
+        "bytesExact": false,
+        "allParsedValuesExact": true
+      },
+      "files": {
+        "pressure-trace.npy": {
+          "sha256": "1f5812fbb3b49409a621032896060e754fea2d2ad984f2602b011edd05a3ec1f",
+          "bytes": 260480
+        },
+        "diagnostic-state-hashes.json": {
+          "sha256": "a07e7fada97134a48c9ff2bedd163e6f7e7e70c17d5ed772fa8a0c4b0419dd1d",
+          "bytes": 1743
+        },
+        "step-selector.json": {
+          "sha256": "10e29a57259d06c94a948c899ae3763ed36b8de86799e46f3ba57d65241e8b76",
+          "bytes": 216
+        },
+        "mask.npy": {
+          "sha256": "c042e69a1b7ac2fbc37ea869ccebe42201c5bf406ebb18278ce20165e5ffc076",
+          "bytes": 1048704
+        },
+        "pressure-trace.json": {
+          "sha256": "5c0a3c1b11126840f090fdf16eb9b039277960da63d45a2bb428d62e3cf59607",
+          "bytes": 92359
+        },
+        "pressure-inputs.json": {
+          "sha256": "2fd1c4018ed0bd57834ea89b605baaa1754fada07ca3c227f0d14fec1b9952c1",
+          "bytes": 92124
+        },
+        "pressure-inputs.npy": {
+          "sha256": "924a55f7005cd400b494c4c54c718769f04eec81a8567d05a75d01a30682c4eb",
+          "bytes": 520832
+        },
+        "clock-inputs.json": {
+          "sha256": "bcb1d5eb36d6ab05081cfd866d489bd36036b209d8639efca2450a01feb43304",
+          "bytes": 53449
+        },
+        "targets.npy": {
+          "sha256": "c13aacd4734d98f2fb7b626b6d73e9b3502dc8ab3b439d8ecddde797097a7277",
+          "bytes": 3145856
+        },
+        "inputs.npy": {
+          "sha256": "1bcbae108820c59cbda639d4dd016da887f8647146fc6877404f9eb498d6e704",
+          "bytes": 6291584
+        },
+        "pressure-input-endpoints.npy": {
+          "sha256": "bdbbdb2aff827206186946e388402a6c755c4c60bec227f92336f49afb39733f",
+          "bytes": 512
+        },
+        "clock-inputs.bin": {
+          "sha256": "3dd6b07af3f425bd237a4e56e8ad831e70982178f10465869d1535f11495ac4c",
+          "bytes": 1310428
+        },
+        "meta.json": {
+          "sha256": "391d18da29712b00126b39f9f94973cb9d509dc44c29b13d0cce134ba1ad89cb",
+          "bytes": 3251
+        }
+      }
+    },
+    {
+      "mode": "selector",
+      "id": "beirut-p0-1",
+      "ordinaryExact": {
+        "inputs.npy": true,
+        "mask.npy": true,
+        "targets.npy": true,
+        "diagnostic-state-hashes.json": true,
+        "clock-inputs.bin": true,
+        "clock-inputs.json": true
+      },
+      "histories": {
+        "pressure-trace": {
+          "oldWordsExact": true,
+          "axesExact": true
+        },
+        "pressure-inputs": {
+          "oldWordsExact": true,
+          "axesExact": true
+        }
+      },
+      "oldEndpointsExact": true,
+      "selectorMetadata": {
+        "bytesExact": false,
+        "allParsedValuesExact": true
+      },
+      "files": {
+        "pressure-trace.npy": {
+          "sha256": "5c4792e1ab99cb93a6153f6f2d61e75600b5ce576377e58e15e9991de039c703",
+          "bytes": 309632
+        },
+        "diagnostic-state-hashes.json": {
+          "sha256": "63be9568f71aae4b11caeb2e9b73e1f642edf4ba01fe594a1622b4e097d92a77",
+          "bytes": 1741
+        },
+        "step-selector.json": {
+          "sha256": "9b71450bc0f0c0bbd6bf09c9c130a4dd56d3bd135d624ece1c0766e49a26161f",
+          "bytes": 216
+        },
+        "mask.npy": {
+          "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e",
+          "bytes": 1048704
+        },
+        "pressure-trace.json": {
+          "sha256": "0a861d45d82f849d68f55bbe49355f55f9aa847a6b3c2643f3aa2bc9ab8800bd",
+          "bytes": 82313
+        },
+        "pressure-inputs.json": {
+          "sha256": "ff83c783f95b0c1f5b129a08ae662ab892089b1e0a69594921e6d1a42c6ac2e7",
+          "bytes": 82021
+        },
+        "pressure-inputs.npy": {
+          "sha256": "ed261ad9c14493d1477b29970d720e77db360e28cde55a83981e4a5c2cb1ec39",
+          "bytes": 619136
+        },
+        "clock-inputs.json": {
+          "sha256": "ece655ef984ec716539ca94033da7f9bf348cd93298fd7197c371825d0027671",
+          "bytes": 47049
+        },
+        "targets.npy": {
+          "sha256": "86c67037f60526004b34d23009b850bb24c7de64990169c452eb088e575d1c85",
+          "bytes": 3145856
+        },
+        "inputs.npy": {
+          "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5",
+          "bytes": 6291584
+        },
+        "pressure-input-endpoints.npy": {
+          "sha256": "e56b1eaf106d4daee38a608bce8cfbd6095f9cd05787fc60b3ac7173b218f699",
+          "bytes": 640
+        },
+        "clock-inputs.bin": {
+          "sha256": "a0110b1364ad44aac476fda506645c206961800ec2a09a6683c1cc78aa6e173c",
+          "bytes": 1158108
+        },
+        "meta.json": {
+          "sha256": "ec1a7a9e6e0acc62f04439ab87876b8466d931ee2b237a015b247a85f2f220b3",
+          "bytes": 3395
+        }
+      }
+    }
+  ]
+}

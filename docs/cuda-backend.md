@@ -31,6 +31,16 @@ at900, versus native CUDA827. Correct scalar selection alone does not fix accept
 emmettl/bombcad-work#90 tracks histories at the new failure locations;
 emmettl/bombcad-work#91 tracks the upstream maximum-speed inputs to remaining clock differences.
 
+
+The [expanded failure histories](../Benchmarks/CUDAAcceptance/2026-10-22-selector-failure-histories/summary.md)
+complete emmettl/bombcad-work#90 with four parity-qualified observations. The new slope
+phase failure comes from crossing the existing half-peak qualification threshold at a
+later peak, reopening the candidate phase; the initial negative-pressure closure is shared.
+Selected Beirut pressure maxima differ, but their recorder peak is distinct from the
+exported accumulated-cell peak. That target history and the upstream cause remain unobserved; emmettl/bombcad-work#92
+tracks a bounded capture of the actual exported-peak quantity.
+No phase rule, tolerance, reference or admission change follows from these diagnostics.
+
 ## What runs where
 
 The Mac loads the district, constructs the grid and fixed-obstacle mask, and initializes the
