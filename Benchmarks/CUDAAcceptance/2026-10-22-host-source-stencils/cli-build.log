@@ -1,0 +1,23 @@
+Building for production...
+[Constructing description]
+[Planning deferred tasks]
+[2 / 36]
+[10 / 43] SceneModel
+[20 / 48] SceneModel
+[27 / 53] SceneView
+[31 / 54] ContactSearch
+[38 / 59] CompressibleFlow
+[46 / 61] ContactSearchMetal
+[51 / 63] Numerics
+[56 / 65] RadialBlast
+[62 / 70] BlastModel
+[64 / 71] BlastModel
+[71 / 76] BlastCore
+[72 / 77] BlastCore
+[80 / 84] BlastRender
+[82 / 85] BlastRender
+[88 / 90] blastbench-product
+[89 / 91] blastbench-product
+[91 / 91] blastbench-product
+[93 / 94] blastbench-product
+Build complete! (220.00 secs)

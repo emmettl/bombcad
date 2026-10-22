@@ -1,0 +1,40 @@
+Building for debugging...
+[Computing dependencies]
+[Provisioning 36 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+[12 / 49] BlastCore
+[15 / 52] BlastCore
+[17 / 54] BlastCore
+[24 / 59]
+[28 / 57] rigidboxdemo-product
+[32 / 58] BlastRender
+[40 / 64] rigidboxdemo-product
+[41 / 65] BlastCoreTests-product
+[43 / 67] scenebench-product
+[47 / 68] blastbench-product
+[48 / 68] scenebench-product
+[49 / 71] BombCAD
+[54 / 74] BlastCoreTests-product
+[58 / 76] scenebench-product
+[61 / 80] BlastCoreTests-product
+[67 / 79] BlastCoreTests-product
+[70 / 79] BombCAD-product
+[71 / 79] BombCAD
+[75 / 80] BombCADTests-product
+[78 / 82] BombCADTests-product
+[80 / 82] BombCADTests-product
+Build complete! (7.15 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Host source-stencil diagnostics" started.
+◇ Test "Host source reads preserve all four modes and every existing GPU word" started.
+✔ Test "Host source reads preserve all four modes and every existing GPU word" passed after 6.211 seconds.
+◇ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" started.
+✔ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" passed after 0.158 seconds.
+◇ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" started.
+✔ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" passed after 0.182 seconds.
+✔ Suite "Host source-stencil diagnostics" passed after 6.551 seconds.
+✔ Test run with 3 tests in 1 suite passed after 6.552 seconds.

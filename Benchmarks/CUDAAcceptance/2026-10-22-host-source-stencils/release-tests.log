@@ -1,0 +1,48 @@
+Building for production...
+[Computing dependencies]
+[1 / 2]
+[2 / 3] BlastCore
+[3 / 4] BlastCore
+[9 / 9] BombCAD-product
+[10 / 11] BombCAD-product
+[12 / 12] BombCADTests-product
+[14 / 16] BombCADTests-product
+[15 / 17] BlastCoreTests-product
+[16 / 18] BlastCoreTests-product
+[20 / 24] BlastCoreTests-product
+[22 / 24] BlastCoreTests-product
+[25 / 25] blastbench-product
+[26 / 27] blastbench-product
+[28 / 29] rigidboxdemo-product
+[29 / 29] rigidboxdemo-product
+[31 / 31] scenebench-product
+[32 / 33] scenebench-product
+Build complete! (119.96 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Experimental compensated conserved sweeps" started.
+◇ Suite "Production sweep update diagnostics" started.
+◇ Suite "Host source-stencil diagnostics" started.
+◇ Test "Every component mode preserves observation parity and replays actual residual updates" started.
+◇ Test "Host source reads preserve all four modes and every existing GPU word" started.
+◇ Test "Both sweep paths retain plain state and actual pre/post cells" started.
+✔ Test "Both sweep paths retain plain state and actual pre/post cells" passed after 0.072 seconds.
+◇ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" started.
+✔ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" passed after 0.014 seconds.
+◇ Test "Invalid scope, cells and truncated history are refused" started.
+✔ Test "Invalid scope, cells and truncated history are refused" passed after 0.025 seconds.
+✔ Suite "Production sweep update diagnostics" passed after 0.113 seconds.
+✔ Test "Every component mode preserves observation parity and replays actual residual updates" passed after 2.848 seconds.
+◇ Test "Sleeping tiles retain residuals and floors clear the overridden component" started.
+✔ Test "Sleeping tiles retain residuals and floors clear the overridden component" passed after 0.293 seconds.
+◇ Test "Unsupported scope and configuring after observation are refused" started.
+✔ Test "Unsupported scope and configuring after observation are refused" passed after 0.092 seconds.
+✔ Suite "Experimental compensated conserved sweeps" passed after 3.234 seconds.
+✔ Test "Host source reads preserve all four modes and every existing GPU word" passed after 5.175 seconds.
+◇ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" started.
+✔ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" passed after 0.153 seconds.
+◇ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" started.
+✔ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" passed after 0.185 seconds.
+✔ Suite "Host source-stencil diagnostics" passed after 5.514 seconds.
+✔ Test run with 9 tests in 3 suites passed after 5.515 seconds.

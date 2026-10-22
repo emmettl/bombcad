@@ -20,6 +20,11 @@ func runAcousticPhase() throws {
             "acoustic-phase --compensated takes density, energy or both; --discard-compensation requires it")
     }
     let methodName = discardResiduals ? "protected-update-no-carry-v1" : "protected-kahan-v1"
+    let sourceStencils = flag("trace-source-stencils")
+    guard !sourceStencils || (flag("trace-updates") && components != nil) else {
+        throw BlastError.allocationFailed(
+            "acoustic-phase --trace-source-stencils requires --trace-updates and --compensated")
+    }
     let resolutions = flag("fine") ? [512, 1024, 2048] : [128, 256, 512]
     let onlyCase = option("only-case")
     let caseNames = Set(
@@ -51,11 +56,16 @@ func runAcousticPhase() throws {
                 let name = "a\(Int(amplitude))-n\(nx)-\(tiled ? "tiled" : "full")"
                 if let onlyCase, onlyCase != name { continue }
                 var pair: [[String: Any]] = []
-                let modes = flag("trace-updates") ? ["plain", "pressure", "updates"] : ["plain", "pressure"]
+                let modes =
+                    sourceStencils
+                    ? ["plain", "pressure", "updates", "sources"]
+                    : (flag("trace-updates") ? ["plain", "pressure", "updates"] : ["plain", "pressure"])
                 for mode in modes {
                     let observed = mode != "plain"
-                    let updates = mode == "updates"
-                    let outputMode = updates ? "updates" : (observed ? "observed" : "plain")
+                    let sources = mode == "sources"
+                    let updates = mode == "updates" || sources
+                    let outputMode =
+                        sources ? "sources" : (updates ? "updates" : (observed ? "observed" : "plain"))
                     var configuration = SolverConfiguration()
                     configuration.reflectiveFaces = [.xMin, .yMin, .yMax, .zMin, .zMax]
                     configuration.skipStillAir = tiled
@@ -79,7 +89,7 @@ func runAcousticPhase() throws {
                     if updates {
                         var cells = [0, nx / 4, nx / 2 - 1, nx / 2, nx / 2 + 1]
                         if components != nil { cells.append(nx - 1) }
-                        try solver.configureSweepUpdateDiagnostics(cells)
+                        try solver.configureSweepUpdateDiagnostics(cells, captureHostSources: sources)
                     }
                     let initialPressure = (0..<nx).map {
                         solver.primitive($0, 0, 0).pressure - configuration.ambientPressure
@@ -124,6 +134,7 @@ func runAcousticPhase() throws {
                             Double(duration.components.seconds) + Double(duration.components.attoseconds)
                             / 1e18
                     }
+                    if sources { row["hostSourceObserved"] = true }
                     pair.append(row)
                     try write(row, "\(name)-\(outputMode).json")
                     if observed {
@@ -148,14 +159,19 @@ func runAcousticPhase() throws {
                             traceRow["compensationComponents"] = components.rawValue
                         }
                         try write(
-                            traceRow, updates ? "\(name)-update-pressure-trace.json" : "\(name)-trace.json")
+                            traceRow,
+                            sources
+                                ? "\(name)-source-pressure-trace.json"
+                                : (updates ? "\(name)-update-pressure-trace.json" : "\(name)-trace.json"))
                     }
                     if updates {
                         let trace = try solver.sweepUpdateTrace()
                         var row: [String: Any] = [
-                            "format": components == nil
-                                ? "bombcad-production-sweep-updates-1"
-                                : "bombcad-compensated-sweep-updates-1",
+                            "format": sources
+                                ? "bombcad-compensated-source-stencil-1"
+                                : (components == nil
+                                    ? "bombcad-production-sweep-updates-1"
+                                    : "bombcad-compensated-sweep-updates-1"),
                             "complete": advanced.isStable && solver.time >= reference.stopTime * (1 - 1e-6),
                             "fields": trace.capturedFields, "valueEncoding": "uint32-ieee754-binary32",
                             "indices": trace.indices,
@@ -172,7 +188,23 @@ func runAcousticPhase() throws {
                             row["experimentalMethod"] = methodName
                             row["compensationComponents"] = components.rawValue
                         }
-                        try write(row, "\(name)-update-trace.json")
+                        if sources {
+                            let source = try solver.sweepSourceStencilTrace()
+                            row["sourceObservation"] = "host-physical-cells-before-blocking-part"
+                            row["sourcePhysicalIndices"] = source.physicalIndices
+                            row["sourceGhostVelocitySigns"] = source.ghostVelocitySigns
+                            row["sourceConservedBits"] = source.samples.map(\.conservedBits)
+                            row["sourceResidualBits"] = source.samples.map(\.residualBits)
+                            row["sourceConservedFields"] = ["rho", "mx", "my", "mz", "energy"]
+                            row["sourceResidualFields"] = ["rhoError", "energyError", "mask", "floorEvents"]
+                            row["sourceConfiguration"] = [
+                                "gamma": configuration.gamma, "dx": dx,
+                                "densityFloor": configuration.densityFloor,
+                                "pressureFloor": configuration.pressureFloor,
+                                "limiterTheta": configuration.limiterTheta,
+                            ]
+                        }
+                        try write(row, sources ? "\(name)-source-stencil.json" : "\(name)-update-trace.json")
                     }
                 }
                 results.append(["case": name, "runs": pair])

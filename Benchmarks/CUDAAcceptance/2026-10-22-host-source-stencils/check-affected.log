@@ -1,0 +1,1802 @@
+python3 Scripts/check-affected.py 
+check-affected: 23 changed file(s), tier: core
+  map 5b94640b3b97 (45 commits behind the merge base, built 2026-10-21 20:47 UTC on Louiss-Mac-mini)
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/archive-cli.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/archive.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/cli-build.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/cli-control-results.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/cli-control.py: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/evidence/cli-control.tar.gz: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/focused-tests.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/gpu-source-identity.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/initial-release-tests.log: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/memory-observation.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/publication-checks.json: not code the map covers; by name
+  Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/release-tests.log: not code the map covers; by name
+  Sources/BlastCore/BlastSolver+Stepping.swift: 77 suites
+  Sources/BlastCore/SweepSourceDiagnostics.swift: new on this branch; by name
+  Sources/BlastCore/SweepUpdateDiagnostics.swift: not in the map; by name
+  Sources/blastbench/AcousticPhaseBench.swift: not in the map; by name
+  95 of 432 suites, about 46% of the suites' time in the map:
+    AcousticPhaseReferenceTests: not in the map
+    AfterburnLimitTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    AfterburningTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    AirModelTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    AirSolverGapTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    BatchTimingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    BlastValidationTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    BodyContactTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    BuildingEnvelopeTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    CachedAddressGapTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ChamberTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ChargeDragTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    CloseInSlabTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    CommandBufferTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    CompensatedSweepTests: not in the map
+    CongestionTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    CraterCooper1976Tests: not in the map
+    DeflagrationTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    DelayedChargeTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    DistrictChargeRunTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    EnvelopeComponentHistoryTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    EnvelopeImportStudyTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    EnvelopePaneCellTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    EnvelopeVentingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ErrorBandTests: always
+    EvidentialStandingTests: always
+    ExperimentalRigidBoxTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ExperimentalRigidCarTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ExperimentalRigidWorldTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ExposurePlaneTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    FarFieldFacesTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    FirstPhaseColumnsTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    FirstPhaseDefinitionTests: not in the map
+    FragmentVentingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    FrameConsumerTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    FrameExtractionTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    GaugeSolidCellTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    GlassSandia1998Tests: not in the map
+    GlazedOpeningTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    GravityTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    InjuryFieldTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    InterfaceTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    LearnedFieldEncodingTests: not in the map
+    LearnedFieldWeightsTests: not in the map
+    MappedChargeTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    MixedAfterburningTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    MixedStructureTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    MixingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    MultiBodyTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    NearbyBulkTests: not in the map
+    NeighborhoodProjectTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ObjectsBesideStructureTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    OccupantInjuryTests: not in the map
+    PeopleInSceneTests: not in the map
+    PortalWarehouseTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ProfiledSheetTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    RadiativeCoolingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    RefinementCeilingGapTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    RefinementGapTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    RefinementLevelsTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    RefinementOwnStepsTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    RefinementTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    RemoteRunTests: not in the map
+    RenderLayoutTests: always
+    RunTimelineTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ScenarioTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SceneObjectTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SceneViewCodecTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SceneViewStateTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SettleTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ShellCouplingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SolverCheckpointTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SolverMemoryTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SolverVerificationTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    StabilityTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    StandingFingerprintTests: always
+    StandingRunTests: always
+    StillAirTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    StructureCouplingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    StructureCutCellsTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    StructureOnTerrainTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    StructureSolverGapTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    SweepSourceDiagnosticsTests: changed test file
+    SweepUpdateDiagnosticsTests: not in the map
+    TerracedHousesTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    TerrainContactTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    TerrainCutCellTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    TerrainGroundTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    TerrainTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ThresholdRefinementRunTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    TiledCouplingTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    TransportHubTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    VolumeGridsTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    WedgeReflectionTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+    ZeroLengthStepTests: BlastSolver+Stepping.swift: BlastSolver.advance(steps:timeLimit:)
+  build and tests here, since this Mac's line is short: 0 waiting for gpu-slot, 0 GB declared by the 0 held and the waiting against a budget of 26 GB
+  digests: 6 sets of blastbench digest (plain, recommended, mapped, refined, refined twice, terrain) on this branch's release build against the base d2ebdf4e19a4's, bit for bit, here under gpu-slot; the base's binary is to build (/Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c)
+  BlastModel's 36 suite(s) on the Linux lane, bombcad-pc, beside the rest
++ make lint
+swift format lint --strict --recursive Package.swift Sources Tests Scripts
++ make ci-test
+python3 -I Scripts/cuda/test_backend.py
+..........{"one": "pending"}
+.......ssss...............................job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 baseline 1.0
+.job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+....[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+job 0 baseline 1.0
+job 0 candidate 1.0
+job 1 candidate 1.0
+job 1 baseline 1.0
+job 2 baseline 1.0
+job 2 candidate 1.0
+.[
+  {
+    "job": "job",
+    "baseline": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    },
+    "candidate": {
+      "medianTotalSeconds": 1.0,
+      "medianSolverSeconds": 0.1
+    }
+  }
+]
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "running"}
+.{"one": "pending"}
+.{"one": "pending"}
+.{"one": "pending"}
+{"one": "accepted"}
+{"one": "accepted"}
+.{"one": "running"}
+{"one": "pending"}
+.{"one": "pending"}
+{"one": "pending"}
+{"one": "accepted"}
+.{"spill0": "pending", "spill1": "pending", "spill2": "pending", "spill3": "pending", "spill4": "pending", "spill5": "pending"}
+...
+----------------------------------------------------------------------
+Ran 75 tests in 12.036s
+
+OK (skipped=4)
+python3 Scripts/test-release.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.065s
+
+OK
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpxqrqvrq7/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+Ready for review: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp6sk3m641/dist/BombCAD-0.1.0-macos-arm64.zip. No tag or release has been created.
+python3 Scripts/test-nightly.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.005s
+
+OK
+python3 Scripts/test-remote.py
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.027s
+
+OK
+python3 Scripts/test-nightly-suspects.py
+..fatal: Not a valid commit name 0000000000000000000000000000000000000000
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.434s
+
+OK
+### Full check: FAILED
+
+**What failed** (1):
+- `Broken`
+
+**Suspects:** the 2 commits since the last green full check (c96f7d485b), newest first:
+- 3bbd9be Third (A)
+- 7fc12bc Second (A)
+
+### Full check: passed
+
+On 3bbd9be4cd, now the last green full check.
+
+python3 Scripts/test-build-strict.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+python3 Scripts/test-concrete-matrix.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpjxx5rvsl/out/matrix.json' mode='r' encoding='UTF-8'>
+  report = json.load(open(os.path.join(out, "matrix.json")))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:40: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpjxx5rvsl/out/matrix.md' mode='r' encoding='UTF-8'>
+  table = open(os.path.join(out, "matrix.md")).read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:44: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpjxx5rvsl/out/janney-relaxed.txt' mode='r' encoding='UTF-8'>
+  self.assertIn("--rounding relaxed", open(os.path.join(out, "janney-relaxed.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:57: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcodsxz6w/out/matrix.json' mode='r' encoding='UTF-8'>
+  row = json.load(open(os.path.join(out, "matrix.json")))["cases"][0]["rows"][0]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-concrete-matrix.py:60: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcodsxz6w/out/janney.txt' mode='r' encoding='UTF-8'>
+  self.assertNotIn("--rounding", open(os.path.join(out, "janney.txt")).read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 2 tests in 0.243s
+
+OK
+python3 Scripts/test-update-homebrew-tap.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+python3 Scripts/test-check-affected.py
+.....................................................
+----------------------------------------------------------------------
+Ran 53 tests in 0.876s
+
+OK
+python3 Scripts/test-ship.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 14.113s
+
+OK
+python3 Scripts/test-release-notes.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.004s
+
+OK
+python3 Scripts/test-check-shader-mirrors.py
+.........................
+----------------------------------------------------------------------
+Ran 25 tests in 3.498s
+
+OK
+python3 Scripts/test-check-test-deadlines.py
+/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp7eewh7y6'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpc8od76hw'>
+  _warnings.warn(warn_message, ResourceWarning)
+./Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/tempfile.py:817: ResourceWarning: Implicitly cleaning up <TemporaryDirectory '/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp75i010ac'>
+  _warnings.warn(warn_message, ResourceWarning)
+.............
+----------------------------------------------------------------------
+Ran 15 tests in 0.007s
+
+OK
+python3 Scripts/calibration/test-calibration.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 3.608s
+
+OK
+python3 Scripts/test-remote-sweep.py
+.../Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:476: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcf8h04gv/a/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:477: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcf8h04gv/a/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:478: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcf8h04gv/a/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:476: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcf8h04gv/b/sweep.json' mode='w' encoding='UTF-8'>
+  json.dump({"cases": [{"case": "one"}]}, open(os.path.join(folder, side, "sweep.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:477: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcf8h04gv/b/one/plans.json' mode='w' encoding='UTF-8'>
+  json.dump(plans, open(os.path.join(folder, side, "one", "plans.json"), "w"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:478: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcf8h04gv/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, side, "one", "log.txt"), "w").write(log)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/test-remote-sweep.py:480: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpcf8h04gv/b/one/log.txt' mode='w' encoding='UTF-8'>
+  open(os.path.join(folder, "b", "one", "log.txt"), "w").write("Chances in 9.1 s\n205 sides")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....one/log.txt: the same lines but for times
+one/plans.json: the same bytes
+0 file(s) disagree
+one/log.txt: differs at 1 lines, first line 2: '204 sides' against '205 sides'
+one/plans.json: the same bytes
+1 file(s) disagree
+remote-sweep: interrupted tests retained; use a fresh invocation to retry
+remote-sweep: cached completion dddddddddddddddddddddddddddddddd exit 0
+....remote-sweep: /var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpuhaagbub/same-fake already exists
+......remote-sweep: the lock ~/bombcad-sweeps/lock is held (sweep same-name)
+remote-sweep: cached completion aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa exit 0
+....remote-sweep: waiting for the lock (held)
+remote-sweep: the lock ~/bombcad-sweeps/lock is held (held)
+..
+----------------------------------------------------------------------
+Ran 23 tests in 1.330s
+
+OK
+python3 Scripts/split/test-split.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 2.196s
+
+OK
+python3 Scripts/split/test-solver-split.py
+The plan no longer describes the tree:
+  newOne(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+The plan no longer describes the tree:
+  time is placed twice
+  time cannot leave the class's body (stored property)
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+....The plan no longer describes the tree:
+  added(): in Sources/BlastCore/BlastSolver.swift, but the plan does not place it
+Update Scripts/split/solver-split.json (`inventory` lists the keys) and run again.
+...
+----------------------------------------------------------------------
+Ran 7 tests in 0.979s
+
+OK
+  added(): not in the plan; with what is above it (BlastSolver+Stepping.swift)
+wrote plan.json
+  widened time: set from BlastSolver+Stepping.swift
+  widened steps: set from BlastSolver+Stepping.swift
+  widened cache: used from BlastSolver+Boxes.swift, BlastSolver+Stepping.swift
+  widened uniforms: used from BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Stepping.swift
+  wrote Sources/BlastCore/BlastSolver+Boxes.swift
+  wrote Sources/BlastCore/BlastSolver.swift
+  wrote Sources/BlastCore/Shaders/SolverSweep.metal
+  wrote Sources/BlastCore/Shaders/SolverView.metal
+  wrote Sources/BlastCore/Shaders/Solver.metal
+  wrote Sources/BlastCore/StructureTypes+GPU.swift
+  wrote Scripts/check-affected.py
+  wrote docs/air.md
+already split; nothing to do
+python3 Scripts/split/test-narrow-access.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.008s
+
+OK
+python3 Scripts/reference/test-kingery-bulmash.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.116s
+
+OK
+python3 Scripts/footing-bed/test-bed-replica.py
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpw6dy0ph4.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmpyovdiw0d.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+./Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp3jf78uti.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/louisemmett/Developer/Projects/bombcad/Scripts/footing-bed/bed_replica.py:36: ResourceWarning: unclosed file <_io.TextIOWrapper name='/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/tmp7634e1rp.csv' mode='r' encoding='UTF-8'>
+  rows = list(csv.DictReader(open(path)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.009s
+
+OK
+python3 Scripts/reference/test-sdof.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.352s
+
+OK
+python3 Scripts/reference/test-blast1d.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 5.233s
+
+OK
+python3 Scripts/reference/test-planar-euler.py
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.065s
+
+OK
+python3 Scripts/reference/test-compare.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.223s
+
+OK
+python3 Scripts/protective/test-protective.py
+.......................
+----------------------------------------------------------------------
+Ran 23 tests in 4.994s
+
+OK
+python3 Scripts/test-analytic-oracles.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 3.118s
+
+OK
+python3 -I Scripts/open-benchmark/test_score.py
+.....................
+----------------------------------------------------------------------
+Ran 21 tests in 0.032s
+
+OK
+python3 -I Scripts/open-benchmark/test_decks.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 1.790s
+
+OK
+python3 -I Scripts/ml/test-remote-train.py
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.128s
+
+OK
+python3 -I Scripts/ml/test-field-runs.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.057s
+
+OK
+python3 Scripts/ml/test-field-model.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.018s
+
+OK
+python3 Scripts/check-doc-links.py
+python3 Scripts/check-shader-mirrors.py
+38 Swift/Metal pairs and 4 shader copies checked; 0 findings, 1 allowed
+python3 Scripts/check-test-deadlines.py
+No wall-clock bounds in 419 test files.
++ /Users/louisemmett/.local/bin/gpu-slot /Applications/Xcode.app/Contents/Developer/usr/bin/python3 Scripts/check-affected.py check-steps
++ make build-strict
+python3 Scripts/build-strict.py
+Number of files: 5481
+Number of files transferred: 27
+Total file size: 362166976 B
+Total transferred file size: 2718847 B
+Unmatched data: 2718847 B
+Matched data: 0 B
+File list size: 605707 B
+File list generation time: 0.443 seconds
+File list transfer time: 0.086 seconds
+Total sent: 3331062 B
+Total received: 5552 B
+
+sent 3331062 bytes  received 5552 bytes  1379849 bytes/sec
+total size is 362166976  speedup is 108.54
+Another instance of SwiftPM (PID: 45296) is already running using '/Users/louisemmett/Developer/Projects/bombcad/.build', waiting until that process has finished execution...Building for debugging...
+[Computing dependencies]
+[Provisioning 11 / 40]
+[10 / 101]
+[18 / 100] SceneModel
+[24 / 105] SceneModel
+[28 / 109] GeometryImport
+[41 / 115] GeometryImport
+[53 / 91] BlastModel
+[55 / 92] BlastModel
+[58 / 88] BlastCore
+[60 / 89] BlastCore
+[63 / 85] BlastRender
+[65 / 86] BlastRender
+Build complete! (6.95 secs)
+build-strict: no warnings
++ make ifc-converter
+python3 Scripts/prepare-ifc-converter.py
+/Users/louisemmett/Developer/Projects/bombcad/.build/ifc-converter/IfcConvert
++ swift test --filter \.(AfterburnLimitTests|AfterburningTests|AirSolverGapTests|BatchTimingTests|BodyContactTests|CachedAddressGapTests|ChamberTests|ChargeDragTests|CloseInSlabTests|CommandBufferTests|CompensatedSweepTests|DelayedChargeTests|DistrictChargeRunTests|EnvelopeImportStudyTests|ExperimentalRigidCarTests|FarFieldFacesTests|FirstPhaseColumnsTests|FragmentVentingTests|FrameConsumerTests|FrameExtractionTests|GaugeSolidCellTests|GravityTests|InjuryFieldTests|InterfaceTests|MixedAfterburningTests|MixedStructureTests|MixingTests|MultiBodyTests|NearbyBulkTests|NeighborhoodProjectTests|PeopleInSceneTests|RadiativeCoolingTests|RefinementCeilingGapTests|RefinementGapTests|RefinementLevelsTests|RefinementOwnStepsTests|RefinementTests|RemoteRunTests|RunTimelineTests|SceneViewCodecTests|SceneViewStateTests|SettleTests|ShellCouplingTests|SolverCheckpointTests|SolverMemoryTests|SolverVerificationTests|StabilityTests|StandingRunTests|StillAirTests|StructureCouplingTests|StructureCutCellsTests|StructureOnTerrainTests|StructureSolverGapTests|SweepSourceDiagnosticsTests|SweepUpdateDiagnosticsTests|ThresholdRefinementRunTests|TiledCouplingTests|VolumeGridsTests|ZeroLengthStepTests)(/|$)
+Building for debugging...
+[Computing dependencies]
+[Provisioning 1 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[3 / 5] ContinuumKit_ContactSearchMetal
+Build complete! (1.19 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "IFC envelopes against rigid imports" started.
+◇ Suite "Standing carried with results" started.
+◇ Suite "Neighborhood example" started.
+◇ Suite "Dragging the charge" started.
+◇ Suite "A watched run's scene view" started.
+◇ Suite "Run timelines" started.
+◇ Suite "Runs on a Mac nearby, watched here" started.
+◇ Test "Comparison names the runs whose standing differs from the reference's" started.
+◇ Suite "People in the scene" started.
+◇ Test "A duplex as an envelope is exactly its rigid import; its left-out windows and doors become openings" started.
+◇ Test "Sixteen independently owned buildings retain openings and identity after save" started.
+◇ Suite "Scene view state" started.
+◇ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" started.
+◇ Test "The neighborhood selects local coupling and completes a bounded Metal smoke case" started.
+◇ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" started.
+◇ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" started.
+◇ Suite "Models fed by the blast, here or on workers" started.
+◇ Test "The setup and a frame come back exactly as sent, and malformed bytes are refused" started.
+◇ Test "Results files carry their standing beside their own keys, which their readers pass over" started.
+◇ Test "A run kept going when its connection drops is watched again, and its result fetched" started.
+◇ Suite "Nearby sessions' sealed sockets" started.
+◇ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" started.
+◇ Test "Hazards follow the editable charge, with live stand-off crossing feedback" started.
+◇ Test aFrameComesBackAsItWent() started.
+◇ Test "The app's air settings give the standing the solver's configuration" started.
+◇ Test "A view uploaded from a run's setup and frame draws the same pixels as its solver" started.
+◇ Test "Each kind gives the same result here, all on one worker, or spread over two" started.
+◇ Test "A quick estimate places the people; the time of day moves them; the view colours by the share hurt" started.
+◇ Test "Bytes sealed one way open the other, in records, and an ended stream is told from a cut one" started.
+✔ Test "Refining toward chosen buildings confines the run's refinement to corridors to them" passed after 0.002 seconds.
+✔ Test "The app's air settings give the standing the solver's configuration" passed after 0.018 seconds.
+✔ Test "Sixteen independently owned buildings retain openings and identity after save" passed after 0.019 seconds.
+✔ Test "Bytes sealed one way open the other, in records, and an ended stream is told from a cut one" passed after 0.026 seconds.
+◇ Test "A record changed, replayed, reordered or sealed with another key does not open" started.
+✔ Test "A record changed, replayed, reordered or sealed with another key does not open" passed after 0.001 seconds.
+◇ Test "Keys differ by pairing, by nonce and by direction" started.
+✔ Test "Keys differ by pairing, by nonce and by direction" passed after 0.001 seconds.
+◇ Test "The listener closes strangers and takes the session's client, however they come" started.
+✔ Test "The listener closes strangers and takes the session's client, however they come" passed after 0.001 seconds.
+◇ Test "A session's messages go on its sealed socket, and as before on its connection if asked" started.
+✔ Test "Results files carry their standing beside their own keys, which their readers pass over" passed after 0.231 seconds.
+✔ Test "A shown value gives where the measurement would lie, and comparisons see the band's width" passed after 0.242 seconds.
+✔ Test "A kept run's standing saves and reopens; runs kept before it open as not recorded" passed after 0.270 seconds.
+✔ Test "Comparison names the runs whose standing differs from the reference's" passed after 0.271 seconds.
+✔ Test "Hazards follow the editable charge, with live stand-off crossing feedback" passed after 0.429 seconds.
+◇ Test "The estimate follows the dragged charge as a preview, then in full where it is let go" started.
+✔ Test "A view uploaded from a run's setup and frame draws the same pixels as its solver" passed after 2.791 seconds.
+◇ Test "GPU body capture matches source values and expires on the next uncaptured batch" started.
+✔ Test "GPU body capture matches source values and expires on the next uncaptured batch" passed after 0.288 seconds.
+◇ Test "A frame whose parts are not the sizes its setup says is refused and changes nothing" started.
+✔ Test "A frame whose parts are not the sizes its setup says is refused and changes nothing" passed after 0.031 seconds.
+✔ Suite "Scene view state" passed after 3.111 seconds.
+✔ Test "The setup and a frame come back exactly as sent, and malformed bytes are refused" passed after 3.275 seconds.
+✔ Test aFrameComesBackAsItWent() passed after 3.275 seconds.
+◇ Test "A view with the colours, which an app before them cannot read, comes only from protocol 13 on" started.
+◇ Test "A frame stores a layer only when it has changed, and the player finds it where it was" started.
+✔ Test "A headless run carries its standing into its summary, JSON, USD scene and volumes" passed after 3.475 seconds.
+✔ Suite "Standing carried with results" passed after 3.476 seconds.
+✔ Test "A frame stores a layer only when it has changed, and the player finds it where it was" passed after 0.207 seconds.
+◇ Test aTimelineSpansTheRunWithinItsBudget() started.
+✔ Test "A view with the colours, which an app before them cannot read, comes only from protocol 13 on" passed after 0.442 seconds.
+◇ Test "The field read whole is the solver's; coarser, each texel keeps its block's extremes" started.
+✔ Test aTimelineSpansTheRunWithinItsBudget() passed after 0.568 seconds.
+✔ Test "The field read whole is the solver's; coarser, each texel keeps its block's extremes" passed after 0.334 seconds.
+◇ Test "A replayed vented building shows its pane open and its glass broken from the frame it broke" started.
+◇ Test "A watched run's scene view arrives set up first, and every frame of it is drawn here" started.
+duplex-apartment.ifc: 4 elements excluded as open meshes: ["IfcRailing": 4]
+✔ Test "A quick estimate places the people; the time of day moves them; the view colours by the share hurt" passed after 7.895 seconds.
+✔ Suite "People in the scene" passed after 7.896 seconds.
+✔ Test "A watched run's scene view arrives set up first, and every frame of it is drawn here" passed after 6.400 seconds.
+✔ Suite "A watched run's scene view" passed after 10.453 seconds.
+✔ Test "A run kept going when its connection drops is watched again, and its result fetched" passed after 10.488 seconds.
+◇ Test "A run not asked to keep going stops with its connection, as before" started.
+✔ Test "A session's messages go on its sealed socket, and as before on its connection if asked" passed after 10.470 seconds.
+◇ Test "A socket that cannot be opened, on either Mac, leaves the session on its connection" started.
+✔ Test "A replayed vented building shows its pane open and its glass broken from the frame it broke" passed after 6.669 seconds.
+◇ Test "A recording of 0.6.0, without layers, still plays, its layers as the run left them" started.
+✔ Test "A run not asked to keep going stops with its connection, as before" passed after 0.359 seconds.
+◇ Test "Run on a Mac nearby draws its frames here and comes back kept, to replay and compare" started.
+✔ Test "A recording of 0.6.0, without layers, still plays, its layers as the run left them" passed after 0.190 seconds.
+◇ Test capturingNeverTakesMoreThanItsShareOfTheRun() started.
+✔ Test capturingNeverTakesMoreThanItsShareOfTheRun() passed after 0.155 seconds.
+◇ Test aRunIsRecordedKeptAndReplayed() started.
+✔ Test "The estimate follows the dragged charge as a preview, then in full where it is let go" passed after 11.469 seconds.
+◇ Test "Once the full estimate is in, its close calls are run in the air and their results shown in place" started.
+✔ Test "Each kind gives the same result here, all on one worker, or spread over two" passed after 12.687 seconds.
+◇ Test "Live sessions send each model's state back after every frame, the same as here" started.
+✔ Test "Run on a Mac nearby draws its frames here and comes back kept, to replay and compare" passed after 2.481 seconds.
+◇ Test "A dropped link says so, and the run is watched again or its result fetched later" started.
+✔ Test "A socket that cannot be opened, on either Mac, leaves the session on its connection" passed after 3.056 seconds.
+✔ Suite "Nearby sessions' sealed sockets" passed after 13.556 seconds.
+✔ Test "The neighborhood selects local coupling and completes a bounded Metal smoke case" passed after 13.715 seconds.
+✔ Suite "Neighborhood example" passed after 13.715 seconds.
+✔ Test "A dropped link says so, and the run is watched again or its result fetched later" passed after 0.457 seconds.
+◇ Test "Paused there, the run holds while it reports; let go, it comes to the same run as one never paused" started.
+✔ Test aRunIsRecordedKeptAndReplayed() passed after 3.257 seconds.
+◇ Test "A run continued from a state it saved ends as it did, to the bit; a state saved by hand is kept" started.
+✔ Test "Live sessions send each model's state back after every frame, the same as here" passed after 2.776 seconds.
+◇ Test "Reports count the frames taken; a frame of the wrong kind fails the session, not the others" started.
+✔ Test "Reports count the frames taken; a frame of the wrong kind fails the session, not the others" passed after 0.369 seconds.
+◇ Test "A plain remote model whose Mac drops says so at once, rather than never catching up" started.
+✔ Test "A plain remote model whose Mac drops says so at once, rather than never catching up" passed after 0.340 seconds.
+◇ Test "A model whose Mac drops carries on here, from the frames kept, to the same result" started.
+✔ Test "Paused there, the run holds while it reports; let go, it comes to the same run as one never paused" passed after 3.031 seconds.
+◇ Test "A paused run whose link drops goes on there, and its result is fetched later" started.
+✔ Test "A paused run whose link drops goes on there, and its result is fetched later" passed after 0.787 seconds.
+◇ Test "Paused, edited and run again: the new run goes over the same connection, sending only what changed" started.
+✔ Test "A run continued from a state it saved ends as it did, to the bit; a state saved by hand is kept" passed after 3.958 seconds.
+✔ Suite "Run timelines" passed after 18.284 seconds.
+✔ Test "Paused, edited and run again: the new run goes over the same connection, sending only what changed" passed after 0.703 seconds.
+◇ Test "A run sent from the app brings back the project's thermal radiation and ground points" started.
+✔ Test "A run sent from the app brings back the project's thermal radiation and ground points" passed after 0.232 seconds.
+◇ Test "Stopped, the run ends there and nothing is kept" started.
+✔ Test "Stopped, the run ends there and nothing is kept" passed after 0.139 seconds.
+✔ Suite "Runs on a Mac nearby, watched here" passed after 18.683 seconds.
+✔ Test "A model whose Mac drops carries on here, from the frames kept, to the same result" passed after 4.288 seconds.
+◇ Test "A consumer's result survives its journey, the fragments' trajectories included" started.
+✔ Test "A consumer's result survives its journey, the fragments' trajectories included" passed after 0.001 seconds.
+✔ Suite "Models fed by the blast, here or on workers" passed after 20.465 seconds.
+✔ Test "Once the full estimate is in, its close calls are run in the air and their results shown in place" passed after 12.991 seconds.
+✔ Suite "Dragging the charge" passed after 24.890 seconds.
+duplex-apartment.ifc: 38 left-out windows and doors read as opening bounds in 0.58 s
+✔ Test "A duplex as an envelope is exactly its rigid import; its left-out windows and doors become openings" passed after 25.718 seconds.
+➜ Test "Whole buildings as envelopes against rigid imports, with costs" skipped.
+✔ Suite "IFC envelopes against rigid imports" passed after 25.719 seconds.
+✔ Test run with 51 tests in 11 suites passed after 25.719 seconds.
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Settling under own weight" started.
+◇ Suite "Steps of zero length" started.
+◇ Suite "Chamber test" started.
+◇ Suite "Contact between independent bodies" started.
+◇ Suite "Experimental compensated conserved sweeps" started.
+◇ Suite "Stability" started.
+◇ Suite "Refinement" started.
+◇ Suite "Host source-stencil diagnostics" started.
+◇ Suite "Interfaces and glass" started.
+◇ Suite "Mixed bodies" started.
+◇ Suite "Radiative cooling" started.
+◇ Suite "Independent structural bodies" started.
+◇ Suite "Still air" started.
+◇ Suite "Sub-grid mixing" started.
+◇ Suite "Solid structure solver: untested paths" started.
+◇ Suite "Structures' outlines as cut cells" started.
+◇ Suite "District charge on a building, run" started.
+◇ Suite "Blast injury from the run's own fields" started.
+◇ Suite "The air as volume grids" started.
+◇ Suite "Structures on the terrain" started.
+◇ Suite "Air solver gaps" started.
+◇ Suite "Solvers made in a loop" started.
+◇ Suite "Refinement in two levels" started.
+◇ Suite "Structure coupling" started.
+◇ Suite "Delayed charges" started.
+◇ Suite "Refinement ceiling paths not otherwise reached" started.
+◇ Suite "Afterburning's extinction limit" started.
+◇ Suite "Shell coupling" started.
+◇ Suite "Gauges beside solid cells" started.
+◇ Suite "Cutting the air out on the GPU at a frame" started.
+◇ Suite "Mixing-limited afterburning" started.
+◇ Suite "Refinement paths not otherwise reached" started.
+◇ Suite "Gravity" started.
+◇ Suite "Refinement with each level's own steps" started.
+◇ Suite "Local body coupling" started.
+◇ Suite "Command buffers sized by the GPU's time" started.
+◇ Suite "Solver checkpoints" started.
+◇ Suite "Experimental rigid-car coupling" started.
+◇ Suite "Threshold refinement's run" started.
+◇ Suite "Afterburning" started.
+◇ Suite "Far-field faces" started.
+◇ Suite "Fragments holing vented panes" started.
+◇ Suite "Close-in slab test" started.
+◇ Suite "Cached buffer addresses after the state moves on" started.
+◇ Suite "Production sweep update diagnostics" started.
+◇ Test "Settled, a cantilever stays at rest until loaded; from rest it swings about its sag" started.
+◇ Test "A body without gravity is not settled, and a falling one starts undeformed" started.
+◇ Test "A cell freed beside a patch before steps of zero length changes nothing" started.
+◇ Suite "Times the same however a run is batched" started.
+◇ Test "A block thrown into another pushes it through contact, keeping their momentum and adding no energy" started.
+◇ Suite "First-phase columns" started.
+◇ Test "At the test's charge the roof bends up by tens of millimetres, as in the paper's model, and the walls hold" started.
+◇ Test "Every component mode preserves observation parity and replays actual residual updates" started.
+◇ Suite "Solver verification" started.
+◇ Test "Across a fine outline that differs from the coarse one, mass and energy are conserved" started.
+◇ Test "Refined air sees a wall where the fine cells put it, not the coarse ones" started.
+◇ Test "Refined, a coarse grid's peak overpressure comes close to that of a grid twice as fine" started.
+◇ Test "A wall near a charge, in refined air, takes about the load of air twice as fine" started.
+◇ Test "Sod's shock tube refined is nearer the exact solution than unrefined" started.
+◇ Test "A charge in refined air starts as it would on a grid that fine" started.
+◇ Test "Mass and energy are conserved across the refined level's edge" started.
+◇ Test "With afterburning, mass is conserved and fuel burns into energy across the refined level" started.
+◇ Test "A wall broken by the blast in refined air, run twice, gives the same answer to the last bit" started.
+◇ Test "A settled body is kept and taken back by the next run, the same to the bit; other settings settle afresh" started.
+◇ Test "Host source reads preserve all four modes and every existing GPU word" started.
+◇ Test "A cooling fireball comes out the same however the run is batched, to the last bit" started.
+◇ Test "A block of solid elements dropped onto a shell slab comes to rest on it" started.
+◇ Test "A wall driven into still refined air raises the piston shock ahead of it" started.
+◇ Test "A refined run repeats exactly" started.
+◇ Test "A pane of annealed glass shatters in a modest blast and survives a faint one" started.
+◇ Test "Stationary bodies of different mesh sizes match the equivalent fixed scene" started.
+◇ Test "A free wall in refined air gains exactly the impulse the air delivers to its face" started.
+◇ Test "Points off the scene see the fireball as its receivers do, and far off as (R/d)² of σT⁴" started.
+◇ Test "Masonry bonded to concrete comes away at the bond's strength, not the masonry's" started.
+◇ Test "A NaN in the air stops the batch where it is, unstable, not at the time limit" started.
+◇ Test "Uniform air refined everywhere stays exactly uniform" started.
+◇ Test "A centred burst in a closed cube stays mirror-symmetric while its refined blocks do" started.
+◇ Test "A wall broken by the blast is the same with still air skipped" started.
+◇ Test "A cantilever strip half solid elements and half shells sags as beam theory says" started.
+◇ Test "A block of solid elements thrown at a shell plate bounces off it, conserving momentum" started.
+◇ Test "A hot sphere radiates as an isothermal sphere of its optical radius, and its centre loses 4κσT⁴ e^(−κR)" started.
+◇ Test "The σ-model sees no turbulence in a pure shear or a point source's flow, and Nicoud's value in 3-D strain" started.
+◇ Test "Thin gas cools at 4κσT⁴ a cubic metre over many steps, thick gas far more slowly" started.
+◇ Test "Hollow concrete blockwork gives way under a charge that solid masonry holds" started.
+◇ Test "A wall, solid elements at its base and shells above, bends with the blast like the all-solid wall" started.
+◇ Test "Taking the loss every fourth step radiates as taking it every step does, to half a per cent" started.
+◇ Test "A shear layer spreads faster with mixing than with the grid's own diffusion alone" started.
+◇ Test "With afterburning and hot air, what burns is what the gas keeps and radiates, its soot included" started.
+◇ Test "In a closed box a swirling hot bubble's mass and energy are conserved with mixing" started.
+◇ Test "With nothing luminous, the air runs exactly as without the cooling" started.
+◇ Test "A wall off the lattice is loaded through its cut cells about as much as without them" started.
+◇ Test "A blast among buildings is the same, cell for cell, with still air skipped" started.
+◇ Test "Early on, only the air the blast has reached is swept" started.
+◇ Test "A wall whose faces lie on the cells' faces has no cut cells, and the air steps exactly as without them" started.
+◇ Test "With the air refined in two levels the budget still closes, across the levels' edges" started.
+◇ Test "A block dropped onto the slope lands on it, not on the floor" started.
+◇ Test "A wall off the lattice is cut where its faces fall, and a closed room's gas is conserved" started.
+◇ Test "On open ground the injury at standing height reaches about as far as the free field's" started.
+◇ Test "A body with motion set by the scene, or already moving, is not settled" started.
+◇ Test "A planar shock, compression without rotation, passes as without mixing" started.
+◇ Test "Moved gauges keep their history and record their new cells; prepended samples go first" started.
+◇ Test "Still air's steps follow the startup ramp and the speed of sound of the configured gamma" started.
+◇ Test "A box too large for the directions' slices, taken one direction at a time, cools alike" started.
+◇ Test "Peak and impulse come from the solver's fields, in kPa and Pa·s, and follow the blast" started.
+◇ Test "In a closed box the energy the gas loses is the energy it radiated" started.
+◇ Test "A charge on a building goes off on refined air as on uniform cells, the building cleared" started.
+◇ Test "Afterburning releases the configured energy per kilogram and burns faster with a shorter time" started.
+◇ Test "Under gravity, far-field faces copy, to the bit; without it they do not" started.
+◇ Test "A shell plate dropped onto the slope lands on it, not on the floor" started.
+◇ Test "Sod's tube converges with minmod and monotonised central slopes, which differ" started.
+◇ Test "On soft terrain a block sinks by its weight over the bed; on hard terrain it does not" started.
+◇ Test "A delayed charge to be mapped in another's wake is laid as the balloon, saying why" started.
+◇ Test "Clear of the ground, the gas loses what the thermal radiation's volume measures it radiates" started.
+◇ Test "Through far-field faces the oxygen gained is air's share of the mass gained" started.
+◇ Test "A block standing on cut terrain shuts in the slivers under it, and the air stays finite under a blast" started.
+◇ Test "Debris packed into the air conserves momentum, and slows the air through it without reversing it" started.
+◇ Test "Beside cut ground and a rigid block, no structure cut cell gives to either, and the gas is conserved" started.
+◇ Test "A delayed charge's run is the same however it is batched" started.
+◇ Test "A delayed charge reads as the same charge undelayed, later by its delay, as the balloon and mapped" started.
+◇ Test "Counted by overlap, a cell turns solid above the fill threshold and opens below it, keeping its state between" started.
+◇ Test "A block immersed in pressurised air settles into hydrostatic compression" started.
+◇ Test "With moving walls switched off, a driven wall leaves the air undisturbed until it is covered" started.
+◇ Test "Reading every cell's mask, peak and impulse leaves nothing in the thread's autorelease pool" started.
+◇ Test "Sparse loose debris in a steady wind gains the momentum drag theory predicts" started.
+◇ Test "After a restart a settled body starts undeformed, and settles again to the same sag" started.
+◇ Test "An intact wall lets through only the sound it makes by flexing" started.
+◇ Test "Clamped or connected at the ground's height on the slope, a block stands where it is put" started.
+◇ Test "Air drawn in through far-field faces is ambient air, with its oxygen, and a deficit relaxes" started.
+◇ Test "A cantilever wall bends away from a moderate charge and survives" started.
+◇ Test "Counted by overlap, a layer of element centres on a cell's face fills it by what lies inside" started.
+◇ Test "A free shell wall gains exactly the impulse the air delivers to its face" started.
+◇ Test "A wall broken by the blast, run twice, gives the same answer to the last bit" started.
+◇ Test "Air pulled apart into a vacuum is held at the density floor and stays finite" started.
+◇ Test "Bands held beside an envelope stop at the ceiling" started.
+◇ Test "A wall driven through the grid conserves the gas, once its staircase volume is allowed for" started.
+◇ Test "A run in two levels repeats exactly" started.
+◇ Test "A wall treated as stationary keeps the air behind it undisturbed" started.
+◇ Test "A body falling through sleeping air is loaded by the air beside where it now is" started.
+◇ Test "The same wall is breached by a much larger charge" started.
+◇ Test "A gauge whose cell is solid reads the fluid cell beside it nearest its point, not the stale state" started.
+◇ Test "A free wall in air refined twice gains exactly the impulse the air delivers to its face" started.
+◇ Test "A solver built in a pool and dropped lets its buffers go when the pool drains" started.
+◇ Test "Refined, a block standing on cut terrain shuts in the fine slivers under it, and the closed air keeps its gas" started.
+◇ Test "A delayed charge fires when the clock reaches it, as the balloon, and adds its energy then" started.
+◇ Test "Sparse loose debris in a pressure gradient is pushed down it, as the solid it stands for" started.
+◇ Test "Once the blast has passed, the air is frozen and the structure carries on alone" started.
+◇ Test "A wall driven into still air raises the piston shock ahead and the rarefaction behind" started.
+◇ Test "A free wall gains exactly the impulse the air delivers to its face" started.
+◇ Test "The air's mask travels with a wall that is pushed along" started.
+◇ Test "Across fine outlines that differ from the coarser ones, mass and energy are conserved" started.
+◇ Test "Blocks off the lattice, refined twice at 0.005, leave the air ahead of the shock still" started.
+◇ Test "A hole in a shell wall opens the air's mask and lets the blast through" started.
+◇ Test "The ceiling is measured from the ground beneath, not the domain's floor" started.
+◇ Test "A ceiling over the domain's top changes no bit, with or without held bands" started.
+◇ Test "Loose shell debris in a steady wind gains the momentum drag theory predicts" started.
+◇ Test "A pool that starts small and grows steps exactly as one made at full size" started.
+◇ Test "A charge's products burn where it stirs the air; what burns is what the gas gains" started.
+◇ Test "A wall near a charge, in air refined twice, takes about the load of air four times as fine" started.
+◇ Test "A solver run again without its ceiling refines as a fresh one without a ceiling" started.
+◇ Test "A coupled run comes out the same to the last bit however its steps are batched" started.
+◇ Test "An intact shell wall lets through only the sound it makes by flexing" started.
+◇ Test "A wall broken by the blast in air refined twice, run twice, gives the same answer to the last bit" started.
+◇ Test "Hot products in still air, with no turbulence to mix them, do not burn with the limit" started.
+◇ Test "The wall's thickness is solid to the air, and nothing else" started.
+◇ Test "The second level's own threshold: nil is the first's, one never passed leaves it empty" started.
+◇ Test "Refinement held about a structure holds the second level too after the shock has gone" started.
+◇ Test "A recorder's view field is cut out by the batch that passes its frame's time, and changes nothing" started.
+◇ Test "With the pool of patches used up, the rest stays coarse and the gas is still conserved" started.
+◇ Test "A charge mapped onto refined air keeps the impulse its solution recorded under the patches" started.
+◇ Test "The GPU's slice of the air and fireball agree with the CPU's" started.
+◇ Test "With afterburning, mass, energy and oxygen are conserved across both levels" started.
+◇ Test "Uniform air refined everywhere in two levels stays exactly uniform" started.
+◇ Test "The GPU's cells of the fireball, with its unburnt products, agree with the CPU's" started.
+◇ Test "The same run cuts out the same air, and asking makes no difference to the blast" started.
+◇ Test "Taking its own steps, a level conserves mass and energy, with afterburning too" started.
+◇ Test "When the pool of patches is used up, the same blocks are refined every run" started.
+◇ Test "Under gravity, overpressure is against the ambient pressure at its height" started.
+◇ Test "Over the terrain's cut cells a level's own steps are not taken, and the run is unchanged" started.
+◇ Test "A hole in the wall opens the air's mask and lets the blast through" started.
+◇ Test "Where the air is refined the fireball's cells come from its finest cells, as a fine grid's would" started.
+◇ Test "A wider refinement margin refines a superset of the blocks, and every margin conserves the gas" started.
+◇ Test "Uniform air refined everywhere, taking its own steps, stays exactly uniform" started.
+◇ Test "Taking their own steps, the levels give a burst's peak and impulse as taking every substep does" started.
+◇ Test "Dense and tiled coupling preserve full air states and body loads" started.
+◇ Test "Refinement held about a structure while its air is loaded stays after the shock has gone" started.
+◇ Test "Taking their own steps, the levels repeat exactly" started.
+◇ Test "A first level that runs out of memory part way through growing leaves both levels in the same buffers" started.
+◇ Test "Patches filled under many blocks take each fine cell's outline from every block, on both levels" started.
+◇ Test "Under gravity cells at the pressure floor, among air at rest, stay finite" started.
+◇ Test "A run saved at step 64 and carried on by another solver ends as the run straight through, to the bit" started.
+◇ Test "Each building is judged once the blast has passed it, nearest first, and the run ends" started.
+◇ Test "Cancelled or out of budget, it stops with what it has judged" started.
+◇ Test "Refined twice, a coarse grid's peak overpressure comes close to that of a grid four times as fine" started.
+◇ Test "A checkpoint is refused while a batch is in flight" started.
+◇ Test "Refined air, and a structure with it, step the same in one-step buffers as in the usual ones" started.
+◇ Test "Air at rest in its hydrostatic atmosphere stays at rest, to the bit" started.
+◇ Test "A structure on its own, failing, steps the same in one-substep buffers, across 2,000-substep runs" started.
+◇ Test "Burnt out in a closed vessel, the gas pressure is within 15% of Cooper's worked example" started.
+◇ Test "Refined in two levels, and over a hill, air at rest stays at rest to the bit" started.
+◇ Test "Compressed parts come back byte for byte, in chunks and stored as they are where they do not compress" started.
+◇ Test "A glazed building's recorded loads and vented panes carry on from a checkpoint to the bit" started.
+◇ Test "Mass, energy and momentum are conserved across both levels' edges, which stay nested" started.
+◇ Test "A wall in shells, struck and refined, carries on from a checkpoint to the bit" started.
+◇ Test "Products burn in TNT's proportion of oxygen, releasing the afterburn energy, and conserve mass" started.
+◇ Test "A heavy charge in a small room burns only as much as the room's oxygen allows" started.
+◇ Test "Afterburning gives the same answer with still air skipped" started.
+◇ Test "Without afterburning nothing burns and no fuel is tracked" started.
+◇ Test "Still air beyond and inside far-field faces stays still" started.
+◇ Test "A light sphere released at rest first accelerates as potential flow has it, g Δρ / (ρ + ρa / 2)" started.
+◇ Test "On a mapped start a pane holed at a time opens then: the GPU's clock starts with the run's" started.
+◇ Test "In a closed box the gas's energy and its potential energy are conserved together" started.
+◇ Test "Through far-field faces a small domain's air returns to ambient once the blast has left" started.
+◇ Test "Ambient air exerts no net load; the free car rests on its static tyre loads" started.
+◇ Test "A checkpoint is refused off a 64-step boundary, and into another scene or configuration" started.
+◇ Test case passing 1 argument shells → (false, false) to "A block thrown into another pushes it through contact, keeping their momentum and adding no energy" started.
+◇ Test case passing 1 argument levels → 2 to "A cell freed beside a patch before steps of zero length changes nothing" started.
+◇ Test "Nothing is kept from a batch that ends short of its limit, or once the state changes" started.
+◇ Test "The view field cut out at a frame is the one worked out after it, and asking changes nothing" started.
+◇ Test "Cold products in air do not burn with the limit, and do without it; hot ones burn either way" started.
+◇ Test "Under gravity, skipping still air gives the same answer to the bit, with afterburning" started.
+◇ Test case passing 1 argument levels → 1 to "A cell freed beside a patch before steps of zero length changes nothing" started.
+◇ Test "Under gravity the cloud's hand-over finds no warm gas in air at rest, and a bubble's at its height" started.
+◇ Test "The calibration shot: pressures beside the slab and the impulse on it, and no damage" started.
+◇ Test "With the limit, what burns is what the gas gains, and mass and oxygen are conserved" started.
+◇ Test "Under a refined pool that grew, peak, impulse and mask read as at full size" started.
+◇ Test "Warm but too dilute to reach the limit flame temperature, products do not burn" started.
+◇ Test "An edit after some steps is what the next step starts from, with or without a restart" started.
+◇ Test case passing 1 argument ratio → 2 to "With afterburning, mass is conserved and fuel burns into energy across the refined level" started.
+◇ Test "13 kg at 1 m bends the slab well past yield without breaching it" started.
+◇ Test "A solver loaded with another scene reads as one built for it" started.
+◇ Test case passing 1 argument ratio → 4 to "With afterburning, mass is conserved and fuel burns into energy across the refined level" started.
+◇ Test case passing 1 argument ratio → 2 to "Mass and energy are conserved across the refined level's edge" started.
+◇ Test case passing 1 argument ratio → 4 to "Mass and energy are conserved across the refined level's edge" started.
+◇ Test case passing 1 argument refinement → 0 to "Stationary bodies of different mesh sizes match the equivalent fixed scene" started.
+◇ Test "After the state's buffers swap, reads show the latest step" started.
+◇ Test case passing 1 argument ratio → 2 to "Uniform air refined everywhere stays exactly uniform" started.
+◇ Test case passing 1 argument ratio → 4 to "Uniform air refined everywhere stays exactly uniform" started.
+◇ Test "Both sweep paths retain plain state and actual pre/post cells" started.
+◇ Test "The cached mask address is the mask buffer's, and isSolid reads its bytes" started.
+◇ Test case passing 3 arguments absorption → 1.0, totalTolerance → 0.005, centreTolerance → 0.02 to "A hot sphere radiates as an isothermal sphere of its optical radius, and its centre loses 4κσT⁴ e^(−κR)" started.
+◇ Test case passing 3 arguments absorption → 20.0, totalTolerance → 0.02, centreTolerance → 0.02 to "A hot sphere radiates as an isothermal sphere of its optical radius, and its centre loses 4κσT⁴ e^(−κR)" started.
+◇ Test case passing 2 arguments gamma → 1.6666666, startupSteps → 6 to "Still air's steps follow the startup ramp and the speed of sound of the configured gamma" started.
+◇ Test case passing 2 arguments gamma → 1.4, startupSteps → 1 to "Still air's steps follow the startup ramp and the speed of sound of the configured gamma" started.
+◇ Test case passing 2 arguments gamma → 1.4, startupSteps → 6 to "Still air's steps follow the startup ramp and the speed of sound of the configured gamma" started.
+◇ Test case passing 1 argument absorption → 1.0 to "Clear of the ground, the gas loses what the thermal radiation's volume measures it radiates" started.
+◇ Test case passing 3 arguments absorption → 0.01, totalTolerance → 0.002, centreTolerance → 0.002 to "A hot sphere radiates as an isothermal sphere of its optical radius, and its centre loses 4κσT⁴ e^(−κR)" started.
+◇ Test case passing 1 argument absorption → 0.05 to "Clear of the ground, the gas loses what the thermal radiation's volume measures it radiates" started.
+◇ Test case passing 1 argument absorption → 20.0 to "Clear of the ground, the gas loses what the thermal radiation's volume measures it radiates" started.
+◇ Test case passing 1 argument enabled → false to "Sparse loose debris in a steady wind gains the momentum drag theory predicts" started.
+◇ Test case passing 1 argument enabled → true to "Sparse loose debris in a steady wind gains the momentum drag theory predicts" started.
+◇ Test case passing 1 argument speed → 10.0 to "A wall driven through the grid conserves the gas, once its staircase volume is allowed for" started.
+◇ Test case passing 1 argument mapped → false to "A delayed charge reads as the same charge undelayed, later by its delay, as the balloon and mapped" started.
+◇ Test case passing 1 argument speed → 50.0 to "A wall driven through the grid conserves the gas, once its staircase volume is allowed for" started.
+◇ Test case passing 1 argument speed → 150.0 to "A wall driven through the grid conserves the gas, once its staircase volume is allowed for" started.
+◇ Test case passing 1 argument levels → 2 to "A pool that starts small and grows steps exactly as one made at full size" started.
+◇ Test case passing 1 argument levels → 2 to "Refined, a block standing on cut terrain shuts in the fine slivers under it, and the closed air keeps its gas" started.
+◇ Test case passing 1 argument holding → true to "A ceiling over the domain's top changes no bit, with or without held bands" started.
+◇ Test case passing 1 argument levels → 1 to "Refined, a block standing on cut terrain shuts in the fine slivers under it, and the closed air keeps its gas" started.
+◇ Test case passing 1 argument mapped → true to "A delayed charge reads as the same charge undelayed, later by its delay, as the balloon and mapped" started.
+◇ Test case passing 1 argument holding → false to "A ceiling over the domain's top changes no bit, with or without held bands" started.
+◇ Test case passing 1 argument levels → 1 to "With the pool of patches used up, the rest stays coarse and the gas is still conserved" started.
+◇ Test case passing 1 argument levels → 2 to "With the pool of patches used up, the rest stays coarse and the gas is still conserved" started.
+◇ Test case passing 1 argument levels → 1 to "Taking its own steps, a level conserves mass and energy, with afterburning too" started.
+◇ Test case passing 1 argument levels → 2 to "Taking its own steps, a level conserves mass and energy, with afterburning too" started.
+◇ Test case passing 1 argument levels → 1 to "A charge mapped onto refined air keeps the impulse its solution recorded under the patches" started.
+◇ Test case passing 1 argument levels → 1 to "When the pool of patches is used up, the same blocks are refined every run" started.
+◇ Test case passing 1 argument levels → 1 to "A pool that starts small and grows steps exactly as one made at full size" started.
+◇ Test case passing 1 argument levels → 2 to "When the pool of patches is used up, the same blocks are refined every run" started.
+◇ Test case passing 1 argument levels → 2 to "Uniform air refined everywhere, taking its own steps, stays exactly uniform" started.
+◇ Test case passing 1 argument levels → 1 to "Taking their own steps, the levels give a burst's peak and impulse as taking every substep does" started.
+◇ Test case passing 2 arguments kind → 0, refinement → 1 to "Dense and tiled coupling preserve full air states and body loads" started.
+◇ Test case passing 1 argument levels → 2 to "A charge mapped onto refined air keeps the impulse its solution recorded under the patches" started.
+◇ Test case passing 1 argument levels → 2 to "Taking their own steps, the levels give a burst's peak and impulse as taking every substep does" started.
+◇ Test case passing 1 argument levels → 1 to "Taking their own steps, the levels repeat exactly" started.
+◇ Test case passing 1 argument levels → 2 to "Taking their own steps, the levels repeat exactly" started.
+◇ Test case passing 1 argument levels → 1 to "Uniform air refined everywhere, taking its own steps, stays exactly uniform" started.
+◇ Test case passing 2 arguments gravity → AirGravity(acceleration: 9.80665, lapseRate: 0.0065), airModel → .idealGas to "Air at rest in its hydrostatic atmosphere stays at rest, to the bit" started.
+◇ Test case passing 2 arguments gravity → AirGravity(acceleration: 9.80665, lapseRate: 0.0), airModel → .idealGas to "Air at rest in its hydrostatic atmosphere stays at rest, to the bit" started.
+◇ Test case passing 2 arguments gravity → AirGravity(acceleration: 9.80665, lapseRate: 0.0065), airModel → .thermallyPerfect to "Air at rest in its hydrostatic atmosphere stays at rest, to the bit" started.
+◇ Test "A vent panel's opening time" started.
+◇ Test "The exposure plane's arrival times" started.
+◇ Test "Each column's first phase is the recorder's rule over its whole history" started.
+◇ Test "Sod shock tube gives the same answer along every axis" started.
+◇ Test "A centred burst in a closed cube stays mirror-symmetric" started.
+◇ Test "Still air around obstacles stays still" started.
+◇ Test case passing 1 argument levels → 1 to "Under a refined pool that grew, peak, impulse and mask read as at full size" started.
+◇ Test case passing 1 argument levels → 2 to "Under a refined pool that grew, peak, impulse and mask read as at full size" started.
+◇ Test "A strong point blast follows the Sedov-Taylor similarity law" started.
+◇ Test "A shock reflecting off a rigid wall reaches the Rankine-Hugoniot pressure" started.
+◇ Test "Sod shock tube converges to the exact solution" started.
+◇ Test "Mass and energy are conserved in a closed box with an obstacle" started.
+◇ Test case passing 2 arguments steps → 1, restarting → false to "An edit after some steps is what the next step starts from, with or without a restart" started.
+◇ Test case passing 2 arguments steps → 2, restarting → false to "An edit after some steps is what the next step starts from, with or without a restart" started.
+◇ Test case passing 2 arguments steps → 3, restarting → true to "An edit after some steps is what the next step starts from, with or without a restart" started.
+◇ Test case passing 2 arguments steps → 4, restarting → true to "An edit after some steps is what the next step starts from, with or without a restart" started.
+✔ Test "A NaN in the air stops the batch where it is, unstable, not at the time limit" passed after 0.077 seconds.
+◇ Test case passing 1 argument wall → .solidCells to "A shock reflecting off a rigid wall reaches the Rankine-Hugoniot pressure" started.
+◇ Test case passing 1 argument wall → .domainFace to "A shock reflecting off a rigid wall reaches the Rankine-Hugoniot pressure" started.
+◇ Test case passing 1 argument riemannSolver → .hllc to "Sod shock tube converges to the exact solution" started.
+◇ Test case passing 1 argument riemannSolver → .hll to "Sod shock tube converges to the exact solution" started.
+✔ Suite "Stability" passed after 0.079 seconds.
+✔ Test "Uniform air refined everywhere, taking its own steps, stays exactly uniform" with 2 test cases passed after 0.172 seconds.
+✔ Test "A cell freed beside a patch before steps of zero length changes nothing" with 2 test cases passed after 0.774 seconds.
+✔ Suite "Steps of zero length" passed after 0.775 seconds.
+✔ Test "Sod's shock tube refined is nearer the exact solution than unrefined" passed after 1.225 seconds.
+✔ Test "A charge in refined air starts as it would on a grid that fine" passed after 2.759 seconds.
+✔ Test "Refined, a coarse grid's peak overpressure comes close to that of a grid twice as fine" passed after 3.085 seconds.
+✔ Test "Across a fine outline that differs from the coarse one, mass and energy are conserved" passed after 3.446 seconds.
+✔ Test "Refined air sees a wall where the fine cells put it, not the coarse ones" passed after 3.642 seconds.
+◇ Test case passing 1 argument shells → (false, true) to "A block thrown into another pushes it through contact, keeping their momentum and adding no energy" started.
+✔ Test "Taking their own steps, the levels repeat exactly" with 2 test cases passed after 4.037 seconds.
+✔ Test "A wall near a charge, in refined air, takes about the load of air twice as fine" passed after 4.098 seconds.
+✔ Test "Cancelled or out of budget, it stops with what it has judged" passed after 4.227 seconds.
+✔ Test "Uniform air refined everywhere stays exactly uniform" with 2 test cases passed after 4.343 seconds.
+✔ Test "A centred burst in a closed cube stays mirror-symmetric while its refined blocks do" passed after 4.493 seconds.
+✔ Test "Taking their own steps, the levels give a burst's peak and impulse as taking every substep does" with 2 test cases passed after 4.790 seconds.
+✔ Test "A charge on a building goes off on refined air as on uniform cells, the building cleared" passed after 4.858 seconds.
+✔ Suite "District charge on a building, run" passed after 4.859 seconds.
+✔ Test "A refined run repeats exactly" passed after 5.203 seconds.
+✔ Test "Each building is judged once the blast has passed it, nearest first, and the run ends" passed after 6.092 seconds.
+✔ Suite "Threshold refinement's run" passed after 6.093 seconds.
+◇ Test case passing 1 argument refinement → 2 to "Stationary bodies of different mesh sizes match the equivalent fixed scene" started.
+✔ Test "A wall driven into still refined air raises the piston shock ahead of it" passed after 6.798 seconds.
+✔ Test "Mass and energy are conserved across the refined level's edge" with 2 test cases passed after 6.861 seconds.
+✔ Test "Settled, a cantilever stays at rest until loaded; from rest it swings about its sag" passed after 7.912 seconds.
+✔ Test "With afterburning, mass is conserved and fuel burns into energy across the refined level" with 2 test cases passed after 8.204 seconds.
+✔ Test "The σ-model sees no turbulence in a pure shear or a point source's flow, and Nicoud's value in 3-D strain" passed after 8.486 seconds.
+✔ Test "Taking the loss every fourth step radiates as taking it every step does, to half a per cent" passed after 8.988 seconds.
+✔ Test "A pane of annealed glass shatters in a modest blast and survives a faint one" passed after 9.029 seconds.
+✔ Test "Taking its own steps, a level conserves mass and energy, with afterburning too" with 2 test cases passed after 9.408 seconds.
+✔ Suite "Refinement with each level's own steps" passed after 9.410 seconds.
+✔ Test "A cooling fireball comes out the same however the run is batched, to the last bit" passed after 9.548 seconds.
+✔ Test "In a closed box a swirling hot bubble's mass and energy are conserved with mixing" passed after 9.725 seconds.
+✔ Test "Thin gas cools at 4κσT⁴ a cubic metre over many steps, thick gas far more slowly" passed after 9.924 seconds.
+✔ Test "With nothing luminous, the air runs exactly as without the cooling" passed after 11.064 seconds.
+✔ Test "Early on, only the air the blast has reached is swept" passed after 11.978 seconds.
+✔ Test "A blast among buildings is the same, cell for cell, with still air skipped" passed after 12.622 seconds.
+✔ Test "A block of solid elements thrown at a shell plate bounces off it, conserving momentum" passed after 14.976 seconds.
+✔ Test "On open ground the injury at standing height reaches about as far as the free field's" passed after 17.161 seconds.
+◇ Test "Mapped from one dimension, the lungs' reach close in comes nearer the free field's" started.
+✔ Test "A wall whose faces lie on the cells' faces has no cut cells, and the air steps exactly as without them" passed after 17.480 seconds.
+✔ Test "A body with motion set by the scene, or already moving, is not settled" passed after 18.735 seconds.
+✔ Test "A wall off the lattice is loaded through its cut cells about as much as without them" passed after 19.404 seconds.
+✔ Test "With afterburning and hot air, what burns is what the gas keeps and radiates, its soot included" passed after 19.455 seconds.
+✔ Test "Moved gauges keep their history and record their new cells; prepended samples go first" passed after 19.731 seconds.
+✔ Test "A box too large for the directions' slices, taken one direction at a time, cools alike" passed after 20.197 seconds.
+✔ Test "A settled body is kept and taken back by the next run, the same to the bit; other settings settle afresh" passed after 20.790 seconds.
+✔ Test "Peak and impulse come from the solver's fields, in kPa and Pa·s, and follow the blast" passed after 20.845 seconds.
+✔ Suite "The air as volume grids" passed after 20.846 seconds.
+✔ Test "In a closed box the energy the gas loses is the energy it radiated" passed after 22.396 seconds.
+✔ Test "A block dropped onto the slope lands on it, not on the floor" passed after 22.740 seconds.
+✔ Test "Every component mode preserves observation parity and replays actual residual updates" passed after 22.981 seconds.
+◇ Test "Sleeping tiles retain residuals and floors clear the overridden component" started.
+✔ Test "Points off the scene see the fireball as its receivers do, and far off as (R/d)² of σT⁴" passed after 23.276 seconds.
+✔ Test "A wall off the lattice is cut where its faces fall, and a closed room's gas is conserved" passed after 23.577 seconds.
+✔ Test "A wall broken by the blast is the same with still air skipped" passed after 23.795 seconds.
+✔ Suite "Still air" passed after 23.796 seconds.
+✔ Test "Still air's steps follow the startup ramp and the speed of sound of the configured gamma" with 3 test cases passed after 24.258 seconds.
+✔ Test "Sod's tube converges with minmod and monotonised central slopes, which differ" passed after 24.764 seconds.
+✔ Test "Through far-field faces the oxygen gained is air's share of the mass gained" passed after 24.826 seconds.
+✔ Test "Under gravity, far-field faces copy, to the bit; without it they do not" passed after 25.192 seconds.
+✔ Test "A hot sphere radiates as an isothermal sphere of its optical radius, and its centre loses 4κσT⁴ e^(−κR)" with 3 test cases passed after 25.564 seconds.
+✔ Test "A delayed charge to be mapped in another's wake is laid as the balloon, saying why" passed after 26.419 seconds.
+✔ Test "A free wall in refined air gains exactly the impulse the air delivers to its face" passed after 27.894 seconds.
+✔ Test "A block standing on cut terrain shuts in the slivers under it, and the air stays finite under a blast" passed after 28.628 seconds.
+✔ Test "A body without gravity is not settled, and a falling one starts undeformed" passed after 30.416 seconds.
+✔ Suite "Settling under own weight" passed after 30.417 seconds.
+✔ Test "A shell plate dropped onto the slope lands on it, not on the floor" passed after 30.612 seconds.
+✔ Test "Beside cut ground and a rigid block, no structure cut cell gives to either, and the gas is conserved" passed after 30.770 seconds.
+✔ Suite "Structures' outlines as cut cells" passed after 30.772 seconds.
+✔ Test "A shear layer spreads faster with mixing than with the grid's own diffusion alone" passed after 30.797 seconds.
+✔ Test "A block immersed in pressurised air settles into hydrostatic compression" passed after 31.019 seconds.
+✔ Test "A delayed charge's run is the same however it is batched" passed after 31.030 seconds.
+✔ Test "Afterburning releases the configured energy per kilogram and burns faster with a shorter time" passed after 31.183 seconds.
+✔ Test "With moving walls switched off, a driven wall leaves the air undisturbed until it is covered" passed after 31.380 seconds.
+✔ Test "A planar shock, compression without rotation, passes as without mixing" passed after 31.382 seconds.
+✔ Suite "Sub-grid mixing" passed after 31.383 seconds.
+✔ Test "Clear of the ground, the gas loses what the thermal radiation's volume measures it radiates" with 3 test cases passed after 31.573 seconds.
+✔ Test "On soft terrain a block sinks by its weight over the bed; on hard terrain it does not" passed after 32.838 seconds.
+✔ Test "Air drawn in through far-field faces is ambient air, with its oxygen, and a deficit relaxes" passed after 33.110 seconds.
+✔ Test "Sparse loose debris in a steady wind gains the momentum drag theory predicts" with 2 test cases passed after 33.380 seconds.
+✔ Test "Counted by overlap, a layer of element centres on a cell's face fills it by what lies inside" passed after 34.001 seconds.
+✔ Test "Clamped or connected at the ground's height on the slope, a block stands where it is put" passed after 34.779 seconds.
+✔ Test "Debris packed into the air conserves momentum, and slows the air through it without reversing it" passed after 35.057 seconds.
+✔ Test "Reading every cell's mask, peak and impulse leaves nothing in the thread's autorelease pool" passed after 35.066 seconds.
+✔ Test "An intact wall lets through only the sound it makes by flexing" passed after 35.777 seconds.
+✔ Test "With the air refined in two levels the budget still closes, across the levels' edges" passed after 36.572 seconds.
+✔ Suite "Radiative cooling" passed after 36.573 seconds.
+✔ Test "A wall, solid elements at its base and shells above, bends with the blast like the all-solid wall" passed after 36.627 seconds.
+✔ Test "Air pulled apart into a vacuum is held at the density floor and stays finite" passed after 36.843 seconds.
+✔ Suite "Air solver gaps" passed after 36.844 seconds.
+✔ Test "A run in two levels repeats exactly" passed after 37.775 seconds.
+✔ Test "Bands held beside an envelope stop at the ceiling" passed after 40.143 seconds.
+✔ Test "A wall driven through the grid conserves the gas, once its staircase volume is allowed for" with 3 test cases passed after 41.886 seconds.
+✔ Test "A block of solid elements dropped onto a shell slab comes to rest on it" passed after 41.992 seconds.
+✔ Test "A free shell wall gains exactly the impulse the air delivers to its face" passed after 42.091 seconds.
+✔ Test "A gauge whose cell is solid reads the fluid cell beside it nearest its point, not the stale state" passed after 42.154 seconds.
+✔ Suite "Gauges beside solid cells" passed after 42.156 seconds.
+✔ Test "After a restart a settled body starts undeformed, and settles again to the same sag" passed after 43.147 seconds.
+✔ Suite "Solid structure solver: untested paths" passed after 43.149 seconds.
+✔ Test "A delayed charge fires when the clock reaches it, as the balloon, and adds its energy then" passed after 43.365 seconds.
+✔ Test "A wall driven into still air raises the piston shock ahead and the rarefaction behind" passed after 44.455 seconds.
+✔ Test "A wall treated as stationary keeps the air behind it undisturbed" passed after 44.930 seconds.
+✔ Test "A free wall gains exactly the impulse the air delivers to its face" passed after 45.831 seconds.
+✔ Test "A free wall in air refined twice gains exactly the impulse the air delivers to its face" passed after 46.490 seconds.
+✔ Test "Sparse loose debris in a pressure gradient is pushed down it, as the solid it stands for" passed after 47.089 seconds.
+✔ Test "Counted by overlap, a cell turns solid above the fill threshold and opens below it, keeping its state between" passed after 48.119 seconds.
+✔ Test "Masonry bonded to concrete comes away at the bond's strength, not the masonry's" passed after 50.499 seconds.
+✔ Test "The air's mask travels with a wall that is pushed along" passed after 51.403 seconds.
+✔ Test "Loose shell debris in a steady wind gains the momentum drag theory predicts" passed after 53.369 seconds.
+✔ Test "A hole in a shell wall opens the air's mask and lets the blast through" passed after 54.497 seconds.
+✔ Test "Blocks off the lattice, refined twice at 0.005, leave the air ahead of the shock still" passed after 57.756 seconds.
+✔ Test "Hollow concrete blockwork gives way under a charge that solid masonry holds" passed after 60.099 seconds.
+✔ Suite "Interfaces and glass" passed after 60.100 seconds.
+✔ Test "A cantilever wall bends away from a moderate charge and survives" passed after 60.266 seconds.
+✔ Test "Host source reads preserve all four modes and every existing GPU word" passed after 60.281 seconds.
+◇ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" started.
+✔ Test "The same wall is breached by a much larger charge" passed after 61.508 seconds.
+✔ Test "A delayed charge reads as the same charge undelayed, later by its delay, as the balloon and mapped" with 2 test cases passed after 66.455 seconds.
+✔ Suite "Delayed charges" passed after 66.456 seconds.
+✔ Test "Hot products in still air, with no turbulence to mix them, do not burn with the limit" passed after 68.594 seconds.
+✔ Test "An intact shell wall lets through only the sound it makes by flexing" passed after 69.062 seconds.
+✔ Test "The wall's thickness is solid to the air, and nothing else" passed after 70.004 seconds.
+✔ Suite "Shell coupling" passed after 70.006 seconds.
+✔ Test "A cantilever strip half solid elements and half shells sags as beam theory says" passed after 71.861 seconds.
+✔ Suite "Mixed bodies" passed after 71.862 seconds.
+✔ Test "A coupled run comes out the same to the last bit however its steps are batched" passed after 74.247 seconds.
+✔ Test "A charge's products burn where it stirs the air; what burns is what the gas gains" passed after 75.254 seconds.
+✔ Suite "Mixing-limited afterburning" passed after 75.256 seconds.
+✔ Test "A recorder's view field is cut out by the batch that passes its frame's time, and changes nothing" passed after 75.307 seconds.
+✔ Test "The GPU's slice of the air and fireball agree with the CPU's" passed after 75.971 seconds.
+✔ Test "Once the blast has passed, the air is frozen and the structure carries on alone" passed after 76.089 seconds.
+✔ Test "The second level's own threshold: nil is the first's, one never passed leaves it empty" passed after 76.590 seconds.
+✔ Test "The GPU's cells of the fireball, with its unburnt products, agree with the CPU's" passed after 77.318 seconds.
+✔ Test "Uniform air refined everywhere in two levels stays exactly uniform" passed after 77.536 seconds.
+✔ Test "A solver run again without its ceiling refines as a fresh one without a ceiling" passed after 78.278 seconds.
+✔ Test "With the pool of patches used up, the rest stays coarse and the gas is still conserved" with 2 test cases passed after 78.453 seconds.
+✔ Test "A ceiling over the domain's top changes no bit, with or without held bands" with 2 test cases passed after 78.463 seconds.
+✔ Test "The same run cuts out the same air, and asking makes no difference to the blast" passed after 81.127 seconds.
+✔ Test "A pool that starts small and grows steps exactly as one made at full size" with 2 test cases passed after 81.204 seconds.
+✔ Test "When the pool of patches is used up, the same blocks are refined every run" with 2 test cases passed after 81.444 seconds.
+✔ Test "A wall near a charge, in air refined twice, takes about the load of air four times as fine" passed after 82.772 seconds.
+✔ Test "A hole in the wall opens the air's mask and lets the blast through" passed after 83.268 seconds.
+✔ Test "Over the terrain's cut cells a level's own steps are not taken, and the run is unchanged" passed after 83.411 seconds.
+✔ Test "With afterburning, mass, energy and oxygen are conserved across both levels" passed after 83.671 seconds.
+✔ Test "Where the air is refined the fireball's cells come from its finest cells, as a fine grid's would" passed after 84.190 seconds.
+✔ Test "A wider refinement margin refines a superset of the blocks, and every margin conserves the gas" passed after 84.769 seconds.
+✔ Test "A first level that runs out of memory part way through growing leaves both levels in the same buffers" passed after 84.843 seconds.
+✔ Test "A solver built in a pool and dropped lets its buffers go when the pool drains" passed after 85.253 seconds.
+✔ Suite "Solvers made in a loop" passed after 85.254 seconds.
+✔ Test "A charge mapped onto refined air keeps the impulse its solution recorded under the patches" with 2 test cases passed after 85.513 seconds.
+✔ Test "Under gravity, overpressure is against the ambient pressure at its height" passed after 85.539 seconds.
+✔ Test "Under gravity cells at the pressure floor, among air at rest, stay finite" passed after 86.010 seconds.
+✔ Test "Refinement held about a structure while its air is loaded stays after the shock has gone" passed after 86.462 seconds.
+✔ Test "A body falling through sleeping air is loaded by the air beside where it now is" passed after 86.732 seconds.
+✔ Test "A checkpoint is refused while a batch is in flight" passed after 86.841 seconds.
+✔ Test "The ceiling is measured from the ground beneath, not the domain's floor" passed after 87.149 seconds.
+✔ Suite "Refinement ceiling paths not otherwise reached" passed after 87.151 seconds.
+✔ Test "Across fine outlines that differ from the coarser ones, mass and energy are conserved" passed after 88.835 seconds.
+✔ Test "Refinement held about a structure holds the second level too after the shock has gone" passed after 89.286 seconds.
+✔ Suite "Refinement paths not otherwise reached" passed after 89.287 seconds.
+◇ Test case passing 2 arguments kind → 0, refinement → 2 to "Dense and tiled coupling preserve full air states and body loads" started.
+✔ Test "Air at rest in its hydrostatic atmosphere stays at rest, to the bit" with 3 test cases passed after 91.914 seconds.
+✔ Test "Refined in two levels, and over a hill, air at rest stays at rest to the bit" passed after 92.022 seconds.
+✔ Test "Burnt out in a closed vessel, the gas pressure is within 15% of Cooper's worked example" passed after 92.300 seconds.
+✔ Test "A wall broken by the blast in refined air, run twice, gives the same answer to the last bit" passed after 93.342 seconds.
+✔ Suite "Refinement" passed after 93.343 seconds.
+✔ Test "Refined twice, a coarse grid's peak overpressure comes close to that of a grid four times as fine" passed after 93.799 seconds.
+✔ Test "Refined, a block standing on cut terrain shuts in the fine slivers under it, and the closed air keeps its gas" with 2 test cases passed after 95.136 seconds.
+✔ Suite "Structures on the terrain" passed after 95.138 seconds.
+✔ Test "Products burn in TNT's proportion of oxygen, releasing the afterburn energy, and conserve mass" passed after 95.169 seconds.
+✔ Test "Compressed parts come back byte for byte, in chunks and stored as they are where they do not compress" passed after 95.255 seconds.
+✔ Test "Still air beyond and inside far-field faces stays still" passed after 96.227 seconds.
+✔ Test "Mass, energy and momentum are conserved across both levels' edges, which stay nested" passed after 96.523 seconds.
+✔ Test "A heavy charge in a small room burns only as much as the room's oxygen allows" passed after 96.925 seconds.
+✔ Test "Without afterburning nothing burns and no fuel is tracked" passed after 97.035 seconds.
+✔ Test "A light sphere released at rest first accelerates as potential flow has it, g Δρ / (ρ + ρa / 2)" passed after 97.568 seconds.
+✔ Test "Afterburning gives the same answer with still air skipped" passed after 97.933 seconds.
+✔ Suite "Afterburning" passed after 97.935 seconds.
+✔ Test "On a mapped start a pane holed at a time opens then: the GPU's clock starts with the run's" passed after 98.822 seconds.
+◇ Test "On a mapped start a pane the blast breaks, and a history's window, are timed from detonation" started.
+✔ Test "Ambient air exerts no net load; the free car rests on its static tyre loads" passed after 99.707 seconds.
+◇ Test "With patches over the car, still air stays at ambient: the shell's faces inside coarse cells start with no packed gas" started.
+◇ Test case passing 1 argument ratio → 2 to "With patches over the car, still air stays at ambient: the shell's faces inside coarse cells start with no packed gas" started.
+✔ Test "Nothing is kept from a batch that ends short of its limit, or once the state changes" passed after 99.769 seconds.
+✔ Test "In a closed box the gas's energy and its potential energy are conserved together" passed after 99.886 seconds.
+✔ Test "A glazed building's recorded loads and vented panes carry on from a checkpoint to the bit" passed after 100.010 seconds.
+✔ Test "Under gravity the cloud's hand-over finds no warm gas in air at rest, and a bubble's at its height" passed after 100.334 seconds.
+✔ Test "Cold products in air do not burn with the limit, and do without it; hot ones burn either way" passed after 100.787 seconds.
+✔ Test "The view field cut out at a frame is the one worked out after it, and asking changes nothing" passed after 100.971 seconds.
+✔ Suite "Cutting the air out on the GPU at a frame" passed after 100.973 seconds.
+✔ Test "Under gravity, skipping still air gives the same answer to the bit, with afterburning" passed after 101.063 seconds.
+✔ Suite "Gravity" passed after 101.066 seconds.
+✔ Test "With the limit, what burns is what the gas gains, and mass and oxygen are conserved" passed after 101.990 seconds.
+✔ Test "Patches filled under many blocks take each fine cell's outline from every block, on both levels" passed after 102.787 seconds.
+✔ Test "Warm but too dilute to reach the limit flame temperature, products do not burn" passed after 103.008 seconds.
+✔ Suite "Afterburning's extinction limit" passed after 103.010 seconds.
+✔ Test "An edit after some steps is what the next step starts from, with or without a restart" with 4 test cases passed after 103.854 seconds.
+✔ Test "A solver loaded with another scene reads as one built for it" passed after 104.400 seconds.
+✔ Test "After the state's buffers swap, reads show the latest step" passed after 104.525 seconds.
+✔ Test "The cached mask address is the mask buffer's, and isSolid reads its bytes" passed after 104.752 seconds.
+✔ Test "Under a refined pool that grew, peak, impulse and mask read as at full size" with 2 test cases passed after 105.468 seconds.
+✔ Suite "Cached buffer addresses after the state moves on" passed after 105.470 seconds.
+✔ Test "Refined air, and a structure with it, step the same in one-step buffers as in the usual ones" passed after 105.606 seconds.
+✔ Test "Through far-field faces a small domain's air returns to ambient once the blast has left" passed after 106.837 seconds.
+✔ Suite "Far-field faces" passed after 106.839 seconds.
+✔ Test "Each column's first phase is the recorder's rule over its whole history" passed after 107.801 seconds.
+◇ Test "Production diagnostics preserve batches, fields and recorder values to the bit" started.
+✔ Test "A centred burst in a closed cube stays mirror-symmetric" passed after 108.044 seconds.
+✔ Test "Sod shock tube gives the same answer along every axis" passed after 108.277 seconds.
+✔ Test "Still air around obstacles stays still" passed after 108.339 seconds.
+✔ Test "The exposure plane's arrival times" passed after 109.072 seconds.
+✔ Test "Both sweep paths retain plain state and actual pre/post cells" passed after 110.207 seconds.
+◇ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" started.
+✔ Test "A strong point blast follows the Sedov-Taylor similarity law" passed after 110.390 seconds.
+✔ Test "A shock reflecting off a rigid wall reaches the Rankine-Hugoniot pressure" with 2 test cases passed after 110.750 seconds.
+✔ Test "Mass and energy are conserved in a closed box with an obstacle" passed after 110.812 seconds.
+✔ Test "Sod shock tube converges to the exact solution" with 2 test cases passed after 110.877 seconds.
+✔ Suite "Solver verification" passed after 110.955 seconds.
+✔ Test "Sleeping tiles retain residuals and floors clear the overridden component" passed after 88.773 seconds.
+◇ Test "Unsupported scope and configuring after observation are refused" started.
+✔ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" passed after 52.107 seconds.
+◇ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" started.
+✔ Test "Stationary bodies of different mesh sizes match the equivalent fixed scene" with 2 test cases passed after 113.202 seconds.
+◇ Test "Reordering does not change loads, geometry ownership or coupled responses" started.
+◇ Test case passing 1 argument shells → false to "Reordering does not change loads, geometry ownership or coupled responses" started.
+✔ Test "A vent panel's opening time" passed after 115.702 seconds.
+✔ Suite "Times the same however a run is batched" passed after 115.780 seconds.
+◇ Test case passing 1 argument shells → (true, false) to "A block thrown into another pushes it through contact, keeping their momentum and adding no energy" started.
+◇ Test case passing 2 arguments kind → 1, refinement → 1 to "Dense and tiled coupling preserve full air states and body loads" started.
+✔ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" passed after 7.830 seconds.
+◇ Test "Invalid scope, cells and truncated history are refused" started.
+✔ Test "Mapped from one dimension, the lungs' reach close in comes nearer the free field's" passed after 101.136 seconds.
+✔ Suite "Blast injury from the run's own fields" passed after 118.299 seconds.
+✔ Test "Unsupported scope and configuring after observation are refused" passed after 7.115 seconds.
+✔ Suite "Experimental compensated conserved sweeps" passed after 118.871 seconds.
+✔ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" passed after 7.130 seconds.
+✔ Suite "Host source-stencil diagnostics" passed after 119.520 seconds.
+◇ Test case passing 1 argument ratio → 4 to "With patches over the car, still air stays at ambient: the shell's faces inside coarse cells start with no packed gas" started.
+✔ Test "A wall broken by the blast, run twice, gives the same answer to the last bit" passed after 120.949 seconds.
+✔ Suite "Structure coupling" passed after 120.950 seconds.
+✔ Test "Invalid scope, cells and truncated history are refused" passed after 3.251 seconds.
+✔ Suite "Production sweep update diagnostics" passed after 121.293 seconds.
+✔ Test "A checkpoint is refused off a 64-step boundary, and into another scene or configuration" passed after 121.818 seconds.
+✔ Test "On a mapped start a pane the blast breaks, and a history's window, are timed from detonation" passed after 23.615 seconds.
+◇ Test "A pane holed before the blast opens then, the room fills earlier, however the run is batched" started.
+✔ Test "Production diagnostics preserve batches, fields and recorder values to the bit" passed after 14.878 seconds.
+◇ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" started.
+◇ Test case passing 1 argument shells → true to "Reordering does not change loads, geometry ownership or coupled responses" started.
+◇ Test case passing 1 argument shells → (true, true) to "A block thrown into another pushes it through contact, keeping their momentum and adding no energy" started.
+✔ Test "A run saved at step 64 and carried on by another solver ends as the run straight through, to the bit" passed after 125.094 seconds.
+✔ Test "A wall in shells, struck and refined, carries on from a checkpoint to the bit" passed after 125.159 seconds.
+✔ Suite "Solver checkpoints" passed after 125.160 seconds.
+✔ Test "A block thrown into another pushes it through contact, keeping their momentum and adding no energy" with 4 test cases passed after 129.441 seconds.
+◇ Test "Without contact between bodies, coming close still stops the run" started.
+✔ Test "A pane holed before the blast opens then, the room fills earlier, however the run is batched" passed after 8.033 seconds.
+✔ Suite "Fragments holing vented panes" passed after 130.474 seconds.
+◇ Test case passing 2 arguments kind → 1, refinement → 2 to "Dense and tiled coupling preserve full air states and body loads" started.
+✔ Test "Reordering does not change loads, geometry ownership or coupled responses" with 2 test cases passed after 17.876 seconds.
+◇ Test "Each compiled body retains its independent prescribed-load mechanics" started.
+✔ Test "Each compiled body retains its independent prescribed-load mechanics" passed after 0.800 seconds.
+◇ Test "Without contact between bodies, one entering another's envelope stops further steps and cannot restart silently" started.
+✔ Test "Without contact between bodies, one entering another's envelope stops further steps and cannot restart silently" passed after 0.462 seconds.
+◇ Test "Intersecting initial envelopes are rejected before simulation" started.
+✔ Test "Intersecting initial envelopes are rejected before simulation" passed after 0.067 seconds.
+◇ Test "Replacing the body set removes old masks without turning them into scenery" started.
+✔ Test "Replacing the body set removes old masks without turning them into scenery" passed after 0.452 seconds.
+◇ Test "Mixed and shell bodies export with stable face ownership" started.
+✔ Test "Without contact between bodies, coming close still stops the run" passed after 3.477 seconds.
+◇ Test "Two bodies loaded by one blast exchange with the air what each does alone, neither duplicated nor misattributed" started.
+✔ Test "With patches over the car, still air stays at ambient: the shell's faces inside coarse cells start with no packed gas" with 2 test cases passed after 34.167 seconds.
+◇ Test "Ground and air impulse records account for the coupled car's momentum" started.
+◇ Test case passing 2 arguments kind → 2, refinement → 1 to "Dense and tiled coupling preserve full air states and body loads" started.
+✔ Test "Two bodies loaded by one blast exchange with the air what each does alone, neither duplicated nor misattributed" passed after 1.798 seconds.
+✔ Suite "Contact between independent bodies" passed after 134.718 seconds.
+✔ Test "Mixed and shell bodies export with stable face ownership" passed after 2.570 seconds.
+✔ Suite "Independent structural bodies" passed after 135.433 seconds.
+✔ Test "Ground and air impulse records account for the coupled car's momentum" passed after 1.804 seconds.
+◇ Test "A pressure gradient pushes the held shell by its resolved volume, with torque about the low centre of mass" started.
+✔ Test "A pressure gradient pushes the held shell by its resolved volume, with torque about the low centre of mass" passed after 0.156 seconds.
+◇ Test "A blast beside the car pushes it away, loads its far tyres and unloads the near ones" started.
+✔ Test "Consumed-pressure capture preserves plain and recorder-only runs, including layered tail grids" passed after 16.614 seconds.
+◇ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" started.
+✔ Test "Pressure capture refuses budget overflow and never exposes a truncated complete trace" passed after 0.191 seconds.
+◇ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" started.
+✔ Test "Disabled columns cannot expose invalid cell indices to host diagnostics" passed after 0.093 seconds.
+◇ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" started.
+✔ Test "All-tiles diagnostics retain the tiled kernel and sweep every tile" passed after 0.137 seconds.
+◇ Test "Layers of columns each record as that layer alone would, and leave the run as it was" started.
+✔ Test "Layers of columns each record as that layer alone would, and leave the run as it was" passed after 1.144 seconds.
+◇ Test "Recording the columns leaves the run as it was, to the bit" started.
+◇ Test case passing 2 arguments kind → 2, refinement → 2 to "Dense and tiled coupling preserve full air states and body loads" started.
+✔ Test "Recording the columns leaves the run as it was, to the bit" passed after 0.719 seconds.
+✔ Suite "First-phase columns" passed after 141.658 seconds.
+✔ Test "The calibration shot: pressures beside the slab and the impulse on it, and no damage" passed after 142.137 seconds.
+✔ Test "Dense and tiled coupling preserve full air states and body loads" with 6 test cases passed after 144.792 seconds.
+◇ Test "Movement allocates pages, reopens vacated cells and restart removes old outlines" started.
+✔ Test "A wall broken by the blast in air refined twice, run twice, gives the same answer to the last bit" passed after 144.822 seconds.
+✔ Suite "Refinement in two levels" passed after 144.824 seconds.
+✔ Test "Movement allocates pages, reopens vacated cells and restart removes old outlines" passed after 0.821 seconds.
+◇ Test "Exhausted pools halt explicitly without reporting body contact" started.
+✔ Test "Exhausted pools halt explicitly without reporting body contact" passed after 0.123 seconds.
+◇ Test "Frozen-air mechanics do not consume new pages and body replacement removes old masks" started.
+✔ Test "A blast beside the car pushes it away, loads its far tyres and unloads the near ones" passed after 10.550 seconds.
+◇ Test "The blast replay records finite frames with tyres and loads at the requested end time" started.
+✔ Test "Frozen-air mechanics do not consume new pages and body replacement removes old masks" passed after 1.158 seconds.
+◇ Test "Automatic allocation saves storage for separated structures and preserves the one-body path" started.
+✔ Test "Automatic allocation saves storage for separated structures and preserves the one-body path" passed after 0.088 seconds.
+◇ Test "Widely separated bodies preserve refined air with and without sleeping tiles" started.
+◇ Test case passing 1 argument skip → false to "Widely separated bodies preserve refined air with and without sleeping tiles" started.
+◇ Test case passing 1 argument skip → true to "Widely separated bodies preserve refined air with and without sleeping tiles" started.
+✔ Test "The blast replay records finite frames with tyres and loads at the requested end time" passed after 5.417 seconds.
+◇ Test "The car driver needs exactly one car and nothing else that moves" started.
+✔ Test "The car driver needs exactly one car and nothing else that moves" passed after 0.028 seconds.
+✔ Suite "Experimental rigid-car coupling" passed after 151.835 seconds.
+✔ Test "Widely separated bodies preserve refined air with and without sleeping tiles" with 2 test cases passed after 5.212 seconds.
+◇ Test "Skipping still air agrees across layouts and object reorder" started.
+✔ Test "13 kg at 1 m bends the slab well past yield without breaching it" passed after 154.098 seconds.
+✔ Suite "Close-in slab test" passed after 154.100 seconds.
+✔ Test "Skipping still air agrees across layouts and object reorder" passed after 2.303 seconds.
+◇ Test "Loose debris crosses tile boundaries with the same air reaction and momentum budget" started.
+✔ Test "A structure on its own, failing, steps the same in one-substep buffers, across 2,000-substep runs" passed after 154.684 seconds.
+✔ Suite "Command buffers sized by the GPU's time" passed after 154.686 seconds.
+✔ Test "At the test's charge the roof bends up by tens of millimetres, as in the paper's model, and the walls hold" passed after 154.861 seconds.
+✔ Suite "Chamber test" passed after 154.862 seconds.
+✔ Test "Loose debris crosses tile boundaries with the same air reaction and momentum budget" passed after 0.510 seconds.
+◇ Test "Objects beside two structures in tiles take the whole grid's layout, as with dense coupling" started.
+✔ Test "Objects beside two structures in tiles take the whole grid's layout, as with dense coupling" passed after 0.136 seconds.
+✔ Suite "Local body coupling" passed after 155.150 seconds.
+✔ Test run with 229 tests in 48 suites passed after 155.151 seconds.
+check-affected: here in 368 s, waiting for gpu-slot included
+remote-sweep: staging invocation 989d0b254a3e4fd8ba6737f95dd048fb at bombcad-pc:~/bombcad-sweeps/staging/989d0b254a3e4fd8ba6737f95dd048fb
+remote-sweep: source basis 5e5c569d8b9c40e99721c4f45f118260
+remote-sweep: source/input transfer finished in 3.479 s (basis 5e5c569d8b9c40e99721c4f45f118260)
+Building for debugging...
+[Provisioning 1 / 17]
+Build complete! (0.70 secs)
+remote-sweep: tests built in 2 s
+◇ Test run started.
+↳ Testing Library Version: 6.4.1 (804dc4530ef3666)
+↳ Target Platform: x86_64-unknown-linux-gnu
+◇ Suite "Glass against Beauchamp and Matalucci's windows (SAND98-0598)" started.
+◇ Suite "Glazed openings" started.
+◇ Suite "Envelope pane cells" started.
+◇ Suite "Scenario setup" started.
+◇ Suite "Objects beside a moving structure" started.
+◇ Suite "Envelope component histories" started.
+◇ Suite "Spatial exposure and diagnostic profiling" started.
+◇ Suite "Terrain" started.
+◇ Suite "Envelope venting" started.
+◇ Suite "Terraced houses" started.
+◇ Suite "Learned field encoding" started.
+◇ Suite "Congestion below the grid" started.
+◇ Suite AcousticPhaseReferenceTests started.
+◇ Suite "The renderer's copies of the solver's structs" started.
+◇ Suite "Profiled sheeting" started.
+◇ Suite StandingFingerprintTests started.
+◇ Suite "Wedge reflection" started.
+◇ Suite "Deflagration" started.
+◇ Suite "Blast validation" started.
+◇ Suite "Ground points on the terrain" started.
+◇ Suite "Terrain cut cells" started.
+◇ Suite "People in the scene: occupants and the people hurt" started.
+◇ Suite "Mapped charge" started.
+◇ Suite "Craters against H. F. Cooper's 1976 high-explosive data" started.
+◇ Suite "Learned field weights' file" started.
+◇ Suite "Freestanding objects on the terrain" started.
+◇ Suite "Transport hub" started.
+◇ Suite "The offline first-phase definition" started.
+◇ Suite "Air model" started.
+◇ Suite EvidentialStandingTests started.
+◇ Suite ErrorBandTests started.
+◇ Suite "Scene object ownership" started.
+◇ Suite "Experimental rigid-box coupling" started.
+◇ Suite "Stationary building envelopes" started.
+◇ Suite "Portal-frame warehouse" started.
+◇ Suite "Experimental rigid-world coupling" started.
+◇ Test "The filmed panes fly at 0.81–1.03 of their measured speeds, the speed inverse to thickness" started.
+◇ Test "Street fixtures retain common owners and reject overlapping bodies" started.
+◇ Test "Shot 1: the 1/2 in pane holds; at the measured 4 psi the thin panes pass their flaws' strengths" started.
+◇ Test "The app's terraced sample is the solid row, the 1930s cavity row the second" started.
+◇ Test "Each piece of a structure is reinforced as it asks" started.
+◇ Test "The standardised, padded inputs are train_field.py's, to float rounding in the logs alone" started.
+◇ Test "The fine grid's pane lookup is led by a header of 32 bytes, four entries, as the kernels read it" started.
+◇ Test "A layout saved before newer settings existed still opens, with their defaults" started.
+◇ Test "The solid-walled row has one brick-thick plane at the front, joined to the party walls, and no ties" started.
+◇ Test "Saved options without the arrival's overpressure start their windows as the air moves" started.
+◇ Test closedFormImpulseMatchesIntegratedPositiveLobe() started.
+◇ Test "A pane thinner than a cell takes the cells across its window through its wall, cut or not" started.
+◇ Test "Sheeting in the one-way model follows UFC 3-340-02's method for cold-formed panels" started.
+◇ Test rigidWallAndTravel() started.
+◇ Test "Invalid terrain is refused" started.
+◇ Test "The Kinney-Graham reference curve has the expected shape" started.
+◇ Test "The row meshes with both leaves of its cavity walls apart and its floors as timber shells" started.
+◇ Test "An envelope keeps what its openings hold: a door stays solid, a converted pane a pane" started.
+◇ Test "Every half reads as the platform's own Float16 does" started.
+◇ Test "Heights round-trip exactly, and scenes without terrain encode as before" started.
+◇ Test "An imported glazed window's pane is meshed in its wall's opening and joined to it" started.
+◇ Test "Methane's critical radius follows Bauwens et al.'s measurements; propane has none" started.
+◇ Test "A pane in a wall's opening is kept, on the wall's midsurface, joined to the reveal" started.
+◇ Test "Two-shock theory: normal-shock limits and the transition angles" started.
+◇ Test "The thin-flame model's steepest rise is the deflagration index's formula" started.
+◇ Test "Section properties match the published ones" started.
+◇ Test "A structure moved across the ground takes all it places with it" started.
+◇ Test "The ribs are beams on the skin's midsurface, sharing its nodes, one on each line" started.
+◇ Test "The bilinear surface reproduces a plane, and its normal" started.
+◇ Test "ADBLAST's sheets in the one-way model: a slender flange at Winter's effective width, and under each test's measured pulse the shell model's deflection to within a third" started.
+◇ Test "Shell nodes and elements are drawn with the solver's layout" started.
+◇ Test "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test "The array's fields: its volume blockage, drag, turbulence generation, length scale and counts" started.
+◇ Test theTextIsCanonical() started.
+◇ Test "The vent correlations agree with hand working for FM Global's chamber" started.
+◇ Test theIdentityIsAHashOfTheTablesContent() started.
+◇ Test "Ribs buckle where a flange's plate buckling stress is below the yield: collapsing if it buckles as it yields, keeping its effective width if elastically" started.
+◇ Test "Hydrogen and town gas take their measured burning velocities and stoichiometry" started.
+◇ Test "Kummer's glass injury through its own points: 1% broken 0.1%, half 10%, all of them everyone" started.
+◇ Test "Level ground part way up a cell: its share, apertures, wall and the cell its rest goes to" started.
+◇ Test "Langdon's panels in the one-way model: below 1 bar elastic peaks as a beam's, above it the safe side" started.
+◇ Test "Nothing broken far away hurts no one; everything broken hurts nearly all inside, within the band" started.
+◇ Test numberedTablesStillReadAndShow() started.
+◇ Test "Eisenberg's eardrum probit: half at UFC's 15 psi, a few in a hundred at its 5 psi threshold" started.
+◇ Test "A header whose tensors lie outside the payload, or overflow, is refused" started.
+◇ Test "Against a pinned baseline: no change against itself, less glass broken a fall, draw by draw" started.
+◇ Test "The Kingery-Bulmash reference points scale as tabulated" started.
+◇ Test "Laying a terrain sets the objects on it, and Compute Motion's cropped scene keeps it under them" started.
+◇ Test "Under a slope the cut cells hold the volume above it" started.
+◇ Test "A flat terrain is the floor: the world drops it" started.
+◇ Test "Dropped level onto the slope, it lands on an edge, turns onto its face and stays" started.
+◇ Test "A line of gauges stands at the charge's scaled distances, on the terrain, inside the domain" started.
+◇ Test "Saves with a deflagration and vent panels round-trip, and older saves still open" started.
+◇ Test "Bands by scaled distance hold everyone placed" started.
+◇ Test "Occupants by floor area, use and time; the untagged take the assumed use" started.
+◇ Test "The blast through blown-out windows and outdoors hurts close in, not far off" started.
+◇ Test "With hot air and afterburning the one-dimensional blast gains just what its products burn" started.
+◇ Test "A box over a step's edge stays while its centre of mass is over the plateau, and tips off once past it" started.
+◇ Test "Map tags give uses; an untagged building has none" started.
+◇ Test "Solved once and kept: the same start gives the same solution, and a time limit stops it short" started.
+◇ Test "The fixture: table 1, the height-of-burst law and 135 points from figures 9–12" started.
+◇ Test "A column along the normal is the level column under the same load" started.
+◇ Test "Surface bursts read as measured; raised ones 0.90 to the centre (today's), 0.57 to the underside" started.
+◇ Test "A box on a slope below its friction angle stays put" started.
+◇ Test "The Kingery-Bulmash polynomials reproduce Swisdak's tables and the IATG examples" started.
+◇ Test "Map placement keeps a building's use from its tags" started.
+◇ Test "Above its friction angle it slides at g (sin θ − μ cos θ)" started.
+◇ Test "At atmospheric pressure O2 dissociates between 2500 and 5000 K, N2 well above 4000 K" started.
+◇ Test "Energy and pressure convert both ways, and air at room temperature has gamma 1.4" started.
+◇ Test "The GPU's first guess at the temperature is within 10^-4, and one Newton step within 10^-6" started.
+◇ Test "Both offline functions agree on all 39 declared independent-history bin means" started.
+◇ Test "A .npy file cut short is refused" started.
+◇ Test "The file as exported reads, and its tensors have the network's shapes" started.
+◇ Test "Connected remapping preserves a uniform field and transports gradients around solid cells" started.
+◇ Test "The products' own equation of state: JWL alone, air alone, a sound speed that matches the isentrope" started.
+◇ Test "A standardisation with a zero or non-finite deviation is refused" started.
+◇ Test "The one-dimensional blast keeps its energy and spreads as Sedov and Taylor say" started.
+◇ Test "The stall's options are off by default, left out of saves, and the arrivals keep their half metre" started.
+◇ Test "Dissociating air: energy and pressure convert both ways, and it is thermally perfect air when cool" started.
+◇ Test "Both façade functions use half the final peak on the declared scalar histories" started.
+◇ Test "Editing, duplication, deletion and reorder use identities even for equal geometry" started.
+◇ Test "Component ownership distinguishes equal regions and rejects stale references" started.
+◇ Test "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test "Weights of another shape, width or depth than the header's are refused" started.
+◇ Test "A ton's radius at a centre height of one charge radius, to the underside and to the centre" started.
+◇ Test "A file cut short anywhere is refused" started.
+◇ Test collapseStandsApartFromLocalDamage() started.
+◇ Test "Burning velocities follow Gülder's fit and vanish outside the flammable range" started.
+◇ Test everyOptionIsSetBySomeInput() started.
+◇ Test "Malformed ownership and duplicate object identity are rejected" started.
+◇ Test everyInputHasAStandingEntry() started.
+◇ Test structuresTakeBandsByRegimeMeshAndMaterial() started.
+◇ Test confinedScenesAreAdvisedOnAfterburning() started.
+◇ Test closeInGaugesOnTodaysAir() started.
+◇ Test optionsCapTheResultsTheyTouch() started.
+◇ Test aGaugeOnAWallReadsTheReflectedBand() started.
+◇ Test samplesTakeOnlyTheBandsThatFitThem() started.
+◇ Test meshSeriesQuoteTheStudy() started.
+◇ Test refinementCountsAsTheFinerGrid() started.
+◇ Test "The warehouse meshes its frames, purlins, rails and sheeting, the sheets' ribs on their skins" started.
+◇ Test linksReachHeadingsInTheDocs() started.
+◇ Test groundShockIsBandedOnlyForTheHalfSpace() started.
+◇ Test gaugesTakeTheirOwnBands() started.
+◇ Test tablesMirrorTheValidationRecord() started.
+◇ Test standingsRoundTripAndCompare() started.
+◇ Test "Overlapping openings retain the half-open box boundary convention" started.
+◇ Test standingsWithoutBandsStillDecode() started.
+◇ Test levelsRecordedAsMeasuredStillRead() started.
+◇ Test case passing 2 arguments gas → .methane, air → .idealGas to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test figuresQuoteTheRecord() started.
+◇ Test coarseCellsForASmallChargeAreAnApproximation() started.
+◇ Test case passing 2 arguments gas → .methane, air → .thermallyPerfect to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test case passing 2 arguments gas → .propane, air → .idealGas to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test case passing 2 arguments gas → .propane, air → .thermallyPerfect to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test case passing 2 arguments gas → .hydrogen, air → .idealGas to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test case passing 2 arguments gas → .hydrogen, air → .thermallyPerfect to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test case passing 2 arguments gas → .townGas, air → .idealGas to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test case passing 2 arguments gas → .townGas, air → .thermallyPerfect to "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" started.
+◇ Test closeInLoadingAsksForFinerAir() started.
+◇ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() started.
+◇ Test afterburningChangesTheImpulsesStanding() started.
+◇ Test radiationAndCloudFollowTheAirTheyWereComparedOn() started.
+◇ Test theConfinedRegimesDefaultsAreReported() started.
+◇ Test eachPresetHasAStandingForWhatItProduces() started.
+ADBLAST test 1 under its measured pulse: one-way 97.36132322703591 mm, 1.1321084096166967 of the shell
+ADBLAST test 2 under its measured pulse: one-way 100.2129499221935 mm, 1.138783521843108 of the shell
+ADBLAST test 3 under its measured pulse: one-way 29.09503769364372 mm, 1.0032771618497835 of the shell
+ADBLAST test 4 under its measured pulse: one-way 62.98463696425723 mm, 1.049743949404287 of the shell
+ADBLAST test 6 under its measured pulse: one-way 82.99110743479403 mm, 1.0778065900622602 of the shell
+ADBLAST test 7 under its measured pulse: one-way 75.71633589193493 mm, 1.051615776276874 of the shell
+◇ Test aDeflagrationDoesNotQuoteTheChargesComparisons() started.
+◇ Test readingATableInterpolatesBetweenGridsAndSpansDistances() started.
+ADBLAST test 8 under its measured pulse: one-way 528.9840669383925 mm, 1.319162261691752 of the shell
+◇ Test theDocsNameTheLevelsAsTheCodeDoes() started.
+◇ Test "A cell freed or squeezed between touching objects trades gas with the nearest air" started.
+ADBLAST test 10 under its measured pulse: one-way 283.61144547914193 mm, 1.157597736649559 of the shell
+◇ Test aDeflagrationsBandFollowsItsFuel() started.
+ADBLAST test 11 under its measured pulse: one-way 484.2779380020657 mm, 1.326788871238536 of the shell
+◇ Test tightOpenFacesAreSaidBesideTheStructure() started.
+ADBLAST test 12 under its measured pulse: one-way 313.5400489191515 mm, 1.152720768085116 of the shell
+◇ Test modelsRunAlongsideAreIllustrative() started.
+◇ Test "The hub meshes its shed and glazes its concourse with laminated glass, front and roof" started.
+◇ Test case passing 1 argument preset → .openGround to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .singleBuilding to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .streetCanyon to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .courtyard to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .blastWall to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .concreteBox to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .frame to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .infilledFrame to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .threeStorey to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .tallFrame to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .coreTower to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .officeTower to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .columnCloseIn to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .protectedBuilding to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .glassFacade to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .carPark to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .populatedCarPark to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .buildingsAcrossStreet to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .underpass to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .blockHouse to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+✔ Test "The fine grid's pane lookup is led by a header of 32 bytes, four entries, as the kernels read it" passed after 0.103 seconds.
+◇ Test case passing 1 argument preset → .blockWall to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .internalExplosion to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .furnishedRoom to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .ventedGasRoom to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .largePanelGas to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .largePanelStreet to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .processPlantExplosion to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .portalWarehouse to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .terracedHouses to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .terracedHousesCavity to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .transportHub to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+◇ Test case passing 1 argument preset → .hillsideFrame to "Legacy inputs acquire stable ownership without changing solver geometry" started.
+✔ Test "Sheeting in the one-way model follows UFC 3-340-02's method for cold-formed panels" passed after 0.161 seconds.
+✔ Test "The Kinney-Graham reference curve has the expected shape" passed after 0.162 seconds.
+✔ Test "An envelope keeps what its openings hold: a door stays solid, a converted pane a pane" passed after 0.161 seconds.
+✔ Test "Each piece of a structure is reinforced as it asks" passed after 0.162 seconds.
+✔ Test "Saved options without the arrival's overpressure start their windows as the air moves" passed after 0.162 seconds.
+✔ Test "Invalid terrain is refused" passed after 0.163 seconds.
+✔ Test "A pane thinner than a cell takes the cells across its window through its wall, cut or not" passed after 0.163 seconds.
+✔ Test "Methane's critical radius follows Bauwens et al.'s measurements; propane has none" passed after 0.163 seconds.
+✔ Test "A structure moved across the ground takes all it places with it" passed after 0.163 seconds.
+✔ Test "Street fixtures retain common owners and reject overlapping bodies" passed after 0.164 seconds.
+✔ Test "Section properties match the published ones" passed after 0.163 seconds.
+✔ Test rigidWallAndTravel() passed after 0.164 seconds.
+✔ Test "The bilinear surface reproduces a plane, and its normal" passed after 0.163 seconds.
+✔ Test "The filmed panes fly at 0.81–1.03 of their measured speeds, the speed inverse to thickness" passed after 0.164 seconds.
+✔ Test "The standardised, padded inputs are train_field.py's, to float rounding in the logs alone" passed after 0.165 seconds.
+✔ Test "The vent correlations agree with hand working for FM Global's chamber" passed after 0.164 seconds.
+✔ Test "Shot 1: the 1/2 in pane holds; at the measured 4 psi the thin panes pass their flaws' strengths" passed after 0.165 seconds.
+✔ Test "Ribs buckle where a flange's plate buckling stress is below the yield: collapsing if it buckles as it yields, keeping its effective width if elastically" passed after 0.164 seconds.
+✔ Test "A layout saved before newer settings existed still opens, with their defaults" passed after 0.165 seconds.
+✔ Test "The heat released takes a closed volume of stoichiometric mixture to its AICC pressure" with 8 test cases passed after 0.164 seconds.
+✔ Test "Heights round-trip exactly, and scenes without terrain encode as before" passed after 0.165 seconds.
+✔ Test "The app's terraced sample is the solid row, the 1930s cavity row the second" passed after 0.165 seconds.
+✔ Test "Kummer's glass injury through its own points: 1% broken 0.1%, half 10%, all of them everyone" passed after 0.165 seconds.
+✔ Test "Hydrogen and town gas take their measured burning velocities and stoichiometry" passed after 0.165 seconds.
+✔ Test "Shell nodes and elements are drawn with the solver's layout" passed after 0.165 seconds.
+✔ Test "Two-shock theory: normal-shock limits and the transition angles" passed after 0.165 seconds.
+✔ Test theTextIsCanonical() passed after 0.165 seconds.
+✔ Test "Eisenberg's eardrum probit: half at UFC's 15 psi, a few in a hundred at its 5 psi threshold" passed after 0.165 seconds.
+✔ Test "The array's fields: its volume blockage, drag, turbulence generation, length scale and counts" passed after 0.165 seconds.
+✔ Test "The thin-flame model's steepest rise is the deflagration index's formula" passed after 0.165 seconds.
+✔ Test "The Kingery-Bulmash reference points scale as tabulated" passed after 0.165 seconds.
+✔ Test "Nothing broken far away hurts no one; everything broken hurts nearly all inside, within the band" passed after 0.165 seconds.
+✔ Test "Level ground part way up a cell: its share, apertures, wall and the cell its rest goes to" passed after 0.165 seconds.
+✔ Test "The ribs are beams on the skin's midsurface, sharing its nodes, one on each line" passed after 0.165 seconds.
+✔ Test "Laying a terrain sets the objects on it, and Compute Motion's cropped scene keeps it under them" passed after 0.165 seconds.
+✔ Test "Against a pinned baseline: no change against itself, less glass broken a fall, draw by draw" passed after 0.165 seconds.
+✔ Test "Saves with a deflagration and vent panels round-trip, and older saves still open" passed after 0.165 seconds.
+✔ Test "A line of gauges stands at the charge's scaled distances, on the terrain, inside the domain" passed after 0.166 seconds.
+✔ Test "Bands by scaled distance hold everyone placed" passed after 0.165 seconds.
+✔ Test "ADBLAST's sheets in the one-way model: a slender flange at Winter's effective width, and under each test's measured pulse the shell model's deflection to within a third" passed after 0.166 seconds.
+✔ Test "The blast through blown-out windows and outdoors hurts close in, not far off" passed after 0.165 seconds.
+✔ Test "Occupants by floor area, use and time; the untagged take the assumed use" passed after 0.165 seconds.
+✔ Test "Map tags give uses; an untagged building has none" passed after 0.165 seconds.
+✔ Test "A header whose tensors lie outside the payload, or overflow, is refused" passed after 0.166 seconds.
+✔ Test "The fixture: table 1, the height-of-burst law and 135 points from figures 9–12" passed after 0.165 seconds.
+✔ Test "A pane in a wall's opening is kept, on the wall's midsurface, joined to the reveal" passed after 0.166 seconds.
+✔ Test "Map placement keeps a building's use from its tags" passed after 0.165 seconds.
+✔ Test "The Kingery-Bulmash polynomials reproduce Swisdak's tables and the IATG examples" passed after 0.165 seconds.
+✔ Test "A column along the normal is the level column under the same load" passed after 0.165 seconds.
+✔ Test "An imported glazed window's pane is meshed in its wall's opening and joined to it" passed after 0.166 seconds.
+✔ Test "Surface bursts read as measured; raised ones 0.90 to the centre (today's), 0.57 to the underside" passed after 0.165 seconds.
+✔ Test "At atmospheric pressure O2 dissociates between 2500 and 5000 K, N2 well above 4000 K" passed after 0.165 seconds.
+✔ Test "Energy and pressure convert both ways, and air at room temperature has gamma 1.4" passed after 0.165 seconds.
+✔ Test "Solved once and kept: the same start gives the same solution, and a time limit stops it short" passed after 0.166 seconds.
+✔ Test "Under a slope the cut cells hold the volume above it" passed after 0.166 seconds.
+✔ Test "The GPU's first guess at the temperature is within 10^-4, and one Newton step within 10^-6" passed after 0.165 seconds.
+✔ Test "The file as exported reads, and its tensors have the network's shapes" passed after 0.166 seconds.
+✔ Test "Connected remapping preserves a uniform field and transports gradients around solid cells" passed after 0.165 seconds.
+✔ Test "The products' own equation of state: JWL alone, air alone, a sound speed that matches the isentrope" passed after 0.166 seconds.
+✔ Test "A standardisation with a zero or non-finite deviation is refused" passed after 0.165 seconds.
+✔ Test "The stall's options are off by default, left out of saves, and the arrivals keep their half metre" passed after 0.165 seconds.
+✔ Test "A .npy file cut short is refused" passed after 0.166 seconds.
+✔ Test "Dissociating air: energy and pressure convert both ways, and it is thermally perfect air when cool" passed after 0.178 seconds.
+✔ Test "Both façade functions use half the final peak on the declared scalar histories" passed after 0.178 seconds.
+✔ Test "Component ownership distinguishes equal regions and rejects stale references" passed after 0.178 seconds.
+✔ Test "Editing, duplication, deletion and reorder use identities even for equal geometry" passed after 0.178 seconds.
+✔ Test "Both offline functions agree on all 39 declared independent-history bin means" passed after 0.178 seconds.
+✔ Test "Every half reads as the platform's own Float16 does" passed after 0.179 seconds.
+✔ Test "Weights of another shape, width or depth than the header's are refused" passed after 0.178 seconds.
+✔ Test "A ton's radius at a centre height of one charge radius, to the underside and to the centre" passed after 0.178 seconds.
+✔ Test closedFormImpulseMatchesIntegratedPositiveLobe() passed after 0.180 seconds.
+✔ Test "With hot air and afterburning the one-dimensional blast gains just what its products burn" passed after 0.179 seconds.
+Langdon's elastic peaks, one-way model over measured: ["0.51 bar 0.79", "0.57 bar 0.80", "0.76 bar 0.72", "0.91 bar 0.91", "1.04 bar 2.76", "0.43 bar 0.72", "0.53 bar 1.14", "0.99 bar 0.63", "1.05 bar 2.70", "0.54 bar 0.79", "0.99 bar 0.79"]
+✔ Test "Burning velocities follow Gülder's fit and vanish outside the flammable range" passed after 0.207 seconds.
+✔ Test "Malformed ownership and duplicate object identity are rejected" passed after 0.206 seconds.
+Hub: 6912 shells, 2598 beams
+✔ Test "Overlapping openings retain the half-open box boundary convention" passed after 0.389 seconds.
+✔ Test "A cell freed or squeezed between touching objects trades gas with the nearest air" passed after 0.440 seconds.
+✔ Suite "Envelope venting" passed after 0.457 seconds.
+✔ Test "Langdon's panels in the one-way model: below 1 bar elastic peaks as a beam's, above it the safe side" passed after 0.456 seconds.
+✔ Test "The one-dimensional blast keeps its energy and spreads as Sedov and Taylor say" passed after 0.455 seconds.
+✔ Test "The hub meshes its shed and glazes its concourse with laminated glass, front and roof" passed after 0.393 seconds.
+✔ Test numberedTablesStillReadAndShow() passed after 0.456 seconds.
+✔ Suite "Scenario setup" passed after 0.457 seconds.
+✔ Suite "Glazed openings" passed after 0.457 seconds.
+✔ Suite "Envelope component histories" passed after 0.457 seconds.
+✔ Suite "Terrain" passed after 0.457 seconds.
+✔ Suite "Envelope pane cells" passed after 0.458 seconds.
+✔ Suite "Deflagration" passed after 0.457 seconds.
+✔ Suite "Objects beside a moving structure" passed after 0.458 seconds.
+✔ Suite "Spatial exposure and diagnostic profiling" passed after 0.458 seconds.
+✔ Suite AcousticPhaseReferenceTests passed after 0.458 seconds.
+✔ Suite "Glass against Beauchamp and Matalucci's windows (SAND98-0598)" passed after 0.458 seconds.
+✔ Suite "Learned field encoding" passed after 0.458 seconds.
+✔ Test "A file cut short anywhere is refused" passed after 0.455 seconds.
+✔ Suite "People in the scene: occupants and the people hurt" passed after 0.458 seconds.
+✔ Suite "The renderer's copies of the solver's structs" passed after 0.458 seconds.
+✔ Suite "Wedge reflection" passed after 0.458 seconds.
+✔ Suite "Blast validation" passed after 0.458 seconds.
+✔ Suite "Terrain cut cells" passed after 0.458 seconds.
+✔ Test "Legacy inputs acquire stable ownership without changing solver geometry" with 32 test cases passed after 0.456 seconds.
+✔ Test "A flat terrain is the floor: the world drops it" passed after 0.457 seconds.
+✔ Suite "Craters against H. F. Cooper's 1976 high-explosive data" passed after 0.458 seconds.
+✔ Suite "Ground points on the terrain" passed after 0.459 seconds.
+✔ Suite "Experimental rigid-box coupling" passed after 0.459 seconds.
+✔ Suite "Air model" passed after 0.459 seconds.
+✔ Suite "The offline first-phase definition" passed after 0.459 seconds.
+✔ Suite "Experimental rigid-world coupling" passed after 0.459 seconds.
+✔ Suite "Profiled sheeting" passed after 0.459 seconds.
+✔ Suite "Mapped charge" passed after 0.459 seconds.
+✔ Suite "Transport hub" passed after 0.459 seconds.
+✔ Suite "Learned field weights' file" passed after 0.459 seconds.
+◇ Test "On cells smaller than the pitch the counts and blockage are a pitch's, not the cell's" started.
+✔ Suite "Scene object ownership" passed after 0.460 seconds.
+✔ Test everyOptionIsSetBySomeInput() passed after 0.457 seconds.
+✔ Test everyInputHasAStandingEntry() passed after 0.457 seconds.
+✔ Test closeInGaugesOnTodaysAir() passed after 0.457 seconds.
+✔ Test confinedScenesAreAdvisedOnAfterburning() passed after 0.457 seconds.
+✔ Test optionsCapTheResultsTheyTouch() passed after 0.457 seconds.
+✔ Test aGaugeOnAWallReadsTheReflectedBand() passed after 0.457 seconds.
+✔ Test refinementCountsAsTheFinerGrid() passed after 0.457 seconds.
+✔ Test gaugesTakeTheirOwnBands() passed after 0.456 seconds.
+✔ Test groundShockIsBandedOnlyForTheHalfSpace() passed after 0.456 seconds.
+✔ Test meshSeriesQuoteTheStudy() passed after 0.457 seconds.
+◇ Test "Conversion and encoding preserve owner, openings and physics fingerprint semantics" started.
+✔ Test standingsWithoutBandsStillDecode() passed after 0.454 seconds.
+✔ Test standingsRoundTripAndCompare() passed after 0.456 seconds.
+✔ Test levelsRecordedAsMeasuredStillRead() passed after 0.454 seconds.
+✔ Test coarseCellsForASmallChargeAreAnApproximation() passed after 0.453 seconds.
+✔ Test terrainAndDeflagrationGiveNoKingeryBulmashBand() passed after 0.452 seconds.
+✔ Test closeInLoadingAsksForFinerAir() passed after 0.453 seconds.
+✔ Test radiationAndCloudFollowTheAirTheyWereComparedOn() passed after 0.452 seconds.
+✔ Test afterburningChangesTheImpulsesStanding() passed after 0.452 seconds.
+✔ Test theConfinedRegimesDefaultsAreReported() passed after 0.452 seconds.
+✔ Test collapseStandsApartFromLocalDamage() passed after 0.459 seconds.
+✔ Test aDeflagrationDoesNotQuoteTheChargesComparisons() passed after 0.449 seconds.
+✔ Test readingATableInterpolatesBetweenGridsAndSpansDistances() passed after 0.449 seconds.
+✔ Test structuresTakeBandsByRegimeMeshAndMaterial() passed after 0.458 seconds.
+✔ Test aDeflagrationsBandFollowsItsFuel() passed after 0.447 seconds.
+✔ Test modelsRunAlongsideAreIllustrative() passed after 0.415 seconds.
+✔ Test tightOpenFacesAreSaidBesideTheStructure() passed after 0.448 seconds.
+✔ Test "Conversion and encoding preserve owner, openings and physics fingerprint semantics" passed after 0.002 seconds.
+✔ Suite "Stationary building envelopes" passed after 0.463 seconds.
+✔ Test "On cells smaller than the pitch the counts and blockage are a pitch's, not the cell's" passed after 0.026 seconds.
+◇ Test "MERGE's rigs: their lattices hold a tenth of their volume, the scene its cloud and gauges" started.
+✔ Test "MERGE's rigs: their lattices hold a tenth of their volume, the scene its cloud and gauges" passed after 0.001 seconds.
+◇ Test "The standing advises cells no larger than the congestion's pitch" started.
+✔ Test "The standing advises cells no larger than the congestion's pitch" passed after 0.001 seconds.
+✔ Suite "Congestion below the grid" passed after 0.488 seconds.
+✔ Test samplesTakeOnlyTheBandsThatFitThem() passed after 0.497 seconds.
+Warehouse: 8688 shells, 9920 beams
+✔ Test tablesMirrorTheValidationRecord() passed after 0.518 seconds.
+✔ Test "The warehouse meshes its frames, purlins, rails and sheeting, the sheets' ribs on their skins" passed after 0.530 seconds.
+✔ Suite "Portal-frame warehouse" passed after 0.534 seconds.
+✔ Test theDocsNameTheLevelsAsTheCodeDoes() passed after 0.557 seconds.
+✔ Test "The solid-walled row has one brick-thick plane at the front, joined to the party walls, and no ties" passed after 0.678 seconds.
+✔ Test theIdentityIsAHashOfTheTablesContent() passed after 0.947 seconds.
+✔ Suite StandingFingerprintTests passed after 0.947 seconds.
+✔ Test eachPresetHasAStandingForWhatItProduces() passed after 1.513 seconds.
+✔ Test figuresQuoteTheRecord() passed after 1.530 seconds.
+✔ Suite ErrorBandTests passed after 1.538 seconds.
+✔ Test linksReachHeadingsInTheDocs() passed after 2.339 seconds.
+✔ Suite EvidentialStandingTests passed after 2.343 seconds.
+✔ Test "The row meshes with both leaves of its cavity walls apart and its floors as timber shells" passed after 2.895 seconds.
+✔ Suite "Terraced houses" passed after 2.896 seconds.
+✔ Test "A box on a slope below its friction angle stays put" passed after 5.656 seconds.
+✔ Test "Dropped level onto the slope, it lands on an edge, turns onto its face and stays" passed after 14.557 seconds.
+✔ Test "Above its friction angle it slides at g (sin θ − μ cos θ)" passed after 31.970 seconds.
+✔ Test "A box over a step's edge stays while its centre of mass is over the plateau, and tips off once past it" passed after 44.948 seconds.
+✔ Suite "Freestanding objects on the terrain" passed after 44.949 seconds.
+✔ Test run with 128 tests in 36 suites passed after 44.950 seconds.
+check-affected: BlastModel's 36 suite(s) on bombcad-pc in 62 s, sending and building included: passed
++ swift build -c release --product blastbench
+Building for production...
+[Provisioning 7 / 21]
+[Pre-planning 1 / 448]
+[Planning deferred tasks]
+[13 / 40] ContinuumKit_ContactSearchMetal
+[13 / 65]
+[21 / 72] SceneModel
+[31 / 77] SceneModel
+[34 / 79] SceneView
+[36 / 80] ContactSearch
+[43 / 79] CompressibleFlow
+[45 / 75] GeometryImport
+[47 / 71] ContactSearchMetal
+[49 / 67] Numerics
+[51 / 63] RadialBlast
+[54 / 65] BlastModel
+[56 / 66] BlastModel
+[60 / 69] BlastCore
+[62 / 70] BlastCore
+[66 / 73] BlastRender
+[68 / 74] BlastRender
+Build complete! (173.31 secs)
+digests: building the base d2ebdf4e19a4 for release (one build at a time)
++ git -C /Volumes/StudioData/bombcad/digest-cache/source fetch --quiet /Users/louisemmett/Developer/Projects/bombcad/.git +refs/remotes/origin/*:refs/remotes/origin/* +refs/heads/*:refs/remotes/local/*
++ git -C /Volumes/StudioData/bombcad/digest-cache/source checkout --quiet --force --detach d2ebdf4e19a43e24880c50a133be6edb3c474e4c
++ git -C /Volumes/StudioData/bombcad/digest-cache/source clean -fdq
++ swift build -c release --product blastbench
+Building for production...
+[Computing dependencies]
+[Pre-planning 1 / 448]
+[Planning deferred tasks]
+[1 / 1]
+[16 / 56] ContactSearch
+[18 / 57] SceneModel
+[20 / 58] SceneModel
+[25 / 62] GeometryImport
+[35 / 67] ContactSearch
+[40 / 70] ContactSearch
+[44 / 72] SceneView
+[46 / 73] ContactSearchMetal
+[54 / 75] GeometryImport
+[58 / 76] Numerics
+[62 / 77] RadialBlast
+[67 / 80] BlastModel
+[68 / 81] BlastModel
+[74 / 88] BlastCore
+[76 / 89] BlastCore
+[83 / 92] BlastRender
+[85 / 93] BlastRender
+[90 / 95] blastbench-product
+[92 / 96] blastbench-product
+[94 / 96] blastbench-product
+[95 / 96] blastbench-product
+Build complete! (251.77 secs)
++ /Users/louisemmett/.local/bin/gpu-slot --mem 8 /Applications/Xcode.app/Contents/Developer/usr/bin/python3 /Users/louisemmett/Developer/Projects/bombcad/Scripts/check-affected.py digest-runs --run=/Users/louisemmett/Developer/Projects/bombcad/.build/out/Products/Release/blastbench=/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/check-affected-digests-v8qvtani/head.json --run=/Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c/blastbench=/var/folders/kx/skwwrwz503n5f0jxcnf83fyw0000gn/T/check-affected-digests-v8qvtani/base.json
++ /Users/louisemmett/Developer/Projects/bombcad/.build/out/Products/Release/blastbench digest 
+  plain: 9.2 s, peak so far 0.60 GB
++ /Users/louisemmett/Developer/Projects/bombcad/.build/out/Products/Release/blastbench digest --recommended
+  recommended: 1.1 s, peak so far 0.61 GB
++ /Users/louisemmett/Developer/Projects/bombcad/.build/out/Products/Release/blastbench digest --recommended --mapped
+  mapped: 10.8 s, peak so far 0.61 GB
++ /Users/louisemmett/Developer/Projects/bombcad/.build/out/Products/Release/blastbench digest --refine 2
+  refined: 1.3 s, peak so far 0.62 GB
++ /Users/louisemmett/Developer/Projects/bombcad/.build/out/Products/Release/blastbench digest --refine 2 --refine-levels 2
+  refined twice: 3.2 s, peak so far 7.32 GB
++ /Users/louisemmett/Developer/Projects/bombcad/.build/out/Products/Release/blastbench digest --recommended --terrain hill --gravity --refine 2
+  terrain: 41.8 s, peak so far 7.32 GB
++ /Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c/blastbench digest 
+  plain: 9.1 s, peak so far 7.32 GB
++ /Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c/blastbench digest --recommended
+  recommended: 1.1 s, peak so far 7.32 GB
++ /Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c/blastbench digest --recommended --mapped
+  mapped: 11.5 s, peak so far 7.32 GB
++ /Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c/blastbench digest --refine 2
+  refined: 1.1 s, peak so far 7.32 GB
++ /Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c/blastbench digest --refine 2 --refine-levels 2
+  refined twice: 2.8 s, peak so far 7.32 GB
++ /Volumes/StudioData/bombcad/digest-cache/d2ebdf4e19a43e24880c50a133be6edb3c474e4c/blastbench digest --recommended --terrain hill --gravity --refine 2
+  terrain: 41.6 s, peak so far 7.32 GB
+check-affected: digests bit-identical to the base d2ebdf4e19a4's: 42 variants in 6 sets, 574 s
+check-affected: passed (core, BlastModel on bombcad-pc, digests bit-identical)

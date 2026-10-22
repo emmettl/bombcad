@@ -919,3 +919,11 @@ The failed observer was removed and its source/logs retained; no scientific
 stencil matrix ran. emmettl/bombcad-work#82 next investigates host-side source
 reads with the existing GPU program unchanged. Those reads would support explicit
 component counterfactuals, not claims of observed GPU intermediates.
+
+The [host-source implementation gate](../Benchmarks/CUDAAcceptance/2026-10-22-host-source-stencils/implementation.md)
+now passes focused and optimized four-mode transparency controls with the GPU
+program unchanged. A frozen nx128 CLI control also preserves all pressure bytes,
+update words and complete physical state/residual/recorder outputs. It supplies
+physical conserved inputs for explicit component models, not actual GPU
+intermediates. The 432-group scientific matrix and component attribution remain
+pending in emmettl/bombcad-work#82; defaults and admission are unchanged.

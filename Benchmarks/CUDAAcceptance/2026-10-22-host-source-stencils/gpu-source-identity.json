@@ -1,0 +1,8 @@
+{
+  "status": "identical-gpu-source",
+  "baseline": "d2ebdf4e19a43e24880c50a133be6edb3c474e4c",
+  "updateShaderGeneratorSHA256": "1a5d5afbb3ffc5e0be5fb17149cefa7c4aae852da07636e7b89bb7ee551c1bf1",
+  "shaderAssemblySHA256": "bde028e21cf0855a00e782b3c9b0f5136300d6d412728aa7122d384697d93aaf",
+  "ordinaryShaderDiffEmpty": true,
+  "scope": "Existing shader generator, assembly and ordinary Metal files are byte-identical to the published baseline. Host feature selects existing update pipelines and preserves the existing part-size expression; complete numerical parity remains an independent required gate."
+}

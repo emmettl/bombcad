@@ -1,0 +1,81 @@
+Building for production...
+[Computing dependencies]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[28 / 108] BombCAD_BlastCore
+[28 / 108]
+[38 / 117] SceneModel
+[40 / 118] GeometryImport
+[57 / 128] SceneView
+[59 / 129] SceneView
+[69 / 137]
+[74 / 141] CompressibleFlow
+[82 / 137] GeometryImport
+[82 / 137] ContactSearchMetal
+[91 / 128] SceneRender
+[98 / 123] Numerics
+[98 / 123] RadialBlast
+[104 / 128] BlastModel
+[106 / 129] BlastModel
+[114 / 136] blastmodel-product
+[117 / 138] BlastModelTests-product
+[118 / 139] blastmodel-product
+[120 / 139] blastmodel-product
+[120 / 139] BlastCore
+[131 / 149] BlastRender
+[135 / 152] rigidboxdemo-product
+[137 / 152] rigidboxdemo-product
+[137 / 152] BlastRender
+[147 / 157] scenebench-product
+[149 / 159] BombCAD
+[151 / 161] BlastModelTests-product
+[153 / 161] BlastModelTests-product
+[153 / 161] scenebench-product
+[155 / 162] scenebench-product
+[155 / 162] blastbench-product
+[157 / 162] blastbench-product
+[157 / 162] BlastCoreTests-product
+[159 / 162] BlastCoreTests-product
+[159 / 162] BombCAD-product
+[162 / 170] BombCAD-product
+[163 / 170] BombCAD
+[165 / 168] BombCAD-product
+[168 / 169] BombCADTests-product
+[169 / 170] BombCADTests-product
+[178 / 182] BombCADTests-product
+[180 / 182] BombCADTests-product
+[184 / 184] BlastModelTests-product
+[189 / 191] BlastCoreTests-product
+[191 / 192] blastbench-product
+[193 / 193] rigidboxdemo-product
+[197 / 198] scenebench-product
+[199 / 199] blastmodel-product
+Build complete! (297.28 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Experimental compensated conserved sweeps" started.
+◇ Suite "Host source-stencil diagnostics" started.
+◇ Suite "Production sweep update diagnostics" started.
+◇ Test "Host source reads preserve all four modes and every existing GPU word" started.
+◇ Test "Both sweep paths retain plain state and actual pre/post cells" started.
+◇ Test "Every component mode preserves observation parity and replays actual residual updates" started.
+✔ Test "Both sweep paths retain plain state and actual pre/post cells" passed after 0.106 seconds.
+◇ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" started.
+✔ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" passed after 0.022 seconds.
+◇ Test "Invalid scope, cells and truncated history are refused" started.
+✔ Test "Invalid scope, cells and truncated history are refused" passed after 0.030 seconds.
+✔ Suite "Production sweep update diagnostics" passed after 0.159 seconds.
+✔ Test "Every component mode preserves observation parity and replays actual residual updates" passed after 3.218 seconds.
+◇ Test "Sleeping tiles retain residuals and floors clear the overridden component" started.
+✔ Test "Sleeping tiles retain residuals and floors clear the overridden component" passed after 0.295 seconds.
+◇ Test "Unsupported scope and configuring after observation are refused" started.
+✔ Test "Unsupported scope and configuring after observation are refused" passed after 0.096 seconds.
+✔ Suite "Experimental compensated conserved sweeps" passed after 3.609 seconds.
+✔ Test "Host source reads preserve all four modes and every existing GPU word" passed after 5.667 seconds.
+◇ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" started.
+✔ Test "Physical source indices preserve real neighbor words and explicit ghost mappings" passed after 0.154 seconds.
+◇ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" started.
+✔ Test "Skipped source reads remain host evidence; incomplete and unsupported capture refuses" passed after 0.183 seconds.
+✔ Suite "Host source-stencil diagnostics" passed after 6.006 seconds.
+✔ Test run with 9 tests in 3 suites passed after 6.006 seconds.

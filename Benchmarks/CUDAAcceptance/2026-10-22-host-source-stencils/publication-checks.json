@@ -1,0 +1,43 @@
+{
+  "status": "pass",
+  "baseline": "d2ebdf4e19a43e24880c50a133be6edb3c474e4c",
+  "focusedMethods": 3,
+  "optimizedMethods": 9,
+  "optimizedSuites": 3,
+  "focusedFourModeCombinations": 24,
+  "cliControlSteps": 252,
+  "cliObservationModes": 4,
+  "invalidFlagRefusals": 3,
+  "scientificMatrixExports": 0,
+  "format": "pass",
+  "lint": "pass",
+  "strict": "pass-warning-free",
+  "checkAffected": "pass",
+  "macTests": 280,
+  "macSuites": 59,
+  "pcLinuxTests": 128,
+  "pcLinuxSuites": 36,
+  "ordinaryDigestVariants": 42,
+  "ordinaryDigestSets": 6,
+  "ordinaryDigestBaseline": "d2ebdf4e19a43e24880c50a133be6edb3c474e4c",
+  "ordinaryDigestsBitIdentical": true,
+  "afterChecks": {
+    "all529FrozenSourceOriginalsMatch": true,
+    "all31FrozenRuntimeFilesMatch": true,
+    "all578RawControlFilesMatch": true,
+    "archiveHashesMatch": true,
+    "gpuSourceGeneratorAndAssemblyUnchanged": true
+  },
+  "frozenCLIExecutableSHA256": "9a67af6a53819ee4f04f3611f2be98d1e52403d9469681196883bfb6ef453f86",
+  "currentCachedCLI": {
+    "path": "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+    "sha256": "9a67af6a53819ee4f04f3611f2be98d1e52403d9469681196883bfb6ef453f86"
+  },
+  "logSHA256": {
+    "focused-tests.log": "f39ae423cf222b2e906505fdf2ccbf2b6864fc860a1fb233377ba40d468f4eb7",
+    "release-tests.log": "18de1306cc5c2580871a4ee1597b9788111eda51a1ddf77e7710c24cf6af44af",
+    "strict.log": "1f1de773aae9af2163f24262432e8fed1617bd72ffa2bb987ce3b0d8ca803913",
+    "check-affected.log": "83983cee9d0c6ffcfd2ef5bb7de3907bbc4cd4d009bf402707c4f127c494af9a",
+    "cli-build.log": "2be99821e2dc411e2c803ef68974566d290ce4cecb58ff490018050642d41e38"
+  }
+}

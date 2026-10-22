@@ -1,0 +1,116 @@
+{
+  "status": "pass",
+  "revision": "d2ebdf4e19a43e24880c50a133be6edb3c474e4c",
+  "dirty": true,
+  "python": "3.12.14 (main, Aug 25 2026, 13:50:33) [Clang 22.1.3 ]",
+  "numpyVersion": "2.3.5",
+  "commands": [
+    {
+      "label": "invalid-0",
+      "arguments": [
+        "--trace-source-stencils",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-host-source-cli-control/invalid-0"
+      ],
+      "status": "terminal",
+      "process": {
+        "pid": 40910,
+        "pgid": 40910,
+        "boot": "{ sec = 1790719465, usec = 531341 } Wed Sep 30 00:04:25 2026",
+        "birth": "Thu Oct 22 04:24:28 2026"
+      },
+      "returncode": 1
+    },
+    {
+      "label": "invalid-1",
+      "arguments": [
+        "--trace-source-stencils",
+        "--trace-updates",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-host-source-cli-control/invalid-1"
+      ],
+      "status": "terminal",
+      "process": {
+        "pid": 40942,
+        "pgid": 40942,
+        "boot": "{ sec = 1790719465, usec = 531341 } Wed Sep 30 00:04:25 2026",
+        "birth": "Thu Oct 22 04:24:28 2026"
+      },
+      "returncode": 1
+    },
+    {
+      "label": "invalid-2",
+      "arguments": [
+        "--trace-source-stencils",
+        "--compensated",
+        "both",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-host-source-cli-control/invalid-2"
+      ],
+      "status": "terminal",
+      "process": {
+        "pid": 40972,
+        "pgid": 40972,
+        "boot": "{ sec = 1790719465, usec = 531341 } Wed Sep 30 00:04:25 2026",
+        "birth": "Thu Oct 22 04:24:28 2026"
+      },
+      "returncode": 1
+    },
+    {
+      "label": "four-mode",
+      "arguments": [
+        "--trace-source-stencils",
+        "--trace-updates",
+        "--compensated",
+        "both",
+        "--cfl",
+        "0.45",
+        "--rounding",
+        "default",
+        "--only-case",
+        "a100-n128-full",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-host-source-cli-control/output"
+      ],
+      "status": "terminal",
+      "process": {
+        "pid": 41000,
+        "pgid": 41000,
+        "boot": "{ sec = 1790719465, usec = 531341 } Wed Sep 30 00:04:25 2026",
+        "birth": "Thu Oct 22 04:24:28 2026"
+      },
+      "returncode": 0
+    }
+  ],
+  "scope": "Selected project/source/executable/resource freeze, not hermetic OS/driver/runtime provenance. nx128 CLI validation, not scientific fine-grid outcomes.",
+  "observationParity": {
+    "initialHashes": true,
+    "finalHashes": true,
+    "steps": true,
+    "time": true,
+    "records": true,
+    "initialConservedRhoMxEnergy": true,
+    "finalConservedRhoMxEnergy": true,
+    "initialResidualBits": true,
+    "finalResidualBits": true
+  },
+  "pressureTraceBytesIdentical": true,
+  "allGPUWordsIdentical": true,
+  "sourceCentreWordsMatch": true,
+  "sourceShape": [
+    252,
+    6,
+    5,
+    5
+  ],
+  "residualShape": [
+    252,
+    6,
+    5,
+    4
+  ],
+  "scientificMatrixExports": 0,
+  "frozenSourceFiles": 529,
+  "frozenRuntimeFiles": 31,
+  "contextSHA256": "c09c995e6e8448dadb4b4b70b1c23b71772bd63918529a67c2f4b4eabe106b68"
+}

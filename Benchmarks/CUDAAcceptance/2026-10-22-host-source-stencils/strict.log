@@ -1,0 +1,30 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 5 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[7 / 70] GeometryImport
+[26 / 131] ContactSearch
+[32 / 136] Numerics
+[50 / 147] SceneView
+[68 / 122] RadialBlast
+[71 / 124] SceneRender
+[73 / 118] BlastModel
+[75 / 119] BlastModel
+[82 / 119] BlastCore
+[85 / 122] BlastCore
+[95 / 126] BlastCoreTests-product
+[98 / 128] rigidboxdemo-product
+[105 / 127] BlastCoreTests-product
+[107 / 129] scenebench-product
+[110 / 133] scenebench-product
+[113 / 135] BombCAD
+[115 / 136] BlastCoreTests-product
+[120 / 137] BlastCoreTests-product
+[123 / 137] BombCAD-product
+[124 / 137] BombCAD
+[128 / 129] BombCADTests-product
+[130 / 132] BombCADTests-product
+Build complete! (10.93 secs)
+build-strict: no warnings

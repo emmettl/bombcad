@@ -1,0 +1,10 @@
+{
+  "heldGPUBufferBytesByMode": {
+    "plain": 13952,
+    "pressure": 14592,
+    "updates": 15896,
+    "hostSources": 15896
+  },
+  "newHostSourceNominalRawWordBytes": 272160,
+  "scope": "Existing reported held GPU buffers only. Host source arrays add CPU memory and serialization overhead; raw word count excludes Array/JSON/allocator overhead. No throughput claim."
+}

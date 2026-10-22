@@ -42,6 +42,7 @@ final class SweepUpdateCapture {
     let maxSamples: Int
     var samples: [SweepUpdateSample] = []
     var overflow = false
+    var sourceCapture: SweepSourceCapture?
 
     init(
         indices: [Int], initialStates: [[Float]], fields: [String], buffer: MTLBuffer, outputOffset: Int,
@@ -75,9 +76,12 @@ extension BlastSolver {
     /// Opt-in 1-D bare ideal-gas diagnostic. Use blocking advance; restart disables capture.
     /// Stores actual variables in sibling sweeps; added stores can perturb compiler arithmetic.
     /// Require independent plain/observed parity before interpreting these as ordinary-run evidence.
-    public func configureSweepUpdateDiagnostics(_ indices: [Int], maxSamples: Int = 32768) throws {
+    public func configureSweepUpdateDiagnostics(
+        _ indices: [Int], maxSamples: Int = 32768, captureHostSources: Bool = false
+    ) throws {
         precondition(!batchInFlight && stepCount == 0, "Configure before stepping")
-        guard supportsSweepUpdateDiagnostics, (1...16).contains(indices.count),
+        guard supportsSweepUpdateDiagnostics, !captureHostSources || supportsHostSweepSourceDiagnostics,
+            (1...16).contains(indices.count),
             Set(indices).count == indices.count,
             indices.allSatisfy({ $0 >= 0 && $0 < grid.cellCount }),
             (1...32768).contains(maxSamples)
@@ -112,6 +116,11 @@ extension BlastSolver {
             sweep: try ShaderLibrary.pipeline("sweep\(suffix)", in: observed, constants: constants),
             sweepTiles: try ShaderLibrary.pipeline("sweepTiles\(suffix)", in: observed, constants: constants),
             maxSamples: maxSamples)
+        if captureHostSources {
+            sweepUpdateCapture?.sourceCapture = SweepSourceCapture(
+                indices: indices, nx: grid.nx, lowWall: configuration.reflectiveFaces.contains(.xMin),
+                highWall: configuration.reflectiveFaces.contains(.xMax))
+        }
     }
 
     /// Refuses overflow or a history not collected by blocking advance, rather than truncating.
@@ -148,10 +157,11 @@ extension BlastSolver {
         let values = capture.indices.indices.map { q in
             Array(UnsafeBufferPointer(start: data + q * stride, count: stride))
         }
-        capture.samples.append(
-            SweepUpdateSample(
-                step: step, time: Double(control.clock) / 1_099_511_627_776, dt: control.dt,
-                executed: values.map { $0[23] == Float(control.activeSteps) }, values: values))
+        let sample = SweepUpdateSample(
+            step: step, time: Double(control.clock) / 1_099_511_627_776, dt: control.dt,
+            executed: values.map { $0[23] == Float(control.activeSteps) }, values: values)
+        capture.samples.append(sample)
+        collectHostSweepSources(sample)
     }
 }
 

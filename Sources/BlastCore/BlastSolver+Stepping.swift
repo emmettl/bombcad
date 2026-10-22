@@ -686,6 +686,7 @@ extension BlastSolver {
     /// Advances by `steps` time steps, blocking until the GPU has finished.
     @discardableResult
     public func advance(steps: Int, timeLimit: Double? = nil) -> BatchResult {
+        precondition(steps <= 0 || !batchInFlight, "Complete pending GPU work before blocking advance")
         var total = BatchResult(steps: 0, elapsed: 0, lastTimeStep: 0, isStable: true)
         var remaining = steps
         var stoppedShort = false
@@ -704,6 +705,11 @@ extension BlastSolver {
                         ? 1
                         : (gpuProfiler == nil ? gpuSteps.part(count - encoded) : count - encoded),
                     poolStepLimit)
+                // The previous part has completed its GPU wait; this reads only host-visible source words.
+                guard stageHostSweepSources() else {
+                    failed = true
+                    break
+                }
                 guard
                     let commandBuffer = encodeBatchPart(
                         steps: count, range: encoded..<(encoded + part), timeLimit: timeLimit,
