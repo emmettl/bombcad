@@ -290,6 +290,12 @@ extension BlastSolver {
             distance <= 0.5 * dx && scenario.reflectiveFaces.contains(face) && !(face == .zMin && shaped)
         }.map(\.0)
         var nearest = Float.infinity
+        // A charge on shaped ground (within half a cell of it) is mirrored by the plane through it
+        // along the ground's slope there: the solution is spherical, so any plane through its centre
+        // mirrors it exactly, tilted or not. It is mapped out to where the ground leaves that plane
+        // by more than half a cell (emmettl/bombcad-work#78: without this a charge on terrain always
+        // started as the balloon, and its loads moved with the finest cells).
+        var groundMirror = false
         if shaped, let terrain = scenario.terrain {
             // The surface, sampled a quarter cell apart within the furthest the blast may be mapped.
             let reach = min(
@@ -297,10 +303,25 @@ extension BlastSolver {
                 configuration.mappedChargeScaledReach * cbrt(charge.mass))
             let step = 0.25 * dx
             let count = Int((2 * reach / step).rounded(.up))
+            let foot = SIMD2(c.x, c.y)
+            let ground = terrain.height(at: foot)
+            groundMirror = abs(c.z - ground) <= 0.5 * dx && scenario.reflectiveFaces.contains(.zMin)
+            let slope =
+                SIMD2(
+                    terrain.height(at: foot + SIMD2(dx, 0)) - terrain.height(at: foot - SIMD2(dx, 0)),
+                    terrain.height(at: foot + SIMD2(0, dx)) - terrain.height(at: foot - SIMD2(0, dx)))
+                / (2 * dx)
             for b in 0...count {
                 for a in 0...count {
-                    let p = SIMD2(c.x, c.y) - reach + step * SIMD2(Float(a), Float(b))
-                    nearest = min(nearest, simd_distance(SIMD3(p.x, p.y, terrain.height(at: p)), c))
+                    let p = foot - reach + step * SIMD2(Float(a), Float(b))
+                    let height = terrain.height(at: p)
+                    if groundMirror {
+                        if abs(height - ground - simd_dot(slope, p - foot)) > 0.5 * dx {
+                            nearest = min(nearest, simd_distance(p, foot))
+                        }
+                    } else {
+                        nearest = min(nearest, simd_distance(SIMD3(p.x, p.y, height), c))
+                    }
                 }
             }
         }
@@ -310,7 +331,8 @@ extension BlastSolver {
         for box in obstacles {
             nearest = min(nearest, simd_distance(simd_clamp(c, box.min, box.max), c))
         }
-        for (face, distance) in faces where !mirrors.contains(face) {
+        // The domain's floor under ground the charge is mirrored by is not air.
+        for (face, distance) in faces where !mirrors.contains(face) && !(face == .zMin && groundMirror) {
             nearest = min(nearest, distance)
         }
         let cap = min(
@@ -330,7 +352,7 @@ extension BlastSolver {
         }
         var radius = min(0.8 * nearest, cap)
         for other in others { radius = min(radius, 0.5 * simd_distance(other, c)) }
-        return radius >= 3 * dx ? (radius, mirrors.count) : nil
+        return radius >= 3 * dx ? (radius, mirrors.count + (groundMirror ? 1 : 0)) : nil
     }
 
     /// The ratio the air's finest level will be refined by at the next `restart()`, or 1.

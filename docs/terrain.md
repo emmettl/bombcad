@@ -30,8 +30,23 @@ the checks, `Sources/BlastModel/ShockReflectionTheory.swift`, `WedgeReflectionSt
   fine outline is checked cell for cell against the CPU's surface on both levels.
 - **Charges on or above it.** A charge is laid down in the fluid cells within its sphere and
   normalised over them, so a charge on a slope releases all its energy into the air, as on flat
-  ground. "Place the charge on the ground" in the app sets it on the surface. The mapped
-  one-dimensional start treats the terrain as an obstacle it must not reach.
+  ground. "Place the charge on the ground" in the app sets it on the surface.
+- **The mapped start on terrain.** A charge on the ground (within half a cell of it) is mirrored by
+  the plane through it along the ground's slope there. The one-dimensional solution is spherical,
+  so any plane through its centre mirrors it exactly, tilted or not. It is mapped out to where the
+  ground leaves that plane by more than half a cell. A charge above the ground treats the terrain
+  as an obstacle it must not reach.
+
+  Before 22 October 2026 every charge on terrain was the latter, its mapping radius cut to nothing
+  by the ground beneath it, so it started as the balloon (emmettl/bombcad-work#78). The balloon's
+  radius follows the finest cells, so its loads moved with them:
+  - on Beirut's district, the incident positive-phase impulse at 480–600 m read 14–17% lower on
+    1 m refined air than on 4 m;
+  - on a plane tilted 3°, 100 kg read 10% less impulse than flat ground on uniform 0.125 m cells.
+
+  Mapped, the tilted plane reads flat ground's to 0.3%, and Beirut's impulse is the same on 4, 2
+  and 1 m within 2%, and 3–10% over Kingery–Bulmash. Flat ground and charges off the ground map
+  as before (`scenebench terrain-impulse`; the 112 terrain and open digests are unchanged).
 - **Persistence.** Heights are saved as little-endian 32-bit floats in base64. A scene without
   terrain encodes exactly as before (saved-run fingerprints are unchanged). A project with
   terrain is scene encoding 8 or later (9 with a structural IFC import, 10 with an envelope's

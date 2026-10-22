@@ -144,6 +144,39 @@ struct MappedChargeTests {
         #expect(solver.mappings(for: scenario).isEmpty)
     }
 
+    @Test("A charge on sloping ground is mirrored by it, out to where the ground leaves its plane")
+    func slopingGround() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
+        var scenario = ScenarioPreset.openGround.scenario
+        let domain = scenario.domainSize
+        let middle = scenario.charge.position
+        scenario.charge.position = SIMD3(middle.x, middle.y, 0)
+        let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
+        solver.configuration.mappedCharge = true
+        let flat = try #require(solver.mappings(for: scenario).first)
+        #expect(flat.mirrors == 1)
+        // A plane tilted 3° through the charge mirrors it as flat ground does
+        // (emmettl/bombcad-work#78: on shaped ground it was left the balloon).
+        var tilted = scenario
+        tilted.replaceTerrain(with: .slope(domain: domain, spacing: 0.5, foot: 0, angle: 3))
+        let onSlope = try #require(solver.mappings(for: tilted).first)
+        // The same reach, short only of the domain's top, which the slope lifts the charge toward.
+        let top = 0.8 * (domain.z - tilted.charge.position.z)
+        #expect(onSlope.mirrors == 1 && abs(onSlope.radius - min(flat.radius, top)) < 1e-4)
+        // A slope beginning 6 m beside it: mapped to where the ground has left the plane by half a
+        // cell, short of the slope's foot plus that rise.
+        var foot = scenario
+        foot.replaceTerrain(with: .slope(domain: domain, spacing: 0.5, foot: middle.x + 6, angle: 20))
+        let beside = try #require(solver.mappings(for: foot).first)
+        #expect(
+            beside.mirrors == 1 && beside.radius < flat.radius
+                && beside.radius <= 0.8 * (6 + 0.25 / tan(20 * .pi / 180) + 0.25))
+        // Lifted off the ground, the charge is not on a mirror: the ground below is an obstacle.
+        var lifted = tilted
+        lifted.charge.position.z += 2
+        #expect(solver.mappings(for: lifted).first.map { $0.mirrors == 0 && $0.radius < 0.8 * 2.1 } ?? true)
+    }
+
     @Test("Several charges are each mapped to half the way between them, one by a block left the balloon")
     func severalCharges() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")

@@ -104,11 +104,12 @@ struct MappedStartGapTests {
         #expect(abs((solver.mappings(for: scenario).first?.radius ?? 0) - 0.8 * 5) < 1e-4)
     }
 
-    /// On shaped terrain the ground is no mirror: a charge on the surface is not mapped (its
-    /// nearest ground is at the charge), and one held 4 m above a flat stretch of it is mapped to
-    /// 0.8 of that height with no mirrors. The terrain branch of `mapping(of:among:scenario:)`,
-    /// which samples the surface a quarter cell apart, is reached by no test.
-    @Test("Over shaped terrain the ground mirrors nothing, and limits the reach as an obstacle does")
+    /// On shaped terrain a charge on the surface is mirrored by its ground (since 22 October 2026,
+    /// emmettl/bombcad-work#78; before, its nearest ground at the charge left it unmapped), out to
+    /// the nearer of the domain's faces and where the ground leaves its plane; one held 4 m above
+    /// a flat stretch of it is mapped to 0.8 of that height with no mirrors. The terrain branch of
+    /// `mapping(of:among:scenario:)` samples the surface a quarter cell apart.
+    @Test("Over shaped terrain the ground mirrors a charge on it, and limits the reach of one above it")
     func shapedTerrain() throws {
         let device = try #require(MTLCreateSystemDefaultDevice(), "These tests need a Metal device")
         var scenario = ScenarioPreset.openGround.scenario
@@ -118,7 +119,9 @@ struct MappedStartGapTests {
         scenario.charge.position = SIMD3(16, 32, 0)
         let solver = try BlastSolver(device: device, scenario: scenario, cellSize: 0.5)
         solver.configuration.mappedCharge = true
-        #expect(solver.mappings(for: scenario).isEmpty)
+        // On its ground: mirrored once, to 0.8 of the x = 0 face (the slope's foot is farther).
+        let onGround = try #require(solver.mappings(for: scenario).first)
+        #expect(onGround.mirrors == 1 && abs(onGround.radius - 0.8 * 16) < 1e-4, "\(onGround)")
 
         scenario.charge.position = SIMD3(16, 32, 4)
         let mapping = try #require(solver.mappings(for: scenario).first)

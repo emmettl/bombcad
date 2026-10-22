@@ -78,6 +78,10 @@ enum SceneBench {
             try GlassCalibration.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "terrain-impulse" {
+            try TerrainImpulse.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "wall-convergence" {
             try WallConvergence.run(Array(args.dropFirst()))
             return
