@@ -41,6 +41,16 @@ exported accumulated-cell peak. That target history and the upstream cause remai
 tracks a bounded capture of the actual exported-peak quantity.
 No phase rule, tolerance, reference or admission change follows from these diagnostics.
 
+
+User-directed [CUDA closeout, 22 October 2026](../Benchmarks/CUDAAcceptance/2026-10-22-capped-closeout/summary.md):
+the three-experiment cap is exhausted and further CUDA acceptance work is parked. The sole
+remaining Beirut phase cell (row 366, column 355) closes on −0.0078125 Pa in CUDA. Offline
+dt-weight swaps leave closure unchanged; changing only that sample to zero removes the
+early closure in replay. This supports a near-zero phase-end sensitivity, without identifying
+the upstream cause or adopting a deadband. Bulk remains gated; tolerances/admission stay
+unchanged. emmettl/bombcad-work#39 remains a Big bet; follow-ups are parked pending an explicit
+data-volume need or reprioritization. Codex returns to Edgerton.
+
 ## What runs where
 
 The Mac loads the district, constructs the grid and fixed-obstacle mask, and initializes the

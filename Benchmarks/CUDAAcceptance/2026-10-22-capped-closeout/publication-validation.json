@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "format": "passed",
+  "lint": "passed",
+  "strictBuild": "passed-no-warnings",
+  "affected": {
+    "command": "make check-affected",
+    "status": "passed",
+    "selectedSuites": 23,
+    "macTests": 18,
+    "macSuites": 7,
+    "pcTests": 62,
+    "pcSuites": 11
+  },
+  "additionalExperiments": 3,
+  "experimentCapExhausted": true,
+  "furtherCUDAExperiments": false,
+  "notes": [
+    "One import-only preflight preserved; no experiment executed in that attempt.",
+    "Existing Python ResourceWarnings retained.",
+    "Publication validation only; no further CUDA acceptance experiment or policy change."
+  ]
+}

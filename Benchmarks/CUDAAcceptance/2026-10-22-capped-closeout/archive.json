@@ -1,0 +1,95 @@
+{
+  "status": "all-members-and-raw-rehash-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-capped-closeout",
+  "manifest": {
+    "preflight-run.py": {
+      "sha256": "ce5d5b058191b48e1068e26dc023f4c55c7a3b75b0f55ac5ac28fa715674b2a7",
+      "bytes": 6134
+    },
+    "preflight.json": {
+      "sha256": "ef743a0539172e7554c2dc2226b13227a05d1f43ce5844bef6e562635500504f",
+      "bytes": 278
+    },
+    "publication-plan.md": {
+      "sha256": "2b2c2dbfef83c0179ba66f9b2142ac50d36a0556b7f113f7200a85e90133ffca",
+      "bytes": 1503
+    },
+    "publication-preflight-run.py": {
+      "sha256": "ce5d5b058191b48e1068e26dc023f4c55c7a3b75b0f55ac5ac28fa715674b2a7",
+      "bytes": 6134
+    },
+    "publication-run.py": {
+      "sha256": "bd4a266175bd7737c066a8da5a24e86a8da92c0e4727940e13f7cfaac3852ddc",
+      "bytes": 6202
+    },
+    "publication-summary.md": {
+      "sha256": "fcc1fb2614a7dc939fa9e74620b6f03a9a32b207d0fd3f15069ee710f20351e3",
+      "bytes": 5884
+    },
+    "qualified/CUDA.json": {
+      "sha256": "973a83ff68f28e1fed52c0861f178a7f01267c28b713e7bb67809eb3af1e2fb9",
+      "bytes": 57590
+    },
+    "qualified/CUDA.npy": {
+      "sha256": "c159b850aff2495f5f5d155dbe6b731c11e227b81396e50145465bea94e07735",
+      "bytes": 77568
+    },
+    "qualified/Metal.json": {
+      "sha256": "4fd34e0601d47c5368d0e5d093923eead9c7d88867de66fe1f3da559d1f98882",
+      "bytes": 82063
+    },
+    "qualified/Metal.npy": {
+      "sha256": "b926ea4bc0003180bc91c84226d81c8a7d2c7a64d7fcd704697bea058634b4a6",
+      "bytes": 77504
+    },
+    "qualified/diagnose-phase.py": {
+      "sha256": "baad1bca47201c94b6ced179de843f0fa5328627acccf73aebadefd9d63d550b",
+      "bytes": 8175
+    },
+    "qualified/experiment-1-input.npy": {
+      "sha256": "1dd4de86e37749b5245b3fcdc6a70a4600e2c9b5690781842e0428ec9472aaa0",
+      "bytes": 77568
+    },
+    "qualified/experiment-1-recorder.npy": {
+      "sha256": "a02ef9237ba9c89693622aad9a743347e3aa2bc2d195a81d6721b53972b6f02e",
+      "bytes": 48528
+    },
+    "qualified/experiment-2-input.npy": {
+      "sha256": "fda99927d3b5e18ba08e8507d4f4286190e83b5b812a9cd3b23d0c117c540891",
+      "bytes": 77504
+    },
+    "qualified/experiment-2-recorder.npy": {
+      "sha256": "3b483e13a60cd026eab12e0f6fbb6a3585c3493e81bd64726b5c5fc32023b0b9",
+      "bytes": 48488
+    },
+    "qualified/experiment-3-input.npy": {
+      "sha256": "e43d51284b92c14b7165875f3b2285bd6a9d8e496678383af13843c8ff7dac1e",
+      "bytes": 77568
+    },
+    "qualified/experiment-3-recorder.npy": {
+      "sha256": "f31dcf4b1c306fc418365322e492f2f41b2b77f53a3c0131be90b0f3cc1119d1",
+      "bytes": 48528
+    },
+    "qualified/plan.md": {
+      "sha256": "2b2c2dbfef83c0179ba66f9b2142ac50d36a0556b7f113f7200a85e90133ffca",
+      "bytes": 1503
+    },
+    "qualified/results.json": {
+      "sha256": "34eb3a0998f78415014a8041e9a9697c31719b9ae72e1c79602fe327f4c701bd",
+      "bytes": 13021
+    },
+    "qualified/run.py": {
+      "sha256": "bd4a266175bd7737c066a8da5a24e86a8da92c0e4727940e13f7cfaac3852ddc",
+      "bytes": 6202
+    }
+  },
+  "archive": {
+    "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-capped-closeout-complete-archive/all-raw.tar.gz",
+    "sha256": "b99d086f6e1183b651eef5704b80c2fe2c71f485516ca456ed28592327aadac7",
+    "bytes": 226670
+  },
+  "files": 20,
+  "rawBytes": 727945,
+  "additionalExperiments": 3,
+  "capExhausted": true
+}
