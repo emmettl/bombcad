@@ -1,0 +1,28 @@
+{
+  "status": "passed-implementation-checkpoint",
+  "format": "passed",
+  "lint": "passed",
+  "strictHostBuild": "passed-no-warnings",
+  "focusedTests": 3,
+  "nativeScalarOutputWords": {
+    "baseline": 375672,
+    "precise": 375672
+  },
+  "independentAnalyticRuns": 12,
+  "affected": {
+    "command": "make check-affected",
+    "status": "passed",
+    "selectedSuites": 200,
+    "pcSelectedSuites": 62,
+    "tier": "core",
+    "base": "630be97ee0e2c87c560c6d8f6c5bf3edc6b9c0b4",
+    "digestVariants": 42,
+    "digestSets": 6,
+    "digests": "bit-identical"
+  },
+  "notes": [
+    "Existing Python ResourceWarnings retained.",
+    "No district pilot or target gate has run in this stage.",
+    "Immediate follow-up will refuse gauges and permit untraced candidate controls with mandatory state-hash provenance before any district dispatch."
+  ]
+}

@@ -218,6 +218,11 @@ enum FieldExport {
         let tracePressure = args.contains("--trace-pressure")
         let traceInputs = args.contains("--trace-pressure-inputs")
         let traceClock = args.contains("--trace-clock-inputs")
+        let preciseSelector = args.contains("--precise-step-selector-diagnostic")
+        guard !preciseSelector || (traceClock && !args.contains("--cuda-job")) else {
+            throw BlastError.allocationFailed(
+                "--precise-step-selector-diagnostic requires --trace-clock-inputs and a Metal run")
+        }
         guard !traceInputs || tracePressure else {
             throw BlastError.allocationFailed("--trace-pressure-inputs requires --trace-pressure")
         }
@@ -275,6 +280,7 @@ enum FieldExport {
             traceIndices = []
         }
         if traceClock { try solver.configureClockInputDiagnostics(maxSamples: pressureBudget) }
+        if preciseSelector { try solver.configureStepSelectorDiagnostics() }
         phaseSeconds["recorderSetupSeconds"] = (ContinuousClock.now - recorderSetupStart) / .seconds(1)
         print(
             String(
@@ -380,7 +386,8 @@ enum FieldExport {
             edgeCells: value("edge").flatMap(Int.init) ?? 4,
             configuration: (args.contains("--balloon") ? "recommended, balloon start" : "recommended")
                 + (args.contains("--full-grid-diagnostic") ? "; full-grid diagnostic" : "")
-                + (args.contains("--all-tiles-diagnostic") ? "; all-tiles diagnostic" : ""),
+                + (args.contains("--all-tiles-diagnostic") ? "; all-tiles diagnostic" : "")
+                + (preciseSelector ? "; precise step selector diagnostic, not admitted" : ""),
             ground: value("ground"), steps: steps, wallS: wall, stable: stable, arguments: args,
             levels: levels)
         if !traceIndices.isEmpty && !tracePressure {
@@ -491,6 +498,9 @@ enum FieldExport {
             ]
             try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys])
                 .write(to: folder.appending(path: "clock-inputs.json"))
+        }
+        if let selector = solver.stepSelectorDiagnosticInfo {
+            try JSONEncoder().encode(selector).write(to: folder.appending(path: "step-selector.json"))
         }
         try writeTimings(folder: folder, mode: "metal", solve: wall, outputStart: outputStart)
         guard stable else { throw BlastError.allocationFailed("a stable run (written with stable: false)") }

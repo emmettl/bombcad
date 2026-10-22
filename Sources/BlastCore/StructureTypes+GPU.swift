@@ -16,12 +16,8 @@ extension KernelMathMode {
 }
 
 extension ShaderLibrary {
-    static func make(
-        device: MTLDevice, firstPhasePressure: Bool = false, sweepUpdates: Bool = false,
-        compensatedSweep: Bool = false
-    ) throws
-        -> MTLLibrary
-    {
+    /// Original full producer text, before any diagnostic or build-probe transformations.
+    static func mainSource() throws -> String {
         let files = [
             "Solver", "SolverSweep", "SolverCutCells", "SolverCongestion", "SolverStep", "SolverEnvelopes",
             "SolverVenting", "SolverVisualization", "Refine", "Structure", "Rubble", "Shell", "BodyContact",
@@ -30,12 +26,7 @@ extension ShaderLibrary {
             "Gravity",
             "Deflagration", "Mixing",
         ]
-        var probe = BuildProbe.current
-        if let rounding = KernelRounding.current {
-            probe.mathMode = rounding.mathMode
-            probe.contract = rounding.contract
-        }
-        var source = try files.map { name in
+        let source = try files.map { name in
             guard
                 let url = Bundle.module.url(
                     forResource: name, withExtension: "metal", subdirectory: "Shaders")
@@ -46,7 +37,21 @@ extension ShaderLibrary {
         }.joined(separator: "\n")
         // Contact's table and search are ContinuumKit's (`ContactSearchMetal`), compiled ahead of
         // the kernels that use them.
-        source = try MetalContactSearch.functionSource() + "\n" + source
+        return try MetalContactSearch.functionSource() + "\n" + source
+    }
+
+    static func make(
+        device: MTLDevice, firstPhasePressure: Bool = false, sweepUpdates: Bool = false,
+        compensatedSweep: Bool = false
+    ) throws
+        -> MTLLibrary
+    {
+        var probe = BuildProbe.current
+        if let rounding = KernelRounding.current {
+            probe.mathMode = rounding.mathMode
+            probe.contract = rounding.contract
+        }
+        var source = try mainSource()
         if firstPhasePressure { source = try addingFirstPhasePressureCapture(to: source) }
         if compensatedSweep { source = try addingCompensatedSweep(to: source) }
         if sweepUpdates { source = try addingSweepUpdateCapture(to: source, compensated: compensatedSweep) }

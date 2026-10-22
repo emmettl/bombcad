@@ -1,0 +1,2191 @@
+{
+  "status": "checkpoint-all-members-and-raw-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-trajectories",
+  "manifest": {
+    "analysis/SolverVerificationTests.swift": {
+      "sha256": "6db4ff0ca0787562b94a2e54b25784b1d494e41d261cc94e1d0505796f0aac9f",
+      "bytes": 12069
+    },
+    "analysis/analyze_controls.py": {
+      "sha256": "5bda8f71adbdd5a00e3d4edc0d551bb0507c7eb349277a92e1fc99e5c800f6ce",
+      "bytes": 7010
+    },
+    "analysis/archive_checkpoint.py": {
+      "sha256": "58d3ac11fcba04d0ff47495b40b5abbb83af60ef5fabd99f3ef1b7b075bcfc5a",
+      "bytes": 2890
+    },
+    "analysis/checkpoint.md": {
+      "sha256": "b72cef42743b49a8d08809d2a49ccf720ec07e1ec604e865a60ed30ddb3b2e78",
+      "bytes": 4244
+    },
+    "analysis/implementation-validation.json": {
+      "sha256": "db3813fcaa7d627733bc330dd0815433ae1f09da9b3de6b7bd2bafe1536f9471",
+      "bytes": 846
+    },
+    "analysis/plan.md": {
+      "sha256": "764fce76f03a43644c7c7686d20bf3ff7a8cdfdcc851dc27e8eb1162b9ebb3ca",
+      "bytes": 4752
+    },
+    "analysis/prepare_banks.py": {
+      "sha256": "35744d81d395a8d3f14bd19ea892f95a734bb6746350b7f9ee77d3dddccbc742",
+      "bytes": 2071
+    },
+    "analysis/producer-main.metal": {
+      "sha256": "9b71ace9e68302d44903ae6d6d391932384e29efc51db3189c34a41b04fb9eed",
+      "bytes": 890641
+    },
+    "analysis/reference-provenance.json": {
+      "sha256": "28628d0d96942eef480560f501128b614c6ac77b524842bebbea85373691bd89",
+      "bytes": 468
+    },
+    "analysis/run_tests.py": {
+      "sha256": "a42c5c616c1f909fa684f512d36b1bab29dc2dadd8a832d7b8b5e5469ba2f0da",
+      "bytes": 6209
+    },
+    "analytic/metrics.json": {
+      "sha256": "9e4af8cab876af4fb8094ed2da25cb02286c4ba09cc9febade25ba7250eea8c5",
+      "bytes": 9339
+    },
+    "analytic/sedov-120-original/final.bin": {
+      "sha256": "102196467706b1b192db6c0346970c2970940f549f3996f277ffcae00b7c093d",
+      "bytes": 34560000
+    },
+    "analytic/sedov-120-original/initial.bin": {
+      "sha256": "9f778f67126d9dee56977c1cbc6e0a924c4a6a00c6a4bf8300927bf1326658d7",
+      "bytes": 34560000
+    },
+    "analytic/sedov-120-precise/final.bin": {
+      "sha256": "a594508b3b38f10d9897c753445d8566cbc18377f1576c1e3f70475a96a46f31",
+      "bytes": 34560000
+    },
+    "analytic/sedov-120-precise/initial.bin": {
+      "sha256": "9f778f67126d9dee56977c1cbc6e0a924c4a6a00c6a4bf8300927bf1326658d7",
+      "bytes": 34560000
+    },
+    "analytic/sedov-80-original/final.bin": {
+      "sha256": "4e004980e837cdf43e32d4db13f00b9b5afb2af26e79111fb2ea1315f12f21d1",
+      "bytes": 10240000
+    },
+    "analytic/sedov-80-original/initial.bin": {
+      "sha256": "13baae3e107cceaa185d43066f4c3a2d914fb1049f250402715034016c6a68d9",
+      "bytes": 10240000
+    },
+    "analytic/sedov-80-precise/final.bin": {
+      "sha256": "7ecb5c8b31139c96c26995e765dc5538f6281aaab646c9178d60aa7fb14d9c83",
+      "bytes": 10240000
+    },
+    "analytic/sedov-80-precise/initial.bin": {
+      "sha256": "13baae3e107cceaa185d43066f4c3a2d914fb1049f250402715034016c6a68d9",
+      "bytes": 10240000
+    },
+    "analytic/sod-400-0-original/final.bin": {
+      "sha256": "f17ad589a5a6e860807c2304475cf14d94d975702504709704fe7922e910e407",
+      "bytes": 8000
+    },
+    "analytic/sod-400-0-original/initial.bin": {
+      "sha256": "2778f304421c7fd0f347a64ec80719bb9188736ecc5fb084c9d14b508c348b6e",
+      "bytes": 8000
+    },
+    "analytic/sod-400-0-precise/final.bin": {
+      "sha256": "d2c2cc42b76af0bf6f2e3da60fc5385a9f32e4ed3bc48423e8a204646afcd095",
+      "bytes": 8000
+    },
+    "analytic/sod-400-0-precise/initial.bin": {
+      "sha256": "2778f304421c7fd0f347a64ec80719bb9188736ecc5fb084c9d14b508c348b6e",
+      "bytes": 8000
+    },
+    "analytic/sod-400-1-original/final.bin": {
+      "sha256": "8c6afaba12372f9e736898d8779ed9f70fcf26b3f76d94217a282536609b3d3e",
+      "bytes": 8000
+    },
+    "analytic/sod-400-1-original/initial.bin": {
+      "sha256": "2778f304421c7fd0f347a64ec80719bb9188736ecc5fb084c9d14b508c348b6e",
+      "bytes": 8000
+    },
+    "analytic/sod-400-1-precise/final.bin": {
+      "sha256": "db5b9cdf24e209077cf3108e9a7c1b269051c98df5c550590a7ab135fbd39074",
+      "bytes": 8000
+    },
+    "analytic/sod-400-1-precise/initial.bin": {
+      "sha256": "2778f304421c7fd0f347a64ec80719bb9188736ecc5fb084c9d14b508c348b6e",
+      "bytes": 8000
+    },
+    "analytic/sod-800-0-original/final.bin": {
+      "sha256": "32377096f9036d4b34e9fced80549c8befe4ab67ecd41f790c7f02f8573769f2",
+      "bytes": 16000
+    },
+    "analytic/sod-800-0-original/initial.bin": {
+      "sha256": "e467614a8b8674c8b4f41873d388e35df397890b8acdb20dcc2e077088a93b9b",
+      "bytes": 16000
+    },
+    "analytic/sod-800-0-precise/final.bin": {
+      "sha256": "16527f4f2f9668564fee1d3390af548b5f6c0fe4543a5bba4a81e8998663bbfc",
+      "bytes": 16000
+    },
+    "analytic/sod-800-0-precise/initial.bin": {
+      "sha256": "e467614a8b8674c8b4f41873d388e35df397890b8acdb20dcc2e077088a93b9b",
+      "bytes": 16000
+    },
+    "analytic/sod-800-1-original/final.bin": {
+      "sha256": "c9625c6d13ebd39a8b24db8c9d2836ec64755083068b1cc45d1a414c81a0ed00",
+      "bytes": 16000
+    },
+    "analytic/sod-800-1-original/initial.bin": {
+      "sha256": "e467614a8b8674c8b4f41873d388e35df397890b8acdb20dcc2e077088a93b9b",
+      "bytes": 16000
+    },
+    "analytic/sod-800-1-precise/final.bin": {
+      "sha256": "cc4654305b4171f34abe19697264615ba485608089c11a25862c103cf4dd5d2f",
+      "bytes": 16000
+    },
+    "analytic/sod-800-1-precise/initial.bin": {
+      "sha256": "e467614a8b8674c8b4f41873d388e35df397890b8acdb20dcc2e077088a93b9b",
+      "bytes": 16000
+    },
+    "control-audit.json": {
+      "sha256": "9004983364a0ddfc8e6ba3bafa0b80f83334c5a7a64999d1a5e552a1103b3e59",
+      "bytes": 119279
+    },
+    "native-banks/bank-preparation.json": {
+      "sha256": "7e7a4f07b4ab51c0a422f1be01b5e905c8b21229841901341f34c1794509b245",
+      "bytes": 10419
+    },
+    "native-banks/bank-results.json": {
+      "sha256": "496736c84a17ee438316d1b47be2c6af319d7bf0cbc4b3b91b254cd9b8243ce9",
+      "bytes": 2454
+    },
+    "native-banks/banks/beirut-p0-1-cuda/context.json": {
+      "sha256": "89791debbdae94b17f8d82eb4acbdfcb44363453a2b8ffc82ea274c40a21b7c6",
+      "bytes": 42307
+    },
+    "native-banks/banks/beirut-p0-1-cuda/control.bin": {
+      "sha256": "d27c7efd53c113308ed67eaf1e6873fd8dd35919571c5b5836c01d26651805d8",
+      "bytes": 174168
+    },
+    "native-banks/banks/beirut-p0-1-cuda/expected-baseline.bin": {
+      "sha256": "90e8a6f25bef67d0f04172490cef7be078401689093956996530941b7e1812ac",
+      "bytes": 232224
+    },
+    "native-banks/banks/beirut-p0-1-cuda/expected-precise.bin": {
+      "sha256": "06cb7226b8151f08ad47e461fadedd57057f05b6531beb12bb4f043f7928def2",
+      "bytes": 232224
+    },
+    "native-banks/banks/beirut-p0-1-cuda/speed.bin": {
+      "sha256": "492d51978335b3fc029ff7bc3d47d3c9afce28b9fde049726cf07b4cd07a5339",
+      "bytes": 19352
+    },
+    "native-banks/banks/beirut-p0-1-cuda/tiles.bin": {
+      "sha256": "34499a08c72183c9b4a7cc79ed8aef3323775a856a503e83b0fbcfe80e252be2",
+      "bytes": 38704
+    },
+    "native-banks/banks/beirut-p0-1-cuda/uniforms.bin": {
+      "sha256": "7af1e662e09d37cdb54ad6cc72a8b22c3f26bf54d685e31d4bf79e5fbc6a9336",
+      "bytes": 667644
+    },
+    "native-banks/banks/beirut-p0-1-metal/context.json": {
+      "sha256": "322434d1e4253f9fd1a53a12725cbbe3b6da22883b2eb3720103c012915fa89a",
+      "bytes": 48638
+    },
+    "native-banks/banks/beirut-p0-1-metal/control.bin": {
+      "sha256": "71e55f9f56796598d03e68c59d2c1c097caf68f6c85019cfa39465394921107a",
+      "bytes": 175176
+    },
+    "native-banks/banks/beirut-p0-1-metal/expected-baseline.bin": {
+      "sha256": "059119e3d9380a2eff6d2b6da7a26aaa8fc75c2a0a8997b8ec64bf50838952b0",
+      "bytes": 233568
+    },
+    "native-banks/banks/beirut-p0-1-metal/expected-precise.bin": {
+      "sha256": "38d0d3388800b0f257e60612d6aee9ab5c8a778749da6e2987d34f31d1207eaf",
+      "bytes": 233568
+    },
+    "native-banks/banks/beirut-p0-1-metal/speed.bin": {
+      "sha256": "129531bc4fa3eb373ccd2c1d34c8834f5ed5b4ff0656731efc52c608bcb73789",
+      "bytes": 19464
+    },
+    "native-banks/banks/beirut-p0-1-metal/tiles.bin": {
+      "sha256": "56d5fc66ee3c5998602681fcaf97a53acf77e85d46b9b4ed7f754b279e6aaa43",
+      "bytes": 38928
+    },
+    "native-banks/banks/beirut-p0-1-metal/uniforms.bin": {
+      "sha256": "5c2af3c5b35cf85245e1cdd0d9e4a9a683790f6910a5bd9b91583c65ed951775",
+      "bytes": 671508
+    },
+    "native-banks/banks/made-perimeter-s1-1-cuda/context.json": {
+      "sha256": "26cc2e5830268db81940119b59d4c0554b323c45980b803cefe99e85c8ad57ed",
+      "bytes": 46183
+    },
+    "native-banks/banks/made-perimeter-s1-1-cuda/control.bin": {
+      "sha256": "fed51f5b8e060f0a7a76822b9fefecc71b1fb3817152514655913b9d5d246271",
+      "bytes": 190584
+    },
+    "native-banks/banks/made-perimeter-s1-1-cuda/expected-baseline.bin": {
+      "sha256": "82ef8ba7b35c5cfa109af8628911c5b8c249eb566c6913244195fd4ea1753ee2",
+      "bytes": 254112
+    },
+    "native-banks/banks/made-perimeter-s1-1-cuda/expected-precise.bin": {
+      "sha256": "152428a0743233e5faf97a812755407b0032b7bb86fc5df9972ebf71696f20f4",
+      "bytes": 254112
+    },
+    "native-banks/banks/made-perimeter-s1-1-cuda/speed.bin": {
+      "sha256": "394d30ecb85805fd5e654e05226352461c3259d2d430b7b9c244c5b547978f37",
+      "bytes": 21176
+    },
+    "native-banks/banks/made-perimeter-s1-1-cuda/tiles.bin": {
+      "sha256": "e490ef4aefddcfb12539cf732008537797dcce5adbc45d5ee1e88d8a5d7742ea",
+      "bytes": 42352
+    },
+    "native-banks/banks/made-perimeter-s1-1-cuda/uniforms.bin": {
+      "sha256": "4581eca95fd0e1881675b71871737595e43fd94eaf5c8ff48302cdf664688759",
+      "bytes": 730572
+    },
+    "native-banks/banks/made-perimeter-s1-1-metal/context.json": {
+      "sha256": "16ad3a2f3766778987b770e6e68bd6087f3aab821f73d3f4399dd41f35958d01",
+      "bytes": 53757
+    },
+    "native-banks/banks/made-perimeter-s1-1-metal/control.bin": {
+      "sha256": "fcd2df3fa0d69fac28eda2f13e751121e95a3fa700a6a5e0da07dfc1f1288dab",
+      "bytes": 193608
+    },
+    "native-banks/banks/made-perimeter-s1-1-metal/expected-baseline.bin": {
+      "sha256": "fc4ce89c491cab140bee58f24292c294ab4227ceae86d3ebe90c61ae57777715",
+      "bytes": 258144
+    },
+    "native-banks/banks/made-perimeter-s1-1-metal/expected-precise.bin": {
+      "sha256": "c6da2a2ca8be963e88c819b9b466ca27745af06b395f8c1edc5c5441bf2e0d57",
+      "bytes": 258144
+    },
+    "native-banks/banks/made-perimeter-s1-1-metal/speed.bin": {
+      "sha256": "4e71d0890762d45e675a365dc9185a1294e790d380af6349e8934b6e8287f8de",
+      "bytes": 21512
+    },
+    "native-banks/banks/made-perimeter-s1-1-metal/tiles.bin": {
+      "sha256": "9b52054dafe981191780e4a42432119d8842aedd3f8ee6569c70457c6423b669",
+      "bytes": 43024
+    },
+    "native-banks/banks/made-perimeter-s1-1-metal/uniforms.bin": {
+      "sha256": "8b35b2c231fb99c5b0de41bc6d1a827eb4afd26e3bd5893041d84c751628afe8",
+      "bytes": 742164
+    },
+    "native-banks/banks/made-perimeter-s3-1-cuda/context.json": {
+      "sha256": "7605a78e148487d8d5a9ae2955535fdf4d36e2ef6bf549d1621791861b588a63",
+      "bytes": 47288
+    },
+    "native-banks/banks/made-perimeter-s3-1-cuda/control.bin": {
+      "sha256": "3de09e123a075ced72fd3cd0e65e4430bc9297312a2d1a110c9c3864ca40e7f8",
+      "bytes": 195264
+    },
+    "native-banks/banks/made-perimeter-s3-1-cuda/expected-baseline.bin": {
+      "sha256": "77c45531097d128c9af4787dfdaf14b9336c2929f332745ddbedca485416be44",
+      "bytes": 260352
+    },
+    "native-banks/banks/made-perimeter-s3-1-cuda/expected-precise.bin": {
+      "sha256": "7dd54100e118d301bf425029628b2d9d1f165ef03fbf4d2f521f7a99979719c9",
+      "bytes": 260352
+    },
+    "native-banks/banks/made-perimeter-s3-1-cuda/speed.bin": {
+      "sha256": "03ed7af7d3163c0d36f5c0781acbaf74cf36a16fddd75a5932c842d288ab5505",
+      "bytes": 21696
+    },
+    "native-banks/banks/made-perimeter-s3-1-cuda/tiles.bin": {
+      "sha256": "3d9f21c010e199b79cf0d50577a50e241338e9b1c150bc37a21aeaf84ea59566",
+      "bytes": 43392
+    },
+    "native-banks/banks/made-perimeter-s3-1-cuda/uniforms.bin": {
+      "sha256": "08d0dd3f7b88567570f9d9dbba8b9207270cb8973aee36b0a9f970e2a7f6c613",
+      "bytes": 748512
+    },
+    "native-banks/banks/made-perimeter-s3-1-metal/context.json": {
+      "sha256": "11effe822f0c106113ee395eac29b33f1907bad1dd80f266005f1727e5d413bc",
+      "bytes": 55037
+    },
+    "native-banks/banks/made-perimeter-s3-1-metal/control.bin": {
+      "sha256": "b0468b39798dcb611b7510598d59e02cadf0f820790da8435be7220923c116df",
+      "bytes": 198216
+    },
+    "native-banks/banks/made-perimeter-s3-1-metal/expected-baseline.bin": {
+      "sha256": "1a32d0dae65ab5c10d479eb6e7152bd1416abfb588c5e841f55e7ff84bb8b1b7",
+      "bytes": 264288
+    },
+    "native-banks/banks/made-perimeter-s3-1-metal/expected-precise.bin": {
+      "sha256": "39b47436d0e07984722f3bb0c53fc1ced5593a2b355be93183ccdbfa933ca4e8",
+      "bytes": 264288
+    },
+    "native-banks/banks/made-perimeter-s3-1-metal/speed.bin": {
+      "sha256": "d64a0713b3a4a00441011481a89dc0629ba091da23c9d7e10ce3e64a1d1df9c0",
+      "bytes": 22024
+    },
+    "native-banks/banks/made-perimeter-s3-1-metal/tiles.bin": {
+      "sha256": "fe003e661600a3b9e8f86b6d9268280a4c37b2e8ee65cd67b421b8060e3ccae5",
+      "bytes": 44048
+    },
+    "native-banks/banks/made-perimeter-s3-1-metal/uniforms.bin": {
+      "sha256": "0804c5fcb8487b071d8529d20735fdea84864953f36b4b1984be6f566260aa40",
+      "bytes": 759828
+    },
+    "native-banks/baseline-beirut-p0-1-cuda.bin": {
+      "sha256": "90e8a6f25bef67d0f04172490cef7be078401689093956996530941b7e1812ac",
+      "bytes": 232224
+    },
+    "native-banks/baseline-beirut-p0-1-metal.bin": {
+      "sha256": "059119e3d9380a2eff6d2b6da7a26aaa8fc75c2a0a8997b8ec64bf50838952b0",
+      "bytes": 233568
+    },
+    "native-banks/baseline-made-perimeter-s1-1-cuda.bin": {
+      "sha256": "82ef8ba7b35c5cfa109af8628911c5b8c249eb566c6913244195fd4ea1753ee2",
+      "bytes": 254112
+    },
+    "native-banks/baseline-made-perimeter-s1-1-metal.bin": {
+      "sha256": "fc4ce89c491cab140bee58f24292c294ab4227ceae86d3ebe90c61ae57777715",
+      "bytes": 258144
+    },
+    "native-banks/baseline-made-perimeter-s3-1-cuda.bin": {
+      "sha256": "77c45531097d128c9af4787dfdaf14b9336c2929f332745ddbedca485416be44",
+      "bytes": 260352
+    },
+    "native-banks/baseline-made-perimeter-s3-1-metal.bin": {
+      "sha256": "1a32d0dae65ab5c10d479eb6e7152bd1416abfb588c5e841f55e7ff84bb8b1b7",
+      "bytes": 264288
+    },
+    "native-banks/parent-pins.json": {
+      "sha256": "aef4f0e9595f369d39909f9aaa15883cfaff5291a51d16e52742d4887402597c",
+      "bytes": 8472
+    },
+    "native-banks/precise-beirut-p0-1-cuda.bin": {
+      "sha256": "06cb7226b8151f08ad47e461fadedd57057f05b6531beb12bb4f043f7928def2",
+      "bytes": 232224
+    },
+    "native-banks/precise-beirut-p0-1-metal.bin": {
+      "sha256": "38d0d3388800b0f257e60612d6aee9ab5c8a778749da6e2987d34f31d1207eaf",
+      "bytes": 233568
+    },
+    "native-banks/precise-made-perimeter-s1-1-cuda.bin": {
+      "sha256": "152428a0743233e5faf97a812755407b0032b7bb86fc5df9972ebf71696f20f4",
+      "bytes": 254112
+    },
+    "native-banks/precise-made-perimeter-s1-1-metal.bin": {
+      "sha256": "c6da2a2ca8be963e88c819b9b466ca27745af06b395f8c1edc5c5441bf2e0d57",
+      "bytes": 258144
+    },
+    "native-banks/precise-made-perimeter-s3-1-cuda.bin": {
+      "sha256": "7dd54100e118d301bf425029628b2d9d1f165ef03fbf4d2f521f7a99979719c9",
+      "bytes": 260352
+    },
+    "native-banks/precise-made-perimeter-s3-1-metal.bin": {
+      "sha256": "39b47436d0e07984722f3bb0c53fc1ced5593a2b355be93183ccdbfa933ca4e8",
+      "bytes": 264288
+    },
+    "validation/analytic-build.json": {
+      "sha256": "b0bc214049811362c5a9f292fdcb3ace22cd358772ff3a82cc2403ed0b2fb275",
+      "bytes": 222
+    },
+    "validation/analytic-build.log": {
+      "sha256": "bb8f19bc77802cd172390ec229691392301d28d00c15c3f8a0988f85f579e617",
+      "bytes": 107
+    },
+    "validation/analytic-linked-sdk.txt": {
+      "sha256": "50ef59b2913848bf1622b341c1e84df14a34677cfaf53eeb9aa8265a4e027dd2",
+      "bytes": 18090
+    },
+    "validation/analytic-process.json": {
+      "sha256": "ee874432f335a6f0998ed75f22568630852911d948cc5f8d73e660d9e49eaca6",
+      "bytes": 55080
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Info.plist": {
+      "sha256": "5a1df7acd54adebf760add35b687ab01802d4498f2e591998219abcc34180348",
+      "bytes": 1186
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/MacOS/BlastCoreTests": {
+      "sha256": "7d244f70b5211628e821032aedfb6a19d0897ab850d09aa743551c3ee88de813",
+      "bytes": 58326304
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Info.plist": {
+      "sha256": "23f7c344e8c9ac323be99272558eb2aac1f2ec1abcfeb515a5479dd380370cf5",
+      "bytes": 1130
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/BodyContact.metal": {
+      "sha256": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+      "bytes": 15728
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Deflagration.metal": {
+      "sha256": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+      "bytes": 20759
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Extract.metal": {
+      "sha256": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+      "bytes": 11901
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Footing.metal": {
+      "sha256": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+      "bytes": 22824
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Gravity.metal": {
+      "sha256": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+      "bytes": 2288
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Mixing.metal": {
+      "sha256": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+      "bytes": 5508
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Radiation.metal": {
+      "sha256": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+      "bytes": 20292
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Refine.metal": {
+      "sha256": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+      "bytes": 150281
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Rubble.metal": {
+      "sha256": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+      "bytes": 17007
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Shell.metal": {
+      "sha256": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+      "bytes": 161932
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Solver.metal": {
+      "sha256": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+      "bytes": 69273
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCongestion.metal": {
+      "sha256": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+      "bytes": 6287
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCutCells.metal": {
+      "sha256": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+      "bytes": 18714
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverEnvelopes.metal": {
+      "sha256": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+      "bytes": 26758
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverStep.metal": {
+      "sha256": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+      "bytes": 18310
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverSweep.metal": {
+      "sha256": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+      "bytes": 31622
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVenting.metal": {
+      "sha256": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+      "bytes": 19135
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVisualization.metal": {
+      "sha256": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+      "bytes": 3040
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Structure.metal": {
+      "sha256": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+      "bytes": 266072
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Thermal.metal": {
+      "sha256": "682d7840de3974906e68a9c62a0e123d5e29782a770fdf19126b9b61a0b275c3",
+      "bytes": 20832
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "ff74d630f03c7a59693d374e68ad7282f8d92dd5b12c8cd26bf8bbb1ecaabd62",
+      "bytes": 204
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "e3808d06093c2961118ec796cfec60c2a77e4d01a2ddf455782343a69e64417f",
+      "bytes": 7288
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/Info.plist": {
+      "sha256": "0323c70c03ce091a2033ea7274a7bfd6505a6f373821441436f5a50ebcf68517",
+      "bytes": 1158
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchFunctions.metal": {
+      "sha256": "15f9d42d0ac940944a6a4b8c00ebb7bb9dc9531a601d5cb37e3b6ff8be827074",
+      "bytes": 2891
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchKernels.metal": {
+      "sha256": "097ada87a78aa40cdd8b4e02d8f16bc70f94a7fe218df0024e3aec4d4b5151c9",
+      "bytes": 4600
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "717dc470a9e7a2710995d714cdf73cb01efc761c9c92f9e8799390e94f54e0eb",
+      "bytes": 218
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "747fd8197b12be7e629c43d5ea3e99ef9011aaf8a05bf7e372d34ac061684cf4",
+      "bytes": 2768
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/analytic-runtime/BlastCoreTests.xctest/Contents/_CodeSignature/CodeResources": {
+      "sha256": "8e05836b68399397f4ae3153e3413362272928130401594d0f8374d358914c5b",
+      "bytes": 13212
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Info.plist": {
+      "sha256": "23f7c344e8c9ac323be99272558eb2aac1f2ec1abcfeb515a5479dd380370cf5",
+      "bytes": 1130
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/BodyContact.metal": {
+      "sha256": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+      "bytes": 15728
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Deflagration.metal": {
+      "sha256": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+      "bytes": 20759
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Extract.metal": {
+      "sha256": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+      "bytes": 11901
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Footing.metal": {
+      "sha256": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+      "bytes": 22824
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Gravity.metal": {
+      "sha256": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+      "bytes": 2288
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Mixing.metal": {
+      "sha256": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+      "bytes": 5508
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Radiation.metal": {
+      "sha256": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+      "bytes": 20292
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Refine.metal": {
+      "sha256": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+      "bytes": 150281
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Rubble.metal": {
+      "sha256": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+      "bytes": 17007
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Shell.metal": {
+      "sha256": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+      "bytes": 161932
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Solver.metal": {
+      "sha256": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+      "bytes": 69273
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCongestion.metal": {
+      "sha256": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+      "bytes": 6287
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCutCells.metal": {
+      "sha256": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+      "bytes": 18714
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverEnvelopes.metal": {
+      "sha256": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+      "bytes": 26758
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverStep.metal": {
+      "sha256": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+      "bytes": 18310
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverSweep.metal": {
+      "sha256": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+      "bytes": 31622
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVenting.metal": {
+      "sha256": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+      "bytes": 19135
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVisualization.metal": {
+      "sha256": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+      "bytes": 3040
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Structure.metal": {
+      "sha256": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+      "bytes": 266072
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Thermal.metal": {
+      "sha256": "682d7840de3974906e68a9c62a0e123d5e29782a770fdf19126b9b61a0b275c3",
+      "bytes": 20832
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "ff74d630f03c7a59693d374e68ad7282f8d92dd5b12c8cd26bf8bbb1ecaabd62",
+      "bytes": 204
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "e3808d06093c2961118ec796cfec60c2a77e4d01a2ddf455782343a69e64417f",
+      "bytes": 7288
+    },
+    "validation/analytic-runtime/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/analytic-runtime/ContinuumKit_ContactSearchMetal.bundle/Contents/Info.plist": {
+      "sha256": "0323c70c03ce091a2033ea7274a7bfd6505a6f373821441436f5a50ebcf68517",
+      "bytes": 1158
+    },
+    "validation/analytic-runtime/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchFunctions.metal": {
+      "sha256": "15f9d42d0ac940944a6a4b8c00ebb7bb9dc9531a601d5cb37e3b6ff8be827074",
+      "bytes": 2891
+    },
+    "validation/analytic-runtime/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchKernels.metal": {
+      "sha256": "097ada87a78aa40cdd8b4e02d8f16bc70f94a7fe218df0024e3aec4d4b5151c9",
+      "bytes": 4600
+    },
+    "validation/analytic-runtime/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "717dc470a9e7a2710995d714cdf73cb01efc761c9c92f9e8799390e94f54e0eb",
+      "bytes": 218
+    },
+    "validation/analytic-runtime/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/analytic-runtime/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "747fd8197b12be7e629c43d5ea3e99ef9011aaf8a05bf7e372d34ac061684cf4",
+      "bytes": 2768
+    },
+    "validation/analytic-runtime/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/analytic-runtime/sources/0000-AdblastCladdingTest+GPU.swift": {
+      "sha256": "a0baf1698f64b39d50c875746373493aab05c3880d34634bcfdf4c2057cb730f",
+      "bytes": 7524
+    },
+    "validation/analytic-runtime/sources/0001-AirSlice+GPU.swift": {
+      "sha256": "93b5dbca6cee518905ad706993e0d63ac39e77b720c41b55a553a3f9040e15bc",
+      "bytes": 2590
+    },
+    "validation/analytic-runtime/sources/0002-AnchorageStudy+GPU.swift": {
+      "sha256": "2831f29fc3152368b4972d9ecdb02570ac119202b26e28f885b2bcd42ec56730",
+      "bytes": 12352
+    },
+    "validation/analytic-runtime/sources/0003-BatchGPUProfiler.swift": {
+      "sha256": "dee31a5387fe2e890c14e9e932ad0cf16fdc769ee16838634606367f6e4b1181",
+      "bytes": 3595
+    },
+    "validation/analytic-runtime/sources/0004-BeamBenchmark+GPU.swift": {
+      "sha256": "5490776482e8ef9d0d43f90b1ef9c329d69347088ac99e988cc3a87233c1ac34",
+      "bytes": 5515
+    },
+    "validation/analytic-runtime/sources/0005-BlastModelExports.swift": {
+      "sha256": "39a795f9e3030fd41afcab7ace67e748442eff69d621d0de97ee3a8fea88ee92",
+      "bytes": 175
+    },
+    "validation/analytic-runtime/sources/0006-BlastSolver+AirModels.swift": {
+      "sha256": "9be8fd0b0316762eef79a786b30f933bc1e9c561f1519c3f1a8a42f0666f3eb7",
+      "bytes": 10942
+    },
+    "validation/analytic-runtime/sources/0007-BlastSolver+CUDAJobs.swift": {
+      "sha256": "f5cbdce128fdbe186f2f76595d03d5f174e79eb47d5b348f19920bc537955902",
+      "bytes": 7092
+    },
+    "validation/analytic-runtime/sources/0008-BlastSolver+Checkpoints.swift": {
+      "sha256": "3e0a34751f63916801e97c798d132dd42342e4036eb5e30b3def920ee075dbb7",
+      "bytes": 16305
+    },
+    "validation/analytic-runtime/sources/0009-BlastSolver+Coupling.swift": {
+      "sha256": "0efd0126e8e3f9ee8499dcf91b2e7a2a297b71bc65bbb5533c09736ecd8d775b",
+      "bytes": 35977
+    },
+    "validation/analytic-runtime/sources/0010-BlastSolver+CutCells.swift": {
+      "sha256": "05412afce9001e59ed22346c694975581f2c600a5d9e4ee6bf2a9ee011c91cae",
+      "bytes": 8659
+    },
+    "validation/analytic-runtime/sources/0011-BlastSolver+Envelopes.swift": {
+      "sha256": "0b93a81aa62e19cde10b6c961c66b63e1e769677c7c23225abba1144f7f91650",
+      "bytes": 18141
+    },
+    "validation/analytic-runtime/sources/0012-BlastSolver+ExperimentalBoxes.swift": {
+      "sha256": "d15330c82954c3c7f0fb41338f87a0d81c3ed8762e932c9ffe23f68cb07d073f",
+      "bytes": 22016
+    },
+    "validation/analytic-runtime/sources/0013-BlastSolver+Gauges.swift": {
+      "sha256": "c84d77512ea3b5a2757e8cb277514c0bc70244c5a9dcdb33d0a73d9c06d2da23",
+      "bytes": 7900
+    },
+    "validation/analytic-runtime/sources/0014-BlastSolver+Mask.swift": {
+      "sha256": "f3bafd07b7474f2cf04464e2055a0a63dfbc5bb45ecdb45b077b1cc425c3d227",
+      "bytes": 14360
+    },
+    "validation/analytic-runtime/sources/0015-BlastSolver+Refinement.swift": {
+      "sha256": "1a4339db95252f9d7b0f91f7110878b4c93a352fbac40aeb6fa8145daf88cc0e",
+      "bytes": 17079
+    },
+    "validation/analytic-runtime/sources/0016-BlastSolver+State.swift": {
+      "sha256": "3894971de851601a35592ffc7a596f5d88eef5e019764859b7b4c669f3ec5006",
+      "bytes": 18937
+    },
+    "validation/analytic-runtime/sources/0017-BlastSolver+Stepping.swift": {
+      "sha256": "e8a46d55bf1661b8992ef899ba2d48d67b4924c87449445eedea4b92a42dd884",
+      "bytes": 54682
+    },
+    "validation/analytic-runtime/sources/0018-BlastSolver+Venting.swift": {
+      "sha256": "8e7781443cfe9ce0f38f14572da323d3b4edc4cdbb763b7c7bbffb1607cb6512",
+      "bytes": 21681
+    },
+    "validation/analytic-runtime/sources/0019-BlastSolver+Visualization.swift": {
+      "sha256": "5fc057b7dd9309da002d3fe39569aa59863a7cffb4a10449f0dd983ee1b6968d",
+      "bytes": 3180
+    },
+    "validation/analytic-runtime/sources/0020-BlastSolver.swift": {
+      "sha256": "44275e07c209814e67c07d9a1b8b559b357a63f24b6f79d9db0e1e4a74e80c3f",
+      "bytes": 26919
+    },
+    "validation/analytic-runtime/sources/0021-BodyViewExtraction.swift": {
+      "sha256": "29d304c48afd5db85f103b590a700918dbd52767e9c5579f24b5d688da728307",
+      "bytes": 5512
+    },
+    "validation/analytic-runtime/sources/0022-BucklingStudy+GPU.swift": {
+      "sha256": "4b1b995bba70e9efa059a582f766935a5a02b5e3987c3e2f395860fa1d7336fa",
+      "bytes": 12264
+    },
+    "validation/analytic-runtime/sources/0023-BufferCopy.swift": {
+      "sha256": "836db4bd3560e0d7d4636917d83a77001db5d98f07dcc2abace12adcabe72a69",
+      "bytes": 662
+    },
+    "validation/analytic-runtime/sources/0024-ChamberTest+GPU.swift": {
+      "sha256": "2619f20263c17bf5de5304c4da744e34e1bd8ac79d4f1460b8dde7383b7eee8c",
+      "bytes": 10977
+    },
+    "validation/analytic-runtime/sources/0025-ClockInputDiagnostics.swift": {
+      "sha256": "998ed76571221d7e72ccfc05bcee4184da42edef2dadf6a477140be72a37af28",
+      "bytes": 7371
+    },
+    "validation/analytic-runtime/sources/0026-CloseInSlabTest+GPU.swift": {
+      "sha256": "79de2576ae920f7d002402e6c5f2b0039aeb1db13078d2fee384ff5e4a236bd4",
+      "bytes": 7876
+    },
+    "validation/analytic-runtime/sources/0027-ColumnRemovalTest+GPU.swift": {
+      "sha256": "2ec9d90dffb0b442307f3567e0eccbef2629ea4eb1b324bd09142c71115def54",
+      "bytes": 5122
+    },
+    "validation/analytic-runtime/sources/0028-CompensatedSweep.swift": {
+      "sha256": "4291b41eb0b4cbd3211d24b7323696949c4920552b6a7d564ff9000eeb32635e",
+      "bytes": 8174
+    },
+    "validation/analytic-runtime/sources/0029-CongestedRigStudy+GPU.swift": {
+      "sha256": "c78caee539b13ac911298c963ee132dc4976483ef8f4248e3ee6f51f7caa4caf",
+      "bytes": 3139
+    },
+    "validation/analytic-runtime/sources/0030-Congestion+GPU.swift": {
+      "sha256": "d65c72cd86d5a49697b58340f2274e45518350e45d07429e62ce9486ed9098ad",
+      "bytes": 5903
+    },
+    "validation/analytic-runtime/sources/0031-ContactSlabTest+GPU.swift": {
+      "sha256": "51eb016fd4d6ead197df90b7000c4150036af4a8e0fa9440e3c3b67ee96dbe2d",
+      "bytes": 9452
+    },
+    "validation/analytic-runtime/sources/0032-DeflagrationSolver.swift": {
+      "sha256": "08bc5e5b3cf9241cbe68bbc475ebb990cabb62cbfbb94e90550d3078d1c487cc",
+      "bytes": 25351
+    },
+    "validation/analytic-runtime/sources/0033-DeflagrationStudy+GPU.swift": {
+      "sha256": "dbc9b7f95f9f156955cabb062a5bec08a21d8c9f1e873e41a70274b25b92ed5d",
+      "bytes": 9157
+    },
+    "validation/analytic-runtime/sources/0034-DelayedCharges.swift": {
+      "sha256": "37b3fc8c6171972a658e2af9dd2ecb111c8ca5dc939cea0d866674b931da31d5",
+      "bytes": 14363
+    },
+    "validation/analytic-runtime/sources/0035-DiscreteBars.swift": {
+      "sha256": "e5c2b542fee8475f3200b41f1024b9cc6aef2c53a8a8ac3f861f1b4863732f26",
+      "bytes": 5790
+    },
+    "validation/analytic-runtime/sources/0036-DroppedSpanStudy+GPU.swift": {
+      "sha256": "0224f0af63940bfdc14629775fc5ade410d6c18b0a46f4bdb5dccad389228636",
+      "bytes": 3523
+    },
+    "validation/analytic-runtime/sources/0037-EnvelopeComponents.swift": {
+      "sha256": "cc75cbd3635ab30e18157c26eddd6fab5779f9b25084a6d579ab1475ff89b7ec",
+      "bytes": 31316
+    },
+    "validation/analytic-runtime/sources/0038-EnvelopeDebris+GPU.swift": {
+      "sha256": "dc02b0c84eaa615612531a0cbd6a3511c6c1d005f9b070bdd9e10007cfcea29c",
+      "bytes": 8469
+    },
+    "validation/analytic-runtime/sources/0039-EnvelopeExposure.swift": {
+      "sha256": "1fc798d0ad3297ae9317f4938092b08a136ff48e138cecabff81d47ef4893db0",
+      "bytes": 9222
+    },
+    "validation/analytic-runtime/sources/0040-EnvelopeVenting.swift": {
+      "sha256": "6149f37e17d6d2a471fed3f25ce6c655514d4989e8b654b226095b03351d18f2",
+      "bytes": 31072
+    },
+    "validation/analytic-runtime/sources/0041-ExperimentalBoxRefinement.swift": {
+      "sha256": "b8ce3c9320cd6e5594355d01bbe369132d2de16731542e15a023bb1e9eb66f9f",
+      "bytes": 4286
+    },
+    "validation/analytic-runtime/sources/0042-ExperimentalRigidBoxDiagnostics+GPU.swift": {
+      "sha256": "75d3a80e3d50996caa69f161db626795eab882e2f0bf1a2ca2e610bb4e5be4d5",
+      "bytes": 7196
+    },
+    "validation/analytic-runtime/sources/0043-ExperimentalRigidBoxSimulation.swift": {
+      "sha256": "546aec79ba46b5b13aa1bcf8e55b359ef0747d9d06d046400018b1d4cc57f62b",
+      "bytes": 5245
+    },
+    "validation/analytic-runtime/sources/0044-ExperimentalRigidBoxStudy+GPU.swift": {
+      "sha256": "f257a1a76433227ab46f8b5b96eddf7dacb929487bcbc01d05e76faf5b81e85b",
+      "bytes": 4046
+    },
+    "validation/analytic-runtime/sources/0045-ExperimentalRigidCarSimulation.swift": {
+      "sha256": "3f598d0f39fd3d5aef2fe0e1e7189b1e6a0cc3500231b385aac24a3ddde8c96c",
+      "bytes": 8121
+    },
+    "validation/analytic-runtime/sources/0046-ExperimentalRigidCarStudy+GPU.swift": {
+      "sha256": "486d7f263ae8c63582c4ddcdec1bed2f1ebc12440d9120229fe7dbd94e4d7e6e",
+      "bytes": 8763
+    },
+    "validation/analytic-runtime/sources/0047-ExperimentalRigidRowStudy+GPU.swift": {
+      "sha256": "f427fdf340762acdc1e62bebcfbda4adc16bd4c6587833c2631779d74a1566d0",
+      "bytes": 4748
+    },
+    "validation/analytic-runtime/sources/0048-ExperimentalRigidStructureSimulation.swift": {
+      "sha256": "3800f0522b745bee07135a78f51ffab6ad11c016bc751b2225a6c30545d0cb53",
+      "bytes": 14899
+    },
+    "validation/analytic-runtime/sources/0049-ExperimentalRigidWorldSimulation.swift": {
+      "sha256": "8a370b46c8a1cc526dfff84c53ccbda0c05c0b3f6bd34914da1956d5fa154653",
+      "bytes": 11292
+    },
+    "validation/analytic-runtime/sources/0050-ExposurePlane.swift": {
+      "sha256": "f2a30338a554104bd19502e85ac44a1f045bc1b1f9181facff91b5b753e47672",
+      "bytes": 3946
+    },
+    "validation/analytic-runtime/sources/0051-FireballRise+GPU.swift": {
+      "sha256": "ab07f73d37cd0e3d73bca54f3a97f73174e343b66aba9b9014bd1bc2caef5b6c",
+      "bytes": 5964
+    },
+    "validation/analytic-runtime/sources/0052-FireballShape+GPU.swift": {
+      "sha256": "a9e6db1061f20dfed1ba203438269dd9f599e98eb36965b12ab6cfa459895db0",
+      "bytes": 3258
+    },
+    "validation/analytic-runtime/sources/0053-FireballVolume.swift": {
+      "sha256": "a15230d245ac94605598a12e94d0105546448c17be0f773808da8a7b64c0bdc7",
+      "bytes": 8993
+    },
+    "validation/analytic-runtime/sources/0054-FirstPhaseColumns.swift": {
+      "sha256": "77fef4d7483486a3f0004ec53576aff99502ab7c02c8b7dba7e53dc494bbccbe",
+      "bytes": 22044
+    },
+    "validation/analytic-runtime/sources/0055-FirstPhaseInputDiagnostics.swift": {
+      "sha256": "deab7b1e8bcb38f3b90818c8279cc27f02ce8f6cb8f1ea35bbb29edce89d6df5",
+      "bytes": 6113
+    },
+    "validation/analytic-runtime/sources/0056-FootingRockingTest+GPU.swift": {
+      "sha256": "e27c19322de87a15d61b62be5285c9d6689d85db3a73e7db1ee65470a8249267",
+      "bytes": 7670
+    },
+    "validation/analytic-runtime/sources/0057-FootingShakingTest+GPU.swift": {
+      "sha256": "db83b6c9070c28819a90a7d6125de085c70247c10a264be87ac255106a8b6310",
+      "bytes": 5132
+    },
+    "validation/analytic-runtime/sources/0058-FootingSystem.swift": {
+      "sha256": "70efac3e2fbe6f7014de00228ab37c3bef2dcd9685397be8e5d7a78b9e4857ef",
+      "bytes": 23752
+    },
+    "validation/analytic-runtime/sources/0059-FrameExtraction.swift": {
+      "sha256": "5043c28e07e637014bc492594b2274352b26773e196045228a242fd1bf0e985a",
+      "bytes": 15178
+    },
+    "validation/analytic-runtime/sources/0060-FreestandingMotion.swift": {
+      "sha256": "24e8ac4f667279213cfb30b691f070ad76e7820fba86c012ad850aee181c75a9",
+      "bytes": 5204
+    },
+    "validation/analytic-runtime/sources/0061-GravityCheck+GPU.swift": {
+      "sha256": "3baf1027b2719fed937acaa69af767e96add5bbf5783de69f93fd74a0bf4d7c6",
+      "bytes": 2276
+    },
+    "validation/analytic-runtime/sources/0062-GroundHazard+GPU.swift": {
+      "sha256": "bb262baaa4c92f2ed839f9c45d64b9556f9f87cf5330fd9b06ec2d1af48eae32",
+      "bytes": 741
+    },
+    "validation/analytic-runtime/sources/0063-GroundSlice+GPU.swift": {
+      "sha256": "f4563c13d8e1fd1b0093b772a484f6589a04509230c095cd7d72ea765f78da0e",
+      "bytes": 2722
+    },
+    "validation/analytic-runtime/sources/0064-HrynykSlabTest+GPU.swift": {
+      "sha256": "05ba2ab08cb05e1788482cadac109ea69160a793a0e6bc02768cbbbcee9b4d73",
+      "bytes": 15435
+    },
+    "validation/analytic-runtime/sources/0065-ImpactBenchmark+GPU.swift": {
+      "sha256": "ec9d37902b71001fd8725aa8feb2ce5498ebe86d6ee2b74bf66fc3eeb1148a12",
+      "bytes": 18375
+    },
+    "validation/analytic-runtime/sources/0066-KennyImpactTest+GPU.swift": {
+      "sha256": "824fd45f27eb8872549ef41c0465e703e9ee7a8df0a3542fd71a9ef40ce80f8e",
+      "bytes": 6531
+    },
+    "validation/analytic-runtime/sources/0067-LacroixGlulamTest+GPU.swift": {
+      "sha256": "0d929e6bdbb06c9f188dc22b77938287fd6147336bfccbe0e59ce3087bb652c9",
+      "bytes": 6444
+    },
+    "validation/analytic-runtime/sources/0068-LaminatedShellTest+GPU.swift": {
+      "sha256": "435230ad10835915d9d9f6a176e6d1221e62b2aeb085af646418b3281bcb1889",
+      "bytes": 3052
+    },
+    "validation/analytic-runtime/sources/0069-LangdonPanelTest+GPU.swift": {
+      "sha256": "d94722e4ff339a549a55b576756a183b3d622a331c3c7a8289f6f26e69a1bfee",
+      "bytes": 2525
+    },
+    "validation/analytic-runtime/sources/0070-LearnedFieldDownload.swift": {
+      "sha256": "3641b3b56b1d69e3de2d3e11abb7c9a2c51ce7bd7b079a3b9a072ca20cc6757d",
+      "bytes": 3493
+    },
+    "validation/analytic-runtime/sources/0071-LearnedFieldNetwork.swift": {
+      "sha256": "a054830d67af7a278bb79101d7ea98f289928f2c448416a380f85ff93a993cf1",
+      "bytes": 10606
+    },
+    "validation/analytic-runtime/sources/0072-MappedFireball.swift": {
+      "sha256": "7a4873971beae2874efd8379e315f6bdf5a6146dc569676f3a06a52ecffe2343",
+      "bytes": 8172
+    },
+    "validation/analytic-runtime/sources/0073-MappedGround.swift": {
+      "sha256": "a4308fa914e5885c051ce359f4ee56b9f3c7b8338ebe2bfbdb75ba08926282ab",
+      "bytes": 4301
+    },
+    "validation/analytic-runtime/sources/0074-MappedStart.swift": {
+      "sha256": "ba122c5bf726a80c31cb3b6183e9b898a01c1ee16ddf51df8f2da7cd64b214a0",
+      "bytes": 13516
+    },
+    "validation/analytic-runtime/sources/0075-MasonryDebrisTest.swift": {
+      "sha256": "1f6f870939e4e395bdfc5618eca861eee75cf98560120717ff766097750598f7",
+      "bytes": 27478
+    },
+    "validation/analytic-runtime/sources/0076-MendoncaSlabTest+GPU.swift": {
+      "sha256": "beee92496224cbc3dd33c518ed797df3b2eabeee7bd1a017885932da4511b29b",
+      "bytes": 16447
+    },
+    "validation/analytic-runtime/sources/0077-MetalThermalMarch.swift": {
+      "sha256": "d9d260ab9167d7070ada9d1718cf423a89b166510d2651c6d42a799f9f90c40a",
+      "bytes": 6896
+    },
+    "validation/analytic-runtime/sources/0078-MetalThermalVisibility.swift": {
+      "sha256": "abc6af4bc39960fc6ce2b199c2f952223310b1424f65a2009c92349b17502b4b",
+      "bytes": 14293
+    },
+    "validation/analytic-runtime/sources/0079-MixedStructure.swift": {
+      "sha256": "579c38a80a736cffd39747932943806202e617c0ec2287c326eb5b6449571b0e",
+      "bytes": 18023
+    },
+    "validation/analytic-runtime/sources/0080-NassrSteelTest+GPU.swift": {
+      "sha256": "4ab2f4751476746789a0979ceece86865786ef947be84e0a5d66b5a3e0090082",
+      "bytes": 4618
+    },
+    "validation/analytic-runtime/sources/0081-OpenVDBWriter+GPU.swift": {
+      "sha256": "0977d9f628e393c1f6fa3ccdd851360c0b2958215df85e5f9923f200ec8e48e0",
+      "bytes": 13575
+    },
+    "validation/analytic-runtime/sources/0082-PartPairs.swift": {
+      "sha256": "c708513badfa6a258543894e35ab2e4b43c940d07ba5c42a9156bbfe17096ed4",
+      "bytes": 6580
+    },
+    "validation/analytic-runtime/sources/0083-PerimeterWallTests+GPU.swift": {
+      "sha256": "10ec49f1586609c6fdf24815d0a4737fc1425595218cea8facd178e6730c90ad",
+      "bytes": 20412
+    },
+    "validation/analytic-runtime/sources/0084-PoulinCLTTest+GPU.swift": {
+      "sha256": "506c33ead578da9f4a7e2ed6a0457e0f8d787531f57bc53318fdd823835e342c",
+      "bytes": 7953
+    },
+    "validation/analytic-runtime/sources/0085-PrecastSeatTest+GPU.swift": {
+      "sha256": "2e553cfd5d755e136357d9f65109f290982655456f4846cb7092c01984058144",
+      "bytes": 6524
+    },
+    "validation/analytic-runtime/sources/0086-PushOffTest+GPU.swift": {
+      "sha256": "909d67c368c0fea0b12ff7f91f06a345c65c4d46555ab809530e0602a4ec849f",
+      "bytes": 2679
+    },
+    "validation/analytic-runtime/sources/0087-RadiativeCooling+GPU.swift": {
+      "sha256": "2f23ab80bf60a14af6b173904ac9bda9d058822f1e394be70fe70539d4296b35",
+      "bytes": 14149
+    },
+    "validation/analytic-runtime/sources/0088-Refinement.swift": {
+      "sha256": "538aa466ad53d9d8af62755578b24d499fbc1381c72d3f8572cfeab955e8266e",
+      "bytes": 121327
+    },
+    "validation/analytic-runtime/sources/0089-RefinementCoverage+GPU.swift": {
+      "sha256": "a958981f376b0f14e4a3977c423a7031b904decb1e0dac6472165e05eee29001",
+      "bytes": 6593
+    },
+    "validation/analytic-runtime/sources/0090-ReynoldsSlabTest+GPU.swift": {
+      "sha256": "d0fe3b80fde4b5ce92642905100e578e94a4657dd35ed9669921e644d0fbf2dc",
+      "bytes": 8236
+    },
+    "validation/analytic-runtime/sources/0091-RigidCarDemo+GPU.swift": {
+      "sha256": "2c41ec9785b63a822503b324013255fe30c0f0ca941d51118ffbc8c6342b4d89",
+      "bytes": 3009
+    },
+    "validation/analytic-runtime/sources/0092-RigidObjectDemo+GPU.swift": {
+      "sha256": "e6e660fffe9dd377f026146be2c3dc667d81d4909943994fbf98fe48e5f5396c",
+      "bytes": 2283
+    },
+    "validation/analytic-runtime/sources/0093-RoofGlassHazard+GPU.swift": {
+      "sha256": "14c7d908c37d32777ca6426ede9e29fe2fe2a6ef5cef65d71634aad23b44858d",
+      "bytes": 2984
+    },
+    "validation/analytic-runtime/sources/0094-Rubble.swift": {
+      "sha256": "c6e69e8cb3ddf878543c87b76dfad3d58d0067108ab66f36225e95d9ff2d514d",
+      "bytes": 5847
+    },
+    "validation/analytic-runtime/sources/0095-RunAdvisor+GPU.swift": {
+      "sha256": "c49b4d283903ead1a2bbcf123f7ba5d4c1868e4ce63de704b96edcd7fe7212a5",
+      "bytes": 9365
+    },
+    "validation/analytic-runtime/sources/0096-RunCost+GPU.swift": {
+      "sha256": "fe77b33565410c917996dcbb9c59d4816d384a819436d038c2db0aedcdd6eccd",
+      "bytes": 12018
+    },
+    "validation/analytic-runtime/sources/0097-Scenario+GPU.swift": {
+      "sha256": "0209bf6fa32fe5bd8cfeca23e29f693311ecd8abaf0c6a965155ca16c6b14bab",
+      "bytes": 28527
+    },
+    "validation/analytic-runtime/sources/0098-SettleCache.swift": {
+      "sha256": "d86e9e87b42c5a2f7e16867a9b516b3a3d2e5521a103568f73ae18db168d671d",
+      "bytes": 12559
+    },
+    "validation/analytic-runtime/sources/0099-ShearBeamBenchmark+GPU.swift": {
+      "sha256": "aa747c64ce3873c458e14078a461fa01c40ad8d17774ef4b8f9eb9b682a78c5a",
+      "bytes": 4427
+    },
+    "validation/analytic-runtime/sources/0100-ShellSolver.swift": {
+      "sha256": "a473daec46b9fb22050ca2e67b66ace2622d665ca8ee9badf2ebda7255f5a003",
+      "bytes": 110961
+    },
+    "validation/analytic-runtime/sources/0101-SlabBenchmark+GPU.swift": {
+      "sha256": "eb27ed80434c8b1ddcf5a4bd58ee303a79d6e8686a97f292600b172ed994e34f",
+      "bytes": 12305
+    },
+    "validation/analytic-runtime/sources/0102-SolverCheckpoint.swift": {
+      "sha256": "4ffb211da17da70f0105cf31b61ec5e6cfb8aff3cf28fa30a0b160f71fc50951",
+      "bytes": 21652
+    },
+    "validation/analytic-runtime/sources/0103-StepSelectorDiagnostics.swift": {
+      "sha256": "90118a8e9b899bb68716d1fc08782bc4d9c4e5340ac66414ee98572cda9110de",
+      "bytes": 3202
+    },
+    "validation/analytic-runtime/sources/0104-StructuralBody.swift": {
+      "sha256": "cbcc2f6087a300e1aed5824b5c0196e41dd0a302a2651f46da3c520d99bd7a3b",
+      "bytes": 11338
+    },
+    "validation/analytic-runtime/sources/0105-StructureCensus.swift": {
+      "sha256": "60e278b8ae6b0f13aaa3e8cb74fee915db74250b475c13898ae89a17f9a4812a",
+      "bytes": 8890
+    },
+    "validation/analytic-runtime/sources/0106-StructureNodeContact.swift": {
+      "sha256": "2f469dfcbc42cee28cb6e081788eecae05d7adc512afcc5f61b2c47f58a1573a",
+      "bytes": 6933
+    },
+    "validation/analytic-runtime/sources/0107-StructureSolver+AssumedStrain.swift": {
+      "sha256": "01004ec9a763e0cc0f977c837d98973223487f0be2a2838f1082ef1fe88979e3",
+      "bytes": 7485
+    },
+    "validation/analytic-runtime/sources/0108-StructureSolver.swift": {
+      "sha256": "619c1f93462919e60503a840a4a8c0c88d47caafca4ff507ccf6b1b570748dd5",
+      "bytes": 142010
+    },
+    "validation/analytic-runtime/sources/0109-StructureSurface+GPU.swift": {
+      "sha256": "bd1ff40395665f617dee934d52af7c21fd22d41f6843790dc1e848c947a75ba4",
+      "bytes": 9108
+    },
+    "validation/analytic-runtime/sources/0110-StructureTerrain.swift": {
+      "sha256": "cc9d482ddcaf7b73fc085e3c9f91cbe8ac8b8a060422b972e5ca9a2ea96d034f",
+      "bytes": 1216
+    },
+    "validation/analytic-runtime/sources/0111-StructureTypes+GPU.swift": {
+      "sha256": "0ae30ed63687fb09cc5fbc1df1bbfa7b1edc7fe056cfbd60f37ba05f14ffc90f",
+      "bytes": 10122
+    },
+    "validation/analytic-runtime/sources/0112-SweepSourceDiagnostics.swift": {
+      "sha256": "8fa3917ebf3e915feab68d7a2c4d745e63e6a345da896650263a342ac1d69118",
+      "bytes": 5777
+    },
+    "validation/analytic-runtime/sources/0113-SweepUpdateDiagnostics.swift": {
+      "sha256": "b65134a670c4ca454c407defd38155dc04ec58bb0a195dd658d1623116039c66",
+      "bytes": 13376
+    },
+    "validation/analytic-runtime/sources/0114-TerracedRowDamage+GPU.swift": {
+      "sha256": "5fb70e3296586fed4a8cf0a03ab9e73dcc6772cad61495af8b5be954516ec5e3",
+      "bytes": 1008
+    },
+    "validation/analytic-runtime/sources/0115-TerrainCutCells+GPU.swift": {
+      "sha256": "971accd060ce65c0ae15417b890a6f23ebe33281480dec067feb6b08e06b61f1",
+      "bytes": 1749
+    },
+    "validation/analytic-runtime/sources/0116-ThermalRadiation.swift": {
+      "sha256": "90d79ca3831db4a0d5997622a37f99502e7c317a88498e7ad122b71d8f03ac2a",
+      "bytes": 3127
+    },
+    "validation/analytic-runtime/sources/0117-ThresholdRefinementRun.swift": {
+      "sha256": "efcf3d538c7bbabcff70dc0af5220b4fc2c7571438460fd63ed933016d3b2be6",
+      "bytes": 7162
+    },
+    "validation/analytic-runtime/sources/0118-TieBenchmark+GPU.swift": {
+      "sha256": "8d903cd421bbcca3cbd051d93bc37a38e4cd5975af9f8524b482a4b0624fe4aa",
+      "bytes": 4796
+    },
+    "validation/analytic-runtime/sources/0119-TiledCoupling.swift": {
+      "sha256": "e8ba0b2165102f86feaf3b9e394dfe4a53c48a2b79778a6a02ea438ec5617b71",
+      "bytes": 424
+    },
+    "validation/analytic-runtime/sources/0120-TwoFaceSlabTests+GPU.swift": {
+      "sha256": "ee61c9797788caa6af87d0a2bdb9f5856b0952d9a1de06dfa11eaaa038b6a51a",
+      "bytes": 14980
+    },
+    "validation/analytic-runtime/sources/0121-TyndallCLTTest+GPU.swift": {
+      "sha256": "6a900ccff920e90351f938a48600a4e426d357af03234618afbb8ac9f29c37ca",
+      "bytes": 4161
+    },
+    "validation/analytic-runtime/sources/0122-ValidationEnsemble+GPU.swift": {
+      "sha256": "bb29b583dc293ea220d1e2372223751490fbc31562b844e1763308cf30f70748",
+      "bytes": 26031
+    },
+    "validation/analytic-runtime/sources/0123-VolumeGrids.swift": {
+      "sha256": "cfa12d54229447bc9f4955d5b056cee92b8665bb4ed17ff8e92d0763c2b25161",
+      "bytes": 4658
+    },
+    "validation/analytic-runtime/sources/0124-WedgeReflectionStudy+GPU.swift": {
+      "sha256": "a2bba2efa3f9bd064fb166cd4255eed9da0cf4e938106e86ddce6d8acc15cadd",
+      "bytes": 6913
+    },
+    "validation/analytic-runtime/sources/0125-YaoSlabTests+GPU.swift": {
+      "sha256": "7a11976e2987c3beec27fd01bc221b8e5357afd3f7275ac9d862d5d986d45615",
+      "bytes": 4104
+    },
+    "validation/analytic-runtime/sources/0126-BodyContact.metal": {
+      "sha256": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+      "bytes": 15728
+    },
+    "validation/analytic-runtime/sources/0127-Deflagration.metal": {
+      "sha256": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+      "bytes": 20759
+    },
+    "validation/analytic-runtime/sources/0128-Extract.metal": {
+      "sha256": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+      "bytes": 11901
+    },
+    "validation/analytic-runtime/sources/0129-Footing.metal": {
+      "sha256": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+      "bytes": 22824
+    },
+    "validation/analytic-runtime/sources/0130-Gravity.metal": {
+      "sha256": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+      "bytes": 2288
+    },
+    "validation/analytic-runtime/sources/0131-Mixing.metal": {
+      "sha256": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+      "bytes": 5508
+    },
+    "validation/analytic-runtime/sources/0132-Radiation.metal": {
+      "sha256": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+      "bytes": 20292
+    },
+    "validation/analytic-runtime/sources/0133-Refine.metal": {
+      "sha256": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+      "bytes": 150281
+    },
+    "validation/analytic-runtime/sources/0134-Rubble.metal": {
+      "sha256": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+      "bytes": 17007
+    },
+    "validation/analytic-runtime/sources/0135-Shell.metal": {
+      "sha256": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+      "bytes": 161932
+    },
+    "validation/analytic-runtime/sources/0136-Solver.metal": {
+      "sha256": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+      "bytes": 69273
+    },
+    "validation/analytic-runtime/sources/0137-SolverCongestion.metal": {
+      "sha256": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+      "bytes": 6287
+    },
+    "validation/analytic-runtime/sources/0138-SolverCutCells.metal": {
+      "sha256": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+      "bytes": 18714
+    },
+    "validation/analytic-runtime/sources/0139-SolverEnvelopes.metal": {
+      "sha256": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+      "bytes": 26758
+    },
+    "validation/analytic-runtime/sources/0140-SolverStep.metal": {
+      "sha256": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+      "bytes": 18310
+    },
+    "validation/analytic-runtime/sources/0141-SolverSweep.metal": {
+      "sha256": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+      "bytes": 31622
+    },
+    "validation/analytic-runtime/sources/0142-SolverVenting.metal": {
+      "sha256": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+      "bytes": 19135
+    },
+    "validation/analytic-runtime/sources/0143-SolverVisualization.metal": {
+      "sha256": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+      "bytes": 3040
+    },
+    "validation/analytic-runtime/sources/0144-Structure.metal": {
+      "sha256": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+      "bytes": 266072
+    },
+    "validation/analytic-runtime/sources/0145-Thermal.metal": {
+      "sha256": "682d7840de3974906e68a9c62a0e123d5e29782a770fdf19126b9b61a0b275c3",
+      "bytes": 20832
+    },
+    "validation/analytic-runtime/sources/0146-StepSelectorAnalyticTests.swift": {
+      "sha256": "33b9e61eaff602f7b7c58bf462f87677d7003d595b3d20d1af5e8e7b927d2934",
+      "bytes": 9058
+    },
+    "validation/analytic-runtime/sources/0147-StepSelectorBankReplayTests.swift": {
+      "sha256": "ae1db528de22897a0ec9d1135a69b3f9a68430cc1c14140c79733c776f0d8ca2",
+      "bytes": 5640
+    },
+    "validation/analytic-runtime/sources/0148-StepSelectorDiagnosticsTests.swift": {
+      "sha256": "e05f68a651b1b434e7b8f605c88f23d2359564aa2c7eb3677456bb7ab2637eaf",
+      "bytes": 4129
+    },
+    "validation/analytic.log": {
+      "sha256": "1dab1a887d036635ed0de7ce1b0f5f25d292553bcf30aad02428742a7ec195ae",
+      "bytes": 524
+    },
+    "validation/banks-build.json": {
+      "sha256": "e87e1c2607c6e02daac0808437a7a49611ffd3adbbbb4a0293ecb944c703a9db",
+      "bytes": 222
+    },
+    "validation/banks-build.log": {
+      "sha256": "bb8f19bc77802cd172390ec229691392301d28d00c15c3f8a0988f85f579e617",
+      "bytes": 107
+    },
+    "validation/banks-linked-sdk.txt": {
+      "sha256": "c01f64089a0c4db336870d28650a5b7f46435b9ce2125c2471276ef5819a231c",
+      "bytes": 18090
+    },
+    "validation/banks-process.json": {
+      "sha256": "c66222f32f53e412d105531f8383cefadddcf323bf7694dbc3624b12ce2d7d5c",
+      "bytes": 322
+    },
+    "validation/banks.log": {
+      "sha256": "d14b089630b0de1a82fe93083aa7049cb3d11037c692fd695ca0c999928b73bc",
+      "bytes": 516
+    },
+    "validation/base-630be97e-digests-LouissMacStudio.json": {
+      "sha256": "28fafbc99fa1cd7f6021d159bd6674e96f18981af861e08ae56ef0c5268cd8af",
+      "bytes": 3664
+    },
+    "validation/core-check-1.json": {
+      "sha256": "db3813fcaa7d627733bc330dd0815433ae1f09da9b3de6b7bd2bafe1536f9471",
+      "bytes": 846
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Info.plist": {
+      "sha256": "5a1df7acd54adebf760add35b687ab01802d4498f2e591998219abcc34180348",
+      "bytes": 1186
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/MacOS/BlastCoreTests": {
+      "sha256": "8156ea321a2475d02fa7cfcc33b3c261b5cd6a7d828f9fe85f0998fe206170f4",
+      "bytes": 58253728
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Info.plist": {
+      "sha256": "23f7c344e8c9ac323be99272558eb2aac1f2ec1abcfeb515a5479dd380370cf5",
+      "bytes": 1130
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/BodyContact.metal": {
+      "sha256": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+      "bytes": 15728
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Deflagration.metal": {
+      "sha256": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+      "bytes": 20759
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Extract.metal": {
+      "sha256": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+      "bytes": 11901
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Footing.metal": {
+      "sha256": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+      "bytes": 22824
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Gravity.metal": {
+      "sha256": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+      "bytes": 2288
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Mixing.metal": {
+      "sha256": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+      "bytes": 5508
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Radiation.metal": {
+      "sha256": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+      "bytes": 20292
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Refine.metal": {
+      "sha256": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+      "bytes": 150281
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Rubble.metal": {
+      "sha256": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+      "bytes": 17007
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Shell.metal": {
+      "sha256": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+      "bytes": 161932
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Solver.metal": {
+      "sha256": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+      "bytes": 69273
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCongestion.metal": {
+      "sha256": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+      "bytes": 6287
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCutCells.metal": {
+      "sha256": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+      "bytes": 18714
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverEnvelopes.metal": {
+      "sha256": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+      "bytes": 26758
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverStep.metal": {
+      "sha256": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+      "bytes": 18310
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverSweep.metal": {
+      "sha256": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+      "bytes": 31622
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVenting.metal": {
+      "sha256": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+      "bytes": 19135
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVisualization.metal": {
+      "sha256": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+      "bytes": 3040
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Structure.metal": {
+      "sha256": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+      "bytes": 266072
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Thermal.metal": {
+      "sha256": "682d7840de3974906e68a9c62a0e123d5e29782a770fdf19126b9b61a0b275c3",
+      "bytes": 20832
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "ff74d630f03c7a59693d374e68ad7282f8d92dd5b12c8cd26bf8bbb1ecaabd62",
+      "bytes": 204
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "e3808d06093c2961118ec796cfec60c2a77e4d01a2ddf455782343a69e64417f",
+      "bytes": 7288
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/Info.plist": {
+      "sha256": "0323c70c03ce091a2033ea7274a7bfd6505a6f373821441436f5a50ebcf68517",
+      "bytes": 1158
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchFunctions.metal": {
+      "sha256": "15f9d42d0ac940944a6a4b8c00ebb7bb9dc9531a601d5cb37e3b6ff8be827074",
+      "bytes": 2891
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchKernels.metal": {
+      "sha256": "097ada87a78aa40cdd8b4e02d8f16bc70f94a7fe218df0024e3aec4d4b5151c9",
+      "bytes": 4600
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "717dc470a9e7a2710995d714cdf73cb01efc761c9c92f9e8799390e94f54e0eb",
+      "bytes": 218
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "747fd8197b12be7e629c43d5ea3e99ef9011aaf8a05bf7e372d34ac061684cf4",
+      "bytes": 2768
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/Resources/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/first-executed-build/BlastCoreTests.xctest/Contents/_CodeSignature/CodeResources": {
+      "sha256": "8e05836b68399397f4ae3153e3413362272928130401594d0f8374d358914c5b",
+      "bytes": 13212
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Info.plist": {
+      "sha256": "23f7c344e8c9ac323be99272558eb2aac1f2ec1abcfeb515a5479dd380370cf5",
+      "bytes": 1130
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/BodyContact.metal": {
+      "sha256": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+      "bytes": 15728
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Deflagration.metal": {
+      "sha256": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+      "bytes": 20759
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Extract.metal": {
+      "sha256": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+      "bytes": 11901
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Footing.metal": {
+      "sha256": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+      "bytes": 22824
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Gravity.metal": {
+      "sha256": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+      "bytes": 2288
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Mixing.metal": {
+      "sha256": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+      "bytes": 5508
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Radiation.metal": {
+      "sha256": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+      "bytes": 20292
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Refine.metal": {
+      "sha256": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+      "bytes": 150281
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Rubble.metal": {
+      "sha256": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+      "bytes": 17007
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Shell.metal": {
+      "sha256": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+      "bytes": 161932
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Solver.metal": {
+      "sha256": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+      "bytes": 69273
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCongestion.metal": {
+      "sha256": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+      "bytes": 6287
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverCutCells.metal": {
+      "sha256": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+      "bytes": 18714
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverEnvelopes.metal": {
+      "sha256": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+      "bytes": 26758
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverStep.metal": {
+      "sha256": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+      "bytes": 18310
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverSweep.metal": {
+      "sha256": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+      "bytes": 31622
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVenting.metal": {
+      "sha256": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+      "bytes": 19135
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/SolverVisualization.metal": {
+      "sha256": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+      "bytes": 3040
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Structure.metal": {
+      "sha256": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+      "bytes": 266072
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/Resources/Shaders/Thermal.metal": {
+      "sha256": "682d7840de3974906e68a9c62a0e123d5e29782a770fdf19126b9b61a0b275c3",
+      "bytes": 20832
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "ff74d630f03c7a59693d374e68ad7282f8d92dd5b12c8cd26bf8bbb1ecaabd62",
+      "bytes": 204
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "e3808d06093c2961118ec796cfec60c2a77e4d01a2ddf455782343a69e64417f",
+      "bytes": 7288
+    },
+    "validation/first-executed-build/BombCAD_BlastCore.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/first-executed-build/ContinuumKit_ContactSearchMetal.bundle/Contents/Info.plist": {
+      "sha256": "0323c70c03ce091a2033ea7274a7bfd6505a6f373821441436f5a50ebcf68517",
+      "bytes": 1158
+    },
+    "validation/first-executed-build/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchFunctions.metal": {
+      "sha256": "15f9d42d0ac940944a6a4b8c00ebb7bb9dc9531a601d5cb37e3b6ff8be827074",
+      "bytes": 2891
+    },
+    "validation/first-executed-build/ContinuumKit_ContactSearchMetal.bundle/Contents/Resources/Shaders/ContactSearchKernels.metal": {
+      "sha256": "097ada87a78aa40cdd8b4e02d8f16bc70f94a7fe218df0024e3aec4d4b5151c9",
+      "bytes": 4600
+    },
+    "validation/first-executed-build/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeDirectory": {
+      "sha256": "717dc470a9e7a2710995d714cdf73cb01efc761c9c92f9e8799390e94f54e0eb",
+      "bytes": 218
+    },
+    "validation/first-executed-build/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeRequirements": {
+      "sha256": "987920904eab650e75788c054aa0b0524e6a80bfc71aa32df8d237a61743f986",
+      "bytes": 12
+    },
+    "validation/first-executed-build/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeResources": {
+      "sha256": "747fd8197b12be7e629c43d5ea3e99ef9011aaf8a05bf7e372d34ac061684cf4",
+      "bytes": 2768
+    },
+    "validation/first-executed-build/ContinuumKit_ContactSearchMetal.bundle/Contents/_CodeSignature/CodeSignature": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "validation/first-executed-build/receipt.json": {
+      "sha256": "2a6c3cdaefa8bfac05449e642e8b3493a57783636d314bb74199c03976713c41",
+      "bytes": 85486
+    },
+    "validation/first-executed-build/sources/0000-AdblastCladdingTest+GPU.swift": {
+      "sha256": "a0baf1698f64b39d50c875746373493aab05c3880d34634bcfdf4c2057cb730f",
+      "bytes": 7524
+    },
+    "validation/first-executed-build/sources/0001-AirSlice+GPU.swift": {
+      "sha256": "93b5dbca6cee518905ad706993e0d63ac39e77b720c41b55a553a3f9040e15bc",
+      "bytes": 2590
+    },
+    "validation/first-executed-build/sources/0002-AnchorageStudy+GPU.swift": {
+      "sha256": "2831f29fc3152368b4972d9ecdb02570ac119202b26e28f885b2bcd42ec56730",
+      "bytes": 12352
+    },
+    "validation/first-executed-build/sources/0003-BatchGPUProfiler.swift": {
+      "sha256": "dee31a5387fe2e890c14e9e932ad0cf16fdc769ee16838634606367f6e4b1181",
+      "bytes": 3595
+    },
+    "validation/first-executed-build/sources/0004-BeamBenchmark+GPU.swift": {
+      "sha256": "5490776482e8ef9d0d43f90b1ef9c329d69347088ac99e988cc3a87233c1ac34",
+      "bytes": 5515
+    },
+    "validation/first-executed-build/sources/0005-BlastModelExports.swift": {
+      "sha256": "39a795f9e3030fd41afcab7ace67e748442eff69d621d0de97ee3a8fea88ee92",
+      "bytes": 175
+    },
+    "validation/first-executed-build/sources/0006-BlastSolver+AirModels.swift": {
+      "sha256": "9be8fd0b0316762eef79a786b30f933bc1e9c561f1519c3f1a8a42f0666f3eb7",
+      "bytes": 10942
+    },
+    "validation/first-executed-build/sources/0007-BlastSolver+CUDAJobs.swift": {
+      "sha256": "f5cbdce128fdbe186f2f76595d03d5f174e79eb47d5b348f19920bc537955902",
+      "bytes": 7092
+    },
+    "validation/first-executed-build/sources/0008-BlastSolver+Checkpoints.swift": {
+      "sha256": "3e0a34751f63916801e97c798d132dd42342e4036eb5e30b3def920ee075dbb7",
+      "bytes": 16305
+    },
+    "validation/first-executed-build/sources/0009-BlastSolver+Coupling.swift": {
+      "sha256": "0efd0126e8e3f9ee8499dcf91b2e7a2a297b71bc65bbb5533c09736ecd8d775b",
+      "bytes": 35977
+    },
+    "validation/first-executed-build/sources/0010-BlastSolver+CutCells.swift": {
+      "sha256": "05412afce9001e59ed22346c694975581f2c600a5d9e4ee6bf2a9ee011c91cae",
+      "bytes": 8659
+    },
+    "validation/first-executed-build/sources/0011-BlastSolver+Envelopes.swift": {
+      "sha256": "0b93a81aa62e19cde10b6c961c66b63e1e769677c7c23225abba1144f7f91650",
+      "bytes": 18141
+    },
+    "validation/first-executed-build/sources/0012-BlastSolver+ExperimentalBoxes.swift": {
+      "sha256": "d15330c82954c3c7f0fb41338f87a0d81c3ed8762e932c9ffe23f68cb07d073f",
+      "bytes": 22016
+    },
+    "validation/first-executed-build/sources/0013-BlastSolver+Gauges.swift": {
+      "sha256": "c84d77512ea3b5a2757e8cb277514c0bc70244c5a9dcdb33d0a73d9c06d2da23",
+      "bytes": 7900
+    },
+    "validation/first-executed-build/sources/0014-BlastSolver+Mask.swift": {
+      "sha256": "f3bafd07b7474f2cf04464e2055a0a63dfbc5bb45ecdb45b077b1cc425c3d227",
+      "bytes": 14360
+    },
+    "validation/first-executed-build/sources/0015-BlastSolver+Refinement.swift": {
+      "sha256": "1a4339db95252f9d7b0f91f7110878b4c93a352fbac40aeb6fa8145daf88cc0e",
+      "bytes": 17079
+    },
+    "validation/first-executed-build/sources/0016-BlastSolver+State.swift": {
+      "sha256": "3894971de851601a35592ffc7a596f5d88eef5e019764859b7b4c669f3ec5006",
+      "bytes": 18937
+    },
+    "validation/first-executed-build/sources/0017-BlastSolver+Stepping.swift": {
+      "sha256": "e8a46d55bf1661b8992ef899ba2d48d67b4924c87449445eedea4b92a42dd884",
+      "bytes": 54682
+    },
+    "validation/first-executed-build/sources/0018-BlastSolver+Venting.swift": {
+      "sha256": "8e7781443cfe9ce0f38f14572da323d3b4edc4cdbb763b7c7bbffb1607cb6512",
+      "bytes": 21681
+    },
+    "validation/first-executed-build/sources/0019-BlastSolver+Visualization.swift": {
+      "sha256": "5fc057b7dd9309da002d3fe39569aa59863a7cffb4a10449f0dd983ee1b6968d",
+      "bytes": 3180
+    },
+    "validation/first-executed-build/sources/0020-BlastSolver.swift": {
+      "sha256": "44275e07c209814e67c07d9a1b8b559b357a63f24b6f79d9db0e1e4a74e80c3f",
+      "bytes": 26919
+    },
+    "validation/first-executed-build/sources/0021-BodyViewExtraction.swift": {
+      "sha256": "29d304c48afd5db85f103b590a700918dbd52767e9c5579f24b5d688da728307",
+      "bytes": 5512
+    },
+    "validation/first-executed-build/sources/0022-BucklingStudy+GPU.swift": {
+      "sha256": "4b1b995bba70e9efa059a582f766935a5a02b5e3987c3e2f395860fa1d7336fa",
+      "bytes": 12264
+    },
+    "validation/first-executed-build/sources/0023-BufferCopy.swift": {
+      "sha256": "836db4bd3560e0d7d4636917d83a77001db5d98f07dcc2abace12adcabe72a69",
+      "bytes": 662
+    },
+    "validation/first-executed-build/sources/0024-ChamberTest+GPU.swift": {
+      "sha256": "2619f20263c17bf5de5304c4da744e34e1bd8ac79d4f1460b8dde7383b7eee8c",
+      "bytes": 10977
+    },
+    "validation/first-executed-build/sources/0025-ClockInputDiagnostics.swift": {
+      "sha256": "998ed76571221d7e72ccfc05bcee4184da42edef2dadf6a477140be72a37af28",
+      "bytes": 7371
+    },
+    "validation/first-executed-build/sources/0026-CloseInSlabTest+GPU.swift": {
+      "sha256": "79de2576ae920f7d002402e6c5f2b0039aeb1db13078d2fee384ff5e4a236bd4",
+      "bytes": 7876
+    },
+    "validation/first-executed-build/sources/0027-ColumnRemovalTest+GPU.swift": {
+      "sha256": "2ec9d90dffb0b442307f3567e0eccbef2629ea4eb1b324bd09142c71115def54",
+      "bytes": 5122
+    },
+    "validation/first-executed-build/sources/0028-CompensatedSweep.swift": {
+      "sha256": "4291b41eb0b4cbd3211d24b7323696949c4920552b6a7d564ff9000eeb32635e",
+      "bytes": 8174
+    },
+    "validation/first-executed-build/sources/0029-CongestedRigStudy+GPU.swift": {
+      "sha256": "c78caee539b13ac911298c963ee132dc4976483ef8f4248e3ee6f51f7caa4caf",
+      "bytes": 3139
+    },
+    "validation/first-executed-build/sources/0030-Congestion+GPU.swift": {
+      "sha256": "d65c72cd86d5a49697b58340f2274e45518350e45d07429e62ce9486ed9098ad",
+      "bytes": 5903
+    },
+    "validation/first-executed-build/sources/0031-ContactSlabTest+GPU.swift": {
+      "sha256": "51eb016fd4d6ead197df90b7000c4150036af4a8e0fa9440e3c3b67ee96dbe2d",
+      "bytes": 9452
+    },
+    "validation/first-executed-build/sources/0032-DeflagrationSolver.swift": {
+      "sha256": "08bc5e5b3cf9241cbe68bbc475ebb990cabb62cbfbb94e90550d3078d1c487cc",
+      "bytes": 25351
+    },
+    "validation/first-executed-build/sources/0033-DeflagrationStudy+GPU.swift": {
+      "sha256": "dbc9b7f95f9f156955cabb062a5bec08a21d8c9f1e873e41a70274b25b92ed5d",
+      "bytes": 9157
+    },
+    "validation/first-executed-build/sources/0034-DelayedCharges.swift": {
+      "sha256": "37b3fc8c6171972a658e2af9dd2ecb111c8ca5dc939cea0d866674b931da31d5",
+      "bytes": 14363
+    },
+    "validation/first-executed-build/sources/0035-DiscreteBars.swift": {
+      "sha256": "e5c2b542fee8475f3200b41f1024b9cc6aef2c53a8a8ac3f861f1b4863732f26",
+      "bytes": 5790
+    },
+    "validation/first-executed-build/sources/0036-DroppedSpanStudy+GPU.swift": {
+      "sha256": "0224f0af63940bfdc14629775fc5ade410d6c18b0a46f4bdb5dccad389228636",
+      "bytes": 3523
+    },
+    "validation/first-executed-build/sources/0037-EnvelopeComponents.swift": {
+      "sha256": "cc75cbd3635ab30e18157c26eddd6fab5779f9b25084a6d579ab1475ff89b7ec",
+      "bytes": 31316
+    },
+    "validation/first-executed-build/sources/0038-EnvelopeDebris+GPU.swift": {
+      "sha256": "dc02b0c84eaa615612531a0cbd6a3511c6c1d005f9b070bdd9e10007cfcea29c",
+      "bytes": 8469
+    },
+    "validation/first-executed-build/sources/0039-EnvelopeExposure.swift": {
+      "sha256": "1fc798d0ad3297ae9317f4938092b08a136ff48e138cecabff81d47ef4893db0",
+      "bytes": 9222
+    },
+    "validation/first-executed-build/sources/0040-EnvelopeVenting.swift": {
+      "sha256": "6149f37e17d6d2a471fed3f25ce6c655514d4989e8b654b226095b03351d18f2",
+      "bytes": 31072
+    },
+    "validation/first-executed-build/sources/0041-ExperimentalBoxRefinement.swift": {
+      "sha256": "b8ce3c9320cd6e5594355d01bbe369132d2de16731542e15a023bb1e9eb66f9f",
+      "bytes": 4286
+    },
+    "validation/first-executed-build/sources/0042-ExperimentalRigidBoxDiagnostics+GPU.swift": {
+      "sha256": "75d3a80e3d50996caa69f161db626795eab882e2f0bf1a2ca2e610bb4e5be4d5",
+      "bytes": 7196
+    },
+    "validation/first-executed-build/sources/0043-ExperimentalRigidBoxSimulation.swift": {
+      "sha256": "546aec79ba46b5b13aa1bcf8e55b359ef0747d9d06d046400018b1d4cc57f62b",
+      "bytes": 5245
+    },
+    "validation/first-executed-build/sources/0044-ExperimentalRigidBoxStudy+GPU.swift": {
+      "sha256": "f257a1a76433227ab46f8b5b96eddf7dacb929487bcbc01d05e76faf5b81e85b",
+      "bytes": 4046
+    },
+    "validation/first-executed-build/sources/0045-ExperimentalRigidCarSimulation.swift": {
+      "sha256": "3f598d0f39fd3d5aef2fe0e1e7189b1e6a0cc3500231b385aac24a3ddde8c96c",
+      "bytes": 8121
+    },
+    "validation/first-executed-build/sources/0046-ExperimentalRigidCarStudy+GPU.swift": {
+      "sha256": "486d7f263ae8c63582c4ddcdec1bed2f1ebc12440d9120229fe7dbd94e4d7e6e",
+      "bytes": 8763
+    },
+    "validation/first-executed-build/sources/0047-ExperimentalRigidRowStudy+GPU.swift": {
+      "sha256": "f427fdf340762acdc1e62bebcfbda4adc16bd4c6587833c2631779d74a1566d0",
+      "bytes": 4748
+    },
+    "validation/first-executed-build/sources/0048-ExperimentalRigidStructureSimulation.swift": {
+      "sha256": "3800f0522b745bee07135a78f51ffab6ad11c016bc751b2225a6c30545d0cb53",
+      "bytes": 14899
+    },
+    "validation/first-executed-build/sources/0049-ExperimentalRigidWorldSimulation.swift": {
+      "sha256": "8a370b46c8a1cc526dfff84c53ccbda0c05c0b3f6bd34914da1956d5fa154653",
+      "bytes": 11292
+    },
+    "validation/first-executed-build/sources/0050-ExposurePlane.swift": {
+      "sha256": "f2a30338a554104bd19502e85ac44a1f045bc1b1f9181facff91b5b753e47672",
+      "bytes": 3946
+    },
+    "validation/first-executed-build/sources/0051-FireballRise+GPU.swift": {
+      "sha256": "ab07f73d37cd0e3d73bca54f3a97f73174e343b66aba9b9014bd1bc2caef5b6c",
+      "bytes": 5964
+    },
+    "validation/first-executed-build/sources/0052-FireballShape+GPU.swift": {
+      "sha256": "a9e6db1061f20dfed1ba203438269dd9f599e98eb36965b12ab6cfa459895db0",
+      "bytes": 3258
+    },
+    "validation/first-executed-build/sources/0053-FireballVolume.swift": {
+      "sha256": "a15230d245ac94605598a12e94d0105546448c17be0f773808da8a7b64c0bdc7",
+      "bytes": 8993
+    },
+    "validation/first-executed-build/sources/0054-FirstPhaseColumns.swift": {
+      "sha256": "77fef4d7483486a3f0004ec53576aff99502ab7c02c8b7dba7e53dc494bbccbe",
+      "bytes": 22044
+    },
+    "validation/first-executed-build/sources/0055-FirstPhaseInputDiagnostics.swift": {
+      "sha256": "deab7b1e8bcb38f3b90818c8279cc27f02ce8f6cb8f1ea35bbb29edce89d6df5",
+      "bytes": 6113
+    },
+    "validation/first-executed-build/sources/0056-FootingRockingTest+GPU.swift": {
+      "sha256": "e27c19322de87a15d61b62be5285c9d6689d85db3a73e7db1ee65470a8249267",
+      "bytes": 7670
+    },
+    "validation/first-executed-build/sources/0057-FootingShakingTest+GPU.swift": {
+      "sha256": "db83b6c9070c28819a90a7d6125de085c70247c10a264be87ac255106a8b6310",
+      "bytes": 5132
+    },
+    "validation/first-executed-build/sources/0058-FootingSystem.swift": {
+      "sha256": "70efac3e2fbe6f7014de00228ab37c3bef2dcd9685397be8e5d7a78b9e4857ef",
+      "bytes": 23752
+    },
+    "validation/first-executed-build/sources/0059-FrameExtraction.swift": {
+      "sha256": "5043c28e07e637014bc492594b2274352b26773e196045228a242fd1bf0e985a",
+      "bytes": 15178
+    },
+    "validation/first-executed-build/sources/0060-FreestandingMotion.swift": {
+      "sha256": "24e8ac4f667279213cfb30b691f070ad76e7820fba86c012ad850aee181c75a9",
+      "bytes": 5204
+    },
+    "validation/first-executed-build/sources/0061-GravityCheck+GPU.swift": {
+      "sha256": "3baf1027b2719fed937acaa69af767e96add5bbf5783de69f93fd74a0bf4d7c6",
+      "bytes": 2276
+    },
+    "validation/first-executed-build/sources/0062-GroundHazard+GPU.swift": {
+      "sha256": "bb262baaa4c92f2ed839f9c45d64b9556f9f87cf5330fd9b06ec2d1af48eae32",
+      "bytes": 741
+    },
+    "validation/first-executed-build/sources/0063-GroundSlice+GPU.swift": {
+      "sha256": "f4563c13d8e1fd1b0093b772a484f6589a04509230c095cd7d72ea765f78da0e",
+      "bytes": 2722
+    },
+    "validation/first-executed-build/sources/0064-HrynykSlabTest+GPU.swift": {
+      "sha256": "05ba2ab08cb05e1788482cadac109ea69160a793a0e6bc02768cbbbcee9b4d73",
+      "bytes": 15435
+    },
+    "validation/first-executed-build/sources/0065-ImpactBenchmark+GPU.swift": {
+      "sha256": "ec9d37902b71001fd8725aa8feb2ce5498ebe86d6ee2b74bf66fc3eeb1148a12",
+      "bytes": 18375
+    },
+    "validation/first-executed-build/sources/0066-KennyImpactTest+GPU.swift": {
+      "sha256": "824fd45f27eb8872549ef41c0465e703e9ee7a8df0a3542fd71a9ef40ce80f8e",
+      "bytes": 6531
+    },
+    "validation/first-executed-build/sources/0067-LacroixGlulamTest+GPU.swift": {
+      "sha256": "0d929e6bdbb06c9f188dc22b77938287fd6147336bfccbe0e59ce3087bb652c9",
+      "bytes": 6444
+    },
+    "validation/first-executed-build/sources/0068-LaminatedShellTest+GPU.swift": {
+      "sha256": "435230ad10835915d9d9f6a176e6d1221e62b2aeb085af646418b3281bcb1889",
+      "bytes": 3052
+    },
+    "validation/first-executed-build/sources/0069-LangdonPanelTest+GPU.swift": {
+      "sha256": "d94722e4ff339a549a55b576756a183b3d622a331c3c7a8289f6f26e69a1bfee",
+      "bytes": 2525
+    },
+    "validation/first-executed-build/sources/0070-LearnedFieldDownload.swift": {
+      "sha256": "3641b3b56b1d69e3de2d3e11abb7c9a2c51ce7bd7b079a3b9a072ca20cc6757d",
+      "bytes": 3493
+    },
+    "validation/first-executed-build/sources/0071-LearnedFieldNetwork.swift": {
+      "sha256": "a054830d67af7a278bb79101d7ea98f289928f2c448416a380f85ff93a993cf1",
+      "bytes": 10606
+    },
+    "validation/first-executed-build/sources/0072-MappedFireball.swift": {
+      "sha256": "7a4873971beae2874efd8379e315f6bdf5a6146dc569676f3a06a52ecffe2343",
+      "bytes": 8172
+    },
+    "validation/first-executed-build/sources/0073-MappedGround.swift": {
+      "sha256": "a4308fa914e5885c051ce359f4ee56b9f3c7b8338ebe2bfbdb75ba08926282ab",
+      "bytes": 4301
+    },
+    "validation/first-executed-build/sources/0074-MappedStart.swift": {
+      "sha256": "ba122c5bf726a80c31cb3b6183e9b898a01c1ee16ddf51df8f2da7cd64b214a0",
+      "bytes": 13516
+    },
+    "validation/first-executed-build/sources/0075-MasonryDebrisTest.swift": {
+      "sha256": "1f6f870939e4e395bdfc5618eca861eee75cf98560120717ff766097750598f7",
+      "bytes": 27478
+    },
+    "validation/first-executed-build/sources/0076-MendoncaSlabTest+GPU.swift": {
+      "sha256": "beee92496224cbc3dd33c518ed797df3b2eabeee7bd1a017885932da4511b29b",
+      "bytes": 16447
+    },
+    "validation/first-executed-build/sources/0077-MetalThermalMarch.swift": {
+      "sha256": "d9d260ab9167d7070ada9d1718cf423a89b166510d2651c6d42a799f9f90c40a",
+      "bytes": 6896
+    },
+    "validation/first-executed-build/sources/0078-MetalThermalVisibility.swift": {
+      "sha256": "abc6af4bc39960fc6ce2b199c2f952223310b1424f65a2009c92349b17502b4b",
+      "bytes": 14293
+    },
+    "validation/first-executed-build/sources/0079-MixedStructure.swift": {
+      "sha256": "579c38a80a736cffd39747932943806202e617c0ec2287c326eb5b6449571b0e",
+      "bytes": 18023
+    },
+    "validation/first-executed-build/sources/0080-NassrSteelTest+GPU.swift": {
+      "sha256": "4ab2f4751476746789a0979ceece86865786ef947be84e0a5d66b5a3e0090082",
+      "bytes": 4618
+    },
+    "validation/first-executed-build/sources/0081-OpenVDBWriter+GPU.swift": {
+      "sha256": "0977d9f628e393c1f6fa3ccdd851360c0b2958215df85e5f9923f200ec8e48e0",
+      "bytes": 13575
+    },
+    "validation/first-executed-build/sources/0082-PartPairs.swift": {
+      "sha256": "c708513badfa6a258543894e35ab2e4b43c940d07ba5c42a9156bbfe17096ed4",
+      "bytes": 6580
+    },
+    "validation/first-executed-build/sources/0083-PerimeterWallTests+GPU.swift": {
+      "sha256": "10ec49f1586609c6fdf24815d0a4737fc1425595218cea8facd178e6730c90ad",
+      "bytes": 20412
+    },
+    "validation/first-executed-build/sources/0084-PoulinCLTTest+GPU.swift": {
+      "sha256": "506c33ead578da9f4a7e2ed6a0457e0f8d787531f57bc53318fdd823835e342c",
+      "bytes": 7953
+    },
+    "validation/first-executed-build/sources/0085-PrecastSeatTest+GPU.swift": {
+      "sha256": "2e553cfd5d755e136357d9f65109f290982655456f4846cb7092c01984058144",
+      "bytes": 6524
+    },
+    "validation/first-executed-build/sources/0086-PushOffTest+GPU.swift": {
+      "sha256": "909d67c368c0fea0b12ff7f91f06a345c65c4d46555ab809530e0602a4ec849f",
+      "bytes": 2679
+    },
+    "validation/first-executed-build/sources/0087-RadiativeCooling+GPU.swift": {
+      "sha256": "2f23ab80bf60a14af6b173904ac9bda9d058822f1e394be70fe70539d4296b35",
+      "bytes": 14149
+    },
+    "validation/first-executed-build/sources/0088-Refinement.swift": {
+      "sha256": "538aa466ad53d9d8af62755578b24d499fbc1381c72d3f8572cfeab955e8266e",
+      "bytes": 121327
+    },
+    "validation/first-executed-build/sources/0089-RefinementCoverage+GPU.swift": {
+      "sha256": "a958981f376b0f14e4a3977c423a7031b904decb1e0dac6472165e05eee29001",
+      "bytes": 6593
+    },
+    "validation/first-executed-build/sources/0090-ReynoldsSlabTest+GPU.swift": {
+      "sha256": "d0fe3b80fde4b5ce92642905100e578e94a4657dd35ed9669921e644d0fbf2dc",
+      "bytes": 8236
+    },
+    "validation/first-executed-build/sources/0091-RigidCarDemo+GPU.swift": {
+      "sha256": "2c41ec9785b63a822503b324013255fe30c0f0ca941d51118ffbc8c6342b4d89",
+      "bytes": 3009
+    },
+    "validation/first-executed-build/sources/0092-RigidObjectDemo+GPU.swift": {
+      "sha256": "e6e660fffe9dd377f026146be2c3dc667d81d4909943994fbf98fe48e5f5396c",
+      "bytes": 2283
+    },
+    "validation/first-executed-build/sources/0093-RoofGlassHazard+GPU.swift": {
+      "sha256": "14c7d908c37d32777ca6426ede9e29fe2fe2a6ef5cef65d71634aad23b44858d",
+      "bytes": 2984
+    },
+    "validation/first-executed-build/sources/0094-Rubble.swift": {
+      "sha256": "c6e69e8cb3ddf878543c87b76dfad3d58d0067108ab66f36225e95d9ff2d514d",
+      "bytes": 5847
+    },
+    "validation/first-executed-build/sources/0095-RunAdvisor+GPU.swift": {
+      "sha256": "c49b4d283903ead1a2bbcf123f7ba5d4c1868e4ce63de704b96edcd7fe7212a5",
+      "bytes": 9365
+    },
+    "validation/first-executed-build/sources/0096-RunCost+GPU.swift": {
+      "sha256": "fe77b33565410c917996dcbb9c59d4816d384a819436d038c2db0aedcdd6eccd",
+      "bytes": 12018
+    },
+    "validation/first-executed-build/sources/0097-Scenario+GPU.swift": {
+      "sha256": "0209bf6fa32fe5bd8cfeca23e29f693311ecd8abaf0c6a965155ca16c6b14bab",
+      "bytes": 28527
+    },
+    "validation/first-executed-build/sources/0098-SettleCache.swift": {
+      "sha256": "d86e9e87b42c5a2f7e16867a9b516b3a3d2e5521a103568f73ae18db168d671d",
+      "bytes": 12559
+    },
+    "validation/first-executed-build/sources/0099-ShearBeamBenchmark+GPU.swift": {
+      "sha256": "aa747c64ce3873c458e14078a461fa01c40ad8d17774ef4b8f9eb9b682a78c5a",
+      "bytes": 4427
+    },
+    "validation/first-executed-build/sources/0100-ShellSolver.swift": {
+      "sha256": "a473daec46b9fb22050ca2e67b66ace2622d665ca8ee9badf2ebda7255f5a003",
+      "bytes": 110961
+    },
+    "validation/first-executed-build/sources/0101-SlabBenchmark+GPU.swift": {
+      "sha256": "eb27ed80434c8b1ddcf5a4bd58ee303a79d6e8686a97f292600b172ed994e34f",
+      "bytes": 12305
+    },
+    "validation/first-executed-build/sources/0102-SolverCheckpoint.swift": {
+      "sha256": "4ffb211da17da70f0105cf31b61ec5e6cfb8aff3cf28fa30a0b160f71fc50951",
+      "bytes": 21652
+    },
+    "validation/first-executed-build/sources/0103-StepSelectorDiagnostics.swift": {
+      "sha256": "90118a8e9b899bb68716d1fc08782bc4d9c4e5340ac66414ee98572cda9110de",
+      "bytes": 3202
+    },
+    "validation/first-executed-build/sources/0104-StructuralBody.swift": {
+      "sha256": "cbcc2f6087a300e1aed5824b5c0196e41dd0a302a2651f46da3c520d99bd7a3b",
+      "bytes": 11338
+    },
+    "validation/first-executed-build/sources/0105-StructureCensus.swift": {
+      "sha256": "60e278b8ae6b0f13aaa3e8cb74fee915db74250b475c13898ae89a17f9a4812a",
+      "bytes": 8890
+    },
+    "validation/first-executed-build/sources/0106-StructureNodeContact.swift": {
+      "sha256": "2f469dfcbc42cee28cb6e081788eecae05d7adc512afcc5f61b2c47f58a1573a",
+      "bytes": 6933
+    },
+    "validation/first-executed-build/sources/0107-StructureSolver+AssumedStrain.swift": {
+      "sha256": "01004ec9a763e0cc0f977c837d98973223487f0be2a2838f1082ef1fe88979e3",
+      "bytes": 7485
+    },
+    "validation/first-executed-build/sources/0108-StructureSolver.swift": {
+      "sha256": "619c1f93462919e60503a840a4a8c0c88d47caafca4ff507ccf6b1b570748dd5",
+      "bytes": 142010
+    },
+    "validation/first-executed-build/sources/0109-StructureSurface+GPU.swift": {
+      "sha256": "bd1ff40395665f617dee934d52af7c21fd22d41f6843790dc1e848c947a75ba4",
+      "bytes": 9108
+    },
+    "validation/first-executed-build/sources/0110-StructureTerrain.swift": {
+      "sha256": "cc9d482ddcaf7b73fc085e3c9f91cbe8ac8b8a060422b972e5ca9a2ea96d034f",
+      "bytes": 1216
+    },
+    "validation/first-executed-build/sources/0111-StructureTypes+GPU.swift": {
+      "sha256": "0ae30ed63687fb09cc5fbc1df1bbfa7b1edc7fe056cfbd60f37ba05f14ffc90f",
+      "bytes": 10122
+    },
+    "validation/first-executed-build/sources/0112-SweepSourceDiagnostics.swift": {
+      "sha256": "8fa3917ebf3e915feab68d7a2c4d745e63e6a345da896650263a342ac1d69118",
+      "bytes": 5777
+    },
+    "validation/first-executed-build/sources/0113-SweepUpdateDiagnostics.swift": {
+      "sha256": "b65134a670c4ca454c407defd38155dc04ec58bb0a195dd658d1623116039c66",
+      "bytes": 13376
+    },
+    "validation/first-executed-build/sources/0114-TerracedRowDamage+GPU.swift": {
+      "sha256": "5fb70e3296586fed4a8cf0a03ab9e73dcc6772cad61495af8b5be954516ec5e3",
+      "bytes": 1008
+    },
+    "validation/first-executed-build/sources/0115-TerrainCutCells+GPU.swift": {
+      "sha256": "971accd060ce65c0ae15417b890a6f23ebe33281480dec067feb6b08e06b61f1",
+      "bytes": 1749
+    },
+    "validation/first-executed-build/sources/0116-ThermalRadiation.swift": {
+      "sha256": "90d79ca3831db4a0d5997622a37f99502e7c317a88498e7ad122b71d8f03ac2a",
+      "bytes": 3127
+    },
+    "validation/first-executed-build/sources/0117-ThresholdRefinementRun.swift": {
+      "sha256": "efcf3d538c7bbabcff70dc0af5220b4fc2c7571438460fd63ed933016d3b2be6",
+      "bytes": 7162
+    },
+    "validation/first-executed-build/sources/0118-TieBenchmark+GPU.swift": {
+      "sha256": "8d903cd421bbcca3cbd051d93bc37a38e4cd5975af9f8524b482a4b0624fe4aa",
+      "bytes": 4796
+    },
+    "validation/first-executed-build/sources/0119-TiledCoupling.swift": {
+      "sha256": "e8ba0b2165102f86feaf3b9e394dfe4a53c48a2b79778a6a02ea438ec5617b71",
+      "bytes": 424
+    },
+    "validation/first-executed-build/sources/0120-TwoFaceSlabTests+GPU.swift": {
+      "sha256": "ee61c9797788caa6af87d0a2bdb9f5856b0952d9a1de06dfa11eaaa038b6a51a",
+      "bytes": 14980
+    },
+    "validation/first-executed-build/sources/0121-TyndallCLTTest+GPU.swift": {
+      "sha256": "6a900ccff920e90351f938a48600a4e426d357af03234618afbb8ac9f29c37ca",
+      "bytes": 4161
+    },
+    "validation/first-executed-build/sources/0122-ValidationEnsemble+GPU.swift": {
+      "sha256": "bb29b583dc293ea220d1e2372223751490fbc31562b844e1763308cf30f70748",
+      "bytes": 26031
+    },
+    "validation/first-executed-build/sources/0123-VolumeGrids.swift": {
+      "sha256": "cfa12d54229447bc9f4955d5b056cee92b8665bb4ed17ff8e92d0763c2b25161",
+      "bytes": 4658
+    },
+    "validation/first-executed-build/sources/0124-WedgeReflectionStudy+GPU.swift": {
+      "sha256": "a2bba2efa3f9bd064fb166cd4255eed9da0cf4e938106e86ddce6d8acc15cadd",
+      "bytes": 6913
+    },
+    "validation/first-executed-build/sources/0125-YaoSlabTests+GPU.swift": {
+      "sha256": "7a11976e2987c3beec27fd01bc221b8e5357afd3f7275ac9d862d5d986d45615",
+      "bytes": 4104
+    },
+    "validation/first-executed-build/sources/0126-BodyContact.metal": {
+      "sha256": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+      "bytes": 15728
+    },
+    "validation/first-executed-build/sources/0127-Deflagration.metal": {
+      "sha256": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+      "bytes": 20759
+    },
+    "validation/first-executed-build/sources/0128-Extract.metal": {
+      "sha256": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+      "bytes": 11901
+    },
+    "validation/first-executed-build/sources/0129-Footing.metal": {
+      "sha256": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+      "bytes": 22824
+    },
+    "validation/first-executed-build/sources/0130-Gravity.metal": {
+      "sha256": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+      "bytes": 2288
+    },
+    "validation/first-executed-build/sources/0131-Mixing.metal": {
+      "sha256": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+      "bytes": 5508
+    },
+    "validation/first-executed-build/sources/0132-Radiation.metal": {
+      "sha256": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+      "bytes": 20292
+    },
+    "validation/first-executed-build/sources/0133-Refine.metal": {
+      "sha256": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+      "bytes": 150281
+    },
+    "validation/first-executed-build/sources/0134-Rubble.metal": {
+      "sha256": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+      "bytes": 17007
+    },
+    "validation/first-executed-build/sources/0135-Shell.metal": {
+      "sha256": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+      "bytes": 161932
+    },
+    "validation/first-executed-build/sources/0136-Solver.metal": {
+      "sha256": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+      "bytes": 69273
+    },
+    "validation/first-executed-build/sources/0137-SolverCongestion.metal": {
+      "sha256": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+      "bytes": 6287
+    },
+    "validation/first-executed-build/sources/0138-SolverCutCells.metal": {
+      "sha256": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+      "bytes": 18714
+    },
+    "validation/first-executed-build/sources/0139-SolverEnvelopes.metal": {
+      "sha256": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+      "bytes": 26758
+    },
+    "validation/first-executed-build/sources/0140-SolverStep.metal": {
+      "sha256": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+      "bytes": 18310
+    },
+    "validation/first-executed-build/sources/0141-SolverSweep.metal": {
+      "sha256": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+      "bytes": 31622
+    },
+    "validation/first-executed-build/sources/0142-SolverVenting.metal": {
+      "sha256": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+      "bytes": 19135
+    },
+    "validation/first-executed-build/sources/0143-SolverVisualization.metal": {
+      "sha256": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+      "bytes": 3040
+    },
+    "validation/first-executed-build/sources/0144-Structure.metal": {
+      "sha256": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+      "bytes": 266072
+    },
+    "validation/first-executed-build/sources/0145-Thermal.metal": {
+      "sha256": "682d7840de3974906e68a9c62a0e123d5e29782a770fdf19126b9b61a0b275c3",
+      "bytes": 20832
+    },
+    "validation/first-executed-build/sources/0146-StepSelectorBankReplayTests.swift": {
+      "sha256": "ae1db528de22897a0ec9d1135a69b3f9a68430cc1c14140c79733c776f0d8ca2",
+      "bytes": 5640
+    },
+    "validation/first-executed-build/sources/0147-StepSelectorDiagnosticsTests.swift": {
+      "sha256": "e05f68a651b1b434e7b8f605c88f23d2359564aa2c7eb3677456bb7ab2637eaf",
+      "bytes": 4129
+    },
+    "validation/focused-build.json": {
+      "sha256": "e87e1c2607c6e02daac0808437a7a49611ffd3adbbbb4a0293ecb944c703a9db",
+      "bytes": 222
+    },
+    "validation/focused-build.log": {
+      "sha256": "2e21700850996f57530938b3ed05e0f15a702107e043b0708da6be2f04a612f6",
+      "bytes": 434
+    },
+    "validation/focused-linked-sdk.txt": {
+      "sha256": "c01f64089a0c4db336870d28650a5b7f46435b9ce2125c2471276ef5819a231c",
+      "bytes": 18090
+    },
+    "validation/focused-process.json": {
+      "sha256": "8bb0fdbb88a2b8c5fbdd0eaeb267b4384bd9917df99c37600ab3851e6bddc9dc",
+      "bytes": 325
+    },
+    "validation/focused.log": {
+      "sha256": "1b65a741ce0eed63bfce346671c2a510719f53d8f5bd2caffc57ee043693b5b2",
+      "bytes": 969
+    }
+  },
+  "rawFiles": 542,
+  "rawBytes": 318222613,
+  "archives": [
+    {
+      "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-selector-trajectories-implementation-archive/all-raw.tar.gz",
+      "bytes": 50302056,
+      "sha256": "917665c76e5918a58bf0533d6f5f688eec2f14245e1e597aa7c4c78be6392ddc",
+      "members": 542
+    },
+    {
+      "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-selector-trajectories/implementation-evidence/metadata.tar.gz",
+      "bytes": 112222,
+      "sha256": "2cd7e28c8776b91f748ad39142cbb78aade1dfed172aebf247508cb10fe19a1c",
+      "members": 34
+    }
+  ],
+  "limits": "Implementation/scalar/analytic controls only; later district stage may add files without modifying these checkpoint members. Complete local analytic fields, test binaries/resources, commands and source-version provenance retained externally. Public archive contains metadata/postprocessing. No district target pass, production policy or admission claim."
+}

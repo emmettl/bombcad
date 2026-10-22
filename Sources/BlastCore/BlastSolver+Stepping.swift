@@ -92,7 +92,8 @@ extension BlastSolver {
         steps: Int, range: Range<Int>, timeLimit: Double?, updateVisualization: Bool
     ) -> MTLCommandBuffer? {
         guard sweepUpdateCapture == nil || supportsSweepUpdateDiagnostics,
-            compensatedSweep == nil || supportsCompensatedSweep
+            compensatedSweep == nil || supportsCompensatedSweep,
+            stepSelectorDiagnostic == nil || supportsStepSelectorDiagnostics
         else { return nil }
         let first = range.lowerBound == 0
         let last = range.upperBound == steps
@@ -238,7 +239,8 @@ extension BlastSolver {
                 encoder, control: controlBuffer, speed: maxSpeedBuffer,
                 tileCount: tileCountBuffer, tileDispatch: tileDispatchBuffer, uniforms: &uniforms,
                 encodedStep: globalStep, batchBaseStep: stepCount)
-            encoder.setComputePipelineState(gravityVariant(preparePipeline, "prepareStep"))
+            encoder.setComputePipelineState(
+                stepSelectorDiagnostic?.pipeline ?? gravityVariant(preparePipeline, "prepareStep"))
             // Not read without gravity.
             encoder.setBuffer(gravityTable(scale: 1) ?? noSpecies, offset: 0, index: 15)
             encoder.setBuffer(controlBuffer, offset: 0, index: 0)

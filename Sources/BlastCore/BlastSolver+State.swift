@@ -130,6 +130,7 @@ extension BlastSolver {
         exposureNeedsInitialSample = exposurePlane != nil
         sweepUpdateCapture = nil
         clockInputCapture = nil
+        stepSelectorDiagnostic = nil
         compensatedSweep = nil
         firstPhaseColumns?.reset()
         firstPhaseNeedsInitialSample = firstPhaseColumns != nil
