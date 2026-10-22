@@ -166,3 +166,20 @@ base `140e10661e6a6d6fa6822000cdb27f817c736a83`. The Linux build reports two exi
 unused `createFile` result warnings in `USDSceneWriter.swift`; they are unrelated to
 this diagnostic change. All verification jobs are terminal. Source/test/controller/plan
 pins still match all 524 corresponding frozen producing inputs.
+
+
+## Concurrent changes and next experiment
+
+Rebasing incorporated `87ea4c9c` (separately user-approved wall-probability calibration,
+emmettl/bombcad-work#19) and the `133685e0`/`5be9d97a` release records. Four current
+BlastModel source pins consequently differ from the producing snapshot; all acoustic
+sweep/observer code is unchanged and all 549 frozen producing files still verify.
+[The publication receipt](publication-check.json) records the four paths and 520/524
+remaining current source/test/controller/plan matches. These numerical results refer to
+the frozen producing snapshot, not a new run on the combined tree. The [post-rebase
+strict build and both affected calibration tests](post-rebase.log) pass without build
+warnings. The original core/digest verification above remains retained with its actual base.
+
+emmettl/bombcad-work#81 tracks a bounded opt-in compensated-update candidate with
+component-wise density/energy controls and an evidence-backed keep/reject decision.
+emmettl/bombcad-work#80 remains open for the broader accuracy/representation work.

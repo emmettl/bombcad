@@ -1,0 +1,83 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 5 / 40]
+[1 / 1]
+[1 / 55] BlastCoreTests-product
+[5 / 45] BlastModel
+[10 / 50] BlastModel
+[11 / 51] BlastModel
+[13 / 53] BlastModel
+[21 / 62] BlastModel
+[23 / 62] BlastModel
+[26 / 62] BlastCore
+[35 / 72] blastmodel-product
+[36 / 72] BlastCore
+[44 / 80] BlastCore
+[44 / 80] BlastModelTests-product
+[50 / 84] BlastModelTests-product
+[53 / 81] BlastCore-product
+[58 / 83] BlastRender
+[66 / 88] BlastCoreTests-product
+[71 / 94] BlastRender-product
+[71 / 94] rigidboxdemo-product
+[72 / 94] scenebench-product
+[79 / 101] BlastCoreTests-product
+[81 / 103] scenebench-product
+[81 / 103] BombCAD-product
+[91 / 133] scenebench-product
+[92 / 133] blastbench-product
+[96 / 133] blastbench-product
+[97 / 134] scenebench-product
+[99 / 135] blastbench-product
+[104 / 136] BombCAD-product
+[107 / 136] BombCAD
+[108 / 136] BombCAD-product
+[110 / 136] BombCAD
+[112 / 136] BombCAD
+[114 / 136] BombCAD
+[115 / 136] BombCAD
+[116 / 136] BombCAD
+[117 / 136] BombCAD
+[118 / 136] BombCAD
+[119 / 136] BombCAD
+[120 / 136] BombCAD
+[130 / 151] BombCAD
+[132 / 151] BlastCoreTests-product
+[134 / 151] BombCAD
+[134 / 151] BlastModelTests-product
+[135 / 150] blastmodel-product
+[137 / 153] BombCAD
+[139 / 155] scenebench-product
+[141 / 156] rigidboxdemo-product
+[142 / 157] BombCAD
+[142 / 157] BombCAD-product
+[144 / 159] BombCAD-product
+[145 / 159] BombCAD-product
+[146 / 159] BombCAD
+[148 / 159] BombCAD
+[150 / 156] BombCADTests-product
+[165 / 171] BombCADTests-product
+[167 / 171] BombCADTests-product
+[169 / 171] BombCADTests-product
+[171 / 173] BombCADTests-product
+Build complete! (25.32 secs)
+build-strict: no warnings
+Building for debugging...
+[Computing dependencies]
+[Provisioning 5 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[1 / 1]
+[12 / 15] BlastModelTests-product
+Build complete! (1.13 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Walls' and roofs' chances" started.
+◇ Test "The calibration follows what the walls are built of" started.
+◇ Test "Chances lie between nothing and certainty, fall with distance, and heavy is never likelier than moderate" started.
+✔ Test "The calibration follows what the walls are built of" passed after 0.075 seconds.
+✔ Test "Chances lie between nothing and certainty, fall with distance, and heavy is never likelier than moderate" passed after 0.167 seconds.
+✔ Suite "Walls' and roofs' chances" passed after 0.167 seconds.
+✔ Test run with 2 tests in 1 suite passed after 0.167 seconds.

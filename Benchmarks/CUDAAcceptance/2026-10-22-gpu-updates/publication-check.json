@@ -1,0 +1,14 @@
+{
+  "checkedPublicCodeCommit": "8ca6761e167a3bc8858dcf757b4afdd0926b3a4e",
+  "incomingMain": "5be9d97ad1ffad4699364cdc46ea9ce4dee2221e",
+  "frozenProducingFilesVerified": 549,
+  "currentSourceTestControllerPlanPins": 524,
+  "matchingCurrentPins": 520,
+  "concurrentlyRecalibratedSources": [
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastModel/EnvelopeWallProbability.swift",
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastModel/ErrorBands+Districts.swift",
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastModel/FacadeLoadSurrogate+Prepared.swift",
+    "/Users/louisemmett/Developer/Projects/bombcad/Sources/BlastModel/LearnedField.swift"
+  ],
+  "scope": "All original producing files remain byte-identical in the frozen source archive. Four current BlastModel wall-probability/standing sources differ after incoming user-approved calibration changes; the acoustic sweep/observer sources are unchanged. Strict build and two StructureChanceTests pass after rebase. Original experiment evidence refers to frozen inputs, not to a rerun on the combined tree."
+}
