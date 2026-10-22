@@ -69,3 +69,12 @@ All 37 synthetic-control fixture/output/source files are retained in the
 [per-file receipts](auditor-controls-archive.json). Every decompressed member was
 independently checked and original files rehashed afterward, including the
 explicit feature-mutation negative control.
+
+The final [pilot archive helper](archive-pilots.py) is declared before numerical
+results arrive. It requires completed producer/queue records and all three
+audited pilot IDs, then archives every local raw file and verifies each member.
+Public metadata selection excludes numerical NPY arrays, runtime resources,
+original input geodata and Python caches by kind, never by acceptance status.
+The complete local archive stays under `$BOMBCAD_DATA/experiments`; PC full-state
+outputs remain at their identified remote job paths, a separate retention scope.
+The final pilot archive has **not run** while the CUDA queue is waiting.
