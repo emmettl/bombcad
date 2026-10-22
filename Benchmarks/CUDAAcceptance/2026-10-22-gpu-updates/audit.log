@@ -1,0 +1,46 @@
+{
+  "status": "complete",
+  "scope": "Read-only parity-gated audit of actual GPU sweep variables; arithmetic models are not instructions.",
+  "numericalRuns": 108,
+  "cases": 36,
+  "allOrdinaryObservationParity": true,
+  "allContinuity": true,
+  "allWholeTraceArithmeticCompatible": true,
+  "limits": "Actual stored variables in observed 1-D ideal-gas sweeps under explicit parity gates, not a GPU instruction/Float64 truth attestation, broad product/CUDA validation or a changed target policy."
+}
+default-cfl0.225 a1-n512-full parity True update policies ['fused'] energy counts [(0, 665, 1009), (128, 993, 1575), (255, 1759, 1994), (256, 1771, 1994), (257, 1763, 1994)]
+default-cfl0.225 a1-n512-tiled parity True update policies ['fused'] energy counts [(0, 665, 1009), (128, 993, 1575), (255, 1759, 1994), (256, 1771, 1994), (257, 1763, 1994)]
+default-cfl0.225 a1-n1024-full parity True update policies ['fused'] energy counts [(0, 1414, 1993), (256, 2162, 3136), (511, 3495, 3985), (512, 3487, 3985), (513, 3509, 3985)]
+default-cfl0.225 a1-n1024-tiled parity True update policies ['fused'] energy counts [(0, 1414, 1993), (256, 2162, 3136), (511, 3495, 3985), (512, 3487, 3985), (513, 3509, 3985)]
+default-cfl0.225 a1-n2048-full parity True update policies ['fused'] energy counts [(0, 3167, 3936), (512, 5017, 6250), (1023, 7049, 7968), (1024, 6977, 7968), (1025, 6983, 7968)]
+default-cfl0.225 a1-n2048-tiled parity True update policies ['fused'] energy counts [(0, 3167, 3936), (512, 5017, 6250), (1023, 7049, 7968), (1024, 6977, 7968), (1025, 6983, 7968)]
+default-cfl0.225 a10-n512-full parity True update policies ['fused'] energy counts [(0, 578, 1016), (128, 875, 1585), (255, 1696, 1994), (256, 1641, 1994), (257, 1701, 1994)]
+default-cfl0.225 a10-n512-tiled parity True update policies ['fused'] energy counts [(0, 578, 1016), (128, 875, 1585), (255, 1696, 1994), (256, 1641, 1994), (257, 1701, 1994)]
+default-cfl0.225 a10-n1024-full parity True update policies ['fused'] energy counts [(0, 1273, 2011), (256, 1821, 3148), (511, 3474, 3986), (512, 3428, 3986), (513, 3416, 3986)]
+default-cfl0.225 a10-n1024-tiled parity True update policies ['fused'] energy counts [(0, 1273, 2011), (256, 1821, 3148), (511, 3474, 3986), (512, 3428, 3986), (513, 3416, 3986)]
+default-cfl0.225 a10-n2048-full parity True update policies ['fused'] energy counts [(0, 2637, 4001), (512, 3727, 6275), (1023, 6807, 7968), (1024, 6797, 7968), (1025, 6813, 7968)]
+default-cfl0.225 a10-n2048-tiled parity True update policies ['fused'] energy counts [(0, 2637, 4001), (512, 3727, 6275), (1023, 6807, 7968), (1024, 6797, 7968), (1025, 6813, 7968)]
+default-cfl0.225 a100-n512-full parity True update policies ['fused'] energy counts [(0, 557, 1026), (128, 816, 1595), (255, 1720, 1996), (256, 1701, 1996), (257, 1729, 1996)]
+default-cfl0.225 a100-n512-tiled parity True update policies ['fused'] energy counts [(0, 557, 1026), (128, 816, 1595), (255, 1720, 1996), (256, 1701, 1996), (257, 1729, 1996)]
+default-cfl0.225 a100-n1024-full parity True update policies ['fused'] energy counts [(0, 1215, 2020), (256, 1737, 3159), (511, 3398, 3989), (512, 3418, 3989), (513, 3410, 3989)]
+default-cfl0.225 a100-n1024-tiled parity True update policies ['fused'] energy counts [(0, 1215, 2020), (256, 1737, 3159), (511, 3398, 3989), (512, 3418, 3989), (513, 3410, 3989)]
+default-cfl0.225 a100-n2048-full parity True update policies ['fused'] energy counts [(0, 2464, 4010), (512, 3577, 6287), (1023, 6824, 7974), (1024, 6817, 7974), (1025, 6841, 7974)]
+default-cfl0.225 a100-n2048-tiled parity True update policies ['fused'] energy counts [(0, 2464, 4010), (512, 3577, 6287), (1023, 6824, 7974), (1024, 6817, 7974), (1025, 6841, 7974)]
+unfused-cfl0.225 a1-n512-full parity True update policies ['separate'] energy counts [(0, 705, 1007), (128, 1013, 1569), (255, 1592, 1966), (256, 1664, 1993), (257, 1683, 1975)]
+unfused-cfl0.225 a1-n512-tiled parity True update policies ['separate'] energy counts [(0, 705, 1007), (128, 1013, 1569), (255, 1592, 1966), (256, 1664, 1993), (257, 1683, 1975)]
+unfused-cfl0.225 a1-n1024-full parity True update policies ['separate'] energy counts [(0, 1439, 1994), (256, 2172, 3133), (511, 3447, 3974), (512, 3473, 3982), (513, 3440, 3979)]
+unfused-cfl0.225 a1-n1024-tiled parity True update policies ['separate'] energy counts [(0, 1439, 1994), (256, 2172, 3133), (511, 3447, 3974), (512, 3473, 3982), (513, 3440, 3979)]
+unfused-cfl0.225 a1-n2048-full parity True update policies ['separate'] energy counts [(0, 3055, 3968), (512, 4838, 6230), (1023, 6940, 7928), (1024, 7029, 7953), (1025, 6995, 7943)]
+unfused-cfl0.225 a1-n2048-tiled parity True update policies ['separate'] energy counts [(0, 3055, 3968), (512, 4838, 6230), (1023, 6940, 7928), (1024, 7029, 7953), (1025, 6995, 7943)]
+unfused-cfl0.225 a10-n512-full parity True update policies ['separate'] energy counts [(0, 613, 1015), (128, 870, 1581), (255, 1658, 1974), (256, 1636, 1979), (257, 1645, 1946)]
+unfused-cfl0.225 a10-n512-tiled parity True update policies ['separate'] energy counts [(0, 613, 1015), (128, 870, 1581), (255, 1658, 1974), (256, 1636, 1979), (257, 1645, 1946)]
+unfused-cfl0.225 a10-n1024-full parity True update policies ['separate'] energy counts [(0, 1307, 2011), (256, 1784, 3134), (511, 3415, 3956), (512, 3355, 3900), (513, 3402, 3966)]
+unfused-cfl0.225 a10-n1024-tiled parity True update policies ['separate'] energy counts [(0, 1307, 2011), (256, 1784, 3134), (511, 3415, 3956), (512, 3355, 3900), (513, 3402, 3966)]
+unfused-cfl0.225 a10-n2048-full parity True update policies ['separate'] energy counts [(0, 2577, 4000), (512, 3760, 6273), (1023, 6499, 7758), (1024, 6628, 7930), (1025, 6703, 7941)]
+unfused-cfl0.225 a10-n2048-tiled parity True update policies ['separate'] energy counts [(0, 2577, 4000), (512, 3760, 6273), (1023, 6499, 7758), (1024, 6628, 7930), (1025, 6703, 7941)]
+unfused-cfl0.225 a100-n512-full parity True update policies ['separate'] energy counts [(0, 621, 1025), (128, 785, 1591), (255, 1700, 1996), (256, 1649, 1969), (257, 1385, 1701)]
+unfused-cfl0.225 a100-n512-tiled parity True update policies ['separate'] energy counts [(0, 621, 1025), (128, 785, 1591), (255, 1700, 1996), (256, 1649, 1969), (257, 1385, 1701)]
+unfused-cfl0.225 a100-n1024-full parity True update policies ['separate'] energy counts [(0, 1261, 2019), (256, 1691, 3125), (511, 3237, 3863), (512, 3343, 3981), (513, 3274, 3952)]
+unfused-cfl0.225 a100-n1024-tiled parity True update policies ['separate'] energy counts [(0, 1261, 2019), (256, 1691, 3125), (511, 3237, 3863), (512, 3343, 3981), (513, 3274, 3952)]
+unfused-cfl0.225 a100-n2048-full parity True update policies ['separate'] energy counts [(0, 2439, 4009), (512, 3432, 6264), (1023, 6673, 7957), (1024, 6653, 7947), (1025, 6680, 7960)]
+unfused-cfl0.225 a100-n2048-tiled parity True update policies ['separate'] energy counts [(0, 2439, 4009), (512, 3432, 6264), (1023, 6673, 7957), (1024, 6653, 7947), (1025, 6680, 7960)]

@@ -1,0 +1,19 @@
+python3 Scripts/build-strict.py
+Building for debugging...
+[Computing dependencies]
+[Provisioning 3 / 40]
+[Pre-planning 1 / 887]
+[Planning deferred tasks]
+[12 / 104]
+[20 / 103] ContactSearch
+[26 / 108] GeometryImport
+[40 / 117] GeometryImport
+[55 / 94] BlastModel
+[57 / 95] BlastModel
+[62 / 94] BlastModelTests-product
+[66 / 98] BlastModelTests-product
+[69 / 99] BlastCore
+[74 / 96] BlastRender
+[76 / 97] BlastRender
+Build complete! (8.65 secs)
+build-strict: no warnings

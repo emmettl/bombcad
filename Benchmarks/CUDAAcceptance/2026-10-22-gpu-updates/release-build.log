@@ -1,0 +1,24 @@
+Building for production...
+[Computing dependencies]
+[10 / 60]
+[18 / 67] SceneModel
+[28 / 72] SceneModel
+[32 / 76] SceneView
+[34 / 77] SceneView
+[40 / 77] ContactSearchMetal
+[42 / 78] CompressibleFlow
+[44 / 74] GeometryImport
+[46 / 70] ContactSearchMetal
+[48 / 66] Numerics
+[50 / 62] RadialBlast
+[53 / 64] BlastModel
+[55 / 65] BlastModel
+[58 / 67] BlastCore
+[60 / 68] BlastCore
+[64 / 71] BlastRender
+[66 / 72] BlastRender
+[69 / 72] blastbench-product
+[71 / 73] blastbench-product
+[73 / 75] blastbench-product
+[74 / 75] blastbench-product
+Build complete! (215.58 secs)

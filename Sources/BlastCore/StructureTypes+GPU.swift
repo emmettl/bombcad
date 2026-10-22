@@ -16,7 +16,9 @@ extension KernelMathMode {
 }
 
 extension ShaderLibrary {
-    static func make(device: MTLDevice, firstPhasePressure: Bool = false) throws -> MTLLibrary {
+    static func make(device: MTLDevice, firstPhasePressure: Bool = false, sweepUpdates: Bool = false) throws
+        -> MTLLibrary
+    {
         let files = [
             "Solver", "SolverSweep", "SolverCutCells", "SolverCongestion", "SolverStep", "SolverEnvelopes",
             "SolverVenting", "SolverVisualization", "Refine", "Structure", "Rubble", "Shell", "BodyContact",
@@ -43,6 +45,7 @@ extension ShaderLibrary {
         // the kernels that use them.
         source = try MetalContactSearch.functionSource() + "\n" + source
         if firstPhasePressure { source = try addingFirstPhasePressureCapture(to: source) }
+        if sweepUpdates { source = try addingSweepUpdateCapture(to: source) }
         if probe.statePadding > 0 {
             // Unused floats in the element state: a change to the source that alters no
             // arithmetic, to see what results a rebuild moves.

@@ -868,3 +868,13 @@ Two S32/E64 wall histories have no phase closure and remain explicit adverse out
 This identifies a stored-rounding mechanism in the independent model; actual GPU update
 causality and component-wise precision remain open in emmettl/bombcad-work#80. No GPU
 representation, numerical default or admission change is adopted.
+
+The [production sweep update diagnostic](../Benchmarks/CUDAAcceptance/2026-10-22-gpu-updates/summary.md)
+adds actual pre/post state and flux-variable capture in opt-in 1-D ideal-gas siblings.
+All 108 exports preserve plain/pressure/update state and pressure-history observables,
+including prior baselines; default traces have exact fused update replay and unfused
+traces exact separate replay. Captured unchanged density/energy with nonzero modeled
+increments directly corroborates an update representation limit at selected weak-wave
+locations. It does not quantify a global dissipation budget or validate a new representation.
+`acoustic-phase --trace-updates` exposes the bounded diagnostic. Ordinary shader source,
+numerical defaults and CUDA admission remain unchanged; emmettl/bombcad-work#80 stays open.

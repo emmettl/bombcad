@@ -1,0 +1,7 @@
+{
+  "name": "Apple M4 Max",
+  "os": "Version 27.0.1 (Build 26A434)",
+  "registryID": 4294968412,
+  "scope": "Post-run query of the default Metal device; not continuous device observation",
+  "unifiedMemory": true
+}

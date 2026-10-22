@@ -91,6 +91,7 @@ extension BlastSolver {
     func encodeBatchPart(
         steps: Int, range: Range<Int>, timeLimit: Double?, updateVisualization: Bool
     ) -> MTLCommandBuffer? {
+        guard sweepUpdateCapture == nil || supportsSweepUpdateDiagnostics else { return nil }
         let first = range.lowerBound == 0
         let last = range.upperBound == steps
         // A charge due now is laid down before the batch, which then stops at the next one's time.
@@ -106,6 +107,11 @@ extension BlastSolver {
             settleStructures()
             assignGravityTables()
             gpuProfiler?.beginBatch()
+        }
+        if let capture = sweepUpdateCapture {
+            memset(
+                capture.buffer.contents() + capture.outputOffset, 0,
+                capture.buffer.length - capture.outputOffset)
         }
         guard let kernels = try? cellKernels(),
             let commandBuffer = commandQueue.makeCommandBuffer(),
@@ -168,7 +174,9 @@ extension BlastSolver {
         }
 
         let extents = [grid.nx, grid.ny, grid.nz]
-        let tileThreads = Self.tileThreads(for: kernels.sweepTiles)
+        let sweepPipeline = sweepUpdateCapture?.sweep ?? kernels.sweep
+        let tiledSweepPipeline = sweepUpdateCapture?.sweepTiles ?? kernels.sweepTiles
+        let tileThreads = Self.tileThreads(for: tiledSweepPipeline)
         if first {
             if stepCount % Self.checkpointInterval == 0 || checkpointSubsteps == 0 {
                 checkpointSubsteps = structureSubsteps
@@ -266,7 +274,10 @@ extension BlastSolver {
             if axes.isEmpty { axes = [0] }
 
             airStage("coarse sweeps")
-            encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
+            encoder.setComputePipelineState(tilesEnabled ? tiledSweepPipeline : sweepPipeline)
+            if let capture = sweepUpdateCapture {
+                encoder.setBuffer(capture.buffer, offset: 0, index: 30)
+            }
             encoder.setBuffer(maskBuffer, offset: 0, index: 2)
             encoder.setBuffer(peakBuffer, offset: 0, index: 3)
             encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
@@ -309,7 +320,7 @@ extension BlastSolver {
                         indirectBuffer: tileDispatchBuffer, indirectBufferOffset: 0,
                         threadsPerThreadgroup: tileThreads)
                 } else {
-                    dispatchGrid(encoder, pipeline: kernels.sweep)
+                    dispatchGrid(encoder, pipeline: sweepPipeline)
                 }
                 // Where the air is refined, after refluxing instead (below).
                 if let terrainCut, n == axes.count - 1, !terrainCut.geometry.cutColumns.isEmpty,
@@ -321,7 +332,7 @@ extension BlastSolver {
                         state: stateBuffers[1 - current],
                         species: hasSpecies ? speciesBuffers[1 - current] : noSpecies)
                     // The merge took over the encoder's pipeline and some of its buffers.
-                    encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
+                    encoder.setComputePipelineState(tilesEnabled ? tiledSweepPipeline : sweepPipeline)
                     encoder.setBuffer(maskBuffer, offset: 0, index: 2)
                     encoder.setBuffer(peakBuffer, offset: 0, index: 3)
                     encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
@@ -336,7 +347,7 @@ extension BlastSolver {
                         encoder, cut: structureCut, kernels: kernels, uniforms: uniforms,
                         state: stateBuffers[1 - current],
                         species: hasSpecies ? speciesBuffers[1 - current] : noSpecies)
-                    encoder.setComputePipelineState(tilesEnabled ? kernels.sweepTiles : kernels.sweep)
+                    encoder.setComputePipelineState(tilesEnabled ? tiledSweepPipeline : sweepPipeline)
                     encoder.setBuffer(maskBuffer, offset: 0, index: 2)
                     encoder.setBuffer(peakBuffer, offset: 0, index: 3)
                     encoder.setBuffer(impulseBuffer, offset: 0, index: 4)
@@ -685,7 +696,7 @@ extension BlastSolver {
             while encoded < count {
                 makeRefinementRoom()
                 let part = min(
-                    (firstPhaseColumns?.diagnosticIndices.isEmpty == false)
+                    (firstPhaseColumns?.diagnosticIndices.isEmpty == false || sweepUpdateCapture != nil)
                         ? 1
                         : (gpuProfiler == nil ? gpuSteps.part(count - encoded) : count - encoded),
                     poolStepLimit)
@@ -700,7 +711,10 @@ extension BlastSolver {
                 commandBuffer.commit()
                 commandBuffer.waitUntilCompleted()
                 failed = failed || commandBuffer.error != nil
-                if commandBuffer.error == nil { collectFirstPhaseDiagnostics() }
+                if commandBuffer.error == nil {
+                    collectFirstPhaseDiagnostics()
+                    collectSweepUpdateDiagnostics()
+                }
                 gpuSteps.measure(commandBuffer, steps: part)
                 stepGPUSeconds += max(commandBuffer.gpuEndTime - commandBuffer.gpuStartTime, 0)
                 encoded += part

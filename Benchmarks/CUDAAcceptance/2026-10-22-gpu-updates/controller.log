@@ -1,0 +1,61 @@
+{
+  "status": "complete",
+  "scope": "Run the predeclared 108-run production sweep observations once, retaining partial output on failure.",
+  "commands": [
+    {
+      "label": "default-cfl0.225",
+      "command": [
+        "/Users/louisemmett/.local/bin/gpu-slot",
+        "--mem",
+        "2",
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--fine",
+        "--trace-updates",
+        "--rounding",
+        "default",
+        "--cfl",
+        "0.225",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/default-cfl0.225"
+      ],
+      "returncode": 0,
+      "terminalProcess": {
+        "pid": 79063,
+        "pgid": 79063,
+        "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+        "birth": "Thu Oct 22 00:00:54 2026",
+        "label": "default-cfl0.225"
+      }
+    },
+    {
+      "label": "unfused-cfl0.225",
+      "command": [
+        "/Users/louisemmett/.local/bin/gpu-slot",
+        "--mem",
+        "2",
+        "/Volumes/StudioData/bombcad/build/main-checkout/out/Products/Release/blastbench",
+        "acoustic-phase",
+        "--fine",
+        "--trace-updates",
+        "--rounding",
+        "unfused",
+        "--cfl",
+        "0.225",
+        "--out",
+        "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/unfused-cfl0.225"
+      ],
+      "returncode": 0,
+      "terminalProcess": {
+        "pid": 79222,
+        "pgid": 79222,
+        "boot": "mac-92D84F4F-6356-4032-ABB3-A698DA1BE5BD",
+        "birth": "Thu Oct 22 00:01:28 2026",
+        "label": "unfused-cfl0.225"
+      }
+    }
+  ],
+  "pid": 79056,
+  "revision": "140e10661e6a6d6fa6822000cdb27f817c736a83",
+  "worktreeDirty": true
+}

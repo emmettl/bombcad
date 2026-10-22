@@ -31,7 +31,11 @@ func runAcousticPhase() throws {
             for tiled in [false, true] {
                 let name = "a\(Int(amplitude))-n\(nx)-\(tiled ? "tiled" : "full")"
                 var pair: [[String: Any]] = []
-                for observed in [false, true] {
+                let modes = flag("trace-updates") ? ["plain", "pressure", "updates"] : ["plain", "pressure"]
+                for mode in modes {
+                    let observed = mode != "plain"
+                    let updates = mode == "updates"
+                    let outputMode = updates ? "updates" : (observed ? "observed" : "plain")
                     var configuration = SolverConfiguration()
                     configuration.reflectiveFaces = [.xMin, .yMin, .yMax, .zMin, .zMax]
                     configuration.skipStillAir = tiled
@@ -49,6 +53,11 @@ func runAcousticPhase() throws {
                     }
                     try solver.configureFirstPhaseColumns(Array(repeating: SIMD4(0, 0, 0, 1), count: nx))
                     if observed { try solver.configureFirstPhaseDiagnostics(indices, capturePressure: true) }
+                    if updates {
+                        try solver.configureSweepUpdateDiagnostics([
+                            0, nx / 4, nx / 2 - 1, nx / 2, nx / 2 + 1,
+                        ])
+                    }
                     let initialPressure = (0..<nx).map {
                         solver.primitive($0, 0, 0).pressure - configuration.ambientPressure
                     }
@@ -63,14 +72,15 @@ func runAcousticPhase() throws {
                         "initialHostProjectedOverpressurePa": initialPressure,
                         "initialConservedRhoMxEnergy": initialConserved, "gamma": configuration.gamma,
                         "cfl": cfl,
-                        "observed": observed, "stable": advanced.isStable, "steps": advanced.steps,
+                        "observed": observed, "sweepUpdatesObserved": updates, "stable": advanced.isStable,
+                        "steps": advanced.steps,
                         "time": solver.time, "initialHashes": initial, "finalHashes": final,
                         "records": indices.map { i in
                             [records[i].x, records[i].y, records[i].z, records[i].w]
                         },
                     ]
                     pair.append(row)
-                    try write(row, "\(name)-\(observed ? "observed" : "plain").json")
+                    try write(row, "\(name)-\(outputMode).json")
                     if observed {
                         let trace = try solver.firstPhasePressureTrace()
                         let traceRow: [String: Any] = [
@@ -88,7 +98,26 @@ func runAcousticPhase() throws {
                             },
                             "soundSpeed": reference.soundSpeed,
                         ]
-                        try write(traceRow, "\(name)-trace.json")
+                        try write(
+                            traceRow, updates ? "\(name)-update-pressure-trace.json" : "\(name)-trace.json")
+                    }
+                    if updates {
+                        let trace = try solver.sweepUpdateTrace()
+                        let row: [String: Any] = [
+                            "format": "bombcad-production-sweep-updates-1",
+                            "complete": advanced.isStable && solver.time >= reference.stopTime * (1 - 1e-6),
+                            "fields": SweepUpdateTrace.fields, "valueEncoding": "uint32-ieee754-binary32",
+                            "indices": trace.indices,
+                            "initialStates": trace.initialStates, "finalStates": trace.finalStates,
+                            "steps": trace.samples.map(\.step), "times": trace.samples.map(\.time),
+                            "dt": trace.samples.map(\.dt), "executed": trace.samples.map(\.executed),
+                            "valueBits": trace.samples.map { sample in
+                                sample.values.map { $0.map(\.bitPattern) }
+                            },
+                            "initialStateBits": trace.initialStates.map { $0.map(\.bitPattern) },
+                            "finalStateBits": trace.finalStates.map { $0.map(\.bitPattern) },
+                        ]
+                        try write(row, "\(name)-update-trace.json")
                     }
                 }
                 results.append(["case": name, "runs": pair])

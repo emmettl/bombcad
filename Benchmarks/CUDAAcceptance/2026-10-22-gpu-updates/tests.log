@@ -1,0 +1,40 @@
+Building for debugging...
+[Computing dependencies]
+[10 / 106]
+[18 / 105] SceneModel
+[32 / 114] SceneModel
+[44 / 104] SceneView
+[53 / 96] BlastModel
+[55 / 97] BlastModel
+[58 / 93] BlastCore
+[60 / 95] BlastCore
+[66 / 97] BlastCore
+[71 / 97] BlastCore-product
+[71 / 97] rigidboxdemo-product
+[77 / 88] BlastCoreTests-product
+[79 / 90] blastbench-product
+[81 / 92] scenebench-product
+[81 / 92] blastbench-product
+[81 / 92] BombCAD-product
+[82 / 94] BlastCoreTests-product
+[84 / 91] blastbench-product
+[87 / 95] blastbench-product
+[88 / 95] blastbench-product
+[92 / 98] scenebench-product
+[94 / 99] rigidboxdemo-product
+[95 / 101] BlastCoreTests-product
+[100 / 102] BlastCoreTests-product
+[102 / 104] BlastCoreTests-product
+Build complete! (12.21 secs)
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite "Production sweep update diagnostics" started.
+◇ Test "Both sweep paths retain plain state and actual pre/post cells" started.
+✔ Test "Both sweep paths retain plain state and actual pre/post cells" passed after 0.121 seconds.
+◇ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" started.
+✔ Test "Sleeping tiled cells retain skipped opportunities instead of fabricated state" passed after 0.022 seconds.
+◇ Test "Invalid scope, cells and truncated history are refused" started.
+✔ Test "Invalid scope, cells and truncated history are refused" passed after 0.027 seconds.
+✔ Suite "Production sweep update diagnostics" passed after 0.171 seconds.
+✔ Test run with 3 tests in 1 suite passed after 0.171 seconds.

@@ -1,0 +1,1997 @@
+{
+  "files": [
+    {
+      "original": "candidate.patch",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/candidate.patch.gz",
+      "rawSHA256": "54d2b02e703aefda3d0e5930e7bcbf73c718af2c8faf2fd275fe207738fb0193",
+      "compressedSHA256": "c3c18922199d8b8b111bd237ea36482b9353379c2e65c0495f2a5b3a881d3bfe",
+      "rawBytes": 13536,
+      "compressedBytes": 3688,
+      "repositoryCopy": "evidence/candidate.patch.gz"
+    },
+    {
+      "original": "default-cfl0.225.log",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225.log.gz",
+      "rawSHA256": "107f6c9b5b1d53b648a984b90e42876ea0aebeeae6810075ff091b6455ad8ff8",
+      "compressedSHA256": "56e52d1ece9dcc776f884d90faf562ad74a82af2763266f14e277c713f5402d3",
+      "rawBytes": 723,
+      "compressedBytes": 119,
+      "repositoryCopy": "evidence/default-cfl0.225.log.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-full-observed.json.gz",
+      "rawSHA256": "400184a8a80770f1d97ef01f793e9145f50cc4bfc06d7b9733d38a21038e0fc1",
+      "compressedSHA256": "752a847d43c9eba1abd0402c80b43070a076339da28befb5356e5a72e7a19688",
+      "rawBytes": 81978,
+      "compressedBytes": 3315,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-full-plain.json.gz",
+      "rawSHA256": "fb95633e3e645c67d44e6791db8810a8934aa6e92e3539601a96d008ee791fb6",
+      "compressedSHA256": "6aad418242be8f3872fdb00378804b890a9c81f115960d1c0213ccea3de7bbcb",
+      "rawBytes": 81979,
+      "compressedBytes": 3314,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-full-trace.json.gz",
+      "rawSHA256": "3e2e3f2ac7b81b93fb03f1de76dfdd0e9d55ab0ccc1d1180fd19904d1aa9d189",
+      "compressedSHA256": "1af6e2bd93dff89f025545047dcb1b71d3c6806a95cfb1f64b8a7a1a5755017a",
+      "rawBytes": 1659589,
+      "compressedBytes": 131321,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-full-update-pressure-trace.json.gz",
+      "rawSHA256": "3e2e3f2ac7b81b93fb03f1de76dfdd0e9d55ab0ccc1d1180fd19904d1aa9d189",
+      "compressedSHA256": "1af6e2bd93dff89f025545047dcb1b71d3c6806a95cfb1f64b8a7a1a5755017a",
+      "rawBytes": 1659589,
+      "compressedBytes": 131321,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-full-update-trace.json.gz",
+      "rawSHA256": "04192f10f22c4f374f9fcfd953a2398c798716240d44809541979537f43d0353",
+      "compressedSHA256": "49bd88a3dd12b713ee458ca3cc1e44155ec2ca11eda2438a3be31e628d5ae33e",
+      "rawBytes": 8757284,
+      "compressedBytes": 438523,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-full-updates.json.gz",
+      "rawSHA256": "6810bcfa4922d25e661e7df3e0796a1fbd77027120b1c0212a3e2b3a56c3c885",
+      "compressedSHA256": "8ba0cfa569a127a6761effcdf0344b7637aa350b41001a9b498f5cb2ee73acac",
+      "rawBytes": 81977,
+      "compressedBytes": 3310,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-tiled-observed.json.gz",
+      "rawSHA256": "400184a8a80770f1d97ef01f793e9145f50cc4bfc06d7b9733d38a21038e0fc1",
+      "compressedSHA256": "752a847d43c9eba1abd0402c80b43070a076339da28befb5356e5a72e7a19688",
+      "rawBytes": 81978,
+      "compressedBytes": 3315,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-tiled-plain.json.gz",
+      "rawSHA256": "fb95633e3e645c67d44e6791db8810a8934aa6e92e3539601a96d008ee791fb6",
+      "compressedSHA256": "6aad418242be8f3872fdb00378804b890a9c81f115960d1c0213ccea3de7bbcb",
+      "rawBytes": 81979,
+      "compressedBytes": 3314,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-tiled-trace.json.gz",
+      "rawSHA256": "5c7851e3b47b4331e2ffa3dd0435fa35535e1ad9888ddc178efefe31bd0a1416",
+      "compressedSHA256": "9c144201a1d763993a840e0676c2f1dcfc6ca3cf79003d0dcfd4514ad1041eb9",
+      "rawBytes": 1659588,
+      "compressedBytes": 131319,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "5c7851e3b47b4331e2ffa3dd0435fa35535e1ad9888ddc178efefe31bd0a1416",
+      "compressedSHA256": "9c144201a1d763993a840e0676c2f1dcfc6ca3cf79003d0dcfd4514ad1041eb9",
+      "rawBytes": 1659588,
+      "compressedBytes": 131319,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-tiled-update-trace.json.gz",
+      "rawSHA256": "0acc68cc69ffd90f4305f6e893e83ab0125a9ede8047561e4ceb7d4340f0c8ca",
+      "compressedSHA256": "41c7eb5a93629d4cac236214675d739f3a0f334c74fb454d0d4ed2e3ba0adc33",
+      "rawBytes": 8491364,
+      "compressedBytes": 432976,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n1024-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n1024-tiled-updates.json.gz",
+      "rawSHA256": "6810bcfa4922d25e661e7df3e0796a1fbd77027120b1c0212a3e2b3a56c3c885",
+      "compressedSHA256": "8ba0cfa569a127a6761effcdf0344b7637aa350b41001a9b498f5cb2ee73acac",
+      "rawBytes": 81977,
+      "compressedBytes": 3310,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n1024-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-full-observed.json.gz",
+      "rawSHA256": "da8b12f9d39ff2ae991b3a29856ea7ab218fb4bc98344d41379e9808d0bbcbbb",
+      "compressedSHA256": "f1de9af997d35a8db9eefc5707d65c29bafcd0017d35ca0edcc0e155bf6876f5",
+      "rawBytes": 162181,
+      "compressedBytes": 5352,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-full-plain.json.gz",
+      "rawSHA256": "5410c51be74a6dbf5655c23e0e5e86e9aaf0e2544e1a6ed29b24312dfa24a3d7",
+      "compressedSHA256": "dc470c2f3544df0647a13ab4f6a0975eb420b2e12a4138757286ba2b82cdd26e",
+      "rawBytes": 162182,
+      "compressedBytes": 5352,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-full-trace.json.gz",
+      "rawSHA256": "404445d0fad76f49383c2f960e058d6219a2352d2b9a6c30be4f977dd3dc0ca7",
+      "compressedSHA256": "0c06c91abc3224bd02f4f2e0008438824da41c7d5f5ee2580ce09ff96c12f359",
+      "rawBytes": 3327926,
+      "compressedBytes": 233880,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-full-update-pressure-trace.json.gz",
+      "rawSHA256": "404445d0fad76f49383c2f960e058d6219a2352d2b9a6c30be4f977dd3dc0ca7",
+      "compressedSHA256": "0c06c91abc3224bd02f4f2e0008438824da41c7d5f5ee2580ce09ff96c12f359",
+      "rawBytes": 3327926,
+      "compressedBytes": 233880,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-full-update-trace.json.gz",
+      "rawSHA256": "f049cdefaab68fde5ab821bbf6f3d8c09335da5ce35c1bb31753570f2d7540b9",
+      "compressedSHA256": "dca57c71558c96de9c7a99c66aefeb49952b8edf33a1ccd0c6da2a74efed373b",
+      "rawBytes": 17516683,
+      "compressedBytes": 869931,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-full-updates.json.gz",
+      "rawSHA256": "130d15d14bcd2356a1839afdcd857255a09e2e7b29a9f187a46a3dbae05a0d8a",
+      "compressedSHA256": "a4e2806cdbff7f39192afa3a1669ab92e8c906edbf33672a0054aa657c5048be",
+      "rawBytes": 162180,
+      "compressedBytes": 5346,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-tiled-observed.json.gz",
+      "rawSHA256": "da8b12f9d39ff2ae991b3a29856ea7ab218fb4bc98344d41379e9808d0bbcbbb",
+      "compressedSHA256": "f1de9af997d35a8db9eefc5707d65c29bafcd0017d35ca0edcc0e155bf6876f5",
+      "rawBytes": 162181,
+      "compressedBytes": 5352,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-tiled-plain.json.gz",
+      "rawSHA256": "5410c51be74a6dbf5655c23e0e5e86e9aaf0e2544e1a6ed29b24312dfa24a3d7",
+      "compressedSHA256": "dc470c2f3544df0647a13ab4f6a0975eb420b2e12a4138757286ba2b82cdd26e",
+      "rawBytes": 162182,
+      "compressedBytes": 5352,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-tiled-trace.json.gz",
+      "rawSHA256": "57bc448c7a6bbde742f8c3c27104fc520bdd0f2765b666396c809b8bbc2186d1",
+      "compressedSHA256": "d6d45455164ed90288d96afb09ea874883b7b9d267e97b2c1b715697988209ca",
+      "rawBytes": 3327925,
+      "compressedBytes": 233881,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "57bc448c7a6bbde742f8c3c27104fc520bdd0f2765b666396c809b8bbc2186d1",
+      "compressedSHA256": "d6d45455164ed90288d96afb09ea874883b7b9d267e97b2c1b715697988209ca",
+      "rawBytes": 3327925,
+      "compressedBytes": 233881,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-tiled-update-trace.json.gz",
+      "rawSHA256": "2196d4ddeecf0c5707c7ac55454f96d2df66b9037b6f0ded580e4b471abc7904",
+      "compressedSHA256": "30449bc4a372f0ee70225a704a3a4e7122df61d5a7294d3af71d4f2fd7527ac1",
+      "rawBytes": 16971595,
+      "compressedBytes": 856180,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n2048-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n2048-tiled-updates.json.gz",
+      "rawSHA256": "130d15d14bcd2356a1839afdcd857255a09e2e7b29a9f187a46a3dbae05a0d8a",
+      "compressedSHA256": "a4e2806cdbff7f39192afa3a1669ab92e8c906edbf33672a0054aa657c5048be",
+      "rawBytes": 162180,
+      "compressedBytes": 5346,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n2048-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-full-observed.json.gz",
+      "rawSHA256": "2614473ebdfa38018165d00a1dacb6ee7012a22b67e816c1895677f8bb11e07a",
+      "compressedSHA256": "1b000aa02baddcfc21038fef6bf29f12fdce3bb7c81f00af7e1014dfaa3c7bd0",
+      "rawBytes": 41849,
+      "compressedBytes": 2189,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-full-plain.json.gz",
+      "rawSHA256": "4e866c54fb4c486df3160fd1ec0828de9b67bff909509856e38f009e668aacbb",
+      "compressedSHA256": "caf075ef2380ec35673e4c24f6de4274a82e748c0718c1d9127a341a4800499a",
+      "rawBytes": 41850,
+      "compressedBytes": 2188,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-full-trace.json.gz",
+      "rawSHA256": "f472e0634756fe3131f9814a9356df37ed5eef9da58048f6377b3368a98525ac",
+      "compressedSHA256": "5ba1e688c43e3af5e5b873df04e8c10ff77a001a16781644484b94eb2fe4c625",
+      "rawBytes": 835784,
+      "compressedBytes": 64835,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-full-update-pressure-trace.json.gz",
+      "rawSHA256": "f472e0634756fe3131f9814a9356df37ed5eef9da58048f6377b3368a98525ac",
+      "compressedSHA256": "5ba1e688c43e3af5e5b873df04e8c10ff77a001a16781644484b94eb2fe4c625",
+      "rawBytes": 835784,
+      "compressedBytes": 64835,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-full-update-trace.json.gz",
+      "rawSHA256": "0157c8a37b3c161d8d5977e09fe07a81936dbcb70ad513e15d88a9db205636a5",
+      "compressedSHA256": "29988bafe9445ec2175125c5a9d1ea22e2441db55a9ae5c48d01cd47d6387133",
+      "rawBytes": 4362943,
+      "compressedBytes": 227588,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-full-updates.json.gz",
+      "rawSHA256": "e0e8d36b1581d4b650acac7f65faf32761bec51521586f76e91918afa257822b",
+      "compressedSHA256": "9212719ef9d4c3e8701ef91f11a55affbda02a2e33cbcc3600b028448c442f2d",
+      "rawBytes": 41848,
+      "compressedBytes": 2184,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-tiled-observed.json.gz",
+      "rawSHA256": "2614473ebdfa38018165d00a1dacb6ee7012a22b67e816c1895677f8bb11e07a",
+      "compressedSHA256": "1b000aa02baddcfc21038fef6bf29f12fdce3bb7c81f00af7e1014dfaa3c7bd0",
+      "rawBytes": 41849,
+      "compressedBytes": 2189,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-tiled-plain.json.gz",
+      "rawSHA256": "4e866c54fb4c486df3160fd1ec0828de9b67bff909509856e38f009e668aacbb",
+      "compressedSHA256": "caf075ef2380ec35673e4c24f6de4274a82e748c0718c1d9127a341a4800499a",
+      "rawBytes": 41850,
+      "compressedBytes": 2188,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-tiled-trace.json.gz",
+      "rawSHA256": "21eb45fbd44edb0ee7d1095a7d1c0788098c2d5ee14b503125f556aea9c82361",
+      "compressedSHA256": "34693ef8e9e8d656ad98f7cd4f010b38e5be950f4880078a1ccf00524527ccac",
+      "rawBytes": 835783,
+      "compressedBytes": 64832,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "21eb45fbd44edb0ee7d1095a7d1c0788098c2d5ee14b503125f556aea9c82361",
+      "compressedSHA256": "34693ef8e9e8d656ad98f7cd4f010b38e5be950f4880078a1ccf00524527ccac",
+      "rawBytes": 835783,
+      "compressedBytes": 64832,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-tiled-update-trace.json.gz",
+      "rawSHA256": "c7af45f084b32ab8939a8ca5248e7b52722acbd31f8fe1d7c32b63d0c884c5e0",
+      "compressedSHA256": "0ad1df9d035ab6121e26bc1f51726500d60d9d60eb5b4d7e137ea547f8afb07e",
+      "rawBytes": 4234975,
+      "compressedBytes": 225533,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a1-n512-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a1-n512-tiled-updates.json.gz",
+      "rawSHA256": "e0e8d36b1581d4b650acac7f65faf32761bec51521586f76e91918afa257822b",
+      "compressedSHA256": "9212719ef9d4c3e8701ef91f11a55affbda02a2e33cbcc3600b028448c442f2d",
+      "rawBytes": 41848,
+      "compressedBytes": 2184,
+      "repositoryCopy": "evidence/default-cfl0.225/a1-n512-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-full-observed.json.gz",
+      "rawSHA256": "fffe6c88a1962a2b84293bfd3b22574fb52caaf8163aa43f9082e790e32f3a8c",
+      "compressedSHA256": "9f5a13629c1ebd9081439ade258c365519db269945c085846aba7fb57ec38004",
+      "rawBytes": 81932,
+      "compressedBytes": 3480,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-full-plain.json.gz",
+      "rawSHA256": "87c041b33c41575847c9b6ff7a85114e13d361598a2508d44aa4cdb123094167",
+      "compressedSHA256": "a2413b5412bad79dfaa6221d70b3c837a5bbda5b03625d03df4211992ef5d77f",
+      "rawBytes": 81933,
+      "compressedBytes": 3480,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-full-trace.json.gz",
+      "rawSHA256": "8f1b0ff41cf566f78a6c8386396d4b027af18034b93b6bed494a8d8ee803a3fa",
+      "compressedSHA256": "ff742de878d6e2a7b940007ce5af54cedb7c01f86f5c29e02a65ec60891c2ca3",
+      "rawBytes": 1664621,
+      "compressedBytes": 132982,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-full-update-pressure-trace.json.gz",
+      "rawSHA256": "8f1b0ff41cf566f78a6c8386396d4b027af18034b93b6bed494a8d8ee803a3fa",
+      "compressedSHA256": "ff742de878d6e2a7b940007ce5af54cedb7c01f86f5c29e02a65ec60891c2ca3",
+      "rawBytes": 1664621,
+      "compressedBytes": 132982,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-full-update-trace.json.gz",
+      "rawSHA256": "1f3248bf4ad37f08103cf91e0c251c6cad03fa4b8c8024a20185f1f61def79aa",
+      "compressedSHA256": "28794946816a0ec636b433e4341ddc16d471b84b1f00b14cce69f9d010528904",
+      "rawBytes": 8746528,
+      "compressedBytes": 458933,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-full-updates.json.gz",
+      "rawSHA256": "89febbc7e444197fd3aa5c54272bc4f6251c269ed2d7124a8e5ff83b35b7c81b",
+      "compressedSHA256": "efe63ab647f350959f7b04258feb9229791aeda7bbebdcf29c4c9d298df6294a",
+      "rawBytes": 81931,
+      "compressedBytes": 3475,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-tiled-observed.json.gz",
+      "rawSHA256": "fffe6c88a1962a2b84293bfd3b22574fb52caaf8163aa43f9082e790e32f3a8c",
+      "compressedSHA256": "9f5a13629c1ebd9081439ade258c365519db269945c085846aba7fb57ec38004",
+      "rawBytes": 81932,
+      "compressedBytes": 3480,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-tiled-plain.json.gz",
+      "rawSHA256": "87c041b33c41575847c9b6ff7a85114e13d361598a2508d44aa4cdb123094167",
+      "compressedSHA256": "a2413b5412bad79dfaa6221d70b3c837a5bbda5b03625d03df4211992ef5d77f",
+      "rawBytes": 81933,
+      "compressedBytes": 3480,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-tiled-trace.json.gz",
+      "rawSHA256": "e02b82c5bf5429c7a4b008374e5aca29b1243bce59f46a9bb376aaab6615fbe9",
+      "compressedSHA256": "0b4e20ed6397a2f92f94ab212ec1d7c1d71f979bf2b10d396e203fc78b4b5da7",
+      "rawBytes": 1664620,
+      "compressedBytes": 132981,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "e02b82c5bf5429c7a4b008374e5aca29b1243bce59f46a9bb376aaab6615fbe9",
+      "compressedSHA256": "0b4e20ed6397a2f92f94ab212ec1d7c1d71f979bf2b10d396e203fc78b4b5da7",
+      "rawBytes": 1664620,
+      "compressedBytes": 132981,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-tiled-update-trace.json.gz",
+      "rawSHA256": "1e0e03f64d24f1e075e57c6a211d581279643aba082e42cee8a00fd63b805f3c",
+      "compressedSHA256": "bc440b0bbd36f606f85c68f0a2b4dbee008057392ac4ffabe0a04fc5f342cf36",
+      "rawBytes": 8483200,
+      "compressedBytes": 453689,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n1024-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n1024-tiled-updates.json.gz",
+      "rawSHA256": "89febbc7e444197fd3aa5c54272bc4f6251c269ed2d7124a8e5ff83b35b7c81b",
+      "compressedSHA256": "efe63ab647f350959f7b04258feb9229791aeda7bbebdcf29c4c9d298df6294a",
+      "rawBytes": 81931,
+      "compressedBytes": 3475,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n1024-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-full-observed.json.gz",
+      "rawSHA256": "97dd8c36bb90c26f9c7f7bd0d022745ff3c8746492d7d063e987486b4cc7f823",
+      "compressedSHA256": "d61ce360ca0d93b329afaad9ab00b21f850d5641f3b255c3fec78727d372f5d0",
+      "rawBytes": 161977,
+      "compressedBytes": 5840,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-full-plain.json.gz",
+      "rawSHA256": "496767298bd689b558730d13f4fbabeccbb68110b84913f327dbf334450d16bc",
+      "compressedSHA256": "8f1aee323ad0fe81e6b7570dc302e8faf46544f4f4cfb0268f99d549b04d0025",
+      "rawBytes": 161978,
+      "compressedBytes": 5841,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-full-trace.json.gz",
+      "rawSHA256": "975d2b7df9c60eecb8734eb8074e033f038f7584dbec71644b42f05b7d384929",
+      "compressedSHA256": "8861a117978b78c37f767d29b15b246984a72920391dccdffb4feef3dbb614af",
+      "rawBytes": 3303303,
+      "compressedBytes": 252746,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-full-update-pressure-trace.json.gz",
+      "rawSHA256": "975d2b7df9c60eecb8734eb8074e033f038f7584dbec71644b42f05b7d384929",
+      "compressedSHA256": "8861a117978b78c37f767d29b15b246984a72920391dccdffb4feef3dbb614af",
+      "rawBytes": 3303303,
+      "compressedBytes": 252746,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-full-update-trace.json.gz",
+      "rawSHA256": "b8a57247bad95f48248f2da34acb03e353704ea6ce92a54e962b5812287be043",
+      "compressedSHA256": "a297def238d412f0165be3930a1e604f3df90fd4936c33082ff5501a647ac9be",
+      "rawBytes": 17500532,
+      "compressedBytes": 945418,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-full-updates.json.gz",
+      "rawSHA256": "59984424f67e9cb1997389a59b5876a4b2f3729d8770b79dff4e38b44417d7c9",
+      "compressedSHA256": "c8087e07a0b3b303089680042b7c4cee001de22682eba63f00c3d5c6eb85543c",
+      "rawBytes": 161976,
+      "compressedBytes": 5835,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-tiled-observed.json.gz",
+      "rawSHA256": "97dd8c36bb90c26f9c7f7bd0d022745ff3c8746492d7d063e987486b4cc7f823",
+      "compressedSHA256": "d61ce360ca0d93b329afaad9ab00b21f850d5641f3b255c3fec78727d372f5d0",
+      "rawBytes": 161977,
+      "compressedBytes": 5840,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-tiled-plain.json.gz",
+      "rawSHA256": "496767298bd689b558730d13f4fbabeccbb68110b84913f327dbf334450d16bc",
+      "compressedSHA256": "8f1aee323ad0fe81e6b7570dc302e8faf46544f4f4cfb0268f99d549b04d0025",
+      "rawBytes": 161978,
+      "compressedBytes": 5841,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-tiled-trace.json.gz",
+      "rawSHA256": "bd9fa1522ea96fbdd67a95bedf25d314f4b23023b17015100f4ed64ff34fbc13",
+      "compressedSHA256": "4190fb6b710107462c21f7cfcaea7db003ee682f44e9ea6f6c0f8eaba25cc8db",
+      "rawBytes": 3303302,
+      "compressedBytes": 252744,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "bd9fa1522ea96fbdd67a95bedf25d314f4b23023b17015100f4ed64ff34fbc13",
+      "compressedSHA256": "4190fb6b710107462c21f7cfcaea7db003ee682f44e9ea6f6c0f8eaba25cc8db",
+      "rawBytes": 3303302,
+      "compressedBytes": 252744,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-tiled-update-trace.json.gz",
+      "rawSHA256": "541ea89c08126d063d2a1fa00b586106588591a7f5d1d65784ca4363bd921e39",
+      "compressedSHA256": "1e2d9bbe3899a2f4615eb26be5a9986dad2458e50b83a7de40db1f7f3d7d914b",
+      "rawBytes": 16963892,
+      "compressedBytes": 932982,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n2048-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n2048-tiled-updates.json.gz",
+      "rawSHA256": "59984424f67e9cb1997389a59b5876a4b2f3729d8770b79dff4e38b44417d7c9",
+      "compressedSHA256": "c8087e07a0b3b303089680042b7c4cee001de22682eba63f00c3d5c6eb85543c",
+      "rawBytes": 161976,
+      "compressedBytes": 5835,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n2048-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-full-observed.json.gz",
+      "rawSHA256": "8b06382616cab83bc7fe0df2fa198246dcb85458d94f313092ec46d41ee8b136",
+      "compressedSHA256": "ef2c685933dd1c3025a56bf1581ff08b9923c5bffb0feeb839421b5d98053098",
+      "rawBytes": 41815,
+      "compressedBytes": 2273,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-full-plain.json.gz",
+      "rawSHA256": "6aed708f86c8a497c84e48536c50f772012576d3ab5ecb5dd235d7bddea99a84",
+      "compressedSHA256": "80a4924e7a0f970d7c5e90079410485bebcc2c9bb79b11a9264426228dddd04c",
+      "rawBytes": 41816,
+      "compressedBytes": 2272,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-full-trace.json.gz",
+      "rawSHA256": "21e7bf3e1f4575d221cd798764c855baca39638d2f5bdc4015c0b2a9a677e06e",
+      "compressedSHA256": "7c3164a576fd5a25ced4048331c8161db8fe1e5eca8511cf1869ab0cb0c3a760",
+      "rawBytes": 834310,
+      "compressedBytes": 75093,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-full-update-pressure-trace.json.gz",
+      "rawSHA256": "21e7bf3e1f4575d221cd798764c855baca39638d2f5bdc4015c0b2a9a677e06e",
+      "compressedSHA256": "7c3164a576fd5a25ced4048331c8161db8fe1e5eca8511cf1869ab0cb0c3a760",
+      "rawBytes": 834310,
+      "compressedBytes": 75093,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-full-update-trace.json.gz",
+      "rawSHA256": "f476f20b0c1870ab52f7cc66865d0db866458c4e0cc3d925f68c9bfa5bd8e753",
+      "compressedSHA256": "1c8d0ad9feb48ee35d8d61ae339eeacf3ca1d67dd6f83d99007182fe558f5603",
+      "rawBytes": 4380630,
+      "compressedBytes": 252038,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-full-updates.json.gz",
+      "rawSHA256": "939d1e7de17099058c0402f212d1c6cd97d82ee2c618548d25ede568371ead68",
+      "compressedSHA256": "1c06865d9955d5e9a47940377341f416d311753999a729abc9daf6ea5beeee3b",
+      "rawBytes": 41814,
+      "compressedBytes": 2268,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-tiled-observed.json.gz",
+      "rawSHA256": "8b06382616cab83bc7fe0df2fa198246dcb85458d94f313092ec46d41ee8b136",
+      "compressedSHA256": "ef2c685933dd1c3025a56bf1581ff08b9923c5bffb0feeb839421b5d98053098",
+      "rawBytes": 41815,
+      "compressedBytes": 2273,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-tiled-plain.json.gz",
+      "rawSHA256": "6aed708f86c8a497c84e48536c50f772012576d3ab5ecb5dd235d7bddea99a84",
+      "compressedSHA256": "80a4924e7a0f970d7c5e90079410485bebcc2c9bb79b11a9264426228dddd04c",
+      "rawBytes": 41816,
+      "compressedBytes": 2272,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-tiled-trace.json.gz",
+      "rawSHA256": "18d6a81c02574d6ec2bb900ac91893d990f4514ead050ee5ff3e70174703356a",
+      "compressedSHA256": "ecd9e177fefbfa6900bc180284161bccf5b6b3157554724e6d57bf05c293ff6b",
+      "rawBytes": 834309,
+      "compressedBytes": 75091,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "18d6a81c02574d6ec2bb900ac91893d990f4514ead050ee5ff3e70174703356a",
+      "compressedSHA256": "ecd9e177fefbfa6900bc180284161bccf5b6b3157554724e6d57bf05c293ff6b",
+      "rawBytes": 834309,
+      "compressedBytes": 75091,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-tiled-update-trace.json.gz",
+      "rawSHA256": "7b6111a1ffdf88843daad72787eb9e2774cc5b956a002b6e8b20e3446c64ac0e",
+      "compressedSHA256": "f892df20d9ff6f07e913412d53810f190f885a88db0bd6861c85e97a81c0578b",
+      "rawBytes": 4254294,
+      "compressedBytes": 249306,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a10-n512-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a10-n512-tiled-updates.json.gz",
+      "rawSHA256": "939d1e7de17099058c0402f212d1c6cd97d82ee2c618548d25ede568371ead68",
+      "compressedSHA256": "1c06865d9955d5e9a47940377341f416d311753999a729abc9daf6ea5beeee3b",
+      "rawBytes": 41814,
+      "compressedBytes": 2268,
+      "repositoryCopy": "evidence/default-cfl0.225/a10-n512-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-full-observed.json.gz",
+      "rawSHA256": "0f5ed8ad4d3e64a031e005658f77d11eff5a56489ff4ea394bd3ae78c936558d",
+      "compressedSHA256": "b452e9a7f9c9c9d92d44d4f0c6e10a9d1b1f9110984c7e1442818df3852313cb",
+      "rawBytes": 81859,
+      "compressedBytes": 3599,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-full-plain.json.gz",
+      "rawSHA256": "df2de026c80d87dfe94615748285d6cefe16bff187ad2fe6a94f98105a49cd22",
+      "compressedSHA256": "ea64719e26532ad8c1e9318a8d2c8b50aa613423b168c862191a9bd09788276a",
+      "rawBytes": 81860,
+      "compressedBytes": 3599,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-full-trace.json.gz",
+      "rawSHA256": "46c94bba9edf6f86901ba826ad4de5d7142769be7c96ccbb0345f11aa6258ceb",
+      "compressedSHA256": "f9d58ad5319e9e1181b6a87734d8d8dce6b83276bcfdc9deb35d1c3ad3da1778",
+      "rawBytes": 1677631,
+      "compressedBytes": 160148,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-full-update-pressure-trace.json.gz",
+      "rawSHA256": "46c94bba9edf6f86901ba826ad4de5d7142769be7c96ccbb0345f11aa6258ceb",
+      "compressedSHA256": "f9d58ad5319e9e1181b6a87734d8d8dce6b83276bcfdc9deb35d1c3ad3da1778",
+      "rawBytes": 1677631,
+      "compressedBytes": 160148,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-full-update-trace.json.gz",
+      "rawSHA256": "99f4ae0b4e00af7e3e0ac7b6fd12f3e6457767ede5994c00fe3855374fad92fc",
+      "compressedSHA256": "ad01e76098d091aba3f38c489228132e242100521f264f3588371251137528cd",
+      "rawBytes": 8760387,
+      "compressedBytes": 497941,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-full-updates.json.gz",
+      "rawSHA256": "53774b4dca813dde65dba1ea6909f488584d1b96395e108d7bca4d049b27a553",
+      "compressedSHA256": "f84b59ec6b40b99a5d356a0bf57d58aa7d91623a4903bef7b701a6d3da9c113f",
+      "rawBytes": 81858,
+      "compressedBytes": 3594,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-tiled-observed.json.gz",
+      "rawSHA256": "0f5ed8ad4d3e64a031e005658f77d11eff5a56489ff4ea394bd3ae78c936558d",
+      "compressedSHA256": "b452e9a7f9c9c9d92d44d4f0c6e10a9d1b1f9110984c7e1442818df3852313cb",
+      "rawBytes": 81859,
+      "compressedBytes": 3599,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-tiled-plain.json.gz",
+      "rawSHA256": "df2de026c80d87dfe94615748285d6cefe16bff187ad2fe6a94f98105a49cd22",
+      "compressedSHA256": "ea64719e26532ad8c1e9318a8d2c8b50aa613423b168c862191a9bd09788276a",
+      "rawBytes": 81860,
+      "compressedBytes": 3599,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-tiled-trace.json.gz",
+      "rawSHA256": "072f935a20adfd07ef913b3664e5a5f25f1e900263c04c12da4b84683e505097",
+      "compressedSHA256": "6bac1ab20e42c55e037e867de7c46e2721e951224e9dc109e67d399bf47df74a",
+      "rawBytes": 1677630,
+      "compressedBytes": 160147,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "072f935a20adfd07ef913b3664e5a5f25f1e900263c04c12da4b84683e505097",
+      "compressedSHA256": "6bac1ab20e42c55e037e867de7c46e2721e951224e9dc109e67d399bf47df74a",
+      "rawBytes": 1677630,
+      "compressedBytes": 160147,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-tiled-update-trace.json.gz",
+      "rawSHA256": "1bf1777648b8e8e4a12ae909ed7adcf192b3a73143879b8b0b380cca16c1eca4",
+      "compressedSHA256": "31c799ae7fdd046f7a04da32bb1e1910d771f8ace84f5a359bb12283939408b1",
+      "rawBytes": 8498499,
+      "compressedBytes": 492506,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n1024-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n1024-tiled-updates.json.gz",
+      "rawSHA256": "53774b4dca813dde65dba1ea6909f488584d1b96395e108d7bca4d049b27a553",
+      "compressedSHA256": "f84b59ec6b40b99a5d356a0bf57d58aa7d91623a4903bef7b701a6d3da9c113f",
+      "rawBytes": 81858,
+      "compressedBytes": 3594,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n1024-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-full-observed.json.gz",
+      "rawSHA256": "037fd3aa32ed5a53c6e37bb511c87396bd2db0e75d542544de4572621690bd3b",
+      "compressedSHA256": "7f37b3f188117057dd18d9a8b67135ba08d01e5fa1ef9b3050b695d4a2fb7f84",
+      "rawBytes": 162102,
+      "compressedBytes": 6111,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-full-plain.json.gz",
+      "rawSHA256": "f1cf36ee75a9251478dae2ead2357835f49339b05d29a1b4a0d8306ea231edd3",
+      "compressedSHA256": "b02731732e9a0a674c1c70d04dddf45076f443626bbb409e0138eb9aacbbcbd3",
+      "rawBytes": 162103,
+      "compressedBytes": 6111,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-full-trace.json.gz",
+      "rawSHA256": "200783ab11b119b4151e21f4ccc6f36363e19f3110f27b8e8996c1c6d2152904",
+      "compressedSHA256": "44f6120985e1fbf4ad3e0a9160dbd75a4870080842d384b50140500aed8621fa",
+      "rawBytes": 3338518,
+      "compressedBytes": 278512,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-full-update-pressure-trace.json.gz",
+      "rawSHA256": "200783ab11b119b4151e21f4ccc6f36363e19f3110f27b8e8996c1c6d2152904",
+      "compressedSHA256": "44f6120985e1fbf4ad3e0a9160dbd75a4870080842d384b50140500aed8621fa",
+      "rawBytes": 3338518,
+      "compressedBytes": 278512,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-full-update-trace.json.gz",
+      "rawSHA256": "7a75683f18d39d436f9fe737314ac9bce7f2e92b811020bc6055416f2ed8f9df",
+      "compressedSHA256": "3f0c7a1516d6181e206c19ebbf171b65f8367ac78d9476df110936a8fbf77c73",
+      "rawBytes": 17521854,
+      "compressedBytes": 953402,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-full-updates.json.gz",
+      "rawSHA256": "304e7a34bbf5a1c1b93c9bb6a5b08746a5c20841b6202300bd8f27e089fe6f1d",
+      "compressedSHA256": "2ab8082a64fb1edf13698954a94ec9c1b63fbd7cd2fbeac2054f2fd1b7dd2f1a",
+      "rawBytes": 162101,
+      "compressedBytes": 6105,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-tiled-observed.json.gz",
+      "rawSHA256": "037fd3aa32ed5a53c6e37bb511c87396bd2db0e75d542544de4572621690bd3b",
+      "compressedSHA256": "7f37b3f188117057dd18d9a8b67135ba08d01e5fa1ef9b3050b695d4a2fb7f84",
+      "rawBytes": 162102,
+      "compressedBytes": 6111,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-tiled-plain.json.gz",
+      "rawSHA256": "f1cf36ee75a9251478dae2ead2357835f49339b05d29a1b4a0d8306ea231edd3",
+      "compressedSHA256": "b02731732e9a0a674c1c70d04dddf45076f443626bbb409e0138eb9aacbbcbd3",
+      "rawBytes": 162103,
+      "compressedBytes": 6111,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-tiled-trace.json.gz",
+      "rawSHA256": "d2e2fefe7e1597778d797241b08da0091f6261826ba4bf27dd49c4b4d6b56338",
+      "compressedSHA256": "697557f4cb76f21f7472eadb65772092c48bac1ccbcdbfaabb6e0ad951a70d61",
+      "rawBytes": 3338517,
+      "compressedBytes": 278509,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "d2e2fefe7e1597778d797241b08da0091f6261826ba4bf27dd49c4b4d6b56338",
+      "compressedSHA256": "697557f4cb76f21f7472eadb65772092c48bac1ccbcdbfaabb6e0ad951a70d61",
+      "rawBytes": 3338517,
+      "compressedBytes": 278509,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-tiled-update-trace.json.gz",
+      "rawSHA256": "4c8877dc4036d366987279ebaad4c9944d92906ed0b7647a4a004591db295ba9",
+      "compressedSHA256": "4e19f8a1eacc3743a5d745f5bd926137d47ec4a0c578b0af0323efb916510d29",
+      "rawBytes": 16986270,
+      "compressedBytes": 940332,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n2048-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n2048-tiled-updates.json.gz",
+      "rawSHA256": "304e7a34bbf5a1c1b93c9bb6a5b08746a5c20841b6202300bd8f27e089fe6f1d",
+      "compressedSHA256": "2ab8082a64fb1edf13698954a94ec9c1b63fbd7cd2fbeac2054f2fd1b7dd2f1a",
+      "rawBytes": 162101,
+      "compressedBytes": 6105,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n2048-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-full-observed.json.gz",
+      "rawSHA256": "63931c97a23447b9bdd4deb3c39427a48bda32c38f30d6662f9bf72ff2241665",
+      "compressedSHA256": "901f126ce0841fb189744bbea1395dcb5f649f2e212467900ef16ec24f6325c8",
+      "rawBytes": 41806,
+      "compressedBytes": 2339,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-full-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-full-plain.json.gz",
+      "rawSHA256": "458c20003dbd294ce75189ce161a76dd7f22a9798a496d034779c6ffe18ff03e",
+      "compressedSHA256": "0430c64b5fc264e077bcf1147e5011ff1233ccd186e9990ec58f49d1a0f7c3b4",
+      "rawBytes": 41807,
+      "compressedBytes": 2339,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-full-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-full-trace.json.gz",
+      "rawSHA256": "c0d6542651c2ae76b714be61990054a432274b2415861b4593798d0ba710c9df",
+      "compressedSHA256": "a57afc617c75aee8a48da13cca91e5ee7f2ba78a424e6f691810a13a656b463d",
+      "rawBytes": 840751,
+      "compressedBytes": 82283,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-full-update-pressure-trace.json.gz",
+      "rawSHA256": "c0d6542651c2ae76b714be61990054a432274b2415861b4593798d0ba710c9df",
+      "compressedSHA256": "a57afc617c75aee8a48da13cca91e5ee7f2ba78a424e6f691810a13a656b463d",
+      "rawBytes": 840751,
+      "compressedBytes": 82283,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-full-update-trace.json.gz",
+      "rawSHA256": "b2b0fc24eedb4a59a5a167ed27a4a08344e60cfa0879a3b086840888d6000437",
+      "compressedSHA256": "79bcbc6ff28abc6d6eb7ac51c6b4dedfaab42a2dbf690d5758e73df114f0124b",
+      "rawBytes": 4376853,
+      "compressedBytes": 260254,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-full-updates.json.gz",
+      "rawSHA256": "0b71dc0e29e16683e29b04785117ae78ae1d5894c732cdac71aba59a68a03129",
+      "compressedSHA256": "d6232c8996d87f831d28ce43d1e70900f0b8b3ffe7fa8dbec56c5ce5bed1b15a",
+      "rawBytes": 41805,
+      "compressedBytes": 2335,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-full-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-tiled-observed.json.gz",
+      "rawSHA256": "63931c97a23447b9bdd4deb3c39427a48bda32c38f30d6662f9bf72ff2241665",
+      "compressedSHA256": "901f126ce0841fb189744bbea1395dcb5f649f2e212467900ef16ec24f6325c8",
+      "rawBytes": 41806,
+      "compressedBytes": 2339,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-tiled-plain.json.gz",
+      "rawSHA256": "458c20003dbd294ce75189ce161a76dd7f22a9798a496d034779c6ffe18ff03e",
+      "compressedSHA256": "0430c64b5fc264e077bcf1147e5011ff1233ccd186e9990ec58f49d1a0f7c3b4",
+      "rawBytes": 41807,
+      "compressedBytes": 2339,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-tiled-trace.json.gz",
+      "rawSHA256": "ea46883ef790f62364915d0e674184eda4ae0331e741bdb1a49813c37718018e",
+      "compressedSHA256": "f69c38cc9d32a8594b94a458037da18edb075de6234547d5dd1bf24390202046",
+      "rawBytes": 840750,
+      "compressedBytes": 82280,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "ea46883ef790f62364915d0e674184eda4ae0331e741bdb1a49813c37718018e",
+      "compressedSHA256": "f69c38cc9d32a8594b94a458037da18edb075de6234547d5dd1bf24390202046",
+      "rawBytes": 840750,
+      "compressedBytes": 82280,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-tiled-update-trace.json.gz",
+      "rawSHA256": "0140733044cd4c95e5088e46ba94788d6968525f32f490d99450a96b15189ca4",
+      "compressedSHA256": "823a8815863c5d81f1345154641f92f8c916752b82a0a274f62ca02131ab5144",
+      "rawBytes": 4252053,
+      "compressedBytes": 258167,
+      "repositoryCopy": null
+    },
+    {
+      "original": "default-cfl0.225/a100-n512-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/a100-n512-tiled-updates.json.gz",
+      "rawSHA256": "0b71dc0e29e16683e29b04785117ae78ae1d5894c732cdac71aba59a68a03129",
+      "compressedSHA256": "d6232c8996d87f831d28ce43d1e70900f0b8b3ffe7fa8dbec56c5ce5bed1b15a",
+      "rawBytes": 41805,
+      "compressedBytes": 2335,
+      "repositoryCopy": "evidence/default-cfl0.225/a100-n512-tiled-updates.json.gz"
+    },
+    {
+      "original": "default-cfl0.225/runs.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/default-cfl0.225/runs.json.gz",
+      "rawSHA256": "04b1b5c70eb31f654e15a38e6f874821f8c42f9e14c5dd52bef497cffac9bb6f",
+      "compressedSHA256": "b526c72e0846e303870005b4b62e5c0191fd5e199a7d39a08d769a2aaf2b25f7",
+      "rawBytes": 8262486,
+      "compressedBytes": 215600,
+      "repositoryCopy": "evidence/default-cfl0.225/runs.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225.log",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225.log.gz",
+      "rawSHA256": "107f6c9b5b1d53b648a984b90e42876ea0aebeeae6810075ff091b6455ad8ff8",
+      "compressedSHA256": "56e52d1ece9dcc776f884d90faf562ad74a82af2763266f14e277c713f5402d3",
+      "rawBytes": 723,
+      "compressedBytes": 119,
+      "repositoryCopy": "evidence/unfused-cfl0.225.log.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-full-observed.json.gz",
+      "rawSHA256": "fcfa18d5b5f888c51bace2a8f1ad099a9c1ce6ec120a8d0b6078da633d08943d",
+      "compressedSHA256": "c98e9ac2d48ec00a8ab10be45ea044c5470cfb5aa4ec3d9393143847cf90cbab",
+      "rawBytes": 81980,
+      "compressedBytes": 3313,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-full-plain.json.gz",
+      "rawSHA256": "4677f217b1f4692a541874be1d93798998547f2b3af609d0f6c98853b3f89639",
+      "compressedSHA256": "5dcbb58cfe1cef060da34267f70a468ec9db7b211270e0b2ade62e4221b2001f",
+      "rawBytes": 81981,
+      "compressedBytes": 3312,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-full-trace.json.gz",
+      "rawSHA256": "8f2601b340de5e1bbfe7b77f9d3e40f62184a1b210bcb63037cea6337d924bda",
+      "compressedSHA256": "fc81cd7f9cae1fbddb5ee5a5cbcaa8c155db103de6c3e5b57fac354105538dbe",
+      "rawBytes": 1667488,
+      "compressedBytes": 129867,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-full-update-pressure-trace.json.gz",
+      "rawSHA256": "8f2601b340de5e1bbfe7b77f9d3e40f62184a1b210bcb63037cea6337d924bda",
+      "compressedSHA256": "fc81cd7f9cae1fbddb5ee5a5cbcaa8c155db103de6c3e5b57fac354105538dbe",
+      "rawBytes": 1667488,
+      "compressedBytes": 129867,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-full-update-trace.json.gz",
+      "rawSHA256": "0f00d5901f87ae9876918f8a05612c607c5a704fbad3c0c5226f0ce391fb3ff7",
+      "compressedSHA256": "5f70ff512617624da93fc42c34285c9904893ceb70d23effcfd19687e09bd688",
+      "rawBytes": 8698781,
+      "compressedBytes": 428842,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-full-updates.json.gz",
+      "rawSHA256": "f8e241cd6b47c8d6adee3eeea1f450c75127cfc9c46b8f6bbe6db9bfa07b62a5",
+      "compressedSHA256": "386ac942cc910379179ed8440f6d23b059eef5c05e1eef13a64d42352195e902",
+      "rawBytes": 81979,
+      "compressedBytes": 3307,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-tiled-observed.json.gz",
+      "rawSHA256": "fcfa18d5b5f888c51bace2a8f1ad099a9c1ce6ec120a8d0b6078da633d08943d",
+      "compressedSHA256": "c98e9ac2d48ec00a8ab10be45ea044c5470cfb5aa4ec3d9393143847cf90cbab",
+      "rawBytes": 81980,
+      "compressedBytes": 3313,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-tiled-plain.json.gz",
+      "rawSHA256": "4677f217b1f4692a541874be1d93798998547f2b3af609d0f6c98853b3f89639",
+      "compressedSHA256": "5dcbb58cfe1cef060da34267f70a468ec9db7b211270e0b2ade62e4221b2001f",
+      "rawBytes": 81981,
+      "compressedBytes": 3312,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-tiled-trace.json.gz",
+      "rawSHA256": "d51c095937dabeba18ae494fc2df615005daac3f4ae86075f6a4d7ce7012e4a8",
+      "compressedSHA256": "31694c407203b802b4fb99e12b8ffb81225ff6fc302d587490d4dc488123666a",
+      "rawBytes": 1667487,
+      "compressedBytes": 129865,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "d51c095937dabeba18ae494fc2df615005daac3f4ae86075f6a4d7ce7012e4a8",
+      "compressedSHA256": "31694c407203b802b4fb99e12b8ffb81225ff6fc302d587490d4dc488123666a",
+      "rawBytes": 1667487,
+      "compressedBytes": 129865,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-tiled-update-trace.json.gz",
+      "rawSHA256": "bdbbb38380facf50cfca5c331e6eec0bb047b5077be680d3ff76bdb135892ac0",
+      "compressedSHA256": "0e5943a619446353c2a82bd5f01e3d4e9636c66824024ea6a4eaa5e47224ad40",
+      "rawBytes": 8483267,
+      "compressedBytes": 423233,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n1024-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n1024-tiled-updates.json.gz",
+      "rawSHA256": "f8e241cd6b47c8d6adee3eeea1f450c75127cfc9c46b8f6bbe6db9bfa07b62a5",
+      "compressedSHA256": "386ac942cc910379179ed8440f6d23b059eef5c05e1eef13a64d42352195e902",
+      "rawBytes": 81979,
+      "compressedBytes": 3307,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n1024-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-full-observed.json.gz",
+      "rawSHA256": "de5e0ca4dfd667070cc56ea0f8e3b0fd5438e1933d0304324eded5f6cec5d462",
+      "compressedSHA256": "ca057f3c5ea0fac93d91bd39631ab26d72624dd24167b2c2f2c693a77843b3d0",
+      "rawBytes": 162184,
+      "compressedBytes": 5357,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-full-plain.json.gz",
+      "rawSHA256": "9891ca47dd1d649e7349c2cc1d387adc6e2e3eaa56b035e12dcaea3ba7bfe19c",
+      "compressedSHA256": "fcb939d20fe149ae31bd8ad81524d0f2da601ca082468eb44fe9ed3bd2ee303f",
+      "rawBytes": 162185,
+      "compressedBytes": 5356,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-full-trace.json.gz",
+      "rawSHA256": "b5ccb242fe0c01d20ce36e43a89b46a2693f5589b67bcfa8a948afec849bf3fb",
+      "compressedSHA256": "4c6a219f65691f806c3ae4af3a531b2cfe394d521a4b32ec333a084f9de8f1cd",
+      "rawBytes": 3336473,
+      "compressedBytes": 241459,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-full-update-pressure-trace.json.gz",
+      "rawSHA256": "b5ccb242fe0c01d20ce36e43a89b46a2693f5589b67bcfa8a948afec849bf3fb",
+      "compressedSHA256": "4c6a219f65691f806c3ae4af3a531b2cfe394d521a4b32ec333a084f9de8f1cd",
+      "rawBytes": 3336473,
+      "compressedBytes": 241459,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-full-update-trace.json.gz",
+      "rawSHA256": "3b4975f050caa22d72482ce857b226ff1765d183b922431cb77f368723e330e8",
+      "compressedSHA256": "57a89f630cd1fb79e21f07814c545c0ba7fec35bfb5d784f248e3dfc6925c97f",
+      "rawBytes": 17416783,
+      "compressedBytes": 849373,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-full-updates.json.gz",
+      "rawSHA256": "78d2e2356bc8ea954bb1d482397cbcd4f1c61b0cba08b392502f289f0590d5fd",
+      "compressedSHA256": "e7d588ad78161a7a3634722f2271aa79d0d62d143b00a49af391ef7eaf8d8f57",
+      "rawBytes": 162183,
+      "compressedBytes": 5351,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-tiled-observed.json.gz",
+      "rawSHA256": "de5e0ca4dfd667070cc56ea0f8e3b0fd5438e1933d0304324eded5f6cec5d462",
+      "compressedSHA256": "ca057f3c5ea0fac93d91bd39631ab26d72624dd24167b2c2f2c693a77843b3d0",
+      "rawBytes": 162184,
+      "compressedBytes": 5357,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-tiled-plain.json.gz",
+      "rawSHA256": "9891ca47dd1d649e7349c2cc1d387adc6e2e3eaa56b035e12dcaea3ba7bfe19c",
+      "compressedSHA256": "fcb939d20fe149ae31bd8ad81524d0f2da601ca082468eb44fe9ed3bd2ee303f",
+      "rawBytes": 162185,
+      "compressedBytes": 5356,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-tiled-trace.json.gz",
+      "rawSHA256": "9978913d979dcc05acc3f2e26ea263f52d4b231a4359421ef1e6745243bc99cc",
+      "compressedSHA256": "b0a457036800c10207052dc6f9c2745db178877cae0f76a502fc796e9e0db07c",
+      "rawBytes": 3336472,
+      "compressedBytes": 241460,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "9978913d979dcc05acc3f2e26ea263f52d4b231a4359421ef1e6745243bc99cc",
+      "compressedSHA256": "b0a457036800c10207052dc6f9c2745db178877cae0f76a502fc796e9e0db07c",
+      "rawBytes": 3336472,
+      "compressedBytes": 241460,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-tiled-update-trace.json.gz",
+      "rawSHA256": "b5fe5b3d726d6f6f6aeb897cc2c3fbd1d671964b47981534d717eecb736be730",
+      "compressedSHA256": "94cd07065dc75b4c78b44053b1ea67921b02fd4d25a11af1467744178150ff82",
+      "rawBytes": 16975927,
+      "compressedBytes": 837036,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n2048-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n2048-tiled-updates.json.gz",
+      "rawSHA256": "78d2e2356bc8ea954bb1d482397cbcd4f1c61b0cba08b392502f289f0590d5fd",
+      "compressedSHA256": "e7d588ad78161a7a3634722f2271aa79d0d62d143b00a49af391ef7eaf8d8f57",
+      "rawBytes": 162183,
+      "compressedBytes": 5351,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n2048-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-full-observed.json.gz",
+      "rawSHA256": "ff5f932f188e5d38b4699921da2fc5b6acf474ea4fb221ec5e862aed0e56e18e",
+      "compressedSHA256": "a30817379c38e197b27a403d94dba18e7d48e815027b18649f337be9f50ee281",
+      "rawBytes": 41851,
+      "compressedBytes": 2192,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-full-plain.json.gz",
+      "rawSHA256": "df2c88ecdb5882e449dbce9927674de40879549b38d1fa9ac3fd32bd4f7341e9",
+      "compressedSHA256": "c6f8fc8340d94ec2f4e462ede4316013f2ec1693c8a7d9e5b12bc60c7c2252ca",
+      "rawBytes": 41852,
+      "compressedBytes": 2192,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-full-trace.json.gz",
+      "rawSHA256": "bfc55405343eb1abada433e4fd279bfa394adf33a6c214196ba5976e01f60810",
+      "compressedSHA256": "19b483257d61bf57530448d412de36e39b3ba5ba4a9b1e7343a8b818a5c00776",
+      "rawBytes": 833928,
+      "compressedBytes": 72683,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-full-update-pressure-trace.json.gz",
+      "rawSHA256": "bfc55405343eb1abada433e4fd279bfa394adf33a6c214196ba5976e01f60810",
+      "compressedSHA256": "19b483257d61bf57530448d412de36e39b3ba5ba4a9b1e7343a8b818a5c00776",
+      "rawBytes": 833928,
+      "compressedBytes": 72683,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-full-update-trace.json.gz",
+      "rawSHA256": "ab4ca35d43ff614072dd69316a18e7152ee5b3790da16f81a604e5e566fa0f34",
+      "compressedSHA256": "b640cf346afbbf221963a25d9cd211f9498534b0e666c3d4a245acf9593e0915",
+      "rawBytes": 4342586,
+      "compressedBytes": 235456,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-full-updates.json.gz",
+      "rawSHA256": "40c14678de28d16b87cf47492b5670ae76bf4b307a9a76ea6ec24545fe15fb4c",
+      "compressedSHA256": "ffca2f1f72bb4a745550cd86b26c79d9b65f323bf97c4caa99d16f41587f382b",
+      "rawBytes": 41850,
+      "compressedBytes": 2187,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-tiled-observed.json.gz",
+      "rawSHA256": "ff5f932f188e5d38b4699921da2fc5b6acf474ea4fb221ec5e862aed0e56e18e",
+      "compressedSHA256": "a30817379c38e197b27a403d94dba18e7d48e815027b18649f337be9f50ee281",
+      "rawBytes": 41851,
+      "compressedBytes": 2192,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-tiled-plain.json.gz",
+      "rawSHA256": "df2c88ecdb5882e449dbce9927674de40879549b38d1fa9ac3fd32bd4f7341e9",
+      "compressedSHA256": "c6f8fc8340d94ec2f4e462ede4316013f2ec1693c8a7d9e5b12bc60c7c2252ca",
+      "rawBytes": 41852,
+      "compressedBytes": 2192,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-tiled-trace.json.gz",
+      "rawSHA256": "43de5e645fbb0ff81bce50dca4978e1c86eb60f39e4496b06ffeb5d95e18c344",
+      "compressedSHA256": "e614ce0c51f8a14c17b6f46681ee399393336d4f8b7929ee8b7846f5be7f0212",
+      "rawBytes": 833927,
+      "compressedBytes": 72680,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "43de5e645fbb0ff81bce50dca4978e1c86eb60f39e4496b06ffeb5d95e18c344",
+      "compressedSHA256": "e614ce0c51f8a14c17b6f46681ee399393336d4f8b7929ee8b7846f5be7f0212",
+      "rawBytes": 833927,
+      "compressedBytes": 72680,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-tiled-update-trace.json.gz",
+      "rawSHA256": "05973d275adf57482e2e96542dfa55e1254cacf6bbf92ae96620dcf768432842",
+      "compressedSHA256": "da9401b2a3b9be9cf3c4a3f944e445b01b0d1678794f3d56aa3bbe1d6847647a",
+      "rawBytes": 4238534,
+      "compressedBytes": 233499,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a1-n512-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a1-n512-tiled-updates.json.gz",
+      "rawSHA256": "40c14678de28d16b87cf47492b5670ae76bf4b307a9a76ea6ec24545fe15fb4c",
+      "compressedSHA256": "ffca2f1f72bb4a745550cd86b26c79d9b65f323bf97c4caa99d16f41587f382b",
+      "rawBytes": 41850,
+      "compressedBytes": 2187,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a1-n512-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-full-observed.json.gz",
+      "rawSHA256": "28ef6652f8298700439479d4d7a2c314b7afdd9c672b96456ede8d5fc6d0559a",
+      "compressedSHA256": "fd9eacce8a2b8c6adb65a75bad86246e242abdbaf07a4d2579d50bf16a65d986",
+      "rawBytes": 81930,
+      "compressedBytes": 3482,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-full-plain.json.gz",
+      "rawSHA256": "9c9e21959c9ed863536cc13a50183b394cac36420aa1706994e825064d830deb",
+      "compressedSHA256": "c1204eb05e0ac7e508aa5cae123828e59349de3db3f7c69358548f21eb663a82",
+      "rawBytes": 81931,
+      "compressedBytes": 3482,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-full-trace.json.gz",
+      "rawSHA256": "a84ff57726b3b2dcfdaef4c49b9b69407dcc6dc2e76479189298e4f05da38a8f",
+      "compressedSHA256": "b1f1a78cfb0b218476fee0ba8c1a7293eeb88cfae538de357de29d6a65b8fd88",
+      "rawBytes": 1658106,
+      "compressedBytes": 136038,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-full-update-pressure-trace.json.gz",
+      "rawSHA256": "a84ff57726b3b2dcfdaef4c49b9b69407dcc6dc2e76479189298e4f05da38a8f",
+      "compressedSHA256": "b1f1a78cfb0b218476fee0ba8c1a7293eeb88cfae538de357de29d6a65b8fd88",
+      "rawBytes": 1658106,
+      "compressedBytes": 136038,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-full-update-trace.json.gz",
+      "rawSHA256": "5aaa49820cee07930722eec2f1ae7c49e51310271ecc4f23f8e982734481c8e1",
+      "compressedSHA256": "5cee72094d36157a228748a03150b5be6aea14c70459284696f821a34c1efde1",
+      "rawBytes": 8735988,
+      "compressedBytes": 453581,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-full-updates.json.gz",
+      "rawSHA256": "88da8c1cf0812443cf984175ae7d1f2b4fa2c080320030c1d4f01bf40112bb93",
+      "compressedSHA256": "d7b1b78d604218c4ec1719c330e4395a4e80b9591ffc9ab5314f935fa37dc715",
+      "rawBytes": 81929,
+      "compressedBytes": 3477,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-tiled-observed.json.gz",
+      "rawSHA256": "28ef6652f8298700439479d4d7a2c314b7afdd9c672b96456ede8d5fc6d0559a",
+      "compressedSHA256": "fd9eacce8a2b8c6adb65a75bad86246e242abdbaf07a4d2579d50bf16a65d986",
+      "rawBytes": 81930,
+      "compressedBytes": 3482,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-tiled-plain.json.gz",
+      "rawSHA256": "9c9e21959c9ed863536cc13a50183b394cac36420aa1706994e825064d830deb",
+      "compressedSHA256": "c1204eb05e0ac7e508aa5cae123828e59349de3db3f7c69358548f21eb663a82",
+      "rawBytes": 81931,
+      "compressedBytes": 3482,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-tiled-trace.json.gz",
+      "rawSHA256": "469489ecba90b54529862a6e56cf726f944cf68bc8d9d589407eb3160f49809f",
+      "compressedSHA256": "67b6c8860cc7c0b29f8dbb5f18c0c2f6e65725d172870ad3629b1e1a36590e0a",
+      "rawBytes": 1658105,
+      "compressedBytes": 136036,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "469489ecba90b54529862a6e56cf726f944cf68bc8d9d589407eb3160f49809f",
+      "compressedSHA256": "67b6c8860cc7c0b29f8dbb5f18c0c2f6e65725d172870ad3629b1e1a36590e0a",
+      "rawBytes": 1658105,
+      "compressedBytes": 136036,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-tiled-update-trace.json.gz",
+      "rawSHA256": "6a3fc193389544188a7712e7f7ca67dfdea930c9a83c9b19831afc28954df5dc",
+      "compressedSHA256": "3c8c11f4dbec0d1ef361c246635387aa29310834d08a13978ded8fcff3209232",
+      "rawBytes": 8522346,
+      "compressedBytes": 448420,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n1024-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n1024-tiled-updates.json.gz",
+      "rawSHA256": "88da8c1cf0812443cf984175ae7d1f2b4fa2c080320030c1d4f01bf40112bb93",
+      "compressedSHA256": "d7b1b78d604218c4ec1719c330e4395a4e80b9591ffc9ab5314f935fa37dc715",
+      "rawBytes": 81929,
+      "compressedBytes": 3477,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n1024-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-full-observed.json.gz",
+      "rawSHA256": "815358e62308d46af8ca1b7071240dd654c7faff81b391a0509cab6ddbc01e1e",
+      "compressedSHA256": "23d891ec977d0c620d65f8f01eec570855ee0f10c481b1e4a04be29c3a8feec4",
+      "rawBytes": 161985,
+      "compressedBytes": 5838,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-full-plain.json.gz",
+      "rawSHA256": "b8be13aa7eb554fbcb6f2fe28991a1863596f350dff71d79010094db99284bac",
+      "compressedSHA256": "de6d4cca868bb1137792d532cce59a5868edfcfca8669ea047cb71ff3a3ee497",
+      "rawBytes": 161986,
+      "compressedBytes": 5838,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-full-trace.json.gz",
+      "rawSHA256": "9a91b0f06f30ba8c31cdee1fae5c252fb02c3fef1ff3fbfe6babbc1f3c766de9",
+      "compressedSHA256": "714cdbdb4523ae97984d4510130a2d63bdf6726acb192630cb08cd5ae19a6087",
+      "rawBytes": 3345008,
+      "compressedBytes": 252993,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-full-update-pressure-trace.json.gz",
+      "rawSHA256": "9a91b0f06f30ba8c31cdee1fae5c252fb02c3fef1ff3fbfe6babbc1f3c766de9",
+      "compressedSHA256": "714cdbdb4523ae97984d4510130a2d63bdf6726acb192630cb08cd5ae19a6087",
+      "rawBytes": 3345008,
+      "compressedBytes": 252993,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-full-update-trace.json.gz",
+      "rawSHA256": "62e2b45b7a82e27354035001f52082bcd2aeb37a1efa32e4859ee8bb664afdbf",
+      "compressedSHA256": "f089c51bb3dbd5ede0f9307b8dbcd2fd8c6a8a38d734fd69cdf384ef8e040002",
+      "rawBytes": 17472745,
+      "compressedBytes": 916957,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-full-updates.json.gz",
+      "rawSHA256": "9c31bdd4d356bb5578fe6091c5a213fbeaf16fc02666624e3812d8532270238d",
+      "compressedSHA256": "fdeed8ca17dd3b45a22c05ebed7fe578add6bceb53b6a827834d68da5a8c022d",
+      "rawBytes": 161984,
+      "compressedBytes": 5833,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-tiled-observed.json.gz",
+      "rawSHA256": "815358e62308d46af8ca1b7071240dd654c7faff81b391a0509cab6ddbc01e1e",
+      "compressedSHA256": "23d891ec977d0c620d65f8f01eec570855ee0f10c481b1e4a04be29c3a8feec4",
+      "rawBytes": 161985,
+      "compressedBytes": 5838,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-tiled-plain.json.gz",
+      "rawSHA256": "b8be13aa7eb554fbcb6f2fe28991a1863596f350dff71d79010094db99284bac",
+      "compressedSHA256": "de6d4cca868bb1137792d532cce59a5868edfcfca8669ea047cb71ff3a3ee497",
+      "rawBytes": 161986,
+      "compressedBytes": 5838,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-tiled-trace.json.gz",
+      "rawSHA256": "2b0d2c6a752e6f722100cfeb23938f12b7ea6bc4c57d8fb06e21a3797c7a00f1",
+      "compressedSHA256": "3fbf7d5a33b716e95d6ec9f65f005d50e9f6aa4ed7f5af3a1b58fe1803ff7d38",
+      "rawBytes": 3345007,
+      "compressedBytes": 252991,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "2b0d2c6a752e6f722100cfeb23938f12b7ea6bc4c57d8fb06e21a3797c7a00f1",
+      "compressedSHA256": "3fbf7d5a33b716e95d6ec9f65f005d50e9f6aa4ed7f5af3a1b58fe1803ff7d38",
+      "rawBytes": 3345007,
+      "compressedBytes": 252991,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-tiled-update-trace.json.gz",
+      "rawSHA256": "b83e1e7bbecb19477089022d4bb92fb6b189a4f5506dcee6408622b3e497cfa6",
+      "compressedSHA256": "aa414d49c2e96fcac3be516ed0ddfa5107ce4fd890cd2347eeef1e50a970ce52",
+      "rawBytes": 17036803,
+      "compressedBytes": 906303,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n2048-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n2048-tiled-updates.json.gz",
+      "rawSHA256": "9c31bdd4d356bb5578fe6091c5a213fbeaf16fc02666624e3812d8532270238d",
+      "compressedSHA256": "fdeed8ca17dd3b45a22c05ebed7fe578add6bceb53b6a827834d68da5a8c022d",
+      "rawBytes": 161984,
+      "compressedBytes": 5833,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n2048-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-full-observed.json.gz",
+      "rawSHA256": "5927f6ecec11a4d905cb1c112c23e534ea2a14618de72ae5f0a9b01c6a202432",
+      "compressedSHA256": "b5423ab07b0fe1ea9b271e77413e3a77369f08e235470fae6830a0fd5a189c64",
+      "rawBytes": 41813,
+      "compressedBytes": 2271,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-full-plain.json.gz",
+      "rawSHA256": "48e484a5edc3eebe45da05f9d7b9c90e5efe806172ff67e230071175c18c1805",
+      "compressedSHA256": "33fd4875edc8ab910b384b53b756e8d38e68840e315559fa8ba9041b7d1f865e",
+      "rawBytes": 41814,
+      "compressedBytes": 2272,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-full-trace.json.gz",
+      "rawSHA256": "318d8919aa894edfb855ddfbcbdd256b9476471b44cff520718cf463faca3e2e",
+      "compressedSHA256": "76e0fa355b2bf33afaa56cbe6f61b4be7cb61fc0b7d929d365e0b1053d0592f8",
+      "rawBytes": 832565,
+      "compressedBytes": 74627,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-full-update-pressure-trace.json.gz",
+      "rawSHA256": "318d8919aa894edfb855ddfbcbdd256b9476471b44cff520718cf463faca3e2e",
+      "compressedSHA256": "76e0fa355b2bf33afaa56cbe6f61b4be7cb61fc0b7d929d365e0b1053d0592f8",
+      "rawBytes": 832565,
+      "compressedBytes": 74627,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-full-update-trace.json.gz",
+      "rawSHA256": "2ab5dbf2000467c2cb699009e942388f7f0bc0334c6cdf76748de64a3e5d5524",
+      "compressedSHA256": "3db6d77a8ac3f1eed5494e48e051aca14ebb491956558f78589e56dff2b8bb1b",
+      "rawBytes": 4372135,
+      "compressedBytes": 246970,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-full-updates.json.gz",
+      "rawSHA256": "ac5eb2c1b303fcdc049e356e41a005f921b6fc87d068c004dcc97309089d3b5d",
+      "compressedSHA256": "e8bf0ad3edd578c40f37cbc21c9774d74f55d97b5000d7ebca0578a94312fb32",
+      "rawBytes": 41812,
+      "compressedBytes": 2266,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-tiled-observed.json.gz",
+      "rawSHA256": "5927f6ecec11a4d905cb1c112c23e534ea2a14618de72ae5f0a9b01c6a202432",
+      "compressedSHA256": "b5423ab07b0fe1ea9b271e77413e3a77369f08e235470fae6830a0fd5a189c64",
+      "rawBytes": 41813,
+      "compressedBytes": 2271,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-tiled-plain.json.gz",
+      "rawSHA256": "48e484a5edc3eebe45da05f9d7b9c90e5efe806172ff67e230071175c18c1805",
+      "compressedSHA256": "33fd4875edc8ab910b384b53b756e8d38e68840e315559fa8ba9041b7d1f865e",
+      "rawBytes": 41814,
+      "compressedBytes": 2272,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-tiled-trace.json.gz",
+      "rawSHA256": "75b24ccc24a2006a5d7b82d457d253036359d66594f29b56282504c7037c4f74",
+      "compressedSHA256": "d1af0188c3c4506cf5aec2537fe802aa1c00b8bf3eff7e22ec5c89a04ea7cc34",
+      "rawBytes": 832564,
+      "compressedBytes": 74623,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "75b24ccc24a2006a5d7b82d457d253036359d66594f29b56282504c7037c4f74",
+      "compressedSHA256": "d1af0188c3c4506cf5aec2537fe802aa1c00b8bf3eff7e22ec5c89a04ea7cc34",
+      "rawBytes": 832564,
+      "compressedBytes": 74623,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-tiled-update-trace.json.gz",
+      "rawSHA256": "2e1dde0c9fb22420d6b140a61c551bacbf9f34722ad6b14c4cdd80ce0a83194e",
+      "compressedSHA256": "d6860680f8f80839d11d3f24e1dbc51d05a7d88624662377e499d7377142f645",
+      "rawBytes": 4269565,
+      "compressedBytes": 244725,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a10-n512-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a10-n512-tiled-updates.json.gz",
+      "rawSHA256": "ac5eb2c1b303fcdc049e356e41a005f921b6fc87d068c004dcc97309089d3b5d",
+      "compressedSHA256": "e8bf0ad3edd578c40f37cbc21c9774d74f55d97b5000d7ebca0578a94312fb32",
+      "rawBytes": 41812,
+      "compressedBytes": 2266,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a10-n512-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-full-observed.json.gz",
+      "rawSHA256": "223b9cafa6b255a248e31cb8c510d13459b7c4e724f1fb6c0bf1a01dfe10c90c",
+      "compressedSHA256": "085324707ae563a6b7137017ef887a9d65853430f77805dd5e3fb5c7bb103316",
+      "rawBytes": 81851,
+      "compressedBytes": 3600,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-full-plain.json.gz",
+      "rawSHA256": "12a1a033b9a4cd0a5c6850ee1bc884fb7919bbb717635940365eba349682ad1a",
+      "compressedSHA256": "5db6c5b1df2765ae229bb517f291eb49e6eb73b16a0ea98c7e77eebb1f9ff7c8",
+      "rawBytes": 81852,
+      "compressedBytes": 3600,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-full-trace.json.gz",
+      "rawSHA256": "b73e7c7d54f6cdf785245a827fdee4e15eb093f211870c834e7c8f88c05f6827",
+      "compressedSHA256": "a3a3fc19bbfab9d60a28b4fb538823977d02e0027ef68c76c6e4f122ba652550",
+      "rawBytes": 1657649,
+      "compressedBytes": 145938,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-full-update-pressure-trace.json.gz",
+      "rawSHA256": "b73e7c7d54f6cdf785245a827fdee4e15eb093f211870c834e7c8f88c05f6827",
+      "compressedSHA256": "a3a3fc19bbfab9d60a28b4fb538823977d02e0027ef68c76c6e4f122ba652550",
+      "rawBytes": 1657649,
+      "compressedBytes": 145938,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-full-update-trace.json.gz",
+      "rawSHA256": "d6e9e0fc5a765e345be78daf8c85fb5139e696a512bcbf5a2f727ce7ccdea643",
+      "compressedSHA256": "ee59ddfd44b55d16318982a925665b6696c9e54dbe7dfb0eb066d5871506fd9b",
+      "rawBytes": 8723825,
+      "compressedBytes": 493717,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-full-updates.json.gz",
+      "rawSHA256": "23cff234a6c18fba86a8f3f4bb0195db3a19492815b5d087410175e4f519d065",
+      "compressedSHA256": "067e14ace1577288cfc3c07ddbd1231433dbf5577d2a48a044663ae4c8a1fe41",
+      "rawBytes": 81850,
+      "compressedBytes": 3595,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-tiled-observed.json.gz",
+      "rawSHA256": "223b9cafa6b255a248e31cb8c510d13459b7c4e724f1fb6c0bf1a01dfe10c90c",
+      "compressedSHA256": "085324707ae563a6b7137017ef887a9d65853430f77805dd5e3fb5c7bb103316",
+      "rawBytes": 81851,
+      "compressedBytes": 3600,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-tiled-plain.json.gz",
+      "rawSHA256": "12a1a033b9a4cd0a5c6850ee1bc884fb7919bbb717635940365eba349682ad1a",
+      "compressedSHA256": "5db6c5b1df2765ae229bb517f291eb49e6eb73b16a0ea98c7e77eebb1f9ff7c8",
+      "rawBytes": 81852,
+      "compressedBytes": 3600,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-tiled-trace.json.gz",
+      "rawSHA256": "2a87a0a363584fa2f3cdfb48525f7dbb35c6716e6be45094a9ff3737660a6bde",
+      "compressedSHA256": "9e32705c12fa93e1cdc170a0e902a8f015a65ddfc3b54a2f47179b1cb56ffc53",
+      "rawBytes": 1657648,
+      "compressedBytes": 145936,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "2a87a0a363584fa2f3cdfb48525f7dbb35c6716e6be45094a9ff3737660a6bde",
+      "compressedSHA256": "9e32705c12fa93e1cdc170a0e902a8f015a65ddfc3b54a2f47179b1cb56ffc53",
+      "rawBytes": 1657648,
+      "compressedBytes": 145936,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-tiled-update-trace.json.gz",
+      "rawSHA256": "13b295c926661a9438425232a40dc0ede3f242b3ba1bf3abbae4905fad1939a4",
+      "compressedSHA256": "94aab60d4ec836cb8d019789c68329877ec28d3a0e5c2e327ccab60bde80a2b9",
+      "rawBytes": 8511041,
+      "compressedBytes": 489257,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n1024-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n1024-tiled-updates.json.gz",
+      "rawSHA256": "23cff234a6c18fba86a8f3f4bb0195db3a19492815b5d087410175e4f519d065",
+      "compressedSHA256": "067e14ace1577288cfc3c07ddbd1231433dbf5577d2a48a044663ae4c8a1fe41",
+      "rawBytes": 81850,
+      "compressedBytes": 3595,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n1024-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-full-observed.json.gz",
+      "rawSHA256": "a4ab2532be49e3a234dcc0623d03b0439121b9bbbc0780db303192e3def2743a",
+      "compressedSHA256": "5d825fca38b67e39a1f2b712542f50264c293b5598f691ee24ac97685d666dd6",
+      "rawBytes": 162103,
+      "compressedBytes": 6112,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-full-plain.json.gz",
+      "rawSHA256": "11b129f8e23b306813f2fd8767286148e55912e38120152ef0144f66bc7c0db7",
+      "compressedSHA256": "67317e88b4be7c2ffba8be404711092232657000a2ecc7edf007bf5624f5d3bd",
+      "rawBytes": 162104,
+      "compressedBytes": 6112,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-full-trace.json.gz",
+      "rawSHA256": "0bf63505ec4e9dbca18cd3373c1333d62a05830efe1b938732b9ca85ac4bb719",
+      "compressedSHA256": "ec49272210413c5ca79cfca9f207ad52a3864a668d79341957658f80c30f905e",
+      "rawBytes": 3338534,
+      "compressedBytes": 278556,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-full-update-pressure-trace.json.gz",
+      "rawSHA256": "0bf63505ec4e9dbca18cd3373c1333d62a05830efe1b938732b9ca85ac4bb719",
+      "compressedSHA256": "ec49272210413c5ca79cfca9f207ad52a3864a668d79341957658f80c30f905e",
+      "rawBytes": 3338534,
+      "compressedBytes": 278556,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-full-update-trace.json.gz",
+      "rawSHA256": "7ce562d31ece1a05e5919f3962aa6cdc493f536a3eaed50e17f0590732ebf567",
+      "compressedSHA256": "147c87c8c25ccf2aba9bb1853e082d9ae145d7678ffec86880b714be85c6af6e",
+      "rawBytes": 17480123,
+      "compressedBytes": 976188,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-full-updates.json.gz",
+      "rawSHA256": "b46088bb6ec6d1950c4c1927cfa6002bd0738a72aec34e518cfd2bd4517e19c3",
+      "compressedSHA256": "78a5f0c72dc72bb22812793fd8a3801a801d70df8b4789409488658715a4c1a3",
+      "rawBytes": 162102,
+      "compressedBytes": 6107,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-tiled-observed.json.gz",
+      "rawSHA256": "a4ab2532be49e3a234dcc0623d03b0439121b9bbbc0780db303192e3def2743a",
+      "compressedSHA256": "5d825fca38b67e39a1f2b712542f50264c293b5598f691ee24ac97685d666dd6",
+      "rawBytes": 162103,
+      "compressedBytes": 6112,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-tiled-plain.json.gz",
+      "rawSHA256": "11b129f8e23b306813f2fd8767286148e55912e38120152ef0144f66bc7c0db7",
+      "compressedSHA256": "67317e88b4be7c2ffba8be404711092232657000a2ecc7edf007bf5624f5d3bd",
+      "rawBytes": 162104,
+      "compressedBytes": 6112,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-tiled-trace.json.gz",
+      "rawSHA256": "7902c7530e42fcf13d78bd658f0f8b475ebe0f96f41d9a2094565a0d78a2f176",
+      "compressedSHA256": "43217be3f177d62d4c8a1247baf43cbc1dbe21c09b0a0a8b93e6c61fdce1f018",
+      "rawBytes": 3338533,
+      "compressedBytes": 278554,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "7902c7530e42fcf13d78bd658f0f8b475ebe0f96f41d9a2094565a0d78a2f176",
+      "compressedSHA256": "43217be3f177d62d4c8a1247baf43cbc1dbe21c09b0a0a8b93e6c61fdce1f018",
+      "rawBytes": 3338533,
+      "compressedBytes": 278554,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-tiled-update-trace.json.gz",
+      "rawSHA256": "9aea2db3541ebad25537889a61f8f95e4974fea15ed3b65622a15ac1ae2cd899",
+      "compressedSHA256": "736beff12ab77c48c4a3dd694b212e9f949e500b622f50aec179797f176c7770",
+      "rawBytes": 17044883,
+      "compressedBytes": 965202,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n2048-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n2048-tiled-updates.json.gz",
+      "rawSHA256": "b46088bb6ec6d1950c4c1927cfa6002bd0738a72aec34e518cfd2bd4517e19c3",
+      "compressedSHA256": "78a5f0c72dc72bb22812793fd8a3801a801d70df8b4789409488658715a4c1a3",
+      "rawBytes": 162102,
+      "compressedBytes": 6107,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n2048-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-full-observed.json.gz",
+      "rawSHA256": "bc84603feed282696fbea3281ae88a0f31180f924621d18bfa46f7aace1830fc",
+      "compressedSHA256": "fb127a99d1ac4a3d6256866a16de35c5b192c7669df333db2f67f56007dc1a8f",
+      "rawBytes": 41803,
+      "compressedBytes": 2334,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-full-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-full-plain.json.gz",
+      "rawSHA256": "204420b14c9977d3c55f5e3556b096d2662850c3c57ea2fd3b1a8857ee2322e0",
+      "compressedSHA256": "9dec5af790b14ccac390636733eddd404f83cf95b9f2c6de17c7c540f2952d67",
+      "rawBytes": 41804,
+      "compressedBytes": 2334,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-full-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-full-trace.json.gz",
+      "rawSHA256": "ba5cd6086007a9126a9649c222b583b484dee4c2efddd52001cc6e72f36a85aa",
+      "compressedSHA256": "0399d560f1d4321a888c54b3fdf3d9dbb6838d094587f0a178f0e8f9496d3758",
+      "rawBytes": 833732,
+      "compressedBytes": 82499,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-full-update-pressure-trace.json.gz",
+      "rawSHA256": "ba5cd6086007a9126a9649c222b583b484dee4c2efddd52001cc6e72f36a85aa",
+      "compressedSHA256": "0399d560f1d4321a888c54b3fdf3d9dbb6838d094587f0a178f0e8f9496d3758",
+      "rawBytes": 833732,
+      "compressedBytes": 82499,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-full-update-trace.json.gz",
+      "rawSHA256": "c6f92c67461c88ae30efb8fb9ed7079b73e74b52e909b674a806e32bb9ee0ed1",
+      "compressedSHA256": "053b566b68a8ddbcbda755857a586c5443be4691d9c3909caf9e109970e049ed",
+      "rawBytes": 4364140,
+      "compressedBytes": 247893,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-full-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-full-updates.json.gz",
+      "rawSHA256": "f303d149c56dc58b74d4550f81ac83bde6e54a6e5faa97ef48b0bd60fec28375",
+      "compressedSHA256": "94988a4fe1fae36f42c0b4f750262185f41f952876127e7bf334c46982f80388",
+      "rawBytes": 41802,
+      "compressedBytes": 2330,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-full-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-observed.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-tiled-observed.json.gz",
+      "rawSHA256": "bc84603feed282696fbea3281ae88a0f31180f924621d18bfa46f7aace1830fc",
+      "compressedSHA256": "fb127a99d1ac4a3d6256866a16de35c5b192c7669df333db2f67f56007dc1a8f",
+      "rawBytes": 41803,
+      "compressedBytes": 2334,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-tiled-observed.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-plain.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-tiled-plain.json.gz",
+      "rawSHA256": "204420b14c9977d3c55f5e3556b096d2662850c3c57ea2fd3b1a8857ee2322e0",
+      "compressedSHA256": "9dec5af790b14ccac390636733eddd404f83cf95b9f2c6de17c7c540f2952d67",
+      "rawBytes": 41804,
+      "compressedBytes": 2334,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-tiled-plain.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-tiled-trace.json.gz",
+      "rawSHA256": "319a3d9c02c7049136cd9c56420d31d48025191622d94bc338ede4f3894c3dc5",
+      "compressedSHA256": "8291c4993a09cfafd07fb89879730d181651fd1635f6cd84413ffd3451967f2f",
+      "rawBytes": 833731,
+      "compressedBytes": 82495,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-update-pressure-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-tiled-update-pressure-trace.json.gz",
+      "rawSHA256": "319a3d9c02c7049136cd9c56420d31d48025191622d94bc338ede4f3894c3dc5",
+      "compressedSHA256": "8291c4993a09cfafd07fb89879730d181651fd1635f6cd84413ffd3451967f2f",
+      "rawBytes": 833731,
+      "compressedBytes": 82495,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-update-trace.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-tiled-update-trace.json.gz",
+      "rawSHA256": "0a94f38a96d14368992017e3c3a42659a324885ede7f6f41a5fd17a598f41bfe",
+      "compressedSHA256": "f66514339608cdae25808188790c1b18bfc2c88568162b84ebdef14535b44050",
+      "rawBytes": 4262818,
+      "compressedBytes": 246179,
+      "repositoryCopy": null
+    },
+    {
+      "original": "unfused-cfl0.225/a100-n512-tiled-updates.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/a100-n512-tiled-updates.json.gz",
+      "rawSHA256": "f303d149c56dc58b74d4550f81ac83bde6e54a6e5faa97ef48b0bd60fec28375",
+      "compressedSHA256": "94988a4fe1fae36f42c0b4f750262185f41f952876127e7bf334c46982f80388",
+      "rawBytes": 41802,
+      "compressedBytes": 2330,
+      "repositoryCopy": "evidence/unfused-cfl0.225/a100-n512-tiled-updates.json.gz"
+    },
+    {
+      "original": "unfused-cfl0.225/runs.json",
+      "archive": "/Volumes/StudioData/bombcad/experiments/2026-10-22-gpu-updates/archive/unfused-cfl0.225/runs.json.gz",
+      "rawSHA256": "03a01eb382a39646acfd606710172622a38ddc311c86d5e7a6354dec081778f0",
+      "compressedSHA256": "0059d6a432c1e54b3cbca9bd6f4a483dac4fdeca96bcc4779c1793a83f411237",
+      "rawBytes": 8262492,
+      "compressedBytes": 215643,
+      "repositoryCopy": "evidence/unfused-cfl0.225/runs.json.gz"
+    }
+  ],
+  "rawBytes": 528785708,
+  "compressedBytes": 31543259,
+  "repositoryCopies": 113,
+  "repositoryBytes": 848961
+}

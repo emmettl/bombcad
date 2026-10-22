@@ -128,6 +128,7 @@ extension BlastSolver {
         if let cappedSliverBuffer { memset(cappedSliverBuffer.contents(), 0, cappedSliverBuffer.length) }
         exposurePlane?.reset()
         exposureNeedsInitialSample = exposurePlane != nil
+        sweepUpdateCapture = nil
         firstPhaseColumns?.reset()
         firstPhaseNeedsInitialSample = firstPhaseColumns != nil
         envelopeExposure?.reset()
@@ -368,6 +369,7 @@ extension BlastSolver {
     public var memoryFootprint: Int {
         let buffers = stateBuffers + speciesBuffers + [maskBuffer, peakBuffer, impulseBuffer]
         return buffers.reduce(0) { $0 + $1.length } + grid.cellCount * 8
+            + (sweepUpdateCapture?.buffer.length ?? 0)
             + (exposurePlane?.buffer.length ?? 0) + (firstPhaseColumns?.memoryFootprint ?? 0)
             + (envelopeExposure?.memoryFootprint ?? 0)
             + (envelopeComponentRecorder?.memoryFootprint ?? 0) + (envelopeVenting?.memoryFootprint ?? 0)

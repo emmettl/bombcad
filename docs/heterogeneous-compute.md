@@ -539,3 +539,10 @@ alone for these weak pulses. All 72 model runs are retained, including two absen
 wall signals; 36 matching-type controls reproduce exactly. This narrows the independent
 model mechanism without identifying a GPU instruction or validating a new backend policy.
 emmettl/bombcad-work#80 remains open for component-wise and actual-GPU controls.
+
+The [108-export GPU update study](../Benchmarks/CUDAAcceptance/2026-10-22-gpu-updates/summary.md)
+now observes actual 1-D production sweep variables under exact plain/observer and baseline
+parity. Density/energy frequently remain unchanged for nonzero modeled increments, with
+one compatible update arithmetic model per trace. This corroborates the independent CPU
+precision mechanism on Metal; it does not establish a CUDA/3-D/product fix or relax any gate.
+emmettl/bombcad-work#80 remains open for candidate representation and broader validation.
