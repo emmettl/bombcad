@@ -42,6 +42,7 @@ extension BlastSolver {
         return configuration.gravity == nil && configuration.mixing == nil
             && configuration.refinement == 1 && refinement == nil && refinementLevels.isEmpty
             && bodies.isEmpty && structureCut == nil && congestionBuffer == nil && !hasFlame
+            && gaugeCount == 0
             && configuration.afterburnLimit == nil && configuration.afterburnMixing == nil
             && sweepUpdateCapture == nil && compensatedSweep == nil
             && probe.mathMode == nil && probe.contract == nil && probe.statePadding == 0
@@ -57,7 +58,8 @@ extension BlastSolver {
         }
         guard !enabled || supportsStepSelectorDiagnostics else {
             throw BlastError.allocationFailed(
-                "step selector diagnostics require uniform fixed air without kernel-build overrides")
+                "step selector diagnostics require uniform fixed air without gauges or kernel-build overrides"
+            )
         }
         stepSelectorDiagnostic = enabled ? try StepSelectorDiagnostic(device: device) : nil
     }

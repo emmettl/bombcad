@@ -118,10 +118,12 @@ using the clock inputs for attribution. Evidence belongs under `$BOMBCAD_DATA/ex
 
 `--precise-step-selector-diagnostic` changes only the original Metal `prepareStep` pipeline
 to an unchanged-source sibling compiled with explicit safe arithmetic and precise FP32
-functions. It requires clock/pressure tracing and excludes CUDA-job export. Every other
+functions. It requires `--first-phase --diagnostic-state-hashes` and excludes CUDA-job export. Every other
 pipeline keeps its original source/options. The export is labelled as a diagnostic and
-includes `step-selector.json` with source/options/device provenance. Unsupported physics or
+includes `step-selector.json` with source/options/device provenance. Gauges, unsupported physics or
 kernel-build overrides are refused. This changes numerical results; it does not change
 production defaults or admit data. Require disabled full-output parity, native scalar-bank
 controls, independent analytic/refinement checks and the existing fixed-reference target gate
 before interpreting candidate trajectories. emmettl/bombcad-work#89 tracks that experiment.
+Plain and traced candidate runs are both available so the trace observers can be qualified
+without changing selector arithmetic; add the existing clock/pressure switches for capture.

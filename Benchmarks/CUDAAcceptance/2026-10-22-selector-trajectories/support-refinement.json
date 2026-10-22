@@ -1,0 +1,29 @@
+{
+  "status": "passed-guard-and-interface-refinement",
+  "previousImplementation": "94213c24",
+  "unchangedDiagnosticConstructor": true,
+  "unchangedOtherBlastCoreSourceFiles": 145,
+  "capturedBankGaugeWordsAllZero": true,
+  "oldSelectorSourceSHA256": "90118a8e9b899bb68716d1fc08782bc4d9c4e5340ac66414ee98572cda9110de",
+  "newSelectorSourceSHA256": "55a8f81f884ec91b06093eed203fa8d3d3c1039cc52ae8581b117e5d4115a3eb",
+  "producerSourceSHA256": "9b71ace9e68302d44903ae6d6d391932384e29efc51db3189c34a41b04fb9eed",
+  "currentSnapshots": {
+    "precise-step-selector.md": "1ac56611e733d62411dab49eb5e0f2eb3dd9536b2d05b018da9e5639753192ff",
+    "changes.diff": "9cf69bcb188998af201feedca63ce8be975ce928da59108f98f1a411af85ca6e",
+    "StepSelectorDiagnosticsTests.swift": "3e82c01369b5804e94d95c3765d5ee099a0e4f26ae584053d4802bf9244bd4e9",
+    "README.md": "fca993ad0b743eddf031180e0307c7b57b59acf7c25af77dc667f4807238b3aa",
+    "FieldExport.swift": "fc300c36047e1cfd3daef0174400a7fe25e234405ca0e8bf8bf42a4d371322f2",
+    "StepSelectorDiagnostics.swift": "55a8f81f884ec91b06093eed203fa8d3d3c1039cc52ae8581b117e5d4115a3eb"
+  },
+  "validation": {
+    "format": "passed",
+    "lint": "passed",
+    "strict": "passed-no-warnings",
+    "command": "make check-affected",
+    "status": "passed",
+    "selectedSuites": 22,
+    "pcTests": 62,
+    "pcSuites": 11
+  },
+  "scope": "Gauge refusal and CLI qualification interface only; first-phase/state-hash output required, plain and captured runs supported. No shader, option, selector-constructor, producer library, sampling pipeline, default or numerical-policy change. Prior zero-gauge control source versions preserved. District baselines and candidate full-target gates remain outstanding."
+}

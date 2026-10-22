@@ -219,9 +219,14 @@ enum FieldExport {
         let traceInputs = args.contains("--trace-pressure-inputs")
         let traceClock = args.contains("--trace-clock-inputs")
         let preciseSelector = args.contains("--precise-step-selector-diagnostic")
-        guard !preciseSelector || (traceClock && !args.contains("--cuda-job")) else {
+        guard
+            !preciseSelector
+                || (args.contains("--first-phase") && args.contains("--diagnostic-state-hashes")
+                    && !args.contains("--cuda-job"))
+        else {
             throw BlastError.allocationFailed(
-                "--precise-step-selector-diagnostic requires --trace-clock-inputs and a Metal run")
+                "--precise-step-selector-diagnostic requires --first-phase, --diagnostic-state-hashes and a Metal run"
+            )
         }
         guard !traceInputs || tracePressure else {
             throw BlastError.allocationFailed("--trace-pressure-inputs requires --trace-pressure")

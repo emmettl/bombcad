@@ -75,8 +75,11 @@ struct StepSelectorDiagnosticsTests {
         solver.configuration.gravity = AirGravity()
         #expect(throws: BlastError.self) { try solver.configureStepSelectorDiagnostics() }
         solver.configuration.gravity = nil
+        solver.setGauges(cells: [(i: 1, j: 1, k: 1)])
+        #expect(throws: BlastError.self) { try solver.configureStepSelectorDiagnostics() }
+        solver.setGauges(cells: [])
         try solver.configureStepSelectorDiagnostics()
-        solver.configuration.gravity = AirGravity()
+        solver.setGauges(cells: [(i: 1, j: 1, k: 1)])
         #expect(solver.encodeBatch(steps: 1) == nil)
     }
 }

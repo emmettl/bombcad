@@ -56,3 +56,14 @@ six sets are bit-identical to630be97ee0e2. Existing Python ResourceWarnings rema
 district dispatch, the immediate follow-up must refuse gauges (their logging is inside
 prepareStep) and allow the untraced candidate control with mandatory first-phase/state-hash
 provenance. This checkpoint does not declare that remaining interface work or district gates done.
+
+## Support refinement after implementation94213c24
+
+The gauge/qualification follow-up is now validated: enabling or later encoding with gauges
+refuses, while plain and traced candidates both require first-phase output and state hashes.
+The diagnostic constructor and all other BlastCore source files remain unchanged from the
+executed analytic stage; captured bank gauge words are all zero. Both original control-source
+versions and the new guard/interface snapshots remain retained. The542 implementation archive
+members still verify unchanged. Format/lint, warning-free strict build and plain affected
+checks pass again (22 selected suites;62 PC tests in11 suites). The district stage is ready
+to start under the declared gates; no district acceptance result is claimed here.
