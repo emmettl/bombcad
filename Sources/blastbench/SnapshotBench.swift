@@ -288,12 +288,21 @@ func runSnapshot() throws {
         if let scale = option("scale").flatMap({ Float($0) }) { renderer.settings.pressureScale = scale }
         renderer.settings.showCharge = time == 0
         // `--ground alluvium [--explosive anfo]`: the craters the charges dig, shaded in as the app
-        // does once a run ends (the air here still sees rigid ground).
+        // does once a run ends (the air here still sees rigid ground); `--crater-time 0.1` draws
+        // them as dug by then, as the app's replay does.
         if let name = option("ground"), let ground = GroundType(rawValue: name) {
             let craters = CraterEstimate.craters(
                 of: scenario, ground: ground,
                 explosive: option("explosive").flatMap(CraterExplosive.init) ?? .tnt)
-            renderer.settings.craters = craters.map(CraterMark.init)
+            let dug = option("crater-time").flatMap(Float.init).map { time in
+                craters.compactMap { $0.grown(atTime: time) }
+            }
+            renderer.settings.craters = (dug ?? craters).map(CraterMark.init)
+            if let time = option("crater-time") {
+                for crater in craters {
+                    print(String(format: "  Formed by %.3f s; shown at %@ s", crater.formedAt, time))
+                }
+            }
             for crater in craters { print("  " + crater.summary) }
         }
         var dots: [SIMD4<Float>] = []

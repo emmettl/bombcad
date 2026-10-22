@@ -207,7 +207,7 @@ struct CraterTests {
         #expect(throws: Terrain.Failure.self) { try shallow.cratered([crater]) }
     }
 
-    @Test("The USD scene shows the crater from the last frame, the ground open under it")
+    @Test("The USD scene shows the crater growing from the first frame, the ground open under it")
     func usd() throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "crater-usd-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -224,8 +224,9 @@ struct CraterTests {
         try flat.finish()
         let text = try String(contentsOf: flatURL, encoding: .utf8)
         let mesh = try #require(text.components(separatedBy: "def Mesh \"Crater\"").last)
-        // Flat at frame 0, the crater at the last, 2.
+        // Flat at frame 0, growing at 1 and 2, 2 ms after the blast (see CraterGrowthTests).
         #expect(mesh.contains("point3f[] points.timeSamples = {") && mesh.contains("            2: ["))
+        #expect(flat.craterSamples(crater).map(\.code) == [0, 1, 2])
         #expect(mesh.contains("bombcad:label = \"\(crater.summary)\""))
         // The ground plane in eight rectangles round the crater's square.
         let ground = try #require(text.components(separatedBy: "def Mesh \"Ground\"").last)

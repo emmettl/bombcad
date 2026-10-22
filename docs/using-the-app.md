@@ -187,6 +187,11 @@ again ends a replay.
   figures); and the cloud from the frame it was handed over in, the run's last. The paint follows
   its reckoning, which may lag the run by a frame or two of the radiation, as the view did live.
   Recordings made by 0.6.0 still play, their layers as the run left them, as before.
+- **The crater** (since 23 October 2026), on earth or rock, grows with the replay's time over the
+  time it takes to form, from nothing at t = 0, and scrubbing back fills it in again. It follows
+  from the run's final crater, so nothing more is recorded and older recordings show it too. Most
+  runs end long before a crater has formed (0.33 s for 100 kg), so their replays end with it
+  part-dug, and **Done** shows it whole ([how it grows](cratering.md#how-it-grows)).
 - **Kept with the run:** Keep Run keeps the recording too, in the project's `runs/` folder beside
   its results, and a reopened project replays its kept runs. Settings ▸ Replay turns recording off
   or sets each run's space (256 MB by default); past it a run records less often rather than

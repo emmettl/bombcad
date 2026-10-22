@@ -145,9 +145,10 @@ extension SimulationModel {
         do {
             let player = try RunTimelinePlayer(folder: folder, device: device)
             let shown = run?.scenario ?? scenario
+            let craters = (run?.settings ?? completedRunSettings ?? loadedRunSettings)?.craters(over: shown)
             let playback = TimelinePlayback(
                 player: player, title: run?.name ?? "This run", scenario: shown, kept: run.map(\.cloud),
-                commandQueue: commandQueue)
+                craters: craters ?? [], commandQueue: commandQueue)
             renderer.setScene(shown, view: player.upload.view)
             playback.onShow = { [weak self] in self?.showReplayedLayers() }
             self.playback = playback
@@ -212,6 +213,21 @@ extension SimulationModel {
         }
         replayPaintCache = (playback.index, quantity, paint)
         return paint
+    }
+
+    /// The craters the view shades into the ground. Replaying, the run's, each as dug by the time
+    /// shown, so that it grows as the replay plays and fills in again when it is scrubbed back.
+    /// Live, each whole once the run has ended, as before; while a run goes on, grown to its time
+    /// those it will have finished forming by the end, so that they too end whole.
+    var shownCraters: [CraterEstimate] {
+        if let playback {
+            let time = Float(playback.time)
+            return playback.craters.compactMap { $0.grown(atTime: time) }
+        }
+        if completedRunSettings != nil { return craters }
+        guard time > 0, let inputs = loadedRunSettings else { return [] }
+        return inputs.craters(over: scenario).filter { Double($0.formedAt) <= duration }
+            .compactMap { $0.grown(atTime: Float(time)) }
     }
 
     /// The cloud the view draws: while replaying a recording that keeps it, the run's from the

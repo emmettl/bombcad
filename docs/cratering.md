@@ -22,7 +22,8 @@ every soil.
 **The crater does not act on the blast.** A crater forms over a time of order √(D/g): about
 0.4 s for 100 kg, seconds for a kiloton. By then the blast has gone, and most runs have ended.
 So the air keeps the ground as it was before the blast, and the crater is worked out from the
-scene, reported and drawn when the run ends. The one effect of the ground that does reach the
+scene, reported and drawn when the run ends. A replay and the USD export draw it growing over that
+time ([below](#how-it-grows)). The one effect of the ground that does reach the
 air is the energy it takes ([below](#the-air-on-soft-ground)).
 
 ## Choosing the ground
@@ -192,20 +193,68 @@ Graham's range: a mass between 0.75 and 1 of the charge's.
 
 ## Shown and exported
 
-- **In the app,** the crater is shaded into the ground or the terrain when the run ends, never
-  before. Its slopes come from the profile above, darker towards the bottom of the bowl, with its
-  earth laid back over the air's colours. It is shaded rather than built, because the air model's
-  ground is the domain's floor. The caption gives its size. Kept runs give it in Compare and in
-  their CSV (apparent diameter, depth and lip height, at the run's end).
+- **In the app,** the crater is shaded into the ground or the terrain when the run ends. Its
+  slopes come from the profile above, darker towards the bottom of the bowl, with its earth laid
+  back over the air's colours. It is shaded rather than built, because the air model's ground is
+  the domain's floor. The caption gives its size. Kept runs give it in Compare and in their CSV
+  (apparent diameter, depth and lip height, at the run's end).
+  - **While a run goes on** there is none, as before, unless the run lasts past the time the
+    crater takes to form ([below](#how-it-grows)); then it grows with the run, so that it is whole
+    by the end.
+  - **In a replay** (since 23 October 2026) the crater grows with the replay's time: none at
+    t = 0, and at each frame the crater as dug by then. Scrubbing back fills it in again. A run
+    from a mapped start records its first frame a little after the blast, with a small bowl
+    already dug. A run
+    shorter than the formation time, which is most runs, so ends its replay with the crater
+    part-dug: 4 ms into a 0.5 kg charge's 0.14 s on clay, the bowl is 28% of its width and the
+    lip has not risen. **Done** shows it whole again. A kept run replays its own craters, from its scene
+    and settings, even when the project's scene has changed since. Nothing new is recorded: the
+    crater at a time follows from the kept run's final crater, so old recordings grow it too.
 - **Headless,** the summary prints a line per crater.
 - **USD export.** `--usd` and File ▸ Export for Rendering add `/Scene/Crater` (`Crater_1`, …): a
-  patch of ground over each crater, flat until the run's last frame and cratered at it. The flat
-  ground plane, or the terrain, is left open under the patch so the bowl shows. Its
-  `bombcad:label` holds the crater's line.
+  patch of ground over each crater. Since 23 October 2026 it is flat until its charge fires and
+  then grows as the replay draws it, over the run's frames and then over the cloud's, if the run
+  follows one, at the cloud's own times. Until then it was flat until the run's last frame and
+  cratered at it. The patch keeps a sample wherever the crater has grown by a thirty-second of its
+  size or a sixteenth of its lip since the last, and the frames between are interpolated. A run
+  shorter than the formation time, with no cloud after it, ends with the crater part-dug, as its
+  replay does. The flat ground plane, or the terrain, is left open under the patch so the bowl
+  shows. Its `bombcad:label` holds the final crater's line.
+- **`blastbench snapshot --ground alluvium --crater-time 0.1`** draws the craters as dug by 0.1 s.
 - **`Terrain.cratered(_:)`** cuts the craters into a terrain for a scene that starts after the
   blast. The terrain must stand high enough: heights cannot go below z = 0, the air domain's floor,
   so raise its datum by more than the crater's depth first. Over a flat floor, use a terrain
   lifted above it.
+
+### How it grows
+
+**Standing: illustrative.** The growth is for the eye. It changes neither the final crater nor
+anything in the run, and nothing has been compared with a filmed crater.
+
+- **The formation time** is Holsapple's for the gravity regime, T = 0.8 √(V^(1/3) / g), with V
+  the crater's volume. He takes it from Schmidt and Housen (1987) and his own 1993 review
+  (figure 12). Here V is the apparent crater's bowl, π R² D / 2. That gives 0.33 s for 100 kg of
+  TNT on alluvium, 0.14 s for half a kilogram on clay, and 1.3 s for 500 short tons. A delayed
+  charge's crater starts when it fires.
+- **The bowl.** Under point-source scaling the crater's growth is set by one coupling parameter,
+  C = a U^μ δ^ν, of dimension L^(1+μ) T^(−μ). So any length in the growing flow goes as
+  t^(μ/(1+μ)). The radius and the depth both grow so, as (t / T)^(μ/(1+μ)), and reach their final
+  values at T. Holsapple's μ is 0.41 for dry soil and 0.55 for wet soil and rock, which makes the
+  exponent 0.29 or 0.35: the crater is 82% of its width at half the time. Rock, the clays,
+  glacial and saturated soil, and any ground over a shallow water table take 0.55; the dry lake
+  bed, alluvium and soil over sandstone take 0.41. That sorting is BombCAD's. The bowl keeps its
+  shape, so every point in it only deepens.
+- **The lip rises last.** Its height rises over the second half of the formation time, eased, to
+  the final height at T. Its crest and the ejecta's reach stand out from the bowl's rim as it
+  rises, so no earth lies beyond the rim before then. That choice is BombCAD's own, since the
+  ejecta are still in flight as the bowl opens. No open source found gives the lip's growth.
+- **What is not modelled.** The growth law holds while the crater is still opening; real growth
+  slows before it stops, where this stops at full speed. The true crater, deeper than the
+  apparent one before fallback fills it in, is not drawn, so the bowl never overshoots its final
+  depth.
+
+`CraterEstimate.grown(atTime:)` gives the crater at a time, and `CraterGrowthTests` checks it: flat
+at t = 0, the final crater from T, and monotone between.
 
 ![A crater in saturated soil shaded into the open ground after 100 kg of TNT, over the blast's peak overpressure: the bowl, the lip's crest and the ejecta thinning outwards](crater-open.png)
 
@@ -395,6 +444,8 @@ hemisphere at 0.62, also outside. Cooper's law keeps all three Suffield shots in
   curve, not a measured airblast one.
 - Craters in the app are shaded, not cut into the air model's ground. The USD and
   `Terrain.cratered` give the shape.
+- The crater's growth in a replay and the USD is illustrative: a formation time from the
+  gravity regime and a point-source power law, with the lip's rise BombCAD's own choice.
 - Several charges dig separate craters, which simply add where they overlap.
 
 ## Stage 2
@@ -489,5 +540,12 @@ planes, 93.6 g of TNT at the authors' 1.2): does BombCAD's air carry series A an
   and others, "Beirut explosion: energy yield from the fireball time evolution", *Shock Waves*,
   2021: the hydrographic survey, the crater-based yield and Kingery and Bulmash's 10%; S. E. Rigby
   and others, *Shock Waves*, 2020: the 0.5 kt (0.2–1.1).
+- K. A. Holsapple, "Theory and equations for 'Craters from Impacts and Explosions'", the notes
+  to his online crater calculator (hosted by the Lunar and Planetary Institute,
+  [theory.pdf](https://www.lpi.usra.edu/lunar/tools/lunarcratercalc/theory.pdf)): the coupling
+  parameter (equation 3), μ by material (the table in §2), and the formation time (equation 8),
+  after R. M. Schmidt and K. R. Housen, *International Journal of Impact Engineering* 5, 1987, and
+  K. A. Holsapple, *Annual Review of Earth and Planetary Sciences* 21, 1993, figure 12: the
+  crater's growth in a replay.
 - A. W. Patteson, Operation Hardtack Project 1.4, 1960: lips of 15–20% of the crater's volume
   for surface bursts in dry sand, against Glasstone and Dolan's 55% (not used).

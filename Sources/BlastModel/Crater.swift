@@ -143,6 +143,10 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
     public var lipHeight: Float
     public var lipCrestRadius: Float
     public var lipRadius: Float
+    /// When the charge that digs it fires, seconds after the run's start: a delayed additional
+    /// charge's delay, nil for one fired at the start. The crater starts to grow then (see
+    /// `grown(atTime:)`).
+    public var delay: Float?
 
     public var apparentDiameter: Float { 2 * apparentRadius }
 
@@ -281,11 +285,15 @@ public struct CraterEstimate: Codable, Sendable, Equatable {
     public static func craters(
         of scenario: Scenario, ground: GroundType, explosive: CraterExplosive = .tnt, waterTable: Float? = nil
     ) -> [CraterEstimate] {
-        ([scenario.charge] + (scenario.additionalCharges ?? [])).compactMap { charge in
-            CraterEstimate(
-                charge: charge, groundHeight: scenario.groundHeight(at: charge.position), ground: ground,
-                explosive: explosive, waterTable: waterTable)
-        }
+        // The main charge fires at the start whatever delay it is given.
+        ([(scenario.charge, Float?.none)] + (scenario.additionalCharges ?? []).map { ($0, $0.delay) })
+            .compactMap { charge, delay in
+                var crater = CraterEstimate(
+                    charge: charge, groundHeight: scenario.groundHeight(at: charge.position), ground: ground,
+                    explosive: explosive, waterTable: waterTable)
+                crater?.delay = delay.flatMap { $0 > 0 ? $0 : nil }
+                return crater
+            }
     }
 
     public var summary: String {

@@ -1,6 +1,9 @@
 import BlastCore
+import BlastRender
 import DocumentKit
 import Foundation
+import Metal
+import SceneView
 import Testing
 
 @testable import BombCAD
@@ -132,5 +135,87 @@ struct CraterAppTests {
         soil.reset()
         try await waitUntil(soil) { soil.experimentIsReady }
         #expect(soil.craters.isEmpty)
+    }
+
+    @Test("A replay draws the crater as dug by the frame's time, and scrubbed back fills it in again")
+    func replayed() async throws {
+        let model = SimulationModel(document: document(ground: .clay), playbackSpeed: .unlimited)
+        model.recordsTimelines = true
+        try await waitUntil(model) { model.experimentIsReady }
+        model.run()
+        try await waitUntil(model) {
+            !model.isRunning && !model.hasPendingGPUWork && model.recentTimeline != nil
+        }
+        let crater = try #require(model.craters.first)
+        // 4 ms is far short of the crater's formation time, so live it is drawn whole at the end,
+        // as before, and never while the run went on.
+        #expect(crater.formedAt > 0.1 && model.shownCraters == [crater])
+        try model.keepRun(named: "Clay")
+        let run = try #require(model.savedRuns.last)
+        defer { if let recent = model.recentTimeline { try? FileManager.default.removeItem(at: recent) } }
+        // The kept run's craters, from its own scene and settings.
+        model.replay(run)
+        let playback = try #require(model.playback)
+        #expect(playback.craters == [crater] && run.settings.craters(over: run.scenario) == [crater])
+        var last: Float = 0
+        for n in 0..<playback.count {
+            try playback.show(n)
+            let shown = model.shownCraters
+            let expected = crater.grown(atTime: Float(playback.time))
+            #expect(shown == (expected.map { [$0] } ?? []), "\(playback.time) s")
+            // The first frame is the mapped start's, just after the blast: a small bowl already.
+            if playback.time == 0 { #expect(shown.isEmpty, "Nothing before the blast.") }
+            let radius = shown.first?.apparentRadius ?? 0
+            #expect(radius >= last)
+            last = radius
+        }
+        // Part-dug at the end of a run shorter than its formation time.
+        #expect(last > 0 && last < crater.apparentRadius)
+        // Scrubbed back to the start (the mapped start's first frame), the bowl is as small as it
+        // began; to the middle, between.
+        playback.seek(to: 0)
+        let first = crater.grown(atTime: Float(playback.time))?.apparentRadius ?? 0
+        #expect(
+            model.shownCraters.first?.apparentRadius ?? 0 == first && first > 0 && first < last,
+            "\(playback.time) s: \(first) of \(crater.apparentRadius)")
+        playback.seek(to: playback.endTime / 2)
+        let middle = model.shownCraters.first?.apparentRadius ?? 0
+        #expect(middle >= first && middle <= last, "\(first), \(middle), \(last) at \(playback.time) s")
+        model.stopReplay()
+        #expect(model.playback == nil)
+    }
+
+    @Test("Drawn offscreen, the crater shaded at a time covers more ground the later it is")
+    func drawnAsItGrows() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let queue = try #require(device.makeCommandQueue())
+        let scene = Scenario(
+            name: "Open", domainSize: SIMD3(12, 12, 4), boxes: [],
+            charge: Charge(mass: 100, position: SIMD3(6, 6, 0)))
+        let crater = try #require(CraterEstimate.craters(of: scene, ground: .alluvium).first)
+        let solver = try BlastSolver(device: device, scenario: scene, cellSize: 1)
+        let renderer = try SceneRenderer(device: device)
+        renderer.setScene(scene, solver: solver)
+        renderer.settings.showWave = false
+        renderer.settings.showCharge = false
+        let camera = OrbitCamera(target: SIMD3(6, 6, 0), distance: 14, azimuth: 0.3, elevation: 1.45)
+        func pixels(_ craters: [CraterEstimate]) throws -> [UInt8] {
+            renderer.settings.craters = craters.map(CraterMark.init)
+            let frame = try #require(
+                renderer.snapshot(commandQueue: queue, width: 96, height: 96, camera: camera))
+            let data = try #require(frame.image.dataProvider?.data) as Data
+            return [UInt8](data)
+        }
+        let flat = try pixels([])
+        func changed(atTime time: Float) throws -> Int {
+            let shown = try pixels([crater].compactMap { $0.grown(atTime: time) })
+            return zip(shown, flat).filter { abs(Int($0) - Int($1)) > 4 }.count
+        }
+        let end = crater.formedAt
+        let counts = try [0, end / 100, end / 4, end / 2, end].map(changed(atTime:))
+        #expect(counts[0] == 0, "flat at t = 0")
+        for (a, b) in zip(counts, counts.dropFirst()) { #expect(b > a, "\(counts)") }
+        // At the end, the crater the live view draws once the run has ended.
+        #expect(try pixels([crater]) == pixels([try #require(crater.grown(atTime: end))]))
     }
 }

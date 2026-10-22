@@ -580,6 +580,9 @@ final class TimelinePlayback {
     /// For a kept run, its cloud (nil if it followed none), drawn from the frame it was handed
     /// over in; nil for the last run, whose cloud is the model's.
     let kept: CloudResult??
+    /// The craters the replayed run's charges dig, whole: the view shades each as dug by the time
+    /// shown (`CraterEstimate.grown(atTime:)`).
+    let craters: [CraterEstimate]
     /// Called once each frame shown is uploaded, to draw its layers.
     @ObservationIgnored var onShow: (() -> Void)?
     @ObservationIgnored private let commandQueue: MTLCommandQueue
@@ -587,12 +590,13 @@ final class TimelinePlayback {
 
     init(
         player: RunTimelinePlayer, title: String, scenario: Scenario, kept: CloudResult?? = nil,
-        commandQueue: MTLCommandQueue
+        craters: [CraterEstimate] = [], commandQueue: MTLCommandQueue
     ) {
         self.player = player
         self.title = title
         self.scenario = scenario
         self.kept = kept
+        self.craters = craters
         self.commandQueue = commandQueue
     }
 

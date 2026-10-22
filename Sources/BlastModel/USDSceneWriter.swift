@@ -534,26 +534,64 @@ public final class USDSceneWriter {
         text.append("]\n    }\n\n")
     }
 
-    /// A crater's patch: a grid of the ground over its square, flat (or the terrain) until the
-    /// run's last frame, cratered at it.
+    /// The time codes at which a crater's patch is sampled, with the shares of its growth there
+    /// (`CraterEstimate.growth(atTime:)`). The time codes are the run's frames, `frameInterval`
+    /// apart from time zero, then the cloud's, each at its own time. Kept are the first, each where
+    /// the crater has grown by a thirty-second of its size (or a sixteenth of its lip's height)
+    /// since the last kept, the one just before it starts to grow, so that it holds flat until
+    /// then, and the last; those between are interpolated. With one time code or none, the crater
+    /// whole.
+    func craterSamples(_ crater: CraterEstimate) -> [(code: Int, bowl: Float, lip: Float)] {
+        let times = (0..<frames).map { Double($0) * frameInterval } + (cloud?.samples.map(\.time) ?? [])
+        guard times.count > 1 else { return [(0, 1, 1)] }
+        var kept: [(code: Int, bowl: Float, lip: Float)] = []
+        var previous: (code: Int, bowl: Float, lip: Float)?
+        for (code, time) in times.enumerated() {
+            let (bowl, lip) = crater.growth(atTime: Float(time))
+            defer { previous = (code, bowl, lip) }
+            guard let last = kept.last else {
+                kept.append((code, bowl, lip))
+                continue
+            }
+            guard bowl != last.bowl || lip != last.lip else { continue }
+            if let previous, previous.code != last.code, previous.bowl == last.bowl, previous.lip == last.lip
+            {
+                kept.append(previous)
+            }
+            if bowl - last.bowl >= 1.0 / 32 || lip - last.lip >= 1.0 / 16 || (bowl == 1 && lip == 1) {
+                kept.append((code, bowl, lip))
+            }
+        }
+        if let previous, let last = kept.last, previous.code != last.code,
+            previous.bowl != last.bowl || previous.lip != last.lip
+        {
+            kept.append(previous)
+        }
+        return kept
+    }
+
+    /// A crater's patch: a grid of the ground over its square, flat (or the terrain) until its
+    /// charge fires, then growing to the crater (`craterSamples`).
     private func appendCrater(
         _ name: String, _ crater: CraterEstimate, patch: (low: SIMD2<Float>, high: SIMD2<Float>),
         terrain: Terrain?, to text: inout Text
     ) {
         let n = 48
         let size = patch.high - patch.low
-        var before: [SIMD3<Float>] = []
-        var after: [SIMD3<Float>] = []
+        let samples = craterSamples(crater)
+        let shapes = samples.map { crater.grown(bowl: $0.bowl, lip: $0.lip) }
+        var points = [[SIMD3<Float>]](repeating: [], count: samples.count)
         for j in 0...n {
             for i in 0...n {
                 let point = patch.low + size * SIMD2(Float(i), Float(j)) / Float(n)
                 let base = terrain?.height(at: SIMD3(point.x, point.y, 0)) ?? 0
-                before.append(SIMD3(point.x, point.y, base))
-                after.append(SIMD3(point.x, point.y, base + crater.change(at: point)))
+                for (k, shape) in shapes.enumerated() {
+                    points[k].append(SIMD3(point.x, point.y, base + (shape?.change(at: point) ?? 0)))
+                }
             }
         }
-        let lowest = (before + after).map(\.z).min() ?? 0
-        let highest = (before + after).map(\.z).max() ?? 0
+        let lowest = points.joined().map(\.z).min() ?? 0
+        let highest = points.joined().map(\.z).max() ?? 0
         text.append("    def Mesh \"\(name)\"\n    {\n        uniform token subdivisionScheme = \"none\"\n")
         text.append("        custom uniform string bombcad:label = \(quoted(crater.summary))\n")
         text.append("        float3[] extent = [")
@@ -579,16 +617,17 @@ public final class USDSceneWriter {
             }
             text.append("]")
         }
-        let last = max(frames - 1, 0)
-        if last > 0 {
-            text.append("]\n        point3f[] points.timeSamples = {\n            0: ")
-            list(before)
-            text.append(",\n            \(last): ")
-            list(after)
-            text.append(",\n        }\n")
+        if samples.count > 1 {
+            text.append("]\n        point3f[] points.timeSamples = {\n")
+            for (sample, shape) in zip(samples, points) {
+                text.append("            \(sample.code): ")
+                list(shape)
+                text.append(",\n")
+            }
+            text.append("        }\n")
         } else {
             text.append("]\n        point3f[] points = ")
-            list(after)
+            list(points[0])
             text.append("\n")
         }
         text.append("        color3f[] primvars:displayColor = [")

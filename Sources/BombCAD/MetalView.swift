@@ -102,7 +102,7 @@ struct MetalView: NSViewRepresentable {
             // Dragged, the charge is drawn where it is going before the scene is loaded again.
             if model.isDraggingCharge { settings.chargeAt = model.settings.chargePosition }
             settings.highlight = model.highlightedBox
-            settings.craters = model.craters.map(CraterMark.init)
+            settings.craters = model.shownCraters.map(CraterMark.init)
             // The ground points read the project's points and the run's estimate, both observed.
             let dots =
                 (replay != nil
