@@ -1,0 +1,26 @@
+{
+  "schema": "bombcad-corrected-beirut-publication-checks-1",
+  "formatLint": true,
+  "strictBuildNoWarnings": true,
+  "plainCheckAffected": true,
+  "macSelectedSuitesPass": true,
+  "macTestRuns": [
+    {
+      "tests": 33,
+      "suites": 6
+    },
+    {
+      "tests": 9,
+      "suites": 3
+    }
+  ],
+  "pcTests": 62,
+  "pcSuites": 11,
+  "all32RawFilesRehashedAfterChecks": true,
+  "bothArchiveHashesMatch": true,
+  "allConsumedPinsMatch": true,
+  "producingAndAnalysisHelperSnapshotsMatch": true,
+  "allNumericalCommandsCompletedOnce": true,
+  "actualCUDAStillRejected": true,
+  "scope": "Artifact/tooling stage; no unchanged ordinary-digest claim. Existing unrelated Python script tests emitted ResourceWarnings; strict compiler build had no warnings."
+}

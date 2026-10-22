@@ -1,0 +1,4 @@
+First offline report invocation, terminal exit1 before opening analysis-results.json.
+Tool-returned exception (stderr was not redirected into the stdout log):
+ModuleNotFoundError: No module named 'compare_dataset'
+The frozen diagnose-phase.py imports its sibling compare_dataset; the offline wrapper omitted its directory from sys.path. Producing Metal/CUDA runs and parity gates had already completed successfully and are unchanged. Preserve original wrapper as analyze-v1.py.txt; add only the frozen sibling import path before re-running this CPU-only report.

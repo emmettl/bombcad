@@ -1,0 +1,50 @@
+"""Descriptive phase transitions on each backend's physical time axis; no substitutions."""
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import sys
+
+ROOT=Path('/Volumes/StudioData/bombcad/experiments/2026-10-22-corrected-beirut-trace')
+BASE=ROOT.parent/'2026-10-22-fixed-terrain-reference'
+
+
+def main():
+    spec=importlib.util.spec_from_file_location('phase',BASE/'analysis/cuda/diagnose-phase.py')
+    phase=importlib.util.module_from_spec(spec);spec.loader.exec_module(phase)
+    run=json.loads((ROOT/'run.json').read_text())
+    assert run['status']=='complete' and run['metalObserverParity'] and run['cudaNumericAndTimestepsParity']
+    results={};traces={}
+    for backend,folder in [('metal',ROOT/'pressure'),('cuda',ROOT/'cuda')]:
+        meta,data=phase.load(folder);summary=phase.summarize(meta,data)
+        assert summary==json.loads((folder/'replay.json').read_text())
+        c=summary['columns'][0];assert meta['columns']==[187747]
+        traces[backend]=(meta,data)
+        expected=1696.1177978515625 if backend=='metal' else 1514.2877197265625
+        assert c['final'][3]==expected
+        results[backend]=dict(samples=summary['samples'],startTime=meta['times'][0],endTime=meta['times'][-1],
+            seedRecords=meta.get('seedRecords'),final=c['final'],transitions=c['transitions'],
+            exactReplayPolicies=c['exactAccumulationPolicies'],closingWindows=c['closingWindows'],
+            zeroPressureAtOwnClosingSamples=c['oneSampleZeroCounterfactuals'],
+            pressureScope='actual consumed pressure' if backend=='metal' else 'read-only diagnostic recomputation; not direct consumed-pressure attestation')
+    neighborhoods=[]
+    for backend,other in [('metal','cuda'),('cuda','metal')]:
+        meta,data=traces[backend];om,od=traces[other]
+        for event in results[backend]['transitions']:
+            i=event['sample']
+            if not i or event['values'][5]!=0:continue
+            nearest=min(range(len(om['times'])),key=lambda j:abs(om['times'][j]-event['time']))
+            neighborhoods.append(dict(closingBackend=backend,closing=event,otherBackend=other,
+                nearestOtherSample=nearest,timeDifference=om['times'][nearest]-event['time'],
+                otherSamples=[dict(sample=j,time=om['times'][j],values=list(od[j*8:(j+1)*8]))
+                              for j in range(max(0,nearest-2),min(len(om['times']),nearest+3))]))
+    error=abs(results['metal']['final'][3]-results['cuda']['final'][3]);allowance=.05+.002*abs(results['metal']['final'][3])
+    report=dict(status='complete',scope=__doc__,column=187747,backendResults=results,
+        closurePhysicalTimeNeighborhoods=neighborhoods,error=error,unchangedAllowance=allowance,
+        stillRejected=error>allowance,analysisSHA256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        limits='Each transition uses its own physical time axis; nearest opposite-backend samples include explicit time displacement and do not assert identical input states. Zero-at-own-closure results are offline sensitivities from the existing auditor, not CUDA passes or causal instruction proof. No physical validation or policy change.')
+    with (ROOT/'analysis-results.json').open('x') as stream:json.dump(report,stream,indent=2);stream.write('\n')
+    print(json.dumps(report,indent=2))
+
+
+if __name__=='__main__':main()

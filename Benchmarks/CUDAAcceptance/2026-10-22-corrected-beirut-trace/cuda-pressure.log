@@ -1,0 +1,118 @@
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": true,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2417,
+  "startTime": 0.025454009796289062,
+  "elapsedSimulationTime": 4.484545990198967,
+  "wallSeconds": 61.166877529991325,
+  "shape": [
+    512,
+    512,
+    80
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+    "trace_columns.py": "e62515bf87cea72146e23222ee62860b37b73343f3050391d82a43bb76bb31da"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "traceColumns": [
+    187747
+  ],
+  "diagnosticSourceSHA256": "8b48bac9aecb6d2458dae18ecc8b06314dc751400632211ca3fc330d7aa99746",
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 605,
+    "emptyIntervals": 9,
+    "minBoxCells": 0,
+    "maxBoxCells": 140910,
+    "meanBoxCells": 97126.69752066115
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 67.49265415899572,
+    "adjustedMonotonicSeconds": 67.49166482899454
+  },
+  "timings": {
+    "importsAndValidationSeconds": 2.7919424529827666,
+    "compileSeconds": 1.9260912130121142,
+    "deviceSetupAndUploadSeconds": 0.8614034799975343,
+    "solverSeconds": 61.166877529991325,
+    "validationAndOutputSeconds": 0.7462178509740625,
+    "workerSecondsBeforeManifests": 67.49253790700459
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}
+{
+  "format": "bombcad-cuda-result-1",
+  "backend": "cuda",
+  "terrainCutCells": true,
+  "device": "NVIDIA GeForce RTX 3080 Ti",
+  "sourceSHA256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+  "steps": 2417,
+  "startTime": 0.025454009796289062,
+  "elapsedSimulationTime": 4.484545990198967,
+  "wallSeconds": 61.166877529991325,
+  "shape": [
+    512,
+    512,
+    80
+  ],
+  "math": "float32, unfused, precise division/sqrt",
+  "workerFilesSHA256": {
+    "run.py": "3431508c82f253e6632e75c7fdee6e7a3522613090befcb32cdf5b1ea72fead8",
+    "job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+    "trace_columns.py": "e62515bf87cea72146e23222ee62860b37b73343f3050391d82a43bb76bb31da"
+  },
+  "channels": [
+    "peakOverpressure",
+    "impulse"
+  ],
+  "units": [
+    "Pa",
+    "Pa s"
+  ],
+  "above": 2,
+  "traceColumns": [
+    187747
+  ],
+  "diagnosticSourceSHA256": "8b48bac9aecb6d2458dae18ecc8b06314dc751400632211ca3fc330d7aa99746",
+  "coolingWorkSelection": "luminous-box",
+  "coolingWork": {
+    "intervals": 605,
+    "emptyIntervals": 9,
+    "minBoxCells": 0,
+    "maxBoxCells": 140910,
+    "meanBoxCells": 97126.69752066115
+  },
+  "compileCacheEnabled": true,
+  "timingClock": "clock_gettime(CLOCK_MONOTONIC_RAW)",
+  "clockAudit": {
+    "rawSeconds": 67.49265415899572,
+    "adjustedMonotonicSeconds": 67.49166482899454
+  },
+  "timings": {
+    "importsAndValidationSeconds": 2.7919424529827666,
+    "compileSeconds": 1.9260912130121142,
+    "deviceSetupAndUploadSeconds": 0.8614034799975343,
+    "solverSeconds": 61.166877529991325,
+    "validationAndOutputSeconds": 0.7462178509740625,
+    "workerSecondsBeforeManifests": 67.49253790700459
+  },
+  "timingScope": "Raw host elapsed time (not disciplined monotonic); compile includes device capability query; setup includes module load, upload and initial kernels; output includes final validation and array writes; excludes manifest writes and module unload"
+}

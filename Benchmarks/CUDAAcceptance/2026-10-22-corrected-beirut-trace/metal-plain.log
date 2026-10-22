@@ -1,0 +1,7 @@
+Read 14511 buildings in 0.36 s
+Read the height grid, 12000 × 12000, in 12.5 s
+1629 buildings placed (45 by height, 12 by levels, 1572 from the height grid, 0 assumed), 12882 left out, 4 overlapping cells given up
+512 × 512 × 80 cells (21.0 M), 320 m top, 196200 kg, to 4.51 s
+  t 4.51 s, 2417 steps, 27 s
+Ran to 4.510 s in 2417 steps, 27 s
+Wrote /Volumes/StudioData/bombcad/experiments/2026-10-22-corrected-beirut-trace/plain: 512 × 512, 85% of cells in the mask, peak 705836.9 kPa at most

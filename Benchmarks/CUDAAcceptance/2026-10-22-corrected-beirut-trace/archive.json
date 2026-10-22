@@ -1,0 +1,151 @@
+{
+  "schema": "bombcad-corrected-beirut-trace-archive-1",
+  "rawRoot": "/Volumes/StudioData/bombcad/experiments/2026-10-22-corrected-beirut-trace",
+  "files": {
+    "analysis/analyze-v1-failure.txt": {
+      "bytes": 562,
+      "sha256": "81224e5ac280c5a24806288b495846ac2bcb06a6cf760e91a1b8ef0488e4a581"
+    },
+    "analysis/analyze-v1.py.txt": {
+      "bytes": 3373,
+      "sha256": "c48ca1c26dde21f9abfeb527c37b787ebbac740d86dd38608c7d88d238933b30"
+    },
+    "analysis/analyze.py": {
+      "bytes": 3422,
+      "sha256": "4ab0697ea61c296e0f8dc853721e4fdae2cfebefa935cd0e6641f66cb515105a"
+    },
+    "analysis/archive.py": {
+      "bytes": 2669,
+      "sha256": "c1ca131b85f66b4f73eff7429463018b17148b5c769a6c8e69de362a35ba8f85"
+    },
+    "analysis/plan.md": {
+      "bytes": 2349,
+      "sha256": "89c3cd801a3c90f7791f4de260c3c99a105e942596693b53377e32b8446ab7d0"
+    },
+    "analysis/run.py": {
+      "bytes": 7334,
+      "sha256": "eef1a9f2ae4f7a9862b3383fa935c02d78bcac40b4ebbcddfe4c55dd639b346d"
+    },
+    "analysis-results.json": {
+      "bytes": 13004,
+      "sha256": "edcaf7edbef380ad7c31f1d05f55e9213bc1b077a3818e8a82f3f76848073248"
+    },
+    "analysis-v2.log": {
+      "bytes": 13004,
+      "sha256": "edcaf7edbef380ad7c31f1d05f55e9213bc1b077a3818e8a82f3f76848073248"
+    },
+    "controller.log": {
+      "bytes": 7420,
+      "sha256": "463bef3ca238a0760b88b63228351131fbb20854f05744edc4fe2399b2200ef6"
+    },
+    "cuda/deployment.json": {
+      "bytes": 1155,
+      "sha256": "381c840df6a623a5077672930eff53b30d23288294795cf64535f2d511a624e5"
+    },
+    "cuda/replay.json": {
+      "bytes": 2183,
+      "sha256": "a1d90f32e8b4bfb13add9fe584acf7ebbffc86863eceade88d8dd6c51aa2b7f0"
+    },
+    "cuda/result.json": {
+      "bytes": 2044,
+      "sha256": "e07ae7aa7e9b81e1a8d2a41eb5329198f5850237bf36615d097ce095d5016f44"
+    },
+    "cuda/trace.json": {
+      "bytes": 57590,
+      "sha256": "973a83ff68f28e1fed52c0861f178a7f01267c28b713e7bb67809eb3af1e2fb9"
+    },
+    "cuda/trace.npy": {
+      "bytes": 77568,
+      "sha256": "c159b850aff2495f5f5d155dbe6b731c11e227b81396e50145465bea94e07735"
+    },
+    "cuda-numeric-parity.json": {
+      "bytes": 2306,
+      "sha256": "d4b54856807e32660eaf639e61abdee30202c4e6898bdc5b894b2e6f3664ea82"
+    },
+    "cuda-pressure.log": {
+      "bytes": 4088,
+      "sha256": "54ddc8fe2069367c79e1564891db47c583cb3a5348cb6eaa7e4947529b33c046"
+    },
+    "metal-plain.log": {
+      "bytes": 494,
+      "sha256": "d9d39b2fd6ea6c88d87e57b5206fd687cae8ecf62af5b11a51699bf9e52bd25e"
+    },
+    "metal-pressure.log": {
+      "bytes": 497,
+      "sha256": "f5e319761ee5f94a0aa57f3e4f78b8c253a4e6cb9a6368065351ff6904c0f03f"
+    },
+    "plain/diagnostic-state-hashes.json": {
+      "bytes": 1741,
+      "sha256": "5a9f11f6a298406f80a7bd6addb212525747f1681724e75ae59396d51e58f7bd"
+    },
+    "plain/inputs.npy": {
+      "bytes": 6291584,
+      "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5"
+    },
+    "plain/mask.npy": {
+      "bytes": 1048704,
+      "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+    },
+    "plain/meta.json": {
+      "bytes": 3144,
+      "sha256": "46738209741cbdaab895b4c32d1e3505a9c94113e4f30393e6491ed1c62379b0"
+    },
+    "plain/targets.npy": {
+      "bytes": 3145856,
+      "sha256": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13"
+    },
+    "pressure/diagnostic-state-hashes.json": {
+      "bytes": 1741,
+      "sha256": "5a9f11f6a298406f80a7bd6addb212525747f1681724e75ae59396d51e58f7bd"
+    },
+    "pressure/inputs.npy": {
+      "bytes": 6291584,
+      "sha256": "55a71f8018ef4d118f48c5669bd7f3b09e4396fdebc90b6c1ffd62687cdc7df5"
+    },
+    "pressure/mask.npy": {
+      "bytes": 1048704,
+      "sha256": "b2c444389bd0f3b1bdd535984b22e89f2023118a59b9aba9954d07fceb03793e"
+    },
+    "pressure/meta.json": {
+      "bytes": 3206,
+      "sha256": "f202d0c2f15cadb36549cbb921c9f6120420cfee3fe22474257499970423abd9"
+    },
+    "pressure/pressure-trace.json": {
+      "bytes": 82063,
+      "sha256": "4fd34e0601d47c5368d0e5d093923eead9c7d88867de66fe1f3da559d1f98882"
+    },
+    "pressure/pressure-trace.npy": {
+      "bytes": 77504,
+      "sha256": "b926ea4bc0003180bc91c84226d81c8a7d2c7a64d7fcd704697bea058634b4a6"
+    },
+    "pressure/replay.json": {
+      "bytes": 2290,
+      "sha256": "7ad55833ac0922680b3c395fee1ba442f3451e9ab877022cb2753b5a7e005447"
+    },
+    "pressure/targets.npy": {
+      "bytes": 3145856,
+      "sha256": "12c174dfa9464976a27b92b1312083315495bad2b33a35301c958e2083808a13"
+    },
+    "run.json": {
+      "bytes": 31127,
+      "sha256": "94ffe64a88e8795335f08c7c83564d943f15e920200f0e1478d7f9db9026fa03"
+    }
+  },
+  "fullArchive": {
+    "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-corrected-beirut-trace-archive/all-raw.tar.gz",
+    "files": 32,
+    "bytes": 10837771,
+    "sha256": "f7bcedf50e0fd5cc410ddb79e36ea246bda91c54fb66f5c037d329e87df06442",
+    "everyDecompressedMemberVerified": true
+  },
+  "publicMetadata": {
+    "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-corrected-beirut-trace/evidence/metadata.tar.gz",
+    "files": 24,
+    "bytes": 80070,
+    "sha256": "e0e0bbc5513899c726227f903ab0cfedcb3fc065e466f4528e7517b8820ffa31",
+    "everyDecompressedMemberVerified": true
+  },
+  "rawFiles": 32,
+  "rawBytes": 21376166,
+  "scope": "Every own raw file retained, including failed offline report version. Runtime and physical input are pinned immutable dependencies in the separately archived fixed-reference study. Full PC output remains at recorded remote paths; all nine original numeric files and dt were independently rehashed. Public exclusions are by numeric/binary kind, never status."
+}
