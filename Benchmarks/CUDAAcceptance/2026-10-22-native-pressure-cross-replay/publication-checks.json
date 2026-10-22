@@ -1,0 +1,34 @@
+{
+  "status": "post-check-native-replays-and-remote-inventories-verified",
+  "strictSession": 68280,
+  "strictReturncode": 0,
+  "macStrictWarnings": 0,
+  "affectedSession": 75582,
+  "affectedReturncode": 0,
+  "pcTests": 36,
+  "pcSuites": 4,
+  "linuxWarnings": {
+    "count": 2,
+    "scope": "Unchanged baseline Sources/BlastModel/USDSceneWriter.swift createFile return values at lines83 and285; Linux lane passed. No production source change in this study."
+  },
+  "standaloneSwiftWarnings": 0,
+  "nativeMetalControls": 6,
+  "nativeCUDAControls": 6,
+  "hostReplayControls": 3,
+  "ownMetalPressureWords": 10488,
+  "ownCUDAPressureWords": 10494,
+  "ownRecorderWords": 104910,
+  "ownPressureWordDifferences": 0,
+  "ownRecorderWordDifferences": 0,
+  "crossPressureWordDifferences": 5225,
+  "crossNegativeDecisionDifferences": 0,
+  "fullSourceAndPTXIdentityVerified": true,
+  "sourceAndInputRuntimePinsRehashed": true,
+  "freshRemoteInventoriesVerified": [
+    "own",
+    "cross"
+  ],
+  "preflightFailuresRetained": 2,
+  "newPDESolves": 0,
+  "limits": "Finite frozen-history reader experiment; no general instruction or whole-field acceptance claim, no policy/admission change."
+}

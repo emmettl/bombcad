@@ -1,0 +1,34 @@
+{
+  "status": "pass",
+  "rows": [
+    {
+      "label": "made-perimeter-s1-1-metal",
+      "words": 2646,
+      "wordDifferences": 0,
+      "numericDifferences": 0,
+      "firstDifferences": [],
+      "replaySHA256": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada",
+      "nativeSHA256": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada"
+    },
+    {
+      "label": "made-perimeter-s3-1-metal",
+      "words": 5424,
+      "wordDifferences": 0,
+      "numericDifferences": 0,
+      "firstDifferences": [],
+      "replaySHA256": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73",
+      "nativeSHA256": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73"
+    },
+    {
+      "label": "beirut-p0-1-metal",
+      "words": 2418,
+      "wordDifferences": 0,
+      "numericDifferences": 0,
+      "firstDifferences": [],
+      "replaySHA256": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6",
+      "nativeSHA256": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6"
+    }
+  ],
+  "sourceSHA256": "20110cf2fc2a4331717e0c10216e91a81e8e8bbd58571569b83d062d5b0e24e2",
+  "scope": "All original Metal pressure samples, sparse original geometry and complete frozen producer compilation unit; no PDE evolution or cross-input attribution."
+}

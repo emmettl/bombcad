@@ -1,0 +1,827 @@
+{
+  "status": "all-members-and-raw-rehash-verified",
+  "root": "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay",
+  "manifest": {
+    "analysis/BodyContact.metal": {
+      "sha256": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+      "bytes": 15728
+    },
+    "analysis/ContactSearchFunctions.metal": {
+      "sha256": "15f9d42d0ac940944a6a4b8c00ebb7bb9dc9531a601d5cb37e3b6ff8be827074",
+      "bytes": 2891
+    },
+    "analysis/Deflagration.metal": {
+      "sha256": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+      "bytes": 20759
+    },
+    "analysis/Extract.metal": {
+      "sha256": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+      "bytes": 11901
+    },
+    "analysis/Footing.metal": {
+      "sha256": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+      "bytes": 22824
+    },
+    "analysis/Gravity.metal": {
+      "sha256": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+      "bytes": 2288
+    },
+    "analysis/Mixing.metal": {
+      "sha256": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+      "bytes": 5508
+    },
+    "analysis/Radiation.metal": {
+      "sha256": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+      "bytes": 20292
+    },
+    "analysis/Refine.metal": {
+      "sha256": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+      "bytes": 150281
+    },
+    "analysis/Rubble.metal": {
+      "sha256": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+      "bytes": 17007
+    },
+    "analysis/Shell.metal": {
+      "sha256": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+      "bytes": 161932
+    },
+    "analysis/Solver.metal": {
+      "sha256": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+      "bytes": 69273
+    },
+    "analysis/SolverCongestion.metal": {
+      "sha256": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+      "bytes": 6287
+    },
+    "analysis/SolverCutCells.metal": {
+      "sha256": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+      "bytes": 18714
+    },
+    "analysis/SolverEnvelopes.metal": {
+      "sha256": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+      "bytes": 26758
+    },
+    "analysis/SolverStep.metal": {
+      "sha256": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+      "bytes": 18310
+    },
+    "analysis/SolverSweep.metal": {
+      "sha256": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+      "bytes": 31622
+    },
+    "analysis/SolverVenting.metal": {
+      "sha256": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+      "bytes": 19135
+    },
+    "analysis/SolverVisualization.metal": {
+      "sha256": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+      "bytes": 3040
+    },
+    "analysis/Structure.metal": {
+      "sha256": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+      "bytes": 266072
+    },
+    "analysis/analyze.py": {
+      "sha256": "95ad53a9e8cb0bd7d55798a81c9b52539eb86ba5c3cc1d4e0423a450575aef5f",
+      "bytes": 9867
+    },
+    "analysis/archive.py": {
+      "sha256": "f014dc1f75444d34983abf5920f3c53188b40a9928527d80ef8549cfd92d1926",
+      "bytes": 3576
+    },
+    "analysis/check_analysis.py": {
+      "sha256": "7e6790df0dd98c5a10653645041dec48570febbd0d7bd89069c1bbe090a98912",
+      "bytes": 1403
+    },
+    "analysis/compare.py": {
+      "sha256": "dad676b5a5be814c839d836900a0a4860cc1732501eb7a9d314a8a86a0acf300",
+      "bytes": 8843
+    },
+    "analysis/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "analysis/cuda_replay.py": {
+      "sha256": "48f3131d58edafd19425c5a57c5422ace2d30eb2a522a666adaaf88931f67e1c",
+      "bytes": 9500
+    },
+    "analysis/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "analysis/original-worker.py": {
+      "sha256": "2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb",
+      "bytes": 18840
+    },
+    "analysis/plan.md": {
+      "sha256": "0fe8382e85a163abb614291824bbc9f11264e67e2f9aa594c3a3109b609d3f47",
+      "bytes": 2606
+    },
+    "analysis/prepare.py": {
+      "sha256": "4faaca1b6c3118ee81351648a84489effada5b21509569162f3147dec215d363",
+      "bytes": 8859
+    },
+    "analysis/pressure_model.py": {
+      "sha256": "e7acf4718906d4145f392d9afea8a8ea5c4b08bd70cc3090eba3091c265d2ade",
+      "bytes": 2298
+    },
+    "analysis/producer-library.metal": {
+      "sha256": "20110cf2fc2a4331717e0c10216e91a81e8e8bbd58571569b83d062d5b0e24e2",
+      "bytes": 893159
+    },
+    "analysis/replay.swift": {
+      "sha256": "aeba3690d1bc4e43c5b71698f3a5b28742fd9a49db3141e6678fc4dbf464d278",
+      "bytes": 11318
+    },
+    "analysis/run_cuda-cross.py": {
+      "sha256": "01c309f421748ee5e2235527fa71f2b57f7e8764628d8f83fd72f9b198f3c6c3",
+      "bytes": 4642
+    },
+    "analysis/run_cuda-own.py": {
+      "sha256": "01c309f421748ee5e2235527fa71f2b57f7e8764628d8f83fd72f9b198f3c6c3",
+      "bytes": 4642
+    },
+    "analysis/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "analysis/stage_cuda.py": {
+      "sha256": "7b062ca5edc67b0b2cf10ab82adc091488c1c77eab333652219402268c4ee236",
+      "bytes": 3887
+    },
+    "analysis/summary.md": {
+      "sha256": "a693c76eb2b8e612ba8cd931edb499d1daac7dcea2df0a818153f9b06fa36a5a",
+      "bytes": 5986
+    },
+    "analysis/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "analysis/verify.py": {
+      "sha256": "7061ede5c69594a0b3a987441dd3b39043d015a3d2976744d66693d3429766a0",
+      "bytes": 4728
+    },
+    "cases/beirut-p0-1-cuda/controls-cuda.bin": {
+      "sha256": "3e87629ad004b8efdc603763e2b26799f9b6443119ffb6689dc2adffa435c249",
+      "bytes": 174240
+    },
+    "cases/beirut-p0-1-cuda/controls.bin": {
+      "sha256": "3e87629ad004b8efdc603763e2b26799f9b6443119ffb6689dc2adffa435c249",
+      "bytes": 174240
+    },
+    "cases/beirut-p0-1-cuda/expected-pressure.bin": {
+      "sha256": "ef251680c771bfeee5d3afdff5645f27d20c23d40b26e51f65f3618929b7e519",
+      "bytes": 9680
+    },
+    "cases/beirut-p0-1-cuda/inputs.bin": {
+      "sha256": "82941fdd927e9823ca26b7f01914d7a3d91db7f718893d1718fce6158fd85792",
+      "bytes": 154880
+    },
+    "cases/beirut-p0-1-cuda/metal-pressure.bin": {
+      "sha256": "61879a0a4d10958665b6116116296252eba01eb23748e6c8fc3006dd6552f1a9",
+      "bytes": 9680
+    },
+    "cases/beirut-p0-1-cuda/records-after.bin": {
+      "sha256": "79e4b1ef8d7cfc8bbf15bd2d5c314e2f09678a0f25279305aef863e21c28f396",
+      "bytes": 48400
+    },
+    "cases/beirut-p0-1-cuda/records-before.bin": {
+      "sha256": "4c0ab6da3163bb6e297c1d7fe5882ac17ae09b35fd9fb7012ee8a56314c8f7a5",
+      "bytes": 48400
+    },
+    "cases/beirut-p0-1-cuda/times-and-seeds.json": {
+      "sha256": "41186a4f3521e9451c7e273beb9ca0f00162f91a5526e355b26ceea99cc77b91",
+      "bytes": 57386
+    },
+    "cases/beirut-p0-1-cuda/uniforms-cuda.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "cases/beirut-p0-1-cuda/uniforms-metal.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "cases/beirut-p0-1-metal/controls-cuda.bin": {
+      "sha256": "c476fab7606f93ff6761468c810438d8652e240cadc9bab80f6910e4fa42dcf6",
+      "bytes": 174096
+    },
+    "cases/beirut-p0-1-metal/controls.bin": {
+      "sha256": "c476fab7606f93ff6761468c810438d8652e240cadc9bab80f6910e4fa42dcf6",
+      "bytes": 174096
+    },
+    "cases/beirut-p0-1-metal/expected-pressure.bin": {
+      "sha256": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6",
+      "bytes": 9672
+    },
+    "cases/beirut-p0-1-metal/inputs.bin": {
+      "sha256": "166326ef2bc17a1c151af109508ccfd15b26a4ae5440dc853cf7bc5c8747572c",
+      "bytes": 154752
+    },
+    "cases/beirut-p0-1-metal/metal-pressure.bin": {
+      "sha256": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6",
+      "bytes": 9672
+    },
+    "cases/beirut-p0-1-metal/records-after.bin": {
+      "sha256": "3bc9c9e5c55f571536657717817c7b0bf62e2c5f3839997ab7641fcedd66a183",
+      "bytes": 48360
+    },
+    "cases/beirut-p0-1-metal/records-before.bin": {
+      "sha256": "34345b0fb6d35290b829649106f34d0717f560a13bfbf1334744a450b227efa5",
+      "bytes": 48360
+    },
+    "cases/beirut-p0-1-metal/times-and-seeds.json": {
+      "sha256": "3a3c95527b6b9d4f7dbcc3908829ada621e883070e3585ad338e4e31787e735b",
+      "bytes": 57347
+    },
+    "cases/beirut-p0-1-metal/uniforms-cuda.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "cases/beirut-p0-1-metal/uniforms-metal.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1-cuda/controls-cuda.bin": {
+      "sha256": "62fe31911264bf371164ca8a4818c8734c8dfca585f21d0b5ee75ee6047cee5f",
+      "bytes": 190656
+    },
+    "cases/made-perimeter-s1-1-cuda/controls.bin": {
+      "sha256": "62fe31911264bf371164ca8a4818c8734c8dfca585f21d0b5ee75ee6047cee5f",
+      "bytes": 190656
+    },
+    "cases/made-perimeter-s1-1-cuda/expected-pressure.bin": {
+      "sha256": "2f1cbd05b26f1a62addd9cc16242b06659dd42de435bac2f080159da0ad4b581",
+      "bytes": 10592
+    },
+    "cases/made-perimeter-s1-1-cuda/inputs.bin": {
+      "sha256": "ec10cf0b8318f70dd68acc5a64af069df2a1ec26a5e01d1be0a8d9e9b69a39b0",
+      "bytes": 169472
+    },
+    "cases/made-perimeter-s1-1-cuda/metal-pressure.bin": {
+      "sha256": "5c3b3e023be65a5d59132315089030ef799b39a4ddbef3d52b9c8d1f9a915a4f",
+      "bytes": 10592
+    },
+    "cases/made-perimeter-s1-1-cuda/records-after.bin": {
+      "sha256": "0b8fccb47bda0acb9d3a6492d442e93bb9cb36a4beed519f9f2895d9cb31086c",
+      "bytes": 52960
+    },
+    "cases/made-perimeter-s1-1-cuda/records-before.bin": {
+      "sha256": "0088897c045f127486b4dd0741214ea62d653a590889d5225d8756049cf1f1a5",
+      "bytes": 52960
+    },
+    "cases/made-perimeter-s1-1-cuda/times-and-seeds.json": {
+      "sha256": "7e47e7b8b165dea20d04c04aefe346191178b01d53e26aec8b8ee2cb853c113c",
+      "bytes": 62999
+    },
+    "cases/made-perimeter-s1-1-cuda/uniforms-cuda.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1-cuda/uniforms-metal.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1-metal/controls-cuda.bin": {
+      "sha256": "61b9539e1c75c56268ba5b236af4a1ad03d4d140ef8be4ad9ce5970627acdd0a",
+      "bytes": 190512
+    },
+    "cases/made-perimeter-s1-1-metal/controls.bin": {
+      "sha256": "61b9539e1c75c56268ba5b236af4a1ad03d4d140ef8be4ad9ce5970627acdd0a",
+      "bytes": 190512
+    },
+    "cases/made-perimeter-s1-1-metal/expected-pressure.bin": {
+      "sha256": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada",
+      "bytes": 10584
+    },
+    "cases/made-perimeter-s1-1-metal/inputs.bin": {
+      "sha256": "0f9b5626a207778a0b2d21a89831800797627e3bfb117a3da1855e12c867903e",
+      "bytes": 169344
+    },
+    "cases/made-perimeter-s1-1-metal/metal-pressure.bin": {
+      "sha256": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada",
+      "bytes": 10584
+    },
+    "cases/made-perimeter-s1-1-metal/records-after.bin": {
+      "sha256": "9788ac1774ab1831dabc95c3718b2960f7567fe71adef4832cc99dcd9ceed3f5",
+      "bytes": 52920
+    },
+    "cases/made-perimeter-s1-1-metal/records-before.bin": {
+      "sha256": "9c882b313afc11ab1f522df0f23df4dbbe8bea7f6fd38d145c2177a597e46ad5",
+      "bytes": 52920
+    },
+    "cases/made-perimeter-s1-1-metal/times-and-seeds.json": {
+      "sha256": "01ca814af1b4ac7a96d2fd482a69e06bf523bdf02e0eb4fe548ca68804acf713",
+      "bytes": 62949
+    },
+    "cases/made-perimeter-s1-1-metal/uniforms-cuda.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s1-1-metal/uniforms-metal.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1-cuda/controls-cuda.bin": {
+      "sha256": "e73937273fab0f61d6062c2f69d9a3293466047b9de0ae951f1b79ce81cc55dc",
+      "bytes": 195336
+    },
+    "cases/made-perimeter-s3-1-cuda/controls.bin": {
+      "sha256": "e73937273fab0f61d6062c2f69d9a3293466047b9de0ae951f1b79ce81cc55dc",
+      "bytes": 195336
+    },
+    "cases/made-perimeter-s3-1-cuda/expected-pressure.bin": {
+      "sha256": "c00cdbbac90c96e805c633f24f550bd565ea56ad4471a32630336715f186c202",
+      "bytes": 21704
+    },
+    "cases/made-perimeter-s3-1-cuda/inputs.bin": {
+      "sha256": "fbdf5afb809c4c628bd4e119f70d9de17532742cd3d2981f1527c148bb766ce6",
+      "bytes": 347264
+    },
+    "cases/made-perimeter-s3-1-cuda/metal-pressure.bin": {
+      "sha256": "97efe314e8c431a34268ed2dae3b21df6072601e5c2848ba008196342f291c55",
+      "bytes": 21704
+    },
+    "cases/made-perimeter-s3-1-cuda/records-after.bin": {
+      "sha256": "21105ed72ded796502b4d5dc2e83d56a86d3ffb3c28bbe4f1894f744ec467948",
+      "bytes": 108520
+    },
+    "cases/made-perimeter-s3-1-cuda/records-before.bin": {
+      "sha256": "5defa510961ac52adf0149b6c99f4ee498aa09f6b53d9cc94b471e2bc336bfb6",
+      "bytes": 108520
+    },
+    "cases/made-perimeter-s3-1-cuda/times-and-seeds.json": {
+      "sha256": "a0f69d2032a92cd65aeba6dd75d368fc2b942a6f2dc139fccad0daed2af78a7a",
+      "bytes": 64532
+    },
+    "cases/made-perimeter-s3-1-cuda/uniforms-cuda.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1-cuda/uniforms-metal.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1-metal/controls-cuda.bin": {
+      "sha256": "a730e86413fa8bf2501477be3d25eeb58fb797fdbb50b9bdad1e76169881d4b4",
+      "bytes": 195264
+    },
+    "cases/made-perimeter-s3-1-metal/controls.bin": {
+      "sha256": "a730e86413fa8bf2501477be3d25eeb58fb797fdbb50b9bdad1e76169881d4b4",
+      "bytes": 195264
+    },
+    "cases/made-perimeter-s3-1-metal/expected-pressure.bin": {
+      "sha256": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73",
+      "bytes": 21696
+    },
+    "cases/made-perimeter-s3-1-metal/inputs.bin": {
+      "sha256": "4dd90dff5803951d2d6cd5b474c1433c36fdf6aa8e54395b4b483ae7882de4fe",
+      "bytes": 347136
+    },
+    "cases/made-perimeter-s3-1-metal/metal-pressure.bin": {
+      "sha256": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73",
+      "bytes": 21696
+    },
+    "cases/made-perimeter-s3-1-metal/records-after.bin": {
+      "sha256": "47f1c56eb49242d5c479582f163c191daba580ea97edd0b82fe213772fddd646",
+      "bytes": 108480
+    },
+    "cases/made-perimeter-s3-1-metal/records-before.bin": {
+      "sha256": "10d1eb0cd3b89cd6a3f75312c1bec8a69d9aca5d4399d131a645ff27fa973486",
+      "bytes": 108480
+    },
+    "cases/made-perimeter-s3-1-metal/times-and-seeds.json": {
+      "sha256": "db30e2cef6f1478941131bbe1d475de00babcb4cf8e752a31e806b47252bde97",
+      "bytes": 64464
+    },
+    "cases/made-perimeter-s3-1-metal/uniforms-cuda.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "cases/made-perimeter-s3-1-metal/uniforms-metal.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "comparison-pins.json": {
+      "sha256": "7535ad449ef382f7b0e7af8542811dcd532de2def0e8776102bcd8d16a81eae4",
+      "bytes": 1234
+    },
+    "comparison.log": {
+      "sha256": "c2510690da6513ce285e137190a8591b739abddcf147205dea783f5431b75d59",
+      "bytes": 589
+    },
+    "compile.json": {
+      "sha256": "6e1dae844499b01f560ef33922703c9075f460ecc8d50b7ba76cfc6219a213c4",
+      "bytes": 1141
+    },
+    "compile.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "controls/ideal/controls-cuda.bin": {
+      "sha256": "00f6b9cc86f165fcc07b564f9bed6f7b7671b560b9fb0c99ca8d3062caa71e9b",
+      "bytes": 144
+    },
+    "controls/ideal/controls.bin": {
+      "sha256": "00f6b9cc86f165fcc07b564f9bed6f7b7671b560b9fb0c99ca8d3062caa71e9b",
+      "bytes": 144
+    },
+    "controls/ideal/expected-pressure.bin": {
+      "sha256": "4a1a8869c3c54474ee6d7387a9b446c2ee3f8f781837e81b8b4df922d074575b",
+      "bytes": 24
+    },
+    "controls/ideal/inputs.bin": {
+      "sha256": "417ad9cf02ed8a05060f4881c605ee3d11c42842c9ecea9d9c0874004d4233c2",
+      "bytes": 384
+    },
+    "controls/ideal/metal-pressure.bin": {
+      "sha256": "4a1a8869c3c54474ee6d7387a9b446c2ee3f8f781837e81b8b4df922d074575b",
+      "bytes": 24
+    },
+    "controls/ideal/records-after.bin": {
+      "sha256": "6edd9f6f9cc92cded36e6c4a580933f9c9f1b90562b46903b806f21902a1a54f",
+      "bytes": 120
+    },
+    "controls/ideal/records-before.bin": {
+      "sha256": "6edd9f6f9cc92cded36e6c4a580933f9c9f1b90562b46903b806f21902a1a54f",
+      "bytes": 120
+    },
+    "controls/ideal/uniforms-cuda.bin": {
+      "sha256": "f146b5dbb223ccc7ec163e9baf21146640495d4277ff4aaa5c7af022d3d96b1e",
+      "bytes": 276
+    },
+    "controls/ideal/uniforms-metal.bin": {
+      "sha256": "f146b5dbb223ccc7ec163e9baf21146640495d4277ff4aaa5c7af022d3d96b1e",
+      "bytes": 276
+    },
+    "controls.json": {
+      "sha256": "d027d5696b4791fca354666520f8ae3859a85d24788f27b10eea49d0ed5546ae",
+      "bytes": 2833
+    },
+    "cuda-cross/beirut-p0-1-metal/pressure.bin": {
+      "sha256": "0fe3c525b071a9d349f30e172495d9916c198adb013f8156c7e0ff3acd1c6b9d",
+      "bytes": 9672
+    },
+    "cuda-cross/cut-0.ptx": {
+      "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+      "bytes": 611788
+    },
+    "cuda-cross/cut-1.ptx": {
+      "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+      "bytes": 1269128
+    },
+    "cuda-cross/made-perimeter-s1-1-metal/pressure.bin": {
+      "sha256": "dfc2224d86cfe4a90a1b90a53db6e19a407288cf37065b64cdb9af7ee9e71f0b",
+      "bytes": 10584
+    },
+    "cuda-cross/made-perimeter-s3-1-metal/pressure.bin": {
+      "sha256": "67625eb2bbaf5ac98440f010bf4f1c6b39b421400655c86bd206b63397df4466",
+      "bytes": 21696
+    },
+    "cuda-cross/receipt.json": {
+      "sha256": "c139cff26e3103aa3da2369fb185738ab5bb161c535fd8cc4fca04efd6452f06",
+      "bytes": 9224
+    },
+    "cuda-cross-controller.json": {
+      "sha256": "d6a972f4110c0eea1259a969bd8ef3c81a0ed79679500bd6892a730cb3e14ce9",
+      "bytes": 644
+    },
+    "cuda-cross-remote.json": {
+      "sha256": "b70bd53fc3db85e2e62559cb622f279c8d5912b9a912d08ee2dfda3d6adab6db",
+      "bytes": 2290
+    },
+    "cuda-cross-remote.log": {
+      "sha256": "7a2928008c111caa7e677dc9e5a342ab1f81b0a124459724172f8ae307675deb",
+      "bytes": 8392
+    },
+    "cuda-cross-ssh.log": {
+      "sha256": "d1154eb03566f803bee00af12d9d3d4060448ecc35084c6eb6b225b1a005db33",
+      "bytes": 590
+    },
+    "cuda-own/beirut-p0-1-cuda/pressure.bin": {
+      "sha256": "ef251680c771bfeee5d3afdff5645f27d20c23d40b26e51f65f3618929b7e519",
+      "bytes": 9680
+    },
+    "cuda-own/cut-0.ptx": {
+      "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+      "bytes": 611788
+    },
+    "cuda-own/cut-1.ptx": {
+      "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+      "bytes": 1269128
+    },
+    "cuda-own/ideal-interpolation-kinetic-zero-weight/pressure.bin": {
+      "sha256": "4a1a8869c3c54474ee6d7387a9b446c2ee3f8f781837e81b8b4df922d074575b",
+      "bytes": 24
+    },
+    "cuda-own/made-perimeter-s1-1-cuda/pressure.bin": {
+      "sha256": "2f1cbd05b26f1a62addd9cc16242b06659dd42de435bac2f080159da0ad4b581",
+      "bytes": 10592
+    },
+    "cuda-own/made-perimeter-s3-1-cuda/pressure.bin": {
+      "sha256": "c00cdbbac90c96e805c633f24f550bd565ea56ad4471a32630336715f186c202",
+      "bytes": 21704
+    },
+    "cuda-own/receipt.json": {
+      "sha256": "06db2130d9823329a287543a3fdf2cfbfc69670ffb18b89f118c6470fe382b30",
+      "bytes": 3685
+    },
+    "cuda-own-controller.json": {
+      "sha256": "1c39773134dcf8c6bfafad9b67ae855ea6b6a3f22d634bb1c9d0692abcd46187",
+      "bytes": 640
+    },
+    "cuda-own-gate.json": {
+      "sha256": "8e7f92ee9e189ac9be3da874e7e5470d5d015a4d392a5f023b586ae00c1d5e41",
+      "bytes": 139
+    },
+    "cuda-own-remote.json": {
+      "sha256": "22e36b426c90fccab5db92d0c7d22f7d1f28f77e7ff9b9eb020588b446bcaf08",
+      "bytes": 2286
+    },
+    "cuda-own-remote.log": {
+      "sha256": "213d811c15dfeb611e2998307db340031e5a10892677330aaedd2b26e65a3a76",
+      "bytes": 2853
+    },
+    "cuda-own-ssh.log": {
+      "sha256": "8b5b28d9e6820df99d011667ce4dd15f5a6024e6214377767795e8d8ac63d3df",
+      "bytes": 586
+    },
+    "cuda-staging.json": {
+      "sha256": "5ba684eb6930d5afc25e57d8f2658a30c7bb1619b2e02fab547861df93be4066",
+      "bytes": 10818
+    },
+    "independent-verification.json": {
+      "sha256": "eb38433c10cb8bbb090b19330a61d6e0b1ae34504e149061ff2397c943f6f40c",
+      "bytes": 5220
+    },
+    "matrix-results.json": {
+      "sha256": "03a208c87ef385a70478e85a8095b7b9b86148550b194904a919392fa0413519",
+      "bytes": 67574
+    },
+    "metal-controls-gate.json": {
+      "sha256": "8a102cda3c44b76f93d5bd39ceb22bca409c4ecc29d5fcb7427140363d5bb33d",
+      "bytes": 188
+    },
+    "metal-controls-process.json": {
+      "sha256": "44faec9a557b52bcaa460736a3371faac59f0c4d587fc02398415319ec7839bc",
+      "bytes": 493
+    },
+    "metal-controls-receipt.json": {
+      "sha256": "40a84e3e20e7a07813c33dc5f54569720043a8f4e809ee7fe8a2eece25fb29d5",
+      "bytes": 1133
+    },
+    "metal-controls.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "metal-cross-process.json": {
+      "sha256": "e885bda23f1478bb1248133f055f439890c16e7000530982d79adaf05e31e61b",
+      "bytes": 493
+    },
+    "metal-cross-receipt.json": {
+      "sha256": "76d9e2e61fe2c0d08c43d00b0316bf80c40dc5e3b4a9e00b62b7b331649da9d0",
+      "bytes": 2144
+    },
+    "metal-cross.json": {
+      "sha256": "f03f1b9817a214704820ca9425eb7732d3f07bbef9cd8ff4f2278eb39f201f24",
+      "bytes": 3561
+    },
+    "metal-cross.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "metal-own-gate.json": {
+      "sha256": "5fa11ada72b2615378363a71fdae28a4ec6c4a2da832fd8295689a3932da3e22",
+      "bytes": 1323
+    },
+    "metal-own-process.json": {
+      "sha256": "08ed3e078ab87cfa3a5569e9bc038e657f784c398079d74d566e25517d84b2da",
+      "bytes": 489
+    },
+    "metal-own-receipt.json": {
+      "sha256": "bcd6e4a737414745c535ed086a1282aefdb855d1d8deaea2928088c73bfb1f01",
+      "bytes": 2147
+    },
+    "metal-own.json": {
+      "sha256": "615bb0ffb036ca9dad0c3092975c89d774c2ef9d7b5e6eb1db9dc6b279bc9be0",
+      "bytes": 3567
+    },
+    "metal-own.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "phase-controls.log": {
+      "sha256": "33060fd73862c5e1af97335504d5b45211fce6d229657f556d8deceeadc52ce4",
+      "bytes": 101
+    },
+    "preflight-failures.json": {
+      "sha256": "5e005a31c9a890f2592a10ddfe39aea1735e1b2f15dc4525338bfa64a3ffd39b",
+      "bytes": 539
+    },
+    "preparation.json": {
+      "sha256": "db2672f935003ed855798cb42c8e74bdc846b2882f88fd6a24aaf5c6e9947e75",
+      "bytes": 28192
+    },
+    "publication-checks.json": {
+      "sha256": "d6e282a2150a9210fd652d2c3958ffccb7725a3899809c354a65c955e5ed2a36",
+      "bytes": 1176
+    },
+    "remote-input/cases/beirut-p0-1-cuda/controls-cuda.bin": {
+      "sha256": "3e87629ad004b8efdc603763e2b26799f9b6443119ffb6689dc2adffa435c249",
+      "bytes": 174240
+    },
+    "remote-input/cases/beirut-p0-1-cuda/expected-pressure.bin": {
+      "sha256": "ef251680c771bfeee5d3afdff5645f27d20c23d40b26e51f65f3618929b7e519",
+      "bytes": 9680
+    },
+    "remote-input/cases/beirut-p0-1-cuda/inputs.bin": {
+      "sha256": "82941fdd927e9823ca26b7f01914d7a3d91db7f718893d1718fce6158fd85792",
+      "bytes": 154880
+    },
+    "remote-input/cases/beirut-p0-1-cuda/records-after.bin": {
+      "sha256": "79e4b1ef8d7cfc8bbf15bd2d5c314e2f09678a0f25279305aef863e21c28f396",
+      "bytes": 48400
+    },
+    "remote-input/cases/beirut-p0-1-cuda/uniforms-cuda.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "remote-input/cases/beirut-p0-1-metal/controls-cuda.bin": {
+      "sha256": "c476fab7606f93ff6761468c810438d8652e240cadc9bab80f6910e4fa42dcf6",
+      "bytes": 174096
+    },
+    "remote-input/cases/beirut-p0-1-metal/expected-pressure.bin": {
+      "sha256": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6",
+      "bytes": 9672
+    },
+    "remote-input/cases/beirut-p0-1-metal/inputs.bin": {
+      "sha256": "166326ef2bc17a1c151af109508ccfd15b26a4ae5440dc853cf7bc5c8747572c",
+      "bytes": 154752
+    },
+    "remote-input/cases/beirut-p0-1-metal/records-after.bin": {
+      "sha256": "3bc9c9e5c55f571536657717817c7b0bf62e2c5f3839997ab7641fcedd66a183",
+      "bytes": 48360
+    },
+    "remote-input/cases/beirut-p0-1-metal/uniforms-cuda.bin": {
+      "sha256": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+      "bytes": 276
+    },
+    "remote-input/cases/made-perimeter-s1-1-cuda/controls-cuda.bin": {
+      "sha256": "62fe31911264bf371164ca8a4818c8734c8dfca585f21d0b5ee75ee6047cee5f",
+      "bytes": 190656
+    },
+    "remote-input/cases/made-perimeter-s1-1-cuda/expected-pressure.bin": {
+      "sha256": "2f1cbd05b26f1a62addd9cc16242b06659dd42de435bac2f080159da0ad4b581",
+      "bytes": 10592
+    },
+    "remote-input/cases/made-perimeter-s1-1-cuda/inputs.bin": {
+      "sha256": "ec10cf0b8318f70dd68acc5a64af069df2a1ec26a5e01d1be0a8d9e9b69a39b0",
+      "bytes": 169472
+    },
+    "remote-input/cases/made-perimeter-s1-1-cuda/records-after.bin": {
+      "sha256": "0b8fccb47bda0acb9d3a6492d442e93bb9cb36a4beed519f9f2895d9cb31086c",
+      "bytes": 52960
+    },
+    "remote-input/cases/made-perimeter-s1-1-cuda/uniforms-cuda.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "remote-input/cases/made-perimeter-s1-1-metal/controls-cuda.bin": {
+      "sha256": "61b9539e1c75c56268ba5b236af4a1ad03d4d140ef8be4ad9ce5970627acdd0a",
+      "bytes": 190512
+    },
+    "remote-input/cases/made-perimeter-s1-1-metal/expected-pressure.bin": {
+      "sha256": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada",
+      "bytes": 10584
+    },
+    "remote-input/cases/made-perimeter-s1-1-metal/inputs.bin": {
+      "sha256": "0f9b5626a207778a0b2d21a89831800797627e3bfb117a3da1855e12c867903e",
+      "bytes": 169344
+    },
+    "remote-input/cases/made-perimeter-s1-1-metal/records-after.bin": {
+      "sha256": "9788ac1774ab1831dabc95c3718b2960f7567fe71adef4832cc99dcd9ceed3f5",
+      "bytes": 52920
+    },
+    "remote-input/cases/made-perimeter-s1-1-metal/uniforms-cuda.bin": {
+      "sha256": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+      "bytes": 276
+    },
+    "remote-input/cases/made-perimeter-s3-1-cuda/controls-cuda.bin": {
+      "sha256": "e73937273fab0f61d6062c2f69d9a3293466047b9de0ae951f1b79ce81cc55dc",
+      "bytes": 195336
+    },
+    "remote-input/cases/made-perimeter-s3-1-cuda/expected-pressure.bin": {
+      "sha256": "c00cdbbac90c96e805c633f24f550bd565ea56ad4471a32630336715f186c202",
+      "bytes": 21704
+    },
+    "remote-input/cases/made-perimeter-s3-1-cuda/inputs.bin": {
+      "sha256": "fbdf5afb809c4c628bd4e119f70d9de17532742cd3d2981f1527c148bb766ce6",
+      "bytes": 347264
+    },
+    "remote-input/cases/made-perimeter-s3-1-cuda/records-after.bin": {
+      "sha256": "21105ed72ded796502b4d5dc2e83d56a86d3ffb3c28bbe4f1894f744ec467948",
+      "bytes": 108520
+    },
+    "remote-input/cases/made-perimeter-s3-1-cuda/uniforms-cuda.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "remote-input/cases/made-perimeter-s3-1-metal/controls-cuda.bin": {
+      "sha256": "a730e86413fa8bf2501477be3d25eeb58fb797fdbb50b9bdad1e76169881d4b4",
+      "bytes": 195264
+    },
+    "remote-input/cases/made-perimeter-s3-1-metal/expected-pressure.bin": {
+      "sha256": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73",
+      "bytes": 21696
+    },
+    "remote-input/cases/made-perimeter-s3-1-metal/inputs.bin": {
+      "sha256": "4dd90dff5803951d2d6cd5b474c1433c36fdf6aa8e54395b4b483ae7882de4fe",
+      "bytes": 347136
+    },
+    "remote-input/cases/made-perimeter-s3-1-metal/records-after.bin": {
+      "sha256": "47f1c56eb49242d5c479582f163c191daba580ea97edd0b82fe213772fddd646",
+      "bytes": 108480
+    },
+    "remote-input/cases/made-perimeter-s3-1-metal/uniforms-cuda.bin": {
+      "sha256": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+      "bytes": 276
+    },
+    "remote-input/controls/ideal/controls-cuda.bin": {
+      "sha256": "00f6b9cc86f165fcc07b564f9bed6f7b7671b560b9fb0c99ca8d3062caa71e9b",
+      "bytes": 144
+    },
+    "remote-input/controls/ideal/expected-pressure.bin": {
+      "sha256": "4a1a8869c3c54474ee6d7387a9b446c2ee3f8f781837e81b8b4df922d074575b",
+      "bytes": 24
+    },
+    "remote-input/controls/ideal/inputs.bin": {
+      "sha256": "417ad9cf02ed8a05060f4881c605ee3d11c42842c9ecea9d9c0874004d4233c2",
+      "bytes": 384
+    },
+    "remote-input/controls/ideal/records-after.bin": {
+      "sha256": "6edd9f6f9cc92cded36e6c4a580933f9c9f1b90562b46903b806f21902a1a54f",
+      "bytes": 120
+    },
+    "remote-input/controls/ideal/uniforms-cuda.bin": {
+      "sha256": "f146b5dbb223ccc7ec163e9baf21146640495d4277ff4aaa5c7af022d3d96b1e",
+      "bytes": 276
+    },
+    "remote-input/cross.json": {
+      "sha256": "d3a946bb4360258474a8b877ee09644c4e399c79bc3ec2e3144d68447754bed6",
+      "bytes": 6010
+    },
+    "remote-input/own.json": {
+      "sha256": "77630ba35bfa01bd4e51fadf805167d3dea28a752bcd5a5fd81b056c3cfdeddd",
+      "bytes": 6362
+    },
+    "remote-input/worker/compile.py": {
+      "sha256": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+      "bytes": 4083
+    },
+    "remote-input/worker/cuda_replay.py": {
+      "sha256": "48f3131d58edafd19425c5a57c5422ace2d30eb2a522a666adaaf88931f67e1c",
+      "bytes": 9500
+    },
+    "remote-input/worker/job.py": {
+      "sha256": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+      "bytes": 8505
+    },
+    "remote-input/worker/original-worker.py": {
+      "sha256": "2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb",
+      "bytes": 18840
+    },
+    "remote-input/worker/remote-train.py": {
+      "sha256": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+      "bytes": 28362
+    },
+    "remote-input/worker/solver.cu": {
+      "sha256": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+      "bytes": 128150
+    },
+    "remote-input/worker/trace_columns.py": {
+      "sha256": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+      "bytes": 3628
+    },
+    "runtime/replay": {
+      "sha256": "893e8a057d0a93a1b47895034d2e91fba0a36011f427eab964b48c3740a21076",
+      "bytes": 108184
+    }
+  },
+  "archives": [
+    {
+      "path": "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay-archive/all-raw.tar.gz",
+      "sha256": "ff1c6d88268e58fbf7e77ebb545f08203cd197b2ded3c60bcf96837603cf20db",
+      "bytes": 3080771,
+      "members": 201
+    },
+    {
+      "path": "/Users/louisemmett/Developer/Projects/bombcad/Benchmarks/CUDAAcceptance/2026-10-22-native-pressure-cross-replay/evidence/metadata.tar.gz",
+      "sha256": "59917059917bb04399f8f33dbe96b077864f4642d155766afc6e651e64f611f8",
+      "bytes": 224397,
+      "members": 67
+    }
+  ],
+  "rawFiles": 201,
+  "rawBytes": 14296651,
+  "limits": "Raw replay inputs, pressure vectors, producer libraries, source/PTX and all outcomes retained externally; public archive contains metadata and postprocessing. No PDE evolution. Parent field captures remain pinned to their existing archives."
+}

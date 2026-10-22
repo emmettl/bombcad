@@ -1,0 +1,1258 @@
+{
+  "status": "complete-all-outcomes",
+  "allOwnPressureWordsExact": true,
+  "allOwnRecorderWordsExact": true,
+  "nativeWordCounts": {
+    "metal": 10488,
+    "cuda": 10494
+  },
+  "rows": [
+    {
+      "id": "made-perimeter-s1-1",
+      "inputBackend": "metal",
+      "samples": 2646,
+      "accumulatorPolicy": "fused",
+      "columns": [
+        {
+          "column": 62902,
+          "native": {
+            "final": [
+              7203.265625,
+              1463.3438720703125,
+              1107.3367919921875,
+              7203.265625,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1299,
+                "time": 2.1101055481949516,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.4036706488695927e-05
+              },
+              {
+                "sample": 1513,
+                "time": 2.492242411269217,
+                "open": 0.0,
+                "pressure": -65.8359375,
+                "firstPhaseImpulse": 1107.3367919921875
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  7203.265625,
+                  1463.3438720703125,
+                  1107.3367919921875,
+                  7203.265625,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1299,
+                    "time": 2.1101055481949516,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.4036706488695927e-05
+                  },
+                  {
+                    "sample": 1513,
+                    "time": 2.492242411269217,
+                    "open": 0.0,
+                    "pressure": -65.8359375,
+                    "firstPhaseImpulse": 1107.3367919921875
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1513,
+                  "time": 2.492242411269217,
+                  "nativePressure": -65.8359375,
+                  "readerPressure": -65.8359375
+                }
+              ],
+              "metalReference": 1107.3367919921875,
+              "absoluteError": 0.0,
+              "unchangedAllowance": 2.264673583984375,
+              "conditionalPointWithinAllowance": true
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  7203.2734375,
+                  1463.344482421875,
+                  1107.3365478515625,
+                  7203.2734375,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1299,
+                    "time": 2.1101055481949516,
+                    "open": 1.0,
+                    "pressure": 0.015625,
+                    "firstPhaseImpulse": 2.8073412977391854e-05
+                  },
+                  {
+                    "sample": 1513,
+                    "time": 2.492242411269217,
+                    "open": 0.0,
+                    "pressure": -65.84375,
+                    "firstPhaseImpulse": 1107.3365478515625
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 428,
+              "numericPressureDifferences": 428,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0234375,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1513,
+                  "time": 2.492242411269217,
+                  "nativePressure": -65.8359375,
+                  "readerPressure": -65.84375
+                }
+              ],
+              "metalReference": 1107.3367919921875,
+              "absoluteError": 0.000244140625,
+              "unchangedAllowance": 2.264673583984375,
+              "conditionalPointWithinAllowance": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "inputBackend": "metal",
+      "samples": 2712,
+      "accumulatorPolicy": "fused",
+      "columns": [
+        {
+          "column": 134058,
+          "native": {
+            "final": [
+              3364.5390625,
+              831.4823608398438,
+              439.7640075683594,
+              3364.5390625,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1060,
+                "time": 1.6770415405135282,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.2929510376125108e-05
+              },
+              {
+                "sample": 1276,
+                "time": 2.036535571804052,
+                "open": 0.0,
+                "pressure": -13.390625,
+                "firstPhaseImpulse": 439.7640075683594
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  3364.5390625,
+                  831.4823608398438,
+                  439.7640075683594,
+                  3364.5390625,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1060,
+                    "time": 1.6770415405135282,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.2929510376125108e-05
+                  },
+                  {
+                    "sample": 1276,
+                    "time": 2.036535571804052,
+                    "open": 0.0,
+                    "pressure": -13.390625,
+                    "firstPhaseImpulse": 439.7640075683594
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535571804052,
+                  "nativePressure": -13.390625,
+                  "readerPressure": -13.390625
+                }
+              ],
+              "metalReference": 439.7640075683594,
+              "absoluteError": 0.0,
+              "unchangedAllowance": 0.9295280151367188,
+              "conditionalPointWithinAllowance": true
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  3364.546875,
+                  831.4813842773438,
+                  439.7638244628906,
+                  3364.546875,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1061,
+                    "time": 1.6786961901325412,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.2926950148539618e-05
+                  },
+                  {
+                    "sample": 1276,
+                    "time": 2.036535571804052,
+                    "open": 0.0,
+                    "pressure": -13.390625,
+                    "firstPhaseImpulse": 439.7638244628906
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 746,
+              "numericPressureDifferences": 746,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 1,
+              "maximumAbsolutePressureDifference": 0.0234375,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535571804052,
+                  "nativePressure": -13.390625,
+                  "readerPressure": -13.390625
+                }
+              ],
+              "metalReference": 439.7640075683594,
+              "absoluteError": 0.00018310546875,
+              "unchangedAllowance": 0.9295280151367188,
+              "conditionalPointWithinAllowance": true
+            }
+          }
+        },
+        {
+          "column": 250097,
+          "native": {
+            "final": [
+              1783.96875,
+              683.8822021484375,
+              188.52630615234375,
+              1783.96875,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1450,
+                "time": 2.3297118416612648,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.3281628525874112e-05
+              },
+              {
+                "sample": 1593,
+                "time": 2.5741377438043855,
+                "open": 0.0,
+                "pressure": -1.40625,
+                "firstPhaseImpulse": 188.52630615234375
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  1783.96875,
+                  683.8822021484375,
+                  188.52630615234375,
+                  1783.96875,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1450,
+                    "time": 2.3297118416612648,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.3281628525874112e-05
+                  },
+                  {
+                    "sample": 1593,
+                    "time": 2.5741377438043855,
+                    "open": 0.0,
+                    "pressure": -1.40625,
+                    "firstPhaseImpulse": 188.52630615234375
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741377438043855,
+                  "nativePressure": -1.40625,
+                  "readerPressure": -1.40625
+                }
+              ],
+              "metalReference": 188.52630615234375,
+              "absoluteError": 0.0,
+              "unchangedAllowance": 0.4270526123046875,
+              "conditionalPointWithinAllowance": true
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  1783.9609375,
+                  683.8817749023438,
+                  188.52613830566406,
+                  1783.9609375,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1450,
+                    "time": 2.3297118416612648,
+                    "open": 1.0,
+                    "pressure": 0.015625,
+                    "firstPhaseImpulse": 2.6563257051748224e-05
+                  },
+                  {
+                    "sample": 1593,
+                    "time": 2.5741377438043855,
+                    "open": 0.0,
+                    "pressure": -1.40625,
+                    "firstPhaseImpulse": 188.52613830566406
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 460,
+              "numericPressureDifferences": 460,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0234375,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741377438043855,
+                  "nativePressure": -1.40625,
+                  "readerPressure": -1.40625
+                }
+              ],
+              "metalReference": 188.52630615234375,
+              "absoluteError": 0.0001678466796875,
+              "unchangedAllowance": 0.4270526123046875,
+              "conditionalPointWithinAllowance": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "beirut-p0-1",
+      "inputBackend": "metal",
+      "samples": 2418,
+      "accumulatorPolicy": "fused",
+      "columns": [
+        {
+          "column": 187747,
+          "native": {
+            "final": [
+              12078.71875,
+              1842.3138427734375,
+              1696.1177978515625,
+              12078.71875,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 655,
+                "time": 1.2255867266367204,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.442296434106538e-05
+              },
+              {
+                "sample": 900,
+                "time": 1.6764549618392266,
+                "open": 0.0,
+                "pressure": -59.75,
+                "firstPhaseImpulse": 1696.1177978515625
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  12078.71875,
+                  1842.3138427734375,
+                  1696.1177978515625,
+                  12078.71875,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 655,
+                    "time": 1.2255867266367204,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.442296434106538e-05
+                  },
+                  {
+                    "sample": 900,
+                    "time": 1.6764549618392266,
+                    "open": 0.0,
+                    "pressure": -59.75,
+                    "firstPhaseImpulse": 1696.1177978515625
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 900,
+                  "time": 1.6764549618392266,
+                  "nativePressure": -59.75,
+                  "readerPressure": -59.75
+                }
+              ],
+              "metalReference": 1696.1177978515625,
+              "absoluteError": 0.0,
+              "unchangedAllowance": 3.4422355957031248,
+              "conditionalPointWithinAllowance": true
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  12078.71875,
+                  1842.311767578125,
+                  1696.117919921875,
+                  12078.71875,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 655,
+                    "time": 1.2255867266367204,
+                    "open": 1.0,
+                    "pressure": 0.015625,
+                    "firstPhaseImpulse": 2.884592868213076e-05
+                  },
+                  {
+                    "sample": 900,
+                    "time": 1.6764549618392266,
+                    "open": 0.0,
+                    "pressure": -59.734375,
+                    "firstPhaseImpulse": 1696.117919921875
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 932,
+              "numericPressureDifferences": 932,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0234375,
+              "atInputNativeClosings": [
+                {
+                  "sample": 900,
+                  "time": 1.6764549618392266,
+                  "nativePressure": -59.75,
+                  "readerPressure": -59.734375
+                }
+              ],
+              "metalReference": 1696.1177978515625,
+              "absoluteError": 0.0001220703125,
+              "unchangedAllowance": 3.4422355957031248,
+              "conditionalPointWithinAllowance": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "made-perimeter-s1-1",
+      "inputBackend": "cuda",
+      "samples": 2648,
+      "accumulatorPolicy": "separate",
+      "columns": [
+        {
+          "column": 62902,
+          "native": {
+            "final": [
+              7203.234375,
+              1463.33984375,
+              1107.3350830078125,
+              7203.234375,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1298,
+                "time": 2.1083100569909075,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.4042142538528424e-05
+              },
+              {
+                "sample": 1513,
+                "time": 2.4922439883472034,
+                "open": 0.0,
+                "pressure": -65.9609375,
+                "firstPhaseImpulse": 1107.3350830078125
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  7203.234375,
+                  1463.33935546875,
+                  1107.3348388671875,
+                  7203.234375,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1298,
+                    "time": 2.1083100569909075,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.4042142538528424e-05
+                  },
+                  {
+                    "sample": 1513,
+                    "time": 2.4922439883472034,
+                    "open": 0.0,
+                    "pressure": -65.9609375,
+                    "firstPhaseImpulse": 1107.3348388671875
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 480,
+              "numericPressureDifferences": 480,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0234375,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1513,
+                  "time": 2.4922439883472034,
+                  "nativePressure": -65.9609375,
+                  "readerPressure": -65.9609375
+                }
+              ],
+              "metalReference": 1107.3367919921875,
+              "absoluteError": 0.001953125,
+              "unchangedAllowance": 2.264673583984375,
+              "conditionalPointWithinAllowance": true
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  7203.234375,
+                  1463.33984375,
+                  1107.3350830078125,
+                  7203.234375,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1298,
+                    "time": 2.1083100569909075,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.4042142538528424e-05
+                  },
+                  {
+                    "sample": 1513,
+                    "time": 2.4922439883472034,
+                    "open": 0.0,
+                    "pressure": -65.9609375,
+                    "firstPhaseImpulse": 1107.3350830078125
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1513,
+                  "time": 2.4922439883472034,
+                  "nativePressure": -65.9609375,
+                  "readerPressure": -65.9609375
+                }
+              ],
+              "metalReference": 1107.3367919921875,
+              "absoluteError": 0.001708984375,
+              "unchangedAllowance": 2.264673583984375,
+              "conditionalPointWithinAllowance": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "inputBackend": "cuda",
+      "samples": 2713,
+      "accumulatorPolicy": "separate",
+      "columns": [
+        {
+          "column": 134058,
+          "native": {
+            "final": [
+              3364.5234375,
+              831.4840087890625,
+              439.7618103027344,
+              3364.5234375,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1060,
+                "time": 1.6770416642558124,
+                "open": 1.0,
+                "pressure": 0.0078125,
+                "firstPhaseImpulse": 1.292950128117809e-05
+              },
+              {
+                "sample": 1276,
+                "time": 2.036535698573134,
+                "open": 0.0,
+                "pressure": -13.390625,
+                "firstPhaseImpulse": 439.7618103027344
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  3364.5234375,
+                  831.4852905273438,
+                  439.76226806640625,
+                  3364.5234375,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1058,
+                    "time": 1.6737321222918402,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.2929171134601347e-05
+                  },
+                  {
+                    "sample": 1276,
+                    "time": 2.036535698573134,
+                    "open": 0.0,
+                    "pressure": -13.390625,
+                    "firstPhaseImpulse": 439.76226806640625
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 817,
+              "numericPressureDifferences": 817,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 2,
+              "maximumAbsolutePressureDifference": 0.0234375,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535698573134,
+                  "nativePressure": -13.390625,
+                  "readerPressure": -13.390625
+                }
+              ],
+              "metalReference": 439.7640075683594,
+              "absoluteError": 0.001739501953125,
+              "unchangedAllowance": 0.9295280151367188,
+              "conditionalPointWithinAllowance": true
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  3364.5234375,
+                  831.4840087890625,
+                  439.7618103027344,
+                  3364.5234375,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1060,
+                    "time": 1.6770416642558124,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.292950128117809e-05
+                  },
+                  {
+                    "sample": 1276,
+                    "time": 2.036535698573134,
+                    "open": 0.0,
+                    "pressure": -13.390625,
+                    "firstPhaseImpulse": 439.7618103027344
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1276,
+                  "time": 2.036535698573134,
+                  "nativePressure": -13.390625,
+                  "readerPressure": -13.390625
+                }
+              ],
+              "metalReference": 439.7640075683594,
+              "absoluteError": 0.002197265625,
+              "unchangedAllowance": 0.9295280151367188,
+              "conditionalPointWithinAllowance": true
+            }
+          }
+        },
+        {
+          "column": 250097,
+          "native": {
+            "final": [
+              1783.96875,
+              683.8806762695312,
+              188.5260467529297,
+              1783.96875,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 1449,
+                "time": 2.328011972016684,
+                "open": 1.0,
+                "pressure": 0.015625,
+                "firstPhaseImpulse": 2.654840864124708e-05
+              },
+              {
+                "sample": 1593,
+                "time": 2.5741379514821165,
+                "open": 0.0,
+                "pressure": -1.40625,
+                "firstPhaseImpulse": 188.5260467529297
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  1783.96875,
+                  683.8807983398438,
+                  188.52581787109375,
+                  1783.96875,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1449,
+                    "time": 2.328011972016684,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.327420432062354e-05
+                  },
+                  {
+                    "sample": 1593,
+                    "time": 2.5741379514821165,
+                    "open": 0.0,
+                    "pressure": -1.40625,
+                    "firstPhaseImpulse": 188.52581787109375
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 492,
+              "numericPressureDifferences": 492,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.03125,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741379514821165,
+                  "nativePressure": -1.40625,
+                  "readerPressure": -1.40625
+                }
+              ],
+              "metalReference": 188.52630615234375,
+              "absoluteError": 0.00048828125,
+              "unchangedAllowance": 0.4270526123046875,
+              "conditionalPointWithinAllowance": true
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  1783.96875,
+                  683.8806762695312,
+                  188.5260467529297,
+                  1783.96875,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 1449,
+                    "time": 2.328011972016684,
+                    "open": 1.0,
+                    "pressure": 0.015625,
+                    "firstPhaseImpulse": 2.654840864124708e-05
+                  },
+                  {
+                    "sample": 1593,
+                    "time": 2.5741379514821165,
+                    "open": 0.0,
+                    "pressure": -1.40625,
+                    "firstPhaseImpulse": 188.5260467529297
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 1593,
+                  "time": 2.5741379514821165,
+                  "nativePressure": -1.40625,
+                  "readerPressure": -1.40625
+                }
+              ],
+              "metalReference": 188.52630615234375,
+              "absoluteError": 0.0002593994140625,
+              "unchangedAllowance": 0.4270526123046875,
+              "conditionalPointWithinAllowance": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "beirut-p0-1",
+      "inputBackend": "cuda",
+      "samples": 2420,
+      "accumulatorPolicy": "separate",
+      "columns": [
+        {
+          "column": 187747,
+          "native": {
+            "final": [
+              12078.7578125,
+              1842.307861328125,
+              1514.2877197265625,
+              12078.7578125,
+              0.0
+            ],
+            "recordWordDifferences": 0,
+            "transitions": [
+              {
+                "sample": 655,
+                "time": 1.2255876711720193,
+                "open": 1.0,
+                "pressure": 0.015625,
+                "firstPhaseImpulse": 2.884594323404599e-05
+              },
+              {
+                "sample": 827,
+                "time": 1.5420506962259823,
+                "open": 0.0,
+                "pressure": -0.0078125,
+                "firstPhaseImpulse": 1514.2877197265625
+              }
+            ]
+          },
+          "readers": {
+            "metal": {
+              "conditionalRecorder": {
+                "final": [
+                  12078.7578125,
+                  1842.3115234375,
+                  1514.28857421875,
+                  12078.7578125,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 655,
+                    "time": 1.2255876711720193,
+                    "open": 1.0,
+                    "pressure": 0.0078125,
+                    "firstPhaseImpulse": 1.4422971617022995e-05
+                  },
+                  {
+                    "sample": 827,
+                    "time": 1.5420506962259823,
+                    "open": 0.0,
+                    "pressure": -0.0078125,
+                    "firstPhaseImpulse": 1514.28857421875
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 870,
+              "numericPressureDifferences": 870,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0234375,
+              "atInputNativeClosings": [
+                {
+                  "sample": 827,
+                  "time": 1.5420506962259823,
+                  "nativePressure": -0.0078125,
+                  "readerPressure": -0.0078125
+                }
+              ],
+              "metalReference": 1696.1177978515625,
+              "absoluteError": 181.8292236328125,
+              "unchangedAllowance": 3.4422355957031248,
+              "conditionalPointWithinAllowance": false
+            },
+            "cuda": {
+              "conditionalRecorder": {
+                "final": [
+                  12078.7578125,
+                  1842.307861328125,
+                  1514.2877197265625,
+                  12078.7578125,
+                  0.0
+                ],
+                "transitions": [
+                  {
+                    "sample": 655,
+                    "time": 1.2255876711720193,
+                    "open": 1.0,
+                    "pressure": 0.015625,
+                    "firstPhaseImpulse": 2.884594323404599e-05
+                  },
+                  {
+                    "sample": 827,
+                    "time": 1.5420506962259823,
+                    "open": 0.0,
+                    "pressure": -0.0078125,
+                    "firstPhaseImpulse": 1514.2877197265625
+                  }
+                ]
+              },
+              "pressureWordDifferencesFromInputNative": 0,
+              "numericPressureDifferences": 0,
+              "signBitDifferences": 0,
+              "negativeDecisionDifferences": 0,
+              "positiveDecisionDifferences": 0,
+              "maximumAbsolutePressureDifference": 0.0,
+              "atInputNativeClosings": [
+                {
+                  "sample": 827,
+                  "time": 1.5420506962259823,
+                  "nativePressure": -0.0078125,
+                  "readerPressure": -0.0078125
+                }
+              ],
+              "metalReference": 1696.1177978515625,
+              "absoluteError": 181.830078125,
+              "unchangedAllowance": 3.4422355957031248,
+              "conditionalPointWithinAllowance": false
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "nearestNativeCudaClosingPairs": [
+    {
+      "id": "made-perimeter-s1-1",
+      "column": 62902,
+      "cudaSample": 1513,
+      "cudaTime": 2.4922439883472034,
+      "metalSample": 1513,
+      "metalTime": 2.492242411269217,
+      "metalMinusCudaTime": -1.5770779864254791e-06,
+      "cudaInputs": {
+        "metal": -65.9609375,
+        "cuda": -65.9609375
+      },
+      "metalInputs": {
+        "metal": -65.8359375,
+        "cuda": -65.84375
+      }
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "column": 134058,
+      "cudaSample": 1276,
+      "cudaTime": 2.036535698573134,
+      "metalSample": 1276,
+      "metalTime": 2.036535571804052,
+      "metalMinusCudaTime": -1.2676908234254824e-07,
+      "cudaInputs": {
+        "metal": -13.390625,
+        "cuda": -13.390625
+      },
+      "metalInputs": {
+        "metal": -13.390625,
+        "cuda": -13.390625
+      }
+    },
+    {
+      "id": "made-perimeter-s3-1",
+      "column": 250097,
+      "cudaSample": 1593,
+      "cudaTime": 2.5741379514821165,
+      "metalSample": 1593,
+      "metalTime": 2.5741377438043855,
+      "metalMinusCudaTime": -2.0767773101226794e-07,
+      "cudaInputs": {
+        "metal": -1.40625,
+        "cuda": -1.40625
+      },
+      "metalInputs": {
+        "metal": -1.40625,
+        "cuda": -1.40625
+      }
+    },
+    {
+      "id": "beirut-p0-1",
+      "column": 187747,
+      "cudaSample": 827,
+      "cudaTime": 1.5420506962259823,
+      "metalSample": 827,
+      "metalTime": 1.5420496433080189,
+      "metalMinusCudaTime": -1.05291796348439e-06,
+      "cudaInputs": {
+        "metal": -0.0078125,
+        "cuda": -0.0078125
+      },
+      "metalInputs": {
+        "metal": 0.03125,
+        "cuda": 0.0390625
+      }
+    }
+  ],
+  "consumed": {
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls.json": "d027d5696b4791fca354666520f8ae3859a85d24788f27b10eea49d0ed5546ae",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/metal-cross.json": "f03f1b9817a214704820ca9425eb7732d3f07bbef9cd8ff4f2278eb39f201f24",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/metal-own.json": "615bb0ffb036ca9dad0c3092975c89d774c2ef9d7b5e6eb1db9dc6b279bc9be0",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Deflagration.metal": "2c0ed0ba8662810cfd0aeb8b3d1268926997888ebf7a4d1dc4c5058654853868",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/SolverSweep.metal": "8b49fdd79ca2e2ab72763994158f8eef7af95798effd245c6941ac3c7bbe0b3a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/SolverVenting.metal": "f76c048041b052b0e57afad3001eba598b4e6a3f4783d12f15e5b6d8414a7e70",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Gravity.metal": "a923d971eec3aba6cb6fcb43f53c9a6ecdbcc77bb66c7a32d4c95e29f27ee8b7",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Refine.metal": "8cadcc524717326de4e5db2162582b5ea14670943a568ec6c984711a7fde492a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/trace_columns.py": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/SolverEnvelopes.metal": "bca985f08664f5029da5a50008f5a52d39a549d4c396e08e8e59632ae8406043",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Shell.metal": "e7d4ba7f1db6e3e013a1b5956df6aa031009d3979a1ed653699d9d58e9dfa50d",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/SolverVisualization.metal": "8e9212d2fb3d99d4ae16258be312606df16cbe9f87d677a8e5c36e47e77878bb",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/replay.swift": "aeba3690d1bc4e43c5b71698f3a5b28742fd9a49db3141e6678fc4dbf464d278",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/ContactSearchFunctions.metal": "15f9d42d0ac940944a6a4b8c00ebb7bb9dc9531a601d5cb37e3b6ff8be827074",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Extract.metal": "759632e276b8a052bba2b6154f19378aeb89476c11e58ec857fec950b6b6f279",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/original-worker.py": "2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Rubble.metal": "35dc2d2cdc92f55e8cfc711cfae78f205abbd613bc9f475ca34779a3167fa268",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Footing.metal": "c4632a31a22ac1317721301ddec3bdfe13a8e73c8b05f084e441516f45c25fa4",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/solver.cu": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/SolverCutCells.metal": "16e971dd79465612716b0e0b9d7434471e30db266c6c1a348c31fc1ea316906e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Solver.metal": "ce60aea177c31b8f756ce737a306db152b3f9496b4b6a2ce8903d6104cdf73d9",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/SolverCongestion.metal": "091ca11b8deaeb4479a9ad915391236b59733fe96db335d33820bf123e9ef898",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/plan.md": "0fe8382e85a163abb614291824bbc9f11264e67e2f9aa594c3a3109b609d3f47",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Structure.metal": "3f51c7ab962892fa843d5b1134ddbcb67e64e8dc5b9c23c3c96e3caeb99a82d4",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Mixing.metal": "14969dfee838d4e9fd421d720cbd8c48350e668fc517a163abf5dcae6c8498dd",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/BodyContact.metal": "080759e808e32902056dea30eb37d67065de1e7146c406ccfc4efb7a19f8fc2a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/prepare.py": "4faaca1b6c3118ee81351648a84489effada5b21509569162f3147dec215d363",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/Radiation.metal": "9ee96f6df84aeb66a24b95ca968d38b9e320dac89bd9fa41f038072460cb978d",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/SolverStep.metal": "a9be3ae2e87c9d55237fdf14fa1dd93d7a9a6f1f340a282c487d56dcec113bee",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/inputs.bin": "ec10cf0b8318f70dd68acc5a64af069df2a1ec26a5e01d1be0a8d9e9b69a39b0",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/times-and-seeds.json": "7e47e7b8b165dea20d04c04aefe346191178b01d53e26aec8b8ee2cb853c113c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/uniforms-cuda.bin": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/uniforms-metal.bin": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/controls.bin": "62fe31911264bf371164ca8a4818c8734c8dfca585f21d0b5ee75ee6047cee5f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/records-after.bin": "0b8fccb47bda0acb9d3a6492d442e93bb9cb36a4beed519f9f2895d9cb31086c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/records-before.bin": "0088897c045f127486b4dd0741214ea62d653a590889d5225d8756049cf1f1a5",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/expected-pressure.bin": "2f1cbd05b26f1a62addd9cc16242b06659dd42de435bac2f080159da0ad4b581",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/controls-cuda.bin": "62fe31911264bf371164ca8a4818c8734c8dfca585f21d0b5ee75ee6047cee5f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/inputs.bin": "fbdf5afb809c4c628bd4e119f70d9de17532742cd3d2981f1527c148bb766ce6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/times-and-seeds.json": "a0f69d2032a92cd65aeba6dd75d368fc2b942a6f2dc139fccad0daed2af78a7a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/uniforms-cuda.bin": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/uniforms-metal.bin": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/controls.bin": "e73937273fab0f61d6062c2f69d9a3293466047b9de0ae951f1b79ce81cc55dc",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/records-after.bin": "21105ed72ded796502b4d5dc2e83d56a86d3ffb3c28bbe4f1894f744ec467948",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/records-before.bin": "5defa510961ac52adf0149b6c99f4ee498aa09f6b53d9cc94b471e2bc336bfb6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/expected-pressure.bin": "c00cdbbac90c96e805c633f24f550bd565ea56ad4471a32630336715f186c202",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/controls-cuda.bin": "e73937273fab0f61d6062c2f69d9a3293466047b9de0ae951f1b79ce81cc55dc",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/inputs.bin": "0f9b5626a207778a0b2d21a89831800797627e3bfb117a3da1855e12c867903e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/times-and-seeds.json": "01ca814af1b4ac7a96d2fd482a69e06bf523bdf02e0eb4fe548ca68804acf713",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/uniforms-cuda.bin": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/uniforms-metal.bin": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/controls.bin": "61b9539e1c75c56268ba5b236af4a1ad03d4d140ef8be4ad9ce5970627acdd0a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/records-after.bin": "9788ac1774ab1831dabc95c3718b2960f7567fe71adef4832cc99dcd9ceed3f5",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/records-before.bin": "9c882b313afc11ab1f522df0f23df4dbbe8bea7f6fd38d145c2177a597e46ad5",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/expected-pressure.bin": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/controls-cuda.bin": "61b9539e1c75c56268ba5b236af4a1ad03d4d140ef8be4ad9ce5970627acdd0a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/inputs.bin": "4dd90dff5803951d2d6cd5b474c1433c36fdf6aa8e54395b4b483ae7882de4fe",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/times-and-seeds.json": "db30e2cef6f1478941131bbe1d475de00babcb4cf8e752a31e806b47252bde97",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/uniforms-cuda.bin": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/uniforms-metal.bin": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/controls.bin": "a730e86413fa8bf2501477be3d25eeb58fb797fdbb50b9bdad1e76169881d4b4",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/records-after.bin": "47f1c56eb49242d5c479582f163c191daba580ea97edd0b82fe213772fddd646",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/records-before.bin": "10d1eb0cd3b89cd6a3f75312c1bec8a69d9aca5d4399d131a645ff27fa973486",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/expected-pressure.bin": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/controls-cuda.bin": "a730e86413fa8bf2501477be3d25eeb58fb797fdbb50b9bdad1e76169881d4b4",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/inputs.bin": "166326ef2bc17a1c151af109508ccfd15b26a4ae5440dc853cf7bc5c8747572c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/times-and-seeds.json": "3a3c95527b6b9d4f7dbcc3908829ada621e883070e3585ad338e4e31787e735b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/uniforms-cuda.bin": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/uniforms-metal.bin": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/controls.bin": "c476fab7606f93ff6761468c810438d8652e240cadc9bab80f6910e4fa42dcf6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/records-after.bin": "3bc9c9e5c55f571536657717817c7b0bf62e2c5f3839997ab7641fcedd66a183",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/records-before.bin": "34345b0fb6d35290b829649106f34d0717f560a13bfbf1334744a450b227efa5",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/expected-pressure.bin": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/controls-cuda.bin": "c476fab7606f93ff6761468c810438d8652e240cadc9bab80f6910e4fa42dcf6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/inputs.bin": "82941fdd927e9823ca26b7f01914d7a3d91db7f718893d1718fce6158fd85792",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/times-and-seeds.json": "41186a4f3521e9451c7e273beb9ca0f00162f91a5526e355b26ceea99cc77b91",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/uniforms-cuda.bin": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/uniforms-metal.bin": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/controls.bin": "3e87629ad004b8efdc603763e2b26799f9b6443119ffb6689dc2adffa435c249",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/records-after.bin": "79e4b1ef8d7cfc8bbf15bd2d5c314e2f09678a0f25279305aef863e21c28f396",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/records-before.bin": "4c0ab6da3163bb6e297c1d7fe5882ac17ae09b35fd9fb7012ee8a56314c8f7a5",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/expected-pressure.bin": "ef251680c771bfeee5d3afdff5645f27d20c23d40b26e51f65f3618929b7e519",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/controls-cuda.bin": "3e87629ad004b8efdc603763e2b26799f9b6443119ffb6689dc2adffa435c249",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/inputs.bin": "417ad9cf02ed8a05060f4881c605ee3d11c42842c9ecea9d9c0874004d4233c2",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/uniforms-cuda.bin": "f146b5dbb223ccc7ec163e9baf21146640495d4277ff4aaa5c7af022d3d96b1e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/uniforms-metal.bin": "f146b5dbb223ccc7ec163e9baf21146640495d4277ff4aaa5c7af022d3d96b1e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/controls.bin": "00f6b9cc86f165fcc07b564f9bed6f7b7671b560b9fb0c99ca8d3062caa71e9b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/records-after.bin": "6edd9f6f9cc92cded36e6c4a580933f9c9f1b90562b46903b806f21902a1a54f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/records-before.bin": "6edd9f6f9cc92cded36e6c4a580933f9c9f1b90562b46903b806f21902a1a54f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/expected-pressure.bin": "4a1a8869c3c54474ee6d7387a9b446c2ee3f8f781837e81b8b4df922d074575b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/controls/ideal/controls-cuda.bin": "00f6b9cc86f165fcc07b564f9bed6f7b7671b560b9fb0c99ca8d3062caa71e9b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/own.json": "77630ba35bfa01bd4e51fadf805167d3dea28a752bcd5a5fd81b056c3cfdeddd",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cross.json": "d3a946bb4360258474a8b877ee09644c4e399c79bc3ec2e3144d68447754bed6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/worker/trace_columns.py": "77418117953ec499982e34d19c658effb3b8dda7977c6f4b975970fbaa5698f7",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/worker/cuda_replay.py": "48f3131d58edafd19425c5a57c5422ace2d30eb2a522a666adaaf88931f67e1c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/worker/job.py": "3112de1221378d16b18d56dad26ff3ea90cce76e11ec95dec9f2c3c69eee877e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/worker/original-worker.py": "2ebf9111143181c678ab7b2649fe2b1c31c49664de700f25c3be67c8698d32fb",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/worker/solver.cu": "c58f4f0a7ab5563b4d8539eb884b95dc4c1613034fcee98664b0db019eb14094",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/worker/remote-train.py": "fd21f01ad37e15a7000eab20a7c216e2bbb75c510b2276a0094ffa79d58b9c8a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/worker/compile.py": "2e8d263a4e4d2ecb79d89378dbe8d52d24e9a22e8593509007f90c19e3ca0eeb",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-cuda/inputs.bin": "ec10cf0b8318f70dd68acc5a64af069df2a1ec26a5e01d1be0a8d9e9b69a39b0",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-cuda/uniforms-cuda.bin": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-cuda/records-after.bin": "0b8fccb47bda0acb9d3a6492d442e93bb9cb36a4beed519f9f2895d9cb31086c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-cuda/expected-pressure.bin": "2f1cbd05b26f1a62addd9cc16242b06659dd42de435bac2f080159da0ad4b581",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-cuda/controls-cuda.bin": "62fe31911264bf371164ca8a4818c8734c8dfca585f21d0b5ee75ee6047cee5f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-cuda/inputs.bin": "fbdf5afb809c4c628bd4e119f70d9de17532742cd3d2981f1527c148bb766ce6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-cuda/uniforms-cuda.bin": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-cuda/records-after.bin": "21105ed72ded796502b4d5dc2e83d56a86d3ffb3c28bbe4f1894f744ec467948",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-cuda/expected-pressure.bin": "c00cdbbac90c96e805c633f24f550bd565ea56ad4471a32630336715f186c202",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-cuda/controls-cuda.bin": "e73937273fab0f61d6062c2f69d9a3293466047b9de0ae951f1b79ce81cc55dc",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-metal/inputs.bin": "0f9b5626a207778a0b2d21a89831800797627e3bfb117a3da1855e12c867903e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-metal/uniforms-cuda.bin": "7a3ac525b0effc77e061d2f3c482429b7e4a56283a04b4ab5c19e3865399270f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-metal/records-after.bin": "9788ac1774ab1831dabc95c3718b2960f7567fe71adef4832cc99dcd9ceed3f5",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-metal/expected-pressure.bin": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s1-1-metal/controls-cuda.bin": "61b9539e1c75c56268ba5b236af4a1ad03d4d140ef8be4ad9ce5970627acdd0a",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-metal/inputs.bin": "4dd90dff5803951d2d6cd5b474c1433c36fdf6aa8e54395b4b483ae7882de4fe",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-metal/uniforms-cuda.bin": "874c22af87dcdd9da17bbde7d2b63f80713265fc33449639468b9a0d743b0e08",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-metal/records-after.bin": "47f1c56eb49242d5c479582f163c191daba580ea97edd0b82fe213772fddd646",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-metal/expected-pressure.bin": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/made-perimeter-s3-1-metal/controls-cuda.bin": "a730e86413fa8bf2501477be3d25eeb58fb797fdbb50b9bdad1e76169881d4b4",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-metal/inputs.bin": "166326ef2bc17a1c151af109508ccfd15b26a4ae5440dc853cf7bc5c8747572c",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-metal/uniforms-cuda.bin": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-metal/records-after.bin": "3bc9c9e5c55f571536657717817c7b0bf62e2c5f3839997ab7641fcedd66a183",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-metal/expected-pressure.bin": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-metal/controls-cuda.bin": "c476fab7606f93ff6761468c810438d8652e240cadc9bab80f6910e4fa42dcf6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-cuda/inputs.bin": "82941fdd927e9823ca26b7f01914d7a3d91db7f718893d1718fce6158fd85792",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-cuda/uniforms-cuda.bin": "558ece96f265952eb7957d5bc50b12a61ec5da470b2fe7baa58bd9e0a27f2821",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-cuda/records-after.bin": "79e4b1ef8d7cfc8bbf15bd2d5c314e2f09678a0f25279305aef863e21c28f396",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-cuda/expected-pressure.bin": "ef251680c771bfeee5d3afdff5645f27d20c23d40b26e51f65f3618929b7e519",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/cases/beirut-p0-1-cuda/controls-cuda.bin": "3e87629ad004b8efdc603763e2b26799f9b6443119ffb6689dc2adffa435c249",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/controls/ideal/inputs.bin": "417ad9cf02ed8a05060f4881c605ee3d11c42842c9ecea9d9c0874004d4233c2",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/controls/ideal/uniforms-cuda.bin": "f146b5dbb223ccc7ec163e9baf21146640495d4277ff4aaa5c7af022d3d96b1e",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/controls/ideal/records-after.bin": "6edd9f6f9cc92cded36e6c4a580933f9c9f1b90562b46903b806f21902a1a54f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/controls/ideal/expected-pressure.bin": "4a1a8869c3c54474ee6d7387a9b446c2ee3f8f781837e81b8b4df922d074575b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/remote-input/controls/ideal/controls-cuda.bin": "00f6b9cc86f165fcc07b564f9bed6f7b7671b560b9fb0c99ca8d3062caa71e9b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/compare.py": "dad676b5a5be814c839d836900a0a4860cc1732501eb7a9d314a8a86a0acf300",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/analyze.py": "95ad53a9e8cb0bd7d55798a81c9b52539eb86ba5c3cc1d4e0423a450575aef5f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/pressure_model.py": "e7acf4718906d4145f392d9afea8a8ea5c4b08bd70cc3090eba3091c265d2ade",
+    "/Users/louisemmett/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3.12": "b6ea0c2a9bfce48dbf181a53f1ca4f0562d40658b85bf47258e2a88d8f9e3933",
+    "/Users/louisemmett/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/numpy/_core/_multiarray_umath.cpython-312-darwin.so": "5ce247f1236eeab22b0fa115d36648aaf16ba2932057db8f1e9a53f1b4e7f651",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/metal-own-receipt.json": "bcd6e4a737414745c535ed086a1282aefdb855d1d8deaea2928088c73bfb1f01",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/metal-cross-receipt.json": "76d9e2e61fe2c0d08c43d00b0316bf80c40dc5e3b4a9e00b62b7b331649da9d0",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-own/receipt.json": "06db2130d9823329a287543a3fdf2cfbfc69670ffb18b89f118c6470fe382b30",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-cross/receipt.json": "c139cff26e3103aa3da2369fb185738ab5bb161c535fd8cc4fca04efd6452f06",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-metal/metal-pressure.bin": "631884d209d0b4698fce24e1c0d8d0fdb48396580afb22cad59e2fee0c97dada",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-cross/made-perimeter-s1-1-metal/pressure.bin": "dfc2224d86cfe4a90a1b90a53db6e19a407288cf37065b64cdb9af7ee9e71f0b",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-metal/metal-pressure.bin": "5acdc79bdc648be1bea53c925003248a71e4aa305323158342123311559a5d73",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-cross/made-perimeter-s3-1-metal/pressure.bin": "67625eb2bbaf5ac98440f010bf4f1c6b39b421400655c86bd206b63397df4466",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-metal/metal-pressure.bin": "01ca7ca6b582eb62d15edc03b7ec2007ab9f44fbf5444b30736432f25e458bb6",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-cross/beirut-p0-1-metal/pressure.bin": "0fe3c525b071a9d349f30e172495d9916c198adb013f8156c7e0ff3acd1c6b9d",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s1-1-cuda/metal-pressure.bin": "5c3b3e023be65a5d59132315089030ef799b39a4ddbef3d52b9c8d1f9a915a4f",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-own/made-perimeter-s1-1-cuda/pressure.bin": "2f1cbd05b26f1a62addd9cc16242b06659dd42de435bac2f080159da0ad4b581",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/made-perimeter-s3-1-cuda/metal-pressure.bin": "97efe314e8c431a34268ed2dae3b21df6072601e5c2848ba008196342f291c55",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-own/made-perimeter-s3-1-cuda/pressure.bin": "c00cdbbac90c96e805c633f24f550bd565ea56ad4471a32630336715f186c202",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cases/beirut-p0-1-cuda/metal-pressure.bin": "61879a0a4d10958665b6116116296252eba01eb23748e6c8fc3006dd6552f1a9",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/cuda-own/beirut-p0-1-cuda/pressure.bin": "ef251680c771bfeee5d3afdff5645f27d20c23d40b26e51f65f3618929b7e519"
+  },
+  "limits": "Both native reader own-input gates passed before cross-input evaluation. Conditional recorders preserve input-backend seeds, dt, all initialization samples and original verified accumulation policy. Reader differences are evaluated on identical input banks; backend banks have distinct physical time axes. No PDE evolution, continuum truth, instruction cause, new dataset pass or policy change."
+}

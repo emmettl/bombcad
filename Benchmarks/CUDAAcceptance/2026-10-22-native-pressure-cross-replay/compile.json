@@ -1,0 +1,27 @@
+{
+  "status": "terminal",
+  "returncode": 0,
+  "command": [
+    "xcrun",
+    "--sdk",
+    "macosx",
+    "swiftc",
+    "-O",
+    "-warnings-as-errors",
+    "-target",
+    "arm64-apple-macosx14.0",
+    "-sdk",
+    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk",
+    "-module-cache-path",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay-module-cache",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/analysis/replay.swift",
+    "-o",
+    "/Volumes/StudioData/bombcad/experiments/2026-10-22-native-pressure-cross-replay/runtime/replay"
+  ],
+  "compiler": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+  "compilerSHA256": "c90fc92073e78cd2b3c65efcacf65acfaf4290b02f7a9d301853563b85f4a993",
+  "allConsumedInputsAttested": true,
+  "allPreparedPinsVerified": true,
+  "unusedContext": "Zero unused control/uniform fields and disabled unrelated columns; pressure-word gate required.",
+  "binarySHA256": "893e8a057d0a93a1b47895034d2e91fba0a36011f427eab964b48c3740a21076"
+}

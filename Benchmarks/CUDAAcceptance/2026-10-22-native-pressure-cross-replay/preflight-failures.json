@@ -1,0 +1,17 @@
+{
+  "failures": [
+    {
+      "stage": "local CUDA gate receipt",
+      "error": "Sandbox denied StudioData write after all pressure-word and SHA assertions passed",
+      "toolChunk": "69a180",
+      "numericalReplay": false
+    },
+    {
+      "stage": "Metal cross launch preflight",
+      "error": "Gate receipt absent; stopped before creating GPU process or outputs",
+      "toolChunk": "2b01dd",
+      "numericalReplay": false
+    }
+  ],
+  "correction": "Host-authorized gate receipt write; first Metal cross numerical launch only"
+}

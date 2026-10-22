@@ -1,0 +1,162 @@
+{
+  "status": "independent-native-words-input-pins-and-fresh-remote-inventories-verified",
+  "nativeWords": {
+    "metal": 10488,
+    "cuda": 10494
+  },
+  "nativeRecorderWords": 104910,
+  "sampleAccounting": [
+    {
+      "label": "made-perimeter-s1-1-metal",
+      "samples": 2646,
+      "active": 2645,
+      "zeroDt": 1,
+      "selectedColumns": 1
+    },
+    {
+      "label": "made-perimeter-s3-1-metal",
+      "samples": 2712,
+      "active": 2711,
+      "zeroDt": 1,
+      "selectedColumns": 2
+    },
+    {
+      "label": "beirut-p0-1-metal",
+      "samples": 2418,
+      "active": 2417,
+      "zeroDt": 1,
+      "selectedColumns": 1
+    },
+    {
+      "label": "made-perimeter-s1-1-cuda",
+      "samples": 2648,
+      "active": 2645,
+      "zeroDt": 3,
+      "selectedColumns": 1
+    },
+    {
+      "label": "made-perimeter-s3-1-cuda",
+      "samples": 2713,
+      "active": 2711,
+      "zeroDt": 2,
+      "selectedColumns": 2
+    },
+    {
+      "label": "beirut-p0-1-cuda",
+      "samples": 2420,
+      "active": 2417,
+      "zeroDt": 3,
+      "selectedColumns": 1
+    }
+  ],
+  "nativeControlsPerGPU": [
+    125.0,
+    50.0,
+    10.0,
+    125.0,
+    50.0,
+    10.0
+  ],
+  "remote": {
+    "own": {
+      "files": {
+        "cut-1.ptx": {
+          "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+          "bytes": 1269128
+        },
+        "receipt.json": {
+          "sha256": "06db2130d9823329a287543a3fdf2cfbfc69670ffb18b89f118c6470fe382b30",
+          "bytes": 3685
+        },
+        "cut-0.ptx": {
+          "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+          "bytes": 611788
+        },
+        "ideal-interpolation-kinetic-zero-weight/pressure.bin": {
+          "sha256": "4a1a8869c3c54474ee6d7387a9b446c2ee3f8f781837e81b8b4df922d074575b",
+          "bytes": 24
+        },
+        "beirut-p0-1-cuda/pressure.bin": {
+          "sha256": "ef251680c771bfeee5d3afdff5645f27d20c23d40b26e51f65f3618929b7e519",
+          "bytes": 9680
+        },
+        "made-perimeter-s3-1-cuda/pressure.bin": {
+          "sha256": "c00cdbbac90c96e805c633f24f550bd565ea56ad4471a32630336715f186c202",
+          "bytes": 21704
+        },
+        "made-perimeter-s1-1-cuda/pressure.bin": {
+          "sha256": "2f1cbd05b26f1a62addd9cc16242b06659dd42de435bac2f080159da0ad4b581",
+          "bytes": 10592
+        }
+      },
+      "controller": {
+        "status": "terminal",
+        "pid": 267522,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "birthTicks": "16056990",
+        "command": [
+          "/home/lemme/bombcad-ml/venv/bin/python",
+          "-B",
+          "/home/lemme/bombcad-cuda/native-pressure-replay/jobs/a7b73855779e4502891350bf4560d9f0/remote-input/worker/cuda_replay.py",
+          "/home/lemme/bombcad-cuda/native-pressure-replay/jobs/a7b73855779e4502891350bf4560d9f0/remote-input",
+          "/home/lemme/bombcad-cuda/native-pressure-replay/jobs/a7b73855779e4502891350bf4560d9f0/remote-input/own.json",
+          "--lock",
+          "/home/lemme/bombcad-ml/lock",
+          "--stage",
+          "own"
+        ],
+        "returncode": 0
+      },
+      "selectedRuntimePinsStillMatch": true
+    },
+    "cross": {
+      "files": {
+        "cut-1.ptx": {
+          "sha256": "81850ec154aa515c6644a1588a680e6c8f13a14ac8d820a461fe00f4d9bfdbe6",
+          "bytes": 1269128
+        },
+        "receipt.json": {
+          "sha256": "c139cff26e3103aa3da2369fb185738ab5bb161c535fd8cc4fca04efd6452f06",
+          "bytes": 9224
+        },
+        "cut-0.ptx": {
+          "sha256": "d9a935bc33d3cee73a0e52c3fa682312370eb8b01c6e1f60dec521bd2de9bc5e",
+          "bytes": 611788
+        },
+        "beirut-p0-1-metal/pressure.bin": {
+          "sha256": "0fe3c525b071a9d349f30e172495d9916c198adb013f8156c7e0ff3acd1c6b9d",
+          "bytes": 9672
+        },
+        "made-perimeter-s3-1-metal/pressure.bin": {
+          "sha256": "67625eb2bbaf5ac98440f010bf4f1c6b39b421400655c86bd206b63397df4466",
+          "bytes": 21696
+        },
+        "made-perimeter-s1-1-metal/pressure.bin": {
+          "sha256": "dfc2224d86cfe4a90a1b90a53db6e19a407288cf37065b64cdb9af7ee9e71f0b",
+          "bytes": 10584
+        }
+      },
+      "controller": {
+        "status": "terminal",
+        "pid": 267755,
+        "boot": "2740bd46-3a3b-49e0-b5db-e5dd54507ade",
+        "birthTicks": "16067361",
+        "command": [
+          "/home/lemme/bombcad-ml/venv/bin/python",
+          "-B",
+          "/home/lemme/bombcad-cuda/native-pressure-replay/jobs/1d759b891e184855a146973cee29bf8c/remote-input/worker/cuda_replay.py",
+          "/home/lemme/bombcad-cuda/native-pressure-replay/jobs/1d759b891e184855a146973cee29bf8c/remote-input",
+          "/home/lemme/bombcad-cuda/native-pressure-replay/jobs/1d759b891e184855a146973cee29bf8c/remote-input/cross.json",
+          "--lock",
+          "/home/lemme/bombcad-ml/lock",
+          "--stage",
+          "cross"
+        ],
+        "returncode": 0
+      },
+      "selectedRuntimePinsStillMatch": true
+    }
+  },
+  "sourceSHA256": "7061ede5c69594a0b3a987441dd3b39043d015a3d2976744d66693d3429766a0",
+  "limits": "Read-only verification; no GPU or PDE rerun. Selected runtime pins are not a hermetic environment."
+}

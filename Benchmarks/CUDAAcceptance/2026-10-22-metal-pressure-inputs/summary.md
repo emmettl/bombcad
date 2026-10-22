@@ -114,3 +114,10 @@ The [public metadata archive](evidence/metadata.tar.gz) contains51 files
 Every decompressed member and every raw file was verified against the
 [complete manifest](archive.json). Earlier CUDA/reference roots remain pinned to their
 existing archives. This stage adds no fresh remote CUDA inventory or solve.
+
+## Native reader cross-replay
+
+The [native-reader study](../2026-10-22-native-pressure-cross-replay/summary.md) now reproduces
+all own-input pressure and recorder words before swapping readers. Neither reader changes
+the negative-pressure decision on any selected frozen history; both retain Beirut's early
+CUDA-state closure. Reader choice alone does not repair the remaining case.
