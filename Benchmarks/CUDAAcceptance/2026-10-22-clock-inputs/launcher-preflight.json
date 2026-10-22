@@ -1,0 +1,13 @@
+{
+  "status": "launcher-import-preflight-failure-retained",
+  "noGPUOrPhysicalPilotLaunched": true,
+  "error": "ModuleNotFoundError: No module named compare_dataset while importing Scripts/cuda/field-queue.py",
+  "sourceSHA256": "b0fef3e1b8d72ce147e7fea5406c473cd4f936cf1b2cba6d590f09254b68abbd",
+  "sourceSnapshot": "$BOMBCAD_DATA/experiments/2026-10-22-clock-inputs/validation/metal-runner-preflight-attempt-1.py",
+  "reason": "Capture controller omitted the sibling helper directory from sys.path; fix launcher import path only. No observer, producer, source math or acceptance tolerance change.",
+  "cudaStagesAlreadyTerminal": {
+    "baseline": "terminal",
+    "capture": "terminal"
+  },
+  "resolution": "Add Scripts/cuda to the launcher helper search path; actual queue-helper import preflight now passes. Snapshot all imported sibling helper sources. No Metal physical pilot or numerical retry."
+}

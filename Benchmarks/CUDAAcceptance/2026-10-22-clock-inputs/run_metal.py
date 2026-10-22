@@ -8,6 +8,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import time
 
 HERE = Path(__file__).resolve().parent
@@ -41,6 +42,7 @@ def files(root):
 def main():
     assert not (ROOT / 'metal-capture.json').exists(), 'Observe existing capture, never duplicate it'
     assert not subprocess.check_output(['git', 'status', '--porcelain'], cwd=REPO, text=True), 'Publish before capture'
+    sys.path.insert(0, str(REPO / 'Scripts/cuda'))
     spec = importlib.util.spec_from_file_location('queue_helpers', REPO / 'Scripts/cuda/field-queue.py')
     q = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(q)
@@ -85,6 +87,7 @@ def main():
     snapshots = []
     chosen = list(files(REPO / 'Sources')) + [REPO / 'Package.swift', REPO / 'Package.resolved',
         REPO / 'Scripts/cuda/field-queue.py', Path(__file__), HERE / 'plan.md', Path(os.sys.executable).resolve()]
+    chosen += [p for p in (REPO/'Scripts/cuda').glob('*.py') if p not in chosen]
     for i, path in enumerate(chosen):
         dest = sources / f'{i:04d}-{path.name}'
         shutil.copyfile(path, dest)
