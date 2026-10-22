@@ -141,7 +141,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.5.1 (12) | `1b79ae33` | `0db0948d-6e0b-4584-8fcb-c6f0d2c80a77` | Published as v0.5.1           |
 | 0.6.0 (13) | `27fb9be7` | `eddcd055-0eb0-492f-b911-63ca7d61d071` | Published as v0.6.0           |
 | 0.7.0 (14) | `914cd18d` | `83596e83-7a6f-4bcf-b0e4-1aa0e9cf2e48` | Superseded, not published     |
-| 0.7.0 (15) | `133685e0` | `24458f4e-01b3-4daa-a31f-26b09d6116c5` | Made and verified, not yet published |
+| 0.7.0 (15) | `133685e0` | `24458f4e-01b3-4daa-a31f-26b09d6116c5` | Published 2026-10-22              |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -332,7 +332,11 @@ archiving. notarytool found the profile from the desktop shell, and Apple accept
 - ran the courtyard project and the structure on the mapped start from inside its bundle and drew
   its views through a change of source (`Scripts/release.py smoke`, on that copy).
 
-It waits for the user's word to be published.
+Published on 2026-10-22 at the user's word, with tag `v0.7.0` on `133685e0`, as the latest
+release. The release's notes add one known limitation found after the build: a charge on sloping
+or shaped ground starts as a balloon, not from the mapped burst. The download was checked again:
+its checksum matched, its ticket validated, and `codesign` and `spctl` accepted it. The Homebrew
+tap's cask is 0.7.0, and `brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
