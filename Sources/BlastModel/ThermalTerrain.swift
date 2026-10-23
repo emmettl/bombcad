@@ -19,6 +19,8 @@ public struct TerrainSight: Sendable {
     let tops: [Float]
     /// Each row of cells' highest node.
     let rowTops: [Float]
+    /// The terrain's highest node, found once: `Terrain.highest` scans every node.
+    let highest: Float
     /// How far beyond the nodes the outer ring of cells runs, in metres.
     package static let reach: Float = 1e5
 
@@ -39,6 +41,7 @@ public struct TerrainSight: Sendable {
         }
         self.tops = tops
         rowTops = (0..<cy).map { b in tops[cx * b..<cx * (b + 1)].max()! }
+        highest = terrain.highest
     }
 
     var cellColumns: Int { terrain.columns + 1 }
@@ -249,7 +252,6 @@ public struct TerrainSight: Sendable {
 
     /// Whether the segment from `start` to `end` passes below the surface anywhere.
     public func blocks(from start: SIMD3<Float>, to end: SIMD3<Float>) -> Bool {
-        let highest = terrain.highest
         if min(start.z, end.z) > highest + Self.margin(highest) { return false }
         let delta = end - start
         return cells(from: start, by: delta) { a, b in Self.blocks(patch(a, b), start, delta) }
@@ -259,7 +261,6 @@ public struct TerrainSight: Sendable {
     public func nearest(from origin: SIMD3<Float>, along direction: SIMD3<Float>, within limit: Float)
         -> Float
     {
-        let highest = terrain.highest
         let top = highest + Self.margin(highest)
         // Rising, the ray can meet the surface only below its highest point; nor need it be
         // followed beyond the outer ring.
