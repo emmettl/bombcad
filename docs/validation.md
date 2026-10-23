@@ -216,7 +216,8 @@ re-seated face delivers the second blow (1,520–1,620 kN, peaks 25.8 and 18.9 m
   sagging 4–9 mm more than the top, and the bottom face stays smooth across the cone, carried by
   the bottom bars: delamination, not a plug.
 - **No one mechanism holds it.** In the cone band on TH6-2 the work is hourglass control 38%
-  (mostly at its cap), aggregate interlock 29%, bars 16%, dowels 8%. Take one away and the next
+  (mostly at its cap), aggregate interlock 29%, bars 16%, dowels 8% (37, 29, 16 and 9% with each
+  step's work counted at the mean of its stresses, since 23 October 2026). Take one away and the next
   takes the shear: interlock at 0.2 doubles the dowels' work; hourglass control that softens with
   cracking moves its share into interlock (peak 30.8 mm, step 3.4 mm); all three together leave
   the first impact twice as flexible as measured (38.6 mm) and the bottom peels 26 mm off the top,
@@ -625,7 +626,11 @@ table when the embedded crack lands.
 | TH6-1, 20.3 mm | 114 / 0 (59%) | 38 (20%) | 18 / 20 (20%) | 193 | 21.1 / 22.0 mm |
 
 **The excess is not mostly the hourglass control.** It does a fifth of the work at the first peak,
-and cutting it to a tenth where the concrete has cracked moves the peaks by at most 8%.
+and cutting it to a tenth where the concrete has cracked moves the peaks by at most 8%. (These
+shares are the work trace's old count, at the stresses after each step, from a tool on a branch;
+on a slab that rings, as Wu's do, counting at the mean of each step's stresses since 23 October
+2026 lowered hourglass control's share by a sixth and raised the bars' by a fifth, so the
+conclusion holds the more.)
 - **The concrete in cracked elements.** Its largest parts are the concrete between cracks (the
   hairline channel, tension stiffening), aggregate interlock, and shear across and beside the
   cracks.
@@ -1358,17 +1363,18 @@ changes neither.
 mechanism does as the slab goes down (`StructureSolver.tracesWork`; the stresses split in each
 element's crack axes, so a plane's tension, compression and shear are told apart; on the
 shear beam below the parts add up to the load's work within 0.2%). By 80 mm, on 8 elements
-through, in joules:
+through, in joules (re-derived on 23 October 2026 with each step's work at the mean of its
+stresses before and after; the old count, at the stresses after, read 0.3–1.5% more in all):
 
 | Mechanism | Perfect bond | Bars that slip |
 |---|---|---|
-| Bars, and the bond on their slip | 7,716 | 7,355 + 305 = 7,660 |
-| Concrete in compression; of it, crushed past its peak | 516; 1 | 937; 289 |
-| Concrete in tension: uncracked / cracked under 0.1 mm / wider | 37 / 116 / 4 | 33 / 421 / 14 |
-| Shear across cracks; of it, on cracks pressed shut | 174; 0.1 | 154; 1 |
-| Shear on uncracked planes | 20 | 22 |
-| Hourglass control | 683 | 718 |
-| Total | 9,264 | 9,958 |
+| Bars, and the bond on their slip | 7,731 | 7,338 + 293 = 7,631 |
+| Concrete in compression; of it, crushed past its peak | 495; 0.5 | 909; 260 |
+| Concrete in tension: uncracked / cracked under 0.1 mm / wider | 32 / 115 / 4 | 31 / 412 / 14 |
+| Shear across cracks; of it, on cracks pressed shut | 172; 0 | 129; 0.5 |
+| Shear on uncracked planes | 15 | 20 |
+| Hourglass control | 654 | 671 |
+| Total | 9,216 | 9,815 |
 
 The bars and their bond do the same work either way. What slip adds is the concrete between
 its cracks, cracked by under 0.1 mm but still carrying tension, which does three and a half
@@ -2577,10 +2583,11 @@ On the mapped start, the harness's default since 18 October 2026, every open fac
 
 One layer or two: the tests' single layer near the underside did better under the small
 charges and worse under the large (18.0 mm against 13.9 at 1.6 kg). The model hardly tells
-them apart (14.4 against 14.9 mm). Traced by mechanism (`--work`), at the peak under 1.6 kg the
-bars do only 22% and 28% of the work, hourglass control 18% in both, and the concrete the rest,
-in tension (uncracked or cracked under 0.1 mm, 20%), in compression (13–17%) and in shear on
-uncracked and cracked planes (20–22%): at 14 mm on a 1.9 m span the slab is barely cracked
+them apart (14.4 against 14.9 mm). Traced by mechanism (`--work`, counted at the mean of each
+step's stresses since 23 October 2026), at the peak under 1.6 kg the bars do only 33% and 38% of
+the work, hourglass control 15% in both, and the concrete the rest, in tension (uncracked or
+cracked under 0.1 mm, 18%), in compression (8–10%) and in shear on uncracked and cracked planes
+(15%): at 14 mm on a 1.9 m span the slab is barely cracked
 through, so where its steel lies matters little to it, and an eighth of a 100 mm slab is a
 coarse element for its bending. Held lengthwise at both edges instead of one, both peak at
 11 mm, a quarter stiffer.
@@ -5666,29 +5673,34 @@ crushing and bars, and near a charge).
 
 **How much, and where.** In pure elastic bending an element's own bending, which the hourglass
 control carries, is 1/(n² − 1) of the whole for n elements through the depth: 1.6% on 8. Before
-anything fails, the share is several times that:
+anything fails, the share is several times that (re-derived on 23 October 2026 with each step's
+work counted at the mean of the stresses before and after it; before, the trace counted half of
+each step's change in stress times its change in strain again, which matters where a member
+rings, as Wu's slabs do, and hardly where it is loaded once, as the others are;
+[whole-event simulation](whole-event.md#5-the-census-split-and-the-rubbles-drift-23-october-2026)):
 
 | Case | Through the depth | Hourglass share | Where |
 |---|---|---|---|
-| Contest slab, at its peak | 4 / 8 / 16 | 15.5 / 7.1 / 3.7% | Three quarters at the cap, two thirds in the cracked elements carrying bars |
-| Wu's S8 and D8, at their peak | 4 / 8 | 28 / 18% | Spread evenly through the layers and along the span, not near the charge or the bars; 60% below the cap |
-| The same, the tensile strength 100 times | 8 | 13% at 6 ms (4% at 0.5 ms, 8% at 3 ms) | The same |
-| OA1, at 8 mm | 12 / 24 | 3.4 / 3.8% | 61% in the cover below the bars, cracked, at the cap; a third of the work once the beam has failed |
-| Janney's beam, at 5 mm | 12 | 6.2% | Most in the top layer, under the loading plates |
+| Contest slab, at its peak | 4 / 8 / 16 | 15.4 / 6.8 / 3.3% (old count 15.5 / 7.0 / 3.6) | Three quarters at the cap, two thirds in the cracked elements carrying bars |
+| Wu's S8 and D8, at their peak | 4 / 8 | 22–26 / 15% (old count 28 / 18%) | Spread evenly through the layers and along the span, not near the charge or the bars; three quarters (4) and three fifths (8) at the cap, against a half and two fifths under the old count |
+| The same, the tensile strength 100 times | 8 | 13% at 6 ms (4% at 0.5 ms, 8% at 3 ms), old count | The same |
+| OA1, at 8 mm | 12 | 3.0% (the same under the old count) | 61% in the cover below the bars, cracked, at the cap; a third of the work once the beam has failed |
+| Janney's beam, at 5 mm | 12 | 5.2% (old count 5.4%) | Most in the top layer, under the loading plates |
 
 So it halves as the mesh is refined, not falling as 1/n², and it is of two kinds. In the slab
 it is mostly dissipated at the cap in cracked elements, whose cap counts the bars' strength as
 if they were spread through the element's depth and could bend it, and whose stiffness below
-the cap is an uncracked element's whatever its cracking. In Wu's slabs it is mostly stored,
-gathering over the first milliseconds even when the slab barely cracks, and decides little:
-halved or doubled, the hourglass stiffness moves S8's peak by 2–3% (14.7 and 14.1 mm against
-14.4) while its share goes from 15.5 to 21%.
+the cap is an uncracked element's whatever its cracking. In Wu's slabs the old count read it as
+mostly stored, gathering over the first milliseconds even when the slab barely cracks; counted
+at the mean of each step, most of what it stored was the count's own, and three fifths of it is
+at the cap. It decides little: halved or doubled, the hourglass stiffness moves S8's peak by 2–3%
+(14.7 and 14.1 mm against 14.4) while its share went from 15.5 to 21% under the old count.
 
-**One layer of steel or two.** At Wu's peak under 1.6 kg the bars do 22% of the work in S8 and
-28% in D8. D8's layer near the loaded face is fully engaged in compression, perfectly bonded
+**One layer of steel or two.** At Wu's peak under 1.6 kg the bars do 33% of the work in S8 and
+38% in D8 (27% and 30% under the old count, and 22% and 28% in an older model). D8's layer near the loaded face is fully engaged in compression, perfectly bonded
 and unbuckled: it does 362 J against the bottom layer's 459, and the bars together 821 J against
 S8's 612. With the slab barely cracked through at 14 mm on a 1.9 m span, the concrete carries
-three quarters of the work, and what D8 loses in tension steel its compression steel wins
+about half the work, and what D8 loses in tension steel its compression steel wins
 back, so the model finds the two alike where the tests did not (18.0 against 13.9 mm). Nothing
 here is mis-embedded: each mat sits at its depth, strained with its element's centre.
 

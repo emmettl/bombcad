@@ -896,6 +896,49 @@ extension ConcreteModelTests {
         #expect(tension > 0 && tension < 0.1 * done, "concrete in tension \(tension) J")
         #expect(abs(work(.interlock)) + abs(work(.dowel)) + abs(work(.hourglass)) < 0.01 * done)
     }
+
+    @Test("The work trace keeps a ringing elastic block's energy, whatever the step")
+    func workTraceWhileRinging() throws {
+        // A floating elastic block set ringing at the scale of its elements, as a failing body
+        // rings: its kinetic energy and the work the trace counts together stay what it started
+        // with. At the stresses after each step alone, the trace counted half each step's change in
+        // stress times its change in strain again: 25 J after 10 ms from 0.19 J, and half that at
+        // half the step (emmettl/bombcad-work#36).
+        var material = StructureMaterial.concrete(name: "Elastic", compressiveStrength: 30e6)
+        material.tensileStrength = 1e12
+        for safety: Float in [0.5, 0.25] {
+            let model = StructureModel(
+                solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(0.4, 0.2, 1.2))], material: material,
+                elementSize: 0.05,
+                fixedBase: false)
+            let solver = try StructureSolver(device: device, model: model)
+            solver.gravity = 0
+            solver.groundContact = false
+            solver.tracesWork = true
+            solver.timeStepSafety = safety
+            var seed: UInt64 = 12345
+            func next() -> Float {
+                seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+                return Float(seed >> 40) / Float(1 << 24) - 0.5
+            }
+            solver.mutateNodes { nodes in
+                for n in 0..<nodes.count { nodes[n].velocity = SIMD3(next(), next(), next()) * 0.2 }
+            }
+            let start = solver.massMomentumEnergy().kinetic
+            let steps = Int((0.01 / Double(solver.criticalTimeStep)).rounded())
+            var energies: [Double] = []
+            for _ in 0..<4 {
+                solver.advance(steps: steps / 4)
+                energies.append(solver.massMomentumEnergy().kinetic + solver.workTotals().reduce(0, +))
+            }
+            // Kinetic energy at half steps reads modes near the step's limit high: a bounded offset
+            // (12% at today's step), not a drift.
+            #expect(
+                energies.allSatisfy { abs($0 - start) < 0.15 * start },
+                "\(energies) J from \(start) J at \(safety)")
+            #expect(abs(energies[3] - energies[0]) < 0.03 * start, "\(energies) J at \(safety)")
+        }
+    }
 }
 
 /// The model against a real test: the normal-strength slab of the Blast Blind Simulation Contest.

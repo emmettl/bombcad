@@ -2136,6 +2136,18 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     float referenceVolume = u.h * u.h * u.h;
 
     ElementState state = states[compact];
+    // The work trace counts each step's work at the mean of the stresses before and after it (see
+    // below); these are the befores.
+    float stressBefore[6];
+    float3 hourglassBefore[4];
+    if (workTraced) {
+        for (uint c = 0; c < 6; ++c) {
+            stressBefore[c] = state.stress[c];
+        }
+        for (uint mode = 0; mode < 4; ++mode) {
+            hourglassBefore[mode] = state.hourglass[mode];
+        }
+    }
     bool eroded = volume < u.minVolumeRatio * referenceVolume;
     // Flattened to nothing: all eight nodes in one plane, as when an element is pressed flat on the
     // hard ground, which sets each node that reaches it exactly on it (`structureNodes`). It has no
@@ -2824,6 +2836,33 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
     state.stress[3] = sxy;
     state.stress[4] = syz;
     state.stress[5] = szx;
+    if (workTraced) {
+        // Each step's work at the mean of the stresses before and after it. At the stress after it
+        // alone, the trace counted half the step's change in stress times its change in strain
+        // again, always positive: an elastic block ringing with 0.19 J read 25 J after 10 ms, and
+        // half that at half the step (emmettl/bombcad-work#36). The mechanisms' powers above are
+        // each at the stress after; the excess is taken from them in proportion to their size,
+        // which keeps their sum exact (each mechanism's own share is not known apart).
+        float excess = 0.5f
+            * ((sxx - stressBefore[0]) * dxx + (syy - stressBefore[1]) * dyy + (szz - stressBefore[2]) * dzz
+               + 2.0f * ((sxy - stressBefore[3]) * dxy + (syz - stressBefore[4]) * dyz + (szx - stressBefore[5]) * dzx))
+            * volume / referenceVolume;
+        float spread = 0.0f;
+        for (uint c = 0; c < workChannels; ++c) {
+            if (c != workHourglass && c != workHourglassCapped && c != workViscosity) {
+                spread += fabs(power[c]);
+            }
+        }
+        if (spread > 0.0f) {
+            for (uint c = 0; c < workChannels; ++c) {
+                if (c != workHourglass && c != workHourglassCapped && c != workViscosity) {
+                    power[c] -= excess * fabs(power[c]) / spread;
+                }
+            }
+        } else {
+            power[workOther] -= excess;
+        }
+    }
 
     // Bulk viscosity damps the ringing behind stress waves; it acts in compression only.
     float viscous = 0.0f;
@@ -2972,7 +3011,8 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             float hourglassPower = 0.0f;
             float cappedPower = 0.0f;
             for (uint mode = 0; mode < 4; ++mode) {
-                float modePower = dot(float3(state.hourglass[mode]), rate[mode]);
+                // At the mean of the mode's state before and after the step, as for the stresses.
+                float modePower = dot(0.5f * (hourglassBefore[mode] + float3(state.hourglass[mode])), rate[mode]);
                 if (atCap[mode]) {
                     cappedPower += modePower;
                 } else {

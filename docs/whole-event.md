@@ -8,6 +8,14 @@ charge, run past its collapse towards 10 s with failed concrete as rubble partic
 kept awake, measured as it goes, to find what gives out first: the contact, the time step, the
 memory or the energy.
 
+**Since (23 October 2026):** the energy no longer gives out. With the fixes of sections 3–5,
+the twelve-storey run with rubble and the air awake reaches 3.5 s without blowing up, and its
+budget closes: the work from outside holds at the blast's 1.4 MJ to 0.5 s, then only falls, as
+contact, the joints and the ground take energy out (−4.9 MJ by 3.5 s). The 52 MJ below was the
+work trace's own count and contact pumping energy in; with them gone half as many elements
+fail by 3.36 s (18,000 against 39,000). A few bars-only nodes of 2–8 g still fly off at 50–130 m/s.
+The collapse is still not earned: hourglass control does 60–76% of the elements' work.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -74,7 +82,7 @@ than 12 m/s before 0.4 s, where 300–540 m/s had. The test
 "A joint between parts eases as the concrete at it turns to rubble" (`RubbleParticleTests`)
 fails without the fix (a node at 23 m/s from rest at 0.1) and passes with it.
 
-### 2. The energy budget (not fixed)
+### 2. The energy budget (its count fixed, 23 October 2026)
 
 With the joint fixed, by phase (on the Studio, shared with other work; wall and GPU seconds per
 second simulated; the structure's step 10.14 µs throughout):
@@ -116,6 +124,33 @@ energy, the motion about their centres of the nodes they were made from, jumped 
 5.7 MJ between 2.95 and 3.36 s: elements already ringing when they turned to rubble. At 3.40 s
 the run went to NaN through nodes holding their bars' 0.5–7 g, some still on bare elements (bars
 alone), the rest with every element round them gone.
+
+**After the fixes of 23 October** (sections 3–5: the step limit, compaction from the confined
+volume, rubble crushed and pairs capped alike, the trace at the mean of each step's stresses),
+the same run (`--storeys 12 --awake --time 3.5`, 3,790 s on the Studio):
+
+| t (s) | Kinetic | Gravity's work | Elements' work | of which hourglass | fracture | bars | Net external work | Fastest node |
+|---|---|---|---|---|---|---|---|---|
+| 0.05 | 0.38 | −0.05 | 1.01 | 0.58 (58%) | 0.19 | 0.14 | 1.43 | 12 m/s |
+| 0.45 | 0.47 | 0.87 | 1.81 | 1.10 (60%) | 0.33 | 0.27 | 1.42 | 12 m/s |
+| 0.96 | 0.53 | 2.87 | 3.29 | 2.08 (63%) | 0.62 | 0.47 | 0.96 | 52 m/s |
+| 1.45 | 1.95 | 5.41 | 4.25 | 2.80 (66%) | 0.76 | 0.57 | 0.80 | 21 m/s |
+| 1.96 | 4.46 | 9.31 | 5.37 | 3.60 (67%) | 0.93 | 0.68 | 0.53 | 120 m/s |
+| 2.45 | 6.61 | 13.76 | 6.96 | 4.78 (69%) | 1.15 | 0.84 | −0.19 | 52 m/s |
+| 2.96 | 4.09 | 17.60 | 10.73 | 7.86 (73%) | 1.52 | 1.23 | −2.77 | 41 m/s |
+| 3.36 | 1.50 | 19.28 | 13.17 | 9.93 (75%) | 1.61 | 1.52 | −4.57 | 130 m/s |
+| 3.51 | 1.09 | 20.03 | 13.99 | 10.59 (76%) | 1.66 | 1.63 | −4.91 | 128 m/s |
+
+- **The budget closes.** The work from outside is the blast's 1.4 MJ and stays so to 0.5 s, then
+  falls as the floors land and contact, the joints and the ground take energy out. The elements'
+  elastic channels hold 0.1 MJ throughout (24.5 MJ under the old count by 3.36 s), ending a
+  little below zero where the trace's correction is shared out among the mechanisms in
+  proportion and where eroded elements give up what they held.
+- **Less collapses.** 18,000 elements have failed by 3.36 s against 39,000: much of the old run's
+  collapse after 2 s was driven by the energy contact had pumped in.
+- **Still open:** bars-only nodes of 2–8 g, their elements all gone or bare, fly off at 50–130 m/s
+  (one or two over 100 m/s at a time), thrown while their bare elements still held them. They
+  carry tens of joules.
 
 **On the three-storey block** (167,640 elements; `--storeys 3`), which is a quarter of the cost,
 the same kind of event comes at 0.58 s, with the air asleep or awake: a cluster of the east flank
@@ -229,13 +264,13 @@ exactly. On the three-storey block, 0.3 to 1.5 s, it showed three things.
 
 - **The blast's work is flat.** The air's work on faces is 1.31–1.33 MJ after 0.3 s, asleep or
   awake; the frozen air is not a reservoir.
-- **The census counts work that is not there.** The trace takes each step's work with the
-  stress after it, which counts half of each step's change in stress times its change in strain
-  again, always positive. On a free elastic block set ringing with 0.19 J, the trace's elastic channels
-  reached 25 J in 10 ms while the kinetic energy stayed near 0.05 J, and halving the step halved
-  it. On the block it adds 0.1–0.4 MJ by 1.5 s, more the more the body rings, without rubble too;
-  it is why the budget without rubble reads +1.5% in one build and +11% in another. It does not
-  move the run, only its count.
+- **The census counted work that was not there** (fixed the same day, below). The trace took
+  each step's work with the stress after it, which counts half of each step's change in stress
+  times its change in strain again, always positive. On a free elastic block set ringing with 0.19 J,
+  the trace's elastic channels reached 25 J in 10 ms while the kinetic energy stayed near 0.05 J,
+  and halving the step halved it. On the block it added 0.1–0.4 MJ by 1.5 s, more the more the
+  body rang, without rubble too; it is why the budget without rubble read +1.5% in one build and
+  +11% in another. It never moved the run, only its count.
 - **With rubble, contact put energy in.** It took 254 kJ to 1.4 s, while without rubble contact
   took energy out. Two causes:
   - **A particle caged by its own element's corners.** Its reach was set from them as it was
@@ -259,16 +294,31 @@ exactly. On the three-storey block, 0.3 to 1.5 s, it showed three things.
 
 | | Fastest node, 0.3–1.5 s | Net external work, 0.3 → 1.5 s | Contact's work |
 |---|---|---|---|
-| Before | 15 m/s | 1.35 → 1.58 MJ (+17%) | +254 kJ (nodes), +17 kJ (particles) |
-| After | 13 m/s | 1.42 → 1.55 MJ (+9.4%) | −97 kJ, −8 kJ (a split run, +3.5%) |
+| Before | 15 m/s | 1.35 → 1.58 MJ (+17%), old trace | +254 kJ (nodes), +17 kJ (particles) |
+| After | 13 m/s | 1.21 → 1.11 MJ (−8.3%), midpoint trace | −97 kJ, −8 kJ (a split run) |
 
 - **No fast node, and every source behaves.** The air's work is flat after the blast. Contact,
-  the joints and the ground only take energy out.
-- **The ±5% gate on the census is not one a model can pass.** What is left of the budget's rise
-  is the trace's count of work that is not there. Less that count, the split run's net external work falls by 6% (contact and joint
-  slip dissipating), and without rubble by 4%. A trace that took each step's work with the mean of
-  the stresses before and after it would remove the count; it touches every mechanism's channel,
-  and every bench that reads the trace, so it is left for its own change.
+  the joints and the ground only take energy out. This is the step-2 gate's verdict, judged by the
+  split: met.
+
+**The trace at the mean of each step's stresses** (the same day). The work trace now takes each
+step's work at the mean of the stresses before and after it, and the hourglass control's at the
+mean of its modes' state; the excess is taken from the mechanisms in proportion to their size,
+which keeps their sum exact, each mechanism's own share of it not being known apart. The block
+set ringing keeps its 0.19 J within the offset of kinetic energy read at half steps (0.21–0.22 J,
+flat; `ConcreteModelTests.workTraceWhileRinging`). The run is unchanged, to the bit; its count:
+
+| Three-storey block, no rubble, by 1.5 s | Old trace | Midpoint trace |
+|---|---|---|
+| Elastic | 151 kJ, still rising | 59 kJ, flat from 0.3 s |
+| Hourglass below its cap / at it | 137 / 760 kJ | 47 / 758 kJ |
+| Fracture / bars | 277 / 237 kJ | 256 / 232 kJ |
+| Hourglass's share of the elements' work | 58% | 60% |
+| Net external work, 0.3 → 1.5 s | 1.35 → 1.37 MJ (+1.5%) | 1.22 → 1.17 MJ (−4.4%), flat from 0.9 s |
+
+So the census now closes: what it leaves falls as contact and the joints' slip take energy out,
+and stops when the body does. Hourglass control's share hardly moves, its work being nearly all
+at its cap, where it is dissipated, not stored.
 
 ### Contact, the step and the memory: not near a limit
 
@@ -291,9 +341,10 @@ exactly. On the three-storey block, 0.3 to 1.5 s, it showed three things.
 
 No. Limitation 1 is the gate the issue set ("collapse on a model that springs back is
 unearned"), and the run shows why it holds here:
-- **Hourglass control does most of the work.** Through the whole collapse, 54–61% of all the
-  elements' work is hourglass control's, from five sixths of it at its cap (where it dissipates)
-  in the blast to half as the bay falls; fracture does 9–18% and the bars 6–12%. With two elements through each panel and floor, an
+- **Hourglass control does most of the work.** Through the whole collapse, 58–76% of all the
+  elements' work is hourglass control's (54–61% under the old count, which inflated the
+  elastic channels), nearly all of it at its cap, where it dissipates; fracture does 12–19% and
+  the bars 12–15%. With two elements through each panel and floor, an
   element's own bending is a third of the whole even elastically, and once cracked it is held at
   the cap that counts the bars' strength as spread through the element. The cracked-element
   study (emmettl/bombcad-work#20, [concrete model](concrete-model.md)) found the struck beams'
@@ -303,8 +354,8 @@ unearned"), and the run shows why it holds here:
 - **A finer mesh is out of reach.** Four elements through the 175 mm panels is 44 mm elements:
   eight times the elements and half the step, sixteen times the cost, some 4–6 hours per second
   simulated on the Studio.
-- **The budget does not close** (above), so even the illustrative collapse after about 1.5 s is
-  carried on energy the model has made or miscounted.
+- **The budget now closes** (section 2), so the collapse is no longer carried on energy the model
+  made or miscounted; it is the hinges' that is unearned.
 
 The collapse stays **illustrative** ([standing](standing.md#collapse)), and the whole-event
 run is not ready to be offered: it would show a pile and a cloud on a collapse whose dissipation
