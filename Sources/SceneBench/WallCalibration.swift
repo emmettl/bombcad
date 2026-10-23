@@ -3,7 +3,7 @@ import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
 /// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json]
-/// [--learned weights.bcfw [--learned-ground ground.bcfw] [--own-scatter]] [--out calibration.json]`: how well the walls' and roofs' chances
+/// [--learned weights.bcfw [--learned-ground ground.bcfw] [--own-scatter [--scatter-tables tables.json]]] [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each
 /// building's worst wall and worst roof in each run, judged on the run's histories at the
@@ -112,8 +112,9 @@ enum WallCalibration {
         // `--own-scatter`: the chances draw each network's own measured peak scatter where its peak
         // is used (`LearnedField.Scatter.measured`, by the weights' file names), not the surrogate's.
         let ownScatter = args.contains("--own-scatter")
-        func measured(_ path: String?) -> LearnedField.Scatter? {
-            path.flatMap { LearnedField.Scatter.measured(forWeights: URL(filePath: $0).lastPathComponent) }
+        // `--scatter-tables tables.json`: tables measured otherwise in their place (`ScatterTables`).
+        func measured(_ path: String?) throws -> LearnedField.Scatter? {
+            try path.flatMap { try ScatterTables.measured(forWeights: $0, args) }
         }
         let learned = try value("learned").map { path in
             let ground = value("learned-ground")
@@ -123,8 +124,9 @@ enum WallCalibration {
                 scatter: !ownScatter
                     ? nil
                     : ground == nil
-                        ? measured(path)
-                        : LearnedField.Scatter.combining(ground: measured(ground), upper: measured(path)))
+                        ? try measured(path)
+                        : LearnedField.Scatter.combining(
+                            ground: try measured(ground), upper: try measured(path)))
         }
         if ownScatter {
             let s = learned?.scatter

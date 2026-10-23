@@ -4,7 +4,7 @@ import simd
 
 /// `scenebench field-refs <district-scene's inputs> [--radius 1320] --runs mass:folder,…
 /// --variants surrogate,name=weights.bcfw,name=upper.bcfw+ground.bcfw[@own],… [--inside 0.85] [--draws 50]
-/// [--out judged.json]`:
+/// [--scatter-tables tables.json] [--out judged.json]`:
 /// the quick estimate's glass by building side and its façade peaks at every storey, judged against
 /// a district's own runs at several yields (`district-compare --save-loads`; Beirut's near boxes on
 /// air refined to 2 m, emmettl/bombcad-work#19 and #69), as the app's estimate gives them:
@@ -23,7 +23,10 @@ import simd
 /// (`glassProbabilities`, `--draws` at each run's own yield, the load scatter alone; with `@own`
 /// on a variant, the networks' own scatter where their peak is used, `LearnedField.Scatter`):
 /// some pane broken and blown out, by Brier, skill and the deciles' test. The peaks: each strip's
-/// predicted peak over the run's, by the storey's height level, median and log-SD.
+/// predicted peak over the run's, by the storey's height level, median and log-SD. With `@own`, the
+/// out file also keeps each run's sums of the log peak error by level, facing and scaled distance
+/// where the network's peak is used, banded as `LearnedField.Scatter` is, to measure that scatter
+/// on 2 m runs; `--scatter-tables` judges tables so measured (`ScatterTables`).
 enum FieldReferences {
     /// The storeys' height levels, m over the ground, as the levels' models were trained on.
     static let levels: [Float] = [6, 10, 14, 18, 22, 26, 30]
@@ -66,6 +69,11 @@ enum FieldReferences {
         var glass: [String: [String: Glass]]
         /// By variant, then by level: each strip's log of predicted over recorded peak.
         var logRatios: [String: [String: [Float]]]
+        /// By variant, then by "ground|upper|level …/front|side|back|all/band": over the strips
+        /// whose peak is the network's (`Features.learnedPeakScatter` set, a variant with `@own`),
+        /// the count, sum and sum of squares of the log of predicted over recorded peak, the bands
+        /// `LearnedField.Scatter`'s (0 to Z 7, … 5 beyond 28).
+        var scatter: [String: [String: [Double]]] = [:]
     }
 
     static func run(_ args: [String]) throws {
@@ -88,13 +96,21 @@ enum FieldReferences {
         let scene = first!.scene
         let cellSize = first!.cellSize
         let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: cellSize)
+        // `--coefficients terms.json`: the terms the surrogate alone and the networks' variants
+        // (their impulse and rise, and every strip they don't read) are judged under; the fitted
+        // ones without it.
+        let baseTerms =
+            try value("coefficients").map {
+                try JSONDecoder().decode(
+                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
+            } ?? .fitted
         let variants:
             [(
                 name: String, estimator: LearnedField.Estimator?,
                 coefficients: FacadeLoadSurrogate.Coefficients
             )] = try variantsText.split(separator: ",").map { spec in
                 let parts = spec.split(separator: "=", maxSplits: 1).map(String.init)
-                guard parts.count == 2 else { return (parts[0], nil, .fitted) }
+                guard parts.count == 2 else { return (parts[0], nil, baseTerms) }
                 // `name=coefficients.json`: the surrogate under those terms (emmettl/bombcad-work#56).
                 if parts[1].hasSuffix(".json") {
                     let terms = try JSONDecoder().decode(
@@ -109,21 +125,21 @@ enum FieldReferences {
                 let network = try LearnedFieldNetwork(contentsOf: URL(filePath: files[0]))
                 let ground =
                     try files.count > 1 ? LearnedFieldNetwork(contentsOf: URL(filePath: files[1])) : nil
-                func measured(_ path: String) -> LearnedField.Scatter? {
-                    LearnedField.Scatter.measured(forWeights: URL(filePath: path).lastPathComponent)
+                func measured(_ path: String) throws -> LearnedField.Scatter? {
+                    try ScatterTables.measured(forWeights: path, args)
                 }
                 let scatter =
                     !own
                     ? nil
                     : files.count > 1
                         ? LearnedField.Scatter.combining(
-                            ground: measured(files[1]), upper: measured(files[0]))
-                        : measured(files[0])
+                            ground: try measured(files[1]), upper: try measured(files[0]))
+                        : try measured(files[0])
                 return (
                     parts[0],
                     LearnedField.Estimator(
                         scene: scene, network: network, groundNetwork: ground, scatter: scatter),
-                    .fitted
+                    baseTerms
                 )
             }
         // The glass's chances by side (`glassProbabilities`), `--draws` of them at each run's own
@@ -295,6 +311,24 @@ enum FieldReferences {
                 let distance = reference.index.buildings[strip.building].distanceM
                 for (v, variant) in variants.enumerated() where peaks[c][v + 1] > 0 {
                     let r = Float(log(peaks[c][v + 1] / recorded))
+                    let features = estimates[v].features[chosen[c].k]
+                    if features.learnedPeakScatter != nil {
+                        let z = features.distanceM / cbrt(run.mass)
+                        let b = [7.0, 10, 14, 20, 28].firstIndex { z <= $0 } ?? 5
+                        let facing =
+                            features.cosIncidence > 1.0 / 3
+                            ? "front" : features.cosIncidence < -1.0 / 3 ? "back" : "side"
+                        let floor = levelOf[c] == "ground" ? "ground" : "upper"
+                        for key in [
+                            "\(floor)/\(facing)/\(b)", "\(floor)/all/\(b)", "level \(levelOf[c])/all/\(b)",
+                        ] {
+                            var a = judged.scatter[variant.name]?[key] ?? [0, 0, 0]
+                            a[0] += 1
+                            a[1] += Double(r)
+                            a[2] += Double(r) * Double(r)
+                            judged.scatter[variant.name, default: [:]][key] = a
+                        }
+                    }
                     judged.logRatios[variant.name, default: [:]][levelOf[c], default: []].append(r)
                     if distance >= 50, distance < 700 {
                         judged.logRatios[variant.name, default: [:]][levelOf[c] + " 50-700 m", default: []]
@@ -379,7 +413,9 @@ enum FieldReferences {
         print(String(format: "In %.0f s", DistrictBenchmark.seconds(start)))
         if let out = value("out") {
             // The glass's confusions only: the peaks' ratios are millions of numbers.
-            let kept = judgedRuns.map { Judged(mass: $0.mass, glass: $0.glass, logRatios: [:]) }
+            let kept = judgedRuns.map {
+                Judged(mass: $0.mass, glass: $0.glass, logRatios: [:], scatter: $0.scatter)
+            }
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(kept).write(to: URL(filePath: out))

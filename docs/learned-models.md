@@ -2163,13 +2163,170 @@ next layer, one pass per norm (18 of them), at many times the cost. The need at 
 3.5 GB by that rule, is within what an 8 GB Mac's GPU is usually recommended (around two thirds of
 its memory), but not with much else open. The check says what it is on the Mac itself.
 
+## The models' scatter measured on 2 m runs (23 October 2026)
+
+emmettl/bombcad-work#69. Field model 2's chances draw each network's own peak scatter
+(`Scatter.fieldModel1` and `round4`). Those tables were measured against the 4 m recorder runs,
+about 0.2 in the log at most distances. Against the 2 m references the model reads with about 0.32.
+The [round above](#the-models-own-scatter-in-the-chances-23-october-2026) took that gap as the
+likely reason why the walls missed the tenths test on the unsafe side. This round measures the
+scatter on new 2 m runs, apart from the judge's, and judges field model 2 again with it.
+
+**The runs.** These are 28 new 2 m references, all at places neither strict network was trained on
+(both held out Beirut and the made-up layouts of seed 6):
+
+- Beirut, with the charge at the 4 m dataset's nine other points (p1–p9, 0.6–1.9 km from the
+  port), two yields each from 0.1 to 1.3 kt;
+- the five made-up layouts of seed 6 (perimeter, grid, towers, industrial, mixed; flat), two yields
+  each from 0.11 to 1.6 kt, the charge at their 4 m runs' first point.
+
+They were run as the judge's near boxes were (14707293): 4 m air refined to 2 m below the buildings'
+tops, the mapped start, `--radius 1280 --height 320`, every storey's façade strips saved. Each ran
+until Kingery–Bulmash's arrival at the judged part's corners plus the positive phase, ×1.1
+(4.6–4.8 s). Each took 130–320 s on the solver, about 1.9 GPU-hours in all. The judged part is
+inside 0.85 of the box, as `field-refs` judges it.
+
+**The measure.** `field-refs` now adds up, for each run, the log of the network's peak over the
+2 m run's. It does this only at strips where the network's peak is used, banded as
+`LearnedField.Scatter` is: level, facing, and scaled distance. `scatter2m.py` adds the sums over
+the runs. Each figure is the root mean square, bias and spread together, as the 4 m tables were
+measured. There were 0.80 M ground-floor strips for each network, and 3.1 M above the ground floor
+for round 4.
+
+| Z, m/kg^(1/3) | ≤ 7 | 7–10 | 10–14 | 14–20 | 20–28 | > 28 |
+|---|---|---|---|---|---|---|
+| Round 2, ground floor, 2 m | 0.36–0.39 | 0.23–0.24 | 0.22–0.23 | 0.20–0.24 | 0.20–0.21 | 0.17–0.19 (3,735 strips) |
+| … on the 4 m recorder (`fieldModel1`) | 0.32–0.33 | 0.21 | 0.19–0.20 | 0.19–0.20 | 0.19–0.22 | 0.29–0.33 |
+| Round 4, ground floor, 2 m | 0.35–0.38 | 0.23–0.25 | 0.22–0.25 | 0.22–0.27 | 0.24–0.27 | 0.25–0.27 (3,735) |
+| … on the 4 m recorder | 0.32–0.34 | 0.22–0.23 | 0.21–0.22 | 0.22–0.24 | 0.22–0.25 | 0.38–0.40 |
+| Round 4, storeys above, 2 m | 0.36–0.37 | 0.22 | 0.22–0.23 | 0.20–0.25 | 0.19–0.23 | 0.24–0.26 (15,390) |
+| … on the 4 m recorder (`round4`) | 0.32–0.34 | 0.20–0.21 | 0.19–0.20 | 0.21 | 0.22–0.23 | 0.37–0.39 |
+
+The ranges are over the three facings.
+
+- **The 2 m scatter is wider close in, and little wider beyond.** It is +0.03–0.06 at Z ≤ 7,
+  +0.02–0.03 to Z 14, and +0.00–0.04 to Z 28. It is not the 0.32 the near boxes suggested. Most
+  of that figure is the boxes' outer ring, whose runs stopped too soon (below).
+- **Part of it is bias, and the bias differs by place.** Round 2 reads these places high, by
+  +0.04 to +0.12 in the log beyond Z 7. On the judge's boxes it reads them 11% low at 50–700 m.
+  Taking the bias out (the spread alone) leaves 0.37 at Z ≤ 7, 0.23 at 7–10, and 0.18–0.21
+  beyond: about the 4 m tables, but for the closest band.
+- **The places differ a lot.** Round 2's ground floor at Z ≤ 7 ranges from 0.26 (made-up mixed) to
+  0.43 (Beirut p5), and at Z 10–14 from 0.16 to 0.32.
+- **Beyond Z 28** only the corners of two places reach, 3,735 ground-floor strips. The tables
+  judged below keep the 4 m figures where a band has under 10,000 strips over every facing. That
+  is the ground floor beyond Z 28. Facing bands under 1,000 strips take every facing's figure.
+
+**Field model 2 judged again** on the judge's ten near boxes, through the app's estimate as before
+(`field-refs`, `wall-calibrate --own-scatter`). This time the tables come from a file
+(`--scatter-tables`). Read back, the code's 4 m tables give the code's chances to the digit. The
+2 m figures are not fitted to the judge: none of its boxes is among the runs. The figures quoted
+are on the **façade terms adopted the same day** (327497ee, emmettl/bombcad-work#56). On those
+terms the field path keeps peak ×1.15 and impulse ×0.95. The same judges on the terms before
+#56 are given after the table.
+
+| (c) round 2 + round 4, own scatter, on the #56 terms | 4 m tables (as shipped) | 2 m tables | 2 m, spread only |
+|---|---|---|---|
+| Walls moderate+, adopted factors (Brier / skill / tenths) | **0.0188 / 0.656 / pass** | 0.0189 / 0.655 / pass | 0.0188 / 0.656 / pass |
+| … each yield held out | **0.0188 / 0.656 / pass** | 0.0190 / 0.654 / pass | 0.0189 / 0.655 / fail |
+| … the largest tenth's miss | 0.09 unsafe (0.80–0.90: 0.84, seen 0.93) | 0.08 safe (0.50–0.60: 0.54, seen 0.46); 0.07 unsafe at 0.80–0.90 | 0.09 safe (0.50–0.60: 0.54, seen 0.45); 0.08 unsafe at 0.80–0.90 |
+| Walls heavy+, adopted factors | **0.0068 / 0.616** / fail | 0.0069 / 0.607 / fail | 0.0069 / 0.609 / pass |
+| Glass blown out, the app's sides (Brier / skill) | **0.0540 / 0.44** | 0.0542 / 0.44 | as the 4 m tables (before #56) |
+| … at the ground floor (deciles' test) | **0.0462** / 0.42 / fail | 0.0465 / 0.42 / fail | – |
+| … above the ground floor | **0.0553 / 0.43** | 0.0555 / 0.43 | – |
+| Roofs | 0.74 | 0.74 | 0.74 |
+
+The 4 m tables' column is the #56 judge's (`refit56/takeover/judge-adopt`). Glass under them was
+judged again here and gave the same figures to the digit.
+
+On the façade terms before #56 (3ceb8de0), walls moderate+ at the adopted factors read:
+
+- 4 m tables: 0.0188 / 0.656, failing (0.84 against 0.95 seen);
+- 2 m tables: 0.0189 / 0.656, passing by a hair (0.84 against 0.90, and 0.54 against 0.44), but
+  failing held out (0.0189 / 0.655) and failing at heavy+ (0.608, against 0.618 passing);
+- spread only: 0.0188 / 0.656, failing (0.54 against 0.43, on the safe side).
+
+Field model 1's network (a) with the 2 m tables scored 0.0187 / 0.658 and failed (0.84 against
+0.94). Glass was as in the table above, to 0.0003.
+
+**What it says:**
+
+- **The scatter was not why field model 2's walls missed the tenths test.** With the 2 m tables
+  the top tenths move toward what was seen (0.84 against 0.91 rather than 0.93–0.95). The middle
+  tenths then move the other way (0.54 against 0.44–0.46), and Brier and skill do not improve.
+  The walls' chances are close to calibrated either way. A tenth 0.01 beyond the test is within
+  what about 200 building-yields can give, when they share buildings across the yields.
+- **On the #56 terms the shipped tables already pass.** The walls pass the tenths test at the
+  adopted factors and held out. The miss the round above recorded is gone.
+- **Glass prefers the narrower tables.** Its mid deciles already read low, and the wider draw
+  makes every group's Brier 0.0002–0.0003 worse. The ground floor's deciles fail on both.
+
+**The judge's near boxes stop before the blast reaches their outer ring.** They were run to 3 s
+(`--until 3`, 14707293). The judged part runs to the corners of 0.85 of the box, up to 1.59 km
+from the charge, and at Beirut's yields the blast reaches 1.1–1.3 km at about 3 s. Measured on
+the boxes themselves, for comparison only, the networks' scatter is 0.15–0.22 beyond Z 7
+(0.29–0.41 closer in), but for the farthest band each yield reaches. In that band it is 0.38–1.9,
+with the model reading high by +0.09 to +1.8 in the log. For example, round 2 at the ground floor,
+Z 10–14 at 1.5 kt, reads 0.57, and +0.17 high. The saved histories show why (`cutshort.py`):
+
+- At 1.5 kt the strips at 1.2 km have windows cut short by the run's end, but they hold a peak,
+  median 12.9 kPa. Those at 1.3 km read 3.5 kPa: the front had only begun. Beyond that nothing was
+  recorded at all.
+- At 150 t the cut begins at 0.9 km, and 1.1 km reads 3.6 kPa against 4.8 kPa at 1.0 km.
+
+The strips never reached are left out of every judge, since their histories are empty. Those cut
+short are judged on what was recorded: an impulse missing its tail, and at the edge a peak too low.
+They are a large share of the far bands:
+
+- at 150 t, 28,900 of the 81,200 strips that were reached;
+- at 1.5 kt, 37,500 of the 112,200.
+
+This weighs on every judgement made on these boxes, glass beyond 1 km most of all. The surrogate's
+#56 refit fitted its peak terms on five of them; whether that fit kept these strips was not
+checked here. Rerunning the ten boxes to the corners, as
+the 28 runs above were run (4.6–4.8 s, about 5 minutes each), would remove it. That is for the
+user to decide, not done here.
+
+**The verdict: the tables stay.** The 2 m tables are neither better calibrated nor kept glass's
+skill. `Scatter.fieldModel1` and `round4` are unchanged, so field model 2's chances are as
+shipped. What landed is the bench:
+
+- `field-refs` keeps the scatter's sums for each run (`@own` variants, in its out file);
+- `--scatter-tables` in `field-refs` and `wall-calibrate` judges tables from a file;
+- `field-refs --coefficients` judges the network variants under other façade terms.
+
+**Round 5** (a ground-floor-weighted loss) was not trained: the PC lane refuses the send.
+`remote-train.py --dry-run` to `bombcad-pc` found 30.4 GB free on the Windows drive that holds WSL's
+disk image, and sending the 10.7 GB `main-levels-fixed` dataset would leave 19.8 GB, under the
+50 GB floor. Compacting the image is the user's job on Windows (`wsl --shutdown`, then
+`Optimize-VHD`; [disk space on the PCs](#disk-space-on-the-pcs)). The floor was not lowered.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/judge/scatter2m/`:
+
+- `runs.py` for the 28 runs (`run`) and their measurement (`refs`), with `loads-*`, `run-*.txt`
+  and `measure-*.json`;
+- `scatter2m.py`, with `scatter-rms.txt` and `scatter-sd.txt`;
+- `tables-2m.json`, `tables-2m-sd.json` and `tables-4m.json` (the code's, for the check);
+- `judge.sh` (`COEF=terms-56-adopted.json` for the #56 terms), with `glass-*.txt` and
+  `walls-{a,c}-*.txt` (`-56` on the #56 terms);
+- `judge-boxes-scatter.sh` and `judge-boxes/` for the boxes' own scatter, and `cutshort.py` with
+  `cutshort.txt` for their cut-short histories.
+
+```bash
+python3 -I runs.py run && python3 -I runs.py refs
+python3 -I scatter2m.py --tables tables-2m.json            # --measure sd for the spread alone
+COEF=terms-56-adopted.json zsh judge.sh tables-2m.json 2m-56 glass walls-c
+```
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **Field model 2's walls** ([in the app](#field-model-2-in-the-app-23-october-2026)): their
-  chances miss the tenths test by one tenth, on the unsafe side. The model's scatter measured
-  against 2 m runs other than the judge's would say whether the drawn scatter is too narrow.
+- **The judge's near boxes rerun to their corners** (4.6–4.8 s, not 3 s), and the judges on them
+  again: their outer ring's histories are cut short
+  ([2 m scatter](#the-models-scatter-measured-on-2-m-runs-23-october-2026)). The user's decision.
+- **Round 5, a ground-floor-weighted loss**, once the PC's Windows drive has room for the send
+  ([2 m scatter](#the-models-scatter-measured-on-2-m-runs-23-october-2026)).
 - **Field model 2 on the small laptop**: the user's `BombCAD field-model check` there.
 - **Measured heights** to judge the levels on (emmettl/bombcad-work#69; routes, not readings, from
   the search of 21 October in [data wanted](data-wanted.md#to-fetch)). Alsubaei 2015's columns are
