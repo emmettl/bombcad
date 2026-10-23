@@ -6431,12 +6431,13 @@ against the same full runs:
 
 - **Inside the hand-over** the near run's façade peaks are the full run's (median 1.00, within
   3–8%) and its glass states identical.
-- **Beyond it**, on the façade terms refitted on 23 October 2026: façade peaks 0.95–1.29 of the
+- **Beyond it**, on the façade terms refitted on 23 October 2026: façade peaks 0.95–1.19 of the
   full run's to 2.5 km on the median, impulses 1.04–2.0 times (up to 2.5 at 2.5–3 km), the high
   ends at 1.1 kt beyond 1.5 km; the share of sides with some glass broken within 0.04 of the full
   run's to 1.75 km at 0.2 and 0.5 kt and to 2 km at 1.1 kt, and 0.01–0.06 under it at 1.5–2.5 km
-  at 0.2 kt; blown-out shares up to 0.27 apart in a band. On the terms before: peaks 0.76–1.04,
-  impulses 1.04–1.5, and the share broken 0.16–0.28 under at 0.2 kt.
+  at 0.2 kt; blown-out shares up to 0.19 apart in a band. A trend that would raise the match
+  outward is held at nothing since 23 October 2026. On the terms before: peaks 0.76–1.04, impulses
+  1.04–1.5, and the share broken 0.16–0.28 under at 0.2 kt.
 - **Arrivals** beyond the hand-over 2–4% before the full run's; 0.95–1.08 of Rigby et al.'s
   observed past 1 km at 0.5 kt.
 - **Time:** the near runs took 135, 335 and 230 s on the CI mini against the full runs' 1,604,

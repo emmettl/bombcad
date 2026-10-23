@@ -817,6 +817,7 @@ judged again on the adopted terms (`$BOMBCAD_DATA/refit56/takeover/judge-adopt`,
 | … with field model 1 / field model 2, peak ×1.15, impulse ×0.95 | 0.664, pass / 0.656, fail | 0.654, pass / 0.656, pass |
 | Stone heavy or worse / roofs moderate or worse | 0.70 / 0.74 | 0.72 / 0.74 |
 | Drag preview within 0.1 of the full estimate: glass / walls and roofs | 88–93% / 98.9–100% | 89–92% / 98.8–99.9% |
+| Hybrid far field beyond the hand-over: peaks to 2.5 km | 0.76–1.04 | 0.95–1.19 (a rising trend held, 23 October) |
 
 So behind buildings close in it reads 1.0–1.2 times the 4 m runs' peaks, where it read 1.4–1.7
 times, and the standing says so (`surrogateCloseInShielded`). The field model's walls keep the
@@ -831,11 +832,28 @@ Two standings moved the wrong way or were not judged again:
 - **The hybrid far field** ([its page](hybrid-far-field.md#on-the-refitted-surrogate-23-october-2026)):
   at 0.2 kt its far edge closes up (the share broken 0.01–0.06 under the full run's at 1.5–2.5 km,
   from 0.16–0.28), but at 1.1 kt beyond 1.5 km its peaks read 1.18–1.29 of the full run's and its
-  impulses 1.6–2.0 times, and its blown-out share at 1.5–1.75 km 0.96 against the run's 0.69.
+  blown-out share at 1.5–1.75 km 0.96 against the run's 0.69. The cause was the hybrid's trend: the
+  refit flattened the near band's misfit, and at 1.1 kt the slope fitted over it turned upward. Held
+  at nothing when it rises (23 October), the peaks there read 1.12–1.19 and the blown-out share
+  0.88.
 - **Field model 1's judge of 21 October** on Beirut's 50 runs at 4 m (`learnedPeakGlass`,
   `learnedPeakGlassSkill`): glass by side, exact on 0.916 of sides with the surrogate's peak and
   0.942 with the model's. It ran through `app_peaks.py` and `judge_field.py` on that day's strips
   and was not run again; its surrogate figure is the terms before.
+
+
+**The near boxes' cut histories (found 23 October 2026).** The ten 2 m near boxes were run to 3 s,
+so their outer ring was cut before the front had passed (beyond about 0.9 km at 150 t and 1.2 km
+at 1.5 kt). The peak's fit kept those strips: of the five boxes in it, 14,000–42,000 strips each
+lie beyond that distance inside the fair part. Left out (the cut distance taken as 0.9 km at 150 t
+to 1.2 km at 1.5 kt, log-interpolated in yield), the peak's terms move the predictions by ×1.01–1.02
+within Z 7, ×1.02–1.05 at Z 7–14 and ×1.03–1.10 beyond. On Beirut's held-out street charges (4 m,
+full length) that takes the peaks at Z 10–40 from 0.95–1.02 to 0.98–1.05 of the runs, and on
+Warehouse 12's own 4 m runs at Z 14–40 from 0.88–0.89 to 0.96. So the adopted terms read the far
+peaks a few per cent low. The boxes are being run again to their corners (4.6–4.8 s), and the peak
+terms will be refitted on them. The judgements of glass and walls on these boxes beyond about 1 km
+were against cut histories too. The hybrid far field's comparison above is against the full runs,
+which are not cut (`py/cutcheck.py`).
 
 ## Using it
 

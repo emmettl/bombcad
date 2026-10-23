@@ -131,9 +131,9 @@ extension ValidationTables {
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "1.03–1.65 times the run's on the median"),
         Figure(
-            id: "hybridFarPeak", low: 0.95, high: 1.29,
+            id: "hybridFarPeak", low: 0.95, high: 1.19,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
-            quote: "façade peaks 0.95–1.29 of the full run's to 2.5 km"),
+            quote: "façade peaks 0.95–1.19 of the full run's to 2.5 km"),
         Figure(
             id: "hybridFarImpulse", low: 1.04, high: 2.0,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",

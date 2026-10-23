@@ -27,11 +27,11 @@ Judged on Beirut against the full 4 m runs at 0.2, 0.5 and 1.1 kt ([Beirut,
   comes 2–4% before the full run's. Against Rigby et al.'s observers past 1 km that is 0.95–1.08
   of the observed at 0.5 kt, and 0.91–1.02 at 1.1 kt.
 - **Does not: the loads at the large yield beyond 1.5 km.** At 1.1 kt the far field's peaks read
-  1.18–1.29 of the full run's from 1.5 to 2.5 km and its impulses 1.6–2.0 times. At 0.2 kt, where
+  1.12–1.19 of the full run's from 1.5 to 2.5 km and its impulses 1.6–2.0 times. At 0.2 kt, where
   the share broken fell 0.16–0.28 below the full run's on the terms before, it now falls 0.01–0.06
   below.
-- **Does not: blown-out glass in every band.** Its share differs from the full run's by up to 0.27
-  in a band (1.1 kt: 0.96 against 0.69 at 1.5–1.75 km; 0.5 kt: 0.42 against 0.60 at 1.25–1.5 km).
+- **Does not: blown-out glass in every band.** Its share differs from the full run's by up to 0.19
+  in a band (1.1 kt: 0.88 against 0.69 at 1.5–1.75 km; 0.5 kt: 0.42 against 0.60 at 1.25–1.5 km).
 - **Does not: walls and roofs beyond the hand-over.** They take the surrogate's standing, which
   says to run the scene for the structure.
 - **Inherits the full run's verdict against GEER.** Close in it breaks more glass than GEER saw;
@@ -113,26 +113,49 @@ sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over 
 The surrogate's terms were refitted on air refined to 2 m and given shielding by the charge's
 surroundings (emmettl/bombcad-work#56; [the first look](surrogate-first-look.md#adopted-23-october-2026)).
 The same judge on the adopted terms, trend from 500 m carried on (`hybrid-judge --trend-from 500`),
-as the table above:
+as the table above, with a rising trend held at nothing (below):
 
 | Distance | 0.2 kt | 0.5 kt | 1.1 kt | Peak, 0.2 / 0.5 / 1.1 kt | Impulse, 0.2 / 0.5 / 1.1 kt |
 |---|---|---|---|---|---|
-| 1–1.25 km | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.99 / 0.98 / 1.00 | 1.04 / 1.07 / 1.14 |
-| 1.25–1.5 km | 0.99 / 0.98 (0.97) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.95 / 0.97 / 1.02 | 1.09 / 1.14 / 1.28 |
-| 1.5–1.75 km | 0.84 / 0.83 (0.77) | 0.99 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.01 / 1.07 / 1.18 | 1.25 / 1.34 / 1.58 |
-| 1.75–2 km | 0.61 / 0.55 (0.48) | 0.91 / 0.98 (0.98) | 0.99 / 1.00 (1.00) | 0.97 / 1.07 / 1.22 | 1.26 / 1.36 / 1.67 |
-| 2–2.5 km | 0.23 / 0.17 (0.13) | 0.66 / 0.75 (0.73) | 0.94 / 1.00 (0.99) | 0.97 / 1.08 / 1.29 | 1.42 / 1.55 / 1.98 |
-| 2.5–3 km | 0.02 / 0.06 (0.04) | 0.18 / 0.44 (0.42) | 0.65 / 0.99 (0.96) | 1.49 / 1.51 / 1.85 | 1.82 / 1.93 / 2.54 |
+| 1–1.25 km | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.99 / 0.98 / 0.98 | 1.04 / 1.07 / 1.14 |
+| 1.25–1.5 km | 0.99 / 0.98 (0.97) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.95 / 0.97 / 0.98 | 1.09 / 1.14 / 1.28 |
+| 1.5–1.75 km | 0.84 / 0.83 (0.77) | 0.99 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.01 / 1.07 / 1.12 | 1.25 / 1.34 / 1.58 |
+| 1.75–2 km | 0.61 / 0.55 (0.48) | 0.91 / 0.98 (0.98) | 0.99 / 1.00 (1.00) | 0.97 / 1.07 / 1.15 | 1.26 / 1.36 / 1.67 |
+| 2–2.5 km | 0.23 / 0.17 (0.13) | 0.66 / 0.75 (0.73) | 0.94 / 1.00 (0.99) | 0.97 / 1.08 / 1.19 | 1.42 / 1.55 / 1.98 |
+| 2.5–3 km | 0.02 / 0.06 (0.04) | 0.18 / 0.44 (0.42) | 0.65 / 0.97 (0.96) | 1.49 / 1.51 / 1.68 | 1.82 / 1.93 / 2.54 |
 
 - **The small yield's far edge closes up.** At 0.2 kt the share broken now falls 0.01–0.06 below
   the full run's from 1.5 to 2.5 km, where it fell 0.16–0.28 below.
-- **The large yield reads high beyond 1.5 km.** At 1.1 kt the peaks are 1.18–1.29 of the full
-  run's and the impulses 1.6–2.0 times, so the share broken at 2–2.5 km goes from 0.94 to 1.00 and
-  the blown-out share at 1.5–1.75 km from 0.69 to 0.96. The refitted terms fall off more slowly
-  with distance than the run there, and the match carries that on.
-- Holding the trend past 1.5 times the hand-over, as the app does, changes the loads by a few per
-  cent (at 1.1 kt, 1.17–1.24 at 1.5–2.5 km). The judgements are in
-  `$BOMBCAD_DATA/refit56/takeover/judge-adopt` (`hybrid-carry-*`, and `hybrid-*` held).
+- **The large yield still reads high beyond 1.5 km**, peaks 1.12–1.19 of the full run's at 1.1 kt
+  and impulses 1.6–2.0 times; the blown-out share at 1.5–1.75 km is 0.88 against the run's 0.69.
+
+**Why it read higher still, and the hold on a rising trend.** The trend is the near run's ratio to
+the surrogate over 500 m to the hand-over, carried on. On the terms before, that ratio fell with
+distance at every yield (slopes −0.31, −0.43 and −0.40 in the peak at 0.2, 0.5 and 1.1 kt): the old
+terms read the near band at Z 5–10 low (0.85–0.91 of the run) and Z 10–14 about right. Carried on,
+it pulled the far field down, which at 1.1 kt happened to cancel the surrogate's own far over-read
+there (1.1–1.4 times the full run at Z 14–28, before and after the refit alike) and at 0.2 kt
+pulled the share broken 0.16–0.28 too low. The refit lifted the near band to the 2 m runs' level
+(0.97–1.03), so the slopes went to −0.01, −0.02 and **+0.09**. Neither the seed (×1.01–1.06) nor
+the shielding (behind buildings within Z 8 only, at most ×0.92 at Warehouse 12's openness) moved it.
+Carried 2.5 times out, the rising 1.1 kt slope read the far peaks 1.18–1.29 high and blew out 0.96
+at 1.5–1.75 km. Since 23 October 2026 a slope that would raise the match outward is held at
+nothing (`HybridFarField.fit`, emmettl/bombcad-work#56). It changes nothing at 0.2 and 0.5 kt,
+whose slopes fall, nor anything fitted on the terms before. Over 1–2.5 km, the mean error in the
+share of sides, against the full run (some broken / blown out):
+
+| | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| The terms before, held past 1.5× (the app's) | 0.102 / 0.006 | 0.010 / 0.074 | 0.012 / 0.040 |
+| Refitted, the rising slope carried | 0.026 / 0.002 | 0.036 / 0.042 | 0.014 / 0.072 |
+| **Refitted, a rising slope held at nothing** | 0.026 / 0.002 | 0.036 / 0.042 | 0.014 / **0.046** |
+
+Fitting the trend only from Z 10 (where the refit's 2 m and the near run's 4 m cells agree) or not
+at all gave the same at 1.1 kt and worse impulses at 0.5 kt (up to 2.1 times). What is left at
+1.1 kt is the surrogate's own far over-read, part of it the full run's far faces
+([above](#against-the-full-run-by-band)). The judgements are in `$BOMBCAD_DATA/refit56/takeover`:
+`judge-adopt/hybrid-*` before the hold, `hybrid-try/` with it (`base-*` carried, `held-*` as the
+app holds it) and the other trend bands.
 
 ## Using it
 

@@ -13,7 +13,8 @@ public struct HybridFarField: Codable, Sendable, Equatable {
     public var peak: Double
     public var impulse: Double
     /// How that ratio's logarithm runs with the logarithm of distance, from the near run's strips
-    /// inside the hand-over; carried on beyond it.
+    /// inside the hand-over; carried on beyond it. Never above nothing (`fit`): a match that rose
+    /// outward would carry the near band's misfit ever higher.
     public var peakSlope: Double
     public var impulseSlope: Double
     /// The near run's arrivals over Kingery–Bulmash's.
@@ -68,6 +69,13 @@ public struct HybridFarField: Codable, Sendable, Equatable {
     /// The far field from a near run's strips and gauges: the ratios' medians over the strips from
     /// `seedFromM` to the hand-over, their slopes over those from `trendFromM` (nil for none), and the
     /// arrivals' median over gauges (simulated, Kingery–Bulmash, distance) from 500 m to it.
+    ///
+    /// A slope that would raise the match outward is held at nothing (emmettl/bombcad-work#56). The
+    /// trend is fitted over the near band, where it measures how the surrogate's shape misses the
+    /// near run there, not beyond; carried 2.5 times out a rising one compounds. On Beirut at 1.1 kt,
+    /// on the façade terms refitted on 23 October 2026, the peak's slope came out +0.09 and read the
+    /// far field's peaks 1.29 of the full run's at 2–2.5 km (1.19 held), its blown-out glass at
+    /// 1.5–1.75 km 0.96 against 0.69 (0.85 held). Every slope fitted on the terms before was falling.
     public static func fit(
         handoverM: Double, seedFromM: Double, trendFromM: Double?, samples: [Sample],
         arrivals: [(simulatedS: Double, kingeryBulmashS: Double, distanceM: Double)]
@@ -108,7 +116,7 @@ public struct HybridFarField: Codable, Sendable, Equatable {
         .map { log($0.simulatedS / $0.kingeryBulmashS) }
         return HybridFarField(
             handoverM: handoverM, peak: exp(median(peakSeed)), impulse: exp(median(impulseSeed)),
-            peakSlope: slope(peakTrend), impulseSlope: slope(impulseTrend),
+            peakSlope: min(slope(peakTrend), 0), impulseSlope: min(slope(impulseTrend), 0),
             arrival: arrivalRatios.isEmpty ? 1 : exp(median(arrivalRatios)), seedStrips: peakSeed.count,
             seedLogDistance: seedX.isEmpty ? nil : seedX.reduce(0, +) / Double(seedX.count))
     }
@@ -148,7 +156,7 @@ public struct HybridFarField: Codable, Sendable, Equatable {
             "Inside the hand-over: the near run's own loads, which on Beirut were the full run's (peaks 1.00, scatter 3–8%).",
             "Beyond it, against the full run: façade peaks \(peak.ratio) of its to 2.5 km, impulses \(impulse.ratio) "
                 + "times; sides with some glass broken within 0.04 of its to 1.75 km at 0.2 and 0.5 kt and to 2 km "
-                + "at 1.1 kt, 0.01–0.06 under at 1.5–2.5 km at 0.2 kt; blown-out shares up to 0.27 apart in a band.",
+                + "at 1.1 kt, 0.01–0.06 under at 1.5–2.5 km at 0.2 kt; blown-out shares up to 0.19 apart in a band.",
             "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
             "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
         ]

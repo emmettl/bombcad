@@ -54,10 +54,11 @@ struct HybridGapTests {
         // Measured 6e-7 and 2e-7 across the 2e-6 of distance: the trend's slope, no step.
         #expect(abs(outside.peakPa / inside.peakPa - 1) < 2e-6)
         #expect(abs(outside.impulsePaS / inside.impulsePaS - 1) < 2e-6)
-        // The trends are the near run's against the surrogate, through the scatter.
-        // Measured -0.3017 and 0.1017: the alternating scatter pulls each slope by 0.0017.
+        // The trends are the near run's against the surrogate, through the scatter. Measured
+        // -0.3017: the alternating scatter pulls the slope by 0.0017. The impulse's rises (+0.10),
+        // so it is held at nothing (emmettl/bombcad-work#56).
         #expect(abs(far.peakSlope + 0.3) < 0.005, "\(far.peakSlope)")
-        #expect(abs(far.impulseSlope - 0.1) < 0.005, "\(far.impulseSlope)")
+        #expect(far.impulseSlope == 0, "\(far.impulseSlope)")
         #expect(far.seedStrips == 25)
     }
 
