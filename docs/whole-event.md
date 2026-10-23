@@ -177,17 +177,39 @@ Two builds of the same logic, whose arithmetic rounds differently (a shader edit
 codegen), give the two figures in each row: past failure the runs are chaotic.
 
 - **The blow-up is gone.** The 14 km/s, 300 MJ event doesn't happen in either build.
-- **A second mechanism remains: a corner node at the panel's free edge.** A 0.2–0.4 kg corner node,
-  its only element failing, is thrown in the air step where that element turns bare.
-  - At the switch, the element's stresses are under half a megapascal and its geometry is whole,
-    so it is not the distortion.
-  - One build threw it at 88 m/s, coasting at 62–65 m/s (about 400 J); the other at 1,190 m/s
-    (0.3 MJ).
-  - Not yet traced: it needs a per-substep trace of the kernel. The probe kit is above.
-- **So the gate is not met:** a node passes 50 m/s. Without rubble, the budget holds to ±5% only
-  in the build where that node stays slow.
+- **A second mechanism remained, a corner node at the panel's free edge**, thrown at 62–65 m/s in
+  one build and 1,190 m/s in the other. It is section 4.
 - **With rubble the budget also drifts up without a fast node** (1.4 to 2.1 MJ to 1.5 s). That
   is the census's own question, below: the air's and the ground's work aren't yet counted apart.
+
+### 4. Compaction counted from a distorted volume (fixed, 23 October 2026)
+
+The corner node was traced substep by substep (`blastbench wholeevent --trace-node i,j,k` and
+`--trace-element i,j,k`, which write each substep's force sources on the node and the stress,
+state and force parts of one element; opt-in, compiled out when off).
+- **One substep did it.** The node's one active element pushed it with 23.8 MN in a substep,
+  after 100–260 N in those before; contact, ties, pairs and the air gave nothing. The
+  element's stresses went from a few kilopascals to −12.6, −13.0 and −3.3 GPa, with shears in
+  gigapascals, while its volume, strain rate and hourglass state didn't change.
+- **The cause.** The element, cracked and distorted until its centre's volume read μ = V0/V − 1
+  = 0.19, passed the test for confinement (all three normal stresses compressive, the largest
+  under a fifth of the smallest) with stresses of a few kilopascals. The crushing law's
+  compaction jumped from 0.003 to its μ, 0.19, and the Holmquist–Johnson–Cook curve past
+  μ = 0.1 gives gigapascals.
+- **The fix.** Compaction already counted from the volume an element had when last confined in
+  the softer materials (block masonry, emmettl/bombcad-work#36's earlier runaway); now it does in
+  structural concrete too. Concrete confined from the start, as a shock confines it, keeps its
+  compaction from its undeformed volume, as before, so the default digests are unchanged.
+
+**After it**, on the three-storey block from the start to 1.5 s, the air asleep:
+
+| | Fastest node, 0.3–1.5 s | Kinetic energy, 0.3–1.5 s | Net external work, 0.3 → 1.5 s |
+|---|---|---|---|
+| Without rubble | 10 m/s | up to 0.18 MJ | 1.35 → 1.37 MJ (+1.5%) |
+| With rubble | 15 m/s | up to 0.17 MJ | 1.35 → 1.58 MJ (+17%) |
+
+- **The step-2 gate is met without rubble:** no node past 50 m/s, the budget flat to ±5%.
+- **With rubble the budget still drifts**, with no fast node: the census split, still open.
 
 ### Contact, the step and the memory: not near a limit
 

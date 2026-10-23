@@ -121,6 +121,9 @@ struct StructureUniforms {
     // m/s: the wave speed an element distorted out of the step's reach is judged by
     // (`StructureSolver.stabilitySpeed`); 0: never judged.
     float stabilitySpeed;
+    // With `tracesNode`, the stored node whose forces each substep records (`StructureSolver.traceNode`).
+    uint traceNode;
+    uint traceElement;  // with `tracesNode`, the element (compact index) whose forces each substep records
 };
 
 // Gravity's pull per unit mass, when it has been turned.
@@ -333,6 +336,13 @@ constant bool erodesCrushedBare = is_function_constant_defined(crushedBareConsta
 // Bare elements of structural concrete crushed below `minVolumeRatio` keep their bars but lose their
 // hourglass control (`StructureModel.releasesCrushedBareHourglass`), compiled in only when chosen.
 constant bool crushedBareHourglassConstant [[function_constant(21)]];
+// One node's forces by source recorded each substep (`StructureSolver.traceNode`), for tracing what
+// throws it; compiled in only when asked, into the discrete bars' slot (bodies without them).
+constant bool nodeTraceConstant [[function_constant(27)]];
+constant bool tracesNode = is_function_constant_defined(nodeTraceConstant) && nodeTraceConstant;
+// Each substep's record: float4s, `nodeTraceStride` of them (see `structureNodes`).
+constant uint nodeTraceStride = 18;
+constant uint elementTraceStride = 32;
 constant bool releasesCrushedBareHourglass =
     is_function_constant_defined(crushedBareHourglassConstant) && crushedBareHourglassConstant;
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
@@ -1710,13 +1720,16 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
             + (m.compressiveStrength - crushPressure) * (0.1f - crushStrain)
                 / (compactionScale(bulk) * (0.8e9f - crushPressure));
     }
-    // In a material softer than structural concrete, the compaction counts from the volume an
-    // element had when it was confined: what it lost being crushed from fewer sides, past the
-    // curve's onset, says nothing of its pores (as above). Counted from its undeformed volume,
-    // blockwork crushed unconfined to mu = 0.4 that was then pressed from every side jumped
-    // from a few MPa to several GPa in one step and flung its nodes at hundreds of metres a
-    // second. (Structural concrete is left as it was until the concrete cases decide it.)
-    if (!confined && compactionScale(bulk) < 1.0f) {
+    // The compaction counts from the volume an element had when it was confined: what it lost
+    // being crushed from fewer sides, past the curve's onset, says nothing of its pores (as
+    // above). Counted from its undeformed volume, blockwork crushed unconfined to mu = 0.4 that
+    // was then pressed from every side jumped from a few MPa to several GPa in one step and flung
+    // its nodes at hundreds of metres a second. So did structural concrete: a cracked element of
+    // the large-panel block's flank wall, distorted until its centre's volume read mu = 0.19, its
+    // stresses a few kilopascals all compressive for a moment, took 13 GPa in one substep and
+    // threw a corner at 1,200 m/s (emmettl/bombcad-work#36). Concrete confined from the start, as
+    // a shock confines it, keeps its compaction from its undeformed volume, as before.
+    if (!confined) {
         state.compactionStart = mu > crushVolume ? mu : 0.0f;
     }
     float pores = mu - state.compactionStart;
@@ -2883,12 +2896,39 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
         for (uint a = 0; a < 8; ++a) {
             float3 f = -volume * (forceStress * b[a]);
+            if (tracesNode && compact == u.traceElement) {
+                device float4 *record = (device float4 *)crackedPoints + elementTraceStride * u.substep;
+                record[8 + a] = float4(f, float(a));
+            }
             if (!(releasesCrushedBareHourglass && hourglassReleased)) {
                 for (uint mode = 0; mode < 4; ++mode) {
                     f -= float3(state.hourglass[mode]) * gamma[mode][a];
                 }
             }
+            if (tracesNode && compact == u.traceElement) {
+                device float4 *record = (device float4 *)crackedPoints + elementTraceStride * u.substep;
+                record[16 + a] = float4(f - record[8 + a].xyz, 0.0f);
+            }
             out.force[a] = f;
+        }
+        if (tracesNode && compact == u.traceElement) {
+            // Its stresses and volume, the hourglass cap, each mode's state and the cap on it, the
+            // rate's trace, the bulk viscosity and the step, and its crack history and display.
+            device float4 *record = (device float4 *)crackedPoints + elementTraceStride * u.substep;
+            record[0] = float4(sxx, syy, szz, volume);
+            record[1] = float4(sxy, syz, szx, capacity);
+            for (uint mode = 0; mode < 4; ++mode) {
+                record[2 + mode] = float4(state.hourglass[mode], limit);
+            }
+            record[6] = float4(trace, viscous, bare ? 1.0f : 0.0f, dt);
+            record[7] = float4(state.crackStrain[0], state.crackStrain[1], state.crackStrain[2], state.display);
+            record[24] = float4(state.crackResidual[0], state.crackResidual[1], state.crackResidual[2], state.compaction);
+            record[25] = float4(state.secondCrack);
+            record[26] = float4(state.secondOpening, state.secondHistory, state.plasticStrain, state.crackingFactor);
+            record[27] = float4(state.crushStrain[0], state.crushStrain[1], state.crushStrain[2], state.strainRate);
+            record[28] = float4(state.crackFrame);
+            record[29] = float4(state.confinementGain[0], state.confinementGain[1], state.confinementGain[2],
+                                state.compactionStart);
         }
         if (workTraced) {
             float hourglassPower = 0.0f;
@@ -3885,10 +3925,15 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     uint intact = 0;
     uint held = 0;  // bare elements: they hold the node but leave it exposed
     uint share = 0;
+    bool traced = tracesNode && threadIndex == u.traceNode;
+    device float4 *trace = tracesNode ? const_cast<device float4 *>(barNodeForce) + nodeTraceStride * u.substep : nullptr;
     for (uint a = 0; a < 8; ++a) {
         // This node is corner `a` of the element offset by -a.
         int3 cell = int3(tid) - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
         if (any(cell < 0) || any(cell >= dims)) {
+            if (tracesNode && traced) {
+                trace[8 + a] = float4(0.0f, 0.0f, 0.0f, -1.0f);
+            }
             continue;
         }
         int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
@@ -3901,7 +3946,12 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
             held += 1;
         }
         share += flag != elementEmpty ? 1u : 0u;
+        if (tracesNode && traced) {
+            bool counts = flag == elementActive || flag == elementBare || flag == elementBaring;
+            trace[8 + a] = float4(counts ? float3(forces[cellElement[element]].force[a]) : float3(0.0f), float(flag));
+        }
     }
+    float3 elementForce = force;
     // Shell nodes tied into the elements around this node hand over their share: the force at
     // the trilinear weight, and the moment as forces across the element's corners, which turn it
     // as the shell node's rotation (energy-consistent with the way the shell node follows).
@@ -3934,12 +3984,14 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (contactEnabled(u, failureGate)) {
         force += float3(contact[threadIndex]);
     }
+    float3 beforeConnections = force;
     if (discreteBars) {
         force += barNodeForce[threadIndex].xyz;  // the discrete bars' bond (`discreteBarGather`)
     }
     if (u.bondSlip != 0) {
         relaxSlip(threadIndex, tid, node.flags, slips, slipSupport, barForces, flags, cellElement, dt, u);
     }
+    float3 beforeAnchors = force;
     bool anchoredNode = finiteConnections && u.anchored != 0 && anchors[3 * threadIndex].x > 0.0f;
     if (anchoredNode) {
         uint footing = u.footings != 0 ? footingOf[threadIndex] : 0u;
@@ -3952,6 +4004,7 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
         }
     }
 
+    float3 beforePairs = force;
     // Its connections to another part of the body: the force each pair computed, on the pair's
     // first node, or its opposite on the second.
     if (finiteConnections && u.pairs != 0) {
@@ -4023,6 +4076,19 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (exchangeCell >= 0) {
         recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(node.velocity) + velocity), dt,
                        u.fluidCell);
+    }
+    if (tracesNode && traced) {
+        // Velocity before and mass; the elements' force, intact and bare counts; contact (and the
+        // air's push, the discrete bars' and the slip's, before the connections); the anchors';
+        // the pairs'; the air's push alone; velocity after and the step; displacement after.
+        trace[0] = float4(float3(node.velocity), node.mass);
+        trace[1] = float4(elementForce, float(intact));
+        trace[2] = float4(beforeConnections - elementForce - airForce, float(held));
+        trace[3] = float4(beforePairs - beforeAnchors, 0.0f);
+        trace[4] = float4(force - beforePairs, 0.0f);
+        trace[5] = float4(airForce, float(u.substep));
+        trace[6] = float4(velocity, dt);
+        trace[7] = float4(displacement, float(threadIndex));
     }
     node.displacement = displacement;
     node.velocity = velocity;

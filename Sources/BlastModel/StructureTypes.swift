@@ -1464,6 +1464,8 @@ package struct StructureUniforms {
     package var groundStiffness: Float = 0
     package var fluidCutCells: UInt32 = 0
     package var stabilitySpeed: Float = 0
+    package var traceNode: UInt32 = 0
+    package var traceElement: UInt32 = 0
 
     /// The memberwise initialiser, written out so that BlastCore can use it.
     package init(

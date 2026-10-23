@@ -189,6 +189,15 @@ public final class StructureSolver {
     private let elementLibrary: MTLLibrary
     private var tracingPipeline: MTLComputePipelineState?
     private let nodePipeline: MTLComputePipelineState
+    /// The node kernel recording one node's forces each substep (`traceNode`), made when asked.
+    private let nodeTracePipeline: () -> MTLComputePipelineState?
+    private var tracingNodes: MTLComputePipelineState?
+    private var nodeTraceBuffer: MTLBuffer?
+    /// The stored node `traceNode` records, if any, and the element (its compact index) beside it
+    /// whose forces it records too.
+    public private(set) var tracedNode: Int?
+    public private(set) var tracedElement: Int?
+    private var elementTraceBuffer: MTLBuffer?
     /// The node kernel with gravity turned from straight down, made when first needed.
     private let turnedNodePipeline: () -> MTLComputePipelineState?
     private lazy var turnedNodes: MTLComputePipelineState? = turnedNodePipeline()
@@ -343,6 +352,18 @@ public final class StructureSolver {
         if discrete { nodeConstants.setConstantValue(&discrete, type: .bool, index: 10) }
         if rubble { nodeConstants.setConstantValue(&rubble, type: .bool, index: 12) }
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
+        nodeTracePipeline = { [library] in
+            let tracing = MTLFunctionConstantValues()
+            var connected = connected
+            var discrete = discrete
+            var rubble = rubble
+            var traced = true
+            tracing.setConstantValue(&connected, type: .bool, index: 1)
+            if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
+            if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
+            tracing.setConstantValue(&traced, type: .bool, index: 27)
+            return try? ShaderLibrary.pipeline("structureNodes", in: library, constants: tracing)
+        }
         var turned = true
         nodeConstants.setConstantValue(&turned, type: .bool, index: 4)
         turnedNodePipeline = { [library] in
@@ -1076,6 +1097,105 @@ public final class StructureSolver {
     public func mutateNodes(_ body: (UnsafeMutableBufferPointer<StructureNode>) throws -> Void) rethrows {
         let pointer = nodeBuffer.contents().bindMemory(to: StructureNode.self, capacity: max(nodeCount, 1))
         try body(UnsafeMutableBufferPointer(start: pointer, count: nodeCount))
+    }
+
+    /// Records lattice node (i, j, k)'s forces by source at every substep from now on, for tracing
+    /// what throws a node (emmettl/bombcad-work#36): the node kernel made again with the record
+    /// compiled in, which a body never asked costs nothing. Not for bodies with discrete bars, whose
+    /// slot the record takes, nor with gravity turned. Read with `nodeTrace(substeps:)`.
+    public func traceNode(_ i: Int, _ j: Int, _ k: Int) throws {
+        guard discreteBarSystem == nil, gravityDirection == SIMD3(0, 0, -1) || gravityDirection.z < 0,
+            let stored = storedNode(i, j, k), let pipeline = nodeTracePipeline()
+        else { throw BlastError.allocationFailed("a node trace for (\(i), \(j), \(k))") }
+        tracedNode = stored
+        tracingNodes = pipeline
+        nodeTraceBuffer = device.makeBuffer(length: 2048 * 18 * 16, options: .storageModeShared)
+        // The element kernels with the record compiled in, for `traceElement`.
+        guard let traced = elementConstants.copy() as? MTLFunctionConstantValues else { return }
+        var on = true
+        traced.setConstantValue(&on, type: .bool, index: 27)
+        elementPipeline = try ShaderLibrary.pipeline(
+            "structureElements", in: elementLibrary, constants: traced)
+        if tracesWork, let working = traced.copy() as? MTLFunctionConstantValues {
+            working.setConstantValue(&on, type: .bool, index: 3)
+            tracingPipeline = try ShaderLibrary.pipeline(
+                "structureElements", in: elementLibrary, constants: working)
+        }
+        clearNodeTrace()
+    }
+
+    /// With `traceNode` on, records element (i, j, k)'s forces each substep as well: its stresses
+    /// and volume, the hourglass cap, each mode's state, and each corner's force from its stress
+    /// and from its hourglass control apart. Not for bodies whose elements bend in their cracked
+    /// concrete (`assumedStrainCracking`), whose slot the record takes. Read with `elementTrace`.
+    public func traceElement(_ i: Int, _ j: Int, _ k: Int) throws {
+        guard tracingNodes != nil, crackedPointBuffer == nil, let compact = compactIndex(i, j, k) else {
+            throw BlastError.allocationFailed("an element trace for (\(i), \(j), \(k))")
+        }
+        tracedElement = compact
+        elementTraceBuffer = device.makeBuffer(length: 2048 * 32 * 16, options: .storageModeShared)
+        clearNodeTrace()
+    }
+
+    /// The traced element's records (32 float4s a substep, as Structure.metal's `structureElements`
+    /// writes them) for the substeps written since `clearNodeTrace()`.
+    public func elementTrace(substeps: Int) -> [[SIMD4<Float>]] {
+        guard let buffer = elementTraceBuffer else { return [] }
+        let values = buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2048 * 32)
+        return (0..<min(substeps, 2048)).compactMap { s in
+            let r = Array(UnsafeBufferPointer(start: values + 32 * s, count: 32))
+            return r[0].w.isFinite ? r : nil
+        }
+    }
+
+    /// One substep's record of the traced node (`traceNode`), in the units of the kernel: N, m/s,
+    /// kg, s, m.
+    public struct NodeTraceRecord: Sendable {
+        public var velocityBefore: SIMD3<Float>
+        public var mass: Float
+        public var elements: SIMD3<Float>
+        public var intact: Int
+        public var held: Int
+        public var contact: SIMD3<Float>
+        public var anchors: SIMD3<Float>
+        public var pairs: SIMD3<Float>
+        public var air: SIMD3<Float>
+        public var substep: Int
+        public var velocityAfter: SIMD3<Float>
+        public var dt: Float
+        public var displacement: SIMD3<Float>
+        /// Each of the eight elements round it (corner a's element at offset -a): its force on the
+        /// node and its flag (-1 off the lattice).
+        public var around: [(force: SIMD3<Float>, flag: Int)]
+    }
+
+    /// The traced node's records for the first `substeps` substeps of the last encode, those
+    /// written since `clearNodeTrace()`.
+    public func nodeTrace(substeps: Int) -> [NodeTraceRecord] {
+        guard let buffer = nodeTraceBuffer else { return [] }
+        let values = buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 2048 * 18)
+        return (0..<min(substeps, 2048)).compactMap { s in
+            let r = UnsafeBufferPointer(start: values + 18 * s, count: 18)
+            guard r[0].w.isFinite else { return nil }
+            return NodeTraceRecord(
+                velocityBefore: SIMD3(r[0].x, r[0].y, r[0].z), mass: r[0].w,
+                elements: SIMD3(r[1].x, r[1].y, r[1].z),
+                intact: Int(r[1].w), held: Int(r[2].w), contact: SIMD3(r[2].x, r[2].y, r[2].z),
+                anchors: SIMD3(r[3].x, r[3].y, r[3].z), pairs: SIMD3(r[4].x, r[4].y, r[4].z),
+                air: SIMD3(r[5].x, r[5].y, r[5].z), substep: Int(r[5].w),
+                velocityAfter: SIMD3(r[6].x, r[6].y, r[6].z),
+                dt: r[6].w, displacement: SIMD3(r[7].x, r[7].y, r[7].z),
+                around: (0..<8).map { (SIMD3(r[8 + $0].x, r[8 + $0].y, r[8 + $0].z), Int(r[8 + $0].w)) })
+        }
+    }
+
+    /// Marks every record unwritten (NaN), so that `nodeTrace` returns only the next encode's.
+    public func clearNodeTrace() {
+        for (buffer, stride) in [(nodeTraceBuffer, 18), (elementTraceBuffer, 32)] {
+            guard let buffer else { continue }
+            let values = buffer.contents().bindMemory(to: Float.self, capacity: 2048 * stride * 4)
+            for n in 0..<(2048 * stride * 4) { values[n] = .nan }
+        }
     }
 
     /// Where node (i, j, k) is stored, if any element uses it.
@@ -1863,7 +1983,8 @@ public final class StructureSolver {
             encoder.setBuffer(
                 tracesWork ? workBuffer ?? placeholderBuffer : placeholderBuffer, offset: 0, index: 28)
             encoder.setBuffer(crackedElementBuffer ?? placeholderBuffer, offset: 0, index: 29)
-            encoder.setBuffer(crackedPointBuffer ?? placeholderBuffer, offset: 0, index: 30)
+            encoder.setBuffer(
+                elementTraceBuffer ?? crackedPointBuffer ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -2023,7 +2144,8 @@ public final class StructureSolver {
             let down =
                 gravityDirection.x == 0 && gravityDirection.y == 0 && gravityDirection.z < 0
                 && groundAcceleration == .zero
-            encoder.setComputePipelineState(down ? nodePipeline : turnedNodes ?? nodePipeline)
+            encoder.setComputePipelineState(
+                tracingNodes ?? (down ? nodePipeline : turnedNodes ?? nodePipeline))
             encoder.setBuffer(nodeBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
             encoder.setBuffer(flagBuffer, offset: 0, index: 2)
@@ -2054,7 +2176,8 @@ public final class StructureSolver {
             encoder.setBuffer(pairs?.state ?? placeholderBuffer, offset: 0, index: 27)
             encoder.setBuffer(pairs?.nodeStart ?? placeholderBuffer, offset: 0, index: 28)
             encoder.setBuffer(pairs?.nodeEntries ?? placeholderBuffer, offset: 0, index: 29)
-            encoder.setBuffer(discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
+            encoder.setBuffer(
+                nodeTraceBuffer ?? discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if let terrainLandingPipeline {
@@ -2180,6 +2303,8 @@ public final class StructureSolver {
         uniforms.secondCracks = model.secondCracks ? 1 : 0
         uniforms.bareBars = model.bareBars ? 1 : 0
         uniforms.removesFragments = model.removesFragments ? 1 : 0
+        uniforms.traceNode = UInt32(tracedNode ?? 0)
+        uniforms.traceElement = UInt32(tracedElement ?? 0)
         // Only stepping in time: a step set past the body's own stable one is a static solve
         // (the tests' `stepOverride` of a second), whose "velocities" are increments.
         uniforms.stabilitySpeed = criticalTimeStep <= stableTimeStep * 1.0001 ? stabilitySpeed : 0

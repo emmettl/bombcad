@@ -329,14 +329,60 @@ func runWholeEvent(device: MTLDevice) throws {
         fflush(stdout)
     }
 
+    var traceOut: FileHandle? = nil
+    var elementTraceOut: FileHandle? = nil
+    if let ijk = option("trace-node")?.split(separator: ",").compactMap({ Int($0) }), ijk.count == 3 {
+        try solids.traceNode(ijk[0], ijk[1], ijk[2])
+        // `--trace-element i,j,k`: and that element's forces, to element-trace.csv.
+        if let e = option("trace-element")?.split(separator: ",").compactMap({ Int($0) }), e.count == 3 {
+            try solids.traceElement(e[0], e[1], e[2])
+            try "".write(to: dir.appending(path: "element-trace.csv"), atomically: true, encoding: .utf8)
+            elementTraceOut = try FileHandle(forWritingTo: dir.appending(path: "element-trace.csv"))
+        }
+        let path = dir.appending(path: "trace.csv")
+        try
+            ("t,step,substep,mass,v_before,elements,contact,anchors,pairs,air,v_after,displacement,intact,held,"
+            + (0..<8).map { "element\($0)" }.joined(separator: ",") + "\n").write(
+                to: path, atomically: true, encoding: .utf8)
+        traceOut = try FileHandle(forWritingTo: path)
+        traceOut?.seekToEndOfFile()
+    }
     if state.stepCount == 0 { sample() }
     var stopped = "reached the end"
     while solver.time < end - 1e-9 {
         let interval = BlastSolver.checkpointInterval
         // `--step-by n`: batches of n air steps, to see inside a 64-step batch (no checkpoints then).
         let stepBy = option("step-by").flatMap { Int($0) }
+        if traceOut != nil { solids.clearNodeTrace() }
         let result = autoreleasepool {
             solver.advance(steps: stepBy ?? (interval - solver.stepCount % interval))
+        }
+        // `--trace-node i,j,k`: each substep's record of that node's forces by source, to trace.csv.
+        if let traceOut {
+            for r in solids.nodeTrace(substeps: 2048) {
+                let around = r.around.map {
+                    String(format: "%.4g;%.4g;%.4g;%d", $0.force.x, $0.force.y, $0.force.z, $0.flag)
+                }
+                let row =
+                    [
+                        String(format: "%.7f", solver.time), String(solver.stepCount), String(r.substep),
+                        String(format: "%.4g", r.mass),
+                    ]
+                    + [
+                        r.velocityBefore, r.elements, r.contact, r.anchors, r.pairs, r.air, r.velocityAfter,
+                        r.displacement,
+                    ]
+                    .map { String(format: "%.5g;%.5g;%.5g", $0.x, $0.y, $0.z) } + [
+                        String(r.intact), String(r.held),
+                    ] + around
+                traceOut.write((row.joined(separator: ",") + "\n").data(using: .utf8)!)
+            }
+            for (s, r) in solids.elementTrace(substeps: 2048).enumerated() {
+                let row =
+                    [String(format: "%.7f", solver.time), String(solver.stepCount), String(s)]
+                    + r.map { String(format: "%.5g;%.5g;%.5g;%.5g", $0.x, $0.y, $0.z, $0.w) }
+                elementTraceOut?.write((row.joined(separator: ",") + "\n").data(using: .utf8)!)
+            }
         }
         if result.steps > 0 { lastAirStep = result.lastTimeStep }
         if solver.time >= state.nextSample - 1e-9 || !result.isStable || result.steps == 0 {
