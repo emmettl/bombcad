@@ -152,7 +152,7 @@ extension SimulationModel {
             renderer.setScene(shown, view: player.upload.view)
             playback.onShow = { [weak self] in self?.showReplayedLayers() }
             self.playback = playback
-            try playback.show(player.entries.count - 1)
+            try playback.show(playback.positions - 1)
             sceneVersion += 1
         } catch {
             errorMessage = "This run's recording could not be read: \(error.localizedDescription)"

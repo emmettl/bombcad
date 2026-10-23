@@ -224,9 +224,12 @@ struct CraterTests {
         try flat.finish()
         let text = try String(contentsOf: flatURL, encoding: .utf8)
         let mesh = try #require(text.components(separatedBy: "def Mesh \"Crater\"").last)
-        // Flat at frame 0, growing at 1 and 2, 2 ms after the blast (see CraterGrowthTests).
+        // Flat at frame 0, growing at 1 and 2, 2 ms after the blast, then on in a tail after the
+        // run until it has formed (see CraterGrowthTests).
         #expect(mesh.contains("point3f[] points.timeSamples = {") && mesh.contains("            2: ["))
-        #expect(flat.craterSamples(crater).map(\.code) == [0, 1, 2])
+        let samples = flat.craterSamples(crater)
+        #expect(samples.prefix(3).map(\.code) == [0, 1, 2] && samples.last?.bowl == 1)
+        #expect(text.contains("double craterTailStartTimeCode = 3"))
         #expect(mesh.contains("bombcad:label = \"\(crater.summary)\""))
         // The ground plane in eight rectangles round the crater's square.
         let ground = try #require(text.components(separatedBy: "def Mesh \"Ground\"").last)

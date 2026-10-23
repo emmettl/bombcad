@@ -204,21 +204,34 @@ Graham's range: a mass between 0.75 and 1 of the charge's.
   - **In a replay** (since 23 October 2026) the crater grows with the replay's time: none at
     t = 0, and at each frame the crater as dug by then. Scrubbing back fills it in again. A run
     from a mapped start records its first frame a little after the blast, with a small bowl
-    already dug. A run
-    shorter than the formation time, which is most runs, so ends its replay with the crater
-    part-dug: 4 ms into a 0.5 kg charge's 0.14 s on clay, the bowl is 28% of its width and the
-    lip has not risen. **Done** shows it whole again. A kept run replays its own craters, from its scene
-    and settings, even when the project's scene has changed since. Nothing new is recorded: the
-    crater at a time follows from the kept run's final crater, so old recordings grow it too.
+    already dug. A kept run replays its own craters, from its scene and settings, even when the
+    project's scene has changed since. Nothing new is recorded: the crater at a time follows from
+    the kept run's final crater, so old recordings grow it too.
+  - **The crater's tail.** Most runs end before their craters have formed: 4 ms into a 0.5 kg
+    charge's 0.14 s on clay, the bowl is 28% of its width and the lip has not risen. So after
+    the run's last frame the replay carries on until the last crater has formed, with the air
+    and the structures held as that frame left them. The tail plays in real time, a step of
+    1/24 s of simulated time to each frame shown, where the run's frames play far slower. The
+    bar says "Crater forming, run ended at 4.0 ms" while it is in the tail. The slider gives the
+    run's frames and the tail's steps a share each by how long they take to play, with an
+    orange mark where the run ends. Play, the steps and the slider all cover the tail. A replay
+    opens at the tail's end, the crater whole, and **Done** shows it whole as before. A run that
+    lasts past its craters' formation, or digs none, has no tail. Nothing is stored for it: it
+    follows from the kept crater. Continuing from the tail takes back the run's last saved
+    state.
 - **Headless,** the summary prints a line per crater.
 - **USD export.** `--usd` and File ▸ Export for Rendering add `/Scene/Crater` (`Crater_1`, …): a
   patch of ground over each crater. Since 23 October 2026 it is flat until its charge fires and
   then grows as the replay draws it, over the run's frames and then over the cloud's, if the run
   follows one, at the cloud's own times. Until then it was flat until the run's last frame and
   cratered at it. The patch keeps a sample wherever the crater has grown by a thirty-second of its
-  size or a sixteenth of its lip since the last, and the frames between are interpolated. A run
-  shorter than the formation time, with no cloud after it, ends with the crater part-dug, as its
-  replay does. The flat ground plane, or the terrain, is left open under the patch so the bowl
+  size or a sixteenth of its lip since the last, and the frames between are interpolated. Where
+  the run's frames and the cloud's end before the craters have formed, the scene goes on in a
+  tail, as the replay does: a time code each 1/24 s of simulated time (the file's frame rate,
+  so in real time) to the latest crater's formation time, the rest of the scene held as its last
+  frame left it. `customLayerData` gives `craterTailStartTimeCode` and
+  `simulatedSecondsPerCraterTailFrame` then. A cloud that outlasts the crater needs no tail.
+  The flat ground plane, or the terrain, is left open under the patch so the bowl
   shows. Its `bombcad:label` holds the final crater's line.
 - **`blastbench snapshot --ground alluvium --crater-time 0.1`** draws the craters as dug by 0.1 s.
 - **`Terrain.cratered(_:)`** cuts the craters into a terrain for a scene that starts after the

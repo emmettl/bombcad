@@ -137,7 +137,7 @@ struct CraterAppTests {
         #expect(soil.craters.isEmpty)
     }
 
-    @Test("A replay draws the crater as dug by the frame's time, and scrubbed back fills it in again")
+    @Test("A replay draws the crater as dug by the frame's time, then finishes it in a tail after the run")
     func replayed() async throws {
         let model = SimulationModel(document: document(ground: .clay), playbackSpeed: .unlimited)
         model.recordsTimelines = true
@@ -157,6 +157,14 @@ struct CraterAppTests {
         model.replay(run)
         let playback = try #require(model.playback)
         #expect(playback.craters == [crater] && run.settings.craters(over: run.scenario) == [crater])
+        // The tail: from the run's last frame to the crater's formation time, a step each 1/24 s.
+        let runEnd = playback.runEndTime
+        #expect(abs(playback.tailLength - (Double(crater.formedAt) - runEnd)) < 1e-9)
+        #expect(playback.tailSteps == Int((playback.tailLength * 24).rounded(.up)) && playback.tailSteps > 1)
+        #expect(playback.positions == playback.count + playback.tailSteps)
+        // It opens at the tail's end: the run's last frame, the crater whole.
+        #expect(playback.isInTail && playback.index == playback.count - 1)
+        #expect(abs(playback.time - Double(crater.formedAt)) < 1e-6 && model.shownCraters == [crater])
         var last: Float = 0
         for n in 0..<playback.count {
             try playback.show(n)
@@ -170,7 +178,42 @@ struct CraterAppTests {
             last = radius
         }
         // Part-dug at the end of a run shorter than its formation time.
-        #expect(last > 0 && last < crater.apparentRadius)
+        #expect(last > 0 && last < crater.apparentRadius && !playback.isInTail)
+        let lastFrame = try #require(playback.frame)
+        // On through the tail: the run's last frame held, the crater growing on to the whole.
+        for n in playback.count..<playback.positions {
+            try playback.show(n)
+            #expect(playback.isInTail && playback.index == playback.count - 1)
+            #expect(playback.frame?.time == lastFrame.time && playback.frame?.time == runEnd)
+            #expect(playback.time > runEnd && playback.time <= Double(crater.formedAt) + 1e-9)
+            let shown = model.shownCraters
+            #expect(shown == [crater.grown(atTime: Float(playback.time))].compactMap { $0 })
+            let radius = shown.first?.apparentRadius ?? 0
+            #expect(radius >= last)
+            last = radius
+        }
+        #expect(model.shownCraters == [crater])
+        // Scrubbed into the tail, by time or along the slider, the crater as dug by then.
+        let into = runEnd + playback.tailLength / 3
+        playback.seek(to: into)
+        #expect(playback.isInTail && playback.time >= into && playback.time < into + 1 / 24.0 + 1e-9)
+        #expect(model.shownCraters == [crater.grown(atTime: Float(playback.time))].compactMap { $0 })
+        playback.seek(toProgress: playback.runEndProgress)
+        #expect(!playback.isInTail && playback.index == playback.count - 1)
+        playback.seek(toProgress: 1)
+        #expect(playback.position == playback.positions - 1)
+        // Without a crater, or with one formed before the run's end, no tail.
+        let queue = try #require(MTLCreateSystemDefaultDevice()?.makeCommandQueue())
+        let plain = TimelinePlayback(
+            player: playback.player, title: "Plain", scenario: run.scenario, commandQueue: queue)
+        var early = crater
+        early.delay = -crater.formationTime
+        let formed = TimelinePlayback(
+            player: playback.player, title: "Formed", scenario: run.scenario, craters: [early],
+            commandQueue: queue)
+        for other in [plain, formed] {
+            #expect(other.tailSteps == 0 && other.positions == other.count && other.endTime == runEnd)
+        }
         // Scrubbed back to the start (the mapped start's first frame), the bowl is as small as it
         // began; to the middle, between.
         playback.seek(to: 0)
@@ -178,7 +221,7 @@ struct CraterAppTests {
         #expect(
             model.shownCraters.first?.apparentRadius ?? 0 == first && first > 0 && first < last,
             "\(playback.time) s: \(first) of \(crater.apparentRadius)")
-        playback.seek(to: playback.endTime / 2)
+        playback.seek(to: runEnd / 2)
         let middle = model.shownCraters.first?.apparentRadius ?? 0
         #expect(middle >= first && middle <= last, "\(first), \(middle), \(last) at \(playback.time) s")
         model.stopReplay()

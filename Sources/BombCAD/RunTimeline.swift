@@ -600,43 +600,100 @@ final class TimelinePlayback {
         self.commandQueue = commandQueue
     }
 
+    /// The recorded frames.
     var count: Int { player.entries.count }
-    var time: Double { player.entries[index].time }
+    /// Where the replay is: a recorded frame, `0..<count`, or a step of the crater's tail after
+    /// the last of them, `count..<positions`.
+    private(set) var position = 0
+    var time: Double {
+        position < count
+            ? player.entries[index].time
+            : min(runEndTime + Double(position - count + 1) / Self.framesPerSecond, endTime)
+    }
     var startTime: Double { player.entries.first?.time ?? 0 }
-    var endTime: Double { player.entries.last?.time ?? 0 }
+    /// The run's last recorded frame's time.
+    var runEndTime: Double { player.entries.last?.time ?? 0 }
+    /// When the replay ends: when the last of its craters has formed, if that is after the run's
+    /// end, else the run's end.
+    var endTime: Double { runEndTime + tailLength }
+    /// The crater's tail: after the run's last frame the replay carries on, the air and the
+    /// structures frozen at that frame, while its craters finish forming, in real time (a step of
+    /// 1/24 s of simulated time to each frame shown, 24 a second). Its length is the latest
+    /// crater's formation end less the run's end, none where the run outlasts it or digs none.
+    var tailLength: Double {
+        max(0, Double(craters.map(\.formedAt).max() ?? 0) - runEndTime)
+    }
+    var tailSteps: Int { tailLength > 0 ? Int((tailLength * Self.framesPerSecond).rounded(.up)) : 0 }
+    /// Recorded frames and tail steps together.
+    var positions: Int { count + tailSteps }
+    /// Whether the replay is past the run's end, its craters still forming.
+    var isInTail: Bool { position >= count }
     var frame: TimelineFrame? { player.frame }
     var recordsLayers: Bool { player.recordsLayers }
     var layers: TimelineLayers { player.frame?.layers ?? TimelineLayers() }
 
-    /// Shows frame `n`, once the GPU has finished every frame drawn from the last: the queue runs
-    /// in order, so an empty buffer's completion says they are done.
+    /// Shows position `n`: frame `n`, once the GPU has finished every frame drawn from the last
+    /// (the queue runs in order, so an empty buffer's completion says they are done); in the
+    /// tail, the last frame, held.
     func show(_ n: Int) throws {
-        let n = min(max(n, 0), count - 1)
-        if let fence = commandQueue.makeCommandBuffer() {
-            fence.commit()
-            fence.waitUntilCompleted()
+        let n = min(max(n, 0), positions - 1)
+        let shown = min(n, count - 1)
+        if shown != player.index || player.frame == nil {
+            if let fence = commandQueue.makeCommandBuffer() {
+                fence.commit()
+                fence.waitUntilCompleted()
+            }
+            try player.show(shown)
+            index = player.index
+            position = n
+            onShow?()
+        } else {
+            index = player.index
+            position = n
         }
-        try player.show(n)
-        index = player.index
-        onShow?()
     }
 
-    func seek(to time: Double) { try? show(player.index(at: time)) }
+    /// Shows the frame at `time`, or in the tail the step at or just after it.
+    func seek(to time: Double) {
+        guard time > runEndTime, tailSteps > 0 else {
+            try? show(player.index(at: time))
+            return
+        }
+        try? show(count - 1 + Int(((time - runEndTime) * Self.framesPerSecond).rounded(.up)))
+    }
+
+    /// How far through the replay it is, 0 to 1, as it plays: the recorded frames take their
+    /// share of the slider by their count, the tail by its steps.
+    var progress: Double { positions > 1 ? Double(position) / Double(positions - 1) : 0 }
+    /// Where on the slider the run ends and the tail begins, 0 to 1.
+    var runEndProgress: Double { positions > 1 ? Double(count - 1) / Double(positions - 1) : 1 }
+
+    /// Seeks to `progress` of the way through: by time within the run's share, by step in the
+    /// tail.
+    func seek(toProgress progress: Double) {
+        let share = runEndProgress
+        if progress <= share || tailSteps == 0 {
+            let fraction = share > 0 ? min(max(progress / share, 0), 1) : 1
+            seek(to: startTime + fraction * (runEndTime - startTime))
+        } else {
+            try? show(Int((progress * Double(positions - 1)).rounded()))
+        }
+    }
 
     func step(_ frames: Int) {
         pause()
-        try? show(index + frames)
+        try? show(position + frames)
     }
 
     func play() {
         guard !isPlaying else { return }
-        if index >= count - 1 { try? show(0) }
+        if position >= positions - 1 { try? show(0) }
         isPlaying = true
         task = Task { [weak self] in
-            while let self, self.isPlaying, self.index < self.count - 1 {
+            while let self, self.isPlaying, self.position < self.positions - 1 {
                 try? await Task.sleep(for: .seconds(1 / Self.framesPerSecond))
                 guard self.isPlaying else { return }
-                try? self.show(self.index + 1)
+                try? self.show(self.position + 1)
             }
             self?.isPlaying = false
         }

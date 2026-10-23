@@ -110,14 +110,27 @@ struct CraterGrowthTests {
         delayed.delay = 0.5
         let later = writer.craterSamples(delayed)
         #expect(later.prefix(2).map(\.code) == [0, 25] && later[1].bowl == 0 && later[2].bowl > 0)
-        // Delayed past the end, it never grows; a run too short to finish it ends part-dug.
+        #expect(writer.timeCodeTimes.count == 50, "No tail: the run outlasts the crater.")
+        // Delayed past the end, it grows in the tail after the run's frames, in real time (a time
+        // code each 1/24 s), flat until it fires.
         delayed.delay = 2
-        #expect(writer.craterSamples(delayed).allSatisfy { $0.bowl == 0 })
+        writer.addCraters([delayed])
+        let tail = writer.timeCodeTimes
+        let steps = Int(((Double(delayed.formedAt) - 0.98) * 24).rounded(.up))
+        #expect(tail.count == 50 + steps && abs(tail[50] - (0.98 + 1.0 / 24)) < 1e-9)
+        let delayedSamples = writer.craterSamples(delayed)
+        #expect(delayedSamples.filter { tail[$0.code] <= 2 }.allSatisfy { $0.bowl == 0 })
+        #expect(delayedSamples.last.map { $0.code == tail.count - 1 && $0.bowl == 1 && $0.lip == 1 } == true)
+        // A run too short to finish it carries on in the tail to the whole crater.
         let short = try USDSceneWriter(
             url: folder.appending(path: "short.usda"), scenario: scenario, frameInterval: 0.001)
         for _ in 0..<20 { try short.append(nil) }
+        short.addCraters([crater])
         let part = short.craterSamples(crater)
-        #expect(part.last?.code == 19 && part.last.map { $0.bowl < 1 && $0.lip == 0 } == true)
+        let shortSteps = Int(((Double(crater.formedAt) - 0.019) * 24).rounded(.up))
+        #expect(
+            part.last.map { $0.code == 19 + shortSteps && $0.bowl == 1 && $0.lip == 1 } == true, "\(part)")
+        #expect(part.contains { $0.code <= 19 && $0.bowl > 0.2 && $0.lip == 0 }, "part-dug by the run's end")
         // The cloud's frames, after the run's at their own times, carry it on to the whole crater.
         let sample = CloudSample(
             time: 0, height: 0, radius: 1, temperature: 300, ambientTemperature: 300, riseSpeed: 0, mass: 1)
@@ -129,6 +142,7 @@ struct CraterGrowthTests {
             }, secondsPerFrame: 0.1)
         let carried = short.craterSamples(crater)
         #expect(carried.last.map { $0.code == 24 && $0.bowl == 1 && $0.lip == 1 } == true, "\(carried)")
+        #expect(short.timeCodeTimes.count == 30, "No tail after a cloud that outlasts the crater.")
         short.discard()
         writer.discard()
     }

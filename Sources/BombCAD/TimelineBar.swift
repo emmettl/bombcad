@@ -50,23 +50,25 @@ private struct PlaybackControls: View {
             } label: {
                 Image(systemName: "backward.frame.fill")
             }
-            .disabled(playback.index == 0)
+            .disabled(playback.position == 0)
             .accessibilityLabel("Previous frame")
             Button {
                 playback.step(1)
             } label: {
                 Image(systemName: "forward.frame.fill")
             }
-            .disabled(playback.index >= playback.count - 1)
+            .disabled(playback.position >= playback.positions - 1)
             .accessibilityLabel("Next frame")
+            // By how far through it is as it plays, so that a crater's tail after the run takes
+            // the share of the slider it takes to play, past a mark where the run ends.
             Slider(
                 value: Binding(
-                    get: { playback.time },
-                    set: { time in
+                    get: { playback.progress },
+                    set: { progress in
                         playback.pause()
-                        playback.seek(to: time)
+                        playback.seek(toProgress: progress)
                     }),
-                in: playback.startTime...max(playback.endTime, playback.startTime + 1e-6)
+                in: 0...1
             )
             .overlay(alignment: .leading) { SavedStateMarks(playback: playback) }
             .accessibilityLabel("Replay time")
@@ -83,6 +85,14 @@ private struct PlaybackControls: View {
             )
             Text("\(Self.timeText(playback.time)) of \(Self.timeText(playback.endTime))")
                 .font(.caption.monospacedDigit()).frame(minWidth: 130, alignment: .trailing)
+            if playback.isInTail {
+                // Past the run's last frame, which stays shown, while its craters finish forming.
+                Text("Crater forming, run ended at \(Self.timeText(playback.runEndTime))")
+                    .font(.caption).foregroundStyle(.orange).lineLimit(1)
+                    .help(
+                        "The air and the structures stay as the run left them while the crater finishes forming, in real time."
+                    )
+            }
             Text(playback.title).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             Button("Done") { model.stopReplay() }
                 .accessibilityLabel("Stop replaying")
@@ -97,13 +107,15 @@ private struct PlaybackControls: View {
     }
 }
 
-/// Ticks under the replay's slider where the run saved its state, to continue from.
+/// Ticks under the replay's slider where the run saved its state, to continue from, and a taller
+/// one where the run ends and a crater's tail begins.
 private struct SavedStateMarks: View {
     let playback: TimelinePlayback
 
     var body: some View {
         GeometryReader { geometry in
-            let span = max(playback.endTime - playback.startTime, 1e-9)
+            let span = max(playback.runEndTime - playback.startTime, 1e-9)
+            let share = playback.runEndProgress
             // The slider's knob keeps half its width in from each end.
             let inset: CGFloat = 10
             let width = max(geometry.size.width - 2 * inset, 1)
@@ -112,8 +124,14 @@ private struct SavedStateMarks: View {
                     .fill(entry.pinned == true ? Color.accentColor : Color.secondary)
                     .frame(width: 2, height: 6)
                     .position(
-                        x: inset + width * CGFloat((entry.time - playback.startTime) / span),
+                        x: inset + width * CGFloat(share * (entry.time - playback.startTime) / span),
                         y: geometry.size.height - 2)
+            }
+            if playback.tailSteps > 0 {
+                Rectangle()
+                    .fill(Color.orange)
+                    .frame(width: 2, height: 12)
+                    .position(x: inset + width * CGFloat(share), y: geometry.size.height / 2)
             }
         }
         .allowsHitTesting(false)

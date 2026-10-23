@@ -304,11 +304,17 @@ public final class USDSceneWriter {
             text.append("        }\n")
         }
 
-        let last = max(frames - 1, 0, cloud.map { frames + $0.samples.count - 1 } ?? 0)
+        let recorded = max(frames - 1, 0, cloud.map { frames + $0.samples.count - 1 } ?? 0)
+        let last = max(recorded, timeCodeTimes.count - 1)
+        // After the run's frames and the cloud's, the craters' tail, where they are still forming.
+        let tailTiming =
+            last > recorded
+            ? "\n        double craterTailStartTimeCode = \(recorded + 1)\n        double simulatedSecondsPerCraterTailFrame = \(1 / playbackRate)"
+            : ""
         let cloudTiming =
-            cloud.map {
+            (cloud.map {
                 "\n        double cloudStartTimeCode = \(frames)\n        double simulatedSecondsPerCloudFrame = \($0.secondsPerFrame)"
-            } ?? ""
+            } ?? "") + tailTiming
         text.append(
             """
             #usda 1.0
@@ -534,6 +540,22 @@ public final class USDSceneWriter {
         text.append("]\n    }\n\n")
     }
 
+    /// Each time code's simulated time: the run's frames, `frameInterval` apart from time zero,
+    /// then the cloud's at their own times, then, where the craters have not all formed by the
+    /// last of those, a tail in real time, a time code each 1/`playbackRate` of a second, until they
+    /// have (`CraterEstimate.formedAt`), with the scene held as its last frame left it, as the
+    /// app's replay does. With one frame or none there is no tail: the crater is whole throughout.
+    var timeCodeTimes: [Double] {
+        var times = (0..<frames).map { Double($0) * frameInterval } + (cloud?.samples.map(\.time) ?? [])
+        guard times.count > 1, let formed = craters.map(\.formedAt).max().map(Double.init),
+            let end = times.last, formed > end
+        else { return times }
+        let spacing = 1 / playbackRate
+        let steps = Int(((formed - end) / spacing).rounded(.up))
+        times += (1...steps).map { end + Double($0) * spacing }
+        return times
+    }
+
     /// The time codes at which a crater's patch is sampled, with the shares of its growth there
     /// (`CraterEstimate.growth(atTime:)`). The time codes are the run's frames, `frameInterval`
     /// apart from time zero, then the cloud's, each at its own time. Kept are the first, each where
@@ -542,7 +564,7 @@ public final class USDSceneWriter {
     /// then, and the last; those between are interpolated. With one time code or none, the crater
     /// whole.
     func craterSamples(_ crater: CraterEstimate) -> [(code: Int, bowl: Float, lip: Float)] {
-        let times = (0..<frames).map { Double($0) * frameInterval } + (cloud?.samples.map(\.time) ?? [])
+        let times = timeCodeTimes
         guard times.count > 1 else { return [(0, 1, 1)] }
         var kept: [(code: Int, bowl: Float, lip: Float)] = []
         var previous: (code: Int, bowl: Float, lip: Float)?

@@ -190,8 +190,12 @@ again ends a replay.
 - **The crater** (since 23 October 2026), on earth or rock, grows with the replay's time over the
   time it takes to form, from nothing at t = 0, and scrubbing back fills it in again. It follows
   from the run's final crater, so nothing more is recorded and older recordings show it too. Most
-  runs end long before a crater has formed (0.33 s for 100 kg), so their replays end with it
-  part-dug, and **Done** shows it whole ([how it grows](cratering.md#how-it-grows)).
+  runs end long before a crater has formed (0.33 s for 100 kg). Their replays then carry on past
+  the run's last frame in a **crater tail**, the air and the structures held as that frame left
+  them, while the crater finishes forming in real time. The bar says "Crater forming, run ended
+  at …" there, and an orange mark on the slider shows where the run ends. Play, the steps and the
+  slider cover the tail, and a replay opens at its end, the crater whole
+  ([shown and exported](cratering.md#shown-and-exported)).
 - **Kept with the run:** Keep Run keeps the recording too, in the project's `runs/` folder beside
   its results, and a reopened project replays its kept runs. Settings ▸ Replay turns recording off
   or sets each run's space (256 MB by default); past it a run records less often rather than
