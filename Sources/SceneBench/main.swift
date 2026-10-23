@@ -158,6 +158,10 @@ enum SceneBench {
             try FieldGlass.run(Array(args.dropFirst()))
             return
         }
+        if args.first == "field-refs" {
+            try FieldReferences.run(Array(args.dropFirst()))
+            return
+        }
         if args.first == "field-walls" {
             try FieldWalls.run(Array(args.dropFirst()))
             return

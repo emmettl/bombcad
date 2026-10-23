@@ -538,10 +538,7 @@ public enum LearnedField {
         /// strips' boxes and the ground to the centimetre, so a storey ending at that height
         /// counted on both sides of it).
         public func isGroundFloor(_ component: EnvelopeComponent) -> Bool {
-            guard component.kind == .facade, component.axis < 2 else { return false }
-            let ground = terrain?.height(at: FacadeLoadSurrogate.outerFace(component).centre) ?? 0
-            let level = ground + LearnedField.heightAboveGround
-            return component.region.min.z <= level + 0.01 && level - 0.01 <= component.region.max.z
+            LearnedField.isGroundFloor(component, terrain: terrain)
         }
 
         /// The level a façade strip's storey spans above the ground floor: the first height level
@@ -625,11 +622,23 @@ public enum LearnedField {
         }
     }
 
+    /// Whether `component` is a ground-floor façade strip over `terrain` (`PeakMap.isGroundFloor`).
+    public static func isGroundFloor(_ component: EnvelopeComponent, terrain: Terrain?) -> Bool {
+        guard component.kind == .facade, component.axis < 2 else { return false }
+        let ground = terrain?.height(at: FacadeLoadSurrogate.outerFace(component).centre) ?? 0
+        let level = ground + LearnedField.heightAboveGround
+        return component.region.min.z <= level + 0.01 && level - 0.01 <= component.region.max.z
+    }
+
     /// A district's plan with the network to run on it, for any place of the charge: laid out once
     /// (`Plan`), the network run again for each.
     public final class Estimator: Sendable {
         public let plan: Plan
         public let network: any Network
+        /// A second network for the ground floor's 2 m field alone, in place of `network`'s
+        /// (emmettl/bombcad-work#69): a model of more levels above, and a sharper ground-floor
+        /// model below. nil for `network`'s own at every level.
+        public let groundNetwork: (any Network)?
         /// The components given the network's peak: the ground floor's façade strips for the
         /// first model's weights, and with more levels what `reach` allows of them (by default
         /// every storey's façade strips, not the roofs).
@@ -637,10 +646,13 @@ public enum LearnedField {
         /// How long laying out the plan took, s.
         public let seconds: Double
 
-        public init(scene: Scenario, network: any Network, reach: Reach = .judged) {
+        public init(
+            scene: Scenario, network: any Network, reach: Reach = .judged, groundNetwork: (any Network)? = nil
+        ) {
             let start = ContinuousClock.now
             plan = Plan(scene: scene)
             self.network = network
+            self.groundNetwork = groundNetwork
             self.reach = network.header.levels == nil ? .groundFloor : reach
             let took = start.duration(to: .now)
             seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
@@ -669,15 +681,27 @@ public enum LearnedField {
                 throw LearnedFieldError.network(
                     "\(outs.map(\.count)) outputs for \(levels.count) levels of \(rows) × \(columns)")
             }
-            let logPeaks = outs.map { out in
+            func onPlan(_ out: [Float], columns: Int, residual: Bool, kb: [Float]) -> [Float] {
                 var logPeak = [Float](repeating: 0, count: plan.rows * plan.columns)
                 for j in 0..<plan.rows {
                     for i in 0..<plan.columns {
                         let n = i + plan.columns * j
-                        logPeak[n] = out[i + columns * j] + (header.residual ? kb[n] : 0)
+                        logPeak[n] = out[i + columns * j] + (residual ? kb[n] : 0)
                     }
                 }
                 return logPeak
+            }
+            var logPeaks = outs.map { onPlan($0, columns: columns, residual: header.residual, kb: kb) }
+            // The ground floor's from its own network, on its own standardisation.
+            if let groundNetwork {
+                let own = groundNetwork.header
+                let (inputs, rows, columns, kb) = LearnedField.networkInputs(
+                    exportChannels: raw, rows: plan.rows, columns: plan.columns, header: own)
+                let out = try groundNetwork.peakChannel(inputs: inputs, rows: rows, columns: columns)
+                guard out.count == rows * columns else {
+                    throw LearnedFieldError.network("\(out.count) ground outputs for \(rows) × \(columns)")
+                }
+                logPeaks[0] = onPlan(out, columns: columns, residual: own.residual, kb: kb)
             }
             var map = PeakMap(plan: plan, logPeaks: logPeaks, levels: levels, reach: reach)
             map.seconds = (inputsS, since(clock))

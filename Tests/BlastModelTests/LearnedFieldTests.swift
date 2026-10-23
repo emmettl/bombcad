@@ -321,6 +321,40 @@ struct LearnedFieldTests {
             LearnedField.Estimator(scene: scene, network: leveled).reach == [.groundFloor, .upperStoreys])
     }
 
+    @Test(
+        "A ground-floor network gives the 2 m field in place of the levels' own, the levels above unchanged")
+    func groundNetwork() throws {
+        let scene = try FacadeGlassProbabilityTests.row()
+        // Each level's output a constant of its own: 0.1, 0.2, 0.3 for the levels' network, 0.7 for
+        // the ground's.
+        final class Constant: LearnedField.Network, @unchecked Sendable {
+            var header = StandIn().header
+            let values: [Float]
+            init(_ values: [Float]) { self.values = values }
+            func peakChannel(inputs: [Float], rows: Int, columns: Int) throws -> [Float] {
+                [Float](repeating: values[0], count: rows * columns)
+            }
+            func peakChannels(inputs: [Float], rows: Int, columns: Int) throws -> [[Float]] {
+                values.map { [Float](repeating: $0, count: rows * columns) }
+            }
+        }
+        let levels = Constant([0.1, 0.2, 0.3])
+        levels.header.levels = [
+            .init(name: "ground", over: "ground", metres: 2), .init(name: "h6", over: "ground", metres: 6),
+            .init(name: "h10", over: "ground", metres: 10),
+        ]
+        let charge = scene.charge.position
+        let mass = Double(scene.charge.mass)
+        let alone = try LearnedField.Estimator(scene: scene, network: levels).peaks(
+            charge: charge, mass: mass)
+        let both = try LearnedField.Estimator(scene: scene, network: levels, groundNetwork: Constant([0.7]))
+            .peaks(charge: charge, mass: mass)
+        #expect(both.reach == [.groundFloor, .upperStoreys] && both.levels == alone.levels)
+        #expect(both.logPeaks[1] == alone.logPeaks[1] && both.logPeaks[2] == alone.logPeaks[2])
+        #expect(zip(both.logPeaks[0], alone.logPeaks[0]).allSatisfy { abs($0 - $1 - 0.6) < 1e-5 })
+        #expect(both.opens[1] == alone.opens[1])
+    }
+
     @Test("The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support")
     func weightsURL() {
         #expect(

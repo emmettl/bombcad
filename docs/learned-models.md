@@ -1802,14 +1802,123 @@ scenebench wall-calibrate <Beirut's inputs> --dx 4 --height 320 --radius 1320 --
     --fixed raw=1:1:1/1.3:0.5:1,adopted=1.15:1:0.826/1.3:0.5:1,factor=1.2:1:0.775/1.3:0.5:1
 ```
 
+## Round 4 on the 2 m references: glass and every storey (23 October 2026)
+
+emmettl/bombcad-work#69. Round 4 left two truths disagreeing about the storeys above the ground
+floor, and no 2 m reference for glass. This judges three ways of using the networks, through the
+app's own estimate, on the same 2 m references as #19's walls. The question was whether to ship new
+weights as `field-model-2` for 0.7.1.
+
+**The references.** These are Beirut's ten near boxes, 0.15–1.5 kt, refined to 2 m below the
+buildings' tops on the mapped start (14707293). Their saved loads already hold every storey's
+façade strips: 152,604 strips over 3,012 buildings, 95,000 of them recorded. Rerun on main at
+744b5236, the 150 t and 200 t boxes are bit-identical to the 22 October runs, façades, walls and
+roofs alike, so the other eight were not rerun.
+
+**The judge.** `scenebench field-refs` takes each yield in turn and lets it go before the next. At
+each it makes the app's estimate (`FacadeLoadSurrogate.Prepared.estimate` with each variant's
+`LearnedField.Estimator`). It judges glass by side as `field-glass` does: each strip's breakage on
+the run's 2 m history and on the estimate's triangle, summed over the side's strips, each side's
+state GEER's. Ground-floor strips and those above form their sides apart. The walls go through
+`wall-calibrate`, as before. Its new `--learned-ground` gives the combination.
+
+The variants:
+- **(a)** round 2 (`field-unet-fp-strict`, field-model-1) at the ground floor, the surrogate above:
+  today's option;
+- **(b)** round 4 (`field-unet-l4-strict`) at every storey;
+- **(c)** round 2 at the ground floor and round 4 above
+  (`LearnedField.Estimator(groundNetwork:)`).
+
+**Glass by side against the 2 m runs** (10 yields, sides inside 0.85 of the box; exact / Heidke
+skill / mean error of the share broken):
+
+| Sides | Surrogate | (a) Round 2, ground | (b) Round 4, every storey | (c) Combined |
+|---|---|---|---|---|
+| Ground floor (63,951) | 0.911 / 0.51 / 0.043 | **0.939 / 0.57 / 0.034** | 0.929 / 0.41 / 0.037 | **0.939 / 0.57 / 0.034** |
+| … 700–1000 m | 0.946 / 0.39 | 0.977 / 0.60 | 0.979 / 0.55 | 0.977 / 0.60 |
+| … beyond 1000 m | 0.851 / 0.51 | 0.882 / 0.54 | 0.855 / 0.36 | 0.882 / 0.54 |
+| Upper storeys (64,914) | 0.903 / 0.54 / 0.051 | 0.903 / 0.54 / 0.051 (the surrogate's) | **0.925 / 0.59 / 0.043** | **0.925 / 0.59 / 0.043** |
+| Every storey (65,263) | 0.904 / 0.54 / 0.051 | 0.910 / 0.56 / 0.048 | 0.926 / 0.58 / 0.043 | **0.928 / 0.60 / 0.042** |
+
+**Peaks by storey against the 2 m runs** (predicted over recorded, median / log-SD; all strips,
+then 50–700 m):
+
+| Level | Strips | Surrogate | Round 2 | Round 4 |
+|---|---|---|---|---|
+| Ground floor | 162,366 | 0.90 / 0.37; 0.77 / 0.36 | 1.01 / 0.32; 0.89 / 0.25 | 1.10 / 0.35; 0.92 / 0.25 |
+| 6–14 m | 141,000–162,000 | 0.90–0.94 / 0.37; 0.79–0.82 / 0.34–0.35 | (the surrogate's) | 1.02–1.08 / 0.33–0.34; 0.90–0.91 / 0.24 |
+| 18–22 m | 56,000–112,000 | 0.97–1.02 / 0.37; 0.87–0.92 / 0.35–0.44 | | 1.03–1.04 / 0.34; 0.93 / 0.25–0.32 |
+| 26–30 m | 6,000–19,000 | 0.98–1.08 / 0.36–0.40; 0.86–0.90 / 0.30–0.53 | | 1.00–1.09 / 0.34–0.37; 0.90–0.93 / 0.25–0.42 |
+
+**Concrete walls, moderate or worse, the worst storey** (2,053 buildings × 10 yields, 50 draws;
+Brier / skill / the tenths test):
+
+| Walls' load | Surrogate | (a) Round 2, ground | (b) Round 4, every storey | (c) Combined |
+|---|---|---|---|---|
+| ×1.0 | 0.028 / 0.48 / fail | 0.021 / 0.62 / fail | 0.020 / 0.63 / fail | 0.020 / 0.64 / fail |
+| **The app's adopted** (×1.3; with a model, peak ×1.15, impulse ×0.95) | 0.023 / 0.59 / pass | **0.018 / 0.66 / pass** | 0.023 / 0.58 / fail | 0.020 / 0.63 / fail |
+| Refit, each yield held out | 0.023 / 0.59 / fail | 0.019 / 0.66 / pass | 0.020 / 0.63 / fail | 0.021 / 0.62 / fail |
+| Best pair of the grid over all ten (not held out) | | 0.0183 (×1.3, scatter ×½, impulse ×0.83) | | 0.0195 (×1.3, scatter ×½) |
+
+Roofs are 0.74 in every variant. The surrogate's and (b)'s rows are from 14707293 and round 4, on
+these same references. (a) was judged again here and gave the same figures to the digit.
+
+**What it says:**
+
+- **At the upper storeys round 4 is better on the 2 m truth too.** Its peaks there read 0.90–0.93
+  of the 2 m runs at 50–700 m with a log-SD of 0.24–0.25. The surrogate's read 0.79–0.92 with
+  0.34–0.44. Upper storeys' glass goes from 0.903 to 0.925, skill 0.54 to 0.59. So the two truths
+  agree about the upper storeys' peaks. Round 4's guess, that the 2 m references reward the
+  surrogate running high above the ground floor, was wrong: against 2 m cells the surrogate reads
+  low there, not high.
+- **At the ground floor round 2 stays the better network.** Its glass is 0.939 / 0.57 against
+  round 4's 0.929 / 0.41, and round 4 loses most beyond 1 km (skill 0.36 against 0.54).
+- **The walls still prefer (a).** At the adopted factors (a) scores 0.66 and passes the tenths
+  test. (c) scores 0.63 and (b) 0.58, and both fail. No factor of the grid brings (c) to (a): its
+  best pair over all ten yields gives a Brier of 0.0195, against (a)'s 0.0183. More accurate peaks
+  above the ground floor do not make better wall chances. A likely reason is that the chances draw
+  the surrogate's own scatter (log-SD 0.35–0.45) about whichever peak they are given, and the
+  model's 0.25 is never used. The factors were also fitted to (a). That is for a next round, not
+  tried here.
+
+**The verdict: field-model-1 stays.** Neither (b) nor (c) is clearly better than (a) on the 2 m
+references. (b) loses at the ground floor's glass and at the walls. (c) matches (a) at the ground
+floor's glass and gains at the upper storeys' glass (0.925 against 0.903), but it loses at the
+walls (0.63 and failing the tenths test, against 0.66 and passing). No weights are published,
+and the app's pin, file and option are unchanged.
+
+What would let (c) ship:
+- the walls' chances given the model's own scatter where its peak is used, and their factors
+  refit for the combination on these references;
+- a decision by the user on whether a gain in upper storeys' glass is worth a loss in the walls.
+
+The app can already run (c) for testing. `LearnedField.Estimator(groundNetwork:)` takes a second
+network for the ground floor, and `wall-calibrate --learned l4.bcfw --learned-ground fp.bcfw`
+judges it. Only the bench uses it so far. The setting and the download still take one file.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/judge/l4-2m/`:
+- `glass-2f.txt` for glass and peaks;
+- `walls-2f-fp.txt` and `walls-2f-comb.txt` for the walls;
+- `near2g-*` for the two reruns on 744b5236;
+- `glass.sh`, `walls.sh` and `refs.sh` for the commands.
+
+```bash
+scenebench field-refs <Beirut's inputs> --dx 4 --height 320 --radius 1320 --runs <the ten 2 m near boxes> \
+    --variants surrogate,fp=field-unet-fp-strict.bcfw,l4=field-unet-l4-strict.bcfw,comb=field-unet-l4-strict.bcfw+field-unet-fp-strict.bcfw
+scenebench wall-calibrate <the same> --factors 0.8,1,1.15,1.3,1.5 --scales 0.5,1 --impulse-ratios 0.826,1 \
+    --draws 50 --learned field-unet-l4-strict.bcfw --learned-ground field-unet-fp-strict.bcfw --held-out \
+    --fixed raw=1:1:1/1.3:0.5:1,learned-adopted=1.15:1:0.826/1.3:0.5:1
+```
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **A model to ship after round 2** ([round 4](#round-4-fields-at-more-heights-on-the-fixed-terrain-start-23-october-2026)):
-  - a ground-floor head as sharp as round 2's;
-  - 2 m references for upper storeys and glass, to settle which truth the upper storeys are
-    judged on;
+- **A model to ship after round 2** ([round 4](#round-4-fields-at-more-heights-on-the-fixed-terrain-start-23-october-2026),
+  [on the 2 m references](#round-4-on-the-2-m-references-glass-and-every-storey-23-october-2026)):
+  - the walls' chances drawn with the model's own scatter, and refit for round 2 below and round 4
+    above, which gains at the upper storeys' glass and loses at the walls today;
+  - or a ground-floor head as sharp as round 2's;
   - then the option's weights, name and standing.
 - **Measured heights** to judge the levels on (emmettl/bombcad-work#69; routes, not readings, from
   the search of 21 October in [data wanted](data-wanted.md#to-fetch)). Alsubaei 2015's columns are

@@ -3,7 +3,7 @@ import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
 /// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json]
-/// [--out calibration.json]`: how well the walls' and roofs' chances
+/// [--learned weights.bcfw [--learned-ground ground.bcfw]] [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each
 /// building's worst wall and worst roof in each run, judged on the run's histories at the
@@ -107,9 +107,14 @@ enum WallCalibration {
         // `--learned weights.bcfw`: the learned field model's peak at the ground-floor façade strips
         // (emmettl/bombcad-work#67), as the app's quick estimate takes it with the option on; its
         // peaks are for one yield, so each yield's chances take an estimate of their own.
+        // `--learned-ground ground.bcfw`: that network's 2 m field at the ground floor instead,
+        // `--learned`'s at the storeys above (emmettl/bombcad-work#69).
         let learned = try value("learned").map {
             LearnedField.Estimator(
-                scene: first.scene, network: try LearnedFieldNetwork(contentsOf: URL(filePath: $0)))
+                scene: first.scene, network: try LearnedFieldNetwork(contentsOf: URL(filePath: $0)),
+                groundNetwork: try value("learned-ground").map {
+                    try LearnedFieldNetwork(contentsOf: URL(filePath: $0))
+                })
         }
         let prepared = learned.map { _ in
             FacadeLoadSurrogate.Prepared(scene: first.scene, cellSize: first.cellSize)
