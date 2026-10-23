@@ -53,18 +53,19 @@ extension ValidationTables {
             quote: "at the app's own load factor of 1.0, 0.60 and 0.68"),
         // Field model 2 in the quick estimate (`LearnedField.standing`), against Beirut's 2 m
         // references: field model 1's figure and model 2's, the lower first (emmettl/bombcad-work#69;
-        // judged again on the façade terms refitted on 23 October 2026, #56).
+        // on the façade terms refitted on 23 October 2026, #56, and on the references run to their
+        // judged corners rather than to 3 s, the same day).
         Figure(
-            id: "learnedModel2Glass", low: 0.35, high: 0.44,
-            document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
-            quote: "glass blown out over the app's sides, Brier skill 0.44 against field model 1's 0.35"),
+            id: "learnedModel2Glass", low: 0.43, high: 0.69,
+            document: "learned-models.md#the-near-boxes-run-to-their-corners-23-october-2026",
+            quote: "glass blown out over the app's sides, Brier skill 0.69 against field model 1's 0.43"),
         Figure(
-            id: "learnedModel2GlassUpper", low: 0.32, high: 0.43,
-            document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
-            quote: "above the ground floor 0.43 against 0.32"),
+            id: "learnedModel2GlassUpper", low: 0.41, high: 0.68,
+            document: "learned-models.md#the-near-boxes-run-to-their-corners-23-october-2026",
+            quote: "above the ground floor 0.68 against 0.41"),
         Figure(
             id: "learnedModel2Walls", low: 0.654, high: 0.656,
-            document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
+            document: "learned-models.md#the-near-boxes-run-to-their-corners-23-october-2026",
             quote: "concrete walls moderate or worse, Brier skill 0.656 against field model 1's 0.654"),
         Figure(
             id: "dragPreviewGlass", low: 0.89, high: 0.92,

@@ -234,7 +234,10 @@ to 1.5 kt, on air refined to 2 m below the buildings' tops since 22 October 2026
 (`scenebench wall-calibrate`; emmettl/bombcad-work#19). Each yield is taken at its own yield with
 the settings below. The judgement uses the façade terms refitted on 2 m air on 23 October 2026,
 with their close-in branch and its shielding (emmettl/bombcad-work#4, #56). The runs judge every wall at its nominal strength, so they check the
-load's scatter, not the strength's.
+load's scatter, not the strength's. Since 23 October the references run until the blast passes
+their judged corners, not to 3 s. The table held: to the digit for concrete and roofs, and
+stone's 0.724 became 0.719
+([learned models](learned-models.md#the-near-boxes-run-to-their-corners-23-october-2026)).
 
 | Chance (2,053 buildings × 10 yields) | Settings | Brier skill | Tenths, each within 0.1 of the runs |
 |---|---|---|---|

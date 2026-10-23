@@ -855,6 +855,52 @@ terms will be refitted on them. The judgements of glass and walls on these boxes
 were against cut histories too. The hybrid far field's comparison above is against the full runs,
 which are not cut (`py/cutcheck.py`).
 
+#### The peak terms on the full-length boxes (23 October 2026)
+
+The ten boxes were run again to their judged corners, 4.8–5.0 s
+([learned models](learned-models.md#the-near-boxes-run-to-their-corners-23-october-2026)). In the
+five fit boxes, 23–34% of the strips the fit kept (22,000–26,800 a box, at 0.9–1.3 km) had their
+histories cut (`refs-full/fitcut.py`). The peak's terms were refitted by #56's own fit
+(`py/fit.py`'s `fit_terms`, the rise kept). It was given the fit set at 2 m and the five boxes,
+now full length. Given the 3 s boxes, it gives `proposal-56.json`'s terms exactly.
+
+- **The terms:** [−2.0548, −0.4514, −0.153, −0.0814, 0.0065, 0.7851, −0.3127, −0.1531, −0.023,
+  −0.1477, −0.389] become [−2.1199, −0.4369, −0.1284, −0.0592, −0.0024, 0.7201, −0.3248, −0.1222,
+  0.0326, −0.1254, −0.4105] (`refs-full/terms-refit-full.json`). The fit's own peak residual goes
+  from 0.31 to 0.25.
+- **The impulse:** its terms were fitted without the boxes, since their impulses scattered by
+  0.8–1.5. With the full-length boxes the residual over the fit's strips is 0.16, against 0.58 with
+  the cut ones, so they could now join the impulse's fit. That was not done.
+- **Close in** (Z < 5) and the shielding's band do not move.
+
+Peaks predicted over the run's, median, adopted → full-length refit:
+
+| Runs | All | Z 7–10 | Z 10–14 | Z 14–20 | Z 20–40 |
+|---|---|---|---|---|---|
+| The ten boxes, full length (2 m) | 0.94 → 0.99 | 0.96 → 0.99 | 0.95 → 1.00 | 0.93 → 1.00 | 0.88 → 0.97 |
+| … the five yields no fit saw | 0.94 → 1.00 | 0.97 → 1.00 | 0.95 → 1.00 | 0.93 → 1.00 | 0.88 → 0.97 |
+| Streets held out (p2, p4, p6, p8; 4 m) | 1.03 → 1.06 | 1.04 → 1.07 | 1.02 → 1.05 | 1.00 → 1.04 | 0.95 → 0.98 |
+| Made-up held out (4 m) | 0.96 → 0.98 | 0.98 → 1.01 | 0.95 → 0.98 | 0.89 → 0.92 | |
+| The fit set (2 m) | 1.01 → 1.04 | 1.03 → 1.04 | 1.06 → 1.09 | 1.03 → 1.06 | 0.97 → 1.01 |
+
+Judged through the app's estimate on the full-length boxes:
+
+- **Glass by side, every storey:** 0.901 / 0.65 → 0.929 / 0.73 (exact / Heidke). On the five
+  yields no fit saw it is 0.915 / 0.64 → 0.939 / 0.71. Blown out by side scores Brier 0.0666 / skill
+  0.39 → 0.0500 / 0.54. The ground floor's peaks read 0.91 → 0.97 of the runs.
+- **Concrete walls moderate or worse at ×1.15:** 0.0213 / 0.611 → 0.0219 / 0.600, both passing the
+  tenths test. The refit picks ×1.15 in every fold for both. Roofs are 0.74 for both.
+- **Not judged on the refit:** the hybrid far field, `glass-calibrate` against the full 4 m runs, and
+  GEER. Each needs the terms as the default, which is the user's decision.
+
+**For the user.** Adopt the full-length peak terms in place of `proposal-56.json`'s, or keep them.
+
+- For: Warehouse 12's far peaks go from 5–12% low to within 3%, and the near boxes' glass gains
+  0.02–0.03 of sides, out of sample too. It removes the fit's dependence on cut histories.
+- Against: concrete walls lose 0.011 of skill, though they still pass. The 4 m street charges read
+  3–4% higher (a 2 m reference reads about ×1.13 above them close in, and about 9% above beyond
+  Z 7). The judges it was not run on are listed above.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings

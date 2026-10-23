@@ -6415,6 +6415,11 @@ they were first judged on read the walls' peaks 13–19% low at
   was given the mapped start in place of the balloon (emmettl/bombcad-work#78). Every figure here
   held to the second decimal, and the refit chose ×1.3 again in nine folds of ten (on the façade
   terms of the time).
+- **To the corners:** the references had been run to 3 s, which cut their outer ring short. They
+  were run again on 23 October 2026 until the blast passed the judged corners
+  ([learned models](learned-models.md#the-near-boxes-run-to-their-corners-23-october-2026)). The
+  concrete walls' and roofs' figures held to the digit, since the walls are damaged well inside
+  that ring. Stone's went from 0.724 to 0.719, still 0.72.
 - **Stone:** each building taken as 0.5 m stone, walls heavy or worse at skill 0.72, its factors as
   on 4 m cells. Its middle chances are high by up to 0.19 (the safe side). The test fails.
 - **Heavy and failure:** concrete walls heavy or worse score skill 0.53 but fail the test, so they

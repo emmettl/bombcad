@@ -2099,7 +2099,9 @@ sides, Brier skill 0.44 against field model 1's 0.35, and above the ground floor
 both pass the tenths test. The option's standing in the app says the same (`LearnedField.standing`).
 With field model 1's file alone it shows field model 1's standing, as before (`standingModel1`).
 The judgements are in `$BOMBCAD_DATA/refit56/takeover/judge-adopt` (`glass.txt`, `walls-a.txt`,
-`walls-c-own.txt`).
+`walls-c-own.txt`). On the references run to their judged corners rather than to 3 s, the same
+day, the walls held to the digit, and the glass gains grew: blown out over the app's sides, 0.69
+against 0.43 ([below](#the-near-boxes-run-to-their-corners-23-october-2026)).
 
 **The weights.** The release `field-model-2` on emmettl/bombcad holds both files, kept off
 "latest" like `field-model-1`:
@@ -2284,8 +2286,8 @@ They are a large share of the far bands:
 This weighs on every judgement made on these boxes, glass beyond 1 km most of all. The surrogate's
 #56 refit fitted its peak terms on five of them; whether that fit kept these strips was not
 checked here. Rerunning the ten boxes to the corners, as
-the 28 runs above were run (4.6–4.8 s, about 5 minutes each), would remove it. That is for the
-user to decide, not done here.
+the 28 runs above were run (4.6–4.8 s, about 5 minutes each), would remove it. It was done the
+same day ([below](#the-near-boxes-run-to-their-corners-23-october-2026)).
 
 **The verdict: the tables stay.** The 2 m tables are neither better calibrated nor kept glass's
 skill. `Scatter.fieldModel1` and `round4` are unchanged, so field model 2's chances are as
@@ -2318,13 +2320,90 @@ python3 -I scatter2m.py --tables tables-2m.json            # --measure sd for th
 COEF=terms-56-adopted.json zsh judge.sh tables-2m.json 2m-56 glass walls-c
 ```
 
+## The near boxes run to their corners (23 October 2026)
+
+emmettl/bombcad-work#69, #19. The round above found the ten 2 m near boxes cut short: run to 3 s,
+their outer ring had not seen the front pass. They were run again on main ec61b6a8, as before
+(14707293), but each until Kingery–Bulmash's arrival at the judged part's corners plus the positive
+phase, ×1.1: 4.8–5.0 s, 182–272 s each on the solver. The new loads are
+`wall-recal/near2full-loads-*`, beside the old `near2f-loads-*`, which are kept. Within 0.8 km the
+two sets are the same to the digit. Beyond that the new runs reach strips the old never recorded,
+and the judged sides go from 65,263 to 78,020. Everything here is on main's façade terms, adopted
+the same day (emmettl/bombcad-work#56).
+
+**Glass by side**, every storey, through the app's estimate (exact / Heidke skill; then blown out
+by Brier / skill):
+
+| Sides | Surrogate | Field model 1 | Field model 2 |
+|---|---|---|---|
+| Every storey, full length (78,020) | 0.901 / 0.65 | 0.911 / 0.68 | **0.957 / 0.81** |
+| … on the 3 s boxes (65,263) | 0.903 / 0.55 | 0.908 / 0.57 | 0.927 / 0.60 |
+| Ground floor, full length | 0.891 / 0.58 | 0.963 / 0.81 | 0.963 / 0.81 |
+| Upper storeys, full length | 0.901 / 0.66 | 0.901 / 0.66 (the surrogate's) | **0.954 / 0.81** |
+| Blown out, the app's sides, full length | 0.0666 / 0.39 | 0.0621 / 0.43 | **0.0333 / 0.69** |
+| … on the 3 s boxes | 0.0657 / 0.32 | 0.0628 / 0.35 | 0.0540 / 0.44 |
+| Blown out above the ground floor, full length | 0.0661 / 0.41 | 0.0661 / 0.41 | **0.0352 / 0.68** |
+| Blown out at the ground floor, full length | 0.0691 / 0.26 | 0.0311 / 0.66 | 0.0285 / 0.69 |
+
+So on the full-length references the field models' glass gains are much larger than on the cut
+boxes: glass blown out over the app's sides, Brier skill 0.69 against field model 1's 0.43, and
+above the ground floor 0.68 against 0.41. Their peaks read the runs at the ground floor with a
+log-SD of 0.19 (1.02 on the median), against the surrogate's 0.24. The blown-out chances still fail
+the deciles' test: they are underconfident in the middle (where they say 0.54, 0.73 of sides blew
+out).
+
+**Concrete walls and roofs** (`wall-calibrate`, the grids and fixed pairs of the rounds above)
+gave every figure to the digit, every tenth's count included. Concrete walls are damaged well
+inside the cut ring, so neither their chances nor what was seen changed:
+
+- the surrogate's concrete walls at ×1.15: Brier skill 0.611, passing the tenths test; the refit
+  picks ×1.15 in every fold, as before;
+- concrete walls moderate or worse, Brier skill 0.656 against field model 1's 0.654, both passing
+  the tenths test at peak ×1.15 and impulse ×0.95, and both picking them in every fold;
+- concrete heavy or worse 0.616 with field model 2 (illustrative, failing), and roofs 0.74 with
+  their middle chances low by up to 0.18.
+
+Stone (each building as 0.5 m stone, heavy or worse) moved a little: it is weaker, so it is
+damaged farther out. Its skill went from 0.724 to 0.719 at its factors, and from 0.715 to 0.709
+held out. Its middle chances are still high by up to 0.19, and its refit still picks ×0.8 in seven
+folds of ten.
+
+**The scatter tables hold.** Measured on the full-length boxes themselves, for comparison only, the
+networks' scatter is 0.15–0.23 beyond Z 7: round 2 at the ground floor reads 0.20, 0.15, 0.17 and
+0.22 to Z 28, and round 4 above 0.19, 0.18, 0.20 and 0.23. That is the 4 m tables' 0.19–0.22, and
+the 0.32 that started this was the cut ring. With the 2 m tables in their place field model 2's
+glass blown out scores 0.0350 / 0.68 against 0.0333 / 0.69, and its walls are as above.
+`Scatter.fieldModel1` and `round4` stay.
+
+**The hybrid far field** was judged again too. Its near runs (`beirut/hybrid/near-loads-*`, 4 m)
+had also been run to 3 s, so they were rerun until the blast passes their judged corners (4.8–5.0 s,
+`refs-full/hybrid-near-loads-*`), on main 3058da57, which holds a rising trend at nothing. Its
+seeds move by 0.5% (×1.063 → ×1.069 at 0.2 kt), its slopes by 0.01 or less, and its arrivals'
+factor from 0.98 to 1.00. Every band's peak, impulse and glass against the full runs is the same
+within 0.01, so `hybridFarPeak` holds. The seed band, 800–1,000 m, is mostly inside the cut, and
+the hybrid is judged against the full 4 m runs, which were never cut.
+
+**The surrogate's peak terms on the full-length boxes** are a proposal for the user, with their
+numbers in [the first look](surrogate-first-look.md#the-peak-terms-on-the-full-length-boxes-23-october-2026).
+
+The standing's figures for field model 2's glass (`learnedModel2Glass`, `learnedModel2GlassUpper`)
+now quote this section. Its walls' figures and those of the walls' and roofs' chances
+(`structureChances*`, `learnedWallsRefined`) held, so they are unchanged. So do the adopted
+choices: concrete walls ×1.15; the field model's walls at peak ×1.15 and impulse ×0.95; and the 4 m
+scatter tables.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/judge/refs-full/`:
+
+- `runs.py` and `hybrid.sh` (`runs`) for the reruns;
+- `judge.sh`, `judge2.sh` and `hybrid.sh` (`judge`) for the judges, with `glass-*.txt`,
+  `walls-*.txt` and `hybrid-*.txt`, and `walls_summary.py` and `glass_split.py` to sum them up;
+- `fitcut.py`, `refit.py` and `terms-refit-full.json` for the peak terms;
+- the full-length boxes' own scatter in `../scatter2m/judge-boxes-full/`.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **The judge's near boxes rerun to their corners** (4.6–4.8 s, not 3 s), and the judges on them
-  again: their outer ring's histories are cut short
-  ([2 m scatter](#the-models-scatter-measured-on-2-m-runs-23-october-2026)). The user's decision.
 - **Round 5, a ground-floor-weighted loss**, once the PC's Windows drive has room for the send
   ([2 m scatter](#the-models-scatter-measured-on-2-m-runs-23-october-2026)).
 - **Field model 2 on the small laptop**: the user's `BombCAD field-model check` there.

@@ -486,7 +486,7 @@ struct LearnedFieldTests {
         // The standing gives the walls' figures plainly (on the façade terms of 23 October 2026 the
         // walls' chances pass the tenths test, emmettl/bombcad-work#56).
         let standing = LearnedField.standing.joined(separator: " ")
-        #expect(standing.contains("0.44 against field model 1's 0.35") && standing.contains("0.656"))
+        #expect(standing.contains("0.69 against field model 1's 0.43") && standing.contains("0.656"))
         #expect(standing.contains("0.656 against field model 1's 0.654"))
         #expect(standing.contains("pass the tenths test"))
     }

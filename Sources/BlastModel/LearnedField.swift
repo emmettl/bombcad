@@ -940,7 +940,7 @@ extension LearnedField {
                 + String(
                     format: "floor (glass blown out by side, Brier skill %.2f against %.2f; ", glass.high,
                     glass.low)
-                + "the walls' chances miss the tenths test by one tenth). Its weights, "
+                + "the walls' chances pass the tenths test). Its weights, "
                 + megabytes(levels.bytes) + ", are downloaded from " + levels.url.absoluteString
                 + " only if you click Download Update."
         }
