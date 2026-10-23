@@ -2383,8 +2383,9 @@ factor from 0.98 to 1.00. Every band's peak, impulse and glass against the full 
 within 0.01, so `hybridFarPeak` holds. The seed band, 800–1,000 m, is mostly inside the cut, and
 the hybrid is judged against the full 4 m runs, which were never cut.
 
-**The surrogate's peak terms on the full-length boxes** are a proposal for the user, with their
-numbers in [the first look](surrogate-first-look.md#the-peak-terms-on-the-full-length-boxes-23-october-2026).
+**The surrogate's peak terms refitted on the full-length boxes** were judged and not adopted. They
+gain on the near boxes but lose the full runs' glass chances and the hybrid far field
+([the first look](surrogate-first-look.md#the-peak-terms-on-the-full-length-boxes-23-october-2026)).
 
 The standing's figures for field model 2's glass (`learnedModel2Glass`, `learnedModel2GlassUpper`)
 now quote this section. Its walls' figures and those of the walls' and roofs' chances

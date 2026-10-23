@@ -901,6 +901,35 @@ Judged through the app's estimate on the full-length boxes:
   3–4% higher (a 2 m reference reads about ×1.13 above them close in, and about 9% above beyond
   Z 7). The judges it was not run on are listed above.
 
+**Judged on the rest, and not adopted (23 October 2026).** The user asked for the refit to be
+judged on the hybrid far field and on `glass-calibrate` against the full runs and GEER, and to be
+adopted if neither got worse beyond noise. Both got worse, so `Coefficients.fitted` is unchanged.
+The refit's terms were built in as the default in a test binary only, and judged against main's
+(`refs-full/judge-refit.sh`, `hybrid.sh`):
+
+| | Adopted terms | Full-length refit |
+|---|---|---|
+| Glass chances against the full runs, some broken (Brier / skill / deciles) | 0.028 / 0.66 / pass | 0.033 / 0.61 / **fail** |
+| … blown out; thrown past 3b; openings blown out | 0.84; 0.73; 0.86 | 0.83; 0.72; 0.87 |
+| Openings blown out against GEER (skill) | 0.19 | 0.18 |
+| Glass by side against the full 4 m runs, 0.2 / 0.5 / 1.1 kt | 0.84 / 0.78 / 0.83 | 0.86 / 0.76 / 0.81 |
+| … peaks over the run's, median | 0.96 / 1.05 / 1.13 | 1.06 / 1.15 / 1.21 |
+| Hybrid at 1–2.5 km, glass state exact, 0.2 / 0.5 / 1.1 kt | 0.828 / 0.816 / 0.828 | 0.818 / 0.814 / 0.822 |
+| … blown out, mean \|hybrid − run\| | 0.004 / 0.040 / 0.046 | 0.004 / 0.048 / 0.054 |
+| … some broken, mean \|hybrid − run\| | 0.026 / 0.034 / 0.014 | 0.054 / 0.024 / 0.014 |
+| … peaks at 1.5–2.5 km over the full run's | 0.98–1.02 / 1.07–1.08 / 1.12–1.19 | 0.90–0.98 / 1.02–1.05 / 1.15–1.22 |
+
+- **The glass chances' "some broken" loses its calibration.** Its middle deciles read 0.08–0.11
+  high: where it says 0.36–0.75, 0.25–0.66 of sides had a pane broken.
+- **The hybrid gets worse at every yield.** The refit raises the surrogate more far out than at the
+  seed band. At 0.2 and 0.5 kt the trend fitted over 500–1,000 m then falls steeply (slopes −0.011
+  → −0.161 and −0.024 → −0.149), and carried out it reads 0.2 kt's far peaks low. At 1.1 kt, where
+  the trend is held, the far peaks read higher still.
+- So the refit's gain on the near boxes (Warehouse 12's far peaks within 3%, near-box glass
+  +0.02–0.03) costs the full runs' glass chances and the hybrid. The 4 m full runs read the 2 m
+  runs' peaks about 9% low beyond Z 7, which may explain some of the first. But the chances are
+  judged against them, and the hybrid's trend was fitted on the adopted terms.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
