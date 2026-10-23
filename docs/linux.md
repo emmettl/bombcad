@@ -73,8 +73,10 @@ python3 -I Scripts/remote-sweep.py compare $BOMBCAD_DATA/sweeps/<name>-here $BOM
   they read. `{repo}` and `{out}` stand for the repository's copy and the case's folder, and the
   inputs are sent and their paths rewritten (the script's own help says how).
 - **On the host** it keeps to `~/bombcad-sweeps`:
-  - each invocation's verified source, inputs and tools under `staging/<id>`;
-  - the reusable `src` build checkout, updated from that snapshot only under host ownership;
+  - each invocation's verified source, inputs and tools under `staging/<id>`, pruned as each
+    worker finishes ([below](#retention-and-free-space-23-october-2026));
+  - the reusable `src` build checkout, one folder for every run, updated from that snapshot only
+    under host ownership;
   - results and completion records private to that invocation, including when names repeat.
 - **One sweep at a time,** under the host's own lock, as `Scripts/ml/remote-train.py` locks
   (`--wait` waits for it). It never touches the training runner's `~/bombcad-ml` or its lock.
@@ -103,8 +105,8 @@ the final manifest check remain mandatory. The mutable build checkout is never a
 so builds cannot write through to retained snapshots. A missing/corrupt basis falls back to a
 full transfer; removal during transfer either yields a verified complete source or refuses
 before execution. Source transfer statistics and elapsed transfer time are printed. These
-measure staging work, not solver speed. Retained stages/views share unchanged file storage;
-there is no automatic garbage collector, and active/recoverable snapshots must be preserved.
+measure staging work, not solver speed. Retained stages/views share unchanged file storage.
+Pruning always keeps the basis stage, so reuse survives it.
 
 The log prints the invocation ID. To recover a retained invocation without sending changed
 local sources or inputs:
@@ -116,13 +118,48 @@ python3 -I Scripts/remote-sweep.py resume bombcad-pc INVOCATION --wait 30m --res
 A staged invocation that never started can run its original snapshot. A verified completion
 is retrieved without repeating work; interrupted partial work is preserved and refused for
 automatic replay. Start a fresh invocation for an explicit retry of that work. Existing local
-results are never merged; retrieval failure returns failure. Stages are retained for recovery
-and consume storage; cleanup must preserve any active or still-needed invocation.
+results are never merged; retrieval failure returns failure. Stages are kept for recovery for as
+long as the retention rule below says.
 Run completion receipts bind every result file's bytes and mode. Cached recovery verifies them
 on the host and after retrieval; a worker's explicit refusal is never replaced by an older
 success receipt. A lost SSH connection can recover a completed result only when its receipted
 files verify. Source/input/result tampering therefore refuses recovery rather than returning
 an apparent pass.
+
+### Retention and free space, 23 October 2026
+
+**Why staging held 106 stages.** Every `run`, and every pre-push check whose Linux lane ran, made
+a stage, and nothing ever removed one. Each kept its own source snapshot: a full copy of the
+worktree before emmettl/bombcad-work#70's reuse, a partly linked one after. By 23 October that
+was 18 GB on the PC, whose C: drive then filled
+([Disk space on the PCs](learned-models.md#disk-space-on-the-pcs)).
+The build checkout was never the problem: `~/bombcad-sweeps/src` is one folder, reused by every
+run.
+
+**Now each worker prunes staging as it finishes,** still under the lock, so no other worker is
+using a stage. It keeps:
+- the newest 4 stages, whatever they are;
+- its own invocation;
+- the source basis, the newest verified, completed source, so that reuse keeps working;
+- a stage staged but never started, or interrupted, within the last 2 days (a resume can still
+  start or inspect it, or a send may be under way);
+- a run's results until they are retrieved: the Studio leaves `retrieved.json` in the stage once
+  it has verified its copy. An unretrieved run is kept for 14 days at most.
+
+Everything else goes whole: completed test stages, retrieved runs, and anything older. A stage's
+age is that of its newest receipt, so emptying a stage by hand doesn't make it look new.
+`remote-sweep.py prune <host> [--dry-run]` applies the same rule by hand, taking the lock only if
+it is free.
+
+**Free space.** Before staging, `run` and `test` ask the host for its free space, as the training
+runner does: its home's disk and, inside WSL, the Windows drive holding WSL's disk image. A send
+that would leave less than 50 GB, or 15% of a smaller disk, is refused with exit 73. The lane's
+readiness check asks the same, so a host short of space is "not there", and the suites run on the
+Mac. `sweep.json` records the host's space.
+
+**The first prune.** By the time the rule was in, the 106 stages' sources had already been
+removed (18 GB; the list is in `~/bombcad-sweeps/cleanup-report-20261023.json` on the PC), leaving
+their receipts, about 90 MB. The rule then removed 95 of the 108 stages there.
 
 **The first sweep, 21 October 2026** (`cpu-studies-1`), on `bombcad-pc`: WSL2 Ubuntu 24.04 on 24
 cores and 30 GB, Swift 6.4.1 as CI's. BlastModel's 817 tests pass there in 170 s. The sweep has

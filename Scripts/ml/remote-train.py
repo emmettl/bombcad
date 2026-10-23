@@ -9,8 +9,12 @@
     --timeout T       stop the script after T (seconds, or 90m, 1.5h; default the host's limit)
     --wait T          wait up to T for the host's lock (default 0: give up at once if it is held)
     --results DIR     where results come back to (default /Volumes/StudioData/bombcad/ml)
+    --keep-datasets N datasets kept on the host, by last use, when it prunes after the job (default 2)
+    --keep-jobs N     collected job folders kept on the host for debugging (default 3)
     --dry-run         say what would be sent and run, and where, without sending or running
     --args ...        everything after it goes to the training script
+
+    python3 -I Scripts/ml/remote-train.py prune <host> [--keep-datasets N] [--keep-jobs N] [--results DIR] [--dry-run]
 
 The dataset goes to ~/bombcad-ml/datasets/<name>-<hash>/ on the host, named by a hash of its
 files' contents, so a dataset already there is not sent again. The script and this file go to
@@ -22,7 +26,19 @@ on that boot), the script runs in the host's Python environment as
 with its output streamed here. Then the job's folder (out/, log.txt, status.json) comes back to
 <results>/<job>/, with job.json: the host, its GPU (from nvidia-smi, if it has one), the times,
 the exit status and what was sent. Exit status: the script's; 124 if it was stopped at the
-timeout; 69 if the host could not be reached; 75 if its lock stayed taken.
+timeout; 69 if the host could not be reached; 75 if its lock stayed taken; 73 if the host is
+too short of space.
+
+Before anything is sent, the host's free space is checked: its home's file system and, inside
+WSL, the Windows drive that holds WSL's disk image (which grows as WSL writes and never shrinks by
+itself). A send that would leave less than 50 GB on either, or 15% of a disk smaller than 333 GB,
+is refused (BOMBCAD_HOST_MIN_FREE_GB and BOMBCAD_HOST_MIN_FREE_PERCENT move the floor). job.json
+records the space before and after the job.
+
+Once the results are back and checked, the host marks the job collected and, if no job holds its
+lock, prunes: datasets beyond the last --keep-datasets used, and collected jobs beyond the newest
+--keep-jobs. Nothing a live process uses is removed, nor a job whose results have not come back.
+`prune` does the same by hand.
 
 Hosts are SSH names (with a Host entry in ~/.ssh/config); see docs/learned-models.md for setting
 up a PC. The same file runs on the host, sent there with the job, so both ends agree.
@@ -63,7 +79,12 @@ SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAli
        "-o", "ServerAliveCountMax=4"]
 HASH_CACHE = os.path.expanduser("~/.cache/bombcad-ml/hashes.json")
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
-UNREACHABLE, TAKEN, TIMED_OUT = 69, 75, 124
+UNREACHABLE, TAKEN, TIMED_OUT, NOSPACE = 69, 75, 124, 73
+# The free space a send must leave on each of the host's disks: 50 GB, or 15% of a smaller disk.
+MIN_FREE_GB, MIN_FREE_PERCENT = 50, 15
+KEEP_DATASETS, KEEP_JOBS = 2, 3
+# A dataset whose send was left half done (a .partial folder, or one never marked complete).
+ABANDONED_SECONDS = 24 * 3600
 
 
 # MARK: - Arguments
@@ -76,6 +97,12 @@ def duration(text):
     return float(match.group(1)) * {"": 1, "s": 1, "m": 60, "h": 3600}[match.group(2)]
 
 
+def keep_count(text, option, least):
+    if not re.fullmatch(r"[0-9]+", str(text)) or int(text) < least:
+        raise ValueError("%s takes a whole number of at least %d, not %r" % (option, least, text))
+    return int(text)
+
+
 def parse(arguments, now=None):
     """The options from `arguments`, with the host's settings filled in. Everything after `--args`
     goes to the script untouched."""
@@ -84,14 +111,15 @@ def parse(arguments, now=None):
         arguments, script_args = arguments[:at], arguments[at + 1:]
     else:
         script_args = []
-    options = {"job": None, "venv": None, "timeout": None, "wait": "0", "results": RESULTS, "dry_run": False}
+    options = {"job": None, "venv": None, "timeout": None, "wait": "0", "results": RESULTS, "dry_run": False,
+               "keep-datasets": str(KEEP_DATASETS), "keep-jobs": str(KEEP_JOBS)}
     positional = []
     i = 0
     while i < len(arguments):
         argument = arguments[i]
         if argument == "--dry-run":
             options["dry_run"] = True
-        elif argument in ("--job", "--venv", "--timeout", "--wait", "--results"):
+        elif argument in ("--job", "--venv", "--timeout", "--wait", "--results", "--keep-datasets", "--keep-jobs"):
             if i + 1 >= len(arguments):
                 raise ValueError("%s needs a value" % argument)
             options[argument[2:]] = arguments[i + 1]
@@ -114,6 +142,8 @@ def parse(arguments, now=None):
     if not NAME.match(job):
         raise ValueError("a job name of letters, digits, dots, dashes and underscores, not %r" % job)
     return {
+        "keepDatasets": keep_count(options["keep-datasets"], "--keep-datasets", 1),
+        "keepJobs": keep_count(options["keep-jobs"], "--keep-jobs", 0),
         "host": host, "known": host in HOSTS, "dataset": os.path.abspath(dataset), "script": os.path.abspath(script),
         "args": script_args, "job": job, "settings": settings, "dryRun": options["dry_run"],
         "timeout": duration(options["timeout"]) if options["timeout"] else settings["maxHours"] * 3600,
@@ -275,6 +305,237 @@ def release(path, pid=None):
     return True
 
 
+# MARK: - Space and retention (runs on the host)
+
+WINDOWS_DRIVE = "/mnt/c"
+DISK_IMAGES = ("Users/*/AppData/Local/wsl/*/ext4.vhdx", "Users/*/AppData/Local/Packages/*/LocalState/ext4.vhdx")
+
+
+def inside_wsl():
+    try:
+        with open("/proc/version") as handle:
+            return "microsoft" in handle.read().lower()
+    except OSError:
+        return False
+
+
+def space_here(home=None, windows=None, wsl=None):
+    """The disks a send lands on, each {path, label, freeBytes, sizeBytes}: the home's file system
+    and, inside WSL, the Windows drive holding WSL's disk image, with the images found there. WSL's
+    own df shows its virtual disk's room, not the drive's: the image grows as WSL writes, and
+    deleting inside WSL does not shrink it."""
+    import glob
+    home = home or os.path.expanduser("~")
+    windows = windows or WINDOWS_DRIVE
+    wsl = inside_wsl() if wsl is None else wsl
+    places = [(home, "WSL's own disk (~)" if wsl else "the home's disk (~)")]
+    if wsl and os.path.ismount(windows):
+        places.append((windows, "the Windows drive holding WSL's disk image (%s)" % windows))
+    result = []
+    for path, label in places:
+        try:
+            stat = os.statvfs(path)
+        except OSError:
+            continue
+        entry = {"path": path, "label": label, "freeBytes": stat.f_bavail * stat.f_frsize,
+                 "sizeBytes": stat.f_blocks * stat.f_frsize}
+        if path == windows:
+            images = {}
+            for pattern in DISK_IMAGES:
+                for image in glob.glob(os.path.join(windows, pattern)):
+                    try:
+                        images[image] = os.path.getsize(image)
+                    except OSError:
+                        pass
+            entry["diskImages"] = images
+            entry["windows"] = True
+        result.append(entry)
+    return result
+
+
+def processes_using(paths):
+    """Those of `paths` that a live process names on its command line (as given, resolved, or by
+    the folder's own name, as a job waiting for the lock names its dataset) or works in."""
+    forms = {path: {path, os.path.realpath(path)} for path in paths}
+    used = set()
+
+    def note(command, cwd=None):
+        if "serve-prune" in command:
+            return  # the prune itself, or the shell that started it, naming jobs it was told of
+        for path, names in forms.items():
+            if os.path.basename(path) in command or any(
+                    cwd and (cwd == name or cwd.startswith(name + os.sep)) for name in names):
+                used.add(path)
+    if os.path.isdir("/proc"):
+        for pid in os.listdir("/proc"):
+            if not pid.isdigit() or int(pid) == os.getpid():
+                continue
+            try:
+                with open("/proc/%s/cmdline" % pid, "rb") as handle:
+                    command = handle.read().replace(b"\0", b" ").decode(errors="replace")
+            except OSError:
+                continue
+            try:
+                cwd = os.readlink("/proc/%s/cwd" % pid)
+            except OSError:
+                cwd = None
+            note(command, cwd)
+        return used
+    try:
+        listing = subprocess.run(["ps", "-axo", "pid=,args="], capture_output=True, text=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError):
+        return set(paths)  # Can't tell: everything counts as in use.
+    for line in listing.splitlines():
+        pid, _, command = line.strip().partition(" ")
+        if pid.isdigit() and int(pid) != os.getpid():
+            note(command)
+    return used
+
+
+def last_used(folder):
+    """When a dataset was last used: its .last-used mark, else when it was completed."""
+    times = []
+    for name in (".last-used", ".complete"):
+        try:
+            times.append(os.path.getmtime(os.path.join(folder, name)))
+        except OSError:
+            pass
+    return max(times) if times else os.path.getmtime(folder)
+
+
+def mark_used(folder):
+    try:
+        with open(os.path.join(folder, ".last-used"), "w") as handle:
+            handle.write("%f\n" % time.time())
+    except OSError:
+        pass
+
+
+def size_of(path):
+    total = 0
+    for directory, _, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.lstat(os.path.join(directory, name)).st_size
+            except OSError:
+                pass
+    return total
+
+
+def job_time(path):
+    """When a job last ran: its status or log, else its folder (which marking it collected moves)."""
+    times = []
+    for name in ("status.json", "log.txt"):
+        try:
+            times.append(os.path.getmtime(os.path.join(path, name)))
+        except OSError:
+            pass
+    return max(times) if times else os.path.getmtime(path)
+
+
+def prune_plan(root, keep_datasets=KEEP_DATASETS, keep_jobs=KEEP_JOBS, now=None, in_use=None, collected=()):
+    """What to remove under `root` (~/bombcad-ml): [(path, why)], and what is kept [(path, why)].
+
+    - Datasets: the last `keep_datasets` used are kept, and any a live process names. A half-sent
+      one (.partial, or never marked complete) goes once a day old.
+    - Jobs: the newest `keep_jobs` are kept for debugging; older ones go once collected (their
+      results back on the Studio and checked: a .collected mark, or named in `collected`), never
+      before.
+    Nothing else under `root` (the environment, the lock, anyone's other folders) is looked at."""
+    now = time.time() if now is None else now
+    in_use = processes_using if in_use is None else in_use
+    remove, keep = [], []
+    datasets = os.path.join(root, "datasets")
+    complete, unfinished = [], []
+    for name in sorted(os.listdir(datasets)) if os.path.isdir(datasets) else []:
+        path = os.path.join(datasets, name)
+        if name.startswith(".") or os.path.islink(path) or not os.path.isdir(path):
+            continue
+        if not name.endswith(".partial") and os.path.exists(os.path.join(path, ".complete")):
+            complete.append((last_used(path), path))
+        else:
+            unfinished.append(path)
+    complete.sort(reverse=True)
+    jobs = os.path.join(root, "jobs")
+    listed = []
+    for name in sorted(os.listdir(jobs)) if os.path.isdir(jobs) else []:
+        path = os.path.join(jobs, name)
+        if NAME.match(name) and not os.path.islink(path) and os.path.isdir(path):
+            listed.append((job_time(path), path))
+    listed.sort(reverse=True)
+    candidates = [p for _, p in complete[keep_datasets:]] + unfinished + [p for _, p in listed[keep_jobs:]]
+    busy = in_use(candidates) if candidates else set()
+    for rank, (_, path) in enumerate(complete):
+        if rank < keep_datasets:
+            keep.append((path, "one of the last %d used" % keep_datasets))
+        elif path in busy:
+            keep.append((path, "in use"))
+        else:
+            remove.append((path, "dataset not among the last %d used" % keep_datasets))
+    for path in unfinished:
+        if now - os.path.getmtime(path) < ABANDONED_SECONDS or path in busy:
+            keep.append((path, "being sent"))
+        else:
+            remove.append((path, "dataset send abandoned over a day ago"))
+    for rank, (_, path) in enumerate(listed):
+        if rank < keep_jobs:
+            keep.append((path, "one of the newest %d jobs" % keep_jobs))
+        elif not os.path.exists(os.path.join(path, ".collected")) and os.path.basename(path) not in collected:
+            keep.append((path, "results not collected"))
+        elif path in busy:
+            keep.append((path, "in use"))
+        else:
+            remove.append((path, "job collected, not among the newest %d" % keep_jobs))
+    return remove, keep
+
+
+def serve_prune(options):
+    """Marks jobs collected (their results are back and checked: `collected`, one name or a list),
+    then, if no job holds the lock, takes it and prunes datasets and jobs. Prints what went and
+    what stayed. A dry run marks nothing and removes nothing."""
+    home = os.path.expanduser("~")
+    root = os.path.join(home, ROOT)
+    collected = options.get("collected") or []
+    collected = [collected] if isinstance(collected, str) else list(collected)
+    collected = [name for name in collected if NAME.match(name) and os.path.isdir(os.path.join(root, "jobs", name))]
+    dry = bool(options.get("dryRun"))
+    for name in collected if not dry else []:
+        with open(os.path.join(root, "jobs", name, ".collected"), "w") as handle:
+            json.dump({"collected": time.time()}, handle)
+    report = {"removed": [], "kept": [], "freedBytes": 0, "pruned": False}
+    lock = os.path.join(home, options["lock"])
+    boot = boot_id()
+    if not dry and not acquire(lock, "remote-train prune", boot, options.get("stale")):
+        owner = lock_owner(lock, boot, options.get("stale")) or {}
+        report["held"] = owner.get("what", "unknown")
+    else:
+        try:
+            remove, keep = prune_plan(root, int(options.get("keepDatasets", KEEP_DATASETS)),
+                                      int(options.get("keepJobs", KEEP_JOBS)), collected=set(collected))
+            report["kept"] = [{"path": p, "why": why} for p, why in keep]
+            for path, why in remove:
+                size = size_of(path)
+                if not dry:
+                    subprocess.run(["rm", "-rf", "--", path])
+                    if os.path.exists(path):
+                        why += " (could not remove)"
+                        size = 0
+                report["removed"].append({"path": path, "why": why, "bytes": size})
+                report["freedBytes"] += size
+            report["pruned"] = not dry
+        finally:
+            if not dry:
+                release(lock)
+    report["space"] = space_here()
+    print(json.dumps(report))
+    return 0
+
+
+def serve_space(options):
+    print(json.dumps(space_here()))
+    return 0
+
+
 # MARK: - On the host
 
 def gpu_name():
@@ -300,16 +561,16 @@ def serve_probe(options):
     lock = os.path.join(home, options["lock"])
     python = python_for(options.get("venv"))
     venv_ok = os.path.exists(python) if options.get("venv") else True
-    try:
-        stat = os.statvfs(home)
-        free = stat.f_bavail * stat.f_frsize
-    except OSError:
-        free = None
+    space = space_here(home)
+    present = os.path.exists(os.path.join(dataset, ".complete"))
+    if present:
+        mark_used(dataset)  # Used now, so that a prune before this job runs keeps it.
     print(json.dumps({
         "machine": os.uname()[1], "system": "%s %s" % (os.uname()[0], os.uname()[2]),
-        "python": sys.version.split()[0], "datasetPresent": os.path.exists(os.path.join(dataset, ".complete")),
+        "python": sys.version.split()[0], "datasetPresent": present,
         "lock": lock_owner(lock, boot_id(), options.get("stale")), "venv": options.get("venv"),
-        "venvPython": python, "venvPresent": venv_ok, "gpu": gpu_name(), "freeBytes": free,
+        "venvPython": python, "venvPresent": venv_ok, "gpu": gpu_name(),
+        "freeBytes": space[0]["freeBytes"] if space else None, "space": space,
     }))
     return 0
 
@@ -326,6 +587,7 @@ def serve_finish_dataset(options):
         subprocess.run(["rm", "-rf", final])
     os.rename(partial, final)
     open(os.path.join(final, ".complete"), "w").close()
+    mark_used(final)
     return 0
 
 
@@ -375,6 +637,13 @@ def serve_run(options):
     started = time.time()
     code = None
     try:
+        if not os.path.exists(os.path.join(dataset, ".complete")):
+            # Pruned between the probe and the lock (another job ran in between): send it again.
+            print("remote-train: the dataset ~/%s/datasets/%s is not on %s any more; run the job again to "
+                  "send it" % (ROOT, options["dataset"], os.uname()[1]), flush=True)
+            code = 66
+            return code
+        mark_used(dataset)
         os.makedirs(os.path.join(job, "out"), exist_ok=True)
         command = [python, "-u", options["script"], "--data", dataset, "--out", os.path.join(job, "out")] + \
             list(options.get("args") or [])
@@ -410,7 +679,7 @@ def serve_run(options):
         ended = time.time()
         status = {"exitCode": code, "timedOut": state["timedOut"], "started": started, "ended": ended,
                   "seconds": ended - started, "machine": os.uname()[1], "gpu": gpu_name(),
-                  "python": sys.version.split()[0], "venv": options.get("venv")}
+                  "python": sys.version.split()[0], "venv": options.get("venv"), "space": space_here(home)}
         try:
             with open(os.path.join(job, "status.json"), "w") as handle:
                 json.dump(status, handle, indent=1)
@@ -462,6 +731,124 @@ def human(count):
         count /= 1000.0
 
 
+COMPACTING = ("Deleting inside WSL does not shrink the Windows disk image: compacting it is the user's job on "
+              "Windows (wsl --shutdown, then Optimize-VHD -Path <ext4.vhdx> -Mode Full, or diskpart's "
+              "compact vdisk); see docs/learned-models.md, 'Disk space on the PCs'.")
+
+
+def floor_for(size, environ=None):
+    """The free space a send must leave on a disk of `size` bytes: MIN_FREE_GB, or MIN_FREE_PERCENT of
+    a disk too small for that; BOMBCAD_HOST_MIN_FREE_GB and BOMBCAD_HOST_MIN_FREE_PERCENT move them."""
+    environ = os.environ if environ is None else environ
+    gigabytes = float(environ.get("BOMBCAD_HOST_MIN_FREE_GB") or MIN_FREE_GB)
+    percent = float(environ.get("BOMBCAD_HOST_MIN_FREE_PERCENT") or MIN_FREE_PERCENT)
+    return min(gigabytes * 1e9, percent / 100.0 * size)
+
+
+def describe_space(space):
+    return "; ".join("%s %s free of %s" % (entry["label"], human(entry["freeBytes"]), human(entry["sizeBytes"]))
+                     for entry in space or []) or "not known"
+
+
+def space_refusal(space, sending, environ=None):
+    """Why a send of `sending` bytes must not go to a host whose disks are `space` (space_here's
+    list), or None if it may. A host that could not say counts as having room."""
+    problems = []
+    for entry in space or []:
+        floor = floor_for(entry["sizeBytes"], environ)
+        left = entry["freeBytes"] - sending
+        if left < floor:
+            problems.append("%s has %s free of %s; sending %s would leave %s, under the %s it must keep" % (
+                entry["label"], human(entry["freeBytes"]), human(entry["sizeBytes"]), human(sending),
+                human(max(left, 0)), human(floor)))
+    if not problems:
+        return None
+    text = "; ".join(problems) + "."
+    if any(entry.get("windows") for entry in space):
+        images = {path: size for entry in space for path, size in (entry.get("diskImages") or {}).items()}
+        if images:
+            text += " WSL's disk images there: %s." % ", ".join(
+                "%s %s" % (path, human(size)) for path, size in sorted(images.items()))
+        text += " " + COMPACTING
+    return text
+
+
+def host_space(host, source=None):
+    """The host's disks (space_here, run there), or None if it can't say."""
+    if source is None:
+        with open(os.path.abspath(__file__), "rb") as handle:
+            source = handle.read()
+    try:
+        result = ssh(host, "python3 - serve-space '{}'", timeout=60, stdin=source)
+        return json.loads(result.stdout.decode().strip().splitlines()[-1]) if result.returncode == 0 else None
+    except (subprocess.SubprocessError, ValueError, IndexError):
+        return None
+
+
+def prune_host(host, lock, keep_datasets, keep_jobs, collected=None, dry_run=False):
+    """serve-prune on the host: its report, or None if it could not be asked."""
+    with open(os.path.abspath(__file__), "rb") as handle:
+        source = handle.read()
+    options = {"lock": lock, "keepDatasets": keep_datasets, "keepJobs": keep_jobs, "collected": collected,
+               "dryRun": dry_run}
+    try:
+        result = ssh(host, "python3 - serve-prune %s" % shlex.quote(json.dumps(options)), timeout=600, stdin=source)
+        return json.loads(result.stdout.decode().strip().splitlines()[-1]) if result.returncode == 0 else None
+    except (subprocess.SubprocessError, ValueError, IndexError):
+        return None
+
+
+def said_prune(report, dry_run=False):
+    """A line or two on what a prune removed, or why it did not run."""
+    if report is None:
+        return "remote-train: the host's prune did not answer; nothing removed"
+    if report.get("held"):
+        return "remote-train: not pruned: the host's lock is held (%s)" % report["held"]
+    verb = "would remove" if dry_run else "removed"
+    lines = ["remote-train: prune %s %d folder(s), %s; kept %d" % (
+        verb, len(report["removed"]), human(report["freedBytes"]), len(report["kept"]))]
+    lines += ["  %s: %s (%s)" % (verb, entry["path"], entry["why"]) for entry in report["removed"]]
+    return "\n".join(lines)
+
+
+def prune_command(arguments):
+    """`prune <host> [--keep-datasets N] [--keep-jobs N] [--dry-run]`."""
+    if not arguments or arguments[0].startswith("-"):
+        print("remote-train: usage: remote-train.py prune <host> [--keep-datasets N] [--keep-jobs N] [--dry-run]",
+              file=sys.stderr)
+        return 2
+    host = arguments[0]
+
+    def option(name, default):
+        return arguments[arguments.index(name) + 1] if name in arguments[:-1] else default
+    try:
+        keep_datasets = keep_count(option("--keep-datasets", KEEP_DATASETS), "--keep-datasets", 1)
+        keep_jobs = keep_count(option("--keep-jobs", KEEP_JOBS), "--keep-jobs", 0)
+    except ValueError as error:
+        print("remote-train: %s" % error, file=sys.stderr)
+        return 2
+    why = reachable(host)
+    if why:
+        print("remote-train: %s is unreachable: %s" % (host, why), file=sys.stderr)
+        return UNREACHABLE
+    dry = "--dry-run" in arguments
+    results = option("--results", RESULTS)
+    lock = HOSTS.get(host, DEFAULT_HOST)["lock"]
+    # Jobs from before the host marked them: collected if their results here are whole.
+    looked = prune_host(host, lock, keep_datasets, keep_jobs, dry_run=True)
+    back = [os.path.basename(entry["path"]) for entry in (looked or {}).get("kept", [])
+            if entry["why"] == "results not collected" and collected(os.path.join(results, os.path.basename(entry["path"])))]
+    if back:
+        print("remote-train: %d older job(s) have their results in %s: counted collected" % (len(back), results))
+    report = prune_host(host, lock, keep_datasets, keep_jobs, collected=back, dry_run=dry)
+    print(said_prune(report, dry))
+    if report:
+        for entry in report["kept"]:
+            print("  kept: %s (%s)" % (entry["path"], entry["why"]))
+        print("remote-train: %s: %s" % (host, describe_space(report.get("space"))))
+    return 1 if report is None else (TAKEN if report.get("held") else 0)
+
+
 def job_record(plan, facts, entries, digest, dataset_dir, sent, started, ended, code, status):
     """job.json: what ran where, from what, when, and how it ended."""
     with open(plan["script"], "rb") as handle:
@@ -489,10 +876,12 @@ def main(arguments):
     if arguments and arguments[0].startswith("serve-"):
         options = json.loads(arguments[1])
         return {"serve-probe": serve_probe, "serve-finish-dataset": serve_finish_dataset,
-                "serve-run": serve_run}[arguments[0]](options)
+                "serve-run": serve_run, "serve-prune": serve_prune, "serve-space": serve_space}[arguments[0]](options)
     if not arguments or arguments[0] in ("-h", "--help"):
         print(__doc__)
         return 0 if arguments else 2
+    if arguments[0] == "prune":
+        return prune_command(arguments[1:])
     try:
         plan = parse(arguments)
     except ValueError as error:
@@ -538,6 +927,17 @@ def main(arguments):
     print("remote-train: job %s: %s --data <dataset> --out out %s; results to %s" % (
         plan["job"], os.path.basename(plan["script"]), " ".join(shlex.quote(a) for a in plan["args"]), results),
         flush=True)
+    print("remote-train: space on %s: %s" % (host, describe_space(facts.get("space"))), flush=True)
+    sending = (0 if facts["datasetPresent"] else size) + os.path.getsize(plan["script"])
+    refusal = space_refusal(facts.get("space"), sending)
+    if refusal:
+        print("remote-train: %s%s: %s" % ("would refuse " if plan["dryRun"] else "refused: ", host, refusal),
+              file=sys.stderr)
+        if any(not entry.get("windows") and entry["freeBytes"] - sending < floor_for(entry["sizeBytes"])
+               for entry in facts["space"]):
+            print("remote-train: `remote-train.py prune %s` removes old datasets and collected jobs" % host,
+                  file=sys.stderr)
+        return NOSPACE
     if plan["dryRun"]:
         print("remote-train: dry run; nothing sent or run", flush=True)
         return 0 if facts["venvPresent"] else 78
@@ -622,10 +1022,30 @@ def main(arguments):
     record = job_record(plan, facts, entries, digest, dataset_dir, sent, started, ended, code, status)
     record["started"], record["ended"] = iso(started), iso(ended)
     record["resultsCopied"] = back.returncode == 0
+    record["hostSpace"] = {"before": facts.get("space"), "after": (status or {}).get("space")}
     with open(os.path.join(results, "job.json"), "w") as handle:
         json.dump(record, handle, indent=1)
     print("remote-train: exit %s; results in %s" % (code, results), flush=True)
+    # The host's copy may go once the results here are checked: copied whole, the status read.
+    if collected(results):
+        print(said_prune(prune_host(host, settings["lock"], plan["keepDatasets"], plan["keepJobs"],
+                                    collected=plan["job"])), flush=True)
+    else:
+        print("remote-train: the results did not all come back; the job's folder stays on %s" % host, flush=True)
     return code if isinstance(code, int) else 1
+
+
+def collected(results):
+    """Whether a job's results are back here whole: job.json says they were copied, and the
+    host's status.json came with them."""
+    try:
+        with open(os.path.join(results, "job.json")) as handle:
+            record = json.load(handle)
+        with open(os.path.join(results, "status.json")) as handle:
+            json.load(handle)
+    except (OSError, ValueError):
+        return False
+    return record.get("resultsCopied") is True and os.path.isdir(os.path.join(results, "out"))
 
 
 if __name__ == "__main__":

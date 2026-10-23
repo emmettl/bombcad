@@ -462,6 +462,180 @@ print('TAKEN',lease is None)
                 self.assertFalse(Path(lock).exists())
 
 
+DAY = 86400
+
+
+class RetentionTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name) / "bombcad-sweeps"
+        self.now = time.time()
+        self.count = 0
+
+    def stage(self, days_ago, kind="test", state="completed", exit_code=0, retrieved=False, source=None):
+        self.count += 1
+        name = "%032x" % self.count
+        path = self.root / "staging" / name
+        (path / "inputs").mkdir(parents=True)
+        if kind:
+            sweep.atomic_json(path / "request.json", dict(kind=kind, invocation=name))
+        if state in ("started", "completed"):
+            sweep.atomic_json(path / "started.json", {})
+        if state == "completed":
+            sweep.atomic_json(path / "completion.json", dict(invocation=name, exitCode=exit_code))
+        if retrieved:
+            sweep.atomic_json(path / "retrieved.json", {})
+        if source is not None:
+            (path / "src").mkdir()
+            for file, text in source.items():
+                (path / "src" / file).write_text(text)
+            sweep.atomic_json(path / "manifest.json", dict(src=sweep.tree_manifest(path / "src", sweep.EXCLUDED)))
+        self.age(name, days_ago)
+        return name
+
+    def age(self, name, days_ago):
+        path = self.root / "staging" / name
+        for item in [path] + [path / receipt for receipt in sweep.RECEIPTS if (path / receipt).exists()]:
+            os.utime(item, (self.now - days_ago * DAY,) * 2)
+
+    def test_the_newest_the_basis_the_pending_and_the_unretrieved_stay(self):
+        newest = [self.stage(0.1 * k) for k in range(4)]
+        basis = self.stage(5, source={"a.swift": "same"})
+        failed_source = self.stage(1, exit_code=1, source={"a.swift": "broken"})
+        old_tests = [self.stage(3 + k) for k in range(3)]
+        staged_recent = self.stage(1, kind=None, state="staged")
+        staged_old = self.stage(3, kind=None, state="staged")
+        interrupted_recent = self.stage(1, state="started")
+        interrupted_old = self.stage(4, state="started")
+        run_waiting = self.stage(6, kind="run")
+        run_retrieved = self.stage(6, kind="run", retrieved=True)
+        run_forgotten = self.stage(20, kind="run")
+        current = self.stage(30)
+        (self.root / "staging" / ".lane-probe-1").write_text("")
+        (self.root / "staging" / "not-a-stage").mkdir()
+        os.symlink(self.root / "staging" / basis, self.root / "staging" / ("f" * 32))
+        remove, kept = sweep.stage_plan(self.root, current=current, now=self.now)
+        remove, kept = dict(remove), dict(kept)
+        self.assertEqual(set(remove), {failed_source, *old_tests, staged_old, interrupted_old, run_retrieved,
+                                       run_forgotten})
+        for name in newest:
+            self.assertEqual(kept[name], "one of the newest 4")
+        self.assertEqual(kept[basis], "the source basis")
+        self.assertEqual(kept[current], "this invocation")
+        self.assertEqual(kept[staged_recent], "staged, never started, recent")
+        self.assertEqual(kept[interrupted_recent], "interrupted, recent")
+        self.assertEqual(kept[run_waiting], "run results not yet retrieved")
+        self.assertIn("over 14 days", remove[run_forgotten])
+        self.assertEqual(len(kept) + len(remove), 17)  # the probe file, other names and links untouched
+
+    def test_a_prune_keeps_source_reuse_working(self):
+        # Emmettl/bombcad-work#70 links a new stage's unchanged files to the basis's: removing the
+        # stages around it must leave the basis whole, and stages linked to removed ones intact.
+        basis = self.stage(5, source={"a.swift": "one", "b.swift": "two"})
+        older = self.stage(9, source={"a.swift": "one", "b.swift": "old"})
+        linked = self.root / "staging" / basis / "src" / "c.swift"
+        os.link(self.root / "staging" / older / "src" / "b.swift", linked)
+        sweep.atomic_json(self.root / "staging" / basis / "manifest.json",
+                          dict(src=sweep.tree_manifest(self.root / "staging" / basis / "src", sweep.EXCLUDED)))
+        self.age(basis, 5)
+        for k in range(4):
+            self.stage(0.1 * k, exit_code=1)  # newer, but failing: none is a basis
+        report = sweep.prune_staging(self.root, keep=2)
+        self.assertEqual({entry["stage"] for entry in report["removed"]}, {"%032x" % 5, "%032x" % 6, older})
+        self.assertFalse((self.root / "staging" / older).exists())
+        self.assertTrue((self.root / "staging" / basis).exists())
+        self.assertEqual(linked.read_text(), "old")
+        self.assertEqual(sweep.source_basis(self.root), basis)
+        self.assertEqual(len(report["kept"]), 3)
+        self.assertEqual(len(report["removed"]), 3)
+
+    def test_a_stage_emptied_by_hand_is_not_made_new(self):
+        old = self.stage(5, kind=None, state="staged", source={"a.swift": "x"})
+        for k in range(4):
+            self.stage(1 + 0.1 * k)
+        shutil.rmtree(self.root / "staging" / old / "src")  # the folder's time is now, its receipts' not
+        remove, _ = sweep.stage_plan(self.root, now=self.now)
+        self.assertEqual(dict(remove), {old: "staged, never started, over 2 days old"})
+
+    def test_a_dry_run_removes_nothing(self):
+        for k in range(6):
+            self.stage(3 + k)
+        report = sweep.prune_staging(self.root, dry_run=True)
+        self.assertEqual(len(report["removed"]), 2)
+        self.assertEqual(len(list((self.root / "staging").iterdir())), 6)
+        report = sweep.prune_staging(self.root)
+        self.assertEqual(len(list((self.root / "staging").iterdir())), 4)
+
+    def test_the_worker_prunes_only_its_own_hosts_staging(self):
+        for k in range(6):
+            self.stage(3 + k)
+        with patch.object(sweep, "prune_staging") as pruned:
+            sweep.prune_after("owned", "a" * 32)  # not a lock path: a test's stand-in
+            pruned.assert_not_called()
+        sweep.prune_after(str(self.root / "lock"), "%032x" % 6)
+        names = sorted(p.name for p in (self.root / "staging").iterdir())
+        self.assertEqual(names, ["%032x" % k for k in (1, 2, 3, 4, 6)])
+        with patch.object(sweep, "stage_plan", side_effect=OSError("disk gone")):
+            sweep.prune_after(str(self.root / "lock"), None)  # said, never raised
+
+    def test_the_serving_prune_takes_the_lock_and_gives_it_back(self):
+        for k in range(6):
+            self.stage(3 + k)
+        expand = os.path.expanduser
+        output = __import__("io").StringIO()
+        with patch.object(sweep.os.path, "expanduser",
+                          side_effect=lambda p: self.directory.name if p == "~" else expand(p)), \
+                __import__("contextlib").redirect_stdout(output):
+            self.assertEqual(sweep.serve_prune({}), 0)
+            report = json.loads(output.getvalue().strip().splitlines()[-1])
+            self.assertEqual(len(report["removed"]), 2)
+            self.assertFalse((self.root / "lock").exists())
+            lock = sweep.take_lock(dict(invocation="b" * 32, wait=0), "a lane run")
+            self.assertEqual(sweep.serve_prune({}), sweep.TAKEN)
+            sweep.runner.release(lock)
+        self.assertEqual(len(list((self.root / "staging").iterdir())), 4)
+
+
+class SpaceTests(unittest.TestCase):
+    SHORT = [dict(path="/home/x", label="~", freeBytes=900e9, sizeBytes=1000e9),
+             dict(path="/mnt/c", label="C:", freeBytes=29e9, sizeBytes=998e9, windows=True, diskImages={})]
+
+    def test_a_short_host_is_not_a_lane_and_gets_nothing(self):
+        self.assertIn(sweep.NOSPACE, sweep.LANE_DOWN)
+        with patch.object(sweep.runner, "host_space", return_value=self.SHORT), \
+                patch.object(sweep, "send_worktree") as send, patch.object(sweep, "remote_worker") as worker:
+            with tempfile.TemporaryFile(mode="w+") as stream:
+                self.assertEqual(sweep.test("fake", ["One"], stream=stream), sweep.NOSPACE)
+                stream.seek(0)
+                self.assertIn("C: has 29.0 GB free", stream.read())
+            send.assert_not_called(); worker.assert_not_called()
+        ok = subprocess.CompletedProcess([], 0, b"ok\n")
+        with patch.object(sweep.runner, "reachable", return_value=None), \
+                patch.object(sweep.runner, "ssh", return_value=ok), \
+                patch.object(sweep.runner, "host_space", return_value=self.SHORT):
+            self.assertIn("short of space", sweep.lane_ready("fake"))
+
+    def test_a_sweep_is_refused_before_anything_is_sent(self):
+        with tempfile.TemporaryDirectory() as folder:
+            request = Path(folder) / "sweep.json"
+            sweep.atomic_json(request, dict(name="s", cases=[dict(name="one", args=[])]))
+            with patch.object(sweep.runner, "reachable", return_value=None), \
+                    patch.object(sweep.runner, "host_space", return_value=self.SHORT), \
+                    patch.object(sweep, "send_worktree") as send:
+                self.assertEqual(sweep.run(["fake", str(request), "--results", folder]), sweep.NOSPACE)
+                send.assert_not_called()
+
+    def test_the_send_is_counted_whole(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data = Path(folder) / "inputs"; data.mkdir(); (data / "a.json").write_bytes(b"x" * 1000)
+            (Path(folder) / "b.json").write_bytes(b"y" * 10)
+            source = Path(folder) / "repo"; (source / ".build").mkdir(parents=True)
+            (source / ".build" / "huge").write_bytes(b"z" * 5000); (source / "Package.swift").write_bytes(b"p" * 7)
+            with patch.object(sweep, "REPO", str(source)):
+                self.assertEqual(sweep.sending_bytes([str(data) + "/", str(Path(folder) / "b.json")]), 1017)
+
+
 class CompareTests(unittest.TestCase):
     def test_numbers_within_the_tolerance_agree_and_beyond_it_do_not(self):
         self.assertEqual(sweep.same_json({"a": [1.0, 2.0]}, {"a": [1.0, 2.0 * (1 + 1e-12)]}, 1e-9), [])

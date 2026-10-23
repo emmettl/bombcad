@@ -27,7 +27,15 @@ retains ownership. TERM/HUP/INT drains owned children before unlocking.
 
 Each case runs on --cores of the host's CPUs (16 by default). Results return to
 <results>/<sweep>-<host>/, with invocation and retrieval receipts; an existing destination is
-never merged or overwritten, and failed retrieval is failure. Stages are retained.
+never merged or overwritten, and failed retrieval is failure.
+
+Stages are pruned by the worker as it finishes, under the lock (or by `prune` by hand): the newest
+4 are kept, with the source basis, a run's results until they are retrieved (14 days at most),
+and anything staged or interrupted in the last 2 days; the rest go. The build checkout is one
+folder, reused. Nothing is sent to a host that would be left under 50 GB free, or 15% of a
+smaller disk, on its home's disk or (inside WSL) the Windows drive holding WSL's disk image.
+
+    python3 -I Scripts/remote-sweep.py prune <host> [--dry-run]
 
     python3 -I Scripts/remote-sweep.py resume HOST INVOCATION [--wait 30m] [--results NEW-BASE]
 
@@ -43,8 +51,8 @@ the same lines once times ("in 12.3 s") are left out. Exit 0 if every file agree
 
 `test` is the Linux lane of `check-affected`: BlastModel's test suites named, built and run on the
 host under the same lock and cores, from this worktree's copy there, their output streamed back.
-Its exit status is the tests'; 69 (the host unreachable), 75 (its lock taken) or 255 (the
-connection lost) say the lane was not there, and the suites should run here instead.
+Its exit status is the tests'; 69 (the host unreachable), 75 (its lock taken), 73 (too short of
+space) or 255 (the connection lost) say the lane was not there, and the suites should run here.
 
 Exit status of `run`: the first failing case's, 69 if the host could not be reached, 75 if its lock
 stayed taken. Nothing on the host but ~/bombcad-sweeps is touched: not the training runner's
@@ -71,9 +79,15 @@ REPO = os.path.dirname(HERE)
 ROOT = "bombcad-sweeps"  # under the host's home
 RESULTS = "/Volumes/StudioData/bombcad/sweeps"
 SWIFT_PATHS = "$HOME/.local/share/swiftly/bin"
-UNREACHABLE, TAKEN = 69, 75
-# What says the lane was not there (the host, its lock, the connection), rather than a test failing.
-LANE_DOWN = {UNREACHABLE, TAKEN, 255}
+UNREACHABLE, TAKEN, NOSPACE = 69, 75, 73
+# What says the lane was not there (the host, its lock, its space, the connection), rather than a
+# test failing.
+LANE_DOWN = {UNREACHABLE, TAKEN, NOSPACE, 255}
+# Staging's retention: the newest stages kept whatever they are; how long a stage staged or
+# interrupted is kept (resumable), and a run's results not yet retrieved.
+KEEP_STAGES = 4
+PENDING_SECONDS = 2 * 86400
+UNRETRIEVED_SECONDS = 14 * 86400
 EXCLUDED = {".build", ".git", ".claude", "dist", "__pycache__", ".DS_Store", ".pytest_cache"}
 
 
@@ -351,12 +365,13 @@ def serve_run(options):
         with open(os.path.join(out_root, "sweep.json"), "w") as handle:
             json.dump({"sweep": options["sweep"]["name"], "host": options["host"], "machine": machine(),
                        "coresUsed": options["cores"], "seconds": round(time.time() - started, 1), "cases": records,
-                       "invocation": options["invocation"]},
+                       "invocation": options["invocation"], "space": runner.space_here()},
                       handle, indent=1)
         atomic_json(completion, {"invocation": options["invocation"], "exitCode": failed, "phase": "cases",
                                  "results": tree_manifest(out_root)})
         return failed
     finally:
+        prune_after(lock, options.get("invocation"))
         release_sweep(lock)
 
 
@@ -420,6 +435,7 @@ def serve_test(options):
         atomic_json(completion, {"invocation": options["invocation"], "exitCode": code, "phase": "tests"})
         return code
     finally:
+        prune_after(lock, options.get("invocation"))
         release_sweep(lock)
 
 
@@ -516,6 +532,161 @@ def prepare_source_basis(invocation, root=ROOT):
     return identity
 
 
+RECEIPTS = ("manifest.json", "request.json", "started.json", "completion.json", "retrieved.json")
+
+
+def stage_changed(path):
+    """When a stage last moved on: its newest receipt, else the folder itself. (Removing files from
+    a stage by hand changes the folder's time but no receipt's, so it doesn't make a stage new.)"""
+    times = []
+    for name in RECEIPTS:
+        try:
+            times.append((path / name).stat().st_mtime)
+        except OSError:
+            pass
+    return max(times) if times else path.stat().st_mtime
+
+
+def stage_plan(root=ROOT, current=None, keep=KEEP_STAGES, now=None):
+    """Which stages under root/staging may go: ([(name, why)] to remove, [(name, why)] kept).
+
+    Called under the host's sweep lock, so no other worker is using a stage. Kept: the newest
+    `keep` (by last change), the `current` invocation, the source basis (emmettl/bombcad-work#70's
+    newest verified, completed source), whatever is staged-not-started or interrupted within
+    PENDING_SECONDS (a resume can still start or inspect it; a send may be under way), and a run's
+    results not yet retrieved, for UNRETRIEVED_SECONDS. Completed tests, retrieved runs and
+    anything older go whole."""
+    now = time.time() if now is None else now
+    staging = Path(root) / "staging"
+    stages = []
+    for path in staging.iterdir() if staging.is_dir() else []:
+        if re.fullmatch(r"[0-9a-f]{32}", path.name) and path.is_dir() and not path.is_symlink():
+            try:
+                stages.append((stage_changed(path), path))
+            except FileNotFoundError:
+                continue
+    stages.sort(reverse=True)
+    basis = source_basis(root) if stages else None
+    remove, kept = [], []
+    for rank, (changed, path) in enumerate(stages):
+        age = now - changed
+        if rank < keep:
+            kept.append((path.name, "one of the newest %d" % keep))
+            continue
+        if path.name == current:
+            kept.append((path.name, "this invocation"))
+            continue
+        if path.name == basis:
+            kept.append((path.name, "the source basis"))
+            continue
+        completed = (path / "completion.json").exists()
+        if not completed:
+            state = "interrupted" if (path / "started.json").exists() else "staged, never started"
+            if age < PENDING_SECONDS:
+                kept.append((path.name, state + ", recent"))
+            else:
+                remove.append((path.name, state + ", over %d days old" % (PENDING_SECONDS // 86400)))
+            continue
+        try:
+            kind = json.loads((path / "request.json").read_text()).get("kind")
+        except (OSError, ValueError, AttributeError):
+            kind = None
+        if kind == "run" and not (path / "retrieved.json").exists() and age < UNRETRIEVED_SECONDS:
+            kept.append((path.name, "run results not yet retrieved"))
+        elif kind == "run":
+            remove.append((path.name, "run retrieved" if (path / "retrieved.json").exists()
+                           else "run unretrieved for over %d days" % (UNRETRIEVED_SECONDS // 86400)))
+        else:
+            remove.append((path.name, "%s completed" % (kind or "stage")))
+    return remove, kept
+
+
+def prune_staging(root=ROOT, current=None, keep=KEEP_STAGES, dry_run=False, now=None):
+    """Removes what stage_plan says may go: a report of what went, what stayed and the bytes freed
+    (by the file system, so files hard-linked into a kept stage count nothing)."""
+    remove, kept = stage_plan(root, current, keep, now)
+    staging = Path(root) / "staging"
+
+    def free():
+        try:
+            stat = os.statvfs(staging)
+            return stat.f_bavail * stat.f_frsize
+        except OSError:
+            return 0
+    before = free()
+    removed = []
+    for name, why in remove:
+        if not dry_run:
+            shutil.rmtree(staging / name, ignore_errors=True)
+            if (staging / name).exists():
+                why += " (could not remove)"
+        removed.append({"stage": name, "why": why})
+    return {"removed": removed, "kept": [{"stage": n, "why": w} for n, w in kept],
+            "freedBytes": max(0, free() - before), "dryRun": dry_run}
+
+
+def prune_after(lock, invocation):
+    """The worker's prune as it finishes, still holding `lock` (~/bombcad-sweeps/lock). A failure
+    here never fails the work."""
+    if not isinstance(lock, str) or not os.path.isabs(lock):
+        return
+    try:
+        report = prune_staging(os.path.dirname(lock), current=invocation)
+        if report["removed"]:
+            print("remote-sweep: staging pruned: %d stage(s) removed, %s freed, %d kept" % (
+                len(report["removed"]), runner.human(report["freedBytes"]), len(report["kept"])), flush=True)
+    except Exception as error:  # noqa: BLE001 - retention must not turn a pass into a failure
+        print("remote-sweep: staging not pruned: %s" % error, flush=True)
+
+
+def serve_prune(options):
+    """`prune` on the host: under the sweep lock (given up at once if held), staging pruned."""
+    root = os.path.join(os.path.expanduser("~"), ROOT)
+    if options.get("dryRun"):
+        report = prune_staging(root, dry_run=True)
+    else:
+        lock = take_lock(dict(invocation="prune", wait=0), "staging prune")
+        if lock is None:
+            print(json.dumps({"held": True}))
+            return TAKEN
+        try:
+            report = prune_staging(root)
+        finally:
+            with ownership_guard(lock):
+                runner.release(lock)
+    report["space"] = runner.space_here()
+    print(json.dumps(report))
+    return 0
+
+
+def sending_bytes(inputs):
+    """At most what a send carries: the source (as staged) and the inputs, before any file is
+    found already on the host."""
+    total = 0
+    for top, excluded in [(REPO, EXCLUDED)] + [(p.rstrip("/"), ()) for p in inputs]:
+        if os.path.isfile(top):
+            total += os.path.getsize(top)
+            continue
+        for directory, dirs, files in os.walk(top):
+            dirs[:] = [d for d in dirs if d not in excluded]
+            for name in files:
+                if name not in excluded:
+                    try:
+                        total += os.lstat(os.path.join(directory, name)).st_size
+                    except OSError:
+                        pass
+    return total
+
+
+def room_for(host, inputs, log):
+    """None if `host` has room for a send of the source and `inputs`, else why not (said)."""
+    space = runner.host_space(host)
+    refusal = runner.space_refusal(space, sending_bytes(inputs))
+    if refusal:
+        log("refused: %s: %s" % (host, refusal))
+    return refusal
+
+
 def send_worktree(host, log, options):
     """Transfer only to a fresh invocation directory; no active checkout/input/tool mutation."""
     stage = invocation_path(options["invocation"])
@@ -609,6 +780,10 @@ def retrieve(host, options, results, code, log):
     atomic_json(os.path.join(results, "retrieval.json"),
                 {"invocation": options["invocation"], "completion": receipt, "copyExitCode": copied.returncode,
                  "workerExitCode": code, "filesVerified": verified})
+    if verified:
+        # The host's copy is no longer needed for recovery: its next prune may remove the stage.
+        runner.ssh(host, "cat > %s/retrieved.json" % stage, timeout=30,
+                   stdin=json.dumps({"invocation": options["invocation"], "retrieved": time.time()}).encode())
     log("invocation %s exit %d; results in %s" % (options["invocation"], receipt["exitCode"], results))
     return receipt["exitCode"] or copied.returncode or (0 if verified else 1)
 
@@ -624,6 +799,9 @@ def lane_ready(host):
                        % (ROOT, ROOT), timeout=30)
     if b"ok" not in write.stdout:
         return "it cannot write its staging folder"
+    refusal = runner.space_refusal(runner.host_space(host), sending_bytes([]))
+    if refusal:
+        return "it is short of space: " + refusal
     probe = runner.ssh(host, "cat %s/lock/owner 2>/dev/null; echo; cat /proc/sys/kernel/random/boot_id" % ROOT,
                        timeout=30)
     lines = probe.stdout.decode(errors="replace").strip().splitlines()
@@ -648,6 +826,8 @@ def test(host, suites, cores=16, wait=0, stream=None):
         raise ValueError("positive cores, nonnegative wait and test-suite names required")
     options = {"kind": "test", "invocation": uuid.uuid4().hex, "host": host,
                "suites": suites, "cores": cores, "wait": wait}
+    if room_for(host, [], log):
+        return NOSPACE
     sent = send_worktree(host, log, options)
     if sent:
         return sent
@@ -704,6 +884,8 @@ def run(arguments):
         return UNREACHABLE
     options = {"kind": "run", "invocation": uuid.uuid4().hex, "sweep": sweep,
                "host": host, "cores": cores, "wait": wait}
+    if room_for(host, sweep.get("inputs", []), log):
+        return NOSPACE
     sent = send_worktree(host, log, options)
     if sent:
         return sent
@@ -798,10 +980,56 @@ def compare(arguments):
     return 1 if disagreements else 0
 
 
+def prune(host, dry_run=False):
+    """`prune <host>`: the host's staging pruned now, by the rule the workers follow, with these
+    tools sent to a private folder there for the purpose and removed after."""
+    why = runner.reachable(host)
+    if why:
+        print("remote-sweep: %s is unreachable: %s" % (host, why), file=sys.stderr)
+        return UNREACHABLE
+    made = runner.ssh(host, "mkdir -p %s && mktemp -d %s/.prune-XXXXXXXX" % (ROOT, ROOT), timeout=30)
+    folder = made.stdout.decode().strip()
+    if made.returncode or not re.fullmatch(re.escape(ROOT) + r"/\.prune-[A-Za-z0-9]+", folder):
+        print("remote-sweep: could not make a folder for the prune on %s" % host, file=sys.stderr)
+        return 1
+    try:
+        sent = subprocess.run(["rsync", "-a", "-e", " ".join(SSH), os.path.abspath(__file__),
+                               os.path.join(HERE, "ml", "remote-train.py"), "%s:%s/" % (host, folder)],
+                              stdin=subprocess.DEVNULL)
+        if sent.returncode:
+            return sent.returncode
+        result = runner.ssh(host, "python3 %s/remote-sweep.py serve-prune %s" % (
+            folder, shlex.quote(json.dumps({"dryRun": dry_run}))), timeout=900)
+    finally:
+        runner.ssh(host, "rm -rf -- %s" % folder, timeout=60)
+    try:
+        report = json.loads(result.stdout.decode().strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        print("remote-sweep: the prune on %s said nothing readable: %s" % (
+            host, result.stderr.decode(errors="replace").strip()), file=sys.stderr)
+        return 1
+    if report.get("held"):
+        print("remote-sweep: not pruned: the sweep lock on %s is held" % host)
+        return TAKEN
+    verb = "would remove" if dry_run else "removed"
+    for entry in report["removed"]:
+        print("  %s: staging/%s (%s)" % (verb, entry["stage"], entry["why"]))
+    for entry in report["kept"]:
+        print("  kept: staging/%s (%s)" % (entry["stage"], entry["why"]))
+    print("remote-sweep: %s %d stage(s), %s freed; kept %d. %s: %s" % (
+        verb, len(report["removed"]), runner.human(report["freedBytes"]), len(report["kept"]), host,
+        runner.describe_space(report.get("space"))))
+    return 0
+
+
 def main(arguments):
     if len(arguments) == 2 and arguments[0] == "source-basis":
         print(prepare_source_basis(arguments[1]) or "")
         return 0
+    if len(arguments) == 2 and arguments[0] == "serve-prune":
+        return serve_prune(json.loads(arguments[1]))
+    if len(arguments) >= 2 and arguments[0] == "prune":
+        return prune(arguments[1], "--dry-run" in arguments[2:])
     if arguments and arguments[0] == "serve-run":
         prepare_worker()
         return serve_run(json.loads(arguments[1]))

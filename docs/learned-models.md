@@ -92,7 +92,8 @@ Each step is done once on each PC. The user decides on, and makes, any firewall 
    ```
 
 Keep the data in WSL's own file system (`~`), not under `/mnt/c`. The Windows file system is slow
-from inside WSL. Don't let the laptop sleep or run on battery during a job. On long jobs it
+from inside WSL. WSL's disk image lives on C: and only grows, so keep room on C:
+([Disk space on the PCs](#disk-space-on-the-pcs)). Don't let the laptop sleep or run on battery during a job. On long jobs it
 throttles, so give it short ones (its default timeout is 2 hours).
 
 ## The runner: `Scripts/ml/remote-train.py`
@@ -122,7 +123,14 @@ From the Studio, it:
 5. **Brings back the job's folder** (`out/`, `log.txt`, `status.json`, the script) to
    `$BOMBCAD_DATA/ml/<job>/`, and writes `job.json` there. `job.json` records the
    host, the GPU as `nvidia-smi` names it, the Python, the dataset's hash and whether it was sent,
-   the script's hash, the arguments, the start and end times, and the exit status.
+   the script's hash, the arguments, the start and end times, the exit status, and the host's
+   free space before and after (`hostSpace`).
+6. **Tidies the host.** Once the results are back and checked (`job.json` says `resultsCopied`, and
+   the host's `status.json` came with them), the host marks the job collected. Then, if no job
+   holds its lock, it prunes (see [Disk space on the PCs](#disk-space-on-the-pcs)).
+
+Before it sends anything, the runner checks the host's free space, and refuses with exit 73 if
+the send would leave too little.
 
 `--dry-run` reaches the host and says what would happen without sending or running anything: the
 dataset's size, whether the host already has it, the environment, the lock and the command.
@@ -142,7 +150,76 @@ On the mini, the runner takes the lock that BombCAD's checks and workers take th
 (Scripts/remote.py), so a test job never runs beside a check. Nothing is installed on the mini.
 
 A stopped training run carries on from where it stopped: pass the old job's checkpoint, for
-example `--args --resume ~/bombcad-ml/jobs/<old job>/out/checkpoint.pt`.
+example `--args --resume ~/bombcad-ml/jobs/<old job>/out/checkpoint.pt`. Only the newest few
+jobs stay on the host (below); an older job's checkpoint is in its results on the Studio.
+
+## Disk space on the PCs
+
+On 23 October 2026 the desktop's C: drive filled up. WSL keeps its whole Linux file system in one
+disk image on C: (`ext4.vhdx`), which grows as WSL writes and never shrinks by itself. With C: full,
+WSL's file system gave I/O errors. Nothing had kept the runners' folders in bounds:
+- every dataset version was a full copy in `~/bombcad-ml/datasets`;
+- every job's folder stayed in `~/bombcad-ml/jobs`;
+- every Linux-lane check and sweep left its own source snapshot in `~/bombcad-sweeps/staging`
+  (106 of them, 18 GB).
+
+The datasets and jobs were cleared that day, and the snapshots' sources too (18 GB, listed in
+`~/bombcad-sweeps/cleanup-report-20261023.json` on the PC). Since then the runners keep themselves
+in bounds and refuse to fill a disk.
+
+**What stays on the host.**
+- **Datasets:** the last 2 used (`--keep-datasets`), by last use. Older ones are removed only when
+  no job holds `~/bombcad-ml/lock` and no live process names them. A dataset whose send was left
+  half done goes after a day.
+- **Jobs:** the newest 3 (`--keep-jobs`), for debugging. An older job's folder goes once its
+  results are back on the Studio and checked; a job whose results never came back stays.
+- **Sweep and lane stages** (`~/bombcad-sweeps/staging`): see
+  [Linux](linux.md#retention-and-free-space-23-october-2026). The build checkout,
+  `~/bombcad-sweeps/src`, is one folder, reused by every run.
+- Nothing else is touched: not the environment, `~/bombcad-ml/experiments`, or Codex's CUDA
+  folders (`~/bombcad-cuda`, `~/bombcad-*-<hash>`, `~/bombcad`).
+
+To prune by hand, or see what would go:
+
+```bash
+python3 -I Scripts/ml/remote-train.py prune bombcad-pc --dry-run
+python3 -I Scripts/remote-sweep.py prune bombcad-pc --dry-run
+```
+
+**Free space.** Before sending a dataset or a source, both runners ask the host for its free space
+on two disks:
+- the home's file system, which inside WSL is its virtual disk (WSL's `df` there shows the
+  image's maximum size, about 1 TB, not what C: can hold);
+- inside WSL, the Windows drive under `/mnt/c`, which holds the disk image. This is the one that
+  filled.
+
+A send that would leave less than 50 GB on either, or 15% of a disk smaller than 333 GB, is
+refused: the training runner with exit 73, and the Linux lane is then "not there", so its suites run
+on the Mac. `BOMBCAD_HOST_MIN_FREE_GB` and `BOMBCAD_HOST_MIN_FREE_PERCENT` move the floor.
+
+**Deleting inside WSL does not give C: its space back.** The image stays as large as it ever grew.
+Compacting it is a Windows-side job for the user:
+
+1. Close everything using WSL, then in PowerShell run `wsl --shutdown`.
+2. Compact the image. The runner's refusal message names the images it found. On the desktop the
+   Ubuntu image is `C:\Users\<user>\AppData\Local\wsl\{19241bd4-…}\ext4.vhdx`.
+   - With Hyper-V's PowerShell module (Windows Pro), in an administrator PowerShell:
+     `Optimize-VHD -Path <ext4.vhdx> -Mode Full`.
+   - Otherwise with diskpart, in an administrator prompt: `diskpart`, then
+     `select vdisk file="<ext4.vhdx>"`, `attach vdisk readonly`, `compact vdisk`, `detach vdisk`,
+     `exit`.
+
+Recent WSL versions can also make the image sparse, so that it gives space back by itself
+(`wsl --manage <distro> --set-sparse true`). That is a setting for the user to decide on.
+
+**On 23 October, after the clean-up,** the desktop had:
+- 867 GB free on WSL's virtual disk, with 160 GB used;
+- 30 GB free of 998 GB on C:;
+- a 175 GB Ubuntu image and a second, 30 GB image.
+
+So C: is under the 50 GB floor, and both runners refuse to send to the desktop until the user
+frees space on C: or compacts the image. Compacting would give back about 15 GB (the image is 175
+GB, with 160 GB in use).
 
 ## The learned field model's data
 

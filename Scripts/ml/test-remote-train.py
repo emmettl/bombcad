@@ -1,14 +1,18 @@
-"""remote-train.py's arguments, lock and dataset hash, without another machine."""
+"""remote-train.py's arguments, lock, dataset hash, free-space check and retention, without another machine."""
 
+import contextlib
 import datetime
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+import unittest.mock
 
 SPEC = importlib.util.spec_from_file_location("remote_train", Path(__file__).with_name("remote-train.py"))
 remote_train = importlib.util.module_from_spec(SPEC)
@@ -172,6 +176,243 @@ class LockTests(unittest.TestCase):
         spec.loader.exec_module(remote)
         self.assertTrue(remote_train.acquire(self.lock, "remote-train job", boot=remote_train.boot_id()))
         self.assertEqual(remote.lock_owner(self.lock)["what"], "remote-train job")
+
+
+GB = 1e9
+DAY = 86400
+
+
+def disk(free, size, windows=False, images=None):
+    entry = {"path": "/mnt/c" if windows else "/home/x", "label": "C:" if windows else "~",
+             "freeBytes": free, "sizeBytes": size}
+    if windows:
+        entry.update(windows=True, diskImages=images or {})
+    return entry
+
+
+class SpaceTests(unittest.TestCase):
+    def test_the_floor_is_50_gb_or_15_percent_of_a_smaller_disk(self):
+        self.assertEqual(remote_train.floor_for(1000 * GB, {}), 50 * GB)
+        self.assertAlmostEqual(remote_train.floor_for(100 * GB, {}), 15 * GB)
+        self.assertEqual(remote_train.floor_for(1000 * GB, {"BOMBCAD_HOST_MIN_FREE_GB": "20"}), 20 * GB)
+        self.assertAlmostEqual(remote_train.floor_for(100 * GB, {"BOMBCAD_HOST_MIN_FREE_PERCENT": "5"}), 5 * GB)
+
+    def test_a_send_that_would_leave_too_little_is_refused(self):
+        self.assertIsNone(remote_train.space_refusal([disk(800 * GB, 1000 * GB)], 10 * GB, {}))
+        self.assertIsNone(remote_train.space_refusal(None, 10 * GB, {}))  # A host that can't say
+        refusal = remote_train.space_refusal([disk(55 * GB, 1000 * GB)], 10 * GB, {})
+        self.assertIn("would leave 45.0 GB", refusal)
+        self.assertNotIn("Optimize-VHD", refusal)
+        # The Windows drive under WSL's disk image counts, whatever WSL's own df says.
+        refusal = remote_train.space_refusal(
+            [disk(796 * GB, 1007 * GB), disk(29 * GB, 998 * GB, windows=True, images={"/mnt/c/x/ext4.vhdx": 175 * GB})],
+            0, {})
+        self.assertIn("C: has 29.0 GB free", refusal)
+        self.assertIn("/mnt/c/x/ext4.vhdx 175.0 GB", refusal)
+        self.assertIn("wsl --shutdown", refusal)
+        self.assertIn("Optimize-VHD", refusal)
+        self.assertNotIn("~ has", refusal)
+        self.assertIsNone(remote_train.space_refusal([disk(29 * GB, 998 * GB, windows=True)], 0,
+                                                     {"BOMBCAD_HOST_MIN_FREE_GB": "10"}))
+
+    def test_the_disks_a_send_lands_on(self):
+        with tempfile.TemporaryDirectory() as folder:
+            (here,) = remote_train.space_here(home=folder, wsl=False)
+            self.assertEqual(here["path"], folder)
+            self.assertGreater(here["freeBytes"], 0)
+            self.assertGreaterEqual(here["sizeBytes"], here["freeBytes"])
+            self.assertNotIn("windows", here)
+            # Inside WSL, the drive holding its disk image too, with the images on it.
+            drive = os.path.join(folder, "c")
+            image = Path(drive, "Users", "u", "AppData", "Local", "wsl", "{guid}", "ext4.vhdx")
+            image.parent.mkdir(parents=True)
+            image.write_bytes(b"x" * 1000)
+            self.assertEqual(len(remote_train.space_here(home=folder, windows=drive, wsl=True)), 1)  # not a mount
+            real = os.path.ismount
+            with unittest.mock.patch.object(remote_train.os.path, "ismount", side_effect=lambda p: p == drive or real(p)):
+                home, windows = remote_train.space_here(home=folder, windows=drive, wsl=True)
+            self.assertTrue(windows["windows"])
+            self.assertEqual(windows["diskImages"], {str(image): 1000})
+            self.assertIn("WSL", home["label"])
+
+
+class RetentionTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = os.path.join(self.directory.name, "bombcad-ml")
+        self.now = 1_800_000_000.0
+
+    def dataset(self, name, used_days_ago, complete=True):
+        path = os.path.join(self.root, "datasets", name)
+        os.makedirs(path)
+        Path(path, "runs.npy").write_bytes(b"data")
+        if complete:
+            Path(path, ".complete").touch()
+            os.utime(os.path.join(path, ".complete"), (self.now - 30 * DAY,) * 2)
+            Path(path, ".last-used").write_text("")
+            os.utime(os.path.join(path, ".last-used"), (self.now - used_days_ago * DAY,) * 2)
+        os.utime(path, (self.now - used_days_ago * DAY,) * 2)
+        return path
+
+    def job(self, name, days_ago, collected):
+        path = os.path.join(self.root, "jobs", name)
+        os.makedirs(os.path.join(path, "out"))
+        if collected:
+            Path(path, ".collected").write_text("{}")
+        os.utime(path, (self.now - days_ago * DAY,) * 2)
+        return path
+
+    def plan(self, in_use=(), **keep):
+        remove, keep_list = remote_train.prune_plan(self.root, now=self.now, in_use=lambda paths: {
+            p for p in paths if p in in_use}, **keep)
+        return {p: why for p, why in remove}, {p: why for p, why in keep_list}
+
+    def test_datasets_beyond_the_last_used_go_unless_in_use(self):
+        newest, second, old, older = (self.dataset(n, d) for n, d in (("a-1", 1), ("b-2", 2), ("c-3", 5), ("d-4", 9)))
+        remove, keep = self.plan(in_use=(older,))
+        self.assertEqual(set(remove), {old})
+        self.assertEqual(keep[newest], keep[second])
+        self.assertEqual(keep[older], "in use")
+        remove, _ = self.plan(keep_datasets=3)
+        self.assertEqual(set(remove), {older})
+
+    def test_last_use_not_age_orders_datasets(self):
+        made_long_ago = self.dataset("x-1", 1)
+        os.utime(os.path.join(made_long_ago, ".complete"), (self.now - 100 * DAY,) * 2)
+        self.dataset("y-2", 2)
+        self.dataset("z-3", 3)
+        remove, keep = self.plan()
+        self.assertIn(made_long_ago, keep)
+        self.assertEqual([os.path.basename(p) for p in remove], ["z-3"])
+
+    def test_a_dataset_being_sent_stays_a_day(self):
+        sending = self.dataset("new-1.partial", 0.5, complete=False)
+        abandoned = self.dataset("old-2.partial", 3, complete=False)
+        renamed = self.dataset("half-3", 3, complete=False)  # never marked complete
+        remove, keep = self.plan()
+        self.assertEqual(set(remove), {abandoned, renamed})
+        self.assertEqual(keep[sending], "being sent")
+
+    def test_jobs_go_once_collected_and_not_among_the_newest(self):
+        recent = [self.job("j%d" % k, k, collected=True) for k in range(3)]
+        old_collected = self.job("old-collected", 10, collected=True)
+        old_uncollected = self.job("old-uncollected", 11, collected=False)
+        running = self.job("old-running", 12, collected=True)
+        remove, keep = self.plan(in_use=(running,))
+        self.assertEqual(set(remove), {old_collected})
+        self.assertEqual(keep[old_uncollected], "results not collected")
+        self.assertEqual(keep[running], "in use")
+        for path in recent:
+            self.assertIn(path, keep)
+        remove, _ = self.plan(in_use=(running,), keep_jobs=0)
+        self.assertEqual(set(remove), set(recent) | {old_collected})
+
+    def test_marking_old_jobs_collected_does_not_make_them_new(self):
+        old = [self.job("old%d" % k, 10 + k, collected=False) for k in range(2)]
+        for path in old:
+            Path(path, "log.txt").write_text("ran")
+            os.utime(os.path.join(path, "log.txt"), (self.now - 10 * DAY,) * 2)
+        recent = [self.job("new%d" % k, k, collected=False) for k in range(3)]
+        for path in old:
+            Path(path, ".collected").write_text("{}")  # the folder's time is now
+        remove, keep = self.plan()
+        self.assertEqual(set(remove), set(old))
+        # A job named collected by the Studio (its results there whole) counts as one marked.
+        for path in old:
+            os.remove(os.path.join(path, ".collected"))
+        remove, _ = remote_train.prune_plan(self.root, now=self.now, in_use=lambda paths: set(),
+                                            collected={"old0"})
+        self.assertEqual([p for p, _ in remove], [old[0]])
+        self.assertTrue(all(p in keep for p in recent))
+
+    def test_nothing_but_datasets_and_jobs_is_looked_at(self):
+        for name in ("venv", "experiments", "lock"):
+            os.makedirs(os.path.join(self.root, name, "x"))
+        os.makedirs(os.path.join(self.root, "datasets"))
+        os.symlink(os.path.join(self.root, "venv"), os.path.join(self.root, "datasets", "linked-1"))
+        remove, keep = self.plan(keep_datasets=1)
+        self.assertEqual(remove, {})
+        self.assertEqual(keep, {})
+
+    def test_a_process_naming_a_folder_uses_it(self):
+        path = self.dataset("live-5f3a9c1e", 1)
+        other = self.dataset("idle-5f3a9c1e", 1)
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "--data", path])
+        try:
+            deadline = time.monotonic() + 10
+            while not remote_train.processes_using([path]) and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertEqual(remote_train.processes_using([path, other]), {path})
+        finally:
+            child.kill()
+            child.wait()
+        # A job waiting for the lock names its dataset only by the folder's name.
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "serve-run",
+                                  json.dumps({"dataset": "idle-5f3a9c1e"})])
+        try:
+            deadline = time.monotonic() + 10
+            while not remote_train.processes_using([other]) and time.monotonic() < deadline:
+                time.sleep(0.05)
+            self.assertEqual(remote_train.processes_using([path, other]), {other})
+        finally:
+            child.kill()
+            child.wait()
+
+    def serve_prune(self, **options):
+        output = io.StringIO()
+        with unittest.mock.patch.dict(os.environ, HOME=self.directory.name), contextlib.redirect_stdout(output):
+            self.assertEqual(remote_train.serve_prune(dict({"lock": "bombcad-ml/lock"}, **options)), 0)
+        return json.loads(output.getvalue().strip().splitlines()[-1])
+
+    def test_the_hosts_prune_waits_for_the_lock_and_marks_collected_jobs(self):
+        self.now = time.time()
+        for k in range(4):
+            self.dataset("ds%d-5f3a9c1e" % k, k)
+        for k in range(4):
+            self.job("job%d-5f3a9c1e" % k, k, collected=k > 0)
+        lock = os.path.join(self.root, "lock")
+        # A job holds the lock (a live process: this one's parent): nothing goes, but the job just
+        # collected is marked.
+        self.assertTrue(remote_train.acquire(lock, "remote-train job0-5f3a9c1e", boot=remote_train.boot_id(), pid=os.getppid()))
+        report = self.serve_prune(collected="job0-5f3a9c1e", keepDatasets=2, keepJobs=1)
+        self.assertEqual(report["held"], "remote-train job0-5f3a9c1e")
+        self.assertEqual(report["removed"], [])
+        self.assertTrue(os.path.exists(os.path.join(self.root, "jobs", "job0-5f3a9c1e", ".collected")))
+        self.assertEqual(len(os.listdir(os.path.join(self.root, "datasets"))), 4)
+        os.remove(os.path.join(lock, "owner"))
+        os.rmdir(lock)
+        dry = self.serve_prune(keepDatasets=2, keepJobs=1, dryRun=True)
+        self.assertEqual(len(dry["removed"]), 5)
+        self.assertEqual(len(os.listdir(os.path.join(self.root, "datasets"))), 4)
+        report = self.serve_prune(keepDatasets=2, keepJobs=1)
+        self.assertTrue(report["pruned"])
+        self.assertEqual(sorted(os.listdir(os.path.join(self.root, "datasets"))), ["ds0-5f3a9c1e", "ds1-5f3a9c1e"])
+        self.assertEqual(os.listdir(os.path.join(self.root, "jobs")), ["job0-5f3a9c1e"])
+        self.assertGreater(report["freedBytes"], 0)
+        self.assertFalse(os.path.exists(lock))  # let go again
+        self.assertTrue(report["space"])
+
+    def test_results_count_as_collected_only_when_whole(self):
+        with tempfile.TemporaryDirectory() as results:
+            self.assertFalse(remote_train.collected(results))
+            os.makedirs(os.path.join(results, "out"))
+            Path(results, "job.json").write_text(json.dumps({"resultsCopied": False}))
+            Path(results, "status.json").write_text("{}")
+            self.assertFalse(remote_train.collected(results))
+            Path(results, "job.json").write_text(json.dumps({"resultsCopied": True}))
+            self.assertTrue(remote_train.collected(results))
+            Path(results, "status.json").write_text("{half")
+            self.assertFalse(remote_train.collected(results))
+
+    def test_keep_counts(self):
+        plan = remote_train.parse(["bombcad-pc", "d", "s.py", "--keep-datasets", "4", "--keep-jobs", "0"], now=NOW)
+        self.assertEqual((plan["keepDatasets"], plan["keepJobs"]), (4, 0))
+        plan = remote_train.parse(["bombcad-pc", "d", "s.py"], now=NOW)
+        self.assertEqual((plan["keepDatasets"], plan["keepJobs"]), (2, 3))
+        for bad in (["--keep-datasets", "0"], ["--keep-jobs", "-1"], ["--keep-datasets", "two"]):
+            with self.assertRaises(ValueError):
+                remote_train.parse(["bombcad-pc", "d", "s.py"] + bad, now=NOW)
 
 
 class RecordTests(unittest.TestCase):
