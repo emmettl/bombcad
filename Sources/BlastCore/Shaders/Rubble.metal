@@ -197,10 +197,21 @@ kernel void rubbleForces(const device RubbleParticle *particles [[buffer(0)]],
     float3 velocity = float3(p.velocity);
     int3 cell = contactCell(position, u);
     if (!rubbleListed(slots, contactBucket(cell, u), index)) {
-        forces[index] = float4(0.0f);
+        forces[index] = float4(0.0f, 0.0f, 0.0f, p.reach);
         return;
     }
     float3 force = float3(0.0f);
+    // Rubble is crushed, not sprung: past the overlap at which a contact's push reaches the cap on
+    // it (`contactKick`), a spring stores energy it cannot give back in proportion, and gives it
+    // back all the same. A particle in an element's place, its corners closing in on it as the
+    // body around it settles, was overlapped by them by up to 2 cm and pushed them out with all
+    // the cap allows, every substep: on the large-panel block that put a fifth again of the
+    // blast's energy into the body by 1.5 s (emmettl/bombcad-work#36). So a particle overlapped
+    // deeper than that gives up its reach to it (`rubbleMove`), as crushed debris would, and the
+    // spring's energy past it is lost. Weight overlaps it by nanometres, impacts by a fraction of
+    // the depth.
+    float crushedTo = contactKick / max(u.contactStiffness * dt, 1e-30f);
+    float crushed = 0.0f;
     for (int dz = -1; dz <= 1; ++dz) {
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
@@ -222,6 +233,9 @@ kernel void rubbleForces(const device RubbleParticle *particles [[buffer(0)]],
                         }
                         force += rubbleContact(position - at, rubblePairReach(p.reach, q.reach),
                                                velocity - float3(q.velocity), min(p.mass, q.mass), u);
+                        // Each of the two gives up half the excess.
+                        float excess = rubblePairReach(p.reach, q.reach) - length(position - at) - crushedTo;
+                        crushed = max(crushed, 0.5f * excess / 0.57735027f);
                     }
                 }
                 if (nodeHeads[target] == u.stamp) {
@@ -237,6 +251,7 @@ kernel void rubbleForces(const device RubbleParticle *particles [[buffer(0)]],
                         StructureNode node = nodes[other];
                         force += rubbleContact(position - at, p.reach, velocity - float3(node.velocity),
                                                min(p.mass, node.mass), u);
+                        crushed = max(crushed, p.reach - length(position - at) - crushedTo);
                     }
                 }
             }
@@ -247,7 +262,7 @@ kernel void rubbleForces(const device RubbleParticle *particles [[buffer(0)]],
     if (size > largest) {
         force *= largest / size;
     }
-    forces[index] = float4(force, 0.0f);
+    forces[index] = float4(force, max(p.reach - crushed, 0.01f * u.h));
 }
 
 // After the node pass: each particle moves under its contacts, gravity and the air, and lands on
@@ -265,6 +280,7 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
                        device uint *state [[buffer(10)]],
                        constant TerrainUniforms &t [[buffer(11)]],
                        const device float *terrainHeights [[buffer(12)]],
+                       device float4 *work [[buffer(13)]],
                        uint index [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -315,8 +331,26 @@ kernel void rubbleMove(device RubbleParticle *particles [[buffer(0)]],
     if (exchangeCell >= 0) {
         recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(p.velocity) + velocity), dt, u.fluidCell);
     }
+    if (tracesExternalWork) {
+        // As the nodes' (`structureNodes`): contact's and the air's work over the way the particle
+        // moved, and what the change in its kinetic energy leaves (the ground's and damping's).
+        float3 moved = position - float3(p.position);
+        float3 before = float3(p.velocity);
+        float3 contactForce = contactEnabled(u, failureGate) ? forces[index].xyz : float3(0.0f);
+        float contactWork = dot(contactForce, moved);
+        float airWork = dot(airForce, moved);
+        float kinetic = 0.5f * p.mass * dot(velocity - before, velocity + before);
+        work[index] += float4(contactWork, airWork, kinetic + p.mass * dot(gravityPull(u), moved) - contactWork - airWork,
+                              -0.5f * p.mass * length_squared(velocity - before));
+    }
     particles[index].position = position;
     particles[index].velocity = velocity;
+    // Its reach, crushed this substep (`rubbleForces`); a slot whose contact has not run since it
+    // was made holds zero there.
+    float crushedReach = forces[index].w;
+    if (contactEnabled(u, failureGate) && crushedReach > 0.0f && crushedReach < p.reach) {
+        particles[index].reach = crushedReach;
+    }
 }
 
 // Before each air step's substeps, every particle adds its frontal area to its air cell, as loose

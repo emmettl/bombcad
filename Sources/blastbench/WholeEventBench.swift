@@ -33,7 +33,10 @@ import simd
 // as the recommended settings have it. Diagnostics: `--inspect <checkpoint>` lists the fastest
 // nodes of a saved state with the elements round them; `--watch 20` does so at each sample with a
 // node faster than 20 m/s (and a run that goes unstable does as it stops);
-// `--erode-crushed-bare` and `--release-bare-hourglass` turn on those two options.
+// `--erode-crushed-bare` and `--release-bare-hourglass` turn on those two options. `--split-work`
+// splits the census by source each substep (`StructureSolver.traceExternalWork`), to
+// work-split.csv; `--trace-node i,j,k` (and `--trace-element i,j,k`) record one node's (and one
+// element's) forces each substep, to trace.csv (and element-trace.csv).
 
 private struct WholeEventState: Codable {
     var stepCount: Int
@@ -193,6 +196,10 @@ func runWholeEvent(device: MTLDevice) throws {
     var lastAirStep = 0.0
     var largest: Float = 0
 
+    // `--split-work`: the census split by source (`StructureSolver.traceExternalWork`), to
+    // work-split.csv: the residual's change since the split began, and each source's work since.
+    var splitOut: FileHandle? = nil
+    var splitStart: (residual: Double, internalWork: Double)? = nil
     func sample() {
         autoreleasepool {
             let c = solids.census()
@@ -221,6 +228,32 @@ func runWholeEvent(device: MTLDevice) throws {
             // the air, its joints, contact between its pieces and the ground (and the settle's
             // damping, none after it).
             let residual = kinetic + c.particleInternal + internalWork - gravityWork
+            if let splitOut {
+                // The elements' work on the nodes and their own work as the trace counts it should
+                // cancel; what the sources leave of the residual's change is the conversion to
+                // rubble's (zero if it passes energy across exactly) and rounding.
+                let w = solids.externalWork()
+                let start = splitStart ?? (residual, internalWork)
+                splitStart = start
+                let parts = [
+                    w.elements - w.airOnFaces + internalWork - start.internalWork, w.airOnFaces, w.air,
+                    w.contact,
+                    w.links, w.anchors, w.pairs,
+                    w.ground + w.particleGround - w.step, w.step, w.particleContact, w.particleAir,
+                ]
+                let detail = [w.contactWithParticles, w.cappedSubsteps]
+                let sum = parts.reduce(0, +)
+                let overlaps = solids.rubbleOverlaps()
+                let row =
+                    [String(format: "%.5f", solver.time), String(format: "%.1f", residual - start.residual)]
+                    + parts.map { String(format: "%.1f", $0) } + [
+                        String(format: "%.1f", sum), String(format: "%.1f", residual - start.residual - sum),
+                        "\(overlaps.particlePairs)", String(format: "%.5f", overlaps.deepestBetweenParticles),
+                        "\(overlaps.nodePairs)", String(format: "%.5f", overlaps.deepestOnNodes),
+                        "\(overlaps.ownCornerPairs)", String(format: "%.5f", overlaps.deepestOnOwnCorners),
+                    ] + detail.map { String(format: "%.1f", $0) }
+                splitOut.write((row.joined(separator: ",") + "\n").data(using: .utf8)!)
+            }
             let values: [String] = [
                 String(format: "%.5f", solver.time), "\(solver.stepCount)",
                 String(format: "%.3f", lastAirStep * 1e6),
@@ -347,7 +380,20 @@ func runWholeEvent(device: MTLDevice) throws {
         traceOut = try FileHandle(forWritingTo: path)
         traceOut?.seekToEndOfFile()
     }
-    if state.stepCount == 0 { sample() }
+    if flag("split-work") {
+        try solids.traceExternalWork()
+        let path = dir.appending(path: "work-split.csv")
+        try
+            ("t,residual_change,elements_less_trace,air_on_faces,air,contact,links,anchors,pairs,ground,step,particle_contact,"
+            + "particle_air,sum,left,particle_pairs_over,deepest_particle_m,node_pairs_over,"
+            + "deepest_node_m,own_corner_pairs_over,deepest_own_corner_m,contact_with_particles,capped_substeps\n")
+            .write(to: path, atomically: true, encoding: .utf8)
+        splitOut = try FileHandle(forWritingTo: path)
+        splitOut?.seekToEndOfFile()
+        sample()
+    } else if state.stepCount == 0 {
+        sample()
+    }
     var stopped = "reached the end"
     while solver.time < end - 1e-9 {
         let interval = BlastSolver.checkpointInterval

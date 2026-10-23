@@ -190,9 +190,13 @@ public final class StructureSolver {
     private var tracingPipeline: MTLComputePipelineState?
     private let nodePipeline: MTLComputePipelineState
     /// The node kernel recording one node's forces each substep (`traceNode`), made when asked.
-    private let nodeTracePipeline: () -> MTLComputePipelineState?
+    private let nodeTracePipeline: (Int) -> MTLComputePipelineState?
     private var tracingNodes: MTLComputePipelineState?
     private var nodeTraceBuffer: MTLBuffer?
+    private var externalWorkBuffer: MTLBuffer?
+    private var faceWorkBuffer: MTLBuffer?
+    private var tracedContactForces: MTLComputePipelineState?
+    private var externalWorkFolded = ExternalWork()
     /// The stored node `traceNode` records, if any, and the element (its compact index) beside it
     /// whose forces it records too.
     public private(set) var tracedNode: Int?
@@ -352,7 +356,7 @@ public final class StructureSolver {
         if discrete { nodeConstants.setConstantValue(&discrete, type: .bool, index: 10) }
         if rubble { nodeConstants.setConstantValue(&rubble, type: .bool, index: 12) }
         nodePipeline = try ShaderLibrary.pipeline("structureNodes", in: library, constants: nodeConstants)
-        nodeTracePipeline = { [library] in
+        nodeTracePipeline = { [library] index in
             let tracing = MTLFunctionConstantValues()
             var connected = connected
             var discrete = discrete
@@ -361,7 +365,7 @@ public final class StructureSolver {
             tracing.setConstantValue(&connected, type: .bool, index: 1)
             if discrete { tracing.setConstantValue(&discrete, type: .bool, index: 10) }
             if rubble { tracing.setConstantValue(&rubble, type: .bool, index: 12) }
-            tracing.setConstantValue(&traced, type: .bool, index: 27)
+            tracing.setConstantValue(&traced, type: .bool, index: index)
             return try? ShaderLibrary.pipeline("structureNodes", in: library, constants: tracing)
         }
         var turned = true
@@ -1105,7 +1109,7 @@ public final class StructureSolver {
     /// slot the record takes, nor with gravity turned. Read with `nodeTrace(substeps:)`.
     public func traceNode(_ i: Int, _ j: Int, _ k: Int) throws {
         guard discreteBarSystem == nil, gravityDirection == SIMD3(0, 0, -1) || gravityDirection.z < 0,
-            let stored = storedNode(i, j, k), let pipeline = nodeTracePipeline()
+            externalWorkBuffer == nil, let stored = storedNode(i, j, k), let pipeline = nodeTracePipeline(27)
         else { throw BlastError.allocationFailed("a node trace for (\(i), \(j), \(k))") }
         tracedNode = stored
         tracingNodes = pipeline
@@ -1187,6 +1191,130 @@ public final class StructureSolver {
                 dt: r[6].w, displacement: SIMD3(r[7].x, r[7].y, r[7].z),
                 around: (0..<8).map { (SIMD3(r[8 + $0].x, r[8 + $0].y, r[8 + $0].z), Int(r[8 + $0].w)) })
         }
+    }
+
+    /// Splits the energy census by source (emmettl/bombcad-work#36): from now on every node's and
+    /// particle's work by each force is summed each substep, over the way it actually moved, in
+    /// kernels made again with the sums compiled in (a body never asked costs nothing). Not for
+    /// bodies with discrete bars, whose slot the sums take, nor with a node trace or a terrain's
+    /// landing kernel, which moves nodes after them; the air's work on the elements' faces is
+    /// summed apart too, in bodies without cracked points (`assumedStrainCracking`) and without
+    /// structure cut cells, whose slot and specialisation it takes. Read with `externalWork()`.
+    public func traceExternalWork() throws {
+        guard discreteBarSystem == nil, tracingNodes == nil, terrainLandingPipeline == nil,
+            let pipeline = nodeTracePipeline(28),
+            let buffer = device.makeBuffer(length: max(nodeCount, 1) * 64, options: .storageModeShared)
+        else { throw BlastError.allocationFailed("the census split") }
+        memset(buffer.contents(), 0, buffer.length)
+        if let rubble = rubbleSystem {
+            let constants = MTLFunctionConstantValues()
+            var on = true
+            constants.setConstantValue(&on, type: .bool, index: 28)
+            rubble.tracedMove = try ShaderLibrary.pipeline(
+                "rubbleMove", in: rubble.library, constants: constants)
+            guard let work = device.makeBuffer(length: max(rubble.count, 1) * 16, options: .storageModeShared)
+            else { throw BlastError.allocationFailed("the rubble's census split") }
+            memset(work.contents(), 0, work.length)
+            rubble.work = work
+        }
+        // The element kernels sum the air's work on faces apart, in the cracked points' slot.
+        if crackedPointBuffer == nil, let traced = elementConstants.copy() as? MTLFunctionConstantValues {
+            var on = true
+            traced.setConstantValue(&on, type: .bool, index: 28)
+            elementPipeline = try ShaderLibrary.pipeline(
+                "structureElements", in: elementLibrary, constants: traced)
+            if tracesWork, let working = traced.copy() as? MTLFunctionConstantValues {
+                working.setConstantValue(&on, type: .bool, index: 3)
+                tracingPipeline = try ShaderLibrary.pipeline(
+                    "structureElements", in: elementLibrary, constants: working)
+            }
+            faceWorkBuffer = device.makeBuffer(length: max(elementCount, 1) * 4, options: .storageModeShared)
+            if let faceWorkBuffer { memset(faceWorkBuffer.contents(), 0, faceWorkBuffer.length) }
+        }
+        let contact = MTLFunctionConstantValues()
+        var on = true
+        var rubble = rubbleSystem != nil
+        if rubble { contact.setConstantValue(&rubble, type: .bool, index: 12) }
+        contact.setConstantValue(&on, type: .bool, index: 28)
+        tracedContactForces = try ShaderLibrary.pipeline(
+            "contactForces", in: elementLibrary, constants: contact)
+        tracingNodes = pipeline
+        externalWorkBuffer = buffer
+        externalWorkFolded = ExternalWork()
+    }
+
+    /// The work done on the body by each source since `traceExternalWork()` (J). The kernels sum
+    /// each substep's in single precision; each call folds those into double and starts them
+    /// again, so call it often (between batches) over a long run.
+    public struct ExternalWork: Sendable {
+        /// On the nodes: by their elements' forces (minus the elements' own work, as the work
+        /// trace counts it, when all is consistent), the air's push on loose nodes, contact (with
+        /// nodes and particles), the shell links, the anchors (and the discrete bars), the joints'
+        /// pairs, and what the change in kinetic energy leaves: the ground, damping and held axes.
+        public var elements = 0.0
+        public var air = 0.0
+        public var contact = 0.0
+        /// Of `contact`, the particles' share, and the node-substeps on which contact's push on a
+        /// node was capped (`contactKick`).
+        public var contactWithParticles = 0.0
+        public var cappedSubsteps = 0.0
+        public var links = 0.0
+        public var anchors = 0.0
+        public var pairs = 0.0
+        public var ground = 0.0
+        /// Of `ground` and `particleGround`, the step's own share: half each mass times the square
+        /// of its change in velocity, which a free node's kinetic energy at half steps loses
+        /// against its force's work.
+        public var step = 0.0
+        /// Of the elements' work, the air's on their faces (bodies without cracked points).
+        public var airOnFaces = 0.0
+        /// On the particles: contact, the air, and the ground with damping.
+        public var particleContact = 0.0
+        public var particleAir = 0.0
+        public var particleGround = 0.0
+    }
+
+    /// The census split so far (`traceExternalWork`).
+    public func externalWork() -> ExternalWork {
+        guard let buffer = externalWorkBuffer else { return ExternalWork() }
+        var w = externalWorkFolded
+        let values = buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: 4 * max(nodeCount, 1))
+        for n in 0..<nodeCount {
+            let a = values[4 * n]
+            let b = values[4 * n + 1]
+            let c = values[4 * n + 3]
+            w.contactWithParticles += Double(c.x)
+            w.cappedSubsteps += Double(c.y)
+            // The particles' share of this substep's contact force stays for the next.
+            values[4 * n] = .zero
+            values[4 * n + 1] = .zero
+            values[4 * n + 3] = .zero
+            w.elements += Double(a.x)
+            w.air += Double(a.y)
+            w.contact += Double(a.z)
+            w.links += Double(a.w)
+            w.anchors += Double(b.x)
+            w.pairs += Double(b.y)
+            w.ground += Double(b.z)
+            w.step += Double(b.w)
+        }
+        if let faceWorkBuffer {
+            let faces = faceWorkBuffer.contents().bindMemory(to: Float.self, capacity: max(elementCount, 1))
+            for n in 0..<elementCount { w.airOnFaces += Double(faces[n]) }
+            memset(faceWorkBuffer.contents(), 0, faceWorkBuffer.length)
+        }
+        if let rubble = rubbleSystem, let work = rubble.work {
+            let values = work.contents().bindMemory(to: SIMD4<Float>.self, capacity: max(rubble.count, 1))
+            for n in 0..<rubble.count {
+                w.particleContact += Double(values[n].x)
+                w.particleAir += Double(values[n].y)
+                w.particleGround += Double(values[n].z)
+                w.step += Double(values[n].w)
+            }
+            memset(work.contents(), 0, work.length)
+        }
+        externalWorkFolded = w
+        return w
     }
 
     /// Marks every record unwritten (NaN), so that `nodeTrace` returns only the next encode's.
@@ -1984,7 +2112,8 @@ public final class StructureSolver {
                 tracesWork ? workBuffer ?? placeholderBuffer : placeholderBuffer, offset: 0, index: 28)
             encoder.setBuffer(crackedElementBuffer ?? placeholderBuffer, offset: 0, index: 29)
             encoder.setBuffer(
-                elementTraceBuffer ?? crackedPointBuffer ?? placeholderBuffer, offset: 0, index: 30)
+                elementTraceBuffer ?? faceWorkBuffer ?? crackedPointBuffer ?? placeholderBuffer, offset: 0,
+                index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: elementCount, height: 1, depth: 1), threadsPerThreadgroup: group)
 
@@ -2041,7 +2170,8 @@ public final class StructureSolver {
                                 threadsPerThreadgroup: group)
                         }
                     }
-                    encoder.setComputePipelineState(pipeline)
+                    encoder.setComputePipelineState(
+                        pipeline === contactForcePipeline ? tracedContactForces ?? pipeline : pipeline)
                     encoder.setBuffer(nodeListBuffer, offset: 0, index: 0)
                     encoder.setBuffer(nodeBuffer, offset: 0, index: 1)
                     encoder.setBuffer(contactHeadBuffer, offset: 0, index: 2)
@@ -2056,6 +2186,7 @@ public final class StructureSolver {
                         encoder.setBuffer(rubbleSystem?.heads ?? placeholderBuffer, offset: 0, index: 10)
                         encoder.setBuffer(rubbleSystem?.slots ?? placeholderBuffer, offset: 0, index: 11)
                         encoder.setBuffer(rubbleSystem?.state ?? placeholderBuffer, offset: 0, index: 12)
+                        encoder.setBuffer(externalWorkBuffer ?? placeholderBuffer, offset: 0, index: 14)
                     } else {
                         encoder.setBuffer(contactSlotBuffer, offset: 0, index: 6)
                     }
@@ -2177,7 +2308,9 @@ public final class StructureSolver {
             encoder.setBuffer(pairs?.nodeStart ?? placeholderBuffer, offset: 0, index: 28)
             encoder.setBuffer(pairs?.nodeEntries ?? placeholderBuffer, offset: 0, index: 29)
             encoder.setBuffer(
-                nodeTraceBuffer ?? discreteBarSystem?.nodeForce ?? placeholderBuffer, offset: 0, index: 30)
+                nodeTraceBuffer ?? externalWorkBuffer ?? discreteBarSystem?.nodeForce ?? placeholderBuffer,
+                offset: 0,
+                index: 30)
             encoder.dispatchThreads(
                 MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             if let terrainLandingPipeline {
@@ -2193,7 +2326,7 @@ public final class StructureSolver {
                     MTLSize(width: nodeCount, height: 1, depth: 1), threadsPerThreadgroup: group)
             }
             if let rubble = rubbleSystem {
-                encoder.setComputePipelineState(rubble.move)
+                encoder.setComputePipelineState(rubble.tracedMove ?? rubble.move)
                 encoder.setBuffer(rubble.particles, offset: 0, index: 0)
                 encoder.setBuffer(rubble.forces, offset: 0, index: 1)
                 encoder.setBuffer(failureGateBuffer, offset: 0, index: 2)
@@ -2207,6 +2340,7 @@ public final class StructureSolver {
                 encoder.setBuffer(rubble.state, offset: 0, index: 10)
                 encoder.setBytes(&terrain.uniforms, length: MemoryLayout<TerrainUniforms>.stride, index: 11)
                 encoder.setBuffer(terrain.heights, offset: 0, index: 12)
+                encoder.setBuffer(rubble.work ?? placeholderBuffer, offset: 0, index: 13)
                 encoder.dispatchThreads(
                     MTLSize(width: rubble.count, height: 1, depth: 1), threadsPerThreadgroup: group)
             }

@@ -137,7 +137,7 @@ storeys (resumed from the 2 s checkpoint with the census's power columns): the n
 grew at 9.5 MW, while contact put in 1.3 MW on average and the joints between parts 0.85 MW,
 both of which should take energy out, not put it in. Instantaneous samples of ringing forces are
 noisy, but both lean positive throughout. The other 7 MW is in the air, the ground or the trace's
-own count, which the census cannot yet tell apart.
+own count, which the census could not then tell apart (section 5 does).
 
 ### 3. Elements distorted past the step's reach (fixed, 23 October 2026)
 
@@ -209,7 +209,66 @@ state and force parts of one element; opt-in, compiled out when off).
 | With rubble | 15 m/s | up to 0.17 MJ | 1.35 → 1.58 MJ (+17%) |
 
 - **The step-2 gate is met without rubble:** no node past 50 m/s, the budget flat to ±5%.
-- **With rubble the budget still drifts**, with no fast node: the census split, still open.
+- **With rubble the budget still drifts**, with no fast node: section 5.
+
+### 5. The census split, and the rubble's drift (23 October 2026)
+
+`blastbench wholeevent --split-work` sums every node's and particle's work by each source, each
+substep, over the way it actually moved (`StructureSolver.traceExternalWork`, kernels made again
+with the sums compiled in, none of it when off), and writes `work-split.csv` at each sample:
+- the air's work on the elements' faces, on loose nodes and on particles;
+- contact on the nodes (and of it, the particles' share) and on the particles;
+- the joints' pairs, the anchors and the shell links;
+- the ground, damping and held axes;
+- and two terms of the census's own:
+  - the step's share: a node's kinetic energy at half steps changes by its force's work less ½ m |Δv|²;
+  - the elements' force on their nodes less their work as the trace counts it.
+
+The split closes to within a joule in 1.5 MJ: the conversion to rubble passes energy across
+exactly. On the three-storey block, 0.3 to 1.5 s, it showed three things.
+
+- **The blast's work is flat.** The air's work on faces is 1.31–1.33 MJ after 0.3 s, asleep or
+  awake; the frozen air is not a reservoir.
+- **The census counts work that is not there.** The trace takes each step's work with the
+  stress after it, which counts half of each step's change in stress times its change in strain
+  again, always positive. On a free elastic block set ringing with 0.19 J, the trace's elastic channels
+  reached 25 J in 10 ms while the kinetic energy stayed near 0.05 J, and halving the step halved
+  it. On the block it adds 0.1–0.4 MJ by 1.5 s, more the more the body rings, without rubble too;
+  it is why the budget without rubble reads +1.5% in one build and +11% in another. It does not
+  move the run, only its count.
+- **With rubble, contact put energy in.** It took 254 kJ to 1.4 s, while without rubble contact
+  took energy out. Two causes:
+  - **A particle caged by its own element's corners.** Its reach was set from them as it was
+    made, and as the body settled they closed in: 48–268 corners overlapped their particle by
+    up to 2 cm. A contact's push reaches its cap (`contactKick`, 2 m/s a substep) at 0.2 mm of
+    overlap, and a pair is pushed until it separates at 1 m/s, so each such corner was pushed out
+    with all the cap allowed, every substep. **Fix:** a particle overlapped deeper than the cap's
+    0.2 mm gives up its reach to it, as crushed debris would, and the spring's energy past it is
+    lost (`rubbleForces`). Weight overlaps it by nanometres and a 5 m/s impact by a fraction of
+    the depth. Test: `RubbleParticleTests.cagedParticleIsCrushed`, a particle grown into its cage
+    by 14 mm; without the fix it fails.
+  - **Nodes left with grams of steel.** With rubble, a node whose concrete has all gone keeps only
+    its bars' share. Each node's push is capped by its own mass, so such a node pressed by a heavy
+    one took less than the heavy one took back: 80 kJ as the bay landed, and in one run four 7 g
+    nodes thrown at 340–770 m/s. **Fix:** with rubble, each pair of nodes' push is capped at the
+    lighter's kick, the same on both (`contactForces`).
+  Both are in rubble's code alone, so runs without it are unchanged, to the bit (the default
+  digests, and the run above without rubble).
+
+**After both**, on the three-storey block from the start to 1.5 s, with rubble:
+
+| | Fastest node, 0.3–1.5 s | Net external work, 0.3 → 1.5 s | Contact's work |
+|---|---|---|---|
+| Before | 15 m/s | 1.35 → 1.58 MJ (+17%) | +254 kJ (nodes), +17 kJ (particles) |
+| After | 13 m/s | 1.42 → 1.55 MJ (+9.4%) | −97 kJ, −8 kJ (a split run, +3.5%) |
+
+- **No fast node, and every source behaves.** The air's work is flat after the blast. Contact,
+  the joints and the ground only take energy out.
+- **The ±5% gate on the census is not one a model can pass.** What is left of the budget's rise
+  is the trace's count of work that is not there. Less that count, the split run's net external work falls by 6% (contact and joint
+  slip dissipating), and without rubble by 4%. A trace that took each step's work with the mean of
+  the stresses before and after it would remove the count; it touches every mechanism's channel,
+  and every bench that reads the trace, so it is left for its own change.
 
 ### Contact, the step and the memory: not near a limit
 

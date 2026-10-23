@@ -343,6 +343,15 @@ constant bool tracesNode = is_function_constant_defined(nodeTraceConstant) && no
 // Each substep's record: float4s, `nodeTraceStride` of them (see `structureNodes`).
 constant uint nodeTraceStride = 18;
 constant uint elementTraceStride = 32;
+// The work each source does on every node, summed each substep (`StructureSolver.traceExternalWork`),
+// for splitting the energy census of a long run (emmettl/bombcad-work#36); compiled in only when
+// asked, into the same slot as the node trace. Four float4s a node: the elements', the air's,
+// contact's and the links' work; the anchors', the pairs', what is left of the change in its
+// kinetic energy (the ground, damping, held axes and the step's own), and the step's own; the
+// particles' share of its contact force this substep and the cap's scale on it (`contactForces`);
+// and the particles' share of contact's work and the substeps its contact was capped.
+constant bool externalWorkConstant [[function_constant(28)]];
+constant bool tracesExternalWork = is_function_constant_defined(externalWorkConstant) && externalWorkConstant;
 constant bool releasesCrushedBareHourglass =
     is_function_constant_defined(crushedBareHourglassConstant) && crushedBareHourglassConstant;
 // Gravity turned from straight down (`gravityDirection`); otherwise the node kernels pull down
@@ -3001,6 +3010,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
                     out.force[a] = float3(out.force[a]) + load;
                 }
             }
+            if (tracesExternalWork) {
+                // The air's work on the face, apart from the element's own (the census split), in
+                // the cracked points' slot (bodies without them).
+                float3 moving = float3(0.0f);
+                for (uint a = 0; a < 8; ++a) {
+                    if (((a >> axis) & 1u) == side) {
+                        moving += v[a];
+                    }
+                }
+                (reinterpret_cast<device float *>(crackedPoints))[compact] += dot(load, moving) * dt;
+            }
         }
     }
 
@@ -3368,6 +3388,7 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                           const device uint *rubbleSlots [[buffer(11)]],
                           const device uint *rubbleState [[buffer(12)]],
                           const device uint *moved [[buffer(13)]],
+                          device float4 *externalWork [[buffer(14)]],
                           uint threadIndex [[thread_position_in_grid]]) {
     bool active;
     float dt = structureStep(u, control, active);
@@ -3375,6 +3396,9 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
         return;
     }
     StructureNode node = nodes[threadIndex];
+    if (tracesExternalWork) {
+        externalWork[4 * threadIndex + 2] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
     if ((node.flags & nodeBuried) != 0) {
         contact[threadIndex] = float3(0.0f);
         return;
@@ -3442,6 +3466,15 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
                     float3 relative = float3(node.velocity) - float3(partner.velocity);
                     float approach = dot(relative, normal);
                     float push = approach > separationLimit ? 0.0f : max(stiffness * (u.h - distance) - damping * approach, 0.0f);
+                    if (rubbleParticles) {
+                        // With rubble a node can keep only grams of steel. Capped on its own (below),
+                        // such a node pressed by a heavy one took less than the heavy one took
+                        // back: forces that are not equal and opposite, which put tens of
+                        // kilojoules into the large-panel block as its bay landed, and threw nodes
+                        // of 7 g at hundreds of metres a second (emmettl/bombcad-work#36). So each
+                        // pair's push is capped at the lighter's kick, the same for both.
+                        push = min(push, mass * contactKick / max(dt, 1e-12f));
+                    }
                     force += push * normal;
 
                     // Coulomb friction, regularised as a damper at low sliding speed.
@@ -3463,6 +3496,14 @@ kernel void contactForces(const device uint *nodeList [[buffer(0)]],
         force *= largest / size;
     }
     contact[threadIndex] = force;
+    if (tracesExternalWork) {
+        // For the census split: the particles' share of the force as capped, and the cap's scale.
+        float scale = size > largest ? largest / size : 1.0f;
+        float3 rubble = rubbleParticles && rubbleState[0] != 0
+            ? rubbleOnNode(position, float3(node.velocity), node.mass, particles, rubbleHeads, rubbleSlots, u)
+            : float3(0.0f);
+        externalWork[4 * threadIndex + 2] = float4(scale * rubble, scale);
+    }
 }
 
 // Gathers element forces at every node and advances velocity and position.
@@ -4076,6 +4117,30 @@ kernel void structureNodes(device StructureNode *nodes [[buffer(0)]],
     if (exchangeCell >= 0) {
         recordExchange(exchange, exchangeCell, airForce, 0.5f * (float3(node.velocity) + velocity), dt,
                        u.fluidCell);
+    }
+    if (tracesExternalWork) {
+        // Each force's work over the way the node actually moved; gravity's from its pull. What
+        // the change in kinetic energy leaves is the ground's, damping's and the held axes'.
+        float3 moved = displacement - float3(node.displacement);
+        float3 before = float3(node.velocity);
+        float3 pull = turnedGravity ? gravityPull(u) : float3(0.0f, 0.0f, u.gravity);
+        float3 contactForce = contactEnabled(u, failureGate) ? float3(contact[threadIndex]) : float3(0.0f);
+        float elementWork = dot(elementForce, moved);
+        float airWork = dot(airForce, moved);
+        float contactWork = dot(contactForce, moved);
+        float linkWork = dot(beforeConnections - elementForce - airForce - contactForce, moved);
+        float anchorWork = dot(beforePairs - beforeConnections, moved);
+        float pairWork = dot(force - beforePairs, moved);
+        float kinetic = 0.5f * node.mass * dot(velocity - before, velocity + before);
+        float rest = kinetic + node.mass * dot(pull, moved)
+            - (elementWork + airWork + contactWork + linkWork + anchorWork + pairWork);
+        device float4 *work = const_cast<device float4 *>(barNodeForce) + 4 * threadIndex;
+        float4 fromParticles = contactEnabled(u, failureGate) ? work[2] : float4(0.0f, 0.0f, 0.0f, 1.0f);
+        work[3] += float4(dot(fromParticles.xyz, moved), fromParticles.w < 1.0f ? 1.0f : 0.0f, 0.0f, 0.0f);
+        work[0] += float4(elementWork, airWork, contactWork, linkWork);
+        // Of what is left, the step's own: a free node's kinetic energy at half steps changes by
+        // its force's work less half its mass times the square of its change in velocity.
+        work[1] += float4(anchorWork, pairWork, rest, -0.5f * node.mass * length_squared(velocity - before));
     }
     if (tracesNode && traced) {
         // Velocity before and mass; the elements' force, intact and bare counts; contact (and the

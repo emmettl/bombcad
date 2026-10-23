@@ -23,6 +23,11 @@ final class RubbleSystem {
     let force: MTLComputePipelineState
     let move: MTLComputePipelineState
     let areas: MTLComputePipelineState
+    let library: MTLLibrary
+    /// With the census split (`StructureSolver.traceExternalWork`): the move kernel with each
+    /// particle's work by source compiled in, and that work (a float4 a slot).
+    var tracedMove: MTLComputePipelineState?
+    var work: MTLBuffer?
 
     /// `masses` is each element's mass and the share of it that is steel; zero mass for elements
     /// that do not turn to rubble.
@@ -35,6 +40,7 @@ final class RubbleSystem {
             buffer.label = label
             return buffer
         }
+        self.library = library
         count = elementMasses.count
         particles = try buffer(count * MemoryLayout<RubbleParticle>.stride, "rubble particles")
         masses = try buffer(count * 8, "rubble masses")

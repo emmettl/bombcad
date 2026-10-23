@@ -175,4 +175,73 @@ extension StructureSolver {
         }
         return c
     }
+
+    /// How far rubble's contacts overlap now (emmettl/bombcad-work#36): between particles (their
+    /// pair reach less their distance) and between a particle and a node of the body, the pairs
+    /// overlapping by more than `beyond` (m) and the deepest overlap (m). A penalty spring capped
+    /// at `contactKick` a substep is capped beyond a fraction of a millimetre, so a pair overlapped
+    /// deeper is pushed with all the cap allows for as long as it stays so. Nodes of the element a
+    /// particle was made from (its corners) are counted apart from the rest.
+    public func rubbleOverlaps(beyond: Float = 2e-4) -> (
+        particlePairs: Int, deepestBetweenParticles: Float, nodePairs: Int, deepestOnNodes: Float,
+        ownCornerPairs: Int, deepestOnOwnCorners: Float
+    ) {
+        guard let rubble = rubbleSystem else { return (0, 0, 0, 0, 0, 0) }
+        let cells = instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(elementCount, 1))
+        let h = model.elementSize
+        let particles = rubble.particles.contents().bindMemory(
+            to: RubbleParticle.self, capacity: rubble.count)
+        func cell(_ p: SIMD3<Float>) -> SIMD3<Int32> { SIMD3<Int32>((p / h).rounded(.down)) }
+        var grid: [SIMD3<Int32>: [Int]] = [:]
+        for n in 0..<rubble.count where particles[n].alive != 0 {
+            grid[cell(particles[n].position), default: []].append(n)
+        }
+        var result: (Int, Float, Int, Float, Int, Float) = (0, 0, 0, 0, 0, 0)
+        let offsets = (-1...1).flatMap { z in
+            (-1...1).flatMap { y in (-1...1).map { x in SIMD3<Int32>(x, y, z) } }
+        }
+        for (c, members) in grid {
+            for n in members {
+                let p = particles[n]
+                for o in offsets {
+                    for m in grid[c &+ o] ?? [] where m > n {
+                        let q = particles[m]
+                        let overlap = (p.reach + q.reach) * 0.57735027 - simd_length(p.position - q.position)
+                        if overlap > beyond { result.0 += 1 }
+                        result.1 = max(result.1, overlap)
+                    }
+                }
+            }
+        }
+        let list = nodeListBuffer.contents().bindMemory(to: UInt32.self, capacity: max(nodeCount, 1))
+        let nodesX = ex + 1
+        let nodesY = ey + 1
+        mutateNodes { nodes in
+            for n in 0..<nodes.count {
+                let node = nodes[n]
+                guard node.mass > 0, node.flags & 32 == 0 else { continue }
+                let index = Int(list[n])
+                let lattice = SIMD3<Float>(
+                    Float(index % nodesX), Float((index / nodesX) % nodesY), Float(index / (nodesX * nodesY)))
+                let position = origin + lattice * h + node.displacement
+                let c = cell(position)
+                for o in offsets {
+                    for m in grid[c &+ o] ?? [] {
+                        let overlap = particles[m].reach - simd_length(position - particles[m].position)
+                        let (i, j, k) = elementCoordinates(Int(cells[m]))
+                        let corner =
+                            SIMD3<Int>(Int(lattice.x), Int(lattice.y), Int(lattice.z)) &- SIMD3(i, j, k)
+                        if corner.min() >= 0 && corner.max() <= 1 {
+                            if overlap > beyond { result.4 += 1 }
+                            result.5 = max(result.5, overlap)
+                        } else {
+                            if overlap > beyond { result.2 += 1 }
+                            result.3 = max(result.3, overlap)
+                        }
+                    }
+                }
+            }
+        }
+        return result
+    }
 }

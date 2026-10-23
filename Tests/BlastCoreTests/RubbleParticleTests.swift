@@ -218,4 +218,38 @@ struct RubbleParticleTests {
         }
         #expect(largest.isFinite && largest < 5)
     }
+
+    @Test("A particle its element's corners close in on is crushed, not sprung")
+    func cagedParticleIsCrushed() throws {
+        // An elastic block, floating, its middle element turned to rubble: its corners, still
+        // held by the elements round them, cage the particle. With its reach grown by a third
+        // they overlap it by 14 mm, as corners closing in did on the large-panel block (#36),
+        // where the capped push drove them out every substep. Crushed instead, the particle gives
+        // up its reach at once and puts in no more than a step's push.
+        let h: Float = 0.05
+        var material = StructureMaterial.concrete(name: "Elastic", compressiveStrength: 30e6)
+        material.tensileStrength = 1e12
+        var model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, 1), max: SIMD3(0.15, 0.15, 1.15))], material: material,
+            elementSize: h,
+            fixedBase: false)
+        model.rubbleParticles = true
+        let solver = try StructureSolver(device: device, model: model)
+        solver.gravity = 0
+        solver.groundContact = false
+        solver.tracesWork = true
+        solver.failElement(1, 1, 1)
+        solver.advance(steps: 1)
+        let rubble = try #require(solver.rubbleSystem)
+        let particles = rubble.particles.contents().bindMemory(
+            to: RubbleParticle.self, capacity: rubble.count)
+        let slot = try #require((0..<rubble.count).first { particles[$0].alive != 0 })
+        let grown = 1.33 * particles[slot].reach
+        particles[slot].reach = grown
+        solver.advance(steps: 2000)
+        let state = solver.massMomentumEnergy()
+        let energy = state.kinetic + state.internalEnergy + solver.workTotals().reduce(0, +)
+        #expect(particles[slot].reach < grown - 0.01)
+        #expect(energy < 20, "\(energy) J")
+    }
 }
