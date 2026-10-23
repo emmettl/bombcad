@@ -187,6 +187,13 @@ public final class StructureSolver {
     /// The element kernel's specialisation and its library, to specialise it again (`readStructureCutCells`).
     private let elementConstants: MTLFunctionConstantValues
     private let elementLibrary: MTLLibrary
+    /// The specialisation `elementPipeline` was made with, and the same kernel without the faces'
+    /// loads, for substeps that have none (`unloadedElementPipeline`), made when first wanted.
+    private var elementPipelineConstants: MTLFunctionConstantValues
+    private var unloadedPipeline: MTLComputePipelineState?
+    /// Whether substeps without face loads use the element kernel made for them; false only to
+    /// check that it gives the same, to the bit.
+    var specialisesUnloadedSubsteps = true
     private var tracingPipeline: MTLComputePipelineState?
     private let nodePipeline: MTLComputePipelineState
     /// The node kernel recording one node's forces each substep (`traceNode`), made when asked.
@@ -320,6 +327,7 @@ public final class StructureSolver {
         }
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
         elementConstants = constants
+        elementPipelineConstants = constants
         elementLibrary = library
         traceElementPipeline = {
             let tracing = MTLFunctionConstantValues()
@@ -1120,6 +1128,8 @@ public final class StructureSolver {
         traced.setConstantValue(&on, type: .bool, index: 27)
         elementPipeline = try ShaderLibrary.pipeline(
             "structureElements", in: elementLibrary, constants: traced)
+        elementPipelineConstants = traced
+        unloadedPipeline = nil
         if tracesWork, let working = traced.copy() as? MTLFunctionConstantValues {
             working.setConstantValue(&on, type: .bool, index: 3)
             tracingPipeline = try ShaderLibrary.pipeline(
@@ -1223,6 +1233,8 @@ public final class StructureSolver {
             traced.setConstantValue(&on, type: .bool, index: 28)
             elementPipeline = try ShaderLibrary.pipeline(
                 "structureElements", in: elementLibrary, constants: traced)
+            elementPipelineConstants = traced
+            unloadedPipeline = nil
             if tracesWork, let working = traced.copy() as? MTLFunctionConstantValues {
                 working.setConstantValue(&on, type: .bool, index: 3)
                 tracingPipeline = try ShaderLibrary.pipeline(
@@ -1439,6 +1451,8 @@ public final class StructureSolver {
         constants.setConstantValue(&on, type: .bool, index: ShaderLibrary.structureCutConstant)
         let library = elementLibrary
         elementPipeline = try ShaderLibrary.pipeline("structureElements", in: library, constants: constants)
+        elementPipelineConstants = constants
+        unloadedPipeline = nil
         // Tracing work's specialisation is the same with its work traced (constant 3).
         guard let tracing = constants.copy() as? MTLFunctionConstantValues else { return }
         var traced = true
@@ -2074,11 +2088,17 @@ public final class StructureSolver {
         // Loose debris adds up its frontal area in each air cell before the substeps, for the
         // implicit form of its drag. There is none until something has failed.
         if prelude, let fluid, !fluid.debrisAreasPrepared { encodeDebrisAreas(encoder, fluid: fluid) }
+        // Without air or a prescribed pressure, no face is loaded.
+        let elements =
+            tracesWork
+            ? tracingPipeline ?? elementPipeline
+            : uniforms.coupled == 0 && uniforms.loadCount == 0 && specialisesUnloadedSubsteps
+                ? unloadedElementPipeline() : elementPipeline
 
         for substep in substeps {
             uniforms.substep = UInt32(substep)
             uniforms.loadTime = Float(time + Double(substep) * Double(criticalTimeStep))
-            encoder.setComputePipelineState(tracesWork ? tracingPipeline ?? elementPipeline : elementPipeline)
+            encoder.setComputePipelineState(elements)
             encoder.setBuffer(stateBuffer, offset: 0, index: 0)
             encoder.setBuffer(forceBuffer, offset: 0, index: 1)
             encoder.setBuffer(flagBuffer, offset: 0, index: 2)
@@ -2386,6 +2406,25 @@ public final class StructureSolver {
             time += Double(count) * Double(criticalTimeStep)
             remaining -= count
         }
+    }
+
+    /// The element kernel for substeps whose faces take no load (neither air nor a prescribed
+    /// pressure), with the faces' loads compiled out (`faceLoads` in Structure.metal); the general
+    /// kernel if it cannot be made.
+    private func unloadedElementPipeline() -> MTLComputePipelineState {
+        if let unloadedPipeline { return unloadedPipeline }
+        var pipeline = elementPipeline
+        if let constants = elementPipelineConstants.copy() as? MTLFunctionConstantValues {
+            var loaded = false
+            constants.setConstantValue(&loaded, type: .bool, index: ShaderLibrary.faceLoadsConstant)
+            if let unloaded = try? ShaderLibrary.pipeline(
+                "structureElements", in: elementLibrary, constants: constants)
+            {
+                pipeline = unloaded
+            }
+        }
+        unloadedPipeline = pipeline
+        return pipeline
     }
 
     /// The GPU's time for a substep lately, to size `advance`'s command buffers.

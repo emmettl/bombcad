@@ -358,6 +358,13 @@ constant bool releasesCrushedBareHourglass =
 // exactly as they always have, since the fast-math compiler can round another expression differently.
 constant bool turnedGravityConstant [[function_constant(4)]];
 constant bool turnedGravity = is_function_constant_defined(turnedGravityConstant) && turnedGravityConstant;
+// Faces loaded by the air or by a prescribed pressure history (`u.coupled`, `u.loadCount`). Substeps
+// with neither, as of a body run on its own or settling under its own weight before the blast, get
+// the element kernel with this false and the faces' loads compiled out: the rest of the kernel is
+// the same to the bit, and a body alone steps an eighth faster. Undefined, as for every other
+// substep, they are in.
+constant bool faceLoadsConstant [[function_constant(40)]];
+constant bool faceLoads = !is_function_constant_defined(faceLoadsConstant) || faceLoadsConstant;
 
 // Each cell of the contact grid holds up to this many nodes, as the shells' does. With four,
 // debris packed onto 25 mm elements overflowed it: the nodes left out sank into the others and
@@ -654,6 +661,21 @@ static inline void symmetricEigen(float3x3 a, thread float3 &values, thread floa
     }
     values = float3(a[0][0], a[1][1], a[2][2]);
     vectors = v;
+}
+
+// Whether every eigenvalue of `a` lies below `limit` by more than `symmetricEigen`'s rounding could
+// carry one across it: the top of the Gershgorin discs (each diagonal entry plus the sizes of the
+// rest of its row, the larger of each off-diagonal pair), widened by a thousandth of the matrix's
+// size. Then the eigenvalues need not be found to know that none passes the limit.
+static inline bool eigenvaluesBelow(float3x3 a, float limit) {
+    float3 diagonal = float3(a[0][0], a[1][1], a[2][2]);
+    float xy = max(fabs(a[1][0]), fabs(a[0][1]));
+    float yz = max(fabs(a[2][1]), fabs(a[1][2]));
+    float zx = max(fabs(a[0][2]), fabs(a[2][0]));
+    float3 radius = float3(xy + zx, xy + yz, yz + zx);
+    float3 top = diagonal + radius;
+    float3 size = abs(diagonal) + radius;
+    return max(top.x, max(top.y, top.z)) + 1e-3f * max(size.x, max(size.y, size.z)) < limit;
 }
 
 // Tensile stress of concrete on its envelope, at the largest strain it has reached. `increase`
@@ -1274,10 +1296,16 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     effective[0][0] += dilation;
     effective[1][1] += dilation;
     effective[2][2] += dilation;
-    float3 principal;
-    float3x3 axes;
-    symmetricEigen(effective, principal, axes);
-    bool cracking = max(principal.x, max(principal.y, principal.z)) > onset;
+    float3 principal = float3(0.0f);
+    float3x3 axes = float3x3(1.0f);
+    // Most of a body is far from cracking. Where no principal value can reach the onset, and the
+    // axes are not turning with the principal directions, those are not needed: nothing below
+    // uses them unless one passes the onset.
+    bool belowOnset = !turning && eigenvaluesBelow(effective, onset);
+    if (!belowOnset) {
+        symmetricEigen(effective, principal, axes);
+    }
+    bool cracking = !belowOnset && max(principal.x, max(principal.y, principal.z)) > onset;
     if ((!framed && cracking) || turning) {
         // The crack axes become the principal axes of this strain: at the first crack, and
         // every step while they still turn. Turning, each axis takes the principal direction
@@ -1344,7 +1372,7 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
             }
         }
     }
-    for (int i = 0; i < 3 && joints == 0u; ++i) {
+    for (int i = 0; i < 3 && joints == 0u && !belowOnset; ++i) {
         float3 weight = axes[i] * axes[i];
         float seen = dot(weight, history);
         if (principal[i] > seen && principal[i] > onset) {
@@ -1675,7 +1703,8 @@ static inline __attribute__((always_inline)) ConcreteLawResult concreteLaw(
     // next step's sees it in full.
     if (u.secondCracks != 0 && framed && !turning) {
         float4 second = float4(state.secondCrack);
-        if (second.w == 0.0f) {
+        // (Unless no principal stress can pass the strength, when it cannot form.)
+        if (second.w == 0.0f && !eigenvaluesBelow(material, m.tensileStrength * tensionFactor)) {
             float3 values;
             float3x3 directions;
             symmetricEigen(material, values, directions);
@@ -2962,7 +2991,7 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
 
     // Pressure on faces that border the air or a failed element, on the deformed geometry: the
     // blast from the air solver, and any prescribed pressure history. Bare bars catch none.
-    if ((u.coupled != 0 || u.loadCount != 0) && !bare) {
+    if (faceLoads && (u.coupled != 0 || u.loadCount != 0) && !bare) {
         float applied = tablePressure(loadTable, u.loadCount, u.loadTime);
         float3 centre = float3(0.0f);
         for (uint a = 0; a < 8; ++a) {

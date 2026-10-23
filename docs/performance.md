@@ -553,7 +553,8 @@ state), and the second has gained from leaving buried nodes out of contact (belo
   substep's node pass would save a dispatch and a read of every node. Rooms and car parks of
   rigid objects spend under 1% of their time on contact: their cost is coupling to the air.
 - Skipping the eigenvalue problem that finds diagonal cracks, for elements strained below
-  cracking, was tried and made no measurable difference.
+  cracking, was tried and made no measurable difference. Since 23 October it is skipped where a
+  bound says no principal strain can reach the onset, which gains 3% ([below](#structure-step-cost)).
 - Reading each element's material from a table (for structures of several materials) cost
   12%; compiling a specialised kernel for structures of one material recovers about half.
 - The residual crack opening and the cyclic steel law cost about 8%. The cyclic law's history
@@ -584,6 +585,62 @@ state), and the second has gained from leaving buried nodes out of contact (belo
   now hold eight, and the table has four entries per node to keep its memory: contact
   throughput fell by about 6% (108 to 111 against 117 million element-updates per second,
   measured back to back).
+
+
+### Structure step cost
+
+Measured on 23 October 2026 (`blastbench structure`, the 225,000-element building alone, two
+rounds each, interleaved, each in `gpu-slot`; no other process used more than 5% of the GPU, the
+two rounds within 0.5% of each other). The builds kept from the first `make perf` runs
+(`/Volumes/StudioData/bombcad/perf/bisect/`), in the order they reached main, and today's:
+
+| Build | Steps/s | Change | What it added |
+|---|---|---|---|
+| 1eb47fa2 (3 Oct) | 1,938 | | |
+| c74041b2 | 1,977 | +2% | shells, debris exchange, afterburning |
+| 1c7720bc | 1,782 | −10% | compaction (Holmquist-Johnson-Cook) |
+| da16258e | 1,741 | −2% | crack axes that turn |
+| 9e693181 | 1,723 | −1% | residual crack opening |
+| 5f920ba4 | 1,554 | −10% | the second crack (6030a01c) |
+| 5c3d6105 | 1,473 | −5% | eight contact slots, inclined bars, the steel-aware step |
+| 239a67ee | 1,433 | −3% | masonry joints, bare bars, the Model Code's tension law, sliding cracks |
+| d5e57117 | 1,395 | −3% | |
+| c2dcf7f2 | 1,296 | −7% | bars strained at the rate of their debonded length |
+| 170cc1c8 (8 Oct) | 1,294 | | |
+| 8da9b98d (23 Oct) | 1,220 | −6% | everything since |
+
+Where today's step goes, from builds whose shaders were edited to leave things out (results not
+kept; the run's elements are all far from cracking under gravity alone):
+
+- The element pass is 85% of the step, the node pass 12% (nodes alone run 10,500 steps a
+  second, and are bound by memory). Not writing the element state back saves 15% of the
+  element pass, not writing the forces 2%: the pass is not bound by memory.
+- **Most of the loss is code that does not run.** Compiling out every path that this run never
+  takes (finding principal strains, crack axes, the second crack, interlock and dowels on open
+  cracks, dilatancy, compaction's pressure, the search for bars bridging a crack, the cyclic bar
+  law, the faces' loads, bond slip, fragments) gives 1,830 steps a second, 44% more, back to
+  3 October's speed. Skipping the same paths with a branch that is never taken gains nothing:
+  their presence, which the compiler pays for over the whole kernel, is the cost, not their
+  work. Alone, the faces' loads cost 9% (when nothing loads them), the bars' rate and rupture
+  over their debonded length 12% (live in this run), the second crack 4%, open-crack shear 3%,
+  the bridging search 3%; together more than the sum.
+- Padding the element state to 200, 208 or 224 bytes, to align it, changes nothing; nor do the
+  rate factors' powers. Reading the corners again after the material law, instead of keeping
+  them, is 9% slower.
+
+What was done, each bit-identical by `blastbench digest`'s six sets and by
+`ElementKernelSpeedTests` (a reinforced column pushed to failure, both kernels; and a million
+random matrices against the bound):
+
+| Change | Steps/s (alone) |
+|---|---|
+| 8da9b98d | 1,227 |
+| No principal strains where a Gershgorin bound keeps them below the onset | 1,266 (+3%) |
+| An element kernel without the faces' loads for substeps with none (function constant 40) | 1,370 (+12%) |
+
+The second helps a body alone, a body under a prescribed velocity, and every structure settling
+under its own weight before a coupled run; a coupled run's substeps load faces and keep the
+general kernel.
 
 ## Coupled runs
 

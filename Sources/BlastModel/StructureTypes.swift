@@ -2177,6 +2177,11 @@ package enum ShaderLibrary {
     /// cracked concrete into the element kernel (`crackedHexConstant` in Structure.metal,
     /// `StructureModel.assumedStrainCracking`).
     package static let crackedHexConstant = 26
+
+    /// Index of the optional function constant that, set false, compiles the faces' loads out of the
+    /// element kernel for substeps without air or a prescribed pressure (`faceLoadsConstant` in
+    /// Structure.metal).
+    package static let faceLoadsConstant = 40
 }
 
 // MARK: - Decoding layouts saved by earlier versions
