@@ -640,7 +640,34 @@ random matrices against the bound):
 
 The second helps a body alone, a body under a prescribed velocity, and every structure settling
 under its own weight before a coupled run; a coupled run's substeps load faces and keep the
-general kernel.
+general kernel. (These are `blastbench structure` runs interleaved with the base's in the morning,
+with no other process on the GPU; `make perf` waited from 11:50 to 12:45 for a quiet window and
+found none, the desktop app alone holding a third of the GPU, so the tracked series takes them at
+its next night run.)
+
+Tried and not landed (23 October; patches in `/Volumes/StudioData/bombcad/perf/structure-speed/B/`):
+
+- **The element pass in two.** A light kernel, with the paths only cracked, framed, compacted or
+  yielded concrete takes compiled out, ran the pristine elements and listed the rest for the
+  general kernel, in a second, indirect dispatch. With all ten such paths out it ran 15% faster
+  coupled and 10% alone, but it did not give the same bits: without the crack axes' turning, open
+  cracks' shear or the cyclic bar law, the compiler's fast arithmetic rounded the paths both
+  kernels share differently (the pushed column differed from the second substep). With only the
+  seven paths whose removal left the bits alone (the principal strains, dilatancy, pressed
+  interlock, the second crack, the turn back to the lattice, compaction's pressure, the bridging
+  search), the light kernel was 1% faster, and the two extra dispatches made the whole 7% slower.
+- **Compiling the element kernel for the air's gas** in coupled substeps, as the air's kernels are
+  (`airModelConstant`): it moved the coupled wall's digest in every set.
+- `noinline` on the concrete law, and the bars' loop kept rolled: each moved the pushed column's
+  results.
+- Reading the corners again after the material law, rather than keeping them: 9% slower.
+
+What is left, and needs a decision rather than more of this: most of the 44% is open only to a
+change that moves results at the rounding level, as the light kernel with every rare path out
+does (the post-failure spread is of the size `--rounding` already shows,
+[fast math](#fast-math-and-the-build)). It would land with `make ship ARGS=--full`. The bars'
+rate and rupture over their debonded length cost 12% by their presence, but skipping their loops
+at run time saves nothing, so gathering their neighbours once rather than twice would not help.
 
 ## Coupled runs
 
