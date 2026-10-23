@@ -51,6 +51,8 @@ def factor_text(x: float | None) -> str:
 def seconds_text(x: float | None) -> str:
     if x is None:
         return "–"
+    if x < 0.1:
+        return f"{x:.3f} s"
     if x < 1:
         return f"{x:.2f} s"
     if x < 100:
@@ -73,10 +75,27 @@ def size_text(e: dict) -> str:
     return ", ".join(parts) or "–"
 
 
+def uses_gpu(e: dict) -> bool:
+    return bool(e.get("gpu_s")) and e["gpu_s"] >= 0.05 * e["wall_s"] or bool(e.get("sim_s"))
+
+
+def loaded(e: dict) -> bool:
+    """Run outside a quiet window: another gpu-slot job, or (for work on the GPU) another process
+    using the GPU as it started."""
+    return bool(e.get("quiet_window") is False or e.get("other_gpu_jobs")
+                or (e.get("gpu_users") and uses_gpu(e)))
+
+
+def pick(entries: list[dict]) -> dict:
+    """A scenario's figure for the doc: its latest entry run in a quiet window, else its latest."""
+    return next((e for e in reversed(entries) if not loaded(e)), entries[-1])
+
+
 def mark(e: dict) -> str:
-    """† for a figure run outside a quiet window; ‡ where the rounds differed by more than 5%."""
+    """† for a figure run outside a quiet window (another gpu-slot job, or another process using the
+    GPU for GPU work); ‡ where the rounds differed by more than 5%."""
     out = ""
-    if e.get("quiet_window") is False or e.get("other_gpu_jobs"):
+    if loaded(e):
         out += "†"
     if (e.get("spread") or 0) > 0.05:
         out += "‡"
@@ -85,13 +104,13 @@ def mark(e: dict) -> str:
 
 def headline(series: dict[str, list[dict]], order: list[str]) -> str:
     rows = [
-        "| What is simulated | Slower than real time | Wall | GPU | Simulated | Steps | Size | Peak memory | Load |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| What is simulated | Slower than real time | Wall | GPU | Simulated | Steps | Size | Peak memory | Load | Run |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for sid in order:
         if sid not in series:
             continue
-        e = series[sid][-1]
+        e = pick(series[sid])
         cells = [
             e["title"],
             (factor_text(e.get("factor")) if e.get("sim_s") else "–") + mark(e),
@@ -100,8 +119,10 @@ def headline(series: dict[str, list[dict]], order: list[str]) -> str:
             seconds_text(e.get("sim_s")),
             f"{e['steps']:,}" if e.get("steps") else "–",
             size_text(e),
-            f"{e['peak_mem_gb']:.1f} GB" if e.get("peak_mem_gb") is not None else "–",
+            (f"{e['peak_mem_gb']:.2f} GB" if e["peak_mem_gb"] < 1 else f"{e['peak_mem_gb']:.1f} GB")
+            if e.get("peak_mem_gb") is not None else "–",
             f"{e.get('load1', 0):.1f}",
+            e["date"][:16].replace("T", " "),
         ]
         rows.append("| " + " | ".join(cells) + " |")
     return "\n".join(rows)
@@ -109,7 +130,10 @@ def headline(series: dict[str, list[dict]], order: list[str]) -> str:
 
 def trend(series: dict[str, list[dict]], order: list[str], last: int) -> str:
     runs = sorted({e["run"] for s in series.values() for e in s})[-last:]
-    dates = {e["run"]: e["date"][:10] for s in series.values() for e in s}
+    dates = {}
+    for e in (e for s in series.values() for e in s):
+        dates[e["run"]] = min(dates.get(e["run"], e["date"]), e["date"])
+    dates = {r: d[:16].replace("T", " ") for r, d in dates.items()}
     commits = {e["run"]: e["commit"][:8] for s in series.values() for e in s}
     rows = ["| Scenario, wall time | " + " | ".join(f"{dates[r]} ({commits[r]})" for r in runs) + " |",
             "|---|" + "---|" * len(runs)]

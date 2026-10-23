@@ -2,28 +2,189 @@
 
 The question the project set out to answer: how close to real time can blast on structures be
 simulated on a current Mac? All figures here were measured on an Apple M4 Max (32-core GPU,
-36 GB) with `blastbench`, in release builds. The same build has been measured up to 10% slower
-in some sessions than in others, with nothing else running, presumably from the machine's
-power or thermal state; figures here are from cool runs.
+36 GB) with `blastbench` and `scenebench`, in release builds. The same build has been measured
+up to 10% slower in some sessions than in others, with nothing else running, presumably from the
+machine's power or thermal state, and much more when other work shares the GPU. The headline
+figures are now taken with `make perf` and kept as a series ([Tracking it](#tracking-it)).
 
 ## Short answer
 
-| What is simulated                                   | Slower than real time |
-|-----------------------------------------------------|-----------------------|
-| Air blast, 1 million cells (0.5 m in a street scene) | 1×                    |
-| Air blast, 8.4 million cells (0.25 m)               | 19×                   |
-| Air blast, 67 million cells (0.125 m)               | 268×                  |
-| Air blast on 0.25 m cells refined by 2 near the shock (the peaks of 0.125 m) | 67× |
-| A 225,000-element concrete building, alone          | 54×                   |
-| The same, once pieces are colliding                 | 98×                   |
-| That building coupled to 1 million air cells        | 70×                   |
-| A 23,000-element frame collapsing                   | 11×                   |
-| A 160,000-element three-storey building, coupled    | 60×                   |
+Measured on 23 October 2026 with `make perf` at a9536ead: each scenario on today's recommended
+settings (afterburning, hot air and far-field faces; the charge from the mapped start; the
+fireball's gas losing the heat it radiates; structures settled under their own weight first), the
+lower of two rounds. Each row is the latest figure taken in a quiet window, from one of two runs
+(the Run column): 03:10–03:54 and 05:32–06:03.
+
+<!-- perf:headline -->
+| What is simulated | Slower than real time | Wall | GPU | Simulated | Steps | Size | Peak memory | Load | Run |
+|---|---|---|---|---|---|---|---|---|---|
+| Air blast, 1 M cells (0.5 m street) | 2.4× | 0.40 s | 0.15 s | 0.17 s | 815 | 1.0 M cells | 0.32 GB | 10.2 | 2026-10-23 05:32 |
+| Air blast, 8.4 M cells (0.25 m street) | 31× | 5.2 s | 4.9 s | 0.17 s | 1,700 | 8.4 M cells | 0.95 GB | 11.0 | 2026-10-23 05:32 |
+| Air blast, 67 M cells (0.125 m street) | 496×‡ | 84.3 s | 81.0 s | 0.17 s | 3,703 | 67.1 M cells | 6.0 GB | 10.2 | 2026-10-23 05:33 |
+| Air blast, 0.25 m refined by 2 (the peaks of 0.125 m) | 91×‡ | 15.4 s | 14.7 s | 0.17 s | 1,871 | 8.4 M cells | 5.6 GB | 4.2 | 2026-10-23 05:34 |
+| 225k-element concrete building, alone | 91×‡ | 3.1 s | 3.1 s | 0.034 s | 4,000 | 224,768 elements | 0.43 GB | 3.9 | 2026-10-23 05:34 |
+| The same, contact running | 105×‡ | 3.6 s | 3.7 s | 0.034 s | 4,000 | 224,768 elements | 0.46 GB | 4.2 | 2026-10-23 05:34 |
+| That building coupled to 1 M air cells | 118×‡ | 11.3 s | 10.8 s | 0.096 s | 908 | 1.0 M cells, 224,768 elements | 0.85 GB | 4.1 | 2026-10-23 05:34 |
+| 160k-element three-storey building, coupled (0.25 m) | 70×‡ | 10.9 s | 10.7 s | 0.15 s | 1,415 | 3.2 M cells, 160,182 elements | 0.92 GB | 4.2 | 2026-10-23 05:34 |
+| 23k-element frame collapsing, 3 s | 17× | 50.0 s | 49.2 s | 3.0 s | 9,493 | 1.3 M cells, 23,004 elements | 0.76 GB | 4.4 | 2026-10-23 05:35 |
+| Twelve-storey office, first 0.5 s | 487× | 244 s | 144 s | 0.50 s | 2,613 | 1.5 M cells, 236,868 elements | 2.0 GB | 5.3 | 2026-10-23 05:39 |
+| Beirut, the whole district on 4 m cells, 8 s | 28× | 228 s | 221 s | 8.0 s | 4,696 | 125.0 M cells, 738,387 components | 21.1 GB | 4.8 | 2026-10-23 05:47 |
+| Beirut, the end-of-run damage judgement (the 4 m run's loads) | – | 49.8 s | – | – | – | 14,165 buildings, 738,387 components | – | 4.8 | 2026-10-23 05:47 |
+| Beirut, the near box (1.32 km radius) refined to 2 m, 3 s | 14× | 42.3 s | 23.7 s | 3.0 s | 1,865 | 34.8 M cells, 162,086 components | 11.8 GB | 11.5 | 2026-10-23 05:48 |
+| Beirut, the end-of-run damage judgement (the near box's loads) | – | 6.4 s | – | – | – | 3,012 buildings, 162,086 components | – | 11.5 | 2026-10-23 05:48 |
+| Beirut, a drag preview frame (damage) | – | 0.62 s | – | – | – | 14,169 buildings, 724,512 components | – | 7.2 | 2026-10-23 03:31 |
+| Beirut quick estimate, the full look | – | 58.8 s | – | – | – | 14,169 buildings, 724,512 components | 13.0 GB | 7.2 | 2026-10-23 03:31 |
+| Beirut, a drag preview frame (damage), learned field model | – | 0.73 s | – | – | – | 14,169 buildings, 724,512 components | – | 11.3 | 2026-10-23 03:52 |
+| Beirut quick estimate, the full look, learned field model | – | 61.7 s | 0.88 s | – | – | 14,169 buildings, 724,512 components | 16.1 GB | 11.3 | 2026-10-23 03:52 |
+| Beirut, close calls refined: the first 8 buildings | 13× | 23.3 s | 14.7 s | 1.7 s | – | 12.0 M cells, 8 buildings | 4.4 GB | 27.8 | 2026-10-23 05:53 |
+<!-- /perf:headline -->
+
+The two runs, and the conditions as they were:
+
+- **03:10–03:54.** The first quiet window by the rule the runner then used: no other `gpu-slot`
+  job from 03:10 to the end (as `gpu-slot`'s job log confirms), load 1.6 to 3.3 at the GPU runs'
+  starts, swap steady at 7.3 GB. But an iOS Simulator left booted by another session used a third
+  of the GPU throughout, outside `gpu-slot`, and most GPU runs came out about 15% slower (12% to
+  25%) than in the second run; the near box and the close calls did not, and the office was faster. Only the work on the CPU (the quick estimate and its preview) is taken from it.
+  The runner's check now samples every process's GPU time too.
+- **05:32–06:03,** once the simulator was shut down: no other job and no other GPU user for the
+  first round (load 3.9 to 5.3, 10 to 11 for the first three air runs straight after the build,
+  which the runner now waits out). From 05:53 others' district runs started, and the second round
+  (and the first round's quick estimate, at load 24 to 49) ran beside them; it was stopped at
+  06:03 after the coupled runs, so the frame, the office and Beirut have one round only.
+- † Run beside another job, or (for GPU work) beside another process using the GPU. ‡ The two
+  rounds differed by more than 5%: here the second round was the loaded one. In the first run the
+  coupled runs' first round also settled each structure under its own weight (31.2 s, 21.0 s and
+  276 s against 12.9 s, 12.6 s and 212 s), which the settle cache then held, as in the app.
+- Rows without a simulated time are work on the CPU.
+
+Against the figures this table showed before, measured on 3 to 17 October:
+
+| What is simulated | 3–17 October | 23 October |
+|---|---|---|
+| Air blast, 1 million cells (0.5 m street) | 1× (0.3 s) | 2.4× (0.40 s) |
+| Air blast, 8.4 million cells (0.25 m) | 19× (3.2 s) | 31× (5.2 s) |
+| Air blast, 67 million cells (0.125 m) | 268× (46 s) | 496× (84 s) |
+| 0.25 m refined by 2 (the peaks of 0.125 m) | 67× (11.5 s) | 91× (15.4 s) |
+| The 225,000-element building, alone | 54× | 91× |
+| The same, contact running | 98× | 105× |
+| That building coupled to 1 million air cells | 70× (6.7 s) | 118× (11.3 s) |
+| The 160,000-element three-storey building, coupled | 60× (9.3 s) | 70× (10.9 s) |
+| The 23,000-element frame collapsing, 3 s | 11× (34 s) | 17× (50 s) |
+| The twelve-storey office | 1,100× over 3 s | 487× over its first 0.5 s |
+| Beirut on 4 m cells, 8 s | 25–28 min on the mini | 228 s |
+
+**What changed since then**, from runs beside tonight's (interleaved rounds, agreeing within 2%):
+
+- **The recommended air** is most of the air's change. On 0.25 m cells today's build took 3.6 s
+  on the ideal gas with faces that copy (the old table's air), 6.0 s on afterburning hot air with
+  far-field faces, and 6.1 s with the mapped start and the cooling besides (all three with the
+  simulator running): 1.7 times, from a dearer cell-update (2,330 million cells a second against
+  3,510) and 11% more steps in the hotter gas. The mapped start and the cooling cost under 2%.
+- **The structure's own cost rose by half between 3 and 8 October, and has held since.** The
+  table's 1,906 steps a second was measured on 3 October, before the concrete model gained
+  compaction, cracks that turn with the stress, residual openings, inclined bars, bars that slip
+  and the rest of that week. Built and run tonight side by side, the build of 3 October
+  (1eb47fa2) gave 1,870 steps a second, that of 8 October (170cc1c8) 1,266 and today's 1,248.
+  Builds in between put the steps at compaction (1c7720bc, about 10%) and at several commits on
+  4–5 October and 8 October (about 15% and 10%; the Studio was too busy by then to pin them). So
+  it is the features, not a regression, and since 8 October the structure has lost 1.5%.
+- **Command buffers of 1 s** instead of the 75 ms aimed at since 12 October changed nothing, on
+  the structure or the air: the timed command buffers cost nothing measurable.
+- **Settling under self-weight** (17 October) takes about 18 s for the concrete building and 8 s
+  for the three-storey one when the settle cache does not hold the structure; the table shows the
+  cached runs. On top of that the coupled runs pay the recommended air and the structure's cost.
+- **The frame's air is frozen after 0.28 s** where it was 0.80 s, so its collapse is mostly the
+  structure alone, and it takes about the structure's own slowdown longer.
+- **The office** was timed over 3 s, of which 1.8 s were the structure alone after the air froze;
+  its first 0.5 s, fully coupled, are now the measure, and are not scaled up to 3 s. It varied
+  more than the rest: 212 s with the simulator running and 244 s without, both with the settled
+  structure cached, the GPU busy for only 59% of the second.
+- **Beirut's district** had been timed on the mini only; on the Studio its 8 s take 228 s, and the
+  whole process 435 s with reading the height grid, placing 14,165 buildings and building
+  the solver.
 
 "Real time" for a blast is not a useful target in itself: the event lasts a fraction of a
 second, and the app plays it back at 100× slow motion by default. The practical meaning of these
-figures is that a blast on a street scene computes in seconds, a damaged building in under ten
-seconds, and a collapse in about twenty.
+figures is that a blast on a street scene computes in seconds, a damaged building in about ten
+seconds, a collapse in under a minute, and a city district in a few minutes, with its quick
+estimate in one and a preview frame of it, as the charge is dragged, in under a second.
+
+## Tracking it
+
+```bash
+make perf              # waits for a quiet window, runs the list twice, appends to the history
+make perf-compare      # each scenario against its previous entry; more than 10% slower is flagged
+python3 Scripts/perf/compare.py --doc docs/performance.md   # redraws this page's two perf tables
+```
+
+`make perf` (`Scripts/perf/run-standard.py`) runs a fixed list of scenarios on the recommended
+settings with this checkout's release binaries, built when the runs start and pinned to their
+commit by `BOMBCAD_SOURCE_REVISION`. First it waits, checking every 10 minutes for up to five hours
+(`--wait-from`, `--wait-until`; `--now` skips the wait), for a quiet window: no other holder of a
+`gpu-slot`, no other process using more than 5% of the GPU, a load average under 8 and swap not
+growing. If none comes it runs anyway (`--require-quiet` stops it instead) and records the
+conditions. Every run is in `gpu-slot --mem` with its declared size. Each scenario runs twice, the
+rounds interleaved; the lower wall time is kept and both are recorded. It writes `results.csv`,
+`results.json` and each run's log to a folder on StudioData, and appends one line per scenario to
+[`Benchmarks/perf/history.jsonl`](../Benchmarks/perf/history.jsonl): the commit, the date, the
+machine (model, GPU cores, memory, macOS), the load and swap at the start, other GPU users, the
+scenario's id and a hash of its settings, the wall and GPU time, the factor, the steps, the size
+and the peak memory. `--collect <folder>` rebuilds the results and the history lines from a run's
+folder. The table at the top takes each scenario's latest entry run in a quiet window, or its
+latest if none was; `make perf-compare` sets each latest entry against the one before.
+
+Run it on the Studio in a quiet window, not on the mini: weekly, and after anything that touches
+the solver's speed (a kernel, the stepping, the refinement, the coupling, the quick estimate). The
+scenario ids are stable, so that the series lines up: a changed scenario gets a new id rather than
+a new meaning under an old one, and `compare.py` compares only entries whose settings hash and
+machine match.
+
+What the columns mean:
+
+- **Wall** is the bench's own timed span, as everywhere on this page: the solve, without reading
+  the scene, building the solver or writing an image. For the drag preview it is the median of the
+  frames after the first, and for the close calls the time until the refined run has judged all
+  eight buildings. The process's whole wall time is recorded beside it.
+- **Slower than real time** is that wall time over the simulated time.
+- **GPU** is the process's GPU time, all of it (setting up, settling, warming up and the timed
+  span), from `ioreg`'s `accumulatedGPUTime` for its `AGXDeviceUserClient`s, read while it runs
+  and once more as it exits (`Scripts/perf/linger.c` holds the process open for 1.5 s). With the GPU
+  to itself, most runs were credited with 94% to 100% of their wall time (Beirut: 221 s of 228,
+  its step buffers spanning 226 s); the office and the refined near box with 56% to 59%, which
+  leaves the GPU idle for part of their span, and the 0.4 s street with 38%. Beside another process on the GPU it is credited with
+  less, as the GPU interleaves the other's work into its command buffers' span: 42% to 77% beside
+  the simulator (Beirut: 113 s of 262, the buffers spanning 260 s). A low share is so a sign of a
+  shared GPU.
+- **Peak memory** is `/usr/bin/time -l`'s peak memory footprint, which counts the Metal buffers.
+- **Load** is the one-minute load average as the run started; the quick estimate's own threads
+  raise it for the runs after it.
+
+Each scenario's wall time, run by run:
+
+<!-- perf:trend -->
+| Scenario, wall time | 2026-10-23 03:12 (a9536ead) | 2026-10-23 05:32 (a9536ead) |
+|---|---|---|
+| `air-1m` | 0.50 s† | 0.40 s |
+| `air-8m` | 6.1 s† | 5.2 s |
+| `air-67m` | 97.5 s† | 84.3 s‡ |
+| `air-refined-0.25x2` | 17.9 s† | 15.4 s‡ |
+| `structure-alone` | 3.5 s† | 3.1 s‡ |
+| `structure-contact` | 4.1 s† | 3.6 s‡ |
+| `coupled-box-1m` | 12.9 s†‡ | 11.3 s‡ |
+| `coupled-storeys` | 12.6 s†‡ | 10.9 s‡ |
+| `collapse-frame` | 58.1 s† | 50.0 s |
+| `office-0.5s` | 212 s†‡ | 244 s |
+| `beirut-4m` | 262 s† | 228 s |
+| `beirut-4m-judgement` | 40.5 s | 49.8 s |
+| `beirut-near-2m` | 42.0 s† | 42.3 s |
+| `beirut-near-2m-judgement` | 5.1 s‡ | 6.4 s |
+| `beirut-quick-frame` | 0.62 s | 0.63 s† |
+| `beirut-quick-look` | 58.8 s | 84.6 s† |
+| `beirut-quick-field-frame` | 0.73 s | 0.77 s† |
+| `beirut-quick-field-look` | 61.7 s | 75.0 s† |
+| `beirut-close-calls-8` | 23.5 s† | 23.3 s |
+<!-- /perf:trend -->
 
 ## Air solver
 
@@ -38,6 +199,19 @@ Street-canyon scenario: 64 × 64 × 32 m, 100 kg TNT equivalent, 170 ms simulate
 | 0.5 m     | 1.0 M  | 0.06 GB    | 2,890   | 727   | 59%       | 0.3 s       | 1×                    | 2×                 |
 | 0.25 m    | 8.4 M  | 0.48 GB    | 475     | 1,526 | 50%       | 3.2 s       | 19×                   | 30×                |
 | 0.125 m   | 67 M   | 3.8 GB     | 67      | 3,055 | 42%       | 46 s        | 268×                  | 465× (est.)        |
+
+That table is the ideal gas with faces that copy, as measured on 8 October 2026. On the
+recommended air (`blastbench throughput --mapped --radiate`, the mapped start and the cooling as
+the app's runs have them), on 23 October 2026 with `make perf` (see the
+[short answer](#short-answer)):
+
+| Cell size | Cells | Solver memory | Peak memory | Steps/s | Steps | Air swept | Whole event | Slower than real time |
+|---|---|---|---|---|---|---|---|---|
+| 0.5 m | 1.0 M | 0.08 GB | 0.32 GB | 2,040 | 815 | 62% | 0.40 s | 2.4× |
+| 0.25 m | 8.4 M | 0.61 GB | 0.95 GB | 327 | 1,700 | 53% | 5.2 s | 31× |
+| 0.125 m | 67 M | 4.9 GB | 6.0 GB | 44 | 3,703 | 47% | 84.3 s | 496× |
+
+The 0.125 m run is now timed whole (`--full`) rather than estimated from a sample.
 
 - **Still air is skipped.** The grid is cut into tiles of 8 × 8 × 8 cells, and a tile is swept
   only from the step before the blast can first reach it (see the
@@ -140,6 +314,10 @@ whole events:
 | Street, 0.25 m cells | 11.5 s | 46.5 s (0.125 m) | 4.0× |
 | Open ground, 0.5 m cells | 1.6 s | 5.5 s (0.25 m) | 3.4× |
 | Open ground, 0.25 m cells | 16.0 s | 97.6 s (0.125 m) | 6.1× |
+
+On the recommended air (23 October 2026, `make perf`, margin 1), the street on 0.25 m cells
+refined by 2 takes 15.4 s against 84.3 s on 0.125 m cells, 5.5 times faster, in 1,871 steps; 2,733 blocks are refined on average and at most 9,328,
+and the solver reports 1.59 GB, against a peak footprint for the process of 5.6 GB.
 
 On 0.25 m cells about 4,000 to 5,000 blocks of 4 × 4 × 4 cells are refined on average, 3 to 4%
 of the grid, and memory is 1.55 GB (1 GB of it the pool of patches) against 3.8 GB on 0.125 m
@@ -324,6 +502,13 @@ The single-storey concrete building: 224,768 elements of 62.5 mm, time step 9.1 
 | With contact running          | 1,400   | 315 million       | 79×                   |
 | Linear elastic, for comparison (`--elastic`) | 2,236 | 503 million | 49×             |
 
+On 23 October 2026 (`make perf`, time step 8.6 µs, 0.17 GB) the first two rows were 1,281 and
+1,105 steps per second (288 and 248 million element-updates per second, 91× and 105× slower than
+real time). The table's figures date from 3 October, before that week's additions to the
+concrete model, which together made a step about 1.5 times dearer: built and run side by side
+tonight, the build of 3 October gave 1,870 steps per second, that of 8 October 1,266 and today's
+1,248 (see the [short answer](#short-answer)).
+
 The first two rows were 2,061 and 1,123 steps per second in earlier measurements; the first
 has drifted down by about 8% with the features added since (and with the machine's thermal
 state), and the second has gained from leaving buried nodes out of contact (below).
@@ -414,6 +599,12 @@ The same building in 32 × 32 × 16 m of air, 100 kg at 8 m, 96 ms simulated.
 | 0.25 m        | 1.0 M     | 6.7 s       | 70×                   |
 | 0.125 m       | 8.4 M     | 13 s        | 141×                  |
 
+On 23 October 2026 (`make perf`, the recommended air with `--mapped --radiate`), on 0.25 m
+cells: 11.3 s, 118× slower than real time, in 908 steps, 0.85 GB at the peak, with the settled
+structure taken from the settle cache. Settling the structure under its own weight first, which
+the cache then holds for later runs, added 18 s (31.2 s against 12.9 s, in the earlier run that
+night).
+
 The structure sets the pace: refining the air from 0.5 m to 0.25 m costs almost nothing extra.
 Each air step is followed by 5 to 15 structural substeps. Only the substeps the air's recent
 step suggests are encoded (a quarter more, plus one), and the air step is capped on the GPU to
@@ -464,6 +655,10 @@ clad in 250 mm masonry with a window in every panel of its long faces: 160,182 e
 | 0.25 m        | 3.2 M     | 0.31 GB    | 9.3 s       | 60×                   |
 | 0.125 m       | 25 M      | 1.6 GB     | 38 s        | 246×                  |
 
+On 23 October 2026 (`make perf`, the recommended air), on 0.25 m cells: 10.9 s, 70× slower than
+real time, in 1,415 steps, 0.38 GB in the solver and 0.92 GB at the peak, the settled structure
+from the cache; settling it first added 8 s in the earlier run that night.
+
 With the element data stored per element rather than per lattice cell, a building of this size
 takes a third of a gigabyte; most of the 36 GB is still free.
 
@@ -494,6 +689,11 @@ the structure is advanced. Larger elements help twice over: fewer of them, and a
 twice as long. (The preset's charge was 250 kg until bars were made to hold cracked sections
 together, then 1,000 kg until cracks turned with the stress; the frame now stands at both.)
 
+On 23 October 2026 (`make perf`, with `--mapped --radiate`) the 3 s took 50.0 s (17× slower
+than real time) in 9,493 steps, 0.76 GB at the peak. The
+air now goes quiet and is frozen after 0.28 s instead of 0.80 s, so most of it is the structure
+alone; 85 elements fail and the floors come down 4.8 m, as before.
+
 Taller buildings, meshed as shells and beams of 0.25 m on 0.5 m air
 (`blastbench snapshot --preset tall --dx 0.5 --time 4`, and `--preset tower`):
 
@@ -506,6 +706,13 @@ Taller buildings, meshed as shells and beams of 0.25 m on 0.5 m air
 The air is frozen after 1.2 to 1.3 s; the rest is the structure alone, falling. The office costs
 about 14 times the tower per second simulated: it has 2.4 times the elements, and a time step a
 third as long, since its steel and curtain-wall frame carry waves faster.
+
+The office's first 0.5 s, fully coupled to the air (`--preset office --dx 0.5 --time 0.5`,
+23 October 2026, `make perf`): 244 s, 487× slower than real time, in 2,613 steps, 2.0 GB at the
+peak, the settled structure from the cache, the GPU busy for 59% of it; 212 s in the earlier run
+that night, beside the simulator, and 276 s settling the structure first. By then 28,204 of its 236,868 elements have failed (none of its 16,080 beam
+elements), and 101 of the 480 steel connections have fractured. The rate is not scaled to the whole
+3 s: after the air freezes the structure runs alone at another rate.
 
 **A large-panel block of flats** ([its page](large-panel-flats.md); `blastbench panelblock`), solid
 elements of 87.5 mm, two through each wall and floor, 670,560 of them with 92 joints between
@@ -520,6 +727,52 @@ parts (18,400 node pairs), contact on from the start, in a session shared with o
 The structure dominates: its time step is set by the 87.5 mm elements, about four times shorter than
 the frame's, and it has 30 times the frame's elements. The gas needs 0.125 m cells, its young flame
 being too slow on coarser ones, and a deflagration keeps the air awake and unrefined throughout.
+
+## Districts
+
+```bash
+scenebench district-compare <Beirut's inputs> --dx 4 --height 320 --radius 2500 --mass 500000 --until 8 \
+    --window 0.5 --ground saturated --observers Rigby2020_ESM1_radius_time.csv --out district
+scenebench district-compare <Beirut's inputs> --dx 4 --height 320 --radius 1320 --mass 500000 --until 3 \
+    --window 0.5 --ground saturated --refine 2 --ceiling auto --refine-memory 14 --out near
+scenebench drag-time <Beirut's inputs> --dx 4 --height 320 --radius 2500 --loads loads-500000 --mass 500000 \
+    --moves "" --drag 0,5,10,15,20,30,40,60,80,100 --parts damage --preview-draws 20 [--weights field.bcfw]
+scenebench threshold-refine <Beirut's inputs> --dx 4 --height 320 --mass 500000 --buildings 8
+```
+
+[Beirut, 4 August 2020](beirut-2020.md), 0.5 kt, the inputs of its recipe, on 23 October 2026
+with `make perf`: the runs from the second run that night (05:32–05:54, the GPU to themselves; one
+round), the quick estimate and its preview from the first (03:31–03:51, beside a simulator that
+used only the GPU; two rounds, within 1%):
+
+| What | Wall time | Simulated | Steps | Size | Peak memory |
+|---|---|---|---|---|---|
+| The whole district on 4 m cells | 228 s (28× slower than real time) | 8 s | 4,696 | 125 M cells, 738,387 components | 21.1 GB |
+| Its end-of-run damage judgement, as the app makes it, on the CPU | 49.8 s (40.5 s in the first run) | | | 14,165 buildings | |
+| The near box (2.6 km across) refined to 2 m under a 46 m ceiling | 42.3 s (14×) | 3 s | 1,865 | 34.8 M cells and up to 5,460 refined blocks, 162,086 components | 11.8 GB |
+| Its damage judgement | 6.4 s (5.1 s) | | | 3,012 buildings | |
+| The quick estimate's full look, when a dragged charge is let go | 58.8 s | | | 14,169 buildings, 724,512 components | 13.0 GB |
+| The same with the learned field model | 61.7 s, its peaks 0.11 s | | | | 16.1 GB |
+| A drag preview frame (the damage), the median of the frames after the first | 0.62 s (the first 0.95 s) | | | | |
+| The same with the learned field model | 0.73 s (the first 1.35 s) | | | | |
+| Close calls refined: the nearest 8 of 1,057 close calls among 1,554 buildings | 23.3 s to the last answer, 16.0 s to the first | 1.742 s | | 12.0 M cells, 1,552 m across | 4.4 GB |
+
+- **The district runs on the Studio in under four minutes**, against 25 to 28 on the CI mini
+  ([Beirut](beirut-2020.md#cost)); the process takes 435 s in all, reading the height grid,
+  placing the buildings and building the solver besides. Its step buffers spanned 226 s on the
+  GPU, and the process was credited with 221 s of GPU time. Beside the simulator it took 262 s.
+- **The judgement at the end of a run is a fifth of the run's time** on the district: 40 to 50 s
+  on the CPU for 738,387 components, timed in `district-compare` around
+  `EnvelopeDamageAssessment.assess` as the app calls it. It is the next thing to make faster on
+  districts.
+- **The learned field model** adds 3 s to the full look (5%) and 0.11 s to a preview frame (18%),
+  and 3 GB of memory.
+- **The close calls**: the quick estimate of the 1 km box's 1,554 buildings took 18 to 21 s, the
+  refined run's first building was judged 16 s in and all eight by 23.3 s, against 22 s in
+  [October's first measurement](surrogate-first-look.md#close-calls-refined-by-the-solver-21-october-2026).
+- The judgements, the quick estimate and its preview run on the CPU (the field model's network
+  apart), and their threads raise the load average to 10 to 13 while they run; they are the rows
+  most moved by others' work on the CPU (the second run's full look took 85 s at a load of 49).
 
 ## The slab benchmark
 
@@ -761,6 +1014,7 @@ gain less. Its larger memory (up to 128 GB) matters more: it holds a street grid
 | Air solved long after it matters                  | Already frozen once quiet; could be frozen region by region |
 | Idle substep dispatches in coupled runs           | Now sized every 64 steps; worth about 3%, too little for indirect dispatch (below) |
 | Concrete law costlier than the von Mises material | Profile it; the power functions in the rate and compression laws are the next suspects |
+| A district's end-of-run damage judgement, 40 to 50 s on the CPU after a 228 s run (23 October 2026) | Profile it |
 
 Shells and the skipping of still air are done. Adaptive refinement is the one left that would
 change what is feasible.

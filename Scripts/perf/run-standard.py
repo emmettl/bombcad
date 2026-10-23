@@ -24,7 +24,8 @@ Scenario ids are stable: never rename one, add a new id instead, so the series l
 scenario's settings hash covers its command line and environment; compare.py compares only
 like with like.
 
-Run on the Studio in a quiet window (no other gpu-slot holder, load under 8, swap not growing),
+Run on the Studio in a quiet window (no other gpu-slot holder, no other process using more than 5% of
+the GPU, load under 8, swap not growing),
 not on the mini: weekly, and after anything that touches the solver's speed.
 """
 
@@ -103,7 +104,7 @@ def parse_throughput(text: str, run_dir: Path) -> dict:
     elements = re.findall(r"structure: (\d+) elements", text)
     return {
         "wall_s": float(wall), "steps": int(steps), "sim_s": float(event.group(1)) / 1000,
-        "cells": float(cells) * 1e6, "elements": int(elements[-1]) if elements else None,
+        "cells": round(float(cells) * 1e6), "elements": int(elements[-1]) if elements else None,
         "swept": int(swept) / 100, "solver_gb": float(memory), "cell_m": float(cell),
     }
 
@@ -197,7 +198,7 @@ def parse_close_calls(text: str, run_dir: Path) -> dict:
             if int(n) >= count]
     wall = done[0] if done else float(ended.group(2))
     estimate = re.search(r"Quick estimate of (\d+) buildings in ([\d.]+) s", text)
-    return {"wall_s": wall, "sim_s": float(plan.group(3)), "cells": float(plan.group(2)) * 1e6,
+    return {"wall_s": wall, "sim_s": float(plan.group(3)), "cells": round(float(plan.group(2)) * 1e6),
             "buildings": count, "ended": ended.group(1), "refined": int(ended.group(3)),
             "estimate_s": float(estimate.group(2)) if estimate else None}
 
@@ -263,15 +264,16 @@ def scenarios() -> list[Scenario]:
                  ["district-compare", *BEIRUT_ARGS, "--radius", "2500", "--mass", "500000", "--until", "8",
                   "--window", "0.5", "--ground", "saturated", "--observers",
                   str(BEIRUT / "Rigby2020" / "Rigby2020_ESM1_radius_time.csv"), "--out", "{out}/district"],
-                 parse_district, 16, requires=BEIRUT_FILES,
+                 parse_district, 24, requires=BEIRUT_FILES,
                  rows={"": "Beirut, the whole district on 4 m cells, 8 s",
                        "judgement": "Beirut, the end-of-run damage judgement (the 4 m run's loads)"}),
-        Scenario("beirut-near-2m", "Beirut, the near box (1.3 km) refined to 2 m, 3 s", "scenebench",
+        Scenario("beirut-near-2m", "Beirut, the near box (1.32 km radius) refined to 2 m, 3 s", "scenebench",
                  ["district-compare", *BEIRUT_ARGS, "--radius", "1320", "--mass", "500000", "--until", "3",
                   "--window", "0.5", "--ground", "saturated", "--refine", "2", "--ceiling", "auto",
                   "--refine-memory", "14", "--out", "{out}/near"],
                  parse_district, 20, requires=BEIRUT_FILES,
-                 rows={"": "Beirut, the near box (1.3 km) refined to 2 m, 3 s"}),
+                 rows={"": "Beirut, the near box (1.32 km radius) refined to 2 m, 3 s",
+                       "judgement": "Beirut, the end-of-run damage judgement (the near box's loads)"}),
         Scenario("beirut-quick", "Beirut quick estimate", "scenebench",
                  ["drag-time", *BEIRUT_ARGS, *DRAG_ARGS], parse_drag, 12,
                  requires=[*BEIRUT_FILES, BEIRUT_LOADS],
@@ -333,10 +335,25 @@ def slot_holders(own: set[int] | None = None) -> list[str]:
     return holders
 
 
-def conditions(own: set[int] | None = None) -> dict:
+def gpu_users(seconds: float = 3, share: float = 0.05) -> dict[str, float]:
+    """Processes using more than `share` of the GPU over `seconds`, gpu-slot or not: on 23 October
+    2026 an iOS Simulator (SimMetalHost) took a third of it all night without holding a slot."""
+    before = gpu_times()
+    time.sleep(seconds)
+    after = gpu_times()
+    users = {}
+    for pid, ns in after.items():
+        used = (ns - before.get(pid, 0)) / 1e9 / seconds
+        if used > share:
+            name = Path(sh("ps", "-o", "comm=", "-p", str(pid)) or str(pid)).name
+            users[name] = round(users.get(name, 0) + used, 2)
+    return users
+
+
+def conditions(own: set[int] | None = None, sample_s: float = 3) -> dict:
     return {"load1": load_average(), "swap_mb": swap_used_mb(),
             "pressure": int(sh("sysctl", "-n", "kern.memorystatus_vm_pressure_level") or 0),
-            "other_gpu_jobs": slot_holders(own)}
+            "other_gpu_jobs": slot_holders(own), "gpu_users": gpu_users(sample_s)}
 
 
 def wait_for_quiet(start: str, until: str, every_s: int, max_load: float, log) -> dict:
@@ -360,12 +377,13 @@ def wait_for_quiet(start: str, until: str, every_s: int, max_load: float, log) -
         c = conditions()
         growing = c["swap_mb"] > last_swap + 64
         last_swap = c["swap_mb"]
-        quiet = not c["other_gpu_jobs"] and c["load1"] < max_load and not growing
+        quiet = not c["other_gpu_jobs"] and not c["gpu_users"] and c["load1"] < max_load and not growing
         checks.append({"at": dt.datetime.now().isoformat(timespec="seconds"), **c,
                        "swap_growing": growing, "quiet": quiet})
         log(f"quiet check {checks[-1]['at']}: load {c['load1']:.1f}, swap {c['swap_mb']:.0f} MB"
             f"{' growing' if growing else ''}, other GPU jobs {len(c['other_gpu_jobs'])}"
-            f" -> {'quiet' if quiet else 'not quiet'}")
+            + "".join(f", {name} using {use:.0%} of the GPU" for name, use in c["gpu_users"].items())
+            + f" -> {'quiet' if quiet else 'not quiet'}")
         if quiet or dt.datetime.now() >= end:
             return {"quiet": quiet, "checks": checks}
 
@@ -417,7 +435,10 @@ def linger_library(out: Path) -> Path | None:
 def run_once(s: Scenario, out: Path, round_: int, log, use_slot: bool) -> dict:
     run_dir = out / s.id
     run_dir.mkdir(parents=True, exist_ok=True)
-    args = [a.replace("{out}", str(run_dir)) for a in s.command()]
+    # Each round writes its outputs (images, reports) to a folder of its own.
+    round_dir = run_dir / f"round{round_}"
+    round_dir.mkdir(exist_ok=True)
+    args = [a.replace("{out}", str(round_dir)) for a in s.command()]
     env = dict(os.environ, **BASE_ENV, **s.env, BOMBCAD_SOURCE_REVISION=REVISION)
     library = linger_library(out)
     if library:
@@ -425,7 +446,7 @@ def run_once(s: Scenario, out: Path, round_: int, log, use_slot: bool) -> dict:
         env["BOMBCAD_PERF_LINGER"] = "1.5"
     timed = ["/usr/bin/time", "-l", *args]
     command = [str(GPU_SLOT), "--mem", str(s.mem_gb), *timed] if use_slot else timed
-    before = conditions()
+    before = conditions(sample_s=2)
     log_path = run_dir / f"round{round_}.log"
     started = time.monotonic()
     with open(log_path, "w") as handle:
@@ -456,7 +477,7 @@ def run_once(s: Scenario, out: Path, round_: int, log, use_slot: bool) -> dict:
     text = log_path.read_text()
     result = {"scenario": s.id, "round": round_, "exit": process.returncode,
               "load1": before["load1"], "swap_mb": before["swap_mb"],
-              "other_gpu_jobs": len(before["other_gpu_jobs"]),
+              "other_gpu_jobs": len(before["other_gpu_jobs"]), "gpu_users": before["gpu_users"],
               "started": dt.datetime.now().isoformat(timespec="seconds"),
               "slot_and_process_wall_s": round(time.monotonic() - started, 2),
               "gpu_s": round(sum(gpu.values()) / 1e9, 2) if gpu else None,
@@ -472,7 +493,7 @@ def run_once(s: Scenario, out: Path, round_: int, log, use_slot: bool) -> dict:
         log(f"  {s.id} round {round_}: exit {process.returncode}, see {log_path}")
         return {s.row_id(k): result for k in (s.rows or {"": ""})}
     try:
-        parsed = s.parse(text, run_dir)
+        parsed = s.parse(text, run_dir / f"round{round_}")
     except ValueError as error:
         result["error"] = f"parse: {error}"
         log(f"  {s.id} round {round_}: {result['error']}, see {log_path}")
@@ -487,7 +508,54 @@ def run_once(s: Scenario, out: Path, round_: int, log, use_slot: bool) -> dict:
         log(f"  {row['scenario']} round {round_}: wall {row['wall_s']:.2f} s, sim {row.get('sim_s')} s, "
             f"factor {row['factor']}, GPU {row['gpu_s']} s, peak {row['peak_mem_gb']} GB, "
             f"load {row['load1']:.1f}")
+    (run_dir / f"round{round_}.json").write_text(json.dumps(rows, indent=1))
     return rows
+
+
+def collect(out: Path, chosen: list[Scenario], rounds: int) -> dict[str, list[dict]]:
+    """The rounds of a run already made, from each run's round*.json, or, for a run made before
+    those were written, from its logs and run.log's summary lines (GPU time and load)."""
+    summary = {}
+    for line in (out / "run.log").read_text().splitlines() if (out / "run.log").exists() else []:
+        m = re.match(r"\s+(\S+) round (\d+): .*GPU (\S+) s, peak (\S+) GB, load ([\d.]+)", line)
+        if m:
+            gpu = None if m.group(3) == "None" else float(m.group(3))
+            summary[(m.group(1), int(m.group(2)))] = (gpu, float(m.group(5)))
+    results: dict[str, list[dict]] = {}
+    for s in chosen:
+        for round_ in range(1, rounds + 1):
+            saved = out / s.id / f"round{round_}.json"
+            if saved.exists():
+                rows = json.loads(saved.read_text())
+            else:
+                log_path = out / s.id / f"round{round_}.log"
+                if not log_path.exists():
+                    continue
+                text = log_path.read_text()
+                base = {"scenario": s.id, "round": round_, "exit": 0, "log": str(log_path),
+                        "started": dt.datetime.fromtimestamp(log_path.stat().st_mtime).isoformat(timespec="seconds")}
+                peak = re.search(r"(\d+)\s+peak memory footprint", text)
+                real = re.findall(r"([\d.]+) real", text)
+                base["peak_mem_gb"] = round(int(peak.group(1)) / 1e9, 2) if peak else None
+                base["process_wall_s"] = float(real[-1]) if real else None
+                try:
+                    parsed = s.parse(text, out / s.id / f"round{round_}")
+                except ValueError as error:
+                    rows = {s.id: {**base, "error": f"parse: {error}"}}
+                else:
+                    rows = {}
+                    first = next(iter(s.rows or {"": ""}))
+                    for suffix, values in (parsed["rows"] if "rows" in parsed else {"": parsed}).items():
+                        row_id = s.row_id(suffix)
+                        gpu, load = summary.get((row_id, round_), (None, None))
+                        row = {**base, **values, "scenario": row_id, "gpu_s": gpu, "load1": load}
+                        if suffix != first:
+                            row["peak_mem_gb"] = None
+                        row["factor"] = round(row["wall_s"] / row["sim_s"], 2) if row.get("sim_s") else None
+                        rows[row_id] = row
+            for row_id, row in rows.items():
+                results.setdefault(row_id, []).append(row)
+    return results
 
 
 # ---------------------------------------------------------------------------------------------
@@ -525,10 +593,13 @@ def main() -> int:
                         help="HH:MM to give up waiting and run anyway (default five hours from the start)")
     parser.add_argument("--every", type=int, default=600, help="seconds between quiet checks")
     parser.add_argument("--max-load", type=float, default=8.0)
+    parser.add_argument("--require-quiet", action="store_true", help="if no quiet window comes, don't run")
     parser.add_argument("--no-slot", action="store_true", help="don't wrap runs in gpu-slot")
     parser.add_argument("--no-build", action="store_true")
     parser.add_argument("--no-append", action="store_true", help="don't append to the history")
     parser.add_argument("--list", action="store_true")
+    parser.add_argument("--collect", type=Path,
+                        help="no runs: rebuild the results and the history lines from a run's folder")
     args = parser.parse_args()
 
     chosen = scenarios()
@@ -545,9 +616,14 @@ def main() -> int:
         chosen = [s for s in chosen if s.id in wanted]
 
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    if args.collect:
+        args.out = args.collect
+        args.now = args.no_build = True
+        first = re.search(r"perf run (\S+) at (\S+)", (args.collect / "run.log").read_text())
+        stamp, collected_revision = first.group(1), first.group(2)
     out = args.out or DATA / "perf" / stamp
     out.mkdir(parents=True, exist_ok=True)
-    log_file = open(out / "run.log", "a")
+    log_file = open(out / ("collect.log" if args.collect else "run.log"), "a")
 
     def log(line: str):
         print(line, flush=True)
@@ -560,16 +636,26 @@ def main() -> int:
         return 1
 
     window = {"quiet": None, "checks": []}
-    if not args.now:
+    if args.collect:
+        checks = re.findall(r"quiet check (\S+): load ([\d.]+), swap (\d+) MB( growing)?, other GPU jobs (\d+) -> (\w+)",
+                            (out / "run.log").read_text())
+        window = {"quiet": bool(checks) and checks[-1][5] == "quiet",
+                  "checks": [{"at": c[0], "load1": float(c[1]), "swap_mb": float(c[2]), "swap_growing": bool(c[3]),
+                              "other_gpu_jobs": int(c[4]), "quiet": c[5] == "quiet"} for c in checks]}
+    elif not args.now:
         begin = args.wait_from or dt.datetime.now().strftime("%H:%M")
         until = args.wait_until or (dt.datetime.now() + dt.timedelta(hours=5)).strftime("%H:%M")
         window = wait_for_quiet(begin, until, args.every, args.max_load, log)
+        if not window["quiet"] and args.require_quiet:
+            log("no quiet window came: not running (--require-quiet)")
+            return 3
         if not window["quiet"]:
             log("no quiet window came: running anyway, the load recorded beside each figure")
 
     # The checkout as it is when the runs start, built then, so the binaries are its commit's.
-    REVISION = revision()
-    log(f"perf run {stamp} at {REVISION} into {out}")
+    REVISION = collected_revision if args.collect else revision()
+    if not args.collect:
+        log(f"perf run {stamp} at {REVISION} into {out}")
     if not args.no_build:
         tools = sorted({s.tool for s in chosen})
         for tool in tools:
@@ -577,31 +663,40 @@ def main() -> int:
             if subprocess.run(["swift", "build", "-c", "release", "--product", tool], cwd=ROOT).returncode:
                 log(f"build of {tool} failed")
                 return 1
+        # The build's own load falls away before the first run (up to five minutes).
+        settle_until = time.monotonic() + 300
+        while not args.now and load_average() >= args.max_load and time.monotonic() < settle_until:
+            time.sleep(15)
 
-    results: dict[str, list[dict]] = {}
     titles: dict[str, tuple[Scenario, str]] = {}
     for s in chosen:
         for suffix, title in (s.rows or {"": s.title}).items():
-            results[s.row_id(suffix)] = []
             titles[s.row_id(suffix)] = (s, title)
-    for round_ in range(1, args.rounds + 1):
-        for s in chosen:
-            for row_id, row in run_once(s, out, round_, log, not args.no_slot).items():
-                results.setdefault(row_id, []).append(row)
+    if args.collect:
+        results = collect(out, chosen, args.rounds)
+    else:
+        results = {row_id: [] for row_id in titles}
+        for round_ in range(1, args.rounds + 1):
+            for s in chosen:
+                for row_id, row in run_once(s, out, round_, log, not args.no_slot).items():
+                    results.setdefault(row_id, []).append(row)
 
     info = machine()
-    date = dt.datetime.now().isoformat(timespec="seconds")
+    date = (dt.datetime.fromtimestamp((out / "run.log").stat().st_mtime) if args.collect else dt.datetime.now()).isoformat(timespec="seconds")
     rows = []
     for row_id, rounds in results.items():
-        s, title = titles[row_id]
+        if not rounds:
+            continue
+        s, title = titles.get(row_id) or next(
+            (t, f"{t.title} ({row_id[len(t.id) + 1:]})") for t in chosen if row_id.startswith(t.id + "-"))
         b = best(rounds)
         rows.append({
-            "run": stamp, "commit": REVISION, "date": date, "machine": info,
+            "run": stamp, "commit": REVISION, "date": b.get("started") or date, "machine": info,
             "quiet_window": window["quiet"], "scenario": row_id, "title": title,
             "settings": s.settings_hash(), "command": " ".join([s.tool, *s.args]),
             "env": s.env, "note": s.note,
             **{k: b.get(k) for k in (
-                "load1", "swap_mb", "other_gpu_jobs", "wall_s", "walls_s", "spread", "process_wall_s",
+                "load1", "swap_mb", "other_gpu_jobs", "gpu_users", "wall_s", "walls_s", "spread", "process_wall_s",
                 "gpu_s", "sim_s", "factor", "steps", "cells", "elements", "peak_mem_gb", "solver_gb",
                 "error")},
             "extra": {k: v for k, v in b.items() if k in (
