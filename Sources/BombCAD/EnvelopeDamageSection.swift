@@ -87,16 +87,17 @@ struct EnvelopeDamageSection: View {
                     CloseCallsRow(model: model)
                 }
                 Toggle(
-                    "Learned field model for ground-floor peaks",
+                    "Learned field model for façade peaks",
                     isOn: Binding(
                         get: { model.quickEstimateLearnedPeaks }, set: { model.setLearnedPeaks($0) })
                 )
                 .disabled(model.learnedDownloadInFlight)
                 .help(
-                    "For Quick Estimate: a network trained on BombCAD's own 4 m district runs gives the peak at "
-                        + "each ground-floor façade strip, for its damage, glass and walls; the impulse, roofs and "
-                        + "upper storeys stay on the surrogate. Illustrative. Its weights are read from "
-                        + model.learnedWeightsURL.path
+                    "For Quick Estimate: networks trained on BombCAD's own 4 m district runs give the peak at "
+                        + "each façade strip, the ground floor's from one and the storeys' above from another, "
+                        + "for its damage, glass and walls; the impulse and roofs stay on the surrogate. "
+                        + "Illustrative. Their weights are read from "
+                        + model.learnedWeightsURL.deletingLastPathComponent().path
                         + "; without them, turning it on offers to download them."
                 )
                 .confirmationDialog(
@@ -121,12 +122,33 @@ struct EnvelopeDamageSection: View {
                     Text(model.learnedDownloadStatus).font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                // Field model 1's file alone: the update is offered, and fetched only on a click.
+                if !model.learnedDownloadInFlight, model.learnedUpdateAvailable() {
+                    Text(LearnedField.Release.updateOffer).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(Self.learnedUpdateButton) { model.downloadLearnedWeights() }
+                        .controlSize(.small)
+                }
                 if model.quickEstimateLearnedPeaks {
                     if !model.learnedPeaksStatus.isEmpty {
                         Text(model.learnedPeaksStatus).font(.caption).foregroundStyle(.orange)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    ForEach(LearnedField.standing, id: \.self) {
+                    ForEach(model.learnedStanding, id: \.self) {
+                        Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
+                            horizontal: false, vertical: true)
+                    }
+                    HStack {
+                        Button("Check on this Mac") { model.checkLearnedFieldOnThisMac() }
+                            .controlSize(.small)
+                            .disabled(model.learnedCheckInFlight)
+                            .help(
+                                "Runs the learned field model's networks twice on a built-in 5 km district, in a "
+                                    + "process of its own, and says how long they take, how much memory they need "
+                                    + "and whether they fit this Mac's GPU.")
+                        if model.learnedCheckInFlight { ProgressView().controlSize(.small) }
+                    }
+                    ForEach(model.learnedCheckReport, id: \.self) {
                         Text($0).font(.caption).foregroundStyle(.secondary).fixedSize(
                             horizontal: false, vertical: true)
                     }
@@ -277,7 +299,11 @@ struct EnvelopeDamageSection: View {
     /// The learned field model's first-use download dialog: its title and its button.
     static let learnedDownloadTitle = "Download the learned field model?"
     static var learnedDownloadButton: String {
-        String(format: "Download %.1f MB", Double(LearnedField.Release.bytes) / 1e6)
+        "Download " + LearnedField.Release.megabytes(LearnedField.Release.bytes)
+    }
+    /// The update's button, for an install with field model 1's file alone.
+    static var learnedUpdateButton: String {
+        "Download Update, " + LearnedField.Release.megabytes(LearnedField.Release.levels.bytes)
     }
 
     /// Its façades' glass, by the construction's mix: the share of panes broken, and how many of

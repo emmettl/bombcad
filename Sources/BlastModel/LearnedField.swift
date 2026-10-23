@@ -28,9 +28,34 @@ public enum LearnedField {
     /// Peaks below this, Pa, are not the model's (the training's mask left them out).
     public static let smallestPeakPa: Float = 10
 
-    /// The option's standing, worded from the judge's figures (docs/learned-models.md, "In the
-    /// app's quick estimate (21 October 2026)").
+    /// The option's standing with field model 2, both networks (`Estimator.option`), worded from
+    /// the judge's figures (docs/learned-models.md, "Field model 2 in the app (23 October 2026)").
     public static let standing: [String] = {
+        let glass = ValidationTables.figure("learnedModel2Glass")
+        let upper = ValidationTables.figure("learnedModel2GlassUpper")
+        let walls = ValidationTables.figure("learnedModel2Walls")
+        let roofs = ValidationTables.figure("structureChancesSkill")
+        return [
+            String(
+                format:
+                    "Learned field model 2 for façade peaks: illustrative. Two networks trained on BombCAD's own 4 m "
+                    + "district runs, one for the ground floor and one for the storeys above, judged through this "
+                    + "estimate against Beirut's ten near boxes on air refined to 2 m, a city they never saw. Glass "
+                    + "blown out by building side: Brier skill %.2f against field model 1's %.2f, and %.2f against "
+                    + "%.2f above the ground floor. Concrete walls damaged moderately or worse: Brier skill %.3f "
+                    + "against field model 1's %.3f, and their chances miss the tenths test by one tenth, on the "
+                    + "unsafe side: where they said 0.80–0.90 (0.84 on average), 0.95 of those buildings were "
+                    + "damaged so. Roofs (skill %.2f) and the impulse stay on the surrogate.",
+                glass.high, glass.low, upper.high, upper.low, walls.low, walls.high, roofs.high),
+            "It learned one city's runs and made-up districts on 4 m cells, with the charge on the ground: "
+                + "other cells, other cities and other charges are beyond what it was judged on.",
+        ]
+    }()
+
+    /// The option's standing with field model 1's file alone (the ground floor's network), worded
+    /// from the judge's figures (docs/learned-models.md, "In the app's quick estimate (21 October
+    /// 2026)").
+    public static let standingModel1: [String] = {
         let glass = ValidationTables.figure("learnedPeakGlass")
         let glassSkill = ValidationTables.figure("learnedPeakGlassSkill")
         let walls = ValidationTables.figure("learnedWallsRefined")
@@ -730,6 +755,22 @@ public enum LearnedField {
 
     // MARK: - Files
 
+    /// The app's option over `scene` (emmettl/bombcad-work#69): with the levels network, field
+    /// model 2, the ground floor's peak from `ground` and the storeys' above from `levels`, each
+    /// strip drawing its network's own measured scatter (`Scatter.measured`, by the files' names),
+    /// roofs left to the surrogate (`Reach.judged`), as `scenebench field-refs` judged it
+    /// (`c-own`). With `ground` alone, field model 1 as it shipped: its peak at the ground floor,
+    /// the surrogate's scatter.
+    public static func optionEstimator(
+        scene: Scenario, ground: any Network, groundFile: String, levels: (any Network)?, levelsFile: String
+    ) -> Estimator {
+        guard let levels else { return Estimator(scene: scene, network: ground) }
+        return Estimator(
+            scene: scene, network: levels, reach: .judged, groundNetwork: ground,
+            scatter: .combining(
+                ground: .measured(forWeights: groundFile), upper: .measured(forWeights: levelsFile)))
+    }
+
     /// NumPy's `.npy` files of little-endian float32 in C order (`scenebench field-export`'s and
     /// the export script's references): the values and the shape.
     public static func readNPY(_ url: URL) throws -> (values: [Float], shape: [Int]) {
@@ -777,6 +818,20 @@ public enum LearnedField {
     /// The environment variable naming the weights' file, and the setting that does (the app's).
     public static let environmentKey = "BOMBCAD_FIELD_MODEL"
     public static let fileName = "field-unet-fp-strict.bcfw"
+    /// The levels network's weights (`field-model-2`'s second file), for the storeys above the
+    /// ground floor: `BOMBCAD_FIELD_MODEL_LEVELS` if set, else beside the ground floor's file.
+    public static let levelsEnvironmentKey = "BOMBCAD_FIELD_MODEL_LEVELS"
+    public static let levelsFileName = "field-unet-l4-strict.bcfw"
+
+    /// The levels network's file, for the ground floor's at `ground`.
+    public static func levelsWeightsURL(
+        ground: URL, environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> URL {
+        if let path = environment[levelsEnvironmentKey], !path.isEmpty {
+            return URL(filePath: (path as NSString).expandingTildeInPath)
+        }
+        return ground.deletingLastPathComponent().appending(path: levelsFileName)
+    }
 
     /// The weights' file: `BOMBCAD_FIELD_MODEL` if set, else `setting` if given, else
     /// `~/Library/Application Support/BombCAD/LearnedModels/field-unet-fp-strict.bcfw`.
@@ -826,23 +881,69 @@ public enum LearnedFieldError: Error, CustomStringConvertible {
 }
 
 extension LearnedField {
-    /// The weights' release: the file the app offers to download the first time the option is
-    /// turned on (never without the user's click), from the repository's release `tag`, checked
-    /// against `sha256` before it is kept (emmettl/bombcad-work#67; docs/learned-models.md).
+    /// The weights' release: the files the app offers to download the first time the option is
+    /// turned on (never without the user's click), from the repository's release `tag`, each
+    /// checked against its `sha256` before it is kept (emmettl/bombcad-work#67, #69;
+    /// docs/learned-models.md). `field-model-2` holds round 2's strict network for the ground
+    /// floor, the very file `field-model-1` held, and round 4's strict levels network for the
+    /// storeys above. An install with `field-model-1`'s file alone keeps working as it did, and is
+    /// offered the second file as an update.
     public enum Release {
-        public static let tag = "field-model-1"
-        public static let file = LearnedField.fileName
-        public static let bytes = 15_716_144
-        public static let sha256 = "d544d80f5a3985c56e0035475b4ebf95f8b16ffc2057619a7f7b621935370440"
-        public static var url: URL {
-            URL(string: "https://github.com/emmettl/bombcad/releases/download/\(tag)/\(file)")!
+        /// One file of the release.
+        public struct Asset: Sendable, Equatable {
+            public var file: String
+            public var bytes: Int
+            public var sha256: String
+
+            public init(file: String, bytes: Int, sha256: String) {
+                self.file = file
+                self.bytes = bytes
+                self.sha256 = sha256
+            }
+
+            public var url: URL {
+                URL(string: "https://github.com/emmettl/bombcad/releases/download/\(Release.tag)/\(file)")!
+            }
         }
+
+        public static let tag = "field-model-2"
+        /// Round 2's strict network (`field-unet-fp-strict`): the ground floor's 2 m field.
+        public static let ground = Asset(
+            file: LearnedField.fileName, bytes: 15_716_144,
+            sha256: "d544d80f5a3985c56e0035475b4ebf95f8b16ffc2057619a7f7b621935370440")
+        /// Round 4's strict levels network (`field-unet-l4-strict`): the storeys above.
+        public static let levels = Asset(
+            file: LearnedField.levelsFileName, bytes: 15_718_128,
+            sha256: "bc8f9f76db52cdd34b451f7f8e27473d0ef7ca99d333e1905a5573603a219ca8")
+        public static let assets = [ground, levels]
+        /// Both files together.
+        public static var bytes: Int { assets.reduce(0) { $0 + $1.bytes } }
+
+        /// Megabytes, as the app says them.
+        public static func megabytes(_ bytes: Int) -> String {
+            String(format: "%.1f MB", Double(bytes) / 1e6)
+        }
+
         /// What the download is for, in the words the app asks with.
         public static var offer: String {
-            "The learned field model gives the quick estimate its peak at ground-floor façades, for their "
-                + "damage, glass and walls (illustrative). Its weights, "
-                + String(format: "%.1f", Double(bytes) / 1e6) + " MB, are downloaded once from "
-                + url.absoluteString + " and kept in Application Support."
+            "The learned field model gives the quick estimate its peak at façades, the ground floor's from "
+                + "one network and the storeys' above from another, for their damage, glass and walls "
+                + "(illustrative). Their weights, two files of " + megabytes(bytes) + " together, are "
+                + "downloaded once from the repository's \(tag) release (" + ground.url.absoluteString
+                + " and " + levels.url.absoluteString + ") and kept in Application Support."
+        }
+
+        /// The update offered to an install that has `field-model-1`'s file alone.
+        public static var updateOffer: String {
+            let glass = ValidationTables.figure("learnedModel2Glass")
+            return
+                "A newer model is available: field model 2 adds a network for the storeys above the ground "
+                + String(
+                    format: "floor (glass blown out by side, Brier skill %.2f against %.2f; ", glass.high,
+                    glass.low)
+                + "the walls' chances miss the tenths test by one tenth). Its weights, "
+                + megabytes(levels.bytes) + ", are downloaded from " + levels.url.absoluteString
+                + " only if you click Download Update."
         }
     }
 }

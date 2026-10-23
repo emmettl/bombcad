@@ -2025,6 +2025,9 @@ unchanged, and the scatter stays off. What would settle it:
   sides, is worth a wall score level within 0.01 of skill that misses the tenths test by one
   tenth.
 
+The user decided the second the same day: (c) with its own scatter ships as `field-model-2`
+([field model 2 in the app](#field-model-2-in-the-app-23-october-2026)).
+
 Everything is in `/Volumes/StudioData/bombcad/ml/judge/scatter/`:
 
 - `scatter_stats.py`, with `fp-strict.json` and `l4-strict.json` for the measured scatter;
@@ -2042,18 +2045,112 @@ scenebench wall-calibrate <the same> --factors 0.8,1,1.15,1.3,1.5 --scales 0.5,1
     --fixed raw=1:1:1/1.3:0.5:1,learned-adopted=1.15:1:0.826/1.3:0.5:1
 ```
 
+## Field model 2 in the app (23 October 2026)
+
+emmettl/bombcad-work#69. On 23 October the user decided, in chat, to ship the model: variant (c)
+above, given its own scatter. With both files the app's option is now **field model 2**:
+
+- round 2's strict network (`field-unet-fp-strict`, field model 1's very file) gives the ground
+  floor's façade strips their peak;
+- round 4's strict levels network (`field-unet-l4-strict`) gives the storeys above theirs;
+- each strip the networks read draws its own network's measured scatter in the chances
+  (`Scatter.fieldModel1` at the ground floor, `Scatter.round4` above);
+- roofs and the impulse stay on the surrogate (`Reach.judged`).
+
+`LearnedField.optionEstimator` builds it as `scenebench field-refs` judged it (`c-own`). With the
+option off nothing is reached, so nothing changes to the bit. With field model 1's file alone the
+estimator is field model 1's as it shipped: its peak at the ground floor, the surrogate's scatter.
+
+**Its standing**, judged through the app's own estimate against Beirut's ten near boxes refined to
+2 m, 50–700 m, ten yields (the two rounds above):
+
+| | Field model 1 | Field model 2 |
+|---|---|---|
+| Glass blown out by side, over the app's sides (Brier / skill) | 0.0631 / 0.34 | **0.0539 / 0.44** |
+| … above the ground floor | 0.0663 / 0.32 | **0.0553 / 0.43** |
+| … at the ground floor (and its deciles' test) | 0.0469 / 0.41, fails | 0.0462 / 0.42, passes |
+| Glass by side exactly right, every storey | 0.910 | 0.928 |
+| Concrete walls moderate or worse, worst storey, adopted factors (Brier / skill / tenths test) | **0.0184 / 0.664 / passes** | 0.0188 / 0.656 / fails |
+| Roofs | 0.74 | 0.74 |
+
+In words: glass blown out over the app's sides, Brier skill 0.44 against field model 1's 0.34,
+and above the ground floor 0.43 against 0.32. For concrete walls moderate or worse, Brier skill
+0.656 against field model 1's 0.664, and the walls' chances fail the tenths test by one tenth, on
+the unsafe side. In the 0.80–0.90 tenth (176 building-yields) they predict 0.84 and 0.95 were
+damaged so, 0.01 beyond the test's 0.1. Field model 1 passes it. The option's standing in the app
+says the same, plainly (`LearnedField.standing`). With field model 1's file alone it shows field
+model 1's standing, as before (`standingModel1`).
+
+**The weights.** The release `field-model-2` on emmettl/bombcad holds both files, kept off
+"latest" like `field-model-1`:
+
+| File | Bytes | SHA-256 |
+|---|---|---|
+| `field-unet-fp-strict.bcfw` (round 2, epoch 59) | 15,716,144 | `d544d80f5a3985c56e0035475b4ebf95f8b16ffc2057619a7f7b621935370440` |
+| `field-unet-l4-strict.bcfw` (round 4, epoch 130) | 15,718,128 | `bc8f9f76db52cdd34b451f7f8e27473d0ef7ca99d333e1905a5573603a219ca8` |
+
+`LearnedField.Release` pins the tag and each file's name, size and hash.
+
+- **A first download fetches both, 31.4 MB.** It checks each file's hash and reads each as weights.
+  Only when both have passed does it move them into
+  `~/Library/Application Support/BombCAD/LearnedModels/` (`LearnedFieldDownload.install`). A
+  failure or a cancel keeps neither.
+- **An install with field model 1's file keeps working.** Its file is the release's first, to the
+  byte. Under the option it says "A newer model is available", with the size, 15.7 MB, and a
+  **Download Update** button. Nothing is fetched until that is clicked. The update fetches only
+  the second file. If the update fails, field model 1 carries on and the app says so.
+- **Set by hand.** `BOMBCAD_FIELD_MODEL` or the setting names the ground floor's file, as before.
+  The levels network is read from `BOMBCAD_FIELD_MODEL_LEVELS`, else beside it under its own name.
+  A path set by hand is never filled and never offered the update.
+- **Tests** use `file://` stand-ins only (`LearnedFieldDownloadTests`, `LearnedFieldOptionTests`).
+
+The release's assets are in `/Volumes/StudioData/bombcad/release-field-model-2/`: both `.bcfw`
+files and `MODEL-NOTES.md`, which is also the release's text. Their hashes match the pin. The
+command for the user, from a checkout once the commit is on main:
+
+```bash
+gh release create field-model-2 --repo emmettl/bombcad --target main --latest=false \
+    --title "Learned field model 2 (field-unet-fp-strict + field-unet-l4-strict)" \
+    --notes-file $BOMBCAD_DATA/release-field-model-2/MODEL-NOTES.md \
+    $BOMBCAD_DATA/release-field-model-2/field-unet-fp-strict.bcfw \
+    $BOMBCAD_DATA/release-field-model-2/field-unet-l4-strict.bcfw \
+    $BOMBCAD_DATA/release-field-model-2/MODEL-NOTES.md
+```
+
+**Check on this Mac.** The user asked whether the model runs on a small laptop. The button **Check
+on this Mac**, under the option, runs `BombCAD field-model check` from the app's own executable,
+in a process of its own (`LearnedFieldCheck`). It loads the downloaded weights and runs each
+network twice on a built-in district of 1,250 × 1,250 cells of 4 m, 5 km square, larger than
+Beirut's judged boxes (2.6 km across). It reports:
+
+- the GPU and its recommended working set;
+- the load time and the first and second run's times;
+- the process's peak memory;
+- whether it fits, and the largest square plan the option will run there.
+
+On the Studio (M4 Max, 30.2 GB recommended working set), each network loaded in 0.7 s and ran
+in 0.6–0.7 s the first time (building the graph) and 0.3 s after that. The check's process peaked
+at 3.2 GB for both networks, 3.0 GB for one alone, and 1.1 GB for one on a 688² plan.
+MPSGraph holds about 1.7–1.8 KB a cell at once, over about 0.2 GB.
+
+**When memory is short.** Before each run, `LearnedFieldNetwork` checks the plan's need, taken as
+2 KB a cell over 0.25 GB, against what the GPU is recommended to use less what it already holds.
+A plan that would not fit is refused before it runs, with a message giving both figures, and the
+estimate is then the surrogate's alone. It never crashes. The plan is not cut into tiles. Each
+group norm takes its mean and variance over the whole plan, so tiles normalised on their own give
+other peaks. Exact tiling would need each norm's statistics gathered over every tile before the
+next layer, one pass per norm (18 of them), at many times the cost. The need at 1,250², about
+3.5 GB by that rule, is within what an 8 GB Mac's GPU is usually recommended (around two thirds of
+its memory), but not with much else open. The check says what it is on the Mac itself.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **A model to ship after round 2** ([round 4](#round-4-fields-at-more-heights-on-the-fixed-terrain-start-23-october-2026),
-  [on the 2 m references](#round-4-on-the-2-m-references-glass-and-every-storey-23-october-2026),
-  [with its own scatter](#the-models-own-scatter-in-the-chances-23-october-2026)):
-  - round 2 below and round 4 above with the model's own scatter gains at glass and comes within
-    0.01 of skill at the walls, but fails their tenths test. It needs the model's scatter measured
-    against 2 m runs other than the judge's, or the user's decision;
-  - or a ground-floor head as sharp as round 2's;
-  - then the option's weights, name and standing.
+- **Field model 2's walls** ([in the app](#field-model-2-in-the-app-23-october-2026)): their
+  chances miss the tenths test by one tenth, on the unsafe side. The model's scatter measured
+  against 2 m runs other than the judge's would say whether the drawn scatter is too narrow.
+- **Field model 2 on the small laptop**: the user's `BombCAD field-model check` there.
 - **Measured heights** to judge the levels on (emmettl/bombcad-work#69; routes, not readings, from
   the search of 21 October in [data wanted](data-wanted.md#to-fetch)). Alsubaei 2015's columns are
   [done](#the-shape-with-height-against-alsubaeis-columns), as far as their scaled heights overlap.

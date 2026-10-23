@@ -55,10 +55,16 @@ struct LearnedFieldWeightsTests {
         let padded = try Data([0, 1, 2]) + Self.file()
         #expect(try LearnedField.Weights(data: padded.dropFirst(3)).tensors.count == 26)
         // The shipped model's shapes: width 32, depth 4, 7.9 M values, which with its header of
-        // 9,248 bytes make the release's 15,716,144 (`LearnedField.Release.bytes`) in float16.
+        // 9,248 bytes make the release's 15,716,144 (`LearnedField.Release.ground.bytes`) in
+        // float16; the levels network's nine levels, two outputs each, with its header of 10,176,
+        // its 15,718,128 (`Release.levels.bytes`).
         let shipped = LearnedField.Weights.tensorShapes(width: 32, depth: 4)
         let values = shipped.values.map { $0.reduce(1, *) }.reduce(0, +)
-        #expect(values == 7_853_442 && 12 + 9_248 + 2 * values == LearnedField.Release.bytes)
+        #expect(values == 7_853_442 && 12 + 9_248 + 2 * values == LearnedField.Release.ground.bytes)
+        let levels = LearnedField.Weights.tensorShapes(width: 32, depth: 4, outputs: 18).values.map {
+            $0.reduce(1, *)
+        }.reduce(0, +)
+        #expect(12 + 10_176 + 2 * levels == LearnedField.Release.levels.bytes)
     }
 
     @Test("A file cut short anywhere is refused")

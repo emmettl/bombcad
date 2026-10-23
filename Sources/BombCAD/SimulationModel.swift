@@ -721,6 +721,10 @@ final class SimulationModel {
     var learnedDownloadInFlight = false
     var learnedDownloadStatus = ""
     @ObservationIgnored var learnedDownloadTask: Task<Void, Never>?
+    /// The check on this Mac (`LearnedFieldCheck`, run as `BombCAD field-model check`): while it
+    /// runs, and what it last said.
+    var learnedCheckInFlight = false
+    var learnedCheckReport: [String] = []
     static let learnedPeaksKey = "quickEstimate.learnedFieldPeaks"
     /// A path for the learned field model's weights other than the default
     /// (`LearnedField.weightsURL`; `BOMBCAD_FIELD_MODEL` comes first).
@@ -728,9 +732,11 @@ final class SimulationModel {
     /// What the learned field model said at the last estimate that asked for it: the strips it gave
     /// its peak to and its time, or why it could not be used.
     var learnedPeaksStatus = ""
-    /// The learned field model's network, once loaded, with the file it came from; and the plan it
-    /// sees of the district, laid out once for every place of the charge.
-    @ObservationIgnored var learnedNetwork: (url: URL, network: LearnedFieldNetwork)?
+    /// The learned field model's networks, once loaded, with the files they came from (the levels
+    /// network's only with field model 2's second file); and the plan they see of the district,
+    /// laid out once for every place of the charge.
+    @ObservationIgnored var learnedNetwork:
+        (url: URL, network: LearnedFieldNetwork, levelsURL: URL?, levels: LearnedFieldNetwork?)?
     @ObservationIgnored var learnedEstimator: (scene: Scenario, estimator: LearnedField.Estimator)?
     /// While the charge is dragged in the view (Place Charge on): the scene is loaded again only
     /// once it is let go, and a quick estimate on screen follows it (`beginDrag`).

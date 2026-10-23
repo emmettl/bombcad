@@ -96,15 +96,20 @@ extension SimulationModel {
         // laid out once for every place of the charge.
         let learnedWanted = quickEstimateLearnedPeaks
         let weightsURL = learnedWeightsURL
-        let knownNetwork = learnedNetwork.flatMap { $0.url == weightsURL ? $0.network : nil }
+        // Field model 2's second file, the levels network, if it is there.
+        let levelsURL = learnedLevelsURL
+        let loaded = learnedNetwork.flatMap { $0.url == weightsURL && $0.levelsURL == levelsURL ? $0 : nil }
+        let knownNetwork = loaded?.network
+        let knownLevels = loaded?.levels
         let knownEstimator = learnedEstimator.flatMap {
-            $0.scene == layout && $0.estimator.network === knownNetwork ? $0.estimator : nil
+            $0.scene == layout && $0.estimator.network === (knownLevels ?? knownNetwork) ? $0.estimator : nil
         }
         lookInFlight = true
         estimatingEnvelopeDamage = true
         if !waiting.preview { envelopeDamageStatus = "Estimating…" }
         Task { [weak self] in
-            let (prepared, look, estimator, problem) = await Task.detached(priority: .userInitiated) {
+            let (prepared, look, estimator, problem, networks) = await Task.detached(priority: .userInitiated)
+            {
                 // The previews' kept responses grow with each place: begun again past a few
                 // hundred thousand.
                 let prepared =
@@ -112,16 +117,25 @@ extension SimulationModel {
                     ?? FacadeLoadSurrogate.Prepared(scene: scenario, cellSize: cellSize)
                 var estimator: LearnedField.Estimator?
                 var problem: String?
+                var networks: (LearnedFieldNetwork, LearnedFieldNetwork?)?
                 if learnedWanted {
-                    if let knownEstimator {
+                    if let knownEstimator, let knownNetwork {
                         estimator = knownEstimator
+                        networks = (knownNetwork, knownLevels)
                     } else if !FileManager.default.fileExists(atPath: weightsURL.path) {
                         problem =
                             "No learned field model's weights at \(weightsURL.path): the estimate is the surrogate's alone."
                     } else {
                         do {
+                            // Field model 2 with both files; field model 1 with the ground floor's alone.
                             let network = try knownNetwork ?? LearnedFieldNetwork(contentsOf: weightsURL)
-                            estimator = LearnedField.Estimator(scene: scenario, network: network)
+                            let levels = try levelsURL.map {
+                                try knownLevels ?? LearnedFieldNetwork(contentsOf: $0)
+                            }
+                            estimator = LearnedField.optionEstimator(
+                                scene: scenario, ground: network, groundFile: weightsURL.lastPathComponent,
+                                levels: levels, levelsFile: levelsURL?.lastPathComponent ?? "")
+                            networks = (network, levels)
                         } catch {
                             problem = "\(error) The estimate is the surrogate's alone."
                         }
@@ -140,13 +154,13 @@ extension SimulationModel {
                     constructions: { scenario.envelopeConstruction(for: $0) },
                     uncertainty: uncertainty,
                     preview: waiting.preview, parts: parts, learned: estimator)
-                return (prepared, look, estimator, problem)
+                return (prepared, look, estimator, problem, networks)
             }.value
             guard let self else { return }
             self.lookInFlight = false
             self.preparedDistrict = (layout, cellSize, prepared)
-            if let estimator, let network = estimator.network as? LearnedFieldNetwork {
-                self.learnedNetwork = (weightsURL, network)
+            if let estimator, let networks {
+                self.learnedNetwork = (weightsURL, networks.0, levelsURL, networks.1)
                 self.learnedEstimator = (layout, estimator)
             }
             self.learnedPeaksStatus =
@@ -154,8 +168,9 @@ extension SimulationModel {
                 ? ""
                 : problem ?? look.learnedError.map { "\($0) The estimate is the surrogate's alone." }
                     ?? String(
-                        format:
-                            "Learned field model's peak at %d ground-floor façade strips, in %.2f s; roofs, upper storeys and the impulse from the surrogate.",
+                        format: networks?.1 != nil
+                            ? "Learned field model 2's peak at %d façade strips, the ground floor's and the storeys' above, in %.2f s; roofs and the impulse from the surrogate."
+                            : "Learned field model's peak at %d ground-floor façade strips, in %.2f s; roofs, upper storeys and the impulse from the surrogate.",
                         look.learnedStrips, look.learnedSeconds)
             self.estimatingEnvelopeDamage = self.lookWaiting != nil
             // Shown only for the scene as it is now, before any run.
@@ -199,7 +214,9 @@ extension SimulationModel {
                 look.totalSeconds)
             if look.learnedStrips > 0 {
                 envelopeDamageStatus +=
-                    " Ground-floor façade peaks from the learned field model (illustrative)."
+                    learnedNetwork?.levels != nil
+                    ? " Façade peaks from the learned field model 2 (illustrative)."
+                    : " Ground-floor façade peaks from the learned field model (illustrative)."
             }
             if look.estimate.outsideFit > 0 {
                 envelopeDamageStatus += String(

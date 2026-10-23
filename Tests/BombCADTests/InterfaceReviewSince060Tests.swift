@@ -236,17 +236,25 @@ extension InterfaceSnapshotTests {
         let source = temporary.folder.appending(path: "release.bcfw")
         try LearnedFieldOptionTests.tinyWeights().write(to: source)
         model.setLearnedPeaks(true, environment: [:])
-        model.downloadLearnedWeights(from: source, sha256: String(repeating: "0", count: 64))
+        model.downloadLearnedWeights([
+            .init(source: source, destination: home, sha256: String(repeating: "0", count: 64))
+        ])
         try capture("downloading")
         await model.learnedDownloadTask?.value
         try capture("checksum-failed")
         model.setLearnedPeaks(true, environment: [:])
         model.downloadLearnedWeights(
-            from: temporary.folder.appending(path: "missing.bcfw"), sha256: String(repeating: "0", count: 64))
+            [
+                .init(
+                    source: temporary.folder.appending(path: "missing.bcfw"), destination: home,
+                    sha256: String(repeating: "0", count: 64))
+            ])
         await model.learnedDownloadTask?.value
         try capture("download-failed")
         model.setLearnedPeaks(true, environment: [:])
-        model.downloadLearnedWeights(from: source, sha256: String(repeating: "0", count: 64))
+        model.downloadLearnedWeights([
+            .init(source: source, destination: home, sha256: String(repeating: "0", count: 64))
+        ])
         model.cancelLearnedDownload()
         await model.learnedDownloadTask?.value
         try capture("cancelled")

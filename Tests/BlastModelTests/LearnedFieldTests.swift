@@ -428,6 +428,67 @@ struct LearnedFieldTests {
                 ).chances)
     }
 
+    @Test(
+        "The app's option: both networks are field model 2, each strip drawing its own scatter; one is field model 1 as it shipped"
+    )
+    func optionEstimator() throws {
+        let scene = try FacadeGlassProbabilityTests.row()
+        final class Leveled: LearnedField.Network, @unchecked Sendable {
+            var header = StandIn().header
+            func peakChannel(inputs: [Float], rows: Int, columns: Int) throws -> [Float] { [] }
+        }
+        let levels = Leveled()
+        levels.header.levels = [
+            .init(name: "ground", over: "ground", metres: 2), .init(name: "h6", over: "ground", metres: 6),
+        ]
+        let ground = StandIn()
+        let two = LearnedField.optionEstimator(
+            scene: scene, ground: ground, groundFile: LearnedField.fileName, levels: levels,
+            levelsFile: LearnedField.levelsFileName)
+        #expect(two.network === levels && two.groundNetwork === ground)
+        #expect(two.reach == .judged && !two.reach.contains(.roofs))
+        #expect(
+            two.scatter
+                == LearnedField.Scatter(
+                    ground: LearnedField.Scatter.fieldModel1.ground, upper: LearnedField.Scatter.round4.upper)
+        )
+        // Field model 1's file alone: as it shipped, its peak at the ground floor, the surrogate's scatter.
+        let one = LearnedField.optionEstimator(
+            scene: scene, ground: ground, groundFile: LearnedField.fileName, levels: nil, levelsFile: "")
+        #expect(one.network === ground && one.groundNetwork == nil && one.scatter == nil)
+        #expect(one.reach == .groundFloor)
+    }
+
+    @Test("Field model 2's release pins both files; the levels network's file sits beside the ground floor's")
+    func release() {
+        let release = LearnedField.Release.self
+        #expect(release.tag == "field-model-2")
+        #expect(release.assets.map(\.file) == ["field-unet-fp-strict.bcfw", "field-unet-l4-strict.bcfw"])
+        // The ground floor's file is field model 1's, to the byte.
+        #expect(release.ground.sha256 == "d544d80f5a3985c56e0035475b4ebf95f8b16ffc2057619a7f7b621935370440")
+        #expect(release.assets.allSatisfy { $0.sha256.count == 64 && $0.sha256 == $0.sha256.lowercased() })
+        #expect(
+            release.levels.url.absoluteString
+                == "https://github.com/emmettl/bombcad/releases/download/field-model-2/field-unet-l4-strict.bcfw"
+        )
+        #expect(release.bytes == 31_434_272 && release.offer.contains("31.4 MB"))
+        #expect(
+            release.updateOffer.contains("A newer model is available")
+                && release.updateOffer.contains("15.7 MB"))
+        #expect(
+            LearnedField.levelsWeightsURL(ground: URL(filePath: "/m/a.bcfw"), environment: [:]).path
+                == "/m/field-unet-l4-strict.bcfw")
+        #expect(
+            LearnedField.levelsWeightsURL(
+                ground: URL(filePath: "/m/a.bcfw"),
+                environment: [LearnedField.levelsEnvironmentKey: "/l.bcfw"]
+            ).path == "/l.bcfw")
+        // The standing says the walls' miss plainly.
+        let standing = LearnedField.standing.joined(separator: " ")
+        #expect(standing.contains("0.44 against field model 1's 0.34") && standing.contains("0.656"))
+        #expect(standing.contains("miss the tenths test by one tenth, on the unsafe side"))
+    }
+
     @Test("The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support")
     func weightsURL() {
         #expect(

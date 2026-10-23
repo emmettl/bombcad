@@ -51,6 +51,21 @@ extension ValidationTables {
             id: "learnedPeakWallsApp", low: 0.60, high: 0.68,
             document: "learned-models.md#in-the-apps-quick-estimate-21-october-2026",
             quote: "at the app's own load factor of 1.0, 0.60 and 0.68"),
+        // Field model 2 in the quick estimate (`LearnedField.standing`), against Beirut's 2 m
+        // references: field model 1's figure and model 2's, the lower first
+        // (emmettl/bombcad-work#69).
+        Figure(
+            id: "learnedModel2Glass", low: 0.34, high: 0.44,
+            document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
+            quote: "glass blown out over the app's sides, Brier skill 0.44 against field model 1's 0.34"),
+        Figure(
+            id: "learnedModel2GlassUpper", low: 0.32, high: 0.43,
+            document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
+            quote: "above the ground floor 0.43 against 0.32"),
+        Figure(
+            id: "learnedModel2Walls", low: 0.656, high: 0.664,
+            document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
+            quote: "concrete walls moderate or worse, Brier skill 0.656 against field model 1's 0.664"),
         Figure(
             id: "dragPreviewGlass", low: 0.88, high: 0.93,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",

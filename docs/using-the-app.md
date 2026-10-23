@@ -57,20 +57,48 @@ in the list. A progress bar and **Cancel** show while it runs. A new drag, an ed
 it. On Beirut at 0.5 kt the first answer came in 13 s and eight in 22 s
 ([close calls refined by the solver](surrogate-first-look.md#close-calls-refined-by-the-solver-21-october-2026)).
 
-**Learned field model for ground-floor peaks**, under the envelope damage, is an option for the
-quick estimate, off unless you turn it on. A network trained on BombCAD's own 4 m district runs
-then gives the peak at each ground-floor façade strip, for the strip's damage, its glass and the
-walls' chances. The impulse, the roofs and the storeys above stay on the surrogate. Its standing
-is shown with it: illustrative, judged on Beirut's runs it never saw
-([in the app's quick estimate](learned-models.md#in-the-apps-quick-estimate-21-october-2026)). It
-needs its weights, a 15.7 MB file. The first time you turn it on, the app asks whether to download
-them, giving their size and source (the repository's `field-model-1` release), and fetches nothing
-unless you click **Download**. It checks the file against the hash it expects and keeps it in
-`~/Library/Application Support/BombCAD/LearnedModels/`. If the download fails or you cancel it,
-the option stays off and the sidebar says why. To use a file you have already, set
-`BOMBCAD_FIELD_MODEL` or
-`defaults write dev.bombcad.BombCAD quickEstimate.learnedFieldWeights <path>`. With the option on,
-a drag's preview runs the network again at each place of the charge.
+**Learned field model for façade peaks**, under the envelope damage, is an option for the quick
+estimate, off unless you turn it on. Field model 2 is two networks trained on BombCAD's own 4 m
+district runs. One gives the peak at each ground-floor façade strip, the other at the storeys
+above, for each strip's damage, its glass and the walls' chances, and the chances draw each
+network's own scatter. The impulse and the roofs stay on the surrogate. Its standing is shown with
+it: illustrative, judged against Beirut's runs refined to 2 m, a city it never saw. Glass blown
+out by side scores better than field model 1 (Brier skill 0.44 against 0.34), but the walls'
+chances miss the tenths test by one tenth on the unsafe side, which field model 1's passed
+([field model 2 in the app](learned-models.md#field-model-2-in-the-app-23-october-2026)).
+
+It needs its weights, two files of 31.4 MB together. The first time you turn it on, the app asks
+whether to download them, giving their size and source (the repository's `field-model-2`
+release), and fetches nothing unless you click **Download**. It checks each file against the hash
+it expects and keeps both in `~/Library/Application Support/BombCAD/LearnedModels/`, only once
+both have passed. If the download fails or you cancel it, the option stays off and the sidebar
+says why. If you already have field model 1's file, the option keeps working as field model 1, and
+the sidebar says "A newer model is available" with a **Download Update, 15.7 MB** button. Only a
+click fetches the second file. To use files you have already, set `BOMBCAD_FIELD_MODEL` (or
+`defaults write dev.bombcad.BombCAD quickEstimate.learnedFieldWeights <path>`) to the ground
+floor's file. Put the levels network's `field-unet-l4-strict.bcfw` beside it, or name it with
+`BOMBCAD_FIELD_MODEL_LEVELS`. With the option on, a drag's preview runs the networks again at each
+place of the charge.
+
+**Check on this Mac**, under the option once it is on, says whether the model runs on this Mac.
+It runs both networks twice, in a process of their own, on a built-in district of 1,250 × 1,250
+cells (5 km square). It then shows:
+
+- the GPU and the memory it is recommended to use;
+- how long the networks took to load, and to run the first and second time;
+- the peak memory;
+- whether it fits, and the largest plan the option will run there.
+
+On the Studio each network runs in about 0.3 s after the first, and the check peaks at 3.2 GB.
+The same check runs without a window, from the installed app:
+
+```bash
+/Applications/BombCAD.app/Contents/MacOS/BombCAD field-model check
+```
+
+It takes `--cells N` for another plan size, and `--ground` and `--levels` for other files. It exits
+0 if the model fits, 1 if not, and 2 without the weights. A plan too large for the GPU's memory is
+never run: the estimate says how much it needed and what was free, and is the surrogate's alone.
 
 **People in the scene**, under the envelope damage once a quick estimate has the glass's chances,
 places people in each building by its use (from its map tags; untagged buildings take the use you

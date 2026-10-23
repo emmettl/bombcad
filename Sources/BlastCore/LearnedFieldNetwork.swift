@@ -50,11 +50,41 @@ public final class LearnedFieldNetwork: LearnedField.Network, @unchecked Sendabl
         return (0..<count).map { Array(values[($0 * plan)..<(($0 + 1) * plan)]) }
     }
 
-    /// The head's outputs `heads` over the plan, one after another.
+    /// The memory a run over `rows` × `columns` padded cells takes, bytes: MPSGraph keeps about 16
+    /// of the top level's tensors at once, 1.7–1.8 KB a cell at width 32 over a fixed 0.2 GB, as
+    /// `BombCAD field-model check` measured it (3.0 GB at 1,264², 1.1 GB at 688²; 23 October 2026),
+    /// taken here as 2 KB and 0.25 GB to keep a margin.
+    public static func bytesNeeded(rows: Int, columns: Int, width: Int = 32) -> UInt64 {
+        UInt64(rows * columns) * UInt64(2_000 * max(1, width)) / 32 + (256 << 20)
+    }
+
+    /// The GPU memory a run may take: what the GPU is recommended to use less what it holds now;
+    /// `budget` in place of that in tests.
+    var budget: UInt64?
+    private var freeMemory: UInt64 {
+        if let budget { return budget }
+        let used = UInt64(device.currentAllocatedSize)
+        let recommended = device.recommendedMaxWorkingSetSize
+        return recommended > used ? recommended - used : 0
+    }
+
+    /// The head's outputs `heads` over the plan, one after another. A plan the GPU cannot hold is
+    /// refused before it is run, saying so, and the estimate is then the surrogate's alone: the
+    /// network's group norms take their statistics over the whole plan, so it cannot be cut into
+    /// tiles and give the same peaks.
     private func run(inputs: [Float], rows: Int, columns: Int, heads: [Int]) throws -> [Float] {
         let multiple = max(1, header.multiple)
         guard rows % multiple == 0, columns % multiple == 0, inputs.count == 6 * rows * columns else {
             throw LearnedFieldError.network("inputs of \(inputs.count) for 6 × \(rows) × \(columns)")
+        }
+        let needed = Self.bytesNeeded(rows: rows, columns: columns, width: header.width)
+        let free = freeMemory
+        guard needed <= free else {
+            throw LearnedFieldError.network(
+                String(
+                    format:
+                        "a plan of %d × %d cells needs about %.1f GB of GPU memory, and this Mac's GPU has %.1f GB free of what it is recommended to use",
+                    rows, columns, Double(needed) / 1e9, Double(free) / 1e9))
         }
         lock.lock()
         defer { lock.unlock() }
