@@ -619,6 +619,11 @@ def lane_ready(host):
     why = runner.reachable(host)
     if why:
         return why
+    # A host that answers but cannot write (a WSL disk gone read-only, I/O errors) is not a lane.
+    write = runner.ssh(host, "mkdir -p %s/staging && f=%s/staging/.lane-probe-$$ && : > $f && rm -f $f && echo ok"
+                       % (ROOT, ROOT), timeout=30)
+    if b"ok" not in write.stdout:
+        return "it cannot write its staging folder"
     probe = runner.ssh(host, "cat %s/lock/owner 2>/dev/null; echo; cat /proc/sys/kernel/random/boot_id" % ROOT,
                        timeout=30)
     lines = probe.stdout.decode(errors="replace").strip().splitlines()
