@@ -159,7 +159,10 @@ Mac. `sweep.json` records the host's space.
 
 **The first prune.** By the time the rule was in, the 106 stages' sources had already been
 removed (18 GB; the list is in `~/bombcad-sweeps/cleanup-report-20261023.json` on the PC), leaving
-their receipts, about 90 MB. The rule then removed 95 of the 108 stages there.
+their receipts, about 90 MB. The rule then removed 95 of the 109 stages there, all completed test
+stages, freeing 84 MB. It kept 14: the newest 4 (one, from a check run after the clean-up, with its
+whole 0.7 GB source), 4 staged in the last 2 days, and 6 runs whose retrieval was never marked.
+After the prune, `~/bombcad-sweeps` was 1.2 GB.
 
 **The first sweep, 21 October 2026** (`cpu-studies-1`), on `bombcad-pc`: WSL2 Ubuntu 24.04 on 24
 cores and 30 GB, Swift 6.4.1 as CI's. BlastModel's 817 tests pass there in 170 s. The sweep has
