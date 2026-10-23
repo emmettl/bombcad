@@ -178,6 +178,7 @@ The [roadmap](docs/roadmap.md) lists the limitations in order of importance and 
 | [Profiled steel sheeting](docs/profiled-sheeting.md) | Trapezoidal and sinusoidal steel cladding and roofs, as shells and as an envelope construction; compared with Langdon's corrugated panels; the portal-frame warehouse sample |
 | [The transport hub](docs/transport-hub.md) | A station's train shed under a long-span steel and glass roof, beside a concourse glazed with laminated glass; glass falling from overhead, and struts buckling |
 | [Distributed computing](docs/distributed-computing.md) | Sweeps on several Macs, and the effects beside the blast placed on other Macs by cost |
+| [The spatial viewer](docs/spatial-viewer.md) | Kept runs replayed on an iPad from a Mac nearby, what their recordings weigh over Wi-Fi, and what a Vision Pro would need |
 | [Learned models](docs/learned-models.md) | Training on the PCs' CUDA cards: their set-up, the runner, the field model's data and training script, and what is not done yet |
 | [Run comparison](docs/run-comparison.md)    | Saved runs, comparing them, and headless runs                   |
 | [USD export](docs/usd-export.md) | Writing a run over time as USD and OpenVDB volumes, for rendering in Blender and elsewhere |

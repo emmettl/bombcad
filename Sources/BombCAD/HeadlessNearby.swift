@@ -5,7 +5,7 @@ import Foundation
 @MainActor
 enum HeadlessNearby {
     static let usage = """
-        Usage: BombCAD serve [--name <name>] [--store <file>]
+        Usage: BombCAD serve [--name <name>] [--store <file>] [--share <project>]…
                BombCAD pair [<name>] [--code <code>] [--store <file>]
                BombCAD nearby [--store <file>]
                BombCAD nearby probe <name> [--megabytes <n>] [--rounds <n>] [--store <file>]
@@ -13,7 +13,8 @@ enum HeadlessNearby {
         serve shares this Mac's GPU with Macs on the local network until stopped: it advertises
         itself by Bonjour, runs each paired Mac's sessions in a worker of its own, and asks on
         standard input whether a Mac asking to pair may (y to allow), showing the code both Macs
-        show. pair pairs with a Mac that serves, named or the only one found: it shows the code,
+        show. With --share (once a project), BombCAD on an iPad paired with it can list that saved
+        project's kept runs and replay their recordings. pair pairs with a Mac that serves, named or the only one found: it shows the code,
         which that Mac must show too, and asks for y, or takes --code as the code that Mac shows.
         A paired Mac is then named nearby:<its name> wherever an SSH host is taken, as
         BombCAD watch --on nearby:<name> or BombCAD sweep --worker nearby:<name>. nearby lists the
@@ -31,15 +32,19 @@ enum HeadlessNearby {
         }
         var values: [String: String] = [:]
         var positional: [String] = []
+        var shared: [URL] = []
         var index = 0
         while index < arguments.count {
             let argument = arguments[index]
             if argument.hasPrefix("--") {
                 guard index + 1 < arguments.count,
-                    ["name", "store", "code", "megabytes", "rounds"].contains(argument.dropFirst(2))
+                    ["name", "store", "code", "megabytes", "rounds", "share"].contains(argument.dropFirst(2))
                 else {
                     FileHandle.standardError.write(Data("Unknown option \(argument).\n\n\(usage)\n".utf8))
                     return 2
+                }
+                if argument == "--share" {
+                    shared.append(URL(filePath: arguments[index + 1], directoryHint: .isDirectory))
                 }
                 values[String(argument.dropFirst(2))] = arguments[index + 1]
                 index += 2
@@ -53,7 +58,13 @@ enum HeadlessNearby {
                 NearbyWorkers.store = try FilePairingStore(url: URL(filePath: path))
             }
             switch command {
-            case "serve": return try await serve(name: values["name"])
+            case "serve":
+                let missing = shared.filter { !FileManager.default.fileExists(atPath: $0.path) }
+                guard missing.isEmpty else {
+                    throw NearbyError.refused("No project at \(missing.map(\.path).joined(separator: ", ")).")
+                }
+                NearbyServer.sharedProjects = { shared }
+                return try await serve(name: values["name"])
             case "pair": return try await pair(positional.first, code: values["code"])
             default:
                 guard positional.first == "probe" else { return try await list() }
@@ -91,6 +102,16 @@ enum HeadlessNearby {
         }
         server.log = say
         try server.start()
+        // For a device that cannot browse for it, as the iPad Simulator cannot: the ports to name,
+        // again after each pairing, which starts the sessions' listener anew on another port.
+        func ports() async {
+            guard let pairing = try? await server.port(of: NearbyWorkers.pairingService),
+                let sessions = try? await server.port(of: NearbyWorkers.sessionService)
+            else { return }
+            say("Pairing on port \(pairing), sessions on port \(sessions).")
+        }
+        server.paired = { _ in Task { await ports() } }
+        await ports()
         let paired = store.pairings().map(\.peer.name)
         say(
             "Sharing \(name ?? store.me.name)'s GPU with Macs nearby"

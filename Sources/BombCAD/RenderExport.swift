@@ -1,9 +1,12 @@
-import AppKit
 import BlastCore
 import DocumentKit
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
+
+#if os(macOS)
+    import AppKit
+#endif
 
 /// Exporting the project's run for rendering elsewhere, from the app: the same run and files as
 /// `BombCAD run --usd --vdb`, made from a copy of the project in the background, so the window
@@ -83,122 +86,124 @@ final class RenderExport {
     func cancel() { task?.cancel() }
 }
 
-/// The sheet behind File ▸ Export for Rendering….
-struct RenderExportView: View {
-    let model: SimulationModel
-    @State private var export = RenderExport()
-    @Environment(\.dismiss) private var dismiss
-    /// The sheet opens in its interval, so that Tab and typing reach it without Full Keyboard
-    /// Access (a stepper alone is not a key view then).
-    @FocusState private var focusesInterval: Bool
+#if os(macOS)
+    /// The sheet behind File ▸ Export for Rendering….
+    struct RenderExportView: View {
+        let model: SimulationModel
+        @State private var export = RenderExport()
+        @Environment(\.dismiss) private var dismiss
+        /// The sheet opens in its interval, so that Tab and typing reach it without Full Keyboard
+        /// Access (a stepper alone is not a key view then).
+        @FocusState private var focusesInterval: Bool
 
-    /// The interval typed, kept to the stepper's 1–100 ms.
-    private var interval: Binding<Int> {
-        Binding(get: { export.frameInterval }, set: { export.frameInterval = min(max($0, 1), 100) })
-    }
+        /// The interval typed, kept to the stepper's 1–100 ms.
+        private var interval: Binding<Int> {
+            Binding(get: { export.frameInterval }, set: { export.frameInterval = min(max($0, 1), 100) })
+        }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Export for Rendering").font(.headline)
-            Text(
-                "Runs this project again in the background and writes a USD scene, with the air as OpenVDB volumes beside it, for rendering in Blender or another renderer."
-            )
-            .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            Form {
-                LabeledContent("A frame every") {
-                    HStack(spacing: 4) {
-                        TextField("A frame every (ms)", value: interval, format: .number)
-                            .labelsHidden().frame(width: 48).multilineTextAlignment(.trailing)
-                            .focused($focusesInterval)
-                        Text("ms")
-                        Stepper("A frame every (ms)", value: $export.frameInterval, in: 1...100)
-                            .labelsHidden()
+        var body: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Export for Rendering").font(.headline)
+                Text(
+                    "Runs this project again in the background and writes a USD scene, with the air as OpenVDB volumes beside it, for rendering in Blender or another renderer."
+                )
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Form {
+                    LabeledContent("A frame every") {
+                        HStack(spacing: 4) {
+                            TextField("A frame every (ms)", value: interval, format: .number)
+                                .labelsHidden().frame(width: 48).multilineTextAlignment(.trailing)
+                                .focused($focusesInterval)
+                            Text("ms")
+                            Stepper("A frame every (ms)", value: $export.frameInterval, in: 1...100)
+                                .labelsHidden()
+                        }
                     }
-                }
-                LabeledContent("Volumes") {
-                    VStack(alignment: .leading) {
-                        ForEach(BlastSolver.volumeFields, id: \.self) { field in
-                            Toggle(Self.title(field), isOn: binding(field))
+                    LabeledContent("Volumes") {
+                        VStack(alignment: .leading) {
+                            ForEach(BlastSolver.volumeFields, id: \.self) { field in
+                                Toggle(Self.title(field), isOn: binding(field))
+                            }
+                        }
+                    }
+                    if model.fragmentSpec != nil {
+                        LabeledContent("Fragments") {
+                            Toggle("Fly them into the scene", isOn: $export.includesFragments)
+                        }
+                    }
+                    if model.groundShockSpec != nil {
+                        LabeledContent("Ground points") {
+                            Toggle("Put them in the scene", isOn: $export.includesGroundShock)
                         }
                     }
                 }
-                if model.fragmentSpec != nil {
-                    LabeledContent("Fragments") {
-                        Toggle("Fly them into the scene", isOn: $export.includesFragments)
+                .disabled(export.isRunning)
+                Text(estimate).font(.caption).foregroundStyle(.secondary)
+                status
+                HStack {
+                    Spacer()
+                    if export.isRunning {
+                        Button("Cancel") { export.cancel() }
+                    } else {
+                        Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
+                        Button("Export…") { choose() }.keyboardShortcut(.defaultAction)
                     }
                 }
-                if model.groundShockSpec != nil {
-                    LabeledContent("Ground points") {
-                        Toggle("Put them in the scene", isOn: $export.includesGroundShock)
-                    }
+            }
+            .padding(20)
+            .frame(width: 440)
+            .defaultFocus($focusesInterval, true)
+            .task { focusesInterval = true }
+            .onDisappear { export.cancel() }
+        }
+
+        @ViewBuilder private var status: some View {
+            switch export.state {
+            case .idle:
+                EmptyView()
+            case .running(let fraction):
+                ProgressView(value: fraction) { Text("Running and writing frames…").font(.caption) }
+            case .finished(let url, let frames):
+                HStack {
+                    Text("Wrote \(frames) frames to \(url.lastPathComponent).").font(.callout)
+                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                 }
-            }
-            .disabled(export.isRunning)
-            Text(estimate).font(.caption).foregroundStyle(.secondary)
-            status
-            HStack {
-                Spacer()
-                if export.isRunning {
-                    Button("Cancel") { export.cancel() }
-                } else {
-                    Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
-                    Button("Export…") { choose() }.keyboardShortcut(.defaultAction)
-                }
+            case .failed(let message):
+                Text(message).font(.callout).foregroundStyle(.red)
             }
         }
-        .padding(20)
-        .frame(width: 440)
-        .defaultFocus($focusesInterval, true)
-        .task { focusesInterval = true }
-        .onDisappear { export.cancel() }
-    }
 
-    @ViewBuilder private var status: some View {
-        switch export.state {
-        case .idle:
-            EmptyView()
-        case .running(let fraction):
-            ProgressView(value: fraction) { Text("Running and writing frames…").font(.caption) }
-        case .finished(let url, let frames):
-            HStack {
-                Text("Wrote \(frames) frames to \(url.lastPathComponent).").font(.callout)
-                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        private var estimate: String {
+            let frames = Int(model.duration * 1000) / export.frameInterval + 1
+            let grids = export.fields.count
+            guard grids > 0 else { return "\(frames) frames of the scene, without volumes." }
+            return
+                "\(frames) frames. Volumes take up to tens of megabytes a frame on a medium grid, peak and impulse the most."
+        }
+
+        private func binding(_ field: String) -> Binding<Bool> {
+            Binding(
+                get: { export.fields.contains(field) },
+                set: { if $0 { export.fields.insert(field) } else { export.fields.remove(field) } })
+        }
+
+        static func title(_ field: String) -> String {
+            switch field {
+            case "overpressure": "Overpressure now"
+            case "shock": "Shock fronts (pressure gradient)"
+            case "peak": "Peak overpressure so far"
+            case "impulse": "Impulse so far"
+            default: field
             }
-        case .failed(let message):
-            Text(message).font(.callout).foregroundStyle(.red)
+        }
+
+        private func choose() {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [UTType(filenameExtension: "usda") ?? .data]
+            panel.nameFieldStringValue = model.settings.scenario.name + ".usda"
+            panel.message = "The volumes go in a folder beside the scene."
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            export.start(ProjectDocument(model: model), to: url)
         }
     }
-
-    private var estimate: String {
-        let frames = Int(model.duration * 1000) / export.frameInterval + 1
-        let grids = export.fields.count
-        guard grids > 0 else { return "\(frames) frames of the scene, without volumes." }
-        return
-            "\(frames) frames. Volumes take up to tens of megabytes a frame on a medium grid, peak and impulse the most."
-    }
-
-    private func binding(_ field: String) -> Binding<Bool> {
-        Binding(
-            get: { export.fields.contains(field) },
-            set: { if $0 { export.fields.insert(field) } else { export.fields.remove(field) } })
-    }
-
-    static func title(_ field: String) -> String {
-        switch field {
-        case "overpressure": "Overpressure now"
-        case "shock": "Shock fronts (pressure gradient)"
-        case "peak": "Peak overpressure so far"
-        case "impulse": "Impulse so far"
-        default: field
-        }
-    }
-
-    private func choose() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [UTType(filenameExtension: "usda") ?? .data]
-        panel.nameFieldStringValue = model.settings.scenario.name + ".usda"
-        panel.message = "The volumes go in a folder beside the scene."
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        export.start(ProjectDocument(model: model), to: url)
-    }
-}
+#endif

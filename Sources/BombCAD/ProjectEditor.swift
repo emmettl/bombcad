@@ -29,35 +29,37 @@ final class ProjectSession {
     }
 }
 
-struct ProjectEditor: View {
-    @Binding var document: ProjectDocument
-    /// Where the project is saved, for its kept runs' timelines; nil until it is.
-    var fileURL: URL? = nil
-    @State private var session: ProjectSession?
+#if os(macOS)
+    struct ProjectEditor: View {
+        @Binding var document: ProjectDocument
+        /// Where the project is saved, for its kept runs' timelines; nil until it is.
+        var fileURL: URL? = nil
+        @State private var session: ProjectSession?
 
-    var body: some View {
-        Group {
-            if let session {
-                ContentView(model: session.model)
-                    .focusedSceneValue(\.simulationModel, session.model)
-            } else {
-                ProgressView("Opening project…")
+        var body: some View {
+            Group {
+                if let session {
+                    ContentView(model: session.model)
+                        .focusedSceneValue(\.simulationModel, session.model)
+                } else {
+                    ProgressView("Opening project…")
+                }
             }
+            .frame(minWidth: 1000, minHeight: 640)
+            .task {
+                // Defer expensive GPU construction until this window actually appears.
+                if session == nil { session = ProjectSession(document: document) }
+                session?.model.packageURL = fileURL
+            }
+            .onChange(of: fileURL) { _, url in session?.model.packageURL = url }
+            .onChange(of: session?.snapshot) { _, snapshot in
+                if let snapshot, snapshot != document { document = snapshot }
+            }
+            .onDisappear { session?.suspend() }
+            .onChange(of: document) { _, incoming in session?.receive(incoming) }
         }
-        .frame(minWidth: 1000, minHeight: 640)
-        .task {
-            // Defer expensive GPU construction until this window actually appears.
-            if session == nil { session = ProjectSession(document: document) }
-            session?.model.packageURL = fileURL
-        }
-        .onChange(of: fileURL) { _, url in session?.model.packageURL = url }
-        .onChange(of: session?.snapshot) { _, snapshot in
-            if let snapshot, snapshot != document { document = snapshot }
-        }
-        .onDisappear { session?.suspend() }
-        .onChange(of: document) { _, incoming in session?.receive(incoming) }
     }
-}
+#endif
 
 private struct SimulationModelFocusKey: FocusedValueKey {
     typealias Value = SimulationModel

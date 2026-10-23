@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "BombCAD",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v15), .iOS(.v18)],
     products: [
         .library(name: "BlastCore", targets: ["BlastCore"]),
         .library(name: "BlastRender", targets: ["BlastRender"]),
@@ -55,11 +55,14 @@ let package = Package(
                 "BlastCore",
                 .product(name: "SceneView", package: "continuumkit"),
             ], resources: [.copy("Shaders")]),
+        // On an iPad, BombCAD is the viewer of runs kept on a Mac nearby (ViewerApp.swift,
+        // Scripts/build-ipad-viewer.sh). ContinuumKit's SceneRender, which the app takes only for
+        // its orbiting view, imports AppKit, so the iPad leaves it out.
         .executableTarget(
             name: "BombCAD",
             dependencies: [
                 "BlastCore", "BlastRender", .product(name: "DocumentKit", package: "continuumkit"),
-                .product(name: "SceneRender", package: "continuumkit"),
+                .product(name: "SceneRender", package: "continuumkit", condition: .when(platforms: [.macOS])),
             ]),
         .executableTarget(name: "blastbench", dependencies: ["BlastCore", "BlastRender", "RadialBlast"]),
         .executableTarget(name: "SceneBench", dependencies: ["BlastCore", "BlastRender"]),

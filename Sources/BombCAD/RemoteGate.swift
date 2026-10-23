@@ -15,6 +15,15 @@ struct RemoteConfig: Codable, Equatable, Sendable {
 
     init() {}
 
+    /// The user's home folder; an iPad's app has its own.
+    static var home: URL {
+        #if os(macOS)
+            FileManager.default.homeDirectoryForCurrentUser
+        #else
+            URL(filePath: NSHomeDirectory(), directoryHint: .isDirectory)
+        #endif
+    }
+
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = RemoteConfig()
@@ -28,7 +37,7 @@ struct RemoteConfig: Codable, Equatable, Sendable {
 
     static var url: URL {
         ProcessInfo.processInfo.environment["BOMBCAD_REMOTE_CONFIG"].map { URL(filePath: $0) }
-            ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: ".config/bombcad/remote.json")
+            ?? RemoteConfig.home.appending(path: ".config/bombcad/remote.json")
     }
 
     /// The file's settings, or none: no other Mac is used unless named.
@@ -55,7 +64,7 @@ struct RemoteGate: Codable, Equatable, Sendable {
     var what: String
 
     static var lock: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appending(path: "bombcad-remote/lock")
+        RemoteConfig.home.appending(path: "bombcad-remote/lock")
     }
 
     /// As the worker's argument, base64 JSON, which the shell passes untouched.
@@ -79,7 +88,7 @@ struct RemoteGate: Codable, Equatable, Sendable {
     func refusal(now: Date = .now, load: Double? = nil, cores: Int? = nil, processes: [String]? = nil)
         -> String?
     {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let home = RemoteConfig.home.path
         let commands = processes ?? Self.processes()
         let busy = runners.filter { runner in
             commands.contains { $0.hasPrefix("\(home)/\(runner)/bin/Runner.Worker") }
@@ -116,15 +125,19 @@ struct RemoteGate: Codable, Equatable, Sendable {
     }
 
     private static func processes() -> [String] {
-        let process = Process()
-        process.executableURL = URL(filePath: "/bin/ps")
-        process.arguments = ["-Ao", "command"]
-        let output = Pipe()
-        process.standardOutput = output
-        guard (try? process.run()) != nil else { return [] }
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return String(decoding: data, as: UTF8.self).split(separator: "\n").map(String.init)
+        #if !os(macOS)
+            return []
+        #else
+            let process = Process()
+            process.executableURL = URL(filePath: "/bin/ps")
+            process.arguments = ["-Ao", "command"]
+            let output = Pipe()
+            process.standardOutput = output
+            guard (try? process.run()) != nil else { return [] }
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            return String(decoding: data, as: UTF8.self).split(separator: "\n").map(String.init)
+        #endif
     }
 
     private struct Owner: Codable {

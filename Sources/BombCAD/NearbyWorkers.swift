@@ -940,20 +940,31 @@ final class NearbyServer {
         relay.start(connection)
     }
 
+    /// The project packages whose kept runs' recordings a viewer nearby may fetch from a session's
+    /// worker (`SharedTimelines`): those `BombCAD serve --share` names, or the projects open in the
+    /// app, read when each session starts.
+    @MainActor static var sharedProjects: () -> [URL] = { [] }
+
     /// A `BombCAD worker` process of this executable, as an SSH session starts one.
     static func workerProcess(_ input: FileHandle, _ output: FileHandle, _ gate: RemoteGate?) throws {
-        guard let executable = Bundle.main.executableURL else {
-            throw NearbyError.refused("Cannot find BombCAD's own executable.")
-        }
-        let process = Process()
-        process.executableURL = executable
-        process.arguments = ["worker"] + (gate.map { ["--gate", $0.argument] } ?? [])
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = FileHandle.standardError
-        try process.run()
-        // The process holds its own copies; the output's end reaches the session when it exits.
-        try? input.close()
-        try? output.close()
+        #if !os(macOS)
+            throw NearbyError.refused("An iPad shares no GPU.")
+        #else
+            guard let executable = Bundle.main.executableURL else {
+                throw NearbyError.refused("Cannot find BombCAD's own executable.")
+            }
+            let process = Process()
+            process.executableURL = executable
+            process.arguments =
+                ["worker"] + (gate.map { ["--gate", $0.argument] } ?? [])
+                + sharedProjects().flatMap { ["--share", $0.path] }
+            process.standardInput = input
+            process.standardOutput = output
+            process.standardError = FileHandle.standardError
+            try process.run()
+            // The process holds its own copies; the output's end reaches the session when it exits.
+            try? input.close()
+            try? output.close()
+        #endif
     }
 }

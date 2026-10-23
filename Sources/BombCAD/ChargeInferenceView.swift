@@ -418,7 +418,7 @@ struct ChargeInferencePlan: View {
                 let inset = CGRect(x: Double(size.width) - side - 6, y: 6, width: side, height: side)
                 context.fill(
                     Path(roundedRect: inset, cornerRadius: 4),
-                    with: .color(Color(nsColor: .windowBackgroundColor)))
+                    with: .color(Color.windowBackground))
                 context.stroke(
                     Path(roundedRect: inset, cornerRadius: 4), with: .color(.secondary), lineWidth: 0.5)
                 let across = max(3 * r90, 1)
@@ -446,7 +446,7 @@ struct ChargeInferencePlan: View {
                     at: CGPoint(x: inset.minX + 4, y: inset.maxY - 3), anchor: .bottomLeading)
             }
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .background(Color.textBackground)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .accessibilityElement()
         .accessibilityLabel(

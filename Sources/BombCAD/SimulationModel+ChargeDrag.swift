@@ -1,7 +1,10 @@
 import BlastCore
 import Foundation
-import SceneRender
 import simd
+
+#if os(macOS)
+    import SceneRender
+#endif
 
 // Dragging the charge, with a quick estimate on screen following it (emmettl/bombcad-work#34).
 extension SimulationModel {
@@ -9,38 +12,41 @@ extension SimulationModel {
     /// roofs': fewer than a full estimate's 100, so a frame stays near a second on a large district.
     static let previewDraws = (glass: 10, structure: 20)
 
-    /// With Place Charge on, a press on the ground takes the drag: the charge follows the pointer
-    /// and, if a quick estimate is on screen, so does it, as a preview; the scene is loaded again
-    /// once the charge is let go.
-    func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) -> Bool {
-        guard isPlacingCharge, !sweep.isActive, !isRunning, time == 0 else { return false }
-        if case .gauge = selection { return false }
-        guard let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else { return false }
-        isDraggingCharge = true
-        // A refinement under way is for where the charge was.
-        cancelCloseCalls(status: "")
-        closeCallRefined = nil
-        refinedBuildings = []
-        estimateFollowsCharge = envelopeDamageIsEstimate && !envelopeDamage.isEmpty
-        moveDraggedCharge(to: point)
-        return true
-    }
-
-    func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) {
-        guard isDraggingCharge, let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else {
-            return
+    #if os(macOS)
+        /// With Place Charge on, a press on the ground takes the drag: the charge follows the pointer
+        /// and, if a quick estimate is on screen, so does it, as a preview; the scene is loaded again
+        /// once the charge is let go.
+        func beginDrag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) -> Bool {
+            guard isPlacingCharge, !sweep.isActive, !isRunning, time == 0 else { return false }
+            if case .gauge = selection { return false }
+            guard let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else { return false }
+            isDraggingCharge = true
+            // A refinement under way is for where the charge was.
+            cancelCloseCalls(status: "")
+            closeCallRefined = nil
+            refinedBuildings = []
+            estimateFollowsCharge = envelopeDamageIsEstimate && !envelopeDamage.isEmpty
+            moveDraggedCharge(to: point)
+            return true
         }
-        moveDraggedCharge(to: point)
-    }
 
-    func endDrag() {
-        guard isDraggingCharge else { return }
-        isDraggingCharge = false
-        // Loaded again once, now, and recorded as one edit; the preview kept on screen meanwhile.
-        restoresFollowedLook = estimateFollowsCharge
-        settingsChanged()
-        if estimateFollowsCharge { requestLook(preview: false) }
-    }
+        func drag(ndc: SIMD2<Float>, aspectRatio: Float, modifiers: DragModifiers) {
+            guard isDraggingCharge, let point = camera.groundPoint(ndc: ndc, aspectRatio: aspectRatio) else {
+                return
+            }
+            moveDraggedCharge(to: point)
+        }
+
+        func endDrag() {
+            guard isDraggingCharge else { return }
+            isDraggingCharge = false
+            // Loaded again once, now, and recorded as one edit; the preview kept on screen meanwhile.
+            restoresFollowedLook = estimateFollowsCharge
+            settingsChanged()
+            if estimateFollowsCharge { requestLook(preview: false) }
+        }
+
+    #endif
 
     /// Moves the charge to `point` on the ground, snapped as a click places it; a preview follows.
     private func moveDraggedCharge(to point: SIMD3<Float>) {

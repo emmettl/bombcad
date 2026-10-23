@@ -194,7 +194,7 @@ struct IFCSelectionView: View {
                                     .font(.caption).foregroundStyle(e.supported ? Color.secondary : .orange)
                                     .textSelection(.enabled)
                                 }
-                            }.toggleStyle(.checkbox).disabled(!e.supported)
+                            }.checkboxToggleStyle().disabled(!e.supported)
                         }
                         if filtered.isEmpty { Text("No matching elements.").foregroundStyle(.secondary) }
                     }.padding(8)
@@ -228,7 +228,7 @@ struct IFCSelectionView: View {
                                         Text(failure.id).font(.caption).textSelection(.enabled)
                                         Text(failure.reason).font(.caption).foregroundStyle(.red)
                                     }
-                                }.toggleStyle(.checkbox)
+                                }.checkboxToggleStyle()
                             }
                         }
                     }.frame(height: 140)

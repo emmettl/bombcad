@@ -423,7 +423,7 @@ private struct SavedRunRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Toggle(run.name, isOn: $selected).toggleStyle(.checkbox)
+            Toggle(run.name, isOn: $selected).checkboxToggleStyle()
             TextField("Name", text: $draft).textFieldStyle(.roundedBorder).disabled(!editable)
                 .onSubmit {
                     do {

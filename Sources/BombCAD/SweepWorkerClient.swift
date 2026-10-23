@@ -30,6 +30,8 @@ final class SweepWorkerClient {
     private var viewers: [UUID: (WatchFrame.Header, Data) -> Void] = [:]
     private var viewSetups: [UUID: (Data) -> Void] = [:]
     private var viewStats: [UUID: (ViewStats, ContinuousClock.Instant)] = [:]
+    /// Recordings being fetched, for their files as they arrive.
+    private var timelineParts: [UUID: (TimelinePart, Data) -> Void] = [:]
     private var closedError: Error?
     /// How its messages travel, for a Mac nearby (`NearbyWorkers.Transport`); empty otherwise.
     var transport = ""
@@ -282,6 +284,49 @@ final class SweepWorkerClient {
         return start.duration(to: .now)
     }
 
+    /// The kept runs with recordings that the worker's Mac shares (`SharedTimelines`).
+    func timelines() async throws -> [SharedTimeline] {
+        let id = UUID()
+        let writer = self.writer
+        let payload = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Data, Error>) in
+            if let closedError {
+                continuation.resume(throwing: closedError)
+                return
+            }
+            outcomeWaiters[id] = continuation
+            writer.enqueue(.timelines(id))
+        }
+        return try JSONDecoder().decode([SharedTimeline].self, from: payload)
+    }
+
+    /// Fetches a shared run's recording, handing each file to `part` as it arrives, the run, the
+    /// manifest and the setup first; returns what sending it cost there. `fetch.id` names it to
+    /// `preferTimelineFrame`.
+    func fetchTimeline(_ fetch: TimelineFetch, part: @escaping (TimelinePart, Data) -> Void) async throws
+        -> TimelineSentStats
+    {
+        let writer = self.writer
+        timelineParts[fetch.id] = part
+        defer { timelineParts[fetch.id] = nil }
+        let payload = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+                if let closedError {
+                    continuation.resume(throwing: closedError)
+                    return
+                }
+                outcomeWaiters[fetch.id] = continuation
+                writer.enqueue(.fetchTimeline(fetch))
+            }
+        } onCancel: {
+            writer.enqueue(.cancel(fetch.id))
+        }
+        return try JSONDecoder().decode(TimelineSentStats.self, from: payload)
+    }
+
+    /// Asks for frame `index` of the recording being fetched next.
+    func preferTimelineFrame(_ id: UUID, _ index: Int) { writer.enqueue(.timelinePrefer(id, index)) }
+
     /// Whether the connection has closed, or failed: a job that fails then failed with it, not on
     /// the worker.
     var isClosed: Bool { closedError != nil }
@@ -344,8 +389,10 @@ final class SweepWorkerClient {
             reports[id]?(report, seconds)
         case .live(let id, let header):
             liveFrames[id]?(header, payload)
-        case .outcome(let id), .probed(let id):
+        case .outcome(let id), .probed(let id), .timelineList(let id), .timelineSent(let id):
             outcomeWaiters.removeValue(forKey: id)?.resume(returning: payload)
+        case .timelinePart(let id, let part):
+            timelineParts[id]?(part, payload)
         case .hello(let hello):
             self.hello = hello
             helloWaiter?.resume(returning: hello)
@@ -450,34 +497,38 @@ enum RemoteSweepWorker {
     private static func launch(_ executable: URL, _ arguments: [String], name: String) async throws
         -> SweepWorkerClient
     {
-        let process = Process()
-        process.executableURL = executable
-        process.arguments = arguments
-        let input = Pipe()
-        let output = Pipe()
-        let errors = Pipe()
-        process.standardInput = input
-        process.standardOutput = output
-        process.standardError = errors
-        let log = ErrorLog()
-        errors.fileHandleForReading.readabilityHandler = { handle in log.append(handle.availableData) }
-        try process.run()
-        let client = SweepWorkerClient(
-            name: name, input: output.fileHandleForReading, output: input.fileHandleForWriting
-        ) {
-            try? input.fileHandleForWriting.close()
-            DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                if process.isRunning { process.terminate() }
+        #if !os(macOS)
+            throw ProjectFileError.invalid("An iPad starts no workers of its own.")
+        #else
+            let process = Process()
+            process.executableURL = executable
+            process.arguments = arguments
+            let input = Pipe()
+            let output = Pipe()
+            let errors = Pipe()
+            process.standardInput = input
+            process.standardOutput = output
+            process.standardError = errors
+            let log = ErrorLog()
+            errors.fileHandleForReading.readabilityHandler = { handle in log.append(handle.availableData) }
+            try process.run()
+            let client = SweepWorkerClient(
+                name: name, input: output.fileHandleForReading, output: input.fileHandleForWriting
+            ) {
+                try? input.fileHandleForWriting.close()
+                DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                    if process.isRunning { process.terminate() }
+                }
             }
-        }
-        client.diagnostics = { log.tail }
-        do {
-            _ = try await client.start()
-        } catch {
-            client.close()
-            throw error
-        }
-        return client
+            client.diagnostics = { log.tail }
+            do {
+                _ = try await client.start()
+            } catch {
+                client.close()
+                throw error
+            }
+            return client
+        #endif
     }
 
     /// A host name or alias that SSH cannot take for an option or a list; a paired Mac nearby
@@ -579,26 +630,30 @@ enum RemoteSweepWorker {
         throws
         -> (status: Int32, output: String, errors: String)
     {
-        let process = Process()
-        process.executableURL = URL(filePath: path)
-        process.arguments = arguments
-        let output = Pipe()
-        let errors = Pipe()
-        process.standardOutput = output
-        process.standardError = errors
-        process.standardInput = FileHandle.nullDevice
-        try process.run()
-        let out = output.fileHandleForReading.readDataToEndOfFile()
-        let err = errors.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        let result = (
-            process.terminationStatus, String(decoding: out, as: UTF8.self),
-            String(decoding: err, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-        if require, result.0 != 0 {
-            throw ProjectFileError.invalid("\(URL(filePath: path).lastPathComponent) failed: \(result.2)")
-        }
-        return result
+        #if !os(macOS)
+            throw ProjectFileError.invalid("An iPad runs no commands.")
+        #else
+            let process = Process()
+            process.executableURL = URL(filePath: path)
+            process.arguments = arguments
+            let output = Pipe()
+            let errors = Pipe()
+            process.standardOutput = output
+            process.standardError = errors
+            process.standardInput = FileHandle.nullDevice
+            try process.run()
+            let out = output.fileHandleForReading.readDataToEndOfFile()
+            let err = errors.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            let result = (
+                process.terminationStatus, String(decoding: out, as: UTF8.self),
+                String(decoding: err, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+            if require, result.0 != 0 {
+                throw ProjectFileError.invalid("\(URL(filePath: path).lastPathComponent) failed: \(result.2)")
+            }
+            return result
+        #endif
     }
 
     /// The last few lines a worker wrote to standard error.

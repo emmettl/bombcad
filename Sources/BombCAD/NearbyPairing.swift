@@ -242,7 +242,12 @@ extension PairingStore {
 
 /// This Mac's name as other Macs show it.
 func nearbyMachineName() -> String {
-    Host.current().localizedName ?? ProcessInfo.processInfo.hostName
+    #if os(macOS)
+        Host.current().localizedName ?? ProcessInfo.processInfo.hostName
+    #else
+        // An iPad's own name needs an entitlement; its host name will do.
+        ProcessInfo.processInfo.hostName
+    #endif
 }
 
 final class MemoryPairingStore: PairingStore, @unchecked Sendable {

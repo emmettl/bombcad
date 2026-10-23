@@ -12,6 +12,11 @@ enum SweepWorker {
     /// take work now, and says why not on standard error, exiting 75, before greeting; if it
     /// should, it holds this Mac's lock until it ends.
     static func main(_ arguments: [String] = []) async -> Int32 {
+        // `--share <project>`, once a project: the kept runs a viewer nearby may fetch.
+        var shared: [URL] = []
+        for (n, argument) in arguments.enumerated() where argument == "--share" && n + 1 < arguments.count {
+            shared.append(URL(filePath: arguments[n + 1], directoryHint: .isDirectory))
+        }
         if let index = arguments.firstIndex(of: "--gate") {
             guard index + 1 < arguments.count, let gate = RemoteGate(argument: arguments[index + 1]) else {
                 FileHandle.standardError.write(Data("The worker's gate could not be read.\n".utf8))
@@ -34,16 +39,18 @@ enum SweepWorker {
                 signalSources.append(source)
             }
             defer { RemoteGate.release() }
-            await serve(input: .standardInput, output: .standardOutput)
+            await serve(input: .standardInput, output: .standardOutput, shared: shared)
             return 0
         }
-        await serve(input: .standardInput, output: .standardOutput)
+        await serve(input: .standardInput, output: .standardOutput, shared: shared)
         return 0
     }
 
     private static var signalSources: [DispatchSourceSignal] = []
 
-    static func serve(input: FileHandle, output: FileHandle) async {
+    /// Serves until told to stop; `shared` names the project packages whose kept runs' recordings
+    /// a viewer may list and fetch (`SharedTimelines`).
+    static func serve(input: FileHandle, output: FileHandle, shared: [URL] = []) async {
         let writer = SweepWorkerWriter(output)
         let device = MTLCreateSystemDefaultDevice()?.name ?? "No Metal device"
         let hello = SweepWorkerHello(device: device, memory: AdvisorMachine.thisMac.memory)
@@ -115,6 +122,7 @@ enum SweepWorker {
                     jobs.pauses[id]?.value = on
                 case .cancel(let id):
                     if let running = jobs.current, running.id == id { running.task.cancel() }
+                    jobs.fetches[id]?.cancelled.value = true
                     jobs.sessions.removeValue(forKey: id)?.cancel()
                 case .shutdown:
                     await jobs.stop()
@@ -143,6 +151,35 @@ enum SweepWorker {
                         while bytes.count < count { bytes.append(block.prefix(count - bytes.count)) }
                         return bytes
                     }
+                case .timelines(let id):
+                    writer.enqueue(.timelineList(id)) {
+                        (try? JSONEncoder().encode(SharedTimelines.list(shared))) ?? Data("[]".utf8)
+                    }
+                case .fetchTimeline(let fetch):
+                    let wanted = URL(filePath: fetch.project, directoryHint: .isDirectory).standardizedFileURL
+                    guard let package = shared.first(where: { $0.standardizedFileURL.path == wanted.path })
+                    else {
+                        writer.enqueue(.failed(fetch.id, "That project is not shared."))
+                        continue
+                    }
+                    let preferred = Locked<[Int]>([])
+                    let cancelled = Locked(false)
+                    jobs.fetches[fetch.id] = (preferred, cancelled)
+                    // Off the main actor, which keeps reading: each part waits for the link.
+                    Thread {
+                        do {
+                            let stats = try SharedTimelines.send(
+                                fetch, package: package, writer: writer, preferred: preferred,
+                                cancelled: cancelled)
+                            try writer.send(.timelineSent(fetch.id), payload: JSONEncoder().encode(stats))
+                        } catch is CancellationError {
+                            try? writer.send(.failed(fetch.id, SweepWorkerMessage.cancelled))
+                        } catch {
+                            try? writer.send(.failed(fetch.id, error.localizedDescription))
+                        }
+                    }.start()
+                case .timelinePrefer(let id, let frame):
+                    jobs.fetches[id]?.preferred.update { $0.append(frame) }
                 default:
                     continue
                 }
@@ -162,8 +199,12 @@ enum SweepWorker {
         var pauses: [UUID: Locked<Bool>] = [:]
         /// The last watched job's files, by digest, for the next to name rather than send again.
         var files: [String: Data] = [:]
+        /// Recordings sent to a viewer this session: the frames it asked for next, and whether to
+        /// stop. A few bytes each, kept until the session ends.
+        var fetches: [UUID: (preferred: Locked<[Int]>, cancelled: Locked<Bool>)] = [:]
 
         func stop() async {
+            for fetch in fetches.values { fetch.cancelled.value = true }
             guard let task = current?.task else { return }
             task.cancel()
             await task.value

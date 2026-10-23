@@ -1,5 +1,8 @@
-import AppKit
 import SwiftUI
+
+#if os(macOS)
+    import AppKit
+#endif
 
 /// `BombCAD run …` runs a project without a window (see `HeadlessRun`), `BombCAD sweep …` runs a
 /// sweep (see `HeadlessSweep`), `BombCAD ensemble …` reruns validation cases over their uncertain
@@ -7,87 +10,100 @@ import SwiftUI
 @main
 enum BombCADMain {
     static func main() {
-        // A worker's connection that drops must fail a write, not end the process: the models it
-        // ran carry on here (see `ResilientFrameConsumer`).
-        signal(SIGPIPE, SIG_IGN)
-        let arguments = Array(CommandLine.arguments.dropFirst())
-        switch arguments.first {
-        case "run":
-            Task { @MainActor in
-                exit(await HeadlessRun.main(Array(arguments.dropFirst())))
-            }
-        case "watch":
-            Task { @MainActor in
-                exit(await HeadlessWatch.main(Array(arguments.dropFirst())))
-            }
-        case "sweep":
-            Task { @MainActor in
-                exit(await HeadlessSweep.main(Array(arguments.dropFirst())))
-            }
-        case "ensemble":
-            Task { @MainActor in
-                exit(await HeadlessEnsemble.main(Array(arguments.dropFirst())))
-            }
-        case "cloud":
-            exit(HeadlessCloud.main(Array(arguments.dropFirst())))
-        case "interface-smoke":
-            Task { @MainActor in exit(InterfaceSmoke.main()) }
-        case "serve", "pair", "nearby":
-            Task { @MainActor in
-                exit(await HeadlessNearby.main(arguments[0], Array(arguments.dropFirst())))
-            }
-        case "worker":
-            Task { @MainActor in
-                exit(await SweepWorker.main(Array(arguments.dropFirst())))
-            }
-        default:
-            AppPreferences.migrate()
-            BombCADApp.main()
-            return
-        }
-        dispatchMain()
+        #if !os(macOS)
+            // On an iPad, BombCAD is the viewer of runs kept on a Mac nearby (emmettl/bombcad-work#43).
+            ViewerApp.main()
+        #else
+            mainOnMac()
+        #endif
     }
+
+    #if os(macOS)
+        @MainActor private static func mainOnMac() {
+            // A worker's connection that drops must fail a write, not end the process: the models it
+            // ran carry on here (see `ResilientFrameConsumer`).
+            signal(SIGPIPE, SIG_IGN)
+            let arguments = Array(CommandLine.arguments.dropFirst())
+            switch arguments.first {
+            case "run":
+                Task { @MainActor in
+                    exit(await HeadlessRun.main(Array(arguments.dropFirst())))
+                }
+            case "watch":
+                Task { @MainActor in
+                    exit(await HeadlessWatch.main(Array(arguments.dropFirst())))
+                }
+            case "sweep":
+                Task { @MainActor in
+                    exit(await HeadlessSweep.main(Array(arguments.dropFirst())))
+                }
+            case "ensemble":
+                Task { @MainActor in
+                    exit(await HeadlessEnsemble.main(Array(arguments.dropFirst())))
+                }
+            case "cloud":
+                exit(HeadlessCloud.main(Array(arguments.dropFirst())))
+            case "interface-smoke":
+                Task { @MainActor in exit(InterfaceSmoke.main()) }
+            case "serve", "pair", "nearby":
+                Task { @MainActor in
+                    exit(await HeadlessNearby.main(arguments[0], Array(arguments.dropFirst())))
+                }
+            case "worker":
+                Task { @MainActor in
+                    exit(await SweepWorker.main(Array(arguments.dropFirst())))
+                }
+            default:
+                AppPreferences.migrate()
+                BombCADApp.main()
+                return
+            }
+            dispatchMain()
+        }
+    #endif
 }
 
-struct BombCADApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+#if os(macOS)
+    struct BombCADApp: App {
+        @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-    var body: some Scene {
-        DocumentGroup(newDocument: ProjectDocument.newProject()) { file in
-            ProjectEditor(document: file.$document, fileURL: file.fileURL)
-        }
-        .defaultSize(width: 1440, height: 920)
-        .commands {
-            NewDistrictCommands()
-            SimulationCommands()
-            HelpCommands()
-        }
+        var body: some Scene {
+            DocumentGroup(newDocument: ProjectDocument.newProject()) { file in
+                ProjectEditor(document: file.$document, fileURL: file.fileURL)
+            }
+            .defaultSize(width: 1440, height: 920)
+            .commands {
+                NewDistrictCommands()
+                SimulationCommands()
+                HelpCommands()
+            }
 
-        Window("New District", id: "new-district") {
-            NewDistrictView()
-        }
-        .defaultSize(width: 620, height: 820)
-        .windowResizability(.contentMinSize)
+            Window("New District", id: "new-district") {
+                NewDistrictView()
+            }
+            .defaultSize(width: 620, height: 820)
+            .windowResizability(.contentMinSize)
 
-        Window("BombCAD Help", id: "help") {
-            HelpView()
-        }
-        .defaultSize(width: 780, height: 620)
-        .windowResizability(.contentMinSize)
+            Window("BombCAD Help", id: "help") {
+                HelpView()
+            }
+            .defaultSize(width: 780, height: 620)
+            .windowResizability(.contentMinSize)
 
-        Settings {
-            AppSettingsView()
+            Settings {
+                AppSettingsView()
+            }
         }
     }
-}
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // When launched with `swift run` there is no app bundle, so ask for a regular
-        // foreground app explicitly.
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        NearbySharing.shared.restore()
-        DispatchQueue.global(qos: .background).async { RunTimelineRecorder.removeStaleStaging() }
+    final class AppDelegate: NSObject, NSApplicationDelegate {
+        func applicationDidFinishLaunching(_ notification: Notification) {
+            // When launched with `swift run` there is no app bundle, so ask for a regular
+            // foreground app explicitly.
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: true)
+            NearbySharing.shared.restore()
+            DispatchQueue.global(qos: .background).async { RunTimelineRecorder.removeStaleStaging() }
+        }
     }
-}
+#endif

@@ -230,21 +230,24 @@ struct ModelImportView: View {
                             Text("Previous preview; latest settings are not shown yet.").font(.caption)
                                 .foregroundStyle(.orange)
                         }
-                        ImportComparisonView(
-                            mesh: transformedMesh, preview: preview, placement: previewModel.placementReport,
-                            selectedPartID: selectedPartID, selectedPartIDs: selectedPartIDs,
-                            isolate: isolate,
-                            colourByMaterial: colourByMaterial && deformable, defaultMaterial: material,
-                            partMaterials: partMaterials,
-                            comparisons: study.rows, comparing: study.isRunning, domain: domainSize,
-                            detailed: model.settings.detailedCharge, refined: model.settings.sharpShocks,
-                            memoryBudget: memory.budget,
-                            chooseGrid: { value in
-                                if let r = Resolution(cellSize: value) { resolution = r }
-                            },
-                            canRefine: resolution.finer != nil, refine: { previewFiner() }
-                        )
-                        .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
+                        #if os(macOS)
+                            ImportComparisonView(
+                                mesh: transformedMesh, preview: preview,
+                                placement: previewModel.placementReport,
+                                selectedPartID: selectedPartID, selectedPartIDs: selectedPartIDs,
+                                isolate: isolate,
+                                colourByMaterial: colourByMaterial && deformable, defaultMaterial: material,
+                                partMaterials: partMaterials,
+                                comparisons: study.rows, comparing: study.isRunning, domain: domainSize,
+                                detailed: model.settings.detailedCharge, refined: model.settings.sharpShocks,
+                                memoryBudget: memory.budget,
+                                chooseGrid: { value in
+                                    if let r = Resolution(cellSize: value) { resolution = r }
+                                },
+                                canRefine: resolution.finer != nil, refine: { previewFiner() }
+                            )
+                            .opacity(isPreviewCurrent ? 1 : 0.4).allowsHitTesting(isPreviewCurrent)
+                        #endif
                     } else if !busy {
                         ContentUnavailableView(
                             "Preview unavailable", systemImage: "cube.transparent",

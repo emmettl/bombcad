@@ -61,7 +61,7 @@ struct IFCStructureReportView: View {
                                     }
                                 })
                         ) { text }
-                        .toggleStyle(.checkbox)
+                        .checkboxToggleStyle()
                     } else {
                         Text("• ") + text
                     }

@@ -322,50 +322,54 @@ enum IFCImporter {
 
     static func run(_ executable: URL, arguments: [String], folder: URL) async throws -> String {
         try Task.checkCancellation()
-        let log = folder.appendingPathComponent(UUID().uuidString + ".log")
-        FileManager.default.createFile(atPath: log.path, contents: nil)
-        let output = try FileHandle(forWritingTo: log)
-        defer { try? output.close() }
-        let process = Process()
-        process.executableURL = executable
-        process.arguments = arguments
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = output
-        process.standardError = output
-        try process.run()
-        defer { if process.isRunning { kill(process.processIdentifier, SIGKILL) } }
-        let limit = conversionLimit.value
-        let start = ContinuousClock.now
-        while process.isRunning {
-            try Task.checkCancellation()
-            if let limit, start.duration(to: .now) >= limit {
-                throw ImportedMesh.ImportError.invalid(
-                    "IFC conversion exceeded \(ConnectionChannel.describe(limit)). Simplify or split the model."
-                )
-            }
-            for url in try FileManager.default.contentsOfDirectory(
-                at: folder, includingPropertiesForKeys: [.fileSizeKey])
-            {
-                if (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) > 200_000_000 {
+        #if !os(macOS)
+            throw ImportedMesh.ImportError.invalid("IFC files are converted on a Mac.")
+        #else
+            let log = folder.appendingPathComponent(UUID().uuidString + ".log")
+            FileManager.default.createFile(atPath: log.path, contents: nil)
+            let output = try FileHandle(forWritingTo: log)
+            defer { try? output.close() }
+            let process = Process()
+            process.executableURL = executable
+            process.arguments = arguments
+            process.standardInput = FileHandle.nullDevice
+            process.standardOutput = output
+            process.standardError = output
+            try process.run()
+            defer { if process.isRunning { kill(process.processIdentifier, SIGKILL) } }
+            let limit = conversionLimit.value
+            let start = ContinuousClock.now
+            while process.isRunning {
+                try Task.checkCancellation()
+                if let limit, start.duration(to: .now) >= limit {
                     throw ImportedMesh.ImportError.invalid(
-                        "IFC conversion exceeded its output limit. Simplify or split the model.")
+                        "IFC conversion exceeded \(ConnectionChannel.describe(limit)). Simplify or split the model."
+                    )
                 }
+                for url in try FileManager.default.contentsOfDirectory(
+                    at: folder, includingPropertiesForKeys: [.fileSizeKey])
+                {
+                    if (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) > 200_000_000 {
+                        throw ImportedMesh.ImportError.invalid(
+                            "IFC conversion exceeded its output limit. Simplify or split the model.")
+                    }
+                }
+                try await Task.sleep(for: .milliseconds(50))
             }
-            try await Task.sleep(for: .milliseconds(50))
-        }
-        try Task.checkCancellation()
-        let text = String(decoding: try boundedData(log), as: UTF8.self)
-        guard process.terminationStatus == 0 else {
-            let errors = converterErrors(text)
-            throw ImportedMesh.ImportError.invalid(
-                "IFC conversion failed"
-                    + (errors.isEmpty
-                        ? (process.terminationReason == .uncaughtSignal
-                            ? ": the converter crashed (signal \(process.terminationStatus))."
-                            : ". \(String(text.suffix(1200)))")
-                        : ": " + errors + "."))
-        }
-        return text
+            try Task.checkCancellation()
+            let text = String(decoding: try boundedData(log), as: UTF8.self)
+            guard process.terminationStatus == 0 else {
+                let errors = converterErrors(text)
+                throw ImportedMesh.ImportError.invalid(
+                    "IFC conversion failed"
+                        + (errors.isEmpty
+                            ? (process.terminationReason == .uncaughtSignal
+                                ? ": the converter crashed (signal \(process.terminationStatus))."
+                                : ". \(String(text.suffix(1200)))")
+                            : ": " + errors + "."))
+            }
+            return text
+        #endif
     }
 
     /// The converter's error lines, without their time stamps and repeats.

@@ -306,11 +306,12 @@ struct SweepWorkerFrameTests {
 
 /// A worker in this process, on pipes, as `BombCAD worker` would be at the far end of SSH.
 @MainActor
-func localWorker(name: String = "test worker") -> (SweepWorkerClient, Task<Void, Never>) {
+func localWorker(name: String = "test worker", shared: [URL] = []) -> (SweepWorkerClient, Task<Void, Never>) {
     let toWorker = Pipe()
     let fromWorker = Pipe()
     let server = Task {
-        await SweepWorker.serve(input: toWorker.fileHandleForReading, output: fromWorker.fileHandleForWriting)
+        await SweepWorker.serve(
+            input: toWorker.fileHandleForReading, output: fromWorker.fileHandleForWriting, shared: shared)
         try? fromWorker.fileHandleForWriting.close()
     }
     let client = SweepWorkerClient(

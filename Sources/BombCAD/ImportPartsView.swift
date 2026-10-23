@@ -84,7 +84,7 @@ struct ImportPartsView: View {
                                         if selectedIDs.isEmpty { isolate = false }
                                     }
                                 })
-                        ).labelsHidden().toggleStyle(.checkbox)
+                        ).labelsHidden().checkboxToggleStyle()
                         Button {
                             if !selectedIDs.contains(part.id) { selectedIDs = [part.id] }
                             focusedID = part.id

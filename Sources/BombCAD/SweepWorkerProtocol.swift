@@ -68,6 +68,21 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
     case probe(UUID, Int)
     /// Worker to app: the bytes a probe asked for, in the payload.
     case probed(UUID)
+    /// Viewer to worker: list the kept runs with recordings in the projects this Mac shares
+    /// (`SharedTimelines`, emmettl/bombcad-work#43); it answers `timelineList`.
+    case timelines(UUID)
+    /// Worker to viewer: the `[SharedTimeline]` asked for, as JSON in the payload.
+    case timelineList(UUID)
+    /// Viewer to worker: send this shared run's recording, a `timelinePart` a file, then
+    /// `timelineSent`; or `failed`.
+    case fetchTimeline(TimelineFetch)
+    /// Worker to viewer: one file of a recording, its stored bytes in the payload.
+    case timelinePart(UUID, TimelinePart)
+    /// Viewer to worker: send this frame of the recording next, if it has not gone yet.
+    case timelinePrefer(UUID, Int)
+    /// Worker to viewer: every file of the recording has gone; `TimelineSentStats` as JSON in the
+    /// payload.
+    case timelineSent(UUID)
 
     static let cancelled = "cancelled"
     /// Why a watched job naming files sent before (`WatchJob.reused`) failed: the worker has not
@@ -76,7 +91,7 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 17
+    static let protocolVersion = 18
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String

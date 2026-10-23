@@ -262,6 +262,22 @@ Not yet:
 - **Saving takes the main thread** for a moment (about 0.2 s for a million cells, 2.6 s for the
   office tower), so the view pauses while it saves.
 
+### Replaying on an iPad
+
+A first version, built and tried in the iPad Simulator (23 October 2026,
+[the spatial viewer](spatial-viewer.md)): BombCAD built for iPadOS is a viewer of the kept runs
+on a Mac that shares its GPU. The Mac shares the saved projects open in the app while Settings ▸
+Macs nearby shares its GPU, or those `BombCAD serve --share <project>` names; a run kept since the
+project was last saved is not shared until it is saved. On the iPad, pair with the Mac as another
+Mac would (the Mac shows the code and asks to allow it), choose one of its kept runs, and it
+replays as Replay does on the Mac: the field, the structures, the vent panels, the envelopes'
+damage colours, the thermal paint and the cloud, scrubbed with the slider and played. It can be
+scrubbed from its first frame; the rest arrive meanwhile, any frame scrubbed to that has not
+come yet ahead of the others. One finger orbits, two pan, a pinch zooms. Where Bonjour cannot
+see the Mac, as in the Simulator, give its address and the two ports `BombCAD serve` prints.
+`Scripts/build-ipad-viewer.sh` builds it for the Simulator; a real iPad needs it signed with a
+development team.
+
 ## Large scenes and the advisor
 
 **Large scenes.** The charge's slider runs from 1 kg to 10 kt. The **Grid** offers, beside the
