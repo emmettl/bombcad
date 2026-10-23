@@ -141,6 +141,73 @@ struct FacadeLoadSurrogateTests {
             heightM: 1.5, shadowM: 0, frontM: 50)
     }
 
+    @Test("The edge's width and the charge's openness are measured; shielding reads them only when given")
+    func shieldingFeatures() throws {
+        let scene = try Self.row()
+        let objects = scene.envelopeObjects
+        let raster = FacadeLoadSurrogate.Raster(objects: objects, terrain: nil, cell: 2)
+        let strip = try #require(
+            objects[1].envelope?.components(owner: objects[1].id, cellSize: 2).first {
+                $0.kind == .facade && $0.axis == 0 && $0.outward < 0
+            })
+        var f = FacadeLoadSurrogate.features(strip, owner: 1, charge: scene.charge.position, raster: raster)
+        // The first cube, 20 m across the line, is the edge in the way.
+        #expect(f.edgeM > 0)
+        #expect(abs(f.edgeWidthM - 20) <= 4)
+        #expect(f.chargeOpenM.isNaN)
+        // The charge stands 100 m from the first cube and 20 m from the raster's edge: most lines
+        // run out of the raster, open to the end.
+        let open = raster.openReach(around: scene.charge.position)
+        #expect(open == Double(FacadeLoadSurrogate.Raster.openReachM))
+        // Hemmed in by a ring of walls 10 m out, the charge's surroundings are 10 m open.
+        var ring = Scenario(
+            name: "Ring", domainSize: SIMD3(100, 100, 30), boxes: [],
+            charge: Charge(mass: 100, position: SIMD3(50, 50, 1)))
+        for side in [
+            Box(min: SIMD3(38, 38, 0), max: SIMD3(62, 40, 10)),
+            Box(min: SIMD3(38, 60, 0), max: SIMD3(62, 62, 10)),
+            Box(min: SIMD3(38, 40, 0), max: SIMD3(40, 60, 10)),
+            Box(min: SIMD3(60, 40, 0), max: SIMD3(62, 60, 10)),
+        ] {
+            try ring.addEnvelopeObject(BuildingEnvelope(solids: [side]))
+        }
+        let hemmed = FacadeLoadSurrogate.Raster(objects: ring.envelopeObjects, terrain: nil, cell: 1)
+            .openReach(around: ring.charge.position)
+        #expect(hemmed > 9 && hemmed < 15)
+
+        // Without shielding the openness changes nothing, to the bit; with it, only behind buildings
+        // close in, and the more the narrower the charge's surroundings. At 100 t the second cube
+        // stands at Z 3.2, inside the branch.
+        let mass = 100_000.0
+        let plain = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2)
+        f.chargeOpenM = 5
+        #expect(FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2) == plain)
+        var shielded = FacadeLoadSurrogate.Coefficients.fitted
+        shielded.closeIn?.shielding = .init(peak: -0.5, impulse: -0.2, openScale: 1, fittedTo: "test")
+        let narrow = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2, coefficients: shielded)
+        f.chargeOpenM = 200
+        let wide = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2, coefficients: shielded)
+        #expect(narrow.peakPa < wide.peakPa && wide.peakPa < plain.peakPa)
+        #expect(narrow.impulsePaS < plain.impulsePaS)
+        let first = try #require(
+            objects[0].envelope?.components(owner: objects[0].id, cellSize: 2).first {
+                $0.kind == .facade && $0.axis == 0 && $0.outward < 0
+            })
+        var inSight = FacadeLoadSurrogate.features(
+            first, owner: 0, charge: scene.charge.position, raster: raster)
+        inSight.chargeOpenM = 5
+        #expect(
+            FacadeLoadSurrogate.predict(inSight, mass: mass, cellSize: 2, coefficients: shielded)
+                == FacadeLoadSurrogate.predict(inSight, mass: mass, cellSize: 2))
+        // Coefficients without it still decode, and with it round-trip.
+        let data = try JSONEncoder().encode(shielded)
+        #expect(try JSONDecoder().decode(FacadeLoadSurrogate.Coefficients.self, from: data) == shielded)
+        let old = try JSONEncoder().encode(FacadeLoadSurrogate.Coefficients.fitted)
+        #expect(
+            try JSONDecoder().decode(FacadeLoadSurrogate.Coefficients.self, from: old).closeIn?.shielding
+                == nil)
+    }
+
     @Test("Close in, the branch is held at its own range's end, not carried to nothing, and marked")
     func fittedRange() throws {
         let mass = 20_000.0

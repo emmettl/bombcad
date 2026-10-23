@@ -365,7 +365,9 @@ October; the terms were fitted on the balloon start. Three causes were traced wi
   read 0.84, the unsafe side. The glass, judged far out, is unchanged.
 - **So nothing is changed.** The terms stay as landed, and the standing now says the surrogate
   reads high close in behind buildings. A fix needs a feature that tells a narrow obstacle from a
-  wide one (the obstacle's width across the line), or a refit on charges among buildings.
+  wide one (the obstacle's width across the line), or a refit on charges among buildings. On 23
+  October the width proved not to tell them apart, and how open the charge's surroundings are did
+  ([below](#the-refit-on-post-fix-and-2-m-runs-and-shielding-by-the-charges-surroundings-23-october-2026)).
 - **Caveats.** The strength draws were keyed by envelope ids that are new each time a scene is
   laid out (fixed since), so the before and after differ by sampling as well. That is in the third
   decimal, far less than the concrete chances' failure. The data, scripts and judgements are in
@@ -643,6 +645,143 @@ fixed in aff21dff). Rerun on the mapped start, the judge holds to the second dec
 
 The walls go by the peak, which the start barely moved.
 
+### The refit on post-fix and 2 m runs, and shielding by the charge's surroundings (23 October 2026)
+
+emmettl/bombcad-work#56. Since the terms were fitted, three things changed under them: the mapped
+start on terrain (aff21dff), the 4 m runs' resolution bias
+([learned models, round 3](learned-models.md#round-3-the-4-m-runs-resolution-bias-21-october-2026)),
+and #19's 2 m references (14707293). This refits the terms on runs after the fix, on 2 m air where
+it exists, and looks again for the feature [above](#close-in-among-buildings-21-october-2026) found
+missing: what tells the silos at Warehouse 12 from a city block. **Nothing is changed**: the result
+is a proposal, its coefficients a file.
+
+**The runs.** All are after aff21dff, with every storey's strips:
+- the fit set rerun on main 8b393c81, on 4 m air and on air refined to 2 m below the tops
+  (`--refine 2 --ceiling auto`): dense at 20, 100 and 500 t, sparse at 20 t;
+- Beirut's ten 2 m near boxes at Warehouse 12 (#19's, 0.15–1.5 kt);
+- the field-model judge's 50 Beirut charges among buildings on 4 m cells (ten places, p0 at
+  Warehouse 12, five yields each, 56 t–1.9 kt), and its two made-up districts.
+
+On the made-up districts the refined runs' peaks are 10–16% above the 4 m runs' within Z 7 and
+the same beyond Z 10 (the refinement follows the strong shock). The impulses match to a few per
+cent.
+
+**Two features, measured and off.**
+- `Features.edgeWidthM` (eager-jang-174d10's): the knife edge's obstruction's width across the line
+  of sight. It does not separate the silos from a city block. Behind buildings at Z 1.5–5, the
+  branch reads Warehouse 12's façades 1.05–1.18 of the run at every width (0–1 W^(1/3)), and
+  Beirut's streets 1.68–1.76.
+- `Features.chargeOpenM` (`Raster.openReach`): how open the charge's surroundings are, as the
+  median over 72 directions of how far a line from the charge runs before a building or the
+  ground (up to 400 m). It is the same for every component, so the estimates measure it once per
+  charge. This is what separates them:
+
+| Charges | Open / W^(1/3) | Strips behind, Z 1.5–5 | Branch over run, today | Proposed |
+|---|---|---|---|---|
+| Warehouse 12, 2 m (ten yields) | 3.5–7.5 | 2,936 | 1.09 | 1.06 |
+| Warehouse 12, 4 m (p0) | 3.5–8.5 | 1,223 | 1.18 | 1.15 |
+| p4, p1 (a square, a wide street) | 0.6–3.1 | 100,267 | 1.36–1.51 | 1.10–1.11 |
+| p2, p3, p5, p7, p8 | 0.1–1.4 | 619,319 | 1.61–1.76 | 1.13–1.21 |
+| p6 | 0.3–0.9 | 138,007 | 1.93 | 1.32 |
+| p9 | 0.5–1.1 | 38,191 | 1.31 | 0.93 |
+| Made-up mixed / perimeter (4 m) | 2.4 / 0.2 | 2,039 / 15,211 | 1.36 / 1.40 | 1.18 / 0.96 |
+| Dense fit set, 2 m | 2.6–7.6 | 4,596 | 1.32 | 1.16 |
+
+**The proposal** (`$BOMBCAD_DATA/refit56/takeover/co/bs.json`):
+- **The peak's terms** refitted on the 2 m runs: the fit set and five of the ten near boxes (150,
+  300, 500, 850 and 1,300 t), each run alike. The impulse's terms are refitted on the fit set's 2 m
+  runs alone: beyond Z 10 the near boxes' first-phase impulses scatter by a log-SD of 0.8–1.5, as
+  the 3 s boxes cut their phase short.
+- **Kept as they are:** the rise share, the canyon terms, the close-in branch, the range (4.6–38.7)
+  and the scatter (0.240, 0.168). The chances draw the scatter, and the refit's own residual (0.31
+  with Warehouse 12's strips in, 0.25 without) is a separate decision.
+- **Shielding behind buildings in the branch** (`CloseIn.Shielding`). For a component with a
+  building in the way, the log peak gains −0.486 e^(−open / 2 W^(1/3)), and the log impulse −0.265
+  times the same. It is fitted on log(run / branch) over Z 1.5–8, weighted by the branch's share
+  there, on:
+  - Beirut's charges at p1, p3, p5, p7 and p9, their 4 m peaks raised by ×1.13 (the fit set's
+    2 m over 4 m behind buildings within Z 5);
+  - the five near boxes;
+  - the fit set at 2 m.
+
+  The scale was chosen on the same fit; 1–3 W^(1/3) fit about as well, and a constant fits worse.
+
+Its peaks, predicted over recorded (median, log-SD), every storey inside 0.85 of each box:
+
+| | Today | Terms refitted | Today + shielding | Proposed |
+|---|---|---|---|---|
+| **Streets held out (p2, p4, p6, p8; 4 m; 3.5 M strips)**: all | 1.08 (0.39) | 1.08 (0.38) | 1.03 (0.34) | 1.03 (0.32) |
+| … Z < 5, in sight | 1.09 (0.82) | 1.07 (0.82) | 1.09 (0.82) | 1.07 (0.82) |
+| … Z < 5, behind buildings | 1.76 (0.56) | 1.78 (0.56) | 1.24 (0.56) | 1.22 (0.55) |
+| … Z < 5, behind, ground floor / upper storeys | 1.49 / 1.82 | 1.51 / 1.84 | 1.05 / 1.28 | 1.04 / 1.26 |
+| … Z 5–7 / 7–10 / 10–14 / 14–20 / 20–40 | 1.14 / 0.98 / 1.03 / 1.07 / 1.02 | 1.24 / 1.06 / 1.02 / 1.00 / 0.95 | 0.96 / 0.97 / 1.03 / 1.07 / 1.02 | 1.04 / 1.04 / 1.02 / 1.00 / 0.95 |
+| **Warehouse 12, 2 m, the five yields no fit saw**: all | 0.93 (0.37) | 0.97 (0.34) | 0.93 (0.37) | 0.97 (0.34) |
+| … Z < 5, in sight / behind | 1.06 / 1.09 | 1.11 / 1.14 | 1.06 / 1.02 | 1.11 / 1.06 |
+| … Z 5–7 / 7–10 / 10–14 / 14–20 | 0.82 / 0.87 / 0.95 / 1.02 | 0.95 / 0.97 / 0.97 / 0.98 | 0.80 / 0.86 / 0.95 / 1.02 | 0.93 / 0.97 / 0.97 / 0.98 |
+| **Warehouse 12, 4 m (p0)**: Z < 5 behind; Z 5–7 | 1.18; 0.87 | 1.24; 1.01 | 1.10; 0.85 | 1.15; 0.98 |
+| **Made-up held out (4 m)**: Z < 5 behind; Z 5–7; all | 1.41; 1.01; 0.98 | 1.47; 1.13; 1.05 | 0.98; 0.84; 0.90 | 0.99; 0.93; 0.96 |
+| **Fit set, 2 m**: Z < 5 behind; Z 5–7; all | 1.32; 0.98; 1.05 | 1.31; 1.06; 1.02 | 1.18; 0.93; 1.04 | 1.16; 1.00; 1.01 |
+
+- **Close in behind buildings, 1.7–1.8 times high becomes 1.2**, against 4 m runs on held-out
+  street charges. A 2 m reference would read about ×1.13 above those, so the proposal is within
+  about 10% of it. Warehouse 12 keeps its loads: behind the silos 1.09 becomes 1.06.
+- **Upper storeys behind buildings are still high** (1.26 in the held-out streets, against 1.04 for
+  the ground floor). Neither feature carries height.
+- **The impulses** behind buildings close in go from 1.21 to 0.99 in the held-out streets, from
+  1.10 to 1.06 at Warehouse 12, and from 1.12 to 0.92 on the made-up held-out pair.
+- **The terms refitted lift Warehouse 12 at Z 5–10** from 0.82–0.87 to 0.93–0.97 of the 2 m runs.
+  That is the band whose low walls made #19 take ×1.3. They take the made-up districts at Z 5–7
+  from 0.98 to 1.06, and the street charges beyond Z 14 from 1.07 to 1.00.
+
+**Glass, through the app's estimate.**
+- **By side, on the ten 2 m near boxes** (`field-refs`): the proposal changes none of it.
+  - every storey: 0.904 / 0.54 → 0.903 / 0.55 (exact / Heidke);
+  - ground floor: 0.911 / 0.51 → 0.910 / 0.51;
+  - upper storeys: 0.903 / 0.54 → 0.902 / 0.55.
+
+  At 50–700 m the peaks by storey go from 0.77–0.92 of the 2 m runs to 0.88–1.05, as round 4 of
+  the field model has them at the upper storeys.
+- **On Beirut's full 4 m runs to 3 km** (`surrogate-judge`), sides at the run's state at 0.2 / 0.5 /
+  1.1 kt: 0.84 / 0.75 / 0.81 → 0.84 / 0.78 / 0.83. The blown-out share at 0.5 kt comes closer at
+  1.5–1.75 km (0.17 → 0.06, run 0.07), and further off at 1.25–1.5 km (0.43 → 0.36, run 0.59).
+- **The glass chances' calibration** (`glass-calibrate`, against the full runs, with the load
+  scatter; Brier / skill, every decile of 200+ within 0.1 either way): some broken 0.031 / 0.63 →
+  0.028 / 0.66; blown out 0.020 / 0.81 → 0.017 / 0.84; thrown past 3b 0.033 / 0.72 → 0.032 / 0.73;
+  openings blown out 0.003 / 0.82 → 0.002 / 0.86. All pass, as today's do. Against GEER's
+  openings, seen two months on, the skill goes from 0.15 to 0.19, still failing its deciles.
+
+**#19's walls and roofs on the 2 m references** (`wall-calibrate`, 2,053 buildings × 10 yields, 50
+draws; Brier / skill / the tenths test):
+
+| | Today | Proposed |
+|---|---|---|
+| Concrete moderate or worse, the adopted ×1.3 | 0.023 / 0.59 / pass | 0.023 / 0.59 / fail |
+| … ×1.15 | | **0.021 / 0.61 / pass** |
+| … the refit, each yield held out (its choice) | 0.023 / 0.59 / fail (×1.3) | 0.021 / 0.61 / fail (×1.15, impulse ×0.83, every fold) |
+| Concrete heavy or worse, ×1.3; ×1.15 | 0.009 / 0.49 / fail | 0.011 / 0.38 / fail; 0.008 / 0.53 / fail |
+| Roofs moderate or worse | 0.029 / 0.74 | 0.029 / 0.74 |
+| The five yields no fit saw: concrete moderate or worse, ×1.3; the refit | 0.025 / 0.60; 0.026 / 0.60 | 0.026 / 0.59; 0.027 / 0.58 |
+
+- **With the proposal the walls want ×1.15, not ×1.3.** The terms now give the 2 m runs' peaks at
+  Warehouse 12, so most of #19's factor is in them. Kept at ×1.3, the proposal counts it twice:
+  heavy or worse falls to 0.38.
+- **On all ten yields** the proposal at ×1.15 is a little better than today's at ×1.3, and passes.
+  But five of the ten were in its fit. **On the five it never saw** it is about the same (0.026 /
+  0.59 against 0.025 / 0.60). The walls gain nothing out of sample: Warehouse 12's walls stand in
+  the open, where the shielding does nothing.
+- Roofs keep their own terms and do not move.
+
+**The decision for the user.** Adopt the proposal (`bs.json`) as `Coefficients.fitted`, with the
+walls' factor ×1.3 → ×1.15 and the roofs as they are; or keep today's.
+- **For:** close in behind buildings among streets, today's worst error (1.7–1.8 times high), comes
+  to within about 10% of a 2 m reference. Beirut's full-run glass gains 0.02–0.03 of sides, and
+  every one of the glass chances' scores improves.
+- **Against:** walls and glass on the 2 m near boxes don't move out of sample. Two places go to the
+  low side: made-up perimeter blocks (0.96 at 4 m) and Beirut's p9 (0.93).
+- **With it:** the standing's close-in figure (`surrogateCloseInShielded`, 1.4–1.7) is re-derived.
+
+The fit, the judges and their scripts are in `$BOMBCAD_DATA/refit56/takeover` (`py/` for the fits
+and strip tables, `judges.sh` and `judges2.sh` for the benches).
 
 ## Using it
 

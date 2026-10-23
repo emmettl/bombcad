@@ -239,6 +239,7 @@ package enum SurrogateBench {
         let charge = reference.scene.charge.position
         let mass = Double(reference.scene.charge.mass)
         let root = cbrt(mass)
+        let open = reference.raster.openReach(around: charge)
         // `--parts roof` (or wall, slab): the saved components of that kind instead of the façades.
         let kind = value(args, "parts")
         let chosen: [(saved: Int, object: Int, component: EnvelopeComponent)] =
@@ -249,8 +250,9 @@ package enum SurrogateBench {
             concurrentlyEach(chosen.count) { m in
                 let (s, n, component) = chosen[m]
                 let strip = kind == nil ? reference.index.strips[s] : reference.others!.strips[s]
-                let f = FacadeLoadSurrogate.features(
+                var f = FacadeLoadSurrogate.features(
                     component, owner: n, charge: charge, raster: reference.raster)
+                f.chargeOpenM = open
                 let net = kind == nil ? reference.net(s) : reference.otherNet(s)
                 let peak = net.max() ?? 0
                 let impulse = SurrogateBench.firstImpulse(net, binS: strip.binS)
@@ -278,14 +280,15 @@ package enum SurrogateBench {
                         String(format: "%.2f", f.edgeFromChargeM), String(format: "%.2f", f.edgeToTargetM),
                         String(format: "%.2f", f.edgeTopM), String(format: "%.2f", f.lastTopM),
                         String(format: "%.1f", f.canyonM), String(format: "%.2f", f.canyonHeightM),
-                        String(format: "%.1f", f.edgeSideM),
+                        String(format: "%.1f", f.edgeSideM), String(format: "%.1f", f.edgeWidthM),
+                        String(format: "%.1f", f.chargeOpenM),
                     ].joined(separator: ",") + "\n"
             }
         }
         let header =
             "building,object,strip,mix,axis,outward,x,y,z,area,distance,cos,crossed,blocked,ridge,rise,height,"
             + "shadow,front,inside,peak,impulse,pso,iso,pr,ir,cell,risetime,edge,edgefrom,edgeto,edgetop,lasttop,"
-            + "canyon,canyonheight,edgeside\n"
+            + "canyon,canyonheight,edgeside,edgewidth,chargeopen\n"
         try (header + rows.joined()).write(to: URL(filePath: out), atomically: true, encoding: .utf8)
         print(
             String(
@@ -451,6 +454,7 @@ package enum SurrogateBench {
         let objects = reference.objects
         let mass = Double(scene.charge.mass)
         let charge = scene.charge.position
+        let open = reference.raster.openReach(around: charge)
 
         let coefficients =
             try value(args, "coefficients").map {
@@ -496,8 +500,9 @@ package enum SurrogateBench {
                     let (s, n, component) = reference.strips[kept[m]]
                     let strip = reference.index.strips[s]
                     let net = reference.net(s)
-                    let f = FacadeLoadSurrogate.features(
+                    var f = FacadeLoadSurrogate.features(
                         component, owner: n, charge: charge, raster: reference.raster)
+                    f.chargeOpenM = open
                     let p = FacadeLoadSurrogate.predict(
                         f, mass: mass, cellSize: Double(reference.cellSize), coefficients: coefficients)
                     let q = FacadeLoadSurrogate.predict(
@@ -506,16 +511,16 @@ package enum SurrogateBench {
                         f, mass: mass, cellSize: Double(reference.cellSize), coefficients: inSight)
                     out[m] = String(
                         format:
-                            "%d,%d,%d,%.2f,%.4f,%.2f,%.2f,%d,%.1f,%.1f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.2f,%.1f,%.1f,%.1f,%.1f",
+                            "%d,%d,%d,%.2f,%.4f,%.2f,%.2f,%d,%.1f,%.1f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.2f,%.1f,%.1f,%.1f,%.1f,%.1f",
                         n, strip.axis, strip.outward, f.distanceM, f.distanceM / cbrt(mass), f.heightM,
                         f.cosIncidence, f.buildingsCrossed, f.blockedM, f.canyonM, net.max() ?? 0,
                         SurrogateBench.firstImpulse(net, binS: strip.binS), p.peakPa, p.impulsePaS, q.peakPa,
                         q.impulsePaS, a.peakPa, a.impulsePaS, f.edgeM.isFinite ? f.edgeM : -999, f.shadowM,
-                        f.lastTopM, f.edgeTopM, f.edgeSideM)
+                        f.lastTopM, f.edgeTopM, f.edgeSideM, f.edgeWidthM)
                 }
             }
             let header =
-                "object,axis,outward,distance,z,height,cos,crossed,blocked,canyon,run_peak,run_impulse,peak,impulse,peak_nobranch,impulse_nobranch,peak_insight,impulse_insight,edge,shadow,lasttop,edgetop,edgeside"
+                "object,axis,outward,distance,z,height,cos,crossed,blocked,canyon,run_peak,run_impulse,peak,impulse,peak_nobranch,impulse_nobranch,peak_insight,impulse_insight,edge,shadow,lasttop,edgetop,edgeside,edgewidth"
             try ([header] + rows).joined(separator: "\n").write(
                 toFile: path, atomically: true, encoding: .utf8)
             print("Wrote \(kept.count) strips to \(path)")
@@ -566,8 +571,9 @@ package enum SurrogateBench {
                     binS: strip.binS, outerPa: reference.net(s),
                     innerPa: Array(repeating: 0, count: strip.count),
                     supportEdges: nil, outward: component.outward)
-                let f = FacadeLoadSurrogate.features(
+                var f = FacadeLoadSurrogate.features(
                     component, owner: n, charge: charge, raster: reference.raster)
+                f.chargeOpenM = open
                 var predicted = FacadeLoadSurrogate.load(
                     component,
                     FacadeLoadSurrogate.predict(
@@ -752,8 +758,9 @@ package enum SurrogateBench {
                         axis: component.axis,
                         binS: strip.binS, outerPa: net, innerPa: Array(repeating: 0, count: net.count),
                         supportEdges: component.supportEdges, outward: component.outward)
-                    let f = FacadeLoadSurrogate.features(
+                    var f = FacadeLoadSurrogate.features(
                         component, owner: n, charge: charge, raster: reference.raster)
+                    f.chargeOpenM = open
                     let prediction = FacadeLoadSurrogate.predict(
                         f, mass: mass, cellSize: Double(reference.cellSize),
                         coefficients: kind == .roof ? roofCoefficients : coefficients)

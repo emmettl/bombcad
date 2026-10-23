@@ -66,12 +66,14 @@ extension FacadeLoadSurrogate {
             roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
         ) -> Estimate {
             let start = ContinuousClock.now
+            let open = raster.openReach(around: charge)
             var perObject = [[(Features, Prediction, EnvelopeComponentLoad)]](
                 repeating: [], count: objects.count)
             perObject.withUnsafeMutableBufferPointer { out in
                 concurrently(iterations: objects.count) { n in
                     out[n] = components[n].map { component in
                         var f = features(component, owner: n, charge: charge, raster: raster)
+                        f.chargeOpenM = open
                         let chosen = component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
                         if let learned {
                             f = learned.adjusted(
@@ -131,6 +133,7 @@ extension FacadeLoadSurrogate {
             roofCoefficients: Coefficients? = .roofs, learned: LearnedField.PeakMap? = nil
         ) -> (estimate: Estimate, sides: [GlassSideStrips]) {
             let start = ContinuousClock.now
+            let open = raster.openReach(around: charge)
             var perObject = [[(EnvelopeComponent, Features, Prediction, EnvelopeComponentLoad, Double)]](
                 repeating: [], count: objects.count)
             perObject.withUnsafeMutableBufferPointer { out in
@@ -156,6 +159,7 @@ extension FacadeLoadSurrogate {
                     out[n] = nearest.sorted { $0.key < $1.key }.map { _, chosen in
                         let component = components[n][chosen.index]
                         var f = features(component, owner: n, charge: charge, raster: raster)
+                        f.chargeOpenM = open
                         let terms = component.kind == .roof ? roofCoefficients ?? coefficients : coefficients
                         if let learned {
                             f = learned.adjusted(

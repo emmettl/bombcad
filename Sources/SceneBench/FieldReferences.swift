@@ -10,9 +10,10 @@ import simd
 /// air refined to 2 m, emmettl/bombcad-work#19 and #69), as the app's estimate gives them:
 /// `FacadeLoadSurrogate.Prepared.estimate` with each variant's `LearnedField.Estimator`.
 ///
-/// Each variant is the surrogate alone (`surrogate`), a network (`name=weights.bcfw`, every level it
-/// has, as the app reaches them), or a network above with another at the ground floor
-/// (`name=upper.bcfw+ground.bcfw`). Each run is read, judged and let go before the next, so that one
+/// Each variant is the surrogate alone (`surrogate`), the surrogate under other terms
+/// (`name=coefficients.json`, `scenebench surrogate-coefficients`' or `Scripts/fit-surrogate.py`'s;
+/// emmettl/bombcad-work#56), a network (`name=weights.bcfw`, every level it has, as the app reaches
+/// them), or a network above with another at the ground floor (`name=upper.bcfw+ground.bcfw`). Each run is read, judged and let go before the next, so that one
 /// yield's loads are held at a time.
 ///
 /// Glass is judged as `field-glass` judges it: each strip's breakage on the run's history and on the
@@ -87,32 +88,44 @@ enum FieldReferences {
         let scene = first!.scene
         let cellSize = first!.cellSize
         let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: cellSize)
-        let variants: [(name: String, estimator: LearnedField.Estimator?)] = try variantsText.split(
-            separator: ","
-        ).map { spec in
-            let parts = spec.split(separator: "=", maxSplits: 1).map(String.init)
-            guard parts.count == 2 else { return (parts[0], nil) }
-            // `…@own`: the chances draw the networks' own measured scatter where their peak is used.
-            let own = parts[1].hasSuffix("@own")
-            let files = parts[1].replacingOccurrences(of: "@own", with: "").split(separator: "+").map(
-                String.init)
-            let network = try LearnedFieldNetwork(contentsOf: URL(filePath: files[0]))
-            let ground = try files.count > 1 ? LearnedFieldNetwork(contentsOf: URL(filePath: files[1])) : nil
-            func measured(_ path: String) -> LearnedField.Scatter? {
-                LearnedField.Scatter.measured(forWeights: URL(filePath: path).lastPathComponent)
+        let variants:
+            [(
+                name: String, estimator: LearnedField.Estimator?,
+                coefficients: FacadeLoadSurrogate.Coefficients
+            )] = try variantsText.split(separator: ",").map { spec in
+                let parts = spec.split(separator: "=", maxSplits: 1).map(String.init)
+                guard parts.count == 2 else { return (parts[0], nil, .fitted) }
+                // `name=coefficients.json`: the surrogate under those terms (emmettl/bombcad-work#56).
+                if parts[1].hasSuffix(".json") {
+                    let terms = try JSONDecoder().decode(
+                        FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: parts[1]))
+                    )
+                    return (parts[0], nil, terms)
+                }
+                // `…@own`: the chances draw the networks' own measured scatter where their peak is used.
+                let own = parts[1].hasSuffix("@own")
+                let files = parts[1].replacingOccurrences(of: "@own", with: "").split(separator: "+").map(
+                    String.init)
+                let network = try LearnedFieldNetwork(contentsOf: URL(filePath: files[0]))
+                let ground =
+                    try files.count > 1 ? LearnedFieldNetwork(contentsOf: URL(filePath: files[1])) : nil
+                func measured(_ path: String) -> LearnedField.Scatter? {
+                    LearnedField.Scatter.measured(forWeights: URL(filePath: path).lastPathComponent)
+                }
+                let scatter =
+                    !own
+                    ? nil
+                    : files.count > 1
+                        ? LearnedField.Scatter.combining(
+                            ground: measured(files[1]), upper: measured(files[0]))
+                        : measured(files[0])
+                return (
+                    parts[0],
+                    LearnedField.Estimator(
+                        scene: scene, network: network, groundNetwork: ground, scatter: scatter),
+                    .fitted
+                )
             }
-            let scatter =
-                !own
-                ? nil
-                : files.count > 1
-                    ? LearnedField.Scatter.combining(ground: measured(files[1]), upper: measured(files[0]))
-                    : measured(files[0])
-            return (
-                parts[0],
-                LearnedField.Estimator(
-                    scene: scene, network: network, groundNetwork: ground, scatter: scatter)
-            )
-        }
         // The glass's chances by side (`glassProbabilities`), `--draws` of them at each run's own
         // yield over the load scatter alone (the runs judge every pane at its median), against the
         // run's: some pane broken, and blown out.
@@ -154,7 +167,7 @@ enum FieldReferences {
             // Each variant's estimate at this run's yield, as the app's look makes it.
             let estimates = try variants.map { v in
                 prepared.estimate(
-                    charge: charge, mass: run.mass,
+                    charge: charge, mass: run.mass, coefficients: v.coefficients,
                     learned: try v.estimator.map { try $0.peaks(charge: charge, mass: run.mass) })
             }
             let byKey = Dictionary(
@@ -254,7 +267,8 @@ enum FieldReferences {
                 let (chances, _) = FacadeLoadSurrogate.glassProbabilities(
                     sides: glassSides, mass: run.mass, cellSize: cellSize,
                     uncertainty: FacadeLoadSurrogate.Uncertainty(
-                        masses: [run.mass], strengthLogSD: 0, samples: draws))
+                        masses: [run.mass], strengthLogSD: 0, samples: draws),
+                    coefficients: variant.coefficients)
                 for (s, side) in sideKeys.enumerated() {
                     let truth = sides[side]!.reduce(GlazingBreakage()) { $0 + glass[$1][0] }
                     let group = ["ground", "upper", "every"][side[3]]

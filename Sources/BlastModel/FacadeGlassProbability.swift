@@ -256,6 +256,7 @@ extension FacadeLoadSurrogate {
         let objects = scene.envelopeObjects
         let raster = Raster(objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
         let charge = scene.charge.position
+        let open = raster.openReach(around: charge)
         let mixes = objects.map { scene.envelopeConstruction(for: $0.id).glazing }
         var perObject = [[GlassSideStrips]](repeating: [], count: objects.count)
         perObject.withUnsafeMutableBufferPointer { out in
@@ -271,10 +272,9 @@ extension FacadeLoadSurrogate {
                             outward: key % 2 == 1 ? 1 : -1, mix: mix,
                             strips: members.map { component in
                                 let spans = component.spans
-                                return (
-                                    features(component, owner: n, charge: charge, raster: raster),
-                                    Double(spans.x * spans.y)
-                                )
+                                var f = features(component, owner: n, charge: charge, raster: raster)
+                                f.chargeOpenM = open
+                                return (f, Double(spans.x * spans.y))
                             })
                     }
             }

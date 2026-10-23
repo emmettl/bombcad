@@ -50,6 +50,11 @@ public enum FacadeLoadSurrogate {
         /// How far that edge's obstruction reaches to the nearer side of the line, square to it in
         /// plan, at the line's height (`Raster.edgeSideReachM` at most), m; 0 where the line clears it.
         public var edgeSideM: Double = 0
+        /// That edge's obstruction's width across the line, square to it in plan at the line's
+        /// height (its reach to both sides, each `Raster.edgeSideReachM` at most), m; 0 where the
+        /// line clears it. Measured, not a term (emmettl/bombcad-work#56: a narrow obstacle, such
+        /// as Beirut's grain silos, shields far less than a city block close in).
+        public var edgeWidthM: Double = 0
         /// The top of the last building in the way (the one `shadowM` is measured from) above the
         /// ground under it, m; 0 with none.
         public var lastTopM: Double = 0
@@ -58,6 +63,14 @@ public enum FacadeLoadSurrogate {
         /// the lower side's mean height over it, m; 0 with none.
         public var canyonM: Double = 0
         public var canyonHeightM: Double = 0
+        /// How open the charge's surroundings are: the median, over `Raster.openRays` plan
+        /// directions, of how far the air runs from the charge before another building or the
+        /// ground (`Raster.openReach`), m, up to `Raster.openReachM`. The same for every component
+        /// of one charge, so the estimates measure it once per charge and set it here; NaN where it
+        /// was not measured. Only `Coefficients.CloseIn.shielding` reads it
+        /// (emmettl/bombcad-work#56: behind buildings close in, a charge in a street loads the
+        /// façades far less than the branch's open-façade ratio, a charge in the open about as much).
+        public var chargeOpenM: Double = .nan
         /// The learned field model's peak over the surrogate's for this component at the estimate's
         /// yield (emmettl/bombcad-work#67, `LearnedField.PeakMap.adjusted`): `predict` multiplies
         /// its peak by it. 1, which changes nothing to the bit, unless the option is on and this is
@@ -266,13 +279,53 @@ public enum FacadeLoadSurrogate {
                     }
                     return Self.edgeSideReachM
                 }
-                sight.edgeSideM = Double(min(reach(side), reach(-side)))
+                let (left, right) = (reach(side), reach(-side))
+                sight.edgeSideM = Double(min(left, right))
+                sight.edgeWidthM = Double(left + right)
             }
             return sight
         }
 
         /// The furthest `sight` follows the edge's obstruction to the side, m.
         public static let edgeSideReachM: Float = 200
+
+        /// How open `charge`'s surroundings are (`Features.chargeOpenM`): along each of
+        /// `openRays` plan directions, evenly spread, how far a line from the charge runs over the
+        /// ground (at the charge's height above it, at least `openLineM`) before it enters a
+        /// building, a block or the ground, in steps of half a cell, up to `openReachM`; the
+        /// median of those reaches, m. A line leaving the raster is open to the end.
+        public func openReach(around charge: SIMD3<Float>) -> Double {
+            let ground = terrain?.height(at: charge) ?? 0
+            let above = max(charge.z - ground, Self.openLineM)
+            let step = cell / 2
+            var reaches: [Float] = []
+            reaches.reserveCapacity(Self.openRays)
+            for k in 0..<Self.openRays {
+                let angle = 2 * Float.pi * Float(k) / Float(Self.openRays)
+                let direction = SIMD2(cos(angle), sin(angle))
+                var d = step
+                while d < Self.openReachM {
+                    let q = SIMD2(charge.x, charge.y) + d * direction
+                    guard cellIndex(q) != nil else {
+                        d = Self.openReachM
+                        break
+                    }
+                    let z = (terrain?.height(at: SIMD3(q.x, q.y, 0)) ?? 0) + above
+                    if isSolid(SIMD3(q.x, q.y, z)) { break }
+                    d += step
+                }
+                reaches.append(min(d, Self.openReachM))
+            }
+            reaches.sort()
+            let n = reaches.count
+            return Double(n % 2 == 1 ? reaches[n / 2] : 0.5 * (reaches[n / 2 - 1] + reaches[n / 2]))
+        }
+
+        /// `openReach`'s directions, its furthest reach, m, and the least height of its lines over
+        /// the ground, m.
+        public static let openRays = 72
+        public static let openReachM: Float = 400
+        public static let openLineM: Float = 1
 
         /// What `sight` finds along a line.
         public struct Sight: Sendable, Equatable {
@@ -285,8 +338,9 @@ public enum FacadeLoadSurrogate {
             public var edgeFromChargeM = 0.0
             public var edgeToTargetM = 0.0
             public var edgeTopM = 0.0
-            /// `Features.edgeSideM`.
+            /// `Features.edgeSideM` and `Features.edgeWidthM`.
             public var edgeSideM = 0.0
+            public var edgeWidthM = 0.0
             /// The last building in the way's top above its ground, m.
             public var lastTopM = 0.0
         }
@@ -411,7 +465,8 @@ public enum FacadeLoadSurrogate {
             heightM: Double(centre.z - ground),
             shadowM: sight.shadowM, frontM: raster.reach(from: target, along: normal), edgeM: sight.edgeM,
             edgeFromChargeM: sight.edgeFromChargeM, edgeToTargetM: sight.edgeToTargetM,
-            edgeTopM: sight.edgeTopM, edgeSideM: sight.edgeSideM, lastTopM: sight.lastTopM,
+            edgeTopM: sight.edgeTopM, edgeSideM: sight.edgeSideM, edgeWidthM: sight.edgeWidthM,
+            lastTopM: sight.lastTopM,
             canyonM: canyon.lengthM,
             canyonHeightM: canyon.heightM)
     }
@@ -498,12 +553,41 @@ public enum FacadeLoadSurrogate {
             /// (emmettl/bombcad-work#56). The branch was fitted on open façades; taken by shielded
             /// ones close in, it reads them 1.4–1.9 times the runs' on the mapped start.
             public var inSightOnly: Bool?
+            /// Shielding behind buildings in the branch, by how open the charge's surroundings are
+            /// (emmettl/bombcad-work#56); none, as fitted: a proposal, not adopted.
+            public var shielding: Shielding?
+
+            /// For a component behind buildings (one crossed at least), with its charge's
+            /// surroundings open to `Features.chargeOpenM`, the branch's log peak and log impulse
+            /// gain `peak` and `impulse` times e^(−open / (`openScale` W^(1/3))): the whole of
+            /// them close to a charge in a narrow street, next to nothing for one in the open.
+            /// Nothing where the openness was not measured.
+            public struct Shielding: Codable, Sendable, Equatable {
+                public var peak: Double
+                public var impulse: Double
+                public var openScale: Double
+                public var fittedTo: String
+
+                public init(peak: Double, impulse: Double, openScale: Double, fittedTo: String) {
+                    self.peak = peak
+                    self.impulse = impulse
+                    self.openScale = openScale
+                    self.fittedTo = fittedTo
+                }
+
+                /// The share of the gains `f` takes for a charge of `mass` kg.
+                public func share(_ f: Features, mass: Double) -> Double {
+                    guard f.buildingsCrossed > 0, f.chargeOpenM.isFinite, openScale > 0 else { return 0 }
+                    return exp(-f.chargeOpenM / (openScale * cbrt(mass)))
+                }
+            }
 
             public init(
                 peak: [Double], impulse: [Double], referenceCell: Double, heldWithin: ClosedRange<Double>,
-                blendTo: Double, fittedTo: String, inSightOnly: Bool? = nil
+                blendTo: Double, fittedTo: String, inSightOnly: Bool? = nil, shielding: Shielding? = nil
             ) {
                 self.inSightOnly = inSightOnly
+                self.shielding = shielding
                 self.peak = peak
                 self.impulse = impulse
                 self.referenceCell = referenceCell
@@ -646,8 +730,15 @@ public enum FacadeLoadSurrogate {
                     + geometry(c)
             }
             let w = scaled <= start ? 0 : min(log(scaled / start) / log(close.blendTo / start), 1)
-            p = (1 - w) * branch(close.peak, coefficients.peak) + w * p
-            i = (1 - w) * branch(close.impulse, coefficients.impulse) + w * i
+            var shieldPeak = 0.0
+            var shieldImpulse = 0.0
+            if let shielding = close.shielding {
+                let share = shielding.share(f, mass: mass)
+                shieldPeak = shielding.peak * share
+                shieldImpulse = shielding.impulse * share
+            }
+            p = (1 - w) * (branch(close.peak, coefficients.peak) + shieldPeak) + w * p
+            i = (1 - w) * (branch(close.impulse, coefficients.impulse) + shieldImpulse) + w * i
             covered = min(close.heldWithin.lowerBound, covered.lowerBound)...covered.upperBound
         }
         return Prediction(
@@ -734,6 +825,7 @@ public enum FacadeLoadSurrogate {
         let raster = Raster(objects: objects, blocks: scene.boxes, terrain: scene.terrain, cell: cellSize)
         let charge = scene.charge.position
         let mass = Double(scene.charge.mass)
+        let open = raster.openReach(around: charge)
         var perObject = [[(EnvelopeComponent, Features, Prediction, EnvelopeComponentLoad)]](
             repeating: [], count: objects.count)
         perObject.withUnsafeMutableBufferPointer { out in
@@ -742,7 +834,8 @@ public enum FacadeLoadSurrogate {
                 out[n] = envelope.components(owner: objects[n].id, cellSize: cellSize)
                     .filter { facesAir($0, raster: raster) }
                     .map { component in
-                        let f = features(component, owner: n, charge: charge, raster: raster)
+                        var f = features(component, owner: n, charge: charge, raster: raster)
+                        f.chargeOpenM = open
                         // Roofs on their own terms, the rest on the façades'.
                         let p = predict(
                             f, mass: mass, cellSize: Double(cellSize),
