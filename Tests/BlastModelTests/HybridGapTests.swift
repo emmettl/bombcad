@@ -140,8 +140,9 @@ struct HybridGapTests {
     /// result) must say what holds inside the hand-over, beyond it, for arrivals, and for walls
     /// and roofs, in that order; and its figures must be the ones on the page it cites,
     /// docs/hybrid-far-field.md: the façade peaks' range beyond the hand-over to 2.5 km, the glass
-    /// agreeing within 0.04 to 1.5 km at every yield, and the shortfall at 0.2 kt from 1.5 to
-    /// 2.5 km, each read off that page's table. Nothing else reads the standing.
+    /// agreeing within 0.04 to 1.75 km at 0.2 and 0.5 kt and to 2 km at 1.1 kt, and the shortfall
+    /// at 0.2 kt from 1.5 to 2.5 km, each read off that page's table on the surrogate's terms of
+    /// 23 October 2026 (emmettl/bombcad-work#56). Nothing else reads the standing.
     @Test("The standing reports its four parts, its figures those of the page it cites")
     func standingMatchesPage() throws {
         let standing = HybridFarField.standing
@@ -155,7 +156,11 @@ struct HybridGapTests {
         let page = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appending(path: "docs/hybrid-far-field.md")
         let text = try String(contentsOf: page, encoding: .utf8)
-        // The table's rows: "| 1–1.25 km | full / hybrid (unscaled) | … | peaks |".
+        // The refitted surrogate's table, under its own heading.
+        let heading = try #require(text.range(of: "### On the refitted surrogate (23 October 2026)"))
+        let section = text[heading.upperBound...].prefix { _ in true }
+        let refitted = String(section[..<(section.range(of: "\n## ")?.lowerBound ?? section.endIndex)])
+        // The table's rows: "| 1–1.25 km | full / hybrid (unscaled) | … | peaks | impulses |".
         struct Row {
             var from: Double, to: Double
             var glass: [(full: Double, hybrid: Double)]
@@ -164,9 +169,9 @@ struct HybridGapTests {
         func numbers(_ s: Substring) -> [Double] {
             s.split(whereSeparator: { " /()".contains($0) }).compactMap { Double($0) }
         }
-        let rows: [Row] = text.split(separator: "\n").compactMap { line in
+        let rows: [Row] = refitted.split(separator: "\n").compactMap { line in
             let cells = line.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
-            guard cells.count == 5, cells[0].hasSuffix("km") else { return nil }
+            guard cells.count == 6, cells[0].hasSuffix("km") else { return nil }
             let span = cells[0].dropLast(3).split(separator: "–").compactMap { Double($0) }
             guard span.count == 2 else { return nil }
             let glass = cells[1...3].map { numbers(Substring($0)) }
@@ -180,10 +185,12 @@ struct HybridGapTests {
         let peaks = beyond.flatMap(\.peaks)
         let range = String(format: "%.2f–%.2f", try #require(peaks.min()), try #require(peaks.max()))
         #expect(standing[1].contains("façade peaks \(range)"), "the page's peaks run \(range)")
-        // Within 0.04 to 1.5 km at every yield.
-        let toOneHalf = rows.filter { $0.to <= 1.5 }.flatMap(\.glass).map { abs($0.full - $0.hybrid) }
-        #expect((toOneHalf.max() ?? 1) <= 0.04 + 1e-9, "\(toOneHalf)")
-        #expect(standing[1].contains("within 0.04 of its to 1.5 km at every yield"))
+        // Within 0.04 to 1.75 km at 0.2 and 0.5 kt, and to 2 km at 1.1 kt.
+        let within =
+            rows.filter { $0.to <= 1.75 }.flatMap { $0.glass.prefix(2) }.map { abs($0.full - $0.hybrid) }
+            + rows.filter { $0.to <= 2 }.map { abs($0.glass[2].full - $0.glass[2].hybrid) }
+        #expect((within.max() ?? 1) <= 0.04 + 1e-9, "\(within)")
+        #expect(standing[1].contains("within 0.04 of its to 1.75 km at 0.2 and 0.5 kt and to 2 km"))
         // Under at 0.2 kt from 1.5 to 2.5 km.
         let shortfall = rows.filter { $0.from >= 1.5 && $0.to <= 2.5 }.map {
             $0.glass[0].full - $0.glass[0].hybrid

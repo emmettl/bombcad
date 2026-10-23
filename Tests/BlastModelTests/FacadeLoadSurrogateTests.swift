@@ -112,7 +112,8 @@ struct FacadeLoadSurrogateTests {
     @Test("A first look judges the buildings near the made-up district's charge, the nearest the worst")
     func firstLook() throws {
         var layout = try DistrictLayoutTests.layout()
-        layout.mass = 20_000
+        // Small enough that the furthest building's glass is not all broken.
+        layout.mass = 5_000
         let (scene, _) = try layout.scene(halfSide: 700, cellSize: 4, radius: 250)
         let estimate = FacadeLoadSurrogate.estimate(scene: scene, cellSize: 4)
         #expect(!estimate.loads.isEmpty)
@@ -179,9 +180,15 @@ struct FacadeLoadSurrogateTests {
         // close in, and the more the narrower the charge's surroundings. At 100 t the second cube
         // stands at Z 3.2, inside the branch.
         let mass = 100_000.0
-        let plain = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2)
+        var unshielded = FacadeLoadSurrogate.Coefficients.fitted
+        unshielded.closeIn?.shielding = nil
+        let plain = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2, coefficients: unshielded)
         f.chargeOpenM = 5
+        #expect(FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2, coefficients: unshielded) == plain)
+        // Unmeasured, the fitted terms' shielding changes nothing either.
+        f.chargeOpenM = .nan
         #expect(FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2) == plain)
+        f.chargeOpenM = 5
         var shielded = FacadeLoadSurrogate.Coefficients.fitted
         shielded.closeIn?.shielding = .init(peak: -0.5, impulse: -0.2, openScale: 1, fittedTo: "test")
         let narrow = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: 2, coefficients: shielded)
@@ -198,14 +205,16 @@ struct FacadeLoadSurrogateTests {
         inSight.chargeOpenM = 5
         #expect(
             FacadeLoadSurrogate.predict(inSight, mass: mass, cellSize: 2, coefficients: shielded)
-                == FacadeLoadSurrogate.predict(inSight, mass: mass, cellSize: 2))
+                == FacadeLoadSurrogate.predict(inSight, mass: mass, cellSize: 2, coefficients: unshielded))
         // Coefficients without it still decode, and with it round-trip.
         let data = try JSONEncoder().encode(shielded)
         #expect(try JSONDecoder().decode(FacadeLoadSurrogate.Coefficients.self, from: data) == shielded)
-        let old = try JSONEncoder().encode(FacadeLoadSurrogate.Coefficients.fitted)
+        let old = try JSONEncoder().encode(unshielded)
         #expect(
             try JSONDecoder().decode(FacadeLoadSurrogate.Coefficients.self, from: old).closeIn?.shielding
                 == nil)
+        // The fitted terms carry their shielding (emmettl/bombcad-work#56).
+        #expect(FacadeLoadSurrogate.Coefficients.fitted.closeIn?.shielding?.openScale == 2)
     }
 
     @Test("Close in, the branch is held at its own range's end, not carried to nothing, and marked")

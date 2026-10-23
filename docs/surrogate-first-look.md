@@ -12,25 +12,27 @@ own.
 
 ## What holds and what does not
 
-Judged against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:
+Judged against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt. The terms, refitted on 23 October
+2026 ([below](#the-refit-on-post-fix-and-2-m-runs-and-shielding-by-the-charges-surroundings-23-october-2026)), took five of Beirut's near boxes about the same charge on 2 m air, but
+not these runs:
 
 - **Holds: the glass across the district.** Each building side's glass state (none broken, some,
-  blown out, as GEER classed façades) agrees with the run's for 75–84% of the 28,991 sides, and is
-  never two states apart. By distance band, the share of sides with some glass broken and the
-  share blown out come within about 0.1 of the run's to 2 km (and up to 0.16 for 0.5 kt's blown
-  out at 1.25–1.5 km).
+  blown out, as GEER classed façades) agrees with the run's for 78–84% of the 28,991 sides (75–84%
+  on the terms before), and is never two states apart. By distance band, the share of sides with
+  some glass broken and the share blown out come within about 0.1 of the run's to 2 km (and up to
+  0.23 for 0.5 kt's blown out at 1.25–1.5 km).
 - **Holds: the speed.** The whole first look over Beirut's 724,512 components takes 22–28 s on
   the Studio while other jobs share it: 7–10 s for the loads, 14–22 s for the damage, against
 25–41 minutes for a full run on the CI mini. On a
   made-up district of 7,235 buildings it takes 2–3 s against the run's 69–105 s on the same Mac.
 - **Does not: walls and roofs.** Against Beirut's near boxes rerun with uncapped loads, of the
-  components either the run or the surrogate calls damaged, 28–49% of the concrete, 36–45% of the
+  components either the run or the surrogate calls damaged, 29–49% of the concrete, 46–53% of the
   stone and, on the roofs' own terms, 29–64% of the roofs take the run's level ([below](#walls-and-roofs-20-october-2026)).
   The few damaged components lie close in, where one wrong factor of 1.3 moves a wall across a
   level. Run the scene for the structure.
 - **Does not: the far edge.** Beyond Z = 20 m/kg^(1/3) (1.6 km at 0.5 kt), over Beirut's hills
-  and toward its run's open faces, the surrogate's loads are 1.1–1.6 times the run's on the
-  median, and at 2.5–3 km it breaks glass on 0.48 of sides where the run broke 0.18.
+  and toward its run's open faces, the surrogate's loads are 1.0–1.7 times the run's on the
+  median, and at 2.5–3 km it breaks glass on 0.42 of sides where the run broke 0.18.
 
 ## How it predicts a load
 
@@ -56,7 +58,10 @@ For each envelope component with a face on the air (`FacadeLoadSurrogate`):
    districts ([below](#shielding-streets-and-the-close-in-branch-20-october-2026)).
 4. **Close in**, below Z = 4.6 m/kg^(1/3), a branch takes over from the fitted terms: the base
    times the ratio fine runs give an open façade, carried to the project's cells by the fitted
-   cell term, and blended into the fitted terms between Z 4.6 and 8.
+   cell term, and blended into the fitted terms between Z 4.6 and 8. Behind buildings the branch
+   is lowered the more, the narrower the charge's surroundings (`CloseIn.Shielding`, by
+   `Features.chargeOpenM`: how far, on the median over 72 directions, the air runs from the charge
+   before a building), fitted on charges among Beirut's buildings ([below](#the-refit-on-post-fix-and-2-m-runs-and-shielding-by-the-charges-surroundings-23-october-2026)).
 5. **Its pulse.** A triangle of that peak and impulse, lasting twice the impulse over the peak,
    rising to its peak over a fitted share of that time (0.2–0.35 on 4 m cells: behind buildings
    the load builds up over tens of milliseconds as the streets fill). On its own training district
@@ -68,6 +73,12 @@ For each envelope component with a face on the air (`FacadeLoadSurrogate`):
    (`SDOFResponseMemo`): over Beirut 4.0 million responses are asked for and 115,000 integrated.
 
 ## How it was fitted
+
+**Since 23 October 2026** the terms are those of [the refit](#the-refit-on-post-fix-and-2-m-runs-and-shielding-by-the-charges-surroundings-23-october-2026): the same made-up runs rerun
+after the terrain start fix on air refined to 2 m below the tops, with five of Beirut's ten near
+boxes for the peak, and the shielding behind buildings fitted on Beirut's charges among buildings.
+The scatter, the rise share, the canyon terms and the close-in branch are as below. What follows
+is the first fit, on 4 m cells.
 
 To two made-up districts on 4 m cells, the recommended air and saturated ground, each run with
 `scenebench district-compare --save-loads` (which now saves each strip's box) and extracted with
@@ -85,7 +96,8 @@ strips near a run's open faces (beyond 0.85 of its half-side), beyond the curves
 About the fit the peaks scatter by a factor of 1.27 (the standard deviation of the logarithm
 0.24) and the impulses 1.18 (0.17).
 
-Beirut was held out of the fit. Its residuals did shape the model's form, though: the line over
+Beirut was held out of that fit (since the refit, five of its near boxes and five of its ten
+charge places are in it). Its residuals did shape the model's form, though: the line over
 the ground and the ridge and ground-rise terms were added after its loads on the hills south of
 the port were seen to fall below the straight-line model's. With them, a fit to Beirut itself
 scatters by 1.22–1.28; the made-up districts' fit, applied to Beirut, does as well within Z = 20.
@@ -404,10 +416,10 @@ on Beirut's district, with its standing still shown.
 
 **Against the full estimate** (Beirut's 4 m layout, 0.5 kt, yield within ×1.5, 100 draws; the
 charge where it was and 60 m east):
-- The glass's chances came within 0.1 of the full estimate's on 88–93% of sides: blown out 88%,
-  some broken 93%, with a mean difference of 0.04 and a bias of +0.02. The openings' came within
-  0.1 on all of them.
-- The walls' and roofs' chances came within 0.1 on 98.9–100% of buildings.
+- The glass's chances came within 0.1 of the full estimate's on 89–92% of sides: blown out 89%,
+  some broken 92%, with a mean difference of 0.04 and a bias of +0.02 (88% and 93% on the façade
+  terms before 23 October). The openings' came within 0.1 on all of them.
+- The walls' and roofs' chances came within 0.1 on 98.8–99.9% of buildings.
 - The damage's colour was the same for 99.7% of buildings, and never more than one colour apart.
 
 **Time a frame**, on the Studio while other sessions loaded it (load average 18–34 on 14 cores):
@@ -652,8 +664,9 @@ start on terrain (aff21dff), the 4 m runs' resolution bias
 ([learned models, round 3](learned-models.md#round-3-the-4-m-runs-resolution-bias-21-october-2026)),
 and #19's 2 m references (14707293). This refits the terms on runs after the fix, on 2 m air where
 it exists, and looks again for the feature [above](#close-in-among-buildings-21-october-2026) found
-missing: what tells the silos at Warehouse 12 from a city block. **Nothing is changed**: the result
-is a proposal, its coefficients a file.
+missing: what tells the silos at Warehouse 12 from a city block. It was proposed on #56 and
+**adopted on 23 October 2026** (the user's decision), with the concrete walls' factor ×1.15
+([at the end](#adopted-23-october-2026)).
 
 **The runs.** All are after aff21dff, with every storey's strips:
 - the fit set rerun on main 8b393c81, on 4 m air and on air refined to 2 m below the tops
@@ -783,6 +796,47 @@ walls' factor ×1.3 → ×1.15 and the roofs as they are; or keep today's.
 The fit, the judges and their scripts are in `$BOMBCAD_DATA/refit56/takeover` (`py/` for the fits
 and strip tables, `judges.sh` and `judges2.sh` for the benches).
 
+#### Adopted (23 October 2026)
+
+The user adopted the proposal on 23 October 2026: `Coefficients.fitted` is `proposal-56.json`, with
+the shielding, and concrete walls' load factor (`structureCalibration`) goes from ×1.3 to ×1.15.
+Stone keeps ×1.0 with ½ of the scatter, roofs ×1.3 with ½. Everything the standing quotes was
+judged again on the adopted terms (`$BOMBCAD_DATA/refit56/takeover/judge-adopt`, `rejudge.sh`):
+
+| | Before (the 4 m terms, walls ×1.3) | Adopted |
+|---|---|---|
+| Glass by side against the full 4 m runs, deep in the district, 0.2 / 0.5 / 1.1 kt | 0.84 / 0.75 / 0.81 | 0.84 / 0.77 / 0.83 |
+| … in sight and behind one to three buildings | 0.89–0.97 | 0.84–0.96 |
+| Near boxes (4 m, uncapped): concrete / stone / roofs at the run's level | 28–49% / 36–45% / 29–64% | 29–49% / 46–53% / 29–64% |
+| Loads at 0.5 kt, Z 7–20: peak / impulse on the median | 0.85–1.00 / 0.81–1.01 | 0.96–0.97 / 0.80–0.98 |
+| … beyond Z 20 | 1.09–1.63 | 1.03–1.65 |
+| Behind buildings within Z 5: Beirut's 45 charges among buildings (4 m) / made-up pair / the silos (2 m) | 1.73 / 1.41 / 1.09 | 1.19 / 0.99 / 1.06 |
+| Glass chances, Brier skill: blown out / thrown past 3b / some broken | 0.81 / 0.72 / 0.63 | 0.84 / 0.73 / 0.66 |
+| Openings blown out against GEER: skill; at 0.75–1 km (GEER 0.27) | 0.15; 0.31 | 0.19; 0.34 |
+| Concrete walls moderate or worse (2 m references): skill, tenths | 0.59, pass | 0.61, pass |
+| … with field model 1 / field model 2, peak ×1.15, impulse ×0.95 | 0.664, pass / 0.656, fail | 0.654, pass / 0.656, pass |
+| Stone heavy or worse / roofs moderate or worse | 0.70 / 0.74 | 0.72 / 0.74 |
+| Drag preview within 0.1 of the full estimate: glass / walls and roofs | 88–93% / 98.9–100% | 89–92% / 98.8–99.9% |
+
+So behind buildings close in it reads 1.0–1.2 times the 4 m runs' peaks, where it read 1.4–1.7
+times, and the standing says so (`surrogateCloseInShielded`). The field model's walls keep the
+peak ×1.15 and the impulse ×0.95: on the adopted terms the refit chose them in every fold for field
+model 2, which now passes the tenths test, and field model 1's own choice (×1.15 with the impulse
+×1.15) scored lower than they do
+([learned models](learned-models.md#field-model-2-in-the-app-23-october-2026)). Stone's refit would
+take ×0.8 in seven folds of ten, but scored lower held out (0.715) than its ×1.0 (0.724), so it
+stays.
+
+Two standings moved the wrong way or were not judged again:
+- **The hybrid far field** ([its page](hybrid-far-field.md#on-the-refitted-surrogate-23-october-2026)):
+  at 0.2 kt its far edge closes up (the share broken 0.01–0.06 under the full run's at 1.5–2.5 km,
+  from 0.16–0.28), but at 1.1 kt beyond 1.5 km its peaks read 1.18–1.29 of the full run's and its
+  impulses 1.6–2.0 times, and its blown-out share at 1.5–1.75 km 0.96 against the run's 0.69.
+- **Field model 1's judge of 21 October** on Beirut's 50 runs at 4 m (`learnedPeakGlass`,
+  `learnedPeakGlassSkill`): glass by side, exact on 0.916 of sides with the surrogate's peak and
+  0.942 with the model's. It ran through `app_peaks.py` and `judge_field.py` on that day's strips
+  and was not run again; its surrogate figure is the terms before.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -803,9 +857,11 @@ and strip tables, `judges.sh` and `judges2.sh` for the benches).
 
 ## Limitations
 
-- **Fitted to two made-up districts on 4 m cells.** Other cells are reached only through the
-  cell term, fitted over 0.05–0.15 of W^(1/3); other building types (thin walls, panes) are
-  given the façade strips' terms, roofs their own (`Coefficients.roofs`).
+- **Fitted to two made-up districts and Beirut's near boxes, on air refined to 2 m.** Its loads
+  are a 2 m run's close in and a 4 m run's beyond about Z 10, where the refinement stops; 1 m
+  cells read the peaks 5–10% higher still. Other cells are reached only through the cell term,
+  fitted over 0.05–0.15 of W^(1/3); other building types (thin walls, panes) are given the façade
+  strips' terms, roofs their own (`Coefficients.roofs`, still the 4 m fit).
 - **Only between Z = 1.5 and 38.7 m/kg^(1/3).** The fitted terms hold over 4.6–38.7, the
   distances they were fitted over (the fit's 2nd to 98th percentiles), and the close-in branch over
   1.5–4.6. Beyond those the terms are held at the range's end, so that the correction cannot fall
@@ -815,15 +871,19 @@ and strip tables, `judges.sh` and `judges2.sh` for the benches).
 - **It copies the runs, artefacts and all.** On 4 m cells a run's façade peaks are 0.45–0.57 of
   Kingery–Bulmash's reflected ones even in sight of the charge; the surrogate gives those, not the
   reflected peak a finer run would.
-- **Beirut shaped its form.** See above: the terms for terrain were chosen after Beirut's
-  residuals were seen, though fitted without it.
+- **Beirut shaped it.** The terms for terrain were chosen after Beirut's residuals were seen, and
+  since 23 October its near boxes and half its charge places are in the fit. Its standing against
+  Beirut is partly in sample; the held-out places and two made-up districts are the fair test.
 - **Streets only along the line of sight.** A street the line runs down raises the loads by the
   fine canyon runs' terms. A street off the charge, behind a row, is seen as a row crossed, though
   fine runs put its lee walls up to ×1.6 in peak and ×1.7 in impulse over that.
-- **Shielding is the districts'.** A building or barrier in front takes 2–3% off, as the 4 m
-  district runs show. Fine runs take half or more off within a couple of its heights behind it; a
-  factor fitted on them did not hold for the districts or the barriers
-  ([below](#shielding-streets-and-the-close-in-branch-20-october-2026)).
+- **Shielding is the districts'.** Beyond the close-in branch a building or barrier in front takes
+  2–3% off, as the district runs show. Fine runs take half or more off within a couple of its
+  heights behind it; a factor fitted on them did not hold for the districts or the barriers
+  ([below](#shielding-streets-and-the-close-in-branch-20-october-2026)). Close in, the shielding
+  by the charge's surroundings ([below](#the-refit-on-post-fix-and-2-m-runs-and-shielding-by-the-charges-surroundings-23-october-2026)) reads Beirut's façades behind buildings 1.0–1.2
+  times the 4 m runs', upper storeys still about ×1.25, and a charge hemmed in by perimeter blocks
+  a little low (0.96).
 - **Isolated façades at tonne scale** beyond Z 8 are read 0.6–0.8 of a fine run's: the fitted
   terms are the districts', where nearly every façade stands behind something.
 - **Single charges on the ground**, as Kingery–Bulmash's surface burst; no deflagrations, no
@@ -840,8 +900,8 @@ and strip tables, `judges.sh` and `judges2.sh` for the benches).
 
 ## Future work
 
-- A finer reference: fitting to refined or 3 m runs, so that the first look gives converged loads
-  rather than a 4 m run's.
+- A finer reference: fitted to runs refined to 2 m on 23 October; 1 m would read the peaks
+  5–10% higher again.
 - Thin walls and panes, from runs of the presets with detailed envelopes.
 - Chances for walls and roofs, drawn over the scatter as the glass's are, so that counts by band
   can match a run's.

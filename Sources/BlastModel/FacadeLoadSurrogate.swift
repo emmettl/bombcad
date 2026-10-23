@@ -881,7 +881,8 @@ extension FacadeLoadSurrogate {
         let far = ValidationTables.figure("surrogateFarLoads")
         let shielded = ValidationTables.figure("surrogateCloseInShielded")
         return [
-            "An estimate, not a run. Against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt, which it was not fitted to:",
+            "An estimate, not a run. Against Beirut's full 4 m runs at 0.2, 0.5 and 1.1 kt (its terms took five of "
+                + "Beirut's near boxes about the same charge, on 2 m air, not these runs):",
             "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
                 + "of sides deep in the district, never two states apart; the share of sides broken by distance came "
                 + "within 0.1 of the run's to 2 km.",
@@ -892,10 +893,10 @@ extension FacadeLoadSurrogate {
                 + "further out, over hills and near the run's open faces, \(far.ratio) times on the median and far "
                 + "more scattered.",
             "Close in, Z 1.5–4.6 m/kg^(1/3), Kingery–Bulmash's base times the open façades' ratio on fine runs; "
-                + "a street the line runs down raises the loads by the fine canyon runs' terms; a building or barrier "
-                + "in front takes only the districts' few per cent off, less than fine runs take close behind it. "
-                + "Behind buildings close in, with the charge among them, it reads \(String(format: "%.1f–%.1f", shielded.low, shielded.high)) "
-                + "times the runs' peaks: high.",
+                + "a street the line runs down raises the loads by the fine canyon runs' terms; behind buildings the "
+                + "loads are lowered the more, the narrower the charge's surroundings (fitted on charges among "
+                + "Beirut's buildings). Behind buildings close in it reads \(String(format: "%.1f–%.1f", shielded.low, shielded.high)) "
+                + "times the 4 m runs' peaks, upper storeys the higher.",
             "Outside Z 1.5–38.7 m/kg^(1/3) its terms are held at the range's end and its loads extrapolated: "
                 + "marked as such.",
         ]
@@ -919,29 +920,44 @@ extension FacadeLoadSurrogate {
 }
 
 extension FacadeLoadSurrogate.Coefficients {
-    /// Fitted to four runs of two made-up districts on 4 m cells (`Scripts/fit-surrogate.py`;
-    /// docs/surrogate-first-look.md): a dense one of 7,235 buildings at 20, 100 and 500 t, and the
-    /// sparse test fixture at 20 t. The canyon terms are the fine canyon runs' (1 t on 0.5 m cells)
-    /// and held; the close-in branch is the fine protective layouts' open façades (1 t on 0.5 m cells,
-    /// `Scripts/fit-close-in.py`; emmettl/bombcad-work#4). Beirut held out, to judge it on.
+    /// Refitted on 23 October 2026 (emmettl/bombcad-work#56; docs/surrogate-first-look.md, "The refit
+    /// on post-fix and 2 m runs"), on runs after the mapped start on terrain (aff21dff) with air
+    /// refined to 2 m below the tops: the peak's terms on the made-up fit set (the dense district at
+    /// 20, 100 and 500 t, the sparse fixture at 20 t) and five of Beirut's ten near boxes (150, 300,
+    /// 500, 850 and 1,300 t), the impulse's on the fit set alone (`Scripts/fit-surrogate.py`'s least
+    /// squares, each run alike). The rise share, the canyon terms (the fine canyon runs', 1 t on 0.5 m
+    /// cells), the close-in branch (the fine protective layouts' open façades, `Scripts/fit-close-in.py`;
+    /// emmettl/bombcad-work#4), the range and the scatter are as fitted on 4 m cells before. Behind
+    /// buildings close in the branch takes the shielding fitted on Beirut's charges among buildings
+    /// at five places of ten, the five near boxes and the fit set (`CloseIn.Shielding`). Beirut's
+    /// other five places, the near boxes' other yields and two more made-up districts were held out
+    /// to judge it on.
     public static let fitted = FacadeLoadSurrogate.Coefficients(
         peak: [
-            -3.108, -0.319, -0.165, -0.022, -0.001, 1.609, -0.260, -0.073, 0.023, -0.293, -0.286, 0.000,
-            0.683,
-            0.000,
+            -2.0548, -0.4514, -0.1530, -0.0814, 0.0065, 0.7851, -0.3127, -0.1531, -0.0230, -0.1477, -0.3890,
+            0.0000, 0.6830, 0.0000,
         ],
         impulse: [
-            -0.186, -0.468, -0.161, 0.123, -0.021, 0.571, -0.103, -0.202, -0.008, -0.130, 0.251, 0.000, 0.000,
-            1.334,
+            0.2228, -0.4561, -0.1683, 0.1300, -0.0255, 0.2000, -0.1123, -0.2194, -0.0093, -0.0569, 0.2423,
+            0.0000, 0.0000, 1.3340,
         ],
         rise: [
-            -0.074, -0.027, -0.030, 0.014, 0.038, 0.389, 0.075, -0.444, 0.628, -0.098, -0.105, 0.000, 0.000,
-            0.000,
+            -0.0740, -0.0270, -0.0300, 0.0140, 0.0380, 0.3890, 0.0750, -0.4440, 0.6280, -0.0980, -0.1050,
+            0.0000, 0.0000, 0.0000,
         ],
         scaledRange: 4.6...38.7, scatter: SIMD2(0.240, 0.168),
-        fittedTo: "made-up districts: dense at 20, 100 and 500 t, sparse at 20 t (4 m cells)",
+        fittedTo:
+            "made-up districts (dense at 20, 100 and 500 t, sparse at 20 t) and Beirut's near boxes at 150, 300, "
+            + "500, 850 and 1300 t, after the terrain start fix, on air refined to 2 m; the impulse the made-up "
+            + "districts' alone",
         closeIn: CloseIn(
             peak: [-1.574, 1.768, -0.545], impulse: [-0.218, 0.397, -0.226], referenceCell: 0.05,
             heldWithin: 1.5...8, blendTo: 8,
-            fittedTo: "open façades of the protective layouts L1-L6, 1 t on 0.5 m cells"))
+            fittedTo: "open façades of the protective layouts L1-L6, 1 t on 0.5 m cells",
+            shielding: CloseIn.Shielding(
+                peak: -0.4860, impulse: -0.2653, openScale: 2.0,
+                fittedTo:
+                    "Beirut's charges at five places of ten (4 m, read as 2 m by ×1.13), its near boxes at "
+                    + "150, 300, 500, 850 and 1300 t and the made-up districts on 2 m air")))
+
 }

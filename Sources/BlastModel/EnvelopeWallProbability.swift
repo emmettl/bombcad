@@ -64,16 +64,18 @@ extension FacadeLoadSurrogate {
     /// peaks are the learned field model's (emmettl/bombcad-work#67): calibrated against Beirut's
     /// near boxes at ten yields from 0.15 to 1.5 kt, refined to 2 m below the buildings' tops, each
     /// yield held out in turn (`scenebench wall-calibrate`; docs/glass-probability.md, "Walls and
-    /// roofs"). Against them concrete walls took ×1.3 with the whole scatter in nine folds of ten;
-    /// with the field model, the peak ×1.15 and the impulse ×0.95, which alone passed the tenths
-    /// test; stone ×1.0 with ½ and roofs ×1.3 with ½, as on 4 m cells. The 4 m runs read the walls'
-    /// peaks 13–19% low at 400–600 m of 0.5 kt, and had given concrete ×1.0 (emmettl/bombcad-work#19).
+    /// roofs"). Since the façade terms were refitted on 2 m air (23 October 2026,
+    /// emmettl/bombcad-work#56) concrete walls take ×1.15 with the whole scatter, the refit's
+    /// choice; on the terms before, fitted on 4 m cells, they took ×1.3. With the field model, the
+    /// peak ×1.15 and the impulse ×0.95; stone ×1.0 with ½ and roofs ×1.3 with ½, as on 4 m cells.
+    /// The 4 m runs read the walls' peaks 13–19% low at 400–600 m of 0.5 kt, and had given concrete
+    /// ×1.0 (emmettl/bombcad-work#19).
     public static func structureCalibration(walls kind: EnvelopeConstruction.Kind, learned: Bool = false) -> (
         walls: (peak: Double, impulse: Double, scatter: Double),
         roof: (peak: Double, impulse: Double, scatter: Double)
     ) {
         let walls: (peak: Double, impulse: Double, scatter: Double) =
-            kind == .unreinforcedMasonry ? (1.0, 1.0, 0.5) : learned ? (1.15, 0.95, 1.0) : (1.3, 1.3, 1.0)
+            kind == .unreinforcedMasonry ? (1.0, 1.0, 0.5) : learned ? (1.15, 0.95, 1.0) : (1.15, 1.15, 1.0)
         return (walls, (1.3, 1.3, 0.5))
     }
 

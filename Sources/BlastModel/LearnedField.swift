@@ -43,10 +43,9 @@ public enum LearnedField {
                     + "estimate against Beirut's ten near boxes on air refined to 2 m, a city they never saw. Glass "
                     + "blown out by building side: Brier skill %.2f against field model 1's %.2f, and %.2f against "
                     + "%.2f above the ground floor. Concrete walls damaged moderately or worse: Brier skill %.3f "
-                    + "against field model 1's %.3f, and their chances miss the tenths test by one tenth, on the "
-                    + "unsafe side: where they said 0.80–0.90 (0.84 on average), 0.95 of those buildings were "
-                    + "damaged so. Roofs (skill %.2f) and the impulse stay on the surrogate.",
-                glass.high, glass.low, upper.high, upper.low, walls.low, walls.high, roofs.high),
+                    + "against field model 1's %.3f, and their chances pass the tenths test, each tenth within 0.1 "
+                    + "of the share damaged. Roofs (skill %.2f) and the impulse stay on the surrogate.",
+                glass.high, glass.low, upper.high, upper.low, walls.high, walls.low, roofs.high),
             "It learned one city's runs and made-up districts on 4 m cells, with the charge on the ground: "
                 + "other cells, other cities and other charges are beyond what it was judged on.",
         ]

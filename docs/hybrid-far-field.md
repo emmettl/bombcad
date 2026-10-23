@@ -20,16 +20,18 @@ Judged on Beirut against the full 4 m runs at 0.2, 0.5 and 1.1 kt ([Beirut,
   1,604, 2,017 and 2,464 s. The far field's loads take a few seconds, and laying out and judging
   all 14,169 buildings about a minute on the Studio. At 0.5 kt the whole district takes about
   7 minutes against 34.
-- **Holds: the glass to 1.5 km at every yield.** The share of building sides with some glass broken
-  comes within 0.04 of the full run's there; to 2 km at 0.5 kt and to 2.5 km at 1.1 kt.
+- **Holds: the glass to 1.75 km.** The share of building sides with some glass broken comes within
+  0.04 of the full run's to 1.75 km at 0.2 and 0.5 kt and to 2 km at 1.1 kt (on the surrogate's
+  terms refitted on 23 October 2026; [below](#on-the-refitted-surrogate-23-october-2026)).
 - **Holds: arrivals.** Beyond the hand-over, Kingery–Bulmash's arrival scaled to the near run's
   comes 2–4% before the full run's. Against Rigby et al.'s observers past 1 km that is 0.95–1.08
   of the observed at 0.5 kt, and 0.91–1.02 at 1.1 kt.
-- **Does not: the far edge at the small yield.** At 0.2 kt the share broken falls 0.16–0.28 below
-  the full run's from 1.5 to 2.5 km. The near run's trend with distance, carried on, falls faster
-  there than the run does; the surrogate unscaled is closer.
-- **Does not: blown-out glass in every band.** Its share differs from the full run's by up to 0.22
-  in a band (0.5 kt: 0.37 against 0.59 at 1.25–1.5 km).
+- **Does not: the loads at the large yield beyond 1.5 km.** At 1.1 kt the far field's peaks read
+  1.18–1.29 of the full run's from 1.5 to 2.5 km and its impulses 1.6–2.0 times. At 0.2 kt, where
+  the share broken fell 0.16–0.28 below the full run's on the terms before, it now falls 0.01–0.06
+  below.
+- **Does not: blown-out glass in every band.** Its share differs from the full run's by up to 0.27
+  in a band (1.1 kt: 0.96 against 0.69 at 1.5–1.75 km; 0.5 kt: 0.42 against 0.60 at 1.25–1.5 km).
 - **Does not: walls and roofs beyond the hand-over.** They take the surrogate's standing, which
   says to run the scene for the structure.
 - **Inherits the full run's verdict against GEER.** Close in it breaks more glass than GEER saw;
@@ -104,6 +106,33 @@ Beyond about 2.2 km the full run's own side faces lie near the buildings
 ([Beirut](beirut-2020.md#what-the-model-can-and-cannot-represent)), so its far bands are the less
 sure reference. Impulses run 1.04–1.5 times the full run's from the hand-over to 2.5 km, and up to
 1.9 times at 2.5–3 km.
+
+
+### On the refitted surrogate (23 October 2026)
+
+The surrogate's terms were refitted on air refined to 2 m and given shielding by the charge's
+surroundings (emmettl/bombcad-work#56; [the first look](surrogate-first-look.md#adopted-23-october-2026)).
+The same judge on the adopted terms, trend from 500 m carried on (`hybrid-judge --trend-from 500`),
+as the table above:
+
+| Distance | 0.2 kt | 0.5 kt | 1.1 kt | Peak, 0.2 / 0.5 / 1.1 kt | Impulse, 0.2 / 0.5 / 1.1 kt |
+|---|---|---|---|---|---|
+| 1–1.25 km | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.99 / 0.98 / 1.00 | 1.04 / 1.07 / 1.14 |
+| 1.25–1.5 km | 0.99 / 0.98 (0.97) | 1.00 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 0.95 / 0.97 / 1.02 | 1.09 / 1.14 / 1.28 |
+| 1.5–1.75 km | 0.84 / 0.83 (0.77) | 0.99 / 1.00 (1.00) | 1.00 / 1.00 (1.00) | 1.01 / 1.07 / 1.18 | 1.25 / 1.34 / 1.58 |
+| 1.75–2 km | 0.61 / 0.55 (0.48) | 0.91 / 0.98 (0.98) | 0.99 / 1.00 (1.00) | 0.97 / 1.07 / 1.22 | 1.26 / 1.36 / 1.67 |
+| 2–2.5 km | 0.23 / 0.17 (0.13) | 0.66 / 0.75 (0.73) | 0.94 / 1.00 (0.99) | 0.97 / 1.08 / 1.29 | 1.42 / 1.55 / 1.98 |
+| 2.5–3 km | 0.02 / 0.06 (0.04) | 0.18 / 0.44 (0.42) | 0.65 / 0.99 (0.96) | 1.49 / 1.51 / 1.85 | 1.82 / 1.93 / 2.54 |
+
+- **The small yield's far edge closes up.** At 0.2 kt the share broken now falls 0.01–0.06 below
+  the full run's from 1.5 to 2.5 km, where it fell 0.16–0.28 below.
+- **The large yield reads high beyond 1.5 km.** At 1.1 kt the peaks are 1.18–1.29 of the full
+  run's and the impulses 1.6–2.0 times, so the share broken at 2–2.5 km goes from 0.94 to 1.00 and
+  the blown-out share at 1.5–1.75 km from 0.69 to 0.96. The refitted terms fall off more slowly
+  with distance than the run there, and the match carries that on.
+- Holding the trend past 1.5 times the hand-over, as the app does, changes the loads by a few per
+  cent (at 1.1 kt, 1.17–1.24 at 1.5–2.5 km). The judgements are in
+  `$BOMBCAD_DATA/refit56/takeover/judge-adopt` (`hybrid-carry-*`, and `hybrid-*` held).
 
 ## Using it
 

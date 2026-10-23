@@ -50,6 +50,7 @@ enum FieldGlass {
         let scene = reference.scene
         let mass = Double(scene.charge.mass)
         let charge = scene.charge.position
+        let open = reference.raster.openReach(around: charge)
 
         // The judged strips' peaks, by box (to a tenth of a metre, as judge_field.py keys them).
         let lines = try String(contentsOfFile: peaksPath, encoding: .utf8).split(separator: "\n")
@@ -116,8 +117,9 @@ enum FieldGlass {
                     axis: component.axis, binS: strip.binS, outerPa: net,
                     innerPa: Array(repeating: 0, count: net.count), supportEdges: nil,
                     outward: component.outward)
-                let f = FacadeLoadSurrogate.features(
+                var f = FacadeLoadSurrogate.features(
                     component, owner: n, charge: charge, raster: reference.raster)
+                f.chargeOpenM = open
                 let prediction = FacadeLoadSurrogate.predict(
                     f, mass: mass, cellSize: Double(reference.cellSize))
                 var list = [

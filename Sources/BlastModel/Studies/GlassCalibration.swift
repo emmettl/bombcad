@@ -110,6 +110,7 @@ package enum GlassCalibration {
         matches: [(side: Int, observedClass: Int, distance: Double, record: Int)], records: [[String: String]]
     ) {
         let charge = scene.charge.position
+        let open = raster.openReach(around: charge)
         let dx = cellSize
         struct Placed {
             var side: FacadeLoadSurrogate.GlassSideStrips
@@ -138,12 +139,11 @@ package enum GlassCalibration {
                                 owner: objects[n].id, ownerKey: objects[n].drawKey, axis: axis,
                                 outward: key % 2 == 1 ? 1 : -1,
                                 mix: mix,
-                                strips: members.map {
-                                    (
-                                        FacadeLoadSurrogate.features(
-                                            $0, owner: n, charge: charge, raster: raster),
-                                        Double($0.spans.x * $0.spans.y)
-                                    )
+                                strips: members.map { strip -> (FacadeLoadSurrogate.Features, Double) in
+                                    var f = FacadeLoadSurrogate.features(
+                                        strip, owner: n, charge: charge, raster: raster)
+                                    f.chargeOpenM = open
+                                    return (f, Double(strip.spans.x * strip.spans.y))
                                 }), face: face, span: low...high))
                 }
             }
@@ -300,11 +300,13 @@ package enum GlassCalibration {
 
             // The same sides for the surrogate, from the same strips.
             var sideStrips: [SideKey: [(features: FacadeLoadSurrogate.Features, areaM2: Double)]] = [:]
+            let open = raster.openReach(around: charge)
             for strip in first.strips where common.contains(id(strip)) {
                 let key = SideKey(
                     object: strip.object, axis: strip.component.axis, outward: strip.component.outward)
-                let f = FacadeLoadSurrogate.features(
+                var f = FacadeLoadSurrogate.features(
                     strip.component, owner: strip.object, charge: charge, raster: raster)
+                f.chargeOpenM = open
                 let spans = strip.component.spans
                 sideStrips[key, default: []].append((f, Double(spans.x * spans.y)))
             }
@@ -524,12 +526,20 @@ package enum GlassCalibration {
                             from: band.from, to: band.to, facades: members.count, observed: seen,
                             predicted: mean, low: low,
                             high: high))
+                    // The glass's own blown out beside it, not judged: GEER's classes are openings
+                    // (the standing's "compares unlike things").
+                    let glassShares = (0..<draws).map { k in
+                        members.reduce(0.0) { $0 + (kept[index[matches[$1].side]!][k].blownOut ? 1 : 0) }
+                            / Double(members.count)
+                    }
                     print(
                         String(
-                            format: "  %4.0f–%4.0f m %@  %5d  observed %.2f  predicted %.2f (%.2f–%.2f)%@",
+                            format:
+                                "  %4.0f–%4.0f m %@  %5d  observed %.2f  predicted %.2f (%.2f–%.2f)%@; glass blown out %.2f",
                             band.from,
                             band.to, label as NSString, members.count, seen, mean, low, high,
-                            (seen >= low && seen <= high ? "" : "  outside") as NSString))
+                            (seen >= low && seen <= high ? "" : "  outside") as NSString,
+                            glassShares.reduce(0, +) / Double(draws)))
                 }
             }
         }

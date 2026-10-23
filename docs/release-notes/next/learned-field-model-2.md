@@ -6,11 +6,11 @@ and a second network, trained on BombCAD's own runs at more heights, does the st
 chances draw each network's own scatter. Roofs and the impulse stay on the surrogate. It was
 judged against Beirut's runs refined to 2 m, a city it never saw:
 
-- glass blown out by building side scores Brier skill 0.44 against field model 1's 0.34, and 0.43
+- glass blown out by building side scores Brier skill 0.44 against field model 1's 0.35, and 0.43
   against 0.32 above the ground floor;
-- concrete walls damaged moderately or worse score 0.656 against 0.664, and their chances miss the
-  tenths test by one tenth, on the unsafe side (0.84 predicted where 0.95 were damaged), which
-  field model 1's passed;
+- concrete walls damaged moderately or worse score 0.656 against field model 1's 0.654, and both
+  pass the tenths test, on the façade terms refitted the same day (see the surrogate's note; on the
+  terms before, field model 2's walls missed it by one tenth);
 - roofs are unchanged.
 
 It is illustrative. The two files, 31.4 MB together, download from the `field-model-2` release only

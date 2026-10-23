@@ -72,6 +72,7 @@ extension ChargeInference {
             var shadow: Float
             var canyon: Float
             var canyonHeight: Float
+            var chargeOpen: Float
 
             init(_ f: FacadeLoadSurrogate.Features) {
                 distance = Float(f.distanceM)
@@ -90,6 +91,7 @@ extension ChargeInference {
                 shadow = Float(f.shadowM)
                 canyon = Float(f.canyonM)
                 canyonHeight = Float(f.canyonHeightM)
+                chargeOpen = Float(f.chargeOpenM)
             }
 
             var full: FacadeLoadSurrogate.Features {
@@ -100,7 +102,7 @@ extension ChargeInference {
                     edgeFromChargeM: Double(edgeFrom), edgeToTargetM: Double(edgeTo),
                     edgeTopM: Double(edgeTop),
                     edgeSideM: Double(edgeSide), lastTopM: Double(lastTop), canyonM: Double(canyon),
-                    canyonHeightM: Double(canyonHeight))
+                    canyonHeightM: Double(canyonHeight), chargeOpenM: Double(chargeOpen))
             }
         }
 
@@ -173,12 +175,14 @@ extension ChargeInference {
                         reference.y + Float(origin.y + Double(node / count) * spacing))
                     let charge = SIMD3(
                         place.x, place.y, (scene.terrain?.height(at: place) ?? 0) + chargeAbove)
+                    let open = raster.openReach(around: charge)
                     for (s, side) in sides.enumerated() {
-                        out[node * sides.count + s] = CompactFeatures(
-                            FacadeLoadSurrogate.features(
-                                region: side.region, axis: side.axis, outward: side.outward,
-                                owner: side.owner,
-                                charge: charge, raster: raster))
+                        var f = FacadeLoadSurrogate.features(
+                            region: side.region, axis: side.axis, outward: side.outward,
+                            owner: side.owner,
+                            charge: charge, raster: raster)
+                        f.chargeOpenM = open
+                        out[node * sides.count + s] = CompactFeatures(f)
                     }
                 }
             }

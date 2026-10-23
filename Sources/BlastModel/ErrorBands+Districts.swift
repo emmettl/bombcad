@@ -10,9 +10,9 @@ extension ValidationTables {
         // Estimates beside a run, against BombCAD's own runs: the standing lines of
         // `FacadeLoadSurrogate`, `HybridFarField` and `ChargeInference` are worded from these.
         Figure(
-            id: "structureChancesSkill", low: 0.59, high: 0.74,
+            id: "structureChancesSkill", low: 0.61, high: 0.74,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
-            quote: "Brier skill 0.59 for concrete walls moderate or worse, 0.74 for roofs"),
+            quote: "Brier skill 0.61 for concrete walls moderate or worse, 0.74 for roofs"),
         Figure(
             id: "structureChancesUnderCall", low: 0.1, high: 0.1,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
@@ -24,13 +24,13 @@ extension ValidationTables {
         // The walls' chances with the learned field model's peaks, at its own calibration, against
         // the surrogate's at its own, on the 2 m references (emmettl/bombcad-work#19).
         Figure(
-            id: "learnedWallsRefined", low: 0.59, high: 0.66,
+            id: "learnedWallsRefined", low: 0.61, high: 0.65,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
-            quote: "0.66 with the learned field model's peaks, against 0.59"),
+            quote: "0.65 with the learned field model's peaks, against 0.61"),
         Figure(
-            id: "surrogateCloseInShielded", low: 1.4, high: 1.7,
-            document: "surrogate-first-look.md#close-in-among-buildings-21-october-2026",
-            quote: "the branch reads 1.4–1.7 times the runs' among buildings"),
+            id: "surrogateCloseInShielded", low: 1.0, high: 1.2,
+            document: "surrogate-first-look.md#adopted-23-october-2026",
+            quote: "behind buildings close in it reads 1.0–1.2 times the 4 m runs' peaks"),
         // The learned field model's peak at ground-floor façades, in the quick estimate
         // (`LearnedField.standing`): the surrogate's figure low, the model's high.
         Figure(
@@ -52,92 +52,92 @@ extension ValidationTables {
             document: "learned-models.md#in-the-apps-quick-estimate-21-october-2026",
             quote: "at the app's own load factor of 1.0, 0.60 and 0.68"),
         // Field model 2 in the quick estimate (`LearnedField.standing`), against Beirut's 2 m
-        // references: field model 1's figure and model 2's, the lower first
-        // (emmettl/bombcad-work#69).
+        // references: field model 1's figure and model 2's, the lower first (emmettl/bombcad-work#69;
+        // judged again on the façade terms refitted on 23 October 2026, #56).
         Figure(
-            id: "learnedModel2Glass", low: 0.34, high: 0.44,
+            id: "learnedModel2Glass", low: 0.35, high: 0.44,
             document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
-            quote: "glass blown out over the app's sides, Brier skill 0.44 against field model 1's 0.34"),
+            quote: "glass blown out over the app's sides, Brier skill 0.44 against field model 1's 0.35"),
         Figure(
             id: "learnedModel2GlassUpper", low: 0.32, high: 0.43,
             document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
             quote: "above the ground floor 0.43 against 0.32"),
         Figure(
-            id: "learnedModel2Walls", low: 0.656, high: 0.664,
+            id: "learnedModel2Walls", low: 0.654, high: 0.656,
             document: "learned-models.md#field-model-2-in-the-app-23-october-2026",
-            quote: "concrete walls moderate or worse, Brier skill 0.656 against field model 1's 0.664"),
+            quote: "concrete walls moderate or worse, Brier skill 0.656 against field model 1's 0.654"),
         Figure(
-            id: "dragPreviewGlass", low: 0.88, high: 0.93,
+            id: "dragPreviewGlass", low: 0.89, high: 0.92,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
-            quote: "within 0.1 of the full estimate's on 88–93% of sides"),
+            quote: "within 0.1 of the full estimate's on 89–92% of sides"),
         Figure(
-            id: "dragPreviewWalls", low: 0.989, high: 1.0,
+            id: "dragPreviewWalls", low: 0.988, high: 0.999,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
-            quote: "within 0.1 on 98.9–100% of buildings"),
+            quote: "within 0.1 on 98.8–99.9% of buildings"),
         Figure(
             id: "dragPreviewDamage", low: 0.997, high: 0.997,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
             quote: "the same for 99.7% of buildings"),
         Figure(
-            id: "glassChancesBrier", low: 0.020, high: 0.108,
+            id: "glassChancesBrier", low: 0.017, high: 0.108,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "Brier score 0.020, against 0.108"),
+            quote: "Brier score 0.017, against 0.108"),
         Figure(
-            id: "glassChancesBins", low: 0.05, high: 0.05,
+            id: "glassChancesBins", low: 0.06, high: 0.06,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "within 0.05 of the share of runs"),
+            quote: "within 0.06 of the share of runs"),
         Figure(
-            id: "glassChancesThrown", low: 0.72, high: 0.72,
+            id: "glassChancesThrown", low: 0.73, high: 0.73,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "condition 3b: skill 0.72"),
+            quote: "condition 3b: skill 0.73"),
         Figure(
             id: "glassChancesTest", low: 0.1, high: 0.1,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
             quote: "within 0.1 of the share seen"),
         Figure(
-            id: "glassChancesSurvey", low: 0.27, high: 0.91,
+            id: "glassChancesSurvey", low: 0.27, high: 0.93,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "blown out 0.91 at 0.75–1 km where GEER saw 0.27"),
+            quote: "blown out 0.93 at 0.75–1 km where GEER saw 0.27"),
         Figure(
-            id: "openingsSurvey", low: 0.27, high: 0.31,
+            id: "openingsSurvey", low: 0.27, high: 0.34,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "openings blown out 0.31 at 0.75–1 km where GEER saw 0.27"),
+            quote: "openings blown out 0.34 at 0.75–1 km where GEER saw 0.27"),
         Figure(
-            id: "openingsSkill", low: 0.15, high: 0.15,
+            id: "openingsSkill", low: 0.19, high: 0.19,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "skill 0.15 (Brier 0.144"),
+            quote: "skill 0.19 (Brier 0.138"),
         Figure(
-            id: "surrogateGlassSides", low: 0.75, high: 0.84,
+            id: "surrogateGlassSides", low: 0.77, high: 0.84,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "agrees with the run's for 75–84%"),
+            quote: "agrees with the run's for 77–84%"),
         Figure(
-            id: "surrogateConcrete", low: 0.28, high: 0.49,
+            id: "surrogateConcrete", low: 0.29, high: 0.49,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "28–49% of the concrete"),
+            quote: "29–49% of the concrete"),
         Figure(
-            id: "surrogateStone", low: 0.36, high: 0.45,
+            id: "surrogateStone", low: 0.46, high: 0.53,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "36–45% of the stone"),
+            quote: "46–53% of the stone"),
         Figure(
             id: "surrogateRoof", low: 0.29, high: 0.64,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "29–64% of the roofs"),
         Figure(
-            id: "surrogateNearPeak", low: 0.85, high: 1.00,
+            id: "surrogateNearPeak", low: 0.96, high: 0.97,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "peaks 0.85–1.00"),
+            quote: "peaks 0.96–0.97"),
         Figure(
-            id: "surrogateFarLoads", low: 1.09, high: 1.63,
+            id: "surrogateFarLoads", low: 1.03, high: 1.65,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "1.09–1.63 times the run's on the median"),
+            quote: "1.03–1.65 times the run's on the median"),
         Figure(
-            id: "hybridFarPeak", low: 0.76, high: 1.04,
+            id: "hybridFarPeak", low: 0.95, high: 1.29,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
-            quote: "façade peaks 0.76–1.04 of the full run's to 2.5 km"),
+            quote: "façade peaks 0.95–1.29 of the full run's to 2.5 km"),
         Figure(
-            id: "hybridFarImpulse", low: 1.04, high: 1.5,
+            id: "hybridFarImpulse", low: 1.04, high: 2.0,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
-            quote: "impulses 1.04–1.5 times"),
+            quote: "impulses 1.04–2.0 times"),
         Figure(
             id: "inferredBeirut", low: 0.50, high: 0.54,
             document: "validation.md#the-charge-from-its-arrivals",

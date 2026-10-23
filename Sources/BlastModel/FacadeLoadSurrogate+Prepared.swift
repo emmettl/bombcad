@@ -117,7 +117,7 @@ extension FacadeLoadSurrogate {
             return String(
                 format:
                     "A preview of the estimate, not the estimate: against the full estimate on Beirut at 0.5 kt, its glass "
-                    + "chances came within 0.1 on %.0f–%.0f%% of sides, its walls' and roofs' on %.1f–%.0f%% of buildings, "
+                    + "chances came within 0.1 on %.0f–%.0f%% of sides, its walls' and roofs' on %.1f–%.1f%% of buildings, "
                     + "and the damage's colour was the same for %.1f%% of buildings.",
                 glass.low * 100, glass.high * 100, walls.low * 100, walls.high * 100, damage.low * 100)
         }()

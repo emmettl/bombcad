@@ -1117,7 +1117,8 @@ to the bit.
 
 In all: glass by side exactly right on 0.916 of sides with the surrogate's peak and 0.942 with the
 model's, Heidke skill 0.62 and 0.72. Between the app and the judge, at most 8 sides of the 584,486
-changed state.
+changed state. (The surrogate here is its terms before the refit of 23 October 2026,
+emmettl/bombcad-work#56; this judge was not run again.)
 
 **Walls**, ground-floor walls of Beirut's 156,492 concrete building-runs. Each cell is the Brier
 score / skill / tenths test, each charge point held out with the load factor and scatter chosen on
@@ -2073,13 +2074,32 @@ estimator is field model 1's as it shipped: its peak at the ground floor, the su
 | Concrete walls moderate or worse, worst storey, adopted factors (Brier / skill / tenths test) | **0.0184 / 0.664 / passes** | 0.0188 / 0.656 / fails |
 | Roofs | 0.74 | 0.74 |
 
-In words: glass blown out over the app's sides, Brier skill 0.44 against field model 1's 0.34,
-and above the ground floor 0.43 against 0.32. For concrete walls moderate or worse, Brier skill
-0.656 against field model 1's 0.664, and the walls' chances fail the tenths test by one tenth, on
-the unsafe side. In the 0.80–0.90 tenth (176 building-yields) they predict 0.84 and 0.95 were
-damaged so, 0.01 beyond the test's 0.1. Field model 1 passes it. The option's standing in the app
-says the same, plainly (`LearnedField.standing`). With field model 1's file alone it shows field
-model 1's standing, as before (`standingModel1`).
+In words, on the façade terms of the time: glass blown out, Brier skill 0.44 against field model
+1's 0.34, and the walls 0.656 against 0.664, missing the tenths test by one tenth on the unsafe side
+(in the 0.80–0.90 tenth, 176 building-yields, they predicted 0.84 and 0.95 were damaged so).
+
+**Judged again on the façade terms refitted on 23 October 2026** (emmettl/bombcad-work#56; the
+surrogate gives the impulse everywhere and the peak where no network reads, and the concrete walls'
+own factor went from ×1.3 to ×1.15). The field path's factors, peak ×1.15 and impulse ×0.95, were
+judged again with the refit's grid, each yield held out:
+
+| | Field model 1 | Field model 2 |
+|---|---|---|
+| Glass blown out by side, over the app's sides (Brier / skill) | 0.0628 / 0.35 | **0.0540 / 0.44** |
+| … above the ground floor | 0.0659 / 0.32 | **0.0553 / 0.43** |
+| Glass by side exactly right, every storey | 0.908 | 0.927 |
+| Concrete walls moderate or worse, peak ×1.15, impulse ×0.95 | 0.0190 / 0.654 / passes | **0.0188 / 0.656 / passes** |
+| The refit's choice, each yield held out | ×1.15 with the impulse ×1.15 in 9 folds (0.651) | **×1.15, impulse ×0.95, in every fold** (0.656) |
+| Roofs | 0.74 | 0.74 |
+
+So the field path keeps ×1.15 and ×0.95: field model 2's refit chooses them in every fold, and
+field model 1's own choice scores lower than they do. In words: glass blown out over the app's
+sides, Brier skill 0.44 against field model 1's 0.35, and above the ground floor 0.43 against
+0.32; for concrete walls moderate or worse, Brier skill 0.656 against field model 1's 0.654, and
+both pass the tenths test. The option's standing in the app says the same (`LearnedField.standing`).
+With field model 1's file alone it shows field model 1's standing, as before (`standingModel1`).
+The judgements are in `$BOMBCAD_DATA/refit56/takeover/judge-adopt` (`glass.txt`, `walls-a.txt`,
+`walls-c-own.txt`).
 
 **The weights.** The release `field-model-2` on emmettl/bombcad holds both files, kept off
 "latest" like `field-model-1`:

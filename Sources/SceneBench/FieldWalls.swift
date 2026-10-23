@@ -80,6 +80,7 @@ enum FieldWalls {
         let scene = reference.scene
         let mass = Double(scene.charge.mass)
         let charge = scene.charge.position
+        let open = reference.raster.openReach(around: charge)
         let cell = Double(reference.cellSize)
         let draws = value("draws").flatMap(Int.init) ?? 50
         let share = Float(value("inside").flatMap(Double.init) ?? 0.85)
@@ -219,8 +220,9 @@ enum FieldWalls {
                         let (s, _, component) = reference.strips[m]
                         wallTruth = max(
                             wallTruth, recorded(component, reference.net(s), reference.index.strips[s].binS))
-                        let f = FacadeLoadSurrogate.features(
+                        var f = FacadeLoadSurrogate.features(
                             component, owner: n, charge: charge, raster: reference.raster)
+                        f.chargeOpenM = open
                         let p = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: cell)
                         let loads = variants.map { v in
                             (v.peak.map { row[$0] } ?? p.peakPa, v.impulse.map { row[$0] } ?? p.impulsePaS)

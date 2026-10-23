@@ -463,8 +463,11 @@ public enum ProtectionModel {
             let raster = raster(barriers)
             let ground = raster.terrain?.height(at: SIMD2(Float(threat.x), Float(threat.y))) ?? 0
             let charge = SIMD3(Float(threat.x), Float(threat.y), ground + 0.5)
+            let open = raster.openReach(around: charge)
             let made = s.strips.map {
-                FacadeLoadSurrogate.features($0, owner: s.object, charge: charge, raster: raster)
+                var f = FacadeLoadSurrogate.features($0, owner: s.object, charge: charge, raster: raster)
+                f.chargeOpenM = open
+                return f
             }
             lock.lock()
             features[key] = made

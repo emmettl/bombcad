@@ -18,19 +18,21 @@ and the app and `--surrogate`'s output say so.
 - **Holds: the spread of the runs.** Drawn over the yields of Beirut's three full runs (0.2, 0.5
   and 1.1 kt), the chances match how often those runs broke each side's glass, and passed the
   protective-design report's test (each tenth of chance within 0.1 of the share seen) for all
-  three: some broken, blown out, and thrown past condition 3b (skill 0.72, each tenth within 0.06). Blown out: Brier
-  score 0.020, against 0.108 for giving every side the mean chance (a skill of 0.81), and each
-  tenth of chance within 0.05 of the share of runs. Some broken: skill 0.62, the middle chances
-  0.04–0.07 high. Without the surrogate's own scatter the blown-out skill is 0.76, so the scatter
-  earns its place.
+  three: some broken, blown out, and thrown past condition 3b (skill 0.73, each tenth within 0.09).
+  Blown out: Brier score 0.017, against 0.108 for giving every side the mean chance (a skill of
+  0.84), and each tenth of chance within 0.06 of the share of runs. Some broken: skill 0.66, the
+  middle chances 0.03–0.08 high. Without the surrogate's own scatter the blown-out skill is 0.80,
+  so the scatter earns its place. These are on the façade terms refitted on 23 October 2026
+  ([below](#judged-again-on-the-refitted-terms-23-october-2026)); on the terms before, blown out
+  scored 0.81 and the throw 0.72.
 - **Not judged against the event's survey.** GEER's classes of Beirut's façades are openings
   (frames and doors with the windows), photographed two months on, not glass broken
   ([traced below](#why-it-over-breaks-against-geer-19-october-2026)): the glass chances' blown out
-  0.91 at 0.75–1 km where GEER saw 0.27 compares unlike things. Read them as the spread of what a
+  0.93 at 0.75–1 km where GEER saw 0.27 compares unlike things. Read them as the spread of what a
   run would give.
 - **Openings blown out**, a fourth chance fitted to that survey (one event, at 4 m cells; not
-  physics), is judged against it: 0.31 at 0.75–1 km where GEER saw 0.27, inside the draws' 90%
-  range in four bands of seven, skill 0.15.
+  physics), is judged against it: 0.34 at 0.75–1 km where GEER saw 0.27, inside the draws' 90%
+  range in four bands of seven, skill 0.19 (0.31 and 0.15 on the terms before).
 
 ## What is drawn
 
@@ -195,6 +197,25 @@ beside them:
   fails. The same curve on the 0.2 and 1.1 kt runs' own loads gives 0.17 and 0.60 at 0.75–1 km,
   bracketing GEER's 0.27 with the yield; it is fitted and judged on one event.
 
+
+### Judged again on the refitted terms (23 October 2026)
+
+The façade terms were refitted on air refined to 2 m, with shielding behind buildings close in
+(emmettl/bombcad-work#56; [the first look](surrogate-first-look.md#adopted-23-october-2026)). The
+same judge (`glass-calibrate`, 100 draws), against the runs and GEER, before and after:
+
+| | Before | Adopted |
+|---|---|---|
+| Blown out, Brier / skill; worst tenth | 0.020 / 0.81; 0.05 | 0.017 / 0.84; 0.06 |
+| Thrown past 3b, Brier / skill; worst tenth | 0.033 / 0.72; 0.06 | 0.032 / 0.73; 0.09 |
+| Some broken, Brier / skill | 0.031 / 0.63 | 0.028 / 0.66 |
+| Openings blown out against GEER's W3, Brier / skill | 0.144 / 0.15 | 0.138 / 0.19 |
+| … by band, 0.5–0.75 / 0.75–1 / 1–1.25 / 1.25–1.5 / 1.5–1.75 / 1.75–2 / 2–2.5 km (GEER 0.76 / 0.27 / 0.17 / 0.17 / 0.09 / 0.02 / 0.15) | 0.49 / 0.32 / 0.19 / 0.12 / 0.08 / 0.04 / 0.02 | 0.55 / 0.34 / 0.19 / 0.11 / 0.07 / 0.04 / 0.03 |
+| The glass's blown out at those bands (not judged) | 0.98 / 0.92 / 0.76 / 0.55 / 0.35 / 0.23 / 0.14 | 0.99 / 0.93 / 0.76 / 0.52 / 0.31 / 0.20 / 0.17 |
+
+All three glass states still pass the test against the runs; the openings still fail their
+deciles against GEER, the middle tenths 0.09–0.16 under its shares.
+
 ## Walls and roofs
 
 Since 20 October 2026 the quick estimate also gives each building three chances:
@@ -211,29 +232,39 @@ components a run damages, which are its loads' upper tail; drawn, the counts can
 **Calibrated** against Beirut's near boxes (to 1,320 m, uncapped loads) at ten yields from 0.15
 to 1.5 kt, on air refined to 2 m below the buildings' tops since 22 October 2026
 (`scenebench wall-calibrate`; emmettl/bombcad-work#19). Each yield is taken at its own yield with
-the settings below. The judgement uses the façade terms with their close-in branch
-(emmettl/bombcad-work#4). The runs judge every wall at its nominal strength, so they check the
+the settings below. The judgement uses the façade terms refitted on 2 m air on 23 October 2026,
+with their close-in branch and its shielding (emmettl/bombcad-work#4, #56). The runs judge every wall at its nominal strength, so they check the
 load's scatter, not the strength's.
 
 | Chance (2,053 buildings × 10 yields) | Settings | Brier skill | Tenths, each within 0.1 of the runs |
 |---|---|---|---|
-| Concrete walls, moderate or worse | loads ×1.3, the whole scatter (the refit's choice in 9 folds of 10) | 0.59 | pass |
-| The same with the learned field model's ground-floor peaks | peak ×1.15, impulse ×0.95, the whole scatter | 0.66 | pass |
-| Concrete walls, heavy or worse (illustrative) | as the first | 0.49 | 0.1–0.6 high by 0.10–0.25 |
-| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.70 | 0.4–0.9 high by up to 0.18 |
+| Concrete walls, moderate or worse | loads ×1.15, the whole scatter (the refit's load in 10 folds of 10) | 0.61 | pass |
+| The same with field model 1's ground-floor peaks | peak ×1.15, impulse ×0.95, the whole scatter | 0.65 | pass |
+| The same with field model 2's peaks at every storey, its own scatter | as field model 1's | 0.66 | pass |
+| Concrete walls, heavy or worse (illustrative) | as the first | 0.53 | 0.1–0.5 high by 0.11–0.23 |
+| Stone walls, heavy or worse (each building as 0.5 m stone) | loads ×1.0, scatter ×½ | 0.72 | 0.4–0.9 high by up to 0.19 |
 | Roofs, moderate or worse | loads ×1.3, scatter ×½ | 0.74 | 0.4–0.9 low by 0.11–0.18 |
+
+On the façade terms before 23 October, fitted on 4 m cells, concrete took ×1.3 (skill 0.59), stone
+0.70 and heavy damage 0.49. The refitted terms give the 2 m runs' peaks at 5–10 m/kg^(1/3), so
+most of that ×1.3 is in them; kept at ×1.3 they would count it twice (heavy or worse 0.38). The
+field model's factors were judged again on the refitted terms and kept: the refit chose them in
+every fold for field model 2, whose walls now pass the tenths test, and ×1.15 for field model 1,
+whose skill falls from 0.66 to 0.65
+([the first look](surrogate-first-look.md#adopted-23-october-2026)).
 
 **Why the walls' factor changed.** The 4 m runs the chances were first calibrated on read the walls'
 peaks 13–19% low at 400–600 m of 0.5 kt; the 2 m runs damage about twice as many concrete walls.
-Against the 4 m runs concrete took ×1.0 (skill 0.55); against the 2 m runs ×1.3. Stone and roofs
-took the same settings against both
+Against the 4 m runs concrete took ×1.0 (skill 0.55); against the 2 m runs ×1.3, and ×1.15 once
+the façade terms were refitted on 2 m air (23 October 2026). Stone and roofs took the same settings
+against both
 ([the first look](surrogate-first-look.md#the-walls-chances-re-judged-on-2-m-references-22-october-2026)).
 
 - **Concrete walls' damage is calibrated.** It passes the protective-design report's test, each
   tenth holding 50 buildings or more within 0.1 of the share of runs.
 - **Roofs' chances are skilful but low in the middle.** That is the unsafe side, even with a load
   factor fitted on these runs (their own terms read low).
-- **Stone's chances are high** by up to 0.15, the safe side. For masonry, moderate and heavy are
+- **Stone's chances are high** by up to 0.19, the safe side. For masonry, moderate and heavy are
   one level.
 - **No chance of failure is given.** Before the close-in branch the roofs' read far too high
   (skill −0.48), and the walls' were too few to judge. Concrete's heavy damage is illustrative.

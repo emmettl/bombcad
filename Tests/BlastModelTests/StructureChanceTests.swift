@@ -50,7 +50,9 @@ struct StructureChanceTests {
         let concrete = FacadeLoadSurrogate.structureCalibration(walls: .reinforcedConcrete)
         let stone = FacadeLoadSurrogate.structureCalibration(walls: .unreinforcedMasonry)
         #expect(concrete.walls.scatter == 1.0 && stone.walls.scatter == 0.5 && concrete.roof == stone.roof)
-        #expect(concrete.roof.peak == 1.3 && concrete.walls.peak == 1.3 && stone.walls.peak == 1.0)
+        // Concrete's walls ×1.15 since the refit of 23 October 2026 (emmettl/bombcad-work#56), roofs ×1.3.
+        #expect(concrete.roof.peak == 1.3 && concrete.walls.peak == 1.15 && concrete.walls.impulse == 1.15)
+        #expect(stone.walls.peak == 1.0)
         // With the learned field model's peaks, concrete's walls take the peak ×1.15 and the impulse ×0.95.
         let learned = FacadeLoadSurrogate.structureCalibration(walls: .reinforcedConcrete, learned: true)
         #expect(learned.walls.peak == 1.15 && learned.walls.impulse == 0.95 && learned.roof == concrete.roof)

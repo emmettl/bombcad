@@ -147,9 +147,8 @@ public struct HybridFarField: Codable, Sendable, Equatable {
         return [
             "Inside the hand-over: the near run's own loads, which on Beirut were the full run's (peaks 1.00, scatter 3–8%).",
             "Beyond it, against the full run: façade peaks \(peak.ratio) of its to 2.5 km, impulses \(impulse.ratio) "
-                + "times; sides with some glass broken within 0.04 of its to 1.5 km at every yield, to 2 km at 0.5 kt "
-                + "and to 2.5 km at 1.1 kt, 0.16–0.28 under at 1.5–2.5 km at 0.2 kt; blown-out shares up to 0.22 "
-                + "apart in a band.",
+                + "times; sides with some glass broken within 0.04 of its to 1.75 km at 0.2 and 0.5 kt and to 2 km "
+                + "at 1.1 kt, 0.01–0.06 under at 1.5–2.5 km at 0.2 kt; blown-out shares up to 0.27 apart in a band.",
             "Arrivals beyond the hand-over: Kingery–Bulmash's scaled to the near run's, 2–4% earlier than the full run's.",
             "Walls and roofs beyond the hand-over take the façade load surrogate's standing: run the scene for the structure.",
         ]

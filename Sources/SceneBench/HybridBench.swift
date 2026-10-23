@@ -79,6 +79,7 @@ enum HybridBench {
         let objects = full.objects
         let mass = Double(scene.charge.mass)
         let charge = scene.charge.position
+        let open = full.raster.openReach(around: charge)
         let cell = Double(full.cellSize)
 
         // The near run's strips, by their box from the charge.
@@ -103,8 +104,9 @@ enum HybridBench {
             featureDistance.withUnsafeMutableBufferPointer { far in
                 SurrogateBench.concurrentlyEach(kept.count) { m in
                     let (_, n, component) = full.strips[kept[m]]
-                    let f = FacadeLoadSurrogate.features(
+                    var f = FacadeLoadSurrogate.features(
                         component, owner: n, charge: charge, raster: full.raster)
+                    f.chargeOpenM = open
                     out[m] = FacadeLoadSurrogate.predict(f, mass: mass, cellSize: cell)
                     // From the charge to the face, as `district-hybrid` and `HybridFarField.judge` take it.
                     far[m] = f.distanceM

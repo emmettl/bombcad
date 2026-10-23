@@ -483,10 +483,12 @@ struct LearnedFieldTests {
                 ground: URL(filePath: "/m/a.bcfw"),
                 environment: [LearnedField.levelsEnvironmentKey: "/l.bcfw"]
             ).path == "/l.bcfw")
-        // The standing says the walls' miss plainly.
+        // The standing gives the walls' figures plainly (on the façade terms of 23 October 2026 the
+        // walls' chances pass the tenths test, emmettl/bombcad-work#56).
         let standing = LearnedField.standing.joined(separator: " ")
-        #expect(standing.contains("0.44 against field model 1's 0.34") && standing.contains("0.656"))
-        #expect(standing.contains("miss the tenths test by one tenth, on the unsafe side"))
+        #expect(standing.contains("0.44 against field model 1's 0.35") && standing.contains("0.656"))
+        #expect(standing.contains("0.656 against field model 1's 0.654"))
+        #expect(standing.contains("pass the tenths test"))
     }
 
     @Test("The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support")
