@@ -5,6 +5,7 @@
     import MetalKit
     import Network
     import SwiftUI
+    import os
     import UIKit
     import simd
 
@@ -44,18 +45,30 @@
             var id: String { code }
         }
 
-        /// `BOMBCAD_VIEWER_AUTO=1`: connects to the first paired Mac, opens its first shared run,
-        /// and once it is all in, scrubs through every frame and writes what it measured to
-        /// `Documents/viewer-report.txt`; for measuring in the Simulator.
+        /// `BOMBCAD_VIEWER_AUTO=1`: connects to the first paired Mac, opens its first shared run
+        /// (or the first whose project is named `BOMBCAD_VIEWER_PROJECT`), and once it is all in,
+        /// scrubs through every frame and writes what it measured to `Documents/viewer-report.txt`;
+        /// for measuring, in the Simulator (`SIMCTL_CHILD_`) or on an iPad (`devicectl device
+        /// process launch -e`).
         let auto = ProcessInfo.processInfo.environment["BOMBCAD_VIEWER_AUTO"] == "1"
+        let autoProject = ProcessInfo.processInfo.environment["BOMBCAD_VIEWER_PROJECT"]
 
-        /// Where the iPad keeps its pairings: a file in the app's own container, readable by it
-        /// alone. The Keychain the Mac uses needs the app signed by a team (its entitlements); the
-        /// Simulator's ad hoc build kept a pairing in it only until it quit.
+        /// Where the iPad keeps its pairings: the Keychain, as the Mac does, when the app is signed
+        /// by a team (`Scripts/build-ipad-viewer.sh --device`, which embeds the provisioning
+        /// profile that grants its keychain group); else a file in the app's own container,
+        /// readable by it alone, since the Simulator's ad hoc build kept a Keychain item only
+        /// until it quit.
         static func pairingStore() -> PairingStore? {
             guard ProcessInfo.processInfo.environment["BOMBCAD_NEARBY_STORE"] == nil else { return nil }
+            if signedByTeam { return KeychainPairingStore() }
             let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             return try? FilePairingStore(url: support.appending(path: "BombCAD/pairings.json"))
+        }
+
+        /// Whether the app carries a team's provisioning profile, and with it the entitlements the
+        /// Keychain needs; an ad hoc build has none.
+        static var signedByTeam: Bool {
+            Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision") != nil
         }
 
         func start() {
@@ -70,7 +83,8 @@
             if auto, let first = paired.first {
                 Task {
                     await connect(first)
-                    if let shared = timelines.first { open(shared) }
+                    let chosen = timelines.first { autoProject == nil || $0.projectName == autoProject }
+                    if let chosen { open(chosen) }
                 }
             }
         }
@@ -225,6 +239,12 @@
         @ObservationIgnored private var wantedSince = ContinuousClock.now
         /// The seconds from scrubbing to a frame not yet in to its being shown.
         private(set) var waitSeconds: [Double] = []
+        /// The GPU's seconds drawing each view of the frame, the last few thousand.
+        @ObservationIgnored private(set) var drawSeconds: [Double] = []
+        /// The most memory the app has had in use, by the system's count (its footprint).
+        @ObservationIgnored private(set) var peakFootprint: UInt64 = 0
+        /// The drawable's size, in pixels.
+        @ObservationIgnored var drawnSize = CGSize.zero
         @ObservationIgnored private var thermalGrids: [ThermalSurfaceGrid] = []
         @ObservationIgnored private var thermalReceivers = 0
         @ObservationIgnored private(set) var paint: SurfacePaint?
@@ -385,6 +405,41 @@
             version += 1
         }
 
+        /// The envelope building tapped in the view, shown with its damage as of the frame shown,
+        /// its surface exposure and the run's standing, as the Mac's inspector shows them.
+        var picked: UUID?
+
+        /// A tap at a point in normalised device coordinates (x right, y up, -1 to 1): the envelope
+        /// building it meets first, or none.
+        func pick(ndc: SIMD2<Float>, aspectRatio: Float) {
+            guard let scenario else { return }
+            let ray = camera.ray(ndc: ndc, aspectRatio: aspectRatio)
+            picked = ScenePicking.envelope(in: scenario, origin: ray.origin, direction: ray.direction)
+        }
+
+        /// The picked building's bounds, outlined in the view as the Mac outlines the one inspected.
+        var pickedBounds: Box? {
+            guard let picked, let blocks = scenario?.object(id: picked)?.envelope?.blocks,
+                let first = blocks.first
+            else { return nil }
+            return blocks.dropFirst().reduce(first) {
+                Box(min: simd_min($0.min, $1.min), max: simd_max($0.max, $1.max))
+            }
+        }
+
+        /// The picked building's name, its damage code as of the frame shown (1–6, 0 if not yet
+        /// judged then), and its surface exposure over the run.
+        var pickedBuilding: (name: String, code: Int, exposure: EnvelopeExposureSummary?)? {
+            guard let picked, let objects = scenario?.envelopeObjects,
+                let index = objects.firstIndex(where: { $0.id == picked })
+            else { return nil }
+            let codes = layers.envelopeCodes.value
+            let code = codes.map { $0.count == objects.count ? Int($0[index]) : 0 } ?? 0
+            return (
+                objects[index].name, code, download.run?.envelopeExposure?.first { $0.id == picked }
+            )
+        }
+
         /// The cloud's outlines from the eye, from the frame it was handed over in.
         var cloudLines: [SIMD4<Float>] {
             guard settings.showCloud, layers.cloud.value != nil, let cloud = download.run?.cloud else {
@@ -439,7 +494,48 @@
                         format: "; the Mac sent it in %.2f s, %d frames ahead of their turn", $0.seconds,
                         $0.preferred)
                 } ?? "")
-                + waitReport
+                + waitReport + drawReport
+        }
+
+        func drew(seconds: Double) {
+            if drawSeconds.count >= 4096 { drawSeconds.removeFirst(1024) }
+            drawSeconds.append(seconds)
+            if drawSeconds.count % 30 == 0 { peakFootprint = max(peakFootprint, Self.footprint()) }
+        }
+
+        /// The memory the app has in use as the system counts it against its limit.
+        static func footprint() -> UInt64 {
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(
+                MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+            let status = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                    task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                }
+            }
+            return status == KERN_SUCCESS ? info.phys_footprint : 0
+        }
+
+        /// The GPU's time per view drawn, and the memory in use.
+        private var drawReport: String {
+            let draws = drawSeconds.sorted()
+            let now = Self.footprint()
+            var text = String(
+                format: "; memory in use %.0f MB, at most %.0f MB", Double(now) / 1e6,
+                Double(max(peakFootprint, now)) / 1e6)
+            // Zero where no limit applies, as in the Simulator.
+            let available = os_proc_available_memory()
+            if available > 0 {
+                text += String(format: ", of the %.0f MB the app may use", Double(available + Int(now)) / 1e6)
+            }
+            if !draws.isEmpty {
+                text += String(
+                    format:
+                        "; the GPU drew a view in %.1f ms median, %.1f ms at the 95th percentile (%d views, %.0f by %.0f pixels)",
+                    1000 * draws[draws.count / 2], 1000 * draws[min(draws.count * 95 / 100, draws.count - 1)],
+                    draws.count, drawnSize.width, drawnSize.height)
+            }
+            return text
         }
 
         /// How long frames scrubbed to before they were in took to come.
@@ -588,6 +684,10 @@
                         if let problem = viewer.problem { Text(problem).font(.caption).foregroundStyle(.red) }
                     }
                     .padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8)).padding()
+                    if let building = viewer.pickedBuilding {
+                        PickedBuildingCard(viewer: viewer, building: building)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    }
                 }
                 VStack(spacing: 8) {
                     HStack {
@@ -622,6 +722,67 @@
         }
     }
 
+    /// The envelope building tapped: its damage as of the frame shown, in the colours the view
+    /// paints it, what its surfaces took over the run, and the run's standing for both, its
+    /// evidence a tap away as on the Mac.
+    struct PickedBuildingCard: View {
+        let viewer: TimelineViewer
+        let building: (name: String, code: Int, exposure: EnvelopeExposureSummary?)
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(building.name).font(.headline)
+                    Spacer()
+                    Button {
+                        viewer.picked = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .accessibilityLabel("Clear the selected building")
+                }
+                HStack {
+                    Circle().fill(EnvelopeDamageSection.colour(building.code))
+                        .overlay(Circle().stroke(.secondary.opacity(0.5)))
+                        .frame(width: 10, height: 10)
+                    Text(
+                        (1...6).contains(building.code)
+                            ? "\(EnvelopeDamageColour.labels[building.code - 1]) at \(String(format: "%.1f ms", 1000 * viewer.time))"
+                            : String(format: "Not judged by %.1f ms", 1000 * viewer.time))
+                    Spacer()
+                    StandingBadge(
+                        standing: viewer.download.run?.standing, kinds: [.envelopeDamage], unrecorded: true)
+                }
+                .font(.caption)
+                if let exposure = building.exposure {
+                    HStack {
+                        Text(
+                            String(
+                                format: "Surfaces: peak %.1f kPa, mean impulse %@ over %.0f m²",
+                                exposure.peakPositivePa / 1000,
+                                exposure.meanPositiveImpulsePaS.map { String(format: "%.0f kPa·ms", $0) }
+                                    ?? "none",
+                                exposure.validAreaM2))
+                        Spacer()
+                        StandingBadge(
+                            standing: viewer.download.run?.standing, kinds: [.envelopeExposure],
+                            unrecorded: true)
+                    }
+                    .font(.caption)
+                }
+                Text(
+                    "The run keeps each building's damage colour, not its glass chances: the Mac's inspector has those."
+                )
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            .monospacedDigit()
+            .padding(10)
+            .frame(width: 320)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .padding()
+        }
+    }
+
     /// The viewport: an `MTKView` drawing the viewer's frame with the app's renderer; one finger
     /// orbits, two pan, a pinch zooms.
     struct ViewerMetalView: UIViewRepresentable {
@@ -642,7 +803,8 @@
             pan.minimumNumberOfTouches = 2
             let pinch = UIPinchGestureRecognizer(
                 target: context.coordinator, action: #selector(Coordinator.pinch))
-            for recogniser in [orbit, pan, pinch] { view.addGestureRecognizer(recogniser) }
+            let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tap))
+            for recogniser in [orbit, pan, pinch, tap] { view.addGestureRecognizer(recogniser) }
             return view
         }
 
@@ -673,6 +835,15 @@
                 gesture.scale = 1
             }
 
+            /// A tap picks the envelope building under it.
+            @objc func tap(_ gesture: UITapGestureRecognizer) {
+                guard let view = gesture.view, view.bounds.width > 0, view.bounds.height > 0 else { return }
+                let point = gesture.location(in: view)
+                let ndc = SIMD2(
+                    Float(2 * point.x / view.bounds.width - 1), Float(1 - 2 * point.y / view.bounds.height))
+                viewer.pick(ndc: ndc, aspectRatio: Float(view.bounds.width / view.bounds.height))
+            }
+
             nonisolated func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
             nonisolated func draw(in view: MTKView) {
@@ -687,6 +858,7 @@
                 let renderer = viewer.renderer
                 var settings = viewer.settings
                 settings.showCharge = viewer.time == 0
+                settings.highlight = viewer.pickedBounds
                 renderer.settings = settings
                 renderer.setFreestanding(viewer.frame?.freestanding ?? [])
                 renderer.setLines(viewer.cloudLines)
@@ -696,6 +868,13 @@
                 }
                 renderer.pixelsPerPoint = Float(view.contentScaleFactor)
                 renderer.encode(into: commandBuffer, descriptor: descriptor, camera: viewer.camera)
+                viewer.drawnSize = view.drawableSize
+                let viewer = self.viewer
+                commandBuffer.addCompletedHandler { buffer in
+                    let seconds = buffer.gpuEndTime - buffer.gpuStartTime
+                    guard seconds > 0 else { return }
+                    Task { @MainActor in viewer.drew(seconds: seconds) }
+                }
                 commandBuffer.present(drawable)
                 commandBuffer.commit()
             }

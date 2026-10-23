@@ -8,7 +8,9 @@ socket and replays it with the app's renderer, its vent panels, envelope colours
 and cloud as Replay shows them; frames scrubbed to before they arrive are sent next. Tried in the
 iPad Simulator on 23 October 2026: the made-up district's recording, 233 frames and 252 MB, came
 whole in 0.7 s over loopback, its first frame on screen after 0.45 s, a frame shown in 5 ms;
-over the Wi-Fi measured on 22 October that is about six seconds, with no new compression. Not yet
-on a real iPad, which needs the app signed with a development team (`Scripts/build-ipad-viewer.sh`
-builds it for the Simulator). Both ends need this version (worker protocol 18). See
+over the Wi-Fi measured on 22 October that is about six seconds, with no new compression. Tap a
+building to outline it and see its damage at the frame shown, what its surfaces took and the
+run's standing for both. `Scripts/build-ipad-viewer.sh --device` signs the viewer for a real iPad
+with the team's development certificate; it then keeps its pairings in the Keychain, as the Mac
+does. Not yet measured on a real iPad. Both ends need this version (worker protocol 18). See
 [the spatial viewer](../../spatial-viewer.md).

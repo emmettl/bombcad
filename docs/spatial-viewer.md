@@ -136,6 +136,72 @@ estimate). The envelope damage colours, the vent panels and the cloud are drawn 
 calls as the Mac's Replay; the district showed its buildings' colours, the street its thermal
 paint; no scene had vent panels.
 
+## On a real iPad: signing, the Keychain and picking, 23 October 2026
+
+The user has an iPad mini and an iPad Pro (M2). Neither was paired with the Studio on 23 October
+(`xcrun devicectl list devices` showed only an iPhone), and the user was away until 27 October,
+so the device measurements wait for them. What a device needs is ready:
+
+- **A device build.** `Scripts/build-ipad-viewer.sh --device [debug|release]` builds the target
+  for `generic/platform=iOS` and assembles `dist/BombCAD-iPad-device.app` as the Simulator's
+  build is assembled. Then it signs for development by team UCF9FS9FWW, the team of the
+  Developer ID builds, with the keychain's "Apple Development" certificate of that team. It
+  embeds the development profile Xcode keeps for the team: one for `dev.bombcad.viewer` if there
+  is one, else the team's wildcard "iOS Team Provisioning Profile: *". The wildcard is there
+  (Xcode made it for the user's other iOS app) and lists eight devices, among them UDIDs of an M2
+  iPad (00008112-…) and of an A15 or A12 one, likely the two iPads. If an iPad isn't on it, the
+  install says so, and running any of the team's apps on it from Xcode once registers it. The
+  entitlements are the profile's for this bundle id: application identifier, team, get-task-allow,
+  and the keychain group `UCF9FS9FWW.dev.bombcad.viewer`. Installing on a device checks the
+  platform keys Xcode writes (`CFBundleSupportedPlatforms`, `DTPlatformName`, `DTSDKName`), so the
+  script now adds them to both builds. `BOMBCAD_IPAD_PROFILE` and `BOMBCAD_IPAD_IDENTITY` choose
+  others.
+- **The bundle id** stays `dev.bombcad.viewer`, beside the Mac's `dev.bombcad.BombCAD`.
+  `Support/Viewer-Info.plist` already had the Local Network usage string and the two Bonjour
+  services (`_bombcad._tcp`, `_bombcad-pair._tcp`) that browsing needs on a device. No
+  entitlement is needed for Bonjour; the multicast one is for raw multicast only.
+- **Pairings go back to the Keychain when signed.** The viewer keeps them in the Keychain, as
+  the Mac does (`KeychainPairingStore`), when the app carries a provisioning profile (and with it
+  the keychain group). The ad hoc Simulator build has no profile, so it keeps the file in its
+  container, as before.
+- **What the viewer now measures** (`BOMBCAD_VIEWER_AUTO=1`, and `BOMBCAD_VIEWER_PROJECT=<name>`
+  to choose the run): besides fetching and showing a frame, the GPU's own time drawing each view
+  (the command buffer's GPU start to end, at the drawable's size), and the app's memory as the
+  system counts it against the app's limit (`phys_footprint`, its peak, and the limit, which
+  `os_proc_available_memory` gives on a device and not in the Simulator).
+- **Picking a building.** A tap on an envelope building outlines it, as the Mac outlines the one
+  it inspects, and shows a card with:
+  - its name;
+  - its damage as of the frame shown, in the colours the view paints;
+  - its surfaces' peak and mean impulse over the run;
+  - the run's standing for envelope damage and for surface exposure, each badge opening its
+    evidence as on the Mac.
+
+  A tap elsewhere clears it. The card leaves out the Mac inspector's glass chances: a kept run
+  keeps each building's damage colour in its frames and its exposure summary, not the judgement
+  the chances come from, so showing them needs the Mac to send them (a later step).
+
+**Tried again in the Simulator** (iPad Pro 11-inch M5, iOS 27, release), serving from a Developer
+ID-signed `BombCAD serve --share` of the two study projects:
+
+- The tap picked "yes way/117" in the district, a heavy building at 1024 ms: peak 25.9 kPa, mean
+  impulse 441 kPa·ms over 2064 m², standings "Approximate" and "Illustrative". It was outlined
+  in the view.
+- The district again, over loopback: 251.8 MB in 0.74 s, first frame after 0.33 s, a frame shown
+  in 4.6 ms median (12.5 at the 95th percentile). Memory in use stayed at 297 MB: the frames are
+  on disk, one in memory at a time.
+- The Simulator's GPU times (0.2 ms a view at 1668 by 1820) are not to be believed: they are the
+  Simulator's timestamps on the Studio's GPU. The iPads' are the ones to read.
+- **Bonjour found the signed Mac.** Served from the Developer ID-signed build, the Mac showed under
+  "Sharing nearby" in the Simulator ("Pair with Studio viewer test", Apple M4 Max). On the first
+  day, from a build not signed that way, browsing handed the app nothing. Pairing by address
+  stays for when it does not.
+
+**Still to measure, on each iPad:** fetching the district and the street over Wi-Fi, the first
+frame, a frame shown, the GPU's time a view and scrubbing. The iPad mini's limits matter most:
+its memory with the 250 MB district on disk, and whether its GPU draws a view within a frame.
+Those replace the Wi-Fi estimates above. The steps are on emmettl/bombcad-work#43.
+
 ## What blocks the Vision Pro step
 
 Walking a district at full scale is more than this viewer on a headset:
@@ -165,8 +231,14 @@ Walking a district at full scale is more than this viewer on a headset:
 
 1. On the Mac: `BombCAD serve --share <saved project>` (or the app with Settings ▸ Macs nearby
    sharing and the project open). It prints the ports it listens on.
-2. `Scripts/build-ipad-viewer.sh` (debug or release), then
+2. In the Simulator: `Scripts/build-ipad-viewer.sh` (debug or release), then
    `xcrun simctl install booted dist/BombCAD-iPad.app` and `xcrun simctl launch booted
    dev.bombcad.viewer`.
-3. In the viewer, pair with the Mac (by Bonjour, or by address: "127.0.0.1 <pairing port>
-   <session port>" in the Simulator), allow it on the Mac, tap the Mac, then a kept run.
+   On an iPad, with Developer Mode on (Settings ▸ Privacy & Security), connected by USB once and
+   this Mac trusted: `Scripts/build-ipad-viewer.sh --device`, then
+   `xcrun devicectl device install app --device <id> dist/BombCAD-iPad-device.app` and
+   `xcrun devicectl device process launch --device <id> dev.bombcad.viewer`, the id from
+   `xcrun devicectl list devices`. Allow it the local network when it asks.
+3. In the viewer, pair with the Mac (by Bonjour, or by address: "<host> <pairing port>
+   <session port>", 127.0.0.1 in the Simulator), allow it on the Mac, tap the Mac, then a kept
+   run. Tap a building for its damage.
