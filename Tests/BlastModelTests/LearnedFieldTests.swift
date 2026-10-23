@@ -355,6 +355,79 @@ struct LearnedFieldTests {
         #expect(both.opens[1] == alone.opens[1])
     }
 
+    @Test(
+        "The model's own scatter is opt-in: off nothing changes; on, its strips draw it and the rest the surrogate's"
+    )
+    func ownScatter() throws {
+        let fp = LearnedField.Scatter.fieldModel1
+        #expect(fp.bands(groundFloor: true, cosIncidence: 0.9)?.first?.peak == 0.33)
+        #expect(fp.bands(groundFloor: true, cosIncidence: -0.9)?.last?.peak == 0.33)
+        #expect(fp.bands(groundFloor: false, cosIncidence: 0.9) == nil)
+        #expect(LearnedField.Scatter.peak(fp.ground![0], atZ: 8) == 0.21)
+        #expect(LearnedField.Scatter.peak(fp.ground![0], atZ: 1e6) == 0.29)
+        let both = LearnedField.Scatter.combining(ground: fp, upper: .round4)
+        #expect(both.ground == fp.ground && both.upper == LearnedField.Scatter.round4.upper)
+        #expect(LearnedField.Scatter.measured(forWeights: LearnedField.fileName) == fp)
+
+        let scene = try FacadeGlassProbabilityTests.row()
+        let prepared = FacadeLoadSurrogate.Prepared(scene: scene, cellSize: 2)
+        let charge = scene.charge.position
+        let mass = Double(scene.charge.mass)
+        let off = prepared.estimate(
+            charge: charge, mass: mass,
+            learned: try LearnedField.Estimator(scene: scene, network: StandIn()).peaks(
+                charge: charge, mass: mass))
+        #expect(off.features.allSatisfy { $0.learnedPeakScatter == nil })
+        let on = prepared.estimate(
+            charge: charge, mass: mass,
+            learned: try LearnedField.Estimator(scene: scene, network: StandIn(), scatter: fp).peaks(
+                charge: charge, mass: mass))
+        // The same loads; only the strips the model reads carry its scatter.
+        #expect(on.predictions == off.predictions)
+        for n in on.features.indices {
+            #expect((on.features[n].learnedPeakScatter != nil) == (off.features[n].learnedPeakFactor != 1))
+        }
+        #expect(on.features.contains { $0.learnedPeakScatter != nil })
+
+        let constructions = { (id: UUID) in scene.envelopeConstruction(for: id) }
+        let uncertainty = FacadeLoadSurrogate.Uncertainty(samples: 40)
+        let glassOff = FacadeLoadSurrogate.glassProbabilities(
+            sides: prepared.glassSides(off), mass: mass, cellSize: 2, uncertainty: uncertainty
+        ).sides
+        let glassOn = FacadeLoadSurrogate.glassProbabilities(
+            sides: prepared.glassSides(on), mass: mass, cellSize: 2, uncertainty: uncertainty
+        ).sides
+        #expect(glassOn != glassOff)
+        // With no load scatter at all, none for the model either.
+        for estimate in [off, on] {
+            #expect(
+                FacadeLoadSurrogate.glassProbabilities(
+                    sides: prepared.glassSides(estimate), mass: mass, cellSize: 2, uncertainty: .none
+                ).sides
+                    == FacadeLoadSurrogate.glassProbabilities(
+                        sides: prepared.glassSides(off), mass: mass, cellSize: 2, uncertainty: .none
+                    ).sides)
+        }
+        let wallsOff = FacadeLoadSurrogate.structureProbabilities(
+            off, mass: mass, cellSize: 2, constructions: constructions, uncertainty: uncertainty,
+            learnedPeaks: true
+        ).chances
+        let wallsOn = FacadeLoadSurrogate.structureProbabilities(
+            on, mass: mass, cellSize: 2, constructions: constructions, uncertainty: uncertainty,
+            learnedPeaks: true
+        ).chances
+        #expect(wallsOn.count == wallsOff.count)
+        #expect(
+            FacadeLoadSurrogate.structureProbabilities(
+                on, mass: mass, cellSize: 2, constructions: constructions, uncertainty: .none,
+                learnedPeaks: true
+            ).chances
+                == FacadeLoadSurrogate.structureProbabilities(
+                    off, mass: mass, cellSize: 2, constructions: constructions, uncertainty: .none,
+                    learnedPeaks: true
+                ).chances)
+    }
+
     @Test("The weights come from BOMBCAD_FIELD_MODEL, else the setting, else Application Support")
     func weightsURL() {
         #expect(

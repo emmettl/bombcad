@@ -3,7 +3,7 @@ import Foundation
 
 /// `scenebench wall-calibrate <district-scene's inputs> [--radius 1320] --runs mass:folder,…
 /// [--draws 100] [--inside 0.85] [--walls stone] [--arching] [--bands 400,700,…] [--coefficients fit.json]
-/// [--learned weights.bcfw [--learned-ground ground.bcfw]] [--out calibration.json]`: how well the walls' and roofs' chances
+/// [--learned weights.bcfw [--learned-ground ground.bcfw] [--own-scatter]] [--out calibration.json]`: how well the walls' and roofs' chances
 /// (`FacadeLoadSurrogate.structureProbabilities`, Horizons 4) are calibrated against the district's
 /// own runs at several yields (`district-compare --save-loads`, with walls and roofs saved). Each
 /// building's worst wall and worst roof in each run, judged on the run's histories at the
@@ -109,12 +109,28 @@ enum WallCalibration {
         // peaks are for one yield, so each yield's chances take an estimate of their own.
         // `--learned-ground ground.bcfw`: that network's 2 m field at the ground floor instead,
         // `--learned`'s at the storeys above (emmettl/bombcad-work#69).
-        let learned = try value("learned").map {
-            LearnedField.Estimator(
-                scene: first.scene, network: try LearnedFieldNetwork(contentsOf: URL(filePath: $0)),
-                groundNetwork: try value("learned-ground").map {
-                    try LearnedFieldNetwork(contentsOf: URL(filePath: $0))
-                })
+        // `--own-scatter`: the chances draw each network's own measured peak scatter where its peak
+        // is used (`LearnedField.Scatter.measured`, by the weights' file names), not the surrogate's.
+        let ownScatter = args.contains("--own-scatter")
+        func measured(_ path: String?) -> LearnedField.Scatter? {
+            path.flatMap { LearnedField.Scatter.measured(forWeights: URL(filePath: $0).lastPathComponent) }
+        }
+        let learned = try value("learned").map { path in
+            let ground = value("learned-ground")
+            return LearnedField.Estimator(
+                scene: first.scene, network: try LearnedFieldNetwork(contentsOf: URL(filePath: path)),
+                groundNetwork: try ground.map { try LearnedFieldNetwork(contentsOf: URL(filePath: $0)) },
+                scatter: !ownScatter
+                    ? nil
+                    : ground == nil
+                        ? measured(path)
+                        : LearnedField.Scatter.combining(ground: measured(ground), upper: measured(path)))
+        }
+        if ownScatter {
+            let s = learned?.scatter
+            print(
+                "Own scatter: ground floor \(s?.ground != nil ? "measured" : "none"), above \(s?.upper != nil ? "measured" : "none")"
+            )
         }
         let prepared = learned.map { _ in
             FacadeLoadSurrogate.Prepared(scene: first.scene, cellSize: first.cellSize)
@@ -367,7 +383,7 @@ enum WallCalibration {
         print(
             String(
                 format:
-                    "%@: %d buildings, Brier %.3f (%.3f giving each the mean), skill %.2f; tenths of 50+ within 0.1: %@",
+                    "%@: %d buildings, Brier %.4f (%.4f giving each the mean), skill %.3f; tenths of 50+ within 0.1: %@",
                 r.name as NSString, r.count, r.brier, r.climatology,
                 r.climatology > 0 ? 1 - r.brier / r.climatology : 0,
                 (passes ? "pass" : "fail") as NSString))

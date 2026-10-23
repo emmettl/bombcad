@@ -176,9 +176,17 @@ extension FacadeLoadSurrogate {
                         let roof = component.kind == .roof
                         let weak = exp(2.5 * (roof ? roofSD : wallSD)) * (roof ? factors.roof : factors.walls)
                         let scale = 2.5 * (roof ? scales.roof : scales.walls)
+                        // With the model's own scatter, the widest of either at any distance (a
+                        // drawn yield moves the strip's band).
+                        var peakSD = scatter?.peak ?? 0
+                        if scatter != nil, let own = estimate.features[n].learnedPeakScatter,
+                            let sd = own.map(\.peak).max()
+                        {
+                            peakSD = max(peakSD, sd)
+                        }
                         return level(
                             n, construction: construction, building: b, mass: largest,
-                            peak: exp(scale * (scatter?.peak ?? 0)) * weak,
+                            peak: exp(scale * peakSD) * weak,
                             impulse: exp(scale * (scatter?.impulse ?? 0)) * weak
                                 * max(roof ? ratios.roof : ratios.walls, 1)) > 0
                     }
@@ -186,6 +194,7 @@ extension FacadeLoadSurrogate {
                         out[b] = StructureChance(owner: owners[b])
                         return
                     }
+                    let anyOwn = possible.contains { estimate.features[$0].learnedPeakScatter != nil }
                     var counts = [Double](repeating: 0, count: 3)
                     for k in 0..<draws {
                         let mass = masses[k]
@@ -196,6 +205,9 @@ extension FacadeLoadSurrogate {
                         var worstWall = 0
                         var worstRoof = 0
                         var errorsOf: [Int: SIMD2<Double>] = [:]
+                        // Each side's draw of the peak's error, standard normal, for the strips
+                        // given the model's own scatter.
+                        var normalOf: [Int: Double] = [:]
                         for n in possible {
                             let component = estimate.components[n]
                             let roof = component.kind == .roof
@@ -209,6 +221,7 @@ extension FacadeLoadSurrogate {
                                     let item = ownerSeeds[b] &+ UInt64(group)
                                     let a = uncertainty.normal(3, k, item, draws: draws)
                                     let c = uncertainty.normal(4, k, item, draws: draws)
+                                    if anyOwn { normalOf[group] = a }
                                     let r = scatter.correlation
                                     let scale = roof ? scales.roof : scales.walls
                                     return scale
@@ -217,10 +230,19 @@ extension FacadeLoadSurrogate {
                                             scatter.impulse * (r * a + (1 - r * r).squareRoot() * c))
                                 }()
                             errorsOf[group] = errors
+                            // The model's own scatter for its peak, the side's same draw: the
+                            // impulse's error, still the surrogate's, as without it.
+                            var peakError = errors.x
+                            if let own = estimate.features[n].learnedPeakScatter, let a = normalOf[group],
+                                let sd = LearnedField.Scatter.peak(
+                                    own, atZ: estimate.features[n].distanceM / cbrt(mass))
+                            {
+                                peakError = (roof ? scales.roof : scales.walls) * sd * a
+                            }
                             let weak = roof ? roofWeak * factors.roof : wallWeak * factors.walls
                             let reached = level(
                                 n, construction: construction, building: b, mass: mass,
-                                peak: exp(errors.x) * weak,
+                                peak: exp(peakError) * weak,
                                 impulse: exp(errors.y) * weak * (roof ? ratios.roof : ratios.walls))
                             if roof {
                                 worstRoof = max(worstRoof, reached)

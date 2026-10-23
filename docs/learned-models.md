@@ -1910,14 +1910,148 @@ scenebench wall-calibrate <the same> --factors 0.8,1,1.15,1.3,1.5 --scales 0.5,1
     --fixed raw=1:1:1/1.3:0.5:1,learned-adopted=1.15:1:0.826/1.3:0.5:1
 ```
 
+## The models' own scatter in the chances (23 October 2026)
+
+emmettl/bombcad-work#69. The round above left one likely reason why (c) loses at the walls. The
+chances draw the surrogate's scatter (`Uncertainty.leaveOneOut`, log-SD 0.30–0.41 at Beirut's
+scaled distances) about whichever peak they are given, and never the model's own. This round
+draws the model's own where its peak is used, refits the walls for (c), and judges (a) and (c)
+again on the same 2 m references, each with its own scatter.
+
+**What was built.** It is opt-in, and off everywhere, the app included. With it off, nothing
+changes to the bit.
+
+- `LearnedField.Scatter`: each network's peak scatter by level (ground floor or above), facing
+  (front, cos > 1/3; side; back, cos < −1/3) and scaled distance (bands to Z 7, 10, 14, 20, 28
+  and beyond).
+- `LearnedField.Estimator(scatter:)` hands it on through the `PeakMap`. Each façade strip the
+  network reads carries its bands (`Features.learnedPeakScatter`).
+- `glassProbabilities` and `structureProbabilities` draw each side's same standard normal as
+  before. They scale it by the strip's own band at that draw's yield. The impulse's error is
+  still the surrogate's, and so is every strip the network does not read.
+- Bench: `wall-calibrate --own-scatter`, and `field-refs`' variants with `@own`. `field-refs` now
+  also judges the glass's chances by side (`--draws`), by Brier, skill and the deciles' test.
+
+**The model's scatter, measured.** It is measured against the 4 m recorder runs, which neither
+strict model saw. These are Beirut's charge points and two made-up layouts, from
+`judge_field.py`'s strips (`fpw/` for round 2, `l4/` for round 4). It is not measured on the 2 m
+references it is judged on. Each figure is the root mean square of the log of the model's peak
+over the recorded strip's, bias and spread together, as `leaveOneOut` is.
+
+| Z, m/kg^(1/3) | ≤ 7 | 7–10 | 10–14 | 14–20 | 20–28 | > 28 |
+|---|---|---|---|---|---|---|
+| Round 2, ground floor (1.47 M strips) | 0.32–0.33 | 0.21 | 0.19–0.20 | 0.19–0.20 | 0.19–0.22 | 0.29–0.33 |
+| Round 4, storeys above (6.15 M) | 0.32–0.34 | 0.20–0.21 | 0.19–0.20 | 0.21 | 0.22–0.23 | 0.37–0.39 |
+| Round 4, ground floor | 0.32–0.34 | 0.22–0.23 | 0.21–0.22 | 0.22–0.24 | 0.22–0.25 | 0.38–0.40 |
+| The surrogate on the same strips, ground floor | 0.56 | 0.33 | 0.29 | 0.28 | 0.27 | 0.37 |
+| `leaveOneOut`, as drawn | 0.41 | 0.30 | 0.25 | 0.24 | 0.23 | 0.30 |
+
+- The ranges are over the facings. Facing moves the model's scatter by 0.02 at most. It moves the
+  surrogate's bias by ±0.15–0.4 in the log.
+- Height moves it little: round 4 reads 0.24–0.25 from 6 to 22 m, and 0.27–0.29 at 26–30 m.
+- **The 4 m recorder understates the model's scatter about the 2 m runs.** On the 2 m references,
+  round 2's ground floor scatters by 0.32 over all strips (`field-refs`). On the 4 m recorder it
+  scatters by 0.24. The surrogate's is about the same on both, 0.37 and 0.38. The model learned
+  the 4 m runs, and the 2 m runs do not share their errors. The grid's scatter scale (×½, ×1,
+  ×1.5) leaves room for that.
+
+**Glass's chances by side** against the 2 m runs. These are 10 yields, sides inside 0.85 of the
+box, 50 draws at each run's yield, the load scatter only (Brier / skill / every decile of 200+
+sides within 0.1). The outcome judged is blown out. "Some broken" is near 1 for nearly every side
+in these boxes: its Brier is 0.011–0.012 for every variant, skill 0.01–0.07, and every variant
+passes.
+
+| Sides | Surrogate | (a) | (a), own scatter | (c) | (c), own scatter |
+|---|---|---|---|---|---|
+| Ground floor (63,951) | 0.0609 / 0.24 / fail | 0.0469 / 0.41 / fail | 0.0462 / 0.42 / **pass** | 0.0469 / 0.41 / fail | 0.0462 / 0.42 / **pass** |
+| Upper storeys (64,914) | 0.0663 / 0.32 / fail | 0.0663 / 0.32 / fail | 0.0663 / 0.32 / fail | 0.0559 / 0.42 / fail | **0.0553 / 0.43** / fail |
+| Every storey, the app's sides (65,263) | 0.0662 / 0.31 / fail | 0.0631 / 0.34 / fail | 0.0629 / 0.35 / fail | 0.0546 / 0.43 / fail | **0.0539 / 0.44** / fail |
+
+The exact states by side are as the round above gave them, since the scatter does not enter them:
+(c) 0.939 at the ground floor, 0.925 above and 0.928 over every storey, against (a)'s 0.939,
+0.903 and 0.910.
+
+**Concrete walls, moderate or worse, the worst storey** (2,053 buildings × 10 yields, 50 draws;
+Brier / skill / the tenths test; grid ×0.8–1.5, scatter ×½, ×1 or ×1.5, impulse ×0.826 or ×1):
+
+| Walls' load | (a) | (a), own scatter | (c) | (c), own scatter |
+|---|---|---|---|---|
+| ×1.0 | 0.0207 / 0.622 / fail | 0.0233 / 0.575 / fail | 0.0199 / 0.636 / fail | 0.0223 / 0.593 / fail |
+| The app's adopted (peak ×1.15, impulse ×0.95) | **0.0184 / 0.664 / pass** | 0.0190 / 0.653 / fail | 0.0204 / 0.628 / fail | 0.0188 / 0.656 / fail |
+| Refit, each yield held out | 0.0186 / 0.661 / pass | 0.0203 / 0.630 / pass | 0.0206 / 0.624 / fail | 0.0188 / 0.656 / fail |
+| Best pair over all ten (not held out) | 0.0183 (×1.3, scatter ×½, impulse ×0.83) | 0.0190 (adopted) | 0.0195 (×1.3, scatter ×½) | 0.0188 (adopted) |
+
+- For (c) with its own scatter, every held-out yield picks the adopted pair, so the refit is the
+  adopted factors.
+- (c)'s failing tenth is 0.80–0.90: 176 building-yields, predicted 0.84 and seen 0.95. That is on
+  the unsafe side, and 0.01 beyond the test.
+- Scatter ×1.5 is never chosen.
+- Roofs are 0.74 in every variant, as before.
+- (a) and (c) without their own scatter reproduce the round above to the digit.
+
+**What it says:**
+
+- **For glass, the model's own scatter helps a little.** Blown-out skill rises by 0.01 in every
+  group. At the ground floor it lets the deciles pass, at 0.0462 against 0.0469. (c) stays far
+  ahead of (a) above the ground floor: 0.43 against 0.32, and 0.44 against 0.35 over the app's
+  whole sides.
+- **For walls, it helps (c) and hurts (a).**
+  - (c) goes from 0.624 to 0.656 held out, nearly closing its gap to (a)'s 0.661–0.664. It still
+    fails the tenths test, by one tenth.
+  - (a) loses: 0.664 → 0.653 at its adopted factors, and that pair no longer passes.
+  - The likely reason is the table above: the drawn 0.19–0.21 is narrower than the model's
+    scatter about the 2 m runs, about 0.32. The chances become too sure. In (a) every
+    ground-floor wall is drawn narrow. In (c) the narrower draw also takes the place of the
+    surrogate's wide one above, where the network had been given the surrogate's 0.30–0.41.
+- **The walls' factors don't move for (c).** With its own scatter, (c)'s refit lands on the
+  adopted ×1.15, impulse ×0.95 at every yield.
+
+**The verdict: field-model-1 stays.** With each variant given its own scatter:
+
+- (c) beats (a) at glass: blown-out skill 0.44 against 0.35 over the app's sides, ties at the
+  ground floor, and wins above it.
+- At walls (c) does not beat (a) as it ships: Brier 0.0188 against 0.0184, skill 0.656 against
+  0.664, and it fails the tenths test that (a) passes.
+- Against (a) given its own scatter, (c) scores better at walls (0.656 against 0.630), but that
+  (a) is worse than today's, so it is not the bar.
+
+No weights are published, and no `field-model-2` is prepared. The app's pin, file and option are
+unchanged, and the scatter stays off. What would settle it:
+
+- the model's scatter measured against 2 m runs rather than 4 m ones. That needs 2 m references
+  apart from Beirut's ten near boxes, so that measuring it does not fit it to the judge. A scale
+  on the measured 4 m scatter (×1.5 was not chosen) is not that;
+- or the user's decision that (c)'s glass gain, about +0.09 of blown-out skill over the app's
+  sides, is worth a wall score level within 0.01 of skill that misses the tenths test by one
+  tenth.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/judge/scatter/`:
+
+- `scatter_stats.py`, with `fp-strict.json` and `l4-strict.json` for the measured scatter;
+- `glass.sh` and `glass.txt` for glass and peaks;
+- `walls.sh` and `walls-{a,c,a-own,c-own}.txt` for the walls;
+- `run1/` for the first own-scatter runs, at 3 decimals, which give the same Brier sums.
+
+```bash
+python3 -I scatter_stats.py ../fpw/judge-strict-strips.json strict fp-strict.json
+python3 -I scatter_stats.py ../l4/judge-all-strips.json l4 l4-strict.json
+scenebench field-refs <Beirut's inputs> --dx 4 --height 320 --radius 1320 --runs <the ten 2 m near boxes> --draws 50 \
+    --variants surrogate,a=fp.bcfw,a-own=fp.bcfw@own,c=l4.bcfw+fp.bcfw,c-own=l4.bcfw+fp.bcfw@own
+scenebench wall-calibrate <the same> --factors 0.8,1,1.15,1.3,1.5 --scales 0.5,1,1.5 --impulse-ratios 0.826,1 \
+    --draws 50 --learned l4.bcfw --learned-ground fp.bcfw --own-scatter --held-out \
+    --fixed raw=1:1:1/1.3:0.5:1,learned-adopted=1.15:1:0.826/1.3:0.5:1
+```
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
 - **A model to ship after round 2** ([round 4](#round-4-fields-at-more-heights-on-the-fixed-terrain-start-23-october-2026),
-  [on the 2 m references](#round-4-on-the-2-m-references-glass-and-every-storey-23-october-2026)):
-  - the walls' chances drawn with the model's own scatter, and refit for round 2 below and round 4
-    above, which gains at the upper storeys' glass and loses at the walls today;
+  [on the 2 m references](#round-4-on-the-2-m-references-glass-and-every-storey-23-october-2026),
+  [with its own scatter](#the-models-own-scatter-in-the-chances-23-october-2026)):
+  - round 2 below and round 4 above with the model's own scatter gains at glass and comes within
+    0.01 of skill at the walls, but fails their tenths test. It needs the model's scatter measured
+    against 2 m runs other than the judge's, or the user's decision;
   - or a ground-floor head as sharp as round 2's;
   - then the option's weights, name and standing.
 - **Measured heights** to judge the levels on (emmettl/bombcad-work#69; routes, not readings, from

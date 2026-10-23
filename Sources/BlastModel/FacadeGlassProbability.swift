@@ -338,8 +338,12 @@ extension FacadeLoadSurrogate {
                                 uncertainty.strengthLogSD
                                     * uncertainty.normal(2, k, owner, draws: draws))
                         var errors = SIMD2<Double>.zero
+                        // The side's draw of the peak's error, standard normal, for strips given
+                        // the model's own scatter (`Features.learnedPeakScatter`); 0 with none.
+                        var normal = 0.0
                         if let scatter = uncertainty.scatter(atZ: middle / cbrt(mass)) {
                             let a = uncertainty.normal(3, k, side.sideKey, draws: draws)
+                            normal = a
                             let b = uncertainty.normal(4, k, side.sideKey, draws: draws)
                             let r = scatter.correlation
                             errors = SIMD2(
@@ -352,7 +356,14 @@ extension FacadeLoadSurrogate {
                                 strip.features, mass: mass, cellSize: Double(cellSize),
                                 coefficients: coefficients)
                             if let farField { p = farField.apply(p, distanceM: strip.features.distanceM) }
-                            p.peakPa *= exp(errors.x)
+                            if let own = strip.features.learnedPeakScatter,
+                                let sd = LearnedField.Scatter.peak(
+                                    own, atZ: strip.features.distanceM / cbrt(mass))
+                            {
+                                p.peakPa *= exp(sd * normal)
+                            } else {
+                                p.peakPa *= exp(errors.x)
+                            }
                             p.impulsePaS *= exp(errors.y)
                             sidePeak = max(sidePeak, p.peakPa)
                             outcome =

@@ -463,6 +463,9 @@ public enum LearnedField {
         public let opens: [[Bool]]
         /// The components given the network's peak.
         public var reach: Reach = .groundFloor
+        /// The network's own scatter, given to the strips it reads for the chances to draw
+        /// (`Scatter`); nil for the surrogate's.
+        public var scatter: Scatter?
         let terrain: Terrain?
         let height: [Float]
         /// How long the network took, s, and its inputs before it.
@@ -581,6 +584,11 @@ public enum LearnedField {
         /// `reach` leaves it to the surrogate (by default all but the ground floor's façade strips)
         /// or there is none.
         public func peak(at component: EnvelopeComponent) -> Double? {
+            reading(at: component)?.peak
+        }
+
+        /// `peak(at:)` and the level it was read at (0 the ground floor's).
+        func reading(at component: EnvelopeComponent) -> (peak: Double, level: Int)? {
             let level: Int
             let cells: [Int]
             if reach.contains(.groundFloor), isGroundFloor(component) {
@@ -600,7 +608,7 @@ public enum LearnedField {
                 sum += Double(exp(logPeaks[level][n]))
                 count += 1
             }
-            return count > 0 ? sum / Double(count) : nil
+            return count > 0 ? (sum / Double(count), level) : nil
         }
 
         /// `features` with the network's peak in place of the surrogate's for `component` (its
@@ -610,7 +618,7 @@ public enum LearnedField {
             _ features: FacadeLoadSurrogate.Features, of component: EnvelopeComponent, mass: Double,
             cellSize: Double, coefficients: FacadeLoadSurrogate.Coefficients = .fitted
         ) -> FacadeLoadSurrogate.Features {
-            guard let peak = peak(at: component) else { return features }
+            guard let (peak, level) = reading(at: component) else { return features }
             var plain = features
             plain.learnedPeakFactor = 1
             let surrogate = FacadeLoadSurrogate.predict(
@@ -618,6 +626,10 @@ public enum LearnedField {
             ).peakPa
             guard surrogate > 0, surrogate.isFinite, peak.isFinite else { return features }
             plain.learnedPeakFactor = peak / surrogate
+            if let scatter, component.kind == .facade {
+                plain.learnedPeakScatter = scatter.bands(
+                    groundFloor: level == 0, cosIncidence: features.cosIncidence)
+            }
             return plain
         }
     }
@@ -643,16 +655,22 @@ public enum LearnedField {
         /// first model's weights, and with more levels what `reach` allows of them (by default
         /// every storey's façade strips, not the roofs).
         public let reach: Reach
+        /// The networks' own peak scatter, for the chances to draw where their peak is used
+        /// (emmettl/bombcad-work#69); nil, as until it is judged, for the surrogate's.
+        public let scatter: Scatter?
         /// How long laying out the plan took, s.
         public let seconds: Double
 
         public init(
-            scene: Scenario, network: any Network, reach: Reach = .judged, groundNetwork: (any Network)? = nil
+            scene: Scenario, network: any Network, reach: Reach = .judged,
+            groundNetwork: (any Network)? = nil,
+            scatter: Scatter? = nil
         ) {
             let start = ContinuousClock.now
             plan = Plan(scene: scene)
             self.network = network
             self.groundNetwork = groundNetwork
+            self.scatter = scatter
             self.reach = network.header.levels == nil ? .groundFloor : reach
             let took = start.duration(to: .now)
             seconds = Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
@@ -704,6 +722,7 @@ public enum LearnedField {
                 logPeaks[0] = onPlan(out, columns: columns, residual: own.residual, kb: kb)
             }
             var map = PeakMap(plan: plan, logPeaks: logPeaks, levels: levels, reach: reach)
+            map.scatter = scatter
             map.seconds = (inputsS, since(clock))
             return map
         }

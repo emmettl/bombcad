@@ -3,7 +3,8 @@ import Foundation
 import simd
 
 /// `scenebench field-refs <district-scene's inputs> [--radius 1320] --runs mass:folder,…
-/// --variants surrogate,name=weights.bcfw,name=upper.bcfw+ground.bcfw,… [--inside 0.85] [--out judged.json]`:
+/// --variants surrogate,name=weights.bcfw,name=upper.bcfw+ground.bcfw[@own],… [--inside 0.85] [--draws 50]
+/// [--out judged.json]`:
 /// the quick estimate's glass by building side and its façade peaks at every storey, judged against
 /// a district's own runs at several yields (`district-compare --save-loads`; Beirut's near boxes on
 /// air refined to 2 m, emmettl/bombcad-work#19 and #69), as the app's estimate gives them:
@@ -17,8 +18,11 @@ import simd
 /// Glass is judged as `field-glass` judges it: each strip's breakage on the run's history and on the
 /// variant's triangle, each building's mix, summed over a side's strips, and each side's state
 /// GEER's (`SurrogateBench.glassState`). Ground-floor strips (`LearnedField.isGroundFloor`) and
-/// those above form their sides apart. The peaks: each strip's predicted peak over the run's, by
-/// the storey's height level, median and log-SD.
+/// those above form their sides apart. The glass's chances too, as the app draws them
+/// (`glassProbabilities`, `--draws` at each run's own yield, the load scatter alone; with `@own`
+/// on a variant, the networks' own scatter where their peak is used, `LearnedField.Scatter`):
+/// some pane broken and blown out, by Brier, skill and the deciles' test. The peaks: each strip's
+/// predicted peak over the run's, by the storey's height level, median and log-SD.
 enum FieldReferences {
     /// The storeys' height levels, m over the ground, as the levels' models were trained on.
     static let levels: [Float] = [6, 10, 14, 18, 22, 26, 30]
@@ -88,11 +92,34 @@ enum FieldReferences {
         ).map { spec in
             let parts = spec.split(separator: "=", maxSplits: 1).map(String.init)
             guard parts.count == 2 else { return (parts[0], nil) }
-            let files = parts[1].split(separator: "+").map(String.init)
+            // `…@own`: the chances draw the networks' own measured scatter where their peak is used.
+            let own = parts[1].hasSuffix("@own")
+            let files = parts[1].replacingOccurrences(of: "@own", with: "").split(separator: "+").map(
+                String.init)
             let network = try LearnedFieldNetwork(contentsOf: URL(filePath: files[0]))
             let ground = try files.count > 1 ? LearnedFieldNetwork(contentsOf: URL(filePath: files[1])) : nil
-            return (parts[0], LearnedField.Estimator(scene: scene, network: network, groundNetwork: ground))
+            func measured(_ path: String) -> LearnedField.Scatter? {
+                LearnedField.Scatter.measured(forWeights: URL(filePath: path).lastPathComponent)
+            }
+            let scatter =
+                !own
+                ? nil
+                : files.count > 1
+                    ? LearnedField.Scatter.combining(ground: measured(files[1]), upper: measured(files[0]))
+                    : measured(files[0])
+            return (
+                parts[0],
+                LearnedField.Estimator(
+                    scene: scene, network: network, groundNetwork: ground, scatter: scatter)
+            )
         }
+        // The glass's chances by side (`glassProbabilities`), `--draws` of them at each run's own
+        // yield over the load scatter alone (the runs judge every pane at its median), against the
+        // run's: some pane broken, and blown out.
+        let draws = value("draws").flatMap(Int.init) ?? 50
+        // By variant, then by "group/outcome": the chances and what the runs gave.
+        var chancePredicted: [String: [String: [Double]]] = [:]
+        var chanceObserved: [String: [String: [Double]]] = [:]
         let charge = scene.charge.position
         let mixes = Dictionary(
             uniqueKeysWithValues: [GlazingMix.olderLowRise, .apartments, .commercial, .industrial].map {
@@ -202,6 +229,51 @@ enum FieldReferences {
                     }
                 }
             }
+            // The chances, each side as the estimate gives its strips.
+            let sideKeys = sides.keys.sorted { $0.lexicographicallyPrecedes($1) }
+            for (v, variant) in variants.enumerated() {
+                let glassSides = sideKeys.map { side -> FacadeLoadSurrogate.GlassSideStrips in
+                    let members = sides[side]!
+                    let (m0, _) = chosen[members[0]]
+                    let n = reference.strips[m0].object
+                    let strip0 = reference.index.strips[reference.strips[m0].saved]
+                    let mix =
+                        mixes[reference.index.buildings[strip0.building].mix]
+                        ?? scene.envelopeConstruction(for: reference.objects[n].id).glazing ?? .apartments
+                    return FacadeLoadSurrogate.GlassSideStrips(
+                        owner: reference.objects[n].id, ownerKey: reference.objects[n].drawKey, axis: side[1],
+                        outward: side[2], mix: mix,
+                        strips: members.map { c in
+                            let (m, k) = chosen[c]
+                            return (
+                                estimates[v].features[k],
+                                reference.index.strips[reference.strips[m].saved].areaM2
+                            )
+                        })
+                }
+                let (chances, _) = FacadeLoadSurrogate.glassProbabilities(
+                    sides: glassSides, mass: run.mass, cellSize: cellSize,
+                    uncertainty: FacadeLoadSurrogate.Uncertainty(
+                        masses: [run.mass], strengthLogSD: 0, samples: draws))
+                for (s, side) in sideKeys.enumerated() {
+                    let truth = sides[side]!.reduce(GlazingBreakage()) { $0 + glass[$1][0] }
+                    let group = ["ground", "upper", "every"][side[3]]
+                    for (outcome, predicted, observed) in [
+                        ("some broken", chances[s].someBroken, truth.anyBroken),
+                        (
+                            "blown out", chances[s].blownOut,
+                            truth.fraction >= DistrictGlass.blownOutFraction ? 1.0 : 0
+                        ),
+                    ] {
+                        chancePredicted[variant.name, default: [:]][group + ", " + outcome, default: []]
+                            .append(
+                                predicted)
+                        chanceObserved[variant.name, default: [:]][group + ", " + outcome, default: []]
+                            .append(
+                                observed)
+                    }
+                }
+            }
             for (c, (m, _)) in chosen.enumerated() {
                 let recorded = peaks[c][0]
                 guard recorded > 0 else { continue }
@@ -244,6 +316,37 @@ enum FieldReferences {
                             format: "%.3f / %.2f / %.3f", $0.exact, $0.heidke,
                             $0.fractionError / Double(max($0.sides, 1)))
                     }.joined(separator: " | "))
+        }
+        print(
+            "\nGlass chances by side over \(runs.count) runs (\(draws) draws at each run's yield, load scatter only): "
+                + "Brier / skill / deciles of 200+ sides within 0.1 (sides)")
+        let outcomes = Set(chancePredicted.values.flatMap(\.keys)).sorted()
+        print("group | sides | " + names.joined(separator: " | "))
+        for outcome in outcomes {
+            let judged = names.map { name in
+                GlassCalibration.reliability(
+                    outcome, predicted: chancePredicted[name]?[outcome] ?? [],
+                    observed: chanceObserved[name]?[outcome] ?? [])
+            }
+            print(
+                "\(outcome) | \(judged[0].count) | "
+                    + judged.map { r in
+                        let passes = r.bins.filter { $0.count >= 200 }.allSatisfy {
+                            abs($0.predicted - $0.observed) <= 0.1
+                        }
+                        return String(
+                            format: "%.4f / %.2f / %@", r.brier,
+                            r.climatology > 0 ? 1 - r.brier / r.climatology : 0,
+                            passes ? "pass" : "fail")
+                    }.joined(separator: " | "))
+            for (name, r) in zip(names, judged) {
+                print(
+                    "    \(name): "
+                        + r.bins.map {
+                            String(format: "%.1f %d %.2f/%.2f", $0.from, $0.count, $0.predicted, $0.observed)
+                        }
+                        .joined(separator: ", "))
+            }
         }
         print("\nPeaks by storey, predicted over the run's: median / log-SD (strips)")
         let levelNames = Set(judgedRuns.flatMap { $0.logRatios.values.flatMap(\.keys) }).sorted()

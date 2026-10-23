@@ -64,6 +64,11 @@ public enum FacadeLoadSurrogate {
         /// a ground-floor façade strip the model reads; at a yield drawn away from the estimate's
         /// the same ratio is kept.
         public var learnedPeakFactor: Double = 1
+        /// Where that peak is the model's and its own scatter is asked for
+        /// (`LearnedField.Estimator.scatter`, emmettl/bombcad-work#69): the log-SD of its peak by
+        /// scaled distance, which the glass's and the walls' chances draw for this strip's peak
+        /// in place of the surrogate's. nil, which changes nothing, otherwise.
+        public var learnedPeakScatter: [LearnedField.Scatter.Band]? = nil
     }
 
     /// The buildings' blocks on a plan grid, for following a straight line from the charge
