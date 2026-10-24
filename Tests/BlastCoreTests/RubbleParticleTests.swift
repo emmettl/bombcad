@@ -252,4 +252,106 @@ struct RubbleParticleTests {
         #expect(particles[slot].reach < grown - 0.01)
         #expect(energy < 20, "\(energy) J")
     }
+
+    @Test("Bars that break pass their steel to the particle their concrete became, leaving no node grams")
+    func brokenBarsJoinTheirParticle() throws {
+        // As `bareBars`: a beam held at both ends, its middle two columns' concrete gone to rubble
+        // and their bars left. Then the bars break. Their steel used to stay on the nodes, and the
+        // middle column's nodes, with no element left, held a few grams each: on the large-panel
+        // block such nodes flew off at 50-130 m/s (#36). Now the shares of nodes nothing else holds
+        // join the particles.
+        let h: Float = 0.05
+        let beam = Box(min: SIMD3(0, 0, 1), max: SIMD3(0.6, 0.1, 1.1))
+        let steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        let material = StructureMaterial.concrete(name: "C30", compressiveStrength: 30e6, steel: steel)
+        var model = StructureModel(solids: [beam], material: material, elementSize: h, fixedBase: false)
+        model.addMat(to: beam, thicknessAxis: 2, areaPerMetre: 2e-4, depth: 0.025)
+        model.rubbleParticles = true
+        let solver = try StructureSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        solver.mutateNodes { nodes in
+            for k in 0...solver.ez {
+                for j in 0...solver.ey {
+                    for i in [0, solver.ex] { nodes[solver.nodeIndex(i, j, k)].isFixed = true }
+                }
+            }
+        }
+        for i in 5...6 {
+            for j in 0..<solver.ey {
+                for k in 0..<solver.ez { solver.failElement(i, j, k, leavingBars: true) }
+            }
+        }
+        solver.advance(steps: 10)
+        let concrete = solver.rubbleParticles().map(\.particle.mass).reduce(0, +)
+        let before = solver.massMomentumEnergy()
+        let held = (0...solver.ez).flatMap { k in (0...solver.ey).map { j in solver.node(5, j, k).mass } }
+        for i in 5...6 {
+            for j in 0..<solver.ey {
+                for k in 0..<solver.ez { solver.breakBars(i, j, k) }
+            }
+        }
+        solver.advance(steps: 1)
+        let after = solver.massMomentumEnergy()
+        let particles = solver.rubbleParticles()
+        let element = 2400 * h * h * h
+        #expect(particles.count == 2 * solver.ey * solver.ez)
+        // The particles have the steel of the corners nothing else holds; the column at i = 5,
+        // still held by the whole elements beside it, keeps its share.
+        #expect(particles.allSatisfy { $0.particle.mass <= element * 1.0001 })
+        #expect(particles.map(\.particle.mass).reduce(0, +) > concrete * 1.001)
+        let kept = (0...solver.ez).flatMap { k in (0...solver.ey).map { j in solver.node(5, j, k).mass } }
+        #expect(zip(held, kept).allSatisfy { abs($0 - $1) < 1e-6 * $0 })
+        #expect(abs(after.mass - before.mass) < 1e-5 * before.mass)
+        #expect(after.internalEnergy >= before.internalEnergy)
+        // The middle column's nodes had no element left: they hold nothing.
+        for k in 0...solver.ez {
+            for j in 0...solver.ey {
+                #expect(
+                    solver.node(6, j, k).mass == 0,
+                    "node (6, \(j), \(k)) keeps \(solver.node(6, j, k).mass) kg")
+            }
+        }
+    }
+
+    @Test("A bare element pulled apart across its bars goes past twice its volume, its steel with it")
+    func barePulledApartGoes() throws {
+        // One element, bars along x and y only, its concrete gone to rubble; then its top pulled
+        // up at 50 m/s, across its bars, which nothing ruptures. It used to stay bare however far
+        // it went: on the large-panel block one reached a thousand times its volume, turned inside
+        // out and threw a corner at 200 m/s (#36). Past twice its volume it goes now, and with no
+        // other element holding its corners, its steel joins its particle.
+        let h: Float = 0.05
+        let cube = Box(min: SIMD3(0, 0, 1), max: SIMD3(h, h, 1 + h))
+        let steel = SteelProperties(
+            yieldStress: 500e6, ultimateStress: 600e6, ultimateStrain: 0.1, ruptureStrain: 0.15)
+        let material = StructureMaterial.concrete(name: "C30", compressiveStrength: 30e6, steel: steel)
+        var model = StructureModel(solids: [cube], material: material, elementSize: h, fixedBase: false)
+        model.addMat(to: cube, thicknessAxis: 2, areaPerMetre: 2e-4, depth: 0.025)
+        model.rubbleParticles = true
+        let solver = try StructureSolver(device: device, model: model)
+        solver.groundContact = false
+        solver.gravity = 0
+        solver.failElement(0, 0, 0, leavingBars: true)
+        solver.advance(steps: 2)
+        let concrete = try #require(solver.rubbleParticle(0, 0, 0)).mass
+        solver.mutateNodes { nodes in
+            for j in 0...1 {
+                for i in 0...1 { nodes[solver.nodeIndex(i, j, 1)].velocity = SIMD3(0, 0, 50) }
+            }
+        }
+        solver.advance(steps: Int((0.003 / Double(solver.criticalTimeStep)).rounded()))
+        let particle = try #require(solver.rubbleParticle(0, 0, 0))
+        #expect(particle.mass > concrete * 1.001, "\(particle.mass) kg against \(concrete) kg of concrete")
+        for k in 0...1 {
+            for j in 0...1 {
+                for i in 0...1 {
+                    #expect(
+                        solver.node(i, j, k).mass == 0,
+                        "node (\(i), \(j), \(k)) keeps \(solver.node(i, j, k).mass) kg")
+                }
+            }
+        }
+    }
 }

@@ -133,4 +133,13 @@ extension StructureSolver {
             of: UInt8(leavingBars ? 5 : 3), toByteOffset: elementIndex(i, j, k), as: UInt8.self)
         failureGateBuffer.contents().storeBytes(of: 1, as: UInt32.self)
     }
+
+    /// Marks the bare element (bars alone, 4) at lattice cell (i, j, k) as failing with them (6), as
+    /// the element pass marks one whose bars have broken.
+    public func breakBars(_ i: Int, _ j: Int, _ k: Int) {
+        let index = elementIndex(i, j, k)
+        guard flagBuffer.contents().load(fromByteOffset: index, as: UInt8.self) == 4 else { return }
+        flagBuffer.contents().storeBytes(of: UInt8(6), toByteOffset: index, as: UInt8.self)
+        failureGateBuffer.contents().storeBytes(of: 1, as: UInt32.self)
+    }
 }

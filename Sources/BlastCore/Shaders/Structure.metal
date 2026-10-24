@@ -2773,6 +2773,17 @@ kernel void structureElements(device ElementState *states [[buffer(0)]],
             failureGate[0] = 1;
             eroded = false;
         }
+        // With rubble, a bare element's nodes hold its bars' steel alone, and its shape is all that
+        // ties them across the axes its bars do not run along. One squeezed below a quarter of its
+        // volume, turned inside out or stretched past twice it holds nothing as a hexahedron: on
+        // the large-panel block one stretched to a thousand times its volume, then turned inside
+        // out, and its hourglass control at its cap, through that shape, pushed 67 kN on a corner
+        // of 5.5 g, throwing it at 200 m/s (emmettl/bombcad-work#36). It goes, its steel with it
+        // (`rubbleConvert`).
+        if (rubbleParticles && bare
+            && (volume < u.minVolumeRatio * referenceVolume || volume > 2.0f * referenceVolume)) {
+            eroded = true;
+        }
         // Squeezed concrete also resists the hourglass modes: a block at mean compressive stress s
         // and strength f can carry a bending moment in proportion to s (1 - s / f).
         float squeezed = max(-min(normalStress.x, min(normalStress.y, normalStress.z)), 0.0f);

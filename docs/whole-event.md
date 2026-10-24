@@ -13,7 +13,9 @@ the twelve-storey run with rubble and the air awake reaches 3.5 s without blowin
 budget closes: the work from outside holds at the blast's 1.4 MJ to 0.5 s, then only falls, as
 contact, the joints and the ground take energy out (−4.9 MJ by 3.5 s). The 52 MJ below was the
 work trace's own count and contact pumping energy in; with them gone half as many elements
-fail by 3.36 s (18,000 against 39,000). A few bars-only nodes of 2–8 g still fly off at 50–130 m/s.
+fail by 3.36 s (18,000 against 39,000). Since 24 October bars that break take their steel with
+their rubble, and bare elements pulled out of shape go (section 6): no node flies off; a few of a
+gram or two among bare bars on the ground pass 50 m/s for a sample.
 The collapse is still not earned: hourglass control does 60–76% of the elements' work.
 
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
@@ -319,6 +321,42 @@ flat; `ConcreteModelTests.workTraceWhileRinging`). The run is unchanged, to the 
 So the census now closes: what it leaves falls as contact and the joints' slip take energy out,
 and stops when the body does. Hourglass control's share hardly moves, its work being nearly all
 at its cap, where it is dissipated, not stored.
+
+### 6. Steel that breaks goes with its rubble (24 October 2026)
+
+After section 5, bars-only nodes of 2–8 g still flew off the twelve-storey block at 50–130 m/s.
+- **Steel left on nodes.** With rubble, an element whose concrete goes but whose bars hold turns
+  bare, its nodes keeping its steel's share. When those bars broke the steel stayed, so a node
+  whose elements had all gone held a few grams. **Fix:** when a bare element's bars break, each
+  corner no other element still holds gives its share to the particle the element's concrete
+  became, with its momentum, at their centre of mass, the kinetic energy the merger cannot carry
+  kept as the particle's internal energy (`rubbleConvert`, `rubbleNodes`). Moving the shares of
+  corners still held as well left those nodes lighter on their bare bars, which rang: 400 m/s and
+  5 MJ in the bars' channel, so they keep theirs. Test: `brokenBarsJoinTheirParticle` (without
+  the fix the middle nodes keep 2–4 g).
+- **Bare elements out of shape.** Traced substep by substep (`--trace-node 149,1,24
+  --trace-element 149,1,24`, from the 2 s checkpoint), the node that flew fastest swung between
+  43 and 76 m/s each substep, pushed by 67 kN from its one bare element. That element had been
+  stretched to 0.73 m³, a thousand times its volume, and then turned inside out (−0.31 m³). Bars
+  that run along one or two axes hold nothing across the third, so nothing ruptured, and a bare
+  element of structural concrete went only when all its bars had; its hourglass control at its
+  cap, through that shape, did the pushing. **Fix:** with rubble, a bare element squeezed below a
+  quarter of its volume, turned inside out or stretched past twice it goes, its steel with it.
+  Test: `barePulledApartGoes`, an element pulled apart across its bars (without the fix it stays
+  bare and its nodes keep their steel).
+
+Both are in rubble's code alone (default digests unchanged). After them:
+
+| | Fastest node | Net external work, after the blast | Bars' work by 3.5 s |
+|---|---|---|---|
+| Three storeys, 0.3–1.5 s | 18 m/s | falls 1.20 → 1.12 MJ; contact, joints, ground only take energy out | |
+| Twelve storeys, to 3.5 s | 21–32 m/s at most samples; 54, 66, 109 and 56 m/s at four of 70 | falls to −5.0 MJ | 1.63 MJ (no spike) |
+
+- **The three-storey gate is met:** no node past 50 m/s, the air's work flat, and every
+  dissipating source only taking energy out.
+- **Still open, on twelve storeys:** single nodes of 1–2 g in bare bars lying in the debris near
+  the ground reach 50–110 m/s for a sample and are slow again by the next: tens of joules at most,
+  not thrown off.
 
 ### Contact, the step and the memory: not near a limit
 

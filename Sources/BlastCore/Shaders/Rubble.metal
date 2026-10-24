@@ -20,6 +20,25 @@ static inline bool rubbleInUse(const device uint *state, uint index) {
     return ((state[rubbleBits + index / 32u] >> (index % 32u)) & 1u) != 0u;
 }
 
+// Whether an element other than `skip` round lattice node `node` still holds it this substep: one
+// whole, or bare, or losing its concrete to stay bare. One failing, with its bars or after them,
+// does not.
+static inline bool heldElsewhere(int3 node, int skip, const device uchar *flags, constant StructureUniforms &u) {
+    int3 dims = int3(u.ex, u.ey, u.ez);
+    for (uint a = 0; a < 8; ++a) {
+        int3 cell = node - int3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
+        if (any(cell < 0) || any(cell >= dims)) {
+            continue;
+        }
+        int element = cell.x + dims.x * (cell.y + dims.y * cell.z);
+        uchar flag = flags[element];
+        if (element != skip && (flag == elementActive || flag == elementBare || flag == elementBaring)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Each substep, after the element pass: an element failing in it (or losing its concrete to
 // leave its bars) becomes a particle. Its eight nodes are read before the node pass moves them.
 kernel void rubbleConvert(device RubbleParticle *particles [[buffer(0)]],
@@ -41,6 +60,61 @@ kernel void rubbleConvert(device RubbleParticle *particles [[buffer(0)]],
     }
     uint element = elementList[compact];
     uchar flag = flags[element];
+    if (flag == elementBareFailing && particles[compact].alive != 0) {
+        // A bare element's bars have broken. Each corner no other element still holds gives its
+        // share of their steel to the particle the element's concrete became, with its momentum,
+        // at their centre of mass. Left there, the steel was all such a node held, a few grams
+        // without an element, and on the large-panel block such nodes flew off at 50-130 m/s
+        // (emmettl/bombcad-work#36). A corner still held keeps its share: taken from nodes still
+        // on bare bars, it left them lighter still, and their bars rang (400 m/s, 5 MJ). The
+        // kinetic energy the merger cannot carry (the corners' motion about their centre and
+        // against the particle's) is kept as its internal energy, as when it was made.
+        float2 held = rubbleMass[compact];
+        float share = 0.125f * held.x * held.y;  // each corner's share of the steel
+        if (share <= 0.0f) {
+            return;
+        }
+        uint3 tid = uint3(element % u.ex, (element / u.ex) % u.ey, element / (u.ex * u.ey));
+        float3 velocities[8];
+        bool gives[8];
+        float3 centre = float3(0.0f);
+        float3 velocity = float3(0.0f);
+        float steelMass = 0.0f;
+        for (uint a = 0; a < 8; ++a) {
+            uint3 corner = tid + uint3(a & 1u, (a >> 1) & 1u, (a >> 2) & 1u);
+            uint node = nodeMap[corner.x + (u.ex + 1) * (corner.y + (u.ey + 1) * corner.z)];
+            gives[a] = !heldElsewhere(int3(corner), int(element), flags, u);
+            velocities[a] = float3(nodes[node].velocity);
+            if (gives[a]) {
+                centre += share * nodePosition(node, nodeList, nodes, u);
+                velocity += share * velocities[a];
+                steelMass += share;
+            }
+        }
+        if (steelMass <= 0.0f) {
+            return;
+        }
+        centre /= steelMass;
+        velocity /= steelMass;
+        float internal = 0.0f;
+        for (uint a = 0; a < 8; ++a) {
+            float3 about = velocities[a] - velocity;
+            internal += gives[a] ? 0.5f * share * dot(about, about) : 0.0f;
+        }
+        RubbleParticle p = particles[compact];
+        float total = p.mass + steelMass;
+        float3 against = float3(p.velocity) - velocity;
+        internal += 0.5f * p.mass * steelMass / total * dot(against, against);
+        p.position = (p.mass * float3(p.position) + steelMass * centre) / total;
+        p.velocity = (p.mass * float3(p.velocity) + steelMass * velocity) / total;
+        p.mass = total;
+        p.internal += internal;
+        p.volume += u.h * u.h * u.h * steelMass / held.x;
+        p.spare = share;  // what each corner no other element holds gives up this substep (`rubbleNodes`)
+        particles[compact] = p;
+        atomic_store_explicit(&state[1], 1u, memory_order_relaxed);
+        return;
+    }
     if ((flag != elementFailing && flag != elementBaring) || particles[compact].alive != 0) {
         return;
     }
@@ -88,8 +162,9 @@ kernel void rubbleConvert(device RubbleParticle *particles [[buffer(0)]],
     atomic_store_explicit(&state[1], 1u, memory_order_relaxed);
 }
 
-// ...then each node gives up an eighth of each particle made from an element around it. A node
-// left with nothing is out of the body: the node pass and contact leave it alone.
+// ...then each node gives up an eighth of each particle made from an element around it, and, if
+// nothing else holds it, its share of the steel of each bare element round it whose bars have
+// broken. A node left with nothing is out of the body: the node pass and contact leave it alone.
 kernel void rubbleNodes(device StructureNode *nodes [[buffer(0)]],
                         const device uchar *flags [[buffer(1)]],
                         const device RubbleParticle *particles [[buffer(2)]],
@@ -117,6 +192,8 @@ kernel void rubbleNodes(device StructureNode *nodes [[buffer(0)]],
         uchar flag = flags[element];
         if (flag == elementFailing || flag == elementBaring) {
             given += 0.125f * particles[cellElement[element]].mass;
+        } else if (flag == elementBareFailing && !heldElsewhere(int3(tid), element, flags, u)) {
+            given += particles[cellElement[element]].spare;  // its bars' steel, just broken
         }
     }
     if (given > 0.0f) {
