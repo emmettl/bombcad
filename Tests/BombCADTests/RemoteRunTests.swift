@@ -384,6 +384,30 @@ struct RemoteRunTests {
         #expect(model.replayedThermalPaint(.fluence) != nil)
     }
 
+    @Test("A run watched not as the app leaves the project's own thermal radiation and cloud, and is kept")
+    func notAsApp() async throws {
+        var document = document()
+        var thermal = ThermalSpec()
+        thermal.luminousTemperature = 1000
+        thermal.samples = 16
+        document.thermal = thermal
+        document.cloud = CloudSpec()
+        // `BombCAD watch` without `--as-app`, through a worker in this process.
+        let (local, localServer) = localWorker()
+        _ = try await local.start()
+        var job = try job(document, name: "Not as the app")
+        job.keepsRunning = false
+        let result = try await local.watch(job) { header, _ in
+            local.writer.enqueue(.viewAck(job.id, header.frame))
+        }
+        let returned = try ProjectDocument(archive: result.archive.archive())
+        let run = try #require(returned.savedRuns.first { $0.name == job.name })
+        // Kept at once, with neither: they are `--thermal`'s and `--cloud`'s to ask for.
+        #expect(run.thermal == nil && run.cloud == nil && run.stepCount > 0)
+        local.close()
+        await localServer.value
+    }
+
     /// Every frame of `playback`: its time, layers and fragments.
     private func frames(_ playback: TimelinePlayback) throws -> [(
         time: Double, layers: TimelineLayers, fragments: FragmentLive?

@@ -635,6 +635,10 @@ enum HeadlessRun {
             // Its fragments still hole the panes they strike, with glazing vented.
             model.paneHoleSpec = options.fragments
             model.groundShockSpec = nil
+            // Its radiation and cloud are `--thermal`'s and `--cloud`'s, fed and followed here;
+            // the project's own would keep the run waiting on them (emmettl/bombcad-work#73).
+            model.thermalSpec = nil
+            model.cloudSpec = nil
         }
         let interval = Double(options.frameInterval) * SimulationModel.structureSampleInterval
         // Frames fall on the samples every millisecond, where a run with a structure stops anyway,
