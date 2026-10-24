@@ -147,6 +147,28 @@ class SplitTests(unittest.TestCase):
         self.assertEqual({self.layout[r] for r in by_layout} & {self.layout[r] for r in trained}, set())
 
 
+class LossWeightTests(unittest.TestCase):
+    def test_no_weights_leave_the_loss_as_it_was(self):
+        run = {"z": np.array([[5.0, 20.0]]), "levels": ["ground", "h6"]}
+        self.assertIsNone(train_field.loss_weights(run, {}, 1.0, 14.0))
+
+    def test_level_and_distance_weights_multiply(self):
+        z = np.array([[5.0, 20.0]])
+        weights = train_field.parse_level_weights("ground=4")
+        levels = train_field.loss_weights({"z": z, "levels": ["ground", "h6"]}, weights, 2.0, 14.0)
+        self.assertEqual(levels.shape, (2, 1, 2))
+        self.assertEqual(levels[0].tolist(), [[4.0, 8.0]])
+        self.assertEqual(levels[1].tolist(), [[1.0, 2.0]])
+        ground = train_field.loss_weights({"z": z, "levels": None}, weights, 1.0, 14.0)
+        self.assertEqual(ground.tolist(), [[4.0, 4.0]])
+
+    def test_a_level_not_trained_is_refused(self):
+        with self.assertRaises(SystemExit):
+            train_field.loss_weights({"z": np.ones((1, 1)), "levels": ["ground"]}, {"h6": 2.0}, 1.0, 14.0)
+        with self.assertRaises(SystemExit):
+            train_field.parse_level_weights("ground")
+
+
 class EncodingTests(unittest.TestCase):
     def test_statistics(self):
         raw = parity_raw()

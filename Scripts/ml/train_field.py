@@ -21,7 +21,14 @@ logs over the mask (air at that height, away from the side faces).
 layouts matching the patterns as a validation set: not trained on, and the epoch kept in `best.pt`
 is the one with the least loss on it, so that the held-out runs are only judged, never chosen by.
 `best-heldout.pt` then keeps the epoch the held-out loss would have chosen, for comparison. Without
-it, `best.pt` is the best epoch on the held-out runs, as before.
+it, `best.pt` is the best epoch on the held-out runs, as before. With it, `--judge-every 10` judges
+the held-out runs only every tenth epoch and the last, which saves most of an epoch's time.
+
+`--level-weights ground=4` and `--far-weight 2 --far-z 14` (emmettl/bombcad-work#69, round 5) weight
+the loss: each named level's cells by its weight (levels not named weigh 1), and every cell beyond
+scaled distance `--far-z` by `--far-weight` as well, the two multiplied. The epoch is then chosen by
+the same weighted loss (on the validation runs, or the held-out). Without them every cell weighs the
+same, as before, to the bit.
 
 `--levels` (emmettl/bombcad-work#69) trains on the fields at more heights as well, from runs exported
 with `field-export --levels … --roof`: `all` takes the 2 m field (`ground`) and every level the runs
@@ -169,6 +176,34 @@ def load_run(path, impulse="all", levels=None):
             "meta": meta, "levels": levels}
 
 
+def parse_level_weights(text):
+    """`ground=4,h6=2` as {name: weight}."""
+    weights = {}
+    for item in filter(None, (text or "").split(",")):
+        name, _, value = item.partition("=")
+        if not value:
+            raise SystemExit("train_field: --level-weights takes name=weight pairs, not %r" % item)
+        weights[name.strip()] = float(value)
+    return weights
+
+
+def loss_weights(run, level_weights, far_weight, far_z, rows=slice(None), columns=slice(None)):
+    """Each cell's weight in the loss, the shape of `run`'s mask (over `rows` and `columns`): its
+    level's weight (1 if not named) times `far_weight` beyond scaled distance `far_z`; None when
+    every weight is 1. Made for each crop as it is drawn, so that no run holds a map of them."""
+    if not level_weights and far_weight == 1:
+        return None
+    names = run.get("levels") or ["ground"]
+    unknown = sorted(set(level_weights) - set(names))
+    if unknown:
+        raise SystemExit("train_field: --level-weights names %s, not among the levels %s" % (
+            ", ".join(unknown), ", ".join(names)))
+    far = np.where(run["z"][rows, columns] > far_z, far_weight, 1.0).astype(np.float32)
+    if not run.get("levels"):
+        return far * level_weights.get("ground", 1.0)
+    return np.stack([far * level_weights.get(name, 1.0) for name in names]).astype(np.float32)
+
+
 def base(run, window=(slice(None),) * 3):
     """Kingery–Bulmash's logs under `run`'s targets (over `window`): once for the 2 m field, once for
     each level with `levels`."""
@@ -238,7 +273,11 @@ class Crops:
         window = (slice(None), slice(i, i + c), slice(j, j + c))
         x = (torch.from_numpy(run["x"][window]) - self.mean) / self.std
         y = torch.from_numpy(run["y"][window] - (base(run, window) if self.residual else 0))
-        m = torch.from_numpy(run["mask"][..., i:i + c, j:j + c].astype(np.float32))
+        m = run["mask"][..., i:i + c, j:j + c].astype(np.float32)
+        if run.get("weighting"):
+            # A weighted loss: the mask carries each cell's weight, and the mean is by the weights.
+            m = m * loss_weights(run, *run["weighting"], rows=slice(i, i + c), columns=slice(j, j + c))
+        m = torch.from_numpy(m)
         return dihedral([x, y, m], self.rng.randrange(4), self.rng.random() < 0.5)
 
     def batch(self, size):
@@ -248,7 +287,7 @@ class Crops:
 
 def masked_loss(out, y, m):
     """The mean squared error of the logs over the mask: one mask (B, H, W) for both outputs, or one
-    for each level (B, L, H, W) for its peak and impulse."""
+    for each level (B, L, H, W) for its peak and impulse. A mask of weights gives the weighted mean."""
     if m.dim() == 3:
         return (((out.float() - y) ** 2) * m[:, None]).sum() / (2 * m.sum().clamp(min=1))
     both = m.repeat_interleave(2, dim=1)
@@ -394,6 +433,8 @@ def judge(model, runs, stats, residual, device, autocast, dtype, multiple):
     baseline = [[] for _ in range(count)]
     distances = [[] for _ in range(count)]
     loss_sum, loss_count = 0.0, 0
+    weighted_sum, weight_sum = 0.0, 0.0
+    level_sums = [[0.0, 0] for _ in range(count)]
     with torch.no_grad():
         for run in runs:
             x = (torch.from_numpy(run["x"])[None] - mean) / std
@@ -405,12 +446,19 @@ def judge(model, runs, stats, residual, device, autocast, dtype, multiple):
             out = out.float()[0, :, :h, :w].cpu().numpy()
             under = base(run)
             prediction = out + (under if residual else 0)
+            weights = loss_weights(run, *run["weighting"]) if run.get("weighting") else None
             for level in range(count):
                 mask = run["mask"][level] if names else run["mask"]
                 pair = slice(2 * level, 2 * level + 2)
                 error = (prediction[pair] - run["y"][pair])[:, mask]
                 loss_sum += float((error ** 2).sum())
                 loss_count += error.size
+                level_sums[level][0] += float((error ** 2).sum())
+                level_sums[level][1] += error.size
+                if weights is not None:
+                    w = (weights[level] if names else weights)[mask]
+                    weighted_sum += float(((error ** 2) * w).sum())
+                    weight_sum += 2 * float(w.sum())
                 errors[level].append(error)
                 baseline[level].append((under[pair] - run["y"][pair])[:, mask])
                 distances[level].append(run["z"][mask])
@@ -441,6 +489,10 @@ def judge(model, runs, stats, residual, device, autocast, dtype, multiple):
         tables.append(table)
     result = {"loss": loss_sum / max(loss_count, 1), "kbLoss": squared_base / max(base_count, 1),
               "bands": tables[0]}
+    if weight_sum:
+        result["weightedLoss"] = weighted_sum / weight_sum
+    if names:
+        result["levelLoss"] = {name: s / max(n, 1) for name, (s, n) in zip(names, level_sums)}
     if names:
         result["levels"] = {name: table for name, table in zip(names, tables)}
     return result
@@ -478,6 +530,12 @@ def train(args):
     runs = load_runs(args.data, impulse=args.impulse, levels=levels)
     if len(runs) < 2:
         raise SystemExit("train_field: %d usable runs in %s; at least 2 are needed" % (len(runs), args.data))
+    level_weights = parse_level_weights(args.level_weights)
+    weighted = bool(level_weights) or args.far_weight != 1
+    for run in runs:
+        run["weighting"] = (level_weights, args.far_weight, args.far_z) if weighted else None
+    if weighted:
+        loss_weights(runs[0], level_weights, args.far_weight, args.far_z)  # unknown levels refused here
     checkpoint_path = os.path.join(args.out, "checkpoint.pt")
     resume = None
     if args.resume == "auto" and os.path.exists(checkpoint_path):
@@ -512,6 +570,7 @@ def train(args):
                    "validation": [r["id"] for r in validating], "validateLayouts": validation_patterns,
                    "by": "layouts " + args.holdout_layouts if args.holdout_layouts else args.split_by,
                    "impulse": args.impulse, "levels": levels,
+                   "levelWeights": level_weights, "farWeight": args.far_weight, "farZ": args.far_z,
                    "seed": args.seed, "stats": stats, "inputs": INPUTS}, handle, indent=1)
     model = build(args.model, args, outputs=2 * (len(levels) if levels else 1)).to(device)
     parameters = sum(p.numel() for p in model.parameters())
@@ -548,6 +607,9 @@ def train(args):
               len(training), len(testing), ", ".join(held), steps_per_epoch, args.batch, crop,
               "; %d validating (%s), choosing the epoch" % (len(validating), ", ".join(r["id"] for r in validating))
               if validating else ""))
+    if weighted:
+        print("train_field: the loss weighted: levels %s, x%g beyond Z %g; the epoch chosen by the weighted loss" % (
+            ", ".join("%s x%g" % item for item in level_weights.items()) or "all x1", args.far_weight, args.far_z))
     sys.stdout.flush()
     if not state:
         reference = judge(model, testing, stats, not args.no_residual, device, autocast, dtype, model.multiple)
@@ -570,27 +632,45 @@ def train(args):
             scaler.update()
             total += float(loss.detach())
         seconds = time.time() - began
-        result = judge(model, testing, stats, not args.no_residual, device, autocast, dtype, model.multiple)
-        entry = {"epoch": epoch + 1, "trainLoss": total / steps_per_epoch, "heldOutLoss": result["loss"],
-                 "seconds": seconds, "lr": optimizer.param_groups[0]["lr"], "bands": result["bands"]}
-        if result.get("levels"):
-            entry["levels"] = result["levels"]
+        # With validation runs choosing the epoch, the held-out runs are only recorded, and
+        # `--judge-every N` records them every Nth epoch (and the last) to save time.
+        judged = (not validating or args.judge_every <= 1 or (epoch + 1) % args.judge_every == 0
+                  or epoch + 1 == args.epochs)
+        result = judge(model, testing, stats, not args.no_residual, device, autocast, dtype,
+                       model.multiple) if judged else None
+        entry = {"epoch": epoch + 1, "trainLoss": total / steps_per_epoch, "heldOutLoss": result["loss"] if result else None,
+                 "seconds": seconds, "lr": optimizer.param_groups[0]["lr"]}
+        if result:
+            entry["bands"] = result["bands"]
+            if result.get("levels"):
+                entry["levels"] = result["levels"]
+                entry["heldOutLevelLoss"] = result["levelLoss"]
+            if weighted:
+                entry["heldOutWeightedLoss"] = result["weightedLoss"]
         if validating:
             checked = judge(model, validating, stats, not args.no_residual, device, autocast, dtype, model.multiple)
             entry["validationLoss"] = checked["loss"]
+            if weighted:
+                entry["validationWeightedLoss"] = checked["weightedLoss"]
+            if checked.get("levelLoss"):
+                entry["validationLevelLoss"] = checked["levelLoss"]
         history.append(entry)
-        print("epoch %d/%d: train loss %.4f, held-out loss %.4f%s, %.1f s (%.0f ms a step)" % (
-            epoch + 1, args.epochs, entry["trainLoss"], entry["heldOutLoss"],
-            ", validation loss %.4f" % entry["validationLoss"] if validating else "", seconds,
-            1000 * seconds / steps_per_epoch))
-        if (epoch + 1) % args.print_every == 0 or epoch + 1 == args.epochs:
+        print("epoch %d/%d: train loss %.4f%s%s%s, %.1f s (%.0f ms a step)" % (
+            epoch + 1, args.epochs, entry["trainLoss"],
+            ", held-out loss %.4f" % entry["heldOutLoss"] if result else "",
+            ", validation loss %.4f" % entry["validationLoss"] if validating else "",
+            " (weighted:%s%s)" % (" held-out %.4f" % entry["heldOutWeightedLoss"] if result else "",
+                                  " validation %.4f" % entry["validationWeightedLoss"] if validating else "")
+            if weighted else "", seconds, 1000 * seconds / steps_per_epoch))
+        if result and ((epoch + 1) % args.print_every == 0 or epoch + 1 == args.epochs):
             print_table(result, "epoch %d" % (epoch + 1))
         # The epoch kept: the best on the validation runs when there are any, else on the held-out.
-        chosen_by = entry["validationLoss"] if validating else result["loss"]
+        held_by = (result["weightedLoss"] if weighted else result["loss"]) if result else float("inf")
+        chosen_by = (entry["validationWeightedLoss"] if weighted else entry["validationLoss"]) if validating else held_by
         improved = chosen_by < best
         best = min(best, chosen_by)
-        improved_held = result["loss"] < best_held
-        best_held = min(best_held, result["loss"])
+        improved_held = held_by < best_held
+        best_held = min(best_held, held_by)
         checkpoint = {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "scaler": scaler.state_dict() if scaled else None,
                       "epoch": epoch + 1, "best": best, "bestHeldOut": best_held, "validateLayouts": validation_patterns,
                       "history": history, "args": vars(args), "stats": stats,
@@ -779,8 +859,15 @@ def main(argv):
     parser.add_argument("--validate-layouts", default="",
                         help="train runs of the layouts matching these patterns (e.g. made-*-s5) choose the epoch "
                              "kept instead of the held-out runs; not trained on")
+    parser.add_argument("--judge-every", type=int, default=1,
+                        help="with --validate-layouts, judge the held-out runs only every Nth epoch (and the last)")
     parser.add_argument("--impulse", choices=("all", "first"), default="all",
                         help="the impulse target: every positive phase's, or the first phase's (field-export --first-phase)")
+    parser.add_argument("--level-weights", default="",
+                        help="weight these levels' cells in the loss, e.g. ground=4 (others 1)")
+    parser.add_argument("--far-weight", type=float, default=1.0,
+                        help="weight cells beyond scaled distance --far-z by this as well (default 1: off)")
+    parser.add_argument("--far-z", type=float, default=14.0, help="the scaled distance --far-weight starts at")
     parser.add_argument("--levels", default="ground",
                         help="ground (the 2 m field), all (it and every exported level), or names: ground,h6,…,roof")
     parser.add_argument("--seed", type=int, default=0)

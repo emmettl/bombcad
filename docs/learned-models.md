@@ -2401,12 +2401,149 @@ Everything is in `/Volumes/StudioData/bombcad/ml/judge/refs-full/`:
 - `fitcut.py`, `refit.py` and `terms-refit-full.json` for the peak terms;
 - the full-length boxes' own scatter in `../scatter2m/judge-boxes-full/`.
 
+## Round 5: one levels network weighted toward the ground floor (24 October 2026)
+
+emmettl/bombcad-work#69. Field model 2 needs two networks: round 2's at the ground floor and
+round 4's above. Round 4 alone trails round 2 at the ground floor. This round tried to train one
+levels network that matches round 2 there, so that the app needs one file again.
+
+**What changed in training.** `train_field.py` has new opt-in flags. With them off, training is as
+before, to the bit.
+
+- `--level-weights ground=4` weights each named level's cells in the loss.
+- `--far-weight 2 --far-z 14` weights every cell beyond scaled distance 14 as well. The two
+  multiply.
+- The epoch is chosen by the same weighted loss on the validation runs (`--validate-layouts`).
+  The held-out runs are only judged.
+- `--judge-every 5` records the held-out runs every fifth epoch only, which saves most of an
+  epoch's time.
+
+**Training.** Each of the three settings below:
+
+- trained on `main-levels-fixed`, round 4's dataset, with round 4's other arguments;
+- held out Beirut and the seed-6 layouts, as before;
+- set apart the 25 seed-5 runs (`made-*-s5`) to choose the epoch, leaving 100 runs to train on
+  against round 4's 125.
+
+The PC's link went to a Tailscale relay on 23 October (no direct connection, about 0.2 MB/s), and
+its send stopped at 3.4 of 10.7 GB. So all three trained on the Studio's GPU in float32 (MPS,
+`--amp off`), one at a time under gpu-slot. Each took 1.9–2.7 hours and about 18 GB.
+
+| Setting | Loss weights | Epoch chosen | Held-out loss at the nearest judged epoch (every level) |
+|---|---|---|---|
+| `field-unet-l5-g4` | ground ×4 | 158 | 0.0299 |
+| `field-unet-l5-g4f2` | ground ×4, ×2 beyond Z 14 | 122 | 0.0272 |
+| `field-unet-l5-g8f2` | ground ×8, ×2 beyond Z 14 | 123 | 0.0321 |
+| Round 4 (`field-unet-l4-strict`), for comparison | none | 130, chosen on the held-out runs | 0.0237 |
+
+Each was exported (`ml/field-unet-l5-*/app/*.bcfw`). Each was judged with its own scatter, measured
+on the 4 m recorder runs as round 4's was. The 2 m references are the full-length near boxes
+([above](#the-near-boxes-run-to-their-corners-23-october-2026)). The façade terms are main's.
+
+**Peaks against the 4 m recorder runs** (median / log-SD of predicted over recorded; the 52 recorder
+runs of `compare-fixed`):
+
+| | Round 2 | Round 4 | g4 | g4f2 | g8f2 |
+|---|---|---|---|---|---|
+| Beirut's ground floor, 50–700 m | 1.06 / 0.27 | 1.02 / 0.28 | 1.06 / 0.29 | 1.02 / 0.30 | 0.99 / 0.29 |
+| Beirut's 6–22 m, 50–700 m | | 1.00–1.03 / 0.27–0.28 | 1.03–1.08 / 0.29–0.30 | 0.99–1.05 / 0.30–0.33 | 0.94–0.98 / 0.28–0.31 |
+| Every strip, Z 0–3 | | 1.09 / 0.55 | 1.38 / 0.53 | 1.51 / 0.57 | 1.18 / 0.56 |
+| … Z 7–14 | | 0.99–1.00 / 0.20–0.21 | 0.96–0.97 / 0.20–0.21 | 0.93 / 0.19–0.20 | 0.93–0.94 / 0.21–0.22 |
+| … Z 20–28 | | 0.92 / 0.22 | 0.87 / 0.22 | 0.88 / 0.21 | 0.85 / 0.23 |
+
+**Glass by side on the full-length 2 m boxes** (exact / Heidke skill; then blown out, Brier / skill):
+
+| Sides | (c), field model 2 | Round 4 alone | g4 | g4f2 | g8f2 |
+|---|---|---|---|---|---|
+| Ground floor | **0.963 / 0.81** | 0.942 / 0.64 | 0.914 / 0.65 | 0.916 / 0.66 | 0.932 / 0.67 |
+| … beyond 1 km | **0.946 / 0.82** | 0.904 / 0.63 | 0.871 / 0.65 | 0.878 / 0.67 | 0.904 / 0.70 |
+| Upper storeys | **0.954 / 0.81** | 0.954 / 0.81 | 0.895 / 0.65 | 0.885 / 0.62 | 0.909 / 0.68 |
+| Every storey | **0.957 / 0.81** | 0.955 / 0.80 | 0.901 / 0.65 | 0.890 / 0.63 | 0.915 / 0.69 |
+| Blown out, ground floor | **0.0285 / 0.69** | 0.0399 / 0.57 | 0.0543 / 0.41 | 0.0551 / 0.41 | 0.0464 / 0.50 |
+| Blown out, upper storeys | **0.0352 / 0.68** | 0.0352 / 0.68 | 0.0703 / 0.37 | 0.0769 / 0.31 | 0.0623 / 0.44 |
+
+**Peaks by storey on the same boxes** (median / log-SD, every strip):
+
+| Level | (c) | Round 4 | g4 | g4f2 | g8f2 |
+|---|---|---|---|---|---|
+| Ground floor | 1.02 / 0.19 | 1.12 / 0.23 | 0.95 / 0.20 | 0.93 / 0.19 | 0.99 / 0.26 |
+| 6–30 m | 1.00–1.09 / 0.18–0.23 | (as (c)) | 0.87–0.92 / 0.17–0.23 | 0.86–0.91 / 0.16–0.24 | 0.88–0.95 / 0.19–0.25 |
+
+**Concrete walls, moderate or worse** (2,053 buildings × 10 yields, own scatter, 50 draws; Brier /
+skill / the tenths test):
+
+| | (c) | Round 4 alone | g4 | g4f2 | g8f2 |
+|---|---|---|---|---|---|
+| Peak ×1.15, impulse ×0.95 | **0.0188 / 0.656 / pass** | 0.0206 / 0.625 / fail | 0.0189 / 0.656 / fail | 0.0197 / 0.641 / fail | 0.0183 / 0.667 / fail |
+| Each yield held out | **0.0188 / 0.656 / pass** | 0.0212 / 0.614 / fail | 0.0198 / 0.639 / pass | 0.0210 / 0.617 / pass | 0.0192 / 0.650 / pass |
+
+Roofs are 0.74 in every variant.
+
+**What it says:**
+
+- **No round-5 network matches (c).** At the ground floor the best, g8f2, reaches glass 0.932 /
+  0.67, against (c)'s 0.963 / 0.81. Above it, g8f2 reaches 0.909 / 0.68 against 0.954 / 0.81, so it
+  is also worse than round 4 there.
+- **On walls, g8f2 is level with (c) at best.** Its Brier is 0.0183 at the adopted factors, against
+  0.0188, but it fails the tenths test there. Held out, it scores 0.0192 against 0.0188.
+- **The weighting did not sharpen the ground floor.** Against the 4 m recorder, Beirut's ground
+  floor at 50–700 m scatters by 0.29–0.30 in every setting. That is round 4's 0.28, and wider than
+  round 2's 0.27.
+- **What all three share is a tilt with distance:**
+  - they read high close in (×1.18–1.51 at Z under 3, against round 4's 1.09);
+  - they read low far out (0.85–0.88 at Z 20–28, against 0.92);
+  - on the 2 m boxes, which are mostly beyond 700 m, every storey reads 0.86–0.99 of the runs,
+    against (c)'s 1.00–1.09.
+  - The glass's far sides miss on that low bias: "some broken" loses all its skill.
+- **The far weighting did not undo the tilt.** g4f2 and g8f2 read Z 20–28 at 0.85–0.88, as g4
+  does.
+- **The tilt appears at every storey, not only the ground floor where the weight is.** So the
+  weighting is not its only cause. Two other things changed from round 4, and this round does not
+  separate them:
+  - 25 fewer runs to train on, the seed-5 layouts being set apart for validation;
+  - the Studio's float32 MPS training in place of the PC's bfloat16 CUDA.
+- **Round 3 measured the first of these.** Setting the same 25 runs apart cost it 0.011–0.013 of
+  glass exactness, with its peaks 4–5% lower at Beirut's façades
+  ([round 3](#round-3-fields-at-more-heights-22-october-2026)). Against round 4 on the same boxes,
+  round 5 loses 0.010–0.028 at the ground floor, about that, but 0.045–0.069 above it, four to six
+  times that. So above the ground floor the weighting, which takes weight from the upper storeys,
+  or the device, adds to it.
+
+**The verdict: no field-model-3.** Field model 2 stays as shipped, and nothing was published. The
+pin, the files and the option are unchanged.
+
+What would settle the cause, if one levels network is still wanted:
+- round 4's own settings trained on the Studio, to see what the device does;
+- the same with `--validate-layouts`, to see what 25 fewer runs do;
+- then a weighting on whichever of those matches round 4.
+
+Each run is about 2–2.5 Studio GPU-hours, or 1–1.5 on the PC once its link is direct again.
+
+Everything is in `/Volumes/StudioData/bombcad/ml/r5/`:
+
+- `train-studio.sh` for the training (the networks in `ml/field-unet-l5-*/`);
+- `train.sh` for the PC's attempt, and `epochs.py`;
+- `judge.sh` (export, recorder, scatter tables, glass, walls) and `judge-chain.sh`;
+- `judge-*/` for each network's judgements, and `judge-field-unet-l4-strict/` for round 4's on the
+  same full-length boxes;
+- `judge-fp-ground/` for round 2's ground floor against the fixed recorder runs;
+- `tables.py`, and `summary.py` with `summary.txt` for the tables above.
+
+```bash
+python train_field.py --data …/main-levels-fixed --out OUT --model unet --crop 256 --batch 16 --epochs 300 \
+    --impulse first --seed 0 --levels all --holdout-layouts 'beirut,made-*-s6' --validate-layouts 'made-*-s5' \
+    --judge-every 5 --device mps --amp off --level-weights ground=8 --far-weight 2 --far-z 14
+zsh /Volumes/StudioData/bombcad/ml/r5/judge.sh field-unet-l5-g8f2 export rec tables glass walls
+```
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up
   and has completed the first-phase training rounds above.
-- **Round 5, a ground-floor-weighted loss**, once the PC's Windows drive has room for the send
-  ([2 m scatter](#the-models-scatter-measured-on-2-m-runs-23-october-2026)).
+- **One levels network for every storey.** Round 5 did not match field model 2
+  ([round 5](#round-5-one-levels-network-weighted-toward-the-ground-floor-24-october-2026)). Next
+  would be round 4's settings on the Studio, with and without the validation runs set apart, to
+  find what tilts round 5's peaks with distance.
 - **Field model 2 on the small laptop**: the user's `BombCAD field-model check` there.
 - **Measured heights** to judge the levels on (emmettl/bombcad-work#69; routes, not readings, from
   the search of 21 October in [data wanted](data-wanted.md#to-fetch)). Alsubaei 2015's columns are
