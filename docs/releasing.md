@@ -143,6 +143,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.7.0 (14) | `914cd18d` | `83596e83-7a6f-4bcf-b0e4-1aa0e9cf2e48` | Superseded, not published     |
 | 0.7.0 (15) | `133685e0` | `24458f4e-01b3-4daa-a31f-26b09d6116c5` | Published 2026-10-22              |
 | 0.7.1 (16) | `e4434df6` | `6026e3d0-1d9d-4cb8-8615-30382779e280` | Published as v0.7.1           |
+| 0.7.2 (17) | `3eb8553e` | `7fec5f83-4313-47b6-8601-3e4f78e0d039` | Published as v0.7.2           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -357,6 +358,21 @@ passed `codesign --verify --deep --strict`, was accepted by `spctl` as `Notarize
 2026-10-24 at the user's word, with tag `v0.7.1` on `e4434df6`, as the latest release, its notes'
 links pointing at the docs as tagged. The copy downloaded back verified the same way. The
 Homebrew tap's cask is 0.7.1, and `brew audit --cask --strict --online` passed.
+
+Build 17 (0.7.2) was prepared on 2026-10-24 from `3eb8553e` on main (the branch `release/0.7.2`,
+in the worktree `$BOMBCAD_DATA/release-0.7.2`), with its notes assembled from three fragments and
+the record since 0.7.1 and landed with the version by `make ship`. The user ran `make release` in
+Terminal.app, once. It passed `make check` (446 app, 908 model and 663 core GPU tests,
+build-strict with no warnings; the log's "Full check: FAILED" is `test-nightly-suspects`' fixture,
+as before), the release smoke runs, and the app's own run and interface smoke from inside its
+bundle before signing and again before archiving. Apple accepted it (submission
+`7fec5f83-4313-47b6-8601-3e4f78e0d039`). A fresh expansion of its ZIP (42,565,911 bytes) matched
+the checksum (`5dd52b9d452c329046dffd0fda770ded90b4d483dd1810cdb530c26938536125`), validated its
+stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, is 0.7.2, build 17, arm64, and passed the smoke from inside its bundle.
+It was published on 2026-10-24 at the user's word, with tag `v0.7.2` on `3eb8553e`, as the latest
+release, its notes' links pointing at the docs as tagged. The copy downloaded back verified the
+same way. The Homebrew tap's cask is 0.7.2, and `brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
