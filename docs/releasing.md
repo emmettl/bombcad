@@ -142,6 +142,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.6.0 (13) | `27fb9be7` | `eddcd055-0eb0-492f-b911-63ca7d61d071` | Published as v0.6.0           |
 | 0.7.0 (14) | `914cd18d` | `83596e83-7a6f-4bcf-b0e4-1aa0e9cf2e48` | Superseded, not published     |
 | 0.7.0 (15) | `133685e0` | `24458f4e-01b3-4daa-a31f-26b09d6116c5` | Published 2026-10-22              |
+| 0.7.1 (16) | `e4434df6` | `6026e3d0-1d9d-4cb8-8615-30382779e280` | Published as v0.7.1           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -337,6 +338,25 @@ release. The release's notes add one known limitation found after the build: a c
 or shaped ground starts as a balloon, not from the mapped burst. The download was checked again:
 its checksum matched, its ticket validated, and `codesign` and `spctl` accepted it. The Homebrew
 tap's cask is 0.7.0, and `brew audit --cask --strict --online` passed.
+
+Build 16 (0.7.1) was prepared on 2026-10-23 and 24 from `e4434df6` on main (the branch
+`release/0.7.1-r4`, in the worktree `$BOMBCAD_DATA/release-0.7.1-r4`), with its notes assembled
+from 15 fragments and the record since 0.7.0, then refreshed four times as fixes landed before the
+build: the façade refit, field model 2, the hybrid far field, the full-length near boxes and the
+work trace. A first `make release` on `8da9b98d`, run from an agent's shell, passed every check and
+signed, then stopped at submission: `notarytool` found no `BombCAD-notary` profile there. Nothing
+reached Apple, so the build number was kept. The user ran `make release` in Terminal.app. It passed
+`make check` (442 app, 908 model and 657 core GPU tests, build-strict with no warnings; the log's
+"Full check: FAILED" is `test-nightly-suspects`' fixture, as in builds 14 and 15), the release
+smoke runs, and the app's own run and interface smoke from inside its bundle before signing and
+again before archiving. Apple accepted it (submission `6026e3d0-1d9d-4cb8-8615-30382779e280`). A
+fresh expansion of its ZIP (42,539,145 bytes) matched the checksum
+(`04e559940bdea92e170f0156479d7a4da6a20bc2604a1f9fb4de6a0ef5937e9d`), validated its stapled ticket,
+passed `codesign --verify --deep --strict`, was accepted by `spctl` as `Notarized Developer ID`, is
+0.7.1, build 16, arm64, and passed the smoke from inside its bundle. It was published on
+2026-10-24 at the user's word, with tag `v0.7.1` on `e4434df6`, as the latest release, its notes'
+links pointing at the docs as tagged. The copy downloaded back verified the same way. The
+Homebrew tap's cask is 0.7.1, and `brew audit --cask --strict --online` passed.
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
