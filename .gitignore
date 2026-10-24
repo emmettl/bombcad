@@ -1,4 +1,7 @@
 .build/
+# On the Studio, .build is a link to the checkout's build folder on StudioData (Scripts/build-dir.py).
+/.build
+/.build.moving/
 .swiftpm/
 *.xcodeproj
 xcuserdata/

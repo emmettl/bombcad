@@ -33,6 +33,10 @@ esac
 bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' Support/Viewer-Info.plist)
 team="${BOMBCAD_IPAD_TEAM:-UCF9FS9FWW}"
 
+# Xcode's derived data in the build folder, linked first (Scripts/build-dir.py: on the Studio, off the
+# boot disk).
+python3 Scripts/build-dir.py path >/dev/null
+
 if [ "$device" = 1 ]; then
   derived="${BOMBCAD_IPAD_DERIVED:-.build/ipad-device}"
   xcodebuild build -scheme BombCAD -configuration "$xcode_configuration" \

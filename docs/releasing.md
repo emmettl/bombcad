@@ -6,6 +6,12 @@ opened on another Mac. Nothing here tags, uploads or publishes anything.
 `make app` alone produces an ad-hoc-signed `dist/BombCAD.app` for use on the machine that built
 it.
 
+The build is SwiftPM's, in `.build`. On the Studio, a checkout on the boot disk has its `.build`
+linked to `$BOMBCAD_DATA/builds/<checkout>` (see
+[where builds go](continuous-integration.md#where-builds-go)); release worktrees, made on
+StudioData, keep `.build` as a folder. Either way the scripts find the products through `.build`
+and `swift build --show-bin-path`, and the link is ignored, so the checkout stays clean.
+
 ## One-time setup
 
 The release machine needs a **Developer ID Application** certificate with its private key in

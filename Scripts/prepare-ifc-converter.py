@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fetch a checksum-pinned official IfcConvert into the ignored build cache."""
 import hashlib
+import importlib.util
 import io
 import json
 import platform
@@ -13,6 +14,11 @@ manifest = json.loads((root / "Support/IFC/converter.json").read_text())
 archive = manifest["archives"].get(platform.machine())
 if archive is None:
     raise SystemExit("IFC conversion supports macOS arm64 and x86_64 builds.")
+# In the build folder, linked first (Scripts/build-dir.py: on the Studio, off the boot disk).
+spec = importlib.util.spec_from_file_location("build_dir", root / "Scripts/build-dir.py")
+build_dir = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(build_dir)
+build_dir.ensure(root)
 cache = root / ".build/ifc-converter"
 cache.mkdir(parents=True, exist_ok=True)
 executable = cache / "IfcConvert"

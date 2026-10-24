@@ -35,6 +35,7 @@ import argparse
 import csv
 import datetime as dt
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -293,6 +294,14 @@ def scenarios() -> list[Scenario]:
 
 # ---------------------------------------------------------------------------------------------
 # The machine and the quiet window
+
+
+def build_dir():
+    """Scripts/build-dir.py, which links this checkout's .build to its build folder."""
+    spec = importlib.util.spec_from_file_location("build_dir", ROOT / "Scripts" / "build-dir.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def sh(*command: str) -> str:
@@ -657,6 +666,9 @@ def main() -> int:
     if not args.collect:
         log(f"perf run {stamp} at {REVISION} into {out}")
     if not args.no_build:
+        # This checkout's build folder linked first (Scripts/build-dir.py: on the Studio, off the boot
+        # disk; a checkout on StudioData, as perf-wt is, keeps its own .build).
+        build_dir().ensure(ROOT)
         tools = sorted({s.tool for s in chosen})
         for tool in tools:
             log(f"building {tool} (release)")

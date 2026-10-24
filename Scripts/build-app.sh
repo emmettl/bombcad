@@ -10,6 +10,8 @@ case "$configuration" in
   *) echo "Usage: $0 [debug|release]" >&2; exit 1 ;;
 esac
 
+# This checkout's build folder linked first (Scripts/build-dir.py: on the Studio, off the boot disk).
+python3 Scripts/build-dir.py path >/dev/null
 swift build -c "$configuration" --product BombCAD
 binary_directory="$(swift build -c "$configuration" --show-bin-path)"
 

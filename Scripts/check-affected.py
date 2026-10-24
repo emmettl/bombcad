@@ -72,6 +72,9 @@ REMOTE_SPEC.loader.exec_module(remote)
 SWEEP_SPEC = importlib.util.spec_from_file_location("remote_sweep", Path(__file__).with_name("remote-sweep.py"))
 sweep = importlib.util.module_from_spec(SWEEP_SPEC)
 SWEEP_SPEC.loader.exec_module(sweep)
+BUILD_DIR_SPEC = importlib.util.spec_from_file_location("build_dir", Path(__file__).with_name("build-dir.py"))
+build_dir = importlib.util.module_from_spec(BUILD_DIR_SPEC)
+BUILD_DIR_SPEC.loader.exec_module(build_dir)
 
 # The Linux lane: BlastModel's suites run on this host (Scripts/remote-sweep.py's `test`) beside
 # the build and the other suites here, when it answers and its lock is free. BOMBCAD_LINUX_HOST
@@ -1020,6 +1023,10 @@ def main():
                 print(f"  BlastModel's {len(lane)} suite(s) on the Linux lane, {linux_host}, beside the rest", flush=True)
     if arguments.dry_run:
         return 0
+    # This checkout's build folder linked before anything builds here (Scripts/build-dir.py: on the
+    # Studio, off the boot disk), the digests' release build beside the steps included.
+    if level != "documents":
+        build_dir.ensure(ROOT)
     wait = 7200 if forced == "remote" else 0
 
     def slotted(command):  # under gpu-slot here, unless already in a slot or without one

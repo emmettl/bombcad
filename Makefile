@@ -1,4 +1,4 @@
-.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected ship test-impact release-check release perf perf-compare
+.PHONY: xcode build build-strict app app-smoke run test test-core release-smoke lint format icons ifc-converter ci-test check check-light check-remote check-anywhere check-affected ship test-impact release-check release perf perf-compare build-dir build-folder clean-build
 
 CONFIGURATION ?= release
 # Tests settle many throwaway structures; on the Studio keep their settle cache on StudioData,
@@ -8,7 +8,20 @@ export BOMBCAD_DATA ?= /Volumes/StudioData/bombcad
 export BOMBCAD_SETTLE_CACHE ?= /Volumes/StudioData/bombcad/settle-cache
 endif
 
-build:
+# This checkout's build folder (Scripts/build-dir.py): on the Studio, $BOMBCAD_DATA/builds/<checkout>,
+# which .build links to, so that worktrees' builds stay off the boot disk; elsewhere .build itself.
+# Every target that builds links it first; a bare `swift build` or `swift test` then uses it too.
+build-dir:
+	@python3 Scripts/build-dir.py path
+
+build-folder:
+	@python3 Scripts/build-dir.py path >/dev/null
+
+# This checkout's build removed, wherever it is (not `rm -rf .build`, which drops only the link).
+clean-build:
+	@python3 Scripts/build-dir.py clean
+
+build: build-folder
 	swift build
 
 # The package and its tests built, failing on any compiler warning in its own code (see
@@ -41,19 +54,19 @@ ifc-converter:
 # main-actor/GPU test work. The second invocation runs every other test exactly once.
 PLAYBACK_TIMING_TEST := BombCADTests[.]SimulationModelTests/pacedPlayback
 
-test: ifc-converter
+test: build-folder ifc-converter
 	swift test --filter '$(PLAYBACK_TIMING_TEST)'
 	swift test --skip '$(PLAYBACK_TIMING_TEST)'
 
 # The core target alone: the solvers' tests, a few minutes on the CI mini. The application's
 # tests, which take most of `make test`, are left to the full check.
-test-core: ifc-converter
+test-core: build-folder ifc-converter
 	swift test --filter '(BlastModelTests|BlastCoreTests)\.'
 
 # The solvers built as a release is, run for a few seconds each: solid and shell elements, bars
 # that slip and base connections. `swift test` builds for debugging, and the optimiser has
 # miscompiled code that ran correctly there. Then the packaged app, run from inside its bundle.
-release-smoke:
+release-smoke: build-folder
 	swift build -c release --product blastbench
 	.build/release/blastbench shear --layers 12
 	.build/release/blastbench shear --layers 12 --bond pullout
@@ -78,6 +91,7 @@ ci-test:
 	python3 Scripts/test-remote.py
 	python3 Scripts/test-nightly-suspects.py
 	python3 Scripts/test-build-strict.py
+	python3 Scripts/test-build-dir.py
 	python3 Scripts/test-concrete-matrix.py
 	python3 Scripts/test-update-homebrew-tap.py
 	python3 Scripts/test-check-affected.py

@@ -55,9 +55,12 @@ Rules for every session and agent. Keep them lean: the aim is throughput with li
 - Wait on a pid (`while kill -0 PID`), a file the job writes at its end, or run_in_background's
   notice. Never `until ! pgrep -f PATTERN`: the waiting shell's own command line matches it, so it
   never ends. Shut down any Simulator you boot (`xcrun simctl shutdown`): gpu-slot can't see it.
-- The boot disk is small. When your work has landed, delete your worktree's `.build`
-  (`rm -rf .build` in your own worktree only): each one holds 1.5–2.5 GB, and finished agents'
-  builds filled the disk on 23 Oct. Big builds and outputs go on StudioData.
+- The boot disk is small, and each worktree's build holds 1.5–2.5 GB (they filled it on 23 and
+  24 Oct). So on the Studio a checkout's `.build` is a link to `$BOMBCAD_DATA/builds/<checkout>`,
+  which every `make` target that builds sets up. In a fresh worktree, run `make -s build-dir`
+  (it prints the folder) before a bare `swift build` or `swift test`; then plain commands use it.
+  Don't pass that folder as `--scratch-path`, which rebuilds everything. When your work has
+  landed, run `make clean-build` (`rm -rf .build` drops only the link).
 - Scratch and large outputs go on `/Volumes/StudioData/bombcad/`, not the boot disk. The docs
   write it `$BOMBCAD_DATA`, which `make` exports; export it yourself before pasting a docs command.
   `make` targets point tests' settle cache there; when you run `swift test` yourself, set

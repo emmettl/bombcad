@@ -103,6 +103,32 @@ same digests again, the base's binary and digests cached and the branch's build 
 median 41 minutes in its last 15 runs on the Studio (quartiles 26 and 46), its wait for the slot
 aside. The runs' memory peaked at 5.1 to 7.3 GB (refined twice), so they declare 8 GB.
 
+## Where builds go
+
+On the Studio, a checkout's SwiftPM build lives on StudioData, not on the small boot disk, where
+the worktrees' builds (1.5 to 2.5 GB each) filled it on 23 and 24 October 2026.
+`Scripts/build-dir.py` links the checkout's `.build` to `$BOMBCAD_DATA/builds/<folder>-<hash of
+its path>`, and every target and script that builds calls it first: `make build`, `test`,
+`test-core`, `release-smoke`, `app`, `build-strict`, `ifc-converter`, check-affected (its digests'
+release build too), the perf runner and the iPad viewer's build. A `.build` still a folder on the
+boot disk is moved across once, by a copy so that the build stays incremental, unless SwiftPM is
+building in it then. `make -s build-dir` prints the folder, and `make clean-build` removes it
+with the link.
+
+A link rather than SwiftPM's `--scratch-path` because everything already names `.build`: the
+Makefile, the scripts' default paths (`.build/release/blastbench`, `.build/ifc-converter`), the
+tests, the commands in these documents, and a session's bare `swift build`. Through the link they
+all reach the one folder by the one path SwiftPM recorded. Alternating `--scratch-path <folder>`
+with `.build` would plan the whole build afresh each time ("Stale file ... outside of the allowed
+root paths"). The app's sweep payload already resolves links (`.build/release` is one).
+
+Nothing changes elsewhere: without `/Volumes/StudioData/bombcad` (CI, the mini and its lanes,
+bombcad-pc and the Linux workflow, the MacBook) `.build` is a folder as before, as it is for a
+checkout already on StudioData (the release, perf-wt and digest-cache worktrees).
+`BOMBCAD_BUILDS` names another parent folder; set empty, it keeps `.build` a folder. Copies to the
+mini and the PC leave `.build` out by name, the link included. `Scripts/build-dir.py list` names
+each build folder's checkout and marks those whose checkout is gone.
+
 ## Landing work: `make ship`
 
 `make ship` (`Scripts/ship.py`) is the one command a session uses to push. In order, each step's
@@ -314,8 +340,8 @@ the package and its tests, failing on any warning in this package's own code, ea
 SwiftPM suppresses ContinuumKit's. There were none on 12 October 2026, down from 108 (mostly
 `concurrentPerform` closures that Dispatch marks `@Sendable`; the parallel loops now go through
 `concurrently(iterations:_:)` in BlastCore, whose comment says what keeps them safe). Only files
-compiled in a build can warn, so an incremental build catches what a change brings; `rm -rf
-.build` first to see them all.
+compiled in a build can warn, so an incremental build catches what a change brings; `make
+clean-build` first to see them all.
 
 A Check run is never cancelled by a newer push: the newest push waits behind it and older waiting
 ones are dropped, so at most one waits. A run started by hand has a queue of its own, by its suite

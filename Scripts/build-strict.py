@@ -5,12 +5,13 @@
 SwiftPM suppresses the warnings of remote dependencies (ContinuumKit), so what is left is ours:
 a warning in Sources/ or Tests/ fails the build, with each one listed once. Only files compiled
 in this build can warn, so an incremental build catches what a change brings and a clean build
-(`rm -rf .build`) everything. The package had none on 2026-10-12.
+(`make clean-build`) everything. The package had none on 2026-10-12.
 
 A warning raised inside a macro's expansion (`#expect`, say) names the expansion rather than a
 file; it counts against the file and line the next line says the expanded code originates from.
 """
 
+import importlib.util
 import os
 import re
 import subprocess
@@ -48,6 +49,11 @@ def warnings(lines, root):
 
 def main(arguments):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # This checkout's build folder, linked first (on the Studio, off the boot disk).
+    spec = importlib.util.spec_from_file_location("build_dir", os.path.join(root, "Scripts", "build-dir.py"))
+    build_dir = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build_dir)
+    build_dir.ensure(root)
     process = subprocess.Popen(
         ["swift", "build", "--build-tests", *arguments], cwd=root, stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True, errors="replace")
