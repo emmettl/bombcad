@@ -186,9 +186,13 @@ struct StepControl {
     uint clockHigh;
 };
 
-// The run's clock in ticks of 2^-40 s: each step's dt, a float, converts exactly, so that the time
-// at a step is the same however the run's steps are cut into batches (a batch's float sum of its
-// steps from its start rounded with each cut). The host carries it from batch to batch.
+// The run's clock in ticks of 2^-40 s: each step adds its dt in whole ticks, so that the time at a
+// step is the same however the run's steps are cut into batches (a batch's float sum of its steps
+// from its start rounded with each cut). The host carries it from batch to batch. A dt of 2^-17 s
+// (7.6 us) or more converts exactly, its float holding no bit finer than a tick; a shorter one, as
+// fine cells near a charge take (5-50 mm cells, steps of 1-10 us), is cut down to a whole tick, so
+// the clock falls behind the steps' sum by under a tick (0.9 ps) a step: under 10 ns over 10 ms of
+// 1 us steps, a thousandth of a step, and still the same however batched (emmettl/bombcad-work#76).
 static inline ulong runClock(const device StepControl &control) {
     return ulong(control.clockLow) | (ulong(control.clockHigh) << 32);
 }

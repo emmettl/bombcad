@@ -3,8 +3,9 @@
 // waits (see FrameExtraction.swift). Each kernel does nothing unless the batch's last step reached
 // its time limit, which is how a batch lands on a frame; the host keeps what they wrote only then.
 
-// Whether `x` is a finite number, by its bits: fast maths may take any comparison or isfinite to
-// hold for infinities and NaNs.
+// Whether `x` is a finite number, by its bits: fast maths may take any comparison to hold for
+// infinities and NaNs. Metal's own isnan and isfinite are tests of the bits too, and hold under it
+// (FastMathGuardTests, emmettl/bombcad-work#76).
 static inline bool finiteBits(float x) {
     return (as_type<uint>(x) & 0x7f800000u) != 0x7f800000u;
 }

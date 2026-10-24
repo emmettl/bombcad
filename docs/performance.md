@@ -1053,6 +1053,17 @@ Fast math stays the default. A run chooses relaxed math or no fused multiply-add
 failure moves with the rounding; [validation](validation.md#the-models-spread-from-uncertain-inputs)
 says how.
 
+**NaN guards hold under it (24 October 2026).** Metal's fast math keeps NaNs and infinities (its
+functions are compiled with `no-nans-fp-math` and `no-infs-fp-math` false), and its `isnan` and
+`isfinite` are tests of the bits, as Extract.metal's `finiteBits` is. So the guards in
+Structure.metal and Shell.metal stay in. They are the splats' velocity, the debris's air pressure,
+the debris exchange's write-back that keeps a NaN out of the air, and a body's envelope.
+`FastMathGuardTests` copies each guarded path and compiles it with the library and its options.
+It feeds each one NaN and infinities, and each holds; with the guards taken out, every test fails.
+What fast math may fold is a comparison such as `!(x >= 0)` or a `max` with a NaN: the wave-speed
+guard tests the bits for that reason (03606e38). Nothing needed changing, so the digests are as
+they were (emmettl/bombcad-work#76).
+
 ## Other Macs
 
 Measured on the CI Mac mini (M4, 10-core GPU, 120 GB/s, 24 GB) on 7 and 8 October 2026, against

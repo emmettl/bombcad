@@ -17,6 +17,13 @@ import simd
 /// between `--seed-from` and the hand-over, of the near run's peak (and first impulse) over the
 /// surrogate's. Arrivals beyond take Kingery–Bulmash's, scaled by the median of the near run's
 /// simulated over Kingery–Bulmash's at its observers from 500 m to the hand-over.
+///
+/// The near run's layout is not quite the full run's: each projects the map about its own corner,
+/// so a building's footprint can land a cell over and its ground a few centimetres off. A strip
+/// inside the hand-over that the near run does not hold (on Beirut 7,855 of 26,131, in 367
+/// buildings) is judged on the far field, as `district-hybrid` judges it, and counted apart
+/// (`unheld`; emmettl/bombcad-work#76). Strips' distances are from the charge to the face, in 3-D,
+/// as `district-hybrid`'s and the app's are.
 enum HybridBench {
     struct Band: Codable {
         var from: Double
@@ -41,6 +48,9 @@ enum HybridBench {
         /// Sides whose glass state the hybrid gives as the run does, and within one.
         var glassExact: Double
         var glassWithinOne: Double
+        /// Of the strips, those inside the hand-over that the near run does not hold, judged on the
+        /// far field as `district-hybrid` judges them (emmettl/bombcad-work#76).
+        var unheldStrips: Int?
     }
 
     struct ArrivalRow: Codable {
@@ -56,6 +66,9 @@ enum HybridBench {
         var handoverM: Double
         var farField: HybridFarField
         var bands: [Band]
+        /// The strips inside the hand-over that the near run does not hold, on the far field: how
+        /// many, and the hybrid over the full run for them alone (nil when there are none).
+        var unheld: Band?
         var arrivals: [ArrivalRow]
         var nearWallS: Double?
         var fullWallS: Double?
@@ -168,6 +181,8 @@ enum HybridBench {
             var surrogate: GlazingBreakage
             var distance: Double
             var side: [Int]
+            /// Inside the hand-over but not held by the near run, so on the far field.
+            var unheld = false
         }
         var outcomes = [Outcome?](repeating: nil, count: kept.count)
         outcomes.withUnsafeMutableBufferPointer { out in
@@ -189,11 +204,14 @@ enum HybridBench {
                 var prediction = predictions[m]
                 let surrogate = FacadeLoadSurrogate.load(component, prediction, binS: strip.binS)
                 let hybrid: (GlazingBreakage, Double, Double)
-                if d < handover {
-                    guard let j = nearOf[key(full, component)] else { return }
+                let held = d < handover ? nearOf[key(full, component)] : nil
+                if let j = held {
                     let nearStrip = near.index.strips[near.strips[j].saved]
                     hybrid = judged(near.net(near.strips[j].saved), binS: nearStrip.binS)
                 } else {
+                    // Beyond the hand-over, and any strip inside it the near run does not hold (the
+                    // two layouts' ground or strips differ), on the far field, as `district-hybrid`
+                    // takes them.
                     prediction = far.apply(prediction, distanceM: d)
                     hybrid = judged(
                         FacadeLoadSurrogate.load(component, prediction, binS: strip.binS).netPa,
@@ -202,19 +220,19 @@ enum HybridBench {
                 out[m] = Outcome(
                     run: run, hybrid: hybrid,
                     surrogate: judged(surrogate.netPa, binS: strip.binS).0, distance: d,
-                    side: [n, strip.axis, strip.outward])
+                    side: [n, strip.axis, strip.outward], unheld: d < handover && held == nil)
             }
         }
         let all = outcomes.compactMap { $0 }
-        print("Judged \(all.count) of \(kept.count) strips (inside the hand-over, those the near run holds)")
+        let unheld = all.filter(\.unheld)
+        print(
+            "Judged \(all.count) strips; \(unheld.count) of the \(all.filter { $0.distance < handover }.count) "
+                + "inside the hand-over the near run does not hold, on the far field")
 
         // By distance band: loads by strip, glass by building side.
         let edges: [Double] = [0, 500, 750, 1000, 1250, 1500, 1750, 2000, 2500, 3000]
         let geer = Dictionary(uniqueKeysWithValues: DistrictGlass.geer.map { ($0.from, $0) })
-        var bands: [Band] = []
-        for (lo, hi) in zip(edges, edges.dropFirst()) {
-            let members = all.filter { $0.distance >= lo && $0.distance < hi }
-            guard !members.isEmpty else { continue }
+        func band(_ members: [Outcome], from lo: Double, to hi: Double) -> Band {
             func stats(_ pairs: [(Double, Double)]) -> (Double, Double) {
                 let logs = pairs.compactMap { $0.0 > 0 && $0.1 > 0 ? log($0.1 / $0.0) : nil }
                 guard !logs.isEmpty else { return (0, 0) }
@@ -242,25 +260,37 @@ enum HybridBench {
             agreement.finish()
             let k = Double(max(sides.count, 1))
             let g = geer[lo]
-            bands.append(
-                Band(
-                    from: lo, to: hi, sides: sides.count, strips: members.count, peakRatio: peak,
-                    peakLogSD: peakSD,
-                    impulseRatio: impulse, impulseLogSD: impulseSD, runAny: counts[0] / k,
-                    hybridAny: counts[1] / k,
-                    surrogateAny: counts[2] / k, geerAny: g?.damaged, runBlown: counts[3] / k,
-                    hybridBlown: counts[4] / k, surrogateBlown: counts[5] / k, geerBlown: g?.blownOut,
-                    glassExact: agreement.exact, glassWithinOne: agreement.withinOne))
+            return Band(
+                from: lo, to: hi, sides: sides.count, strips: members.count, peakRatio: peak,
+                peakLogSD: peakSD,
+                impulseRatio: impulse, impulseLogSD: impulseSD, runAny: counts[0] / k,
+                hybridAny: counts[1] / k,
+                surrogateAny: counts[2] / k, geerAny: g?.damaged, runBlown: counts[3] / k,
+                hybridBlown: counts[4] / k, surrogateBlown: counts[5] / k, geerBlown: g?.blownOut,
+                glassExact: agreement.exact, glassWithinOne: agreement.withinOne,
+                unheldStrips: members.filter(\.unheld).count)
         }
+        var bands: [Band] = []
+        for (lo, hi) in zip(edges, edges.dropFirst()) {
+            let members = all.filter { $0.distance >= lo && $0.distance < hi }
+            guard !members.isEmpty else { continue }
+            bands.append(band(members, from: lo, to: hi))
+        }
+        let unheldBand = unheld.isEmpty ? nil : band(unheld, from: 0, to: handover)
         print(
-            "Band: strips, hybrid over run peak / impulse (median, log sd); sides some broken run / hybrid / surrogate | GEER;"
-                + " blown out run / hybrid / surrogate | GEER; glass state exact / within one")
-        for b in bands {
+            "Band: strips (not held), hybrid over run peak / impulse (median, log sd); sides some broken run / hybrid / "
+                + "surrogate | GEER; blown out run / hybrid / surrogate | GEER; glass state exact / within one"
+        )
+        for (b, label) in bands.map({ ($0, "") })
+            + (unheldBand.map { [($0, "  not held, on the far field:")] } ?? [])
+        {
+            if !label.isEmpty { print(label) }
             print(
                 String(
                     format:
-                        "  %4.0f–%4.0f m %6d  %.2f (%.2f) / %.2f (%.2f);  %.2f / %.2f / %.2f | %@;  %.2f / %.2f / %.2f | %@;  %.2f / %.2f",
-                    b.from, b.to, b.strips, b.peakRatio, b.peakLogSD, b.impulseRatio, b.impulseLogSD,
+                        "  %4.0f–%4.0f m %6d (%5d)  %.2f (%.2f) / %.2f (%.2f);  %.2f / %.2f / %.2f | %@;  %.2f / %.2f / %.2f | %@;  %.2f / %.2f",
+                    b.from, b.to, b.strips, b.unheldStrips ?? 0, b.peakRatio, b.peakLogSD, b.impulseRatio,
+                    b.impulseLogSD,
                     b.runAny,
                     b.hybridAny, b.surrogateAny, b.geerAny.map { String(format: "%.2f", $0) } ?? "–",
                     b.runBlown,
@@ -293,7 +323,8 @@ enum HybridBench {
                 nearReport.map { String(format: "%.0f s", $0.wallS) } ?? "–", farFieldS,
                 fullReport.map { String(format: "%.0f s", $0.wallS) } ?? "–"))
         let result = Judged(
-            massKg: mass, handoverM: handover, farField: far, bands: bands, arrivals: arrivals,
+            massKg: mass, handoverM: handover, farField: far, bands: bands, unheld: unheldBand,
+            arrivals: arrivals,
             nearWallS: nearReport?.wallS,
             fullWallS: fullReport?.wallS, farFieldS: farFieldS)
         if let out = value("out") {
@@ -311,6 +342,11 @@ enum HybridBench {
         var farField: HybridFarField
         var nearComponents: Int
         var farComponents: Int
+        /// Of those on the far field, the façade strips inside the hand-over that the near run does
+        /// not hold (the two layouts' ground or strips differ), and the other components inside it
+        /// (emmettl/bombcad-work#76).
+        var unheldStrips: Int?
+        var otherInside: Int?
         /// Of those, the ones beyond the distances the surrogate was fitted over: extrapolated.
         var outsideFit: Int?
         var farFieldS: Double
@@ -335,8 +371,11 @@ enum HybridBench {
     /// [--trend-from 500] [--out district.json]`: a district's envelope damage from its near run
     /// (`district-compare --save-loads` on a box reaching the hand-over and its faces' clearance)
     /// and the far field beyond (`HybridFarField`), with no full run: each façade strip inside the
-    /// hand-over on the near run's history, each beyond it, and every other component, on the
-    /// surrogate's pulse (beyond the hand-over, carried as the far field).
+    /// hand-over on the near run's history, and every other component on the far field's pulse:
+    /// those beyond it, the walls, slabs and roofs inside it, and the façade strips inside it that
+    /// the near run does not hold (its layout's projection differs a little; on Beirut about 30% of
+    /// them), counted in the output (`unheldStrips`, `otherInside`). Its bands of glass by building
+    /// side are GEER's, by plan distance from the charge to the building's centre, as GEER's are.
     static func district(_ args: [String]) throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         func value(_ name: String) -> String? { SurrogateBench.value(args, name) }
@@ -393,7 +432,8 @@ enum HybridBench {
         // Each component's load: the near run's history, or the far field's pulse.
         var nearCount = 0
         var farCount = 0
-        var unmatched = 0
+        var unheld = 0
+        var otherInside = 0
         var outsideFit = 0
         for n in estimate.components.indices {
             let component = estimate.components[n]
@@ -409,7 +449,9 @@ enum HybridBench {
             } else {
                 // Beyond the hand-over, and any strip inside it the near run does not hold, on the far
                 // field (never the surrogate unmatched).
-                if distances[n] < handover { unmatched += 1 }
+                if distances[n] < handover {
+                    if component.kind == .facade { unheld += 1 } else { otherInside += 1 }
+                }
                 if estimate.predictions[n].outsideFit { outsideFit += 1 }
                 estimate.loads[n] = FacadeLoadSurrogate.load(
                     component, far.apply(estimate.predictions[n], distanceM: distances[n]),
@@ -447,11 +489,11 @@ enum HybridBench {
         print(
             String(
                 format:
-                    "Near field: %d façade strips from the near run (%@), %d inside it on the far field; far field: %d components beyond %.0f m (peak ×%.3f, impulse ×%.3f, slopes %.3f, %.3f); loads %.1f s, damage %.1f s",
-                nearCount, nearReport.map { String(format: "%.0f s", $0.wallS) } ?? "–", unmatched, farCount,
-                handover,
-                far.peak,
-                far.impulse, far.peakSlope, far.impulseSlope, farFieldS, damageS))
+                    "Near field: %d façade strips from the near run (%@); far field: %d components (peak ×%.3f, impulse ×%.3f, slopes %.3f, %.3f), %d of them façade strips inside %.0f m the near run does not hold and %d walls, slabs and roofs inside it; loads %.1f s, damage %.1f s",
+                nearCount, nearReport.map { String(format: "%.0f s", $0.wallS) } ?? "–", farCount,
+                far.peak, far.impulse, far.peakSlope, far.impulseSlope, unheld, handover, otherInside,
+                farFieldS,
+                damageS))
         if outsideFit > 0 {
             print("  \(outsideFit) of them beyond the distances the surrogate was fitted over: extrapolated.")
         }
@@ -467,7 +509,8 @@ enum HybridBench {
             let result = District(
                 method: HybridFarField.method, standing: HybridFarField.standing, massKg: mass,
                 radiusM: radius,
-                farField: far, nearComponents: nearCount, farComponents: farCount, outsideFit: outsideFit,
+                farField: far, nearComponents: nearCount, farComponents: farCount, unheldStrips: unheld,
+                otherInside: otherInside, outsideFit: outsideFit,
                 farFieldS: farFieldS,
                 damageS: damageS, nearWallS: nearReport?.wallS, bands: bands, buildings: buildings)
             let encoder = JSONEncoder()

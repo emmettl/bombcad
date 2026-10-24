@@ -157,6 +157,45 @@ at all gave the same at 1.1 kt and worse impulses at 0.5 kt (up to 2.1 times). W
 `judge-adopt/hybrid-*` before the hold, `hybrid-try/` with it (`base-*` carried, `held-*` as the
 app holds it) and the other trend bands.
 
+### Strips the near run does not hold (24 October 2026)
+
+A review asked whether façade strips inside the hand-over with no matching near-run strip kept
+the surrogate's own loads, unscaled and unreported (emmettl/bombcad-work#76).
+
+- **How many.** On Beirut, 7,855 of the 26,131 façade strips inside 1 km that `hybrid-judge`
+  compares, in 367 buildings, and 14,948 of 50,272 in `district-hybrid` (about 30%). The count is
+  the same at every yield. The cause is the bench's two layouts, not the run. Each projects the map
+  about its own corner, whose latitude sets the east-west scale (`MapBuildingPlacement`), and puts
+  the charge at its box's centre. The near box's corner lies 1.2 km nearer the charge. So between
+  the two layouts every building sits 0.48 m differently east-west from the charge, give or take
+  0.12 m at 1 km east or west. That moves some footprints by a cell (166 of the buildings) and the
+  ground under others by centimetres (201), and their strips' boxes no longer match. In the app
+  (`DistrictLayout.hybrid`) the far set holds only buildings that the near scene does not place,
+  so none of its strips needs a match. They do sit up to half a metre east-west from where the near
+  layout would have put them, well under a cell.
+- **What they get.** Since 19 October (87deaa26) `district-hybrid` gives them the far field, with
+  the match at their distance, and counts them. `hybrid-judge` left them out of its comparison.
+  Now it judges them on the far field too. Its bands give how many each holds, and it sets them
+  against the full run apart. `district.json` records them (`unheldStrips`, with `otherInside` for
+  the walls, slabs and roofs inside the hand-over, which take the far field as well).
+- **Whether it matters.** Little. Their peaks on the far field are 1.02, 1.02 and 1.03 of the full
+  run's (median, at 0.2, 0.5 and 1.1 kt), but scatter 0.29–0.41 in log, against 0.03–0.08 for
+  the strips the near run holds. Their sides' glass is all broken in the run and in the hybrid at
+  every yield. All are blown out at 0.5 and 1.1 kt, and at 0.2 kt 0.85 against the run's 0.84, with
+  the glass state the run's on 0.84 of the sides. Taking them into the 0.2 kt comparison moves its
+  750–1,000 m band's blown-out share from 0.91 to 0.87 (run 0.78). It moves its exact glass states
+  from 0.87 to 0.84 and its peak scatter from 0.05 to 0.13. Nothing beyond the hand-over moves,
+  and the match is taken from the held strips alone, as before. Matching the layouts (projecting
+  about the charge) would move every district layout, so it is left for its own change.
+- **Distances.** `hybrid-judge` measured a strip's distance in plan when the review read it; since
+  87deaa26 it takes the surrogate's own, from the charge to the face in 3-D, as `district-hybrid`,
+  `HybridFarField.judge` and the glass chances do. What stays in plan is by building: the GEER
+  bands `district-hybrid` reports, since GEER's survey bands are distances on the map, and which
+  near buildings `HybridFarField.judge` takes as beyond the hand-over. At 1 km a strip 40 m up lies
+  0.8 m further in 3-D than in plan.
+
+The judgements are in `$BOMBCAD_DATA/scratch/issue76` (`unheld/held-*`, `district/`).
+
 ## Using it
 
 - **Bench (headless):** two steps, the near run and then the district.
