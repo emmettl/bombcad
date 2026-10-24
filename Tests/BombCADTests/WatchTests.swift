@@ -132,7 +132,7 @@ struct WatchTests {
         // The same frames stopped at here, nothing sent.
         var options = HeadlessRun.Options(project: URL(filePath: "/dev/null"))
         options.name = "Watched"
-        let here = try await HeadlessRun.perform(document(), options: options, view: { _, _, _ in }).run
+        let here = try await HeadlessRun.perform(document(), options: options, view: { _, _, _, _ in }).run
         #expect(watched.gauges == here.gauges && watched.stepCount == here.stepCount)
 
         // A viewer that never answers holds nothing up: the first frame and the last are sent.

@@ -211,12 +211,15 @@ goes on there rather than waiting for ever, and its result is kept to fetch, as 
 project's fragments, thermal radiation, ground points and cloud alongside, with the envelopes'
 glazing vented as here. Their results come back in the kept run (the fragments' hazard, the
 thermal comparison, the ground points' shaking, the envelopes' surface loads), shown when the run
-is selected, as for a run here. What the viewport draws as it goes is the blast's field and the
-structures only: the fragments' dots, the thermal paint, the ground points and the envelopes'
-damage colours are not sent, so they are not drawn during the run or in its recording. The
-envelopes' damage is judged there too, but, as for a run here, only a recording keeps it, and the
-recording of a run elsewhere is made from the frames that arrive. **Continue from here** is not
-offered for a run elsewhere.
+is selected, as for a run here. The viewport draws as it goes what a run here draws: the
+blast's field and the structures, and over them the fragments and tracers in flight and where
+they struck, the thermal paint, the ground points' colours, the freestanding objects, the vent
+panels and panes as they open and the envelopes' damage colours. The recording, made from the
+frames that arrive, keeps them all as a recording here does, so replaying and scrubbing the run
+shows them frame by frame; the envelopes' damage, judged there, comes back in it, the only place
+a run here keeps it too. The last frame comes once the run and the models fed alongside have
+finished, so it holds the damage judged at the end. Both Macs need the same version of BombCAD.
+**Continue from here** is not offered for a run elsewhere.
 
 **The link.** A session's frames and results go on a socket of their own beside the encrypted
 connection, sealed with keys from the pairing, since macOS's network framework carried them at a

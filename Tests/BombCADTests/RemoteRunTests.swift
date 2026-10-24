@@ -377,6 +377,108 @@ struct RemoteRunTests {
         let run = try #require(model.savedRuns.last)
         #expect(run.thermal != nil && run.groundShock != nil)
         #expect(run.groundShock?.result.points.isEmpty == false)
+        // Its recording replays the thermal paint as it was sent, on receivers laid out here.
+        let playback = try #require(model.playback)
+        #expect(!model.thermalReceivers.isEmpty)
+        #expect(playback.layers.thermal.value?.fluence.count == model.thermalReceivers.count)
+        #expect(model.replayedThermalPaint(.fluence) != nil)
+    }
+
+    /// Every frame of `playback`: its time, layers and fragments.
+    private func frames(_ playback: TimelinePlayback) throws -> [(
+        time: Double, layers: TimelineLayers, fragments: FragmentLive?
+    )] {
+        try (0..<playback.count).map { n in
+            try playback.show(n)
+            return (playback.time, playback.layers, playback.frame?.fragments)
+        }
+    }
+
+    @Test(
+        "A remote run's fragments, ground points and envelopes are drawn here as it goes, and replay as a run here records them"
+    )
+    func overlay() async throws {
+        let pair = try Pair()
+        defer { pair.server.stop() }
+        var document = try EnvelopeVentingAppTests().document(vented: true)
+        var spec = FragmentSpec()
+        spec.casingMass = 0.05
+        spec.count = 300
+        spec.tracers = 40
+        spec.tracerRegion = Box(min: SIMD3(5, 1, 0.5), max: SIMD3(9, 4, 2))
+        document.fragments = spec
+        var ground = GroundShockSpec()
+        ground.line = .init(from: SIMD2(2, 2), to: SIMD2(12, 2), count: 4)
+        document.groundShock = ground
+
+        // There: what each frame sends is drawn here.
+        let model = SimulationModel(document: document, playbackSpeed: .unlimited)
+        model.remoteConnect = { _, resume in try await pair.connect(resume: resume) }
+        model.remoteSilenceLimit = nil
+        model.runHost = pair.host
+        while !model.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        var drawn = (fragments: 0, ground: 0, codes: 0)
+        model.onRemoteFrame = { [weak model] remote in
+            guard let model, model.shownRemoteRun === remote else { return }
+            let dots = model.remoteDots(remote, model.renderSettings)
+            if dots.contains(where: { $0.w < 1 }) { drawn.fragments += 1 }
+            if remote.overlay.groundDots.value?.contains(where: { $0.w > 3 }) == true { drawn.ground += 1 }
+            if remote.overlay.layers.envelopeCodes.value != nil { drawn.codes += 1 }
+        }
+        model.toggleRun()
+        let remote = try #require(model.remoteRun)
+        try await waitWhileActive(remote)
+        if case .failed(let reason) = remote.phase { Issue.record("Failed: \(reason)") }
+        #expect(remote.phase == .finished && remote.overlayBytes > 0)
+        #expect(drawn.fragments > 0 && drawn.ground > 0 && drawn.codes > 0, "\(drawn)")
+        // Its ground points as the run left them, as a run here leaves them.
+        let kept = try #require(model.savedRuns.last?.groundShock)
+        #expect(model.groundShockDots().count == kept.result.dots.count && !kept.result.dots.isEmpty)
+        let there = try frames(try #require(model.playback))
+
+        // Here, recorded as a run here records.
+        let local = SimulationModel(document: document, playbackSpeed: .unlimited)
+        local.recordsTimelines = true
+        local.catchUpLimits = .unbounded
+        while !local.experimentIsReady { try await Task.sleep(for: .milliseconds(5)) }
+        local.run()
+        while local.isRunning || local.hasPendingGPUWork || local.recentTimeline == nil {
+            try #require(local.errorMessage == nil)
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let broke = try #require(local.solver?.envelopeVentingSnapshot()?.panes.first?.brokenAtS)
+        local.replay(nil)
+        defer {
+            local.stopReplay()
+            if let recent = local.recentTimeline { try? FileManager.default.removeItem(at: recent) }
+        }
+        let here = try frames(try #require(local.playback))
+
+        // The pane breaks in both at the same time, and its building is coloured from then.
+        let particles = try #require(here.last?.fragments?.positions.count)
+        #expect(particles > 300)
+        for (name, frames) in [("there", there), ("here", here)] {
+            for frame in frames {
+                let panes = try #require(frame.layers.vents.value?.panes, "\(name) \(frame.time) s")
+                if frame.time < broke - 1e-6 { #expect(panes == [false], "\(name) \(frame.time) s") }
+                if frame.time > broke + 1e-6 {
+                    #expect(
+                        panes == [true] && (frame.layers.envelopeCodes.value?.first ?? 0) >= 2,
+                        "\(name) \(frame.time) s")
+                }
+            }
+            // The fragments are in every frame after the first, all of them.
+            for frame in frames.dropFirst() {
+                #expect(
+                    frame.fragments?.positions.count == particles && frame.fragments?.fragmentCount == 300,
+                    "\(name) \(frame.time) s")
+            }
+        }
+        // And the last frames hold the same: the damage judged at the end, the panes, the fragments.
+        let (a, b) = (try #require(there.last), try #require(here.last))
+        #expect(abs(a.time - b.time) < 1e-9)
+        #expect(a.layers.envelopeCodes == b.layers.envelopeCodes && a.layers.vents == b.layers.vents)
+        #expect(a.fragments?.positions.count == b.fragments?.positions.count)
     }
 
     @Test("Stopped, the run ends there and nothing is kept")

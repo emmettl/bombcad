@@ -929,7 +929,8 @@ to cross):
   venting and close-in breaching hang off those, so a remote run of a vented scene ran different
   air from the same run here, with the same fingerprint. Now it keeps them, and the envelopes'
   damage is judged there too.
-- **What still does not come.** The viewport, during the run and in its recording, draws the
+- **What still does not come** (carried since 24 October,
+  [below](#what-is-drawn-over-the-scene-24-october-2026)). The viewport, during the run and in its recording, draws the
   field and the structures: the fragments' dots, the thermal paint, the ground points and the
   envelopes' damage colours are not in the frames, which would need them added to `ViewFrame` and
   the streamed recording's layers. The envelopes' damage, which even a run here keeps only in its
@@ -941,6 +942,85 @@ to cross):
   that holds and comes to the same run, a paused run whose link drops, a rerun with edits over one
   connection naming the unchanged files, and a run bringing back thermal and ground results. All
   through a loopback server found at its port, with no deadlines.
+
+### What is drawn over the scene, 24 October 2026
+
+The last open part of emmettl/bombcad-work#73: a run on a Mac nearby computed its fragments,
+thermal radiation, ground points, cloud and envelope damage there (since 22 October), but the
+live view and its recording showed only the field and the structures.
+
+**Built.** Each watched frame now carries, after its scene view, what the view draws over it
+(`SceneOverlay`, SceneOverlay.swift; protocol 19, so an older Mac is refused at its greeting with
+"runs a different version of BombCAD"): the fragments and tracers in flight, as a recording keeps
+them (16 bytes a particle); their strikes and landings and the ground points, as the dots the view
+draws; the freestanding objects; and the layers a recording keeps (`TimelineLayers`: the vent
+panels and panes opened, each envelope building's damage colour, the thermal paint, the cloud).
+The encoding is the recording's (`TimelineLayerCodec`): each part but the fragments goes only
+when it has changed, and otherwise names the frame that holds it; the thermal paint only when
+more of its frames have been reckoned. Since a session resumed after a dropped link misses the
+frames sent meanwhile, an unchanged part is sent again every 16 frames (`SceneOverlay.refresh`),
+and a watcher draws none of a part it cannot resolve until then. The worker gathers the overlay
+from its model as a recording here does (`SimulationModel.sceneOverlay`), and sends the run's last
+frame once the run has finished and, as the app, the models fed alongside have caught up, so that
+it holds the damage judged at the end, as a recording's last frame here does.
+
+Here, the frame's parts are resolved (`SceneOverlayResolver`) and drawn as a run here draws them:
+the dots, the thermal paint on receivers laid out here for the scene sent, the freestanding
+objects, the vent panels and the envelopes' colours. The recording (`StreamedTimeline`) stores
+them as a recording here does, each layer only when it has changed, so replaying and scrubbing
+the kept run shows them frame by frame; the envelopes' damage, which before did not come back at
+all, comes back in it. Once the run is kept, its ground points are the kept result's, as a run
+here leaves its own for the replay. Not carried: the strikes are drawn live but, as in a recording
+here, not recorded.
+
+**Measured** on the Studio alone, the overlay's bytes and the run's cost being the sending side's:
+`BombCAD watch <project> --as-app --scene 4 --on here` (new: `--as-app` runs it as Run on does,
+`--on here` a worker process on this Mac), the field at the app's stride, under a GPU slot, load
+14 to 41 from other sessions. The city block (as on 10 October: 2,000 fragments and 500 tracers,
+the thermal radiation's default receivers, 19 ground points); the district of #43's iPad study
+(580 × 580 × 63 m at 1 m, 1 t, 20 envelope buildings without glazing, its cloud), its first
+0.3 s, alone and with the thermal radiation's default receivers. The bytes were the same to the
+byte in both rounds; the times are medians of two rounds (one for the district with thermal
+radiation, three minutes of GPU):
+
+| Scene | Frame sent | Overlay raw | Overlay alone, compressed | At 40 MB/s | Overlay held the run | A frame held the run |
+|---|---|---|---|---|---|---|
+| city block, the blast alone | 1,158 kB | 0.1 kB | 0.1 kB | 0 | 0.01 ms | 2.5 to 7.3 ms |
+| city block, as the app | 1,249 kB | 275 kB | 91 kB | 2.3 ms | 0.22 ms | 3.0 to 3.1 ms |
+| district, as the app | 334 kB | 0.1 kB | 0.1 kB | 0 | 0.03 ms | 4.7 to 5.0 ms |
+| district with thermal radiation, as the app | 683 kB | 677 kB | 349 kB | 8.7 ms | 0.42 ms | 5.3 ms |
+
+- **The Studio's cost is small**: gathering and encoding the overlay held the run 0.2 to 0.4 ms a
+  frame where the scene view's own reading holds it 2.5 to 7 ms, under 0.1% of runs of 77 to
+  182 s with thermal radiation (whose march is most of them: the city block took 17 to 31 s for
+  the blast alone, 77 to 79 s as the app).
+- **The bytes are the thermal paint's**, three half-precision values a receiver (the fluence, the
+  peak irradiance and, with surface heating on by default, the peak temperature), sent in every
+  frame while the march reckons new frames: about 210 of the city block's 275 kB (some 35,000
+  receivers), nearly all of the district's 677 kB (some 113,000). The fragments are 40 kB a frame
+  (2,500 particles), the strikes and the ground points a few kB, the envelopes' colours a byte a
+  building. Compressed, the city block's frame grows by 8% (91 kB, 2.3 ms more at the sealed
+  socket's 40 MB/s); the district's with thermal radiation doubles (349 kB, 8.7 ms more), still
+  far inside a link that shows every frame of these runs: their updates came every 0.36 to 0.44
+  s, paced by the march, not the link.
+- **What would make the paint lighter**, should a laptop's link need it: the paint drawn changes
+  little between frames once the fireball has cooled, so sending it every few frames, or the
+  receivers that changed, would cut it several times. Whether that is worth it waits on the
+  laptop's measurement (still the user's: emmettl/bombcad-work#73); nothing is changed meanwhile.
+- **In passing**: a project with its own thermal radiation or cloud, run headless *not* as the app
+  (`BombCAD watch` or `run` without `--as-app`), fails at its end ("still being reckoned" or "still
+  being followed") when those have not caught up; recorded as a separate task, not changed here.
+
+**Tests**: SceneOverlayTests (an overlay round trip, half-precision paint, malformed bytes
+refused; parts sent only when changed, refreshed every 16 frames, a late watcher resolving them all
+by then; a frame's scene view and overlay read back apart, from a slice too), and in
+RemoteRunTests a remote run of a glazed envelope building with fragments and ground points: its
+fragments', ground points' and envelopes' overlay drawn here as frames arrive, the kept run's
+ground points shown, and its recording replayed against the same run recorded here, the pane
+breaking at the same time in both and its building coloured from then, the fragments in every
+frame, and the last frames' damage colours, panes and fragments the same; and a remote run's
+thermal paint replayed on receivers laid out here. All through a loopback server found at its
+port, with no deadlines.
 
 ## Better first
 

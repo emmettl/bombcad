@@ -202,44 +202,59 @@ enum TimelineLayerCodec {
     }
 }
 
+/// One layer's side of a keeper: its last stored value and the frame it is in, so that a frame
+/// stores it only when it has changed and otherwise points back to it.
+struct TimelineStoredKeeper<Value: Sendable & Equatable> {
+    private var last: (value: Value, frame: Int)?
+    /// With a refresh, a value unchanged for that many frames is stored again all the same, so
+    /// that a reader who missed the frame holding it (a watcher who joined late) has it soon.
+    var refresh: Int?
+
+    init(refresh: Int? = nil) { self.refresh = refresh }
+
+    /// `value`, or none, as frame `frame` stores it; `same` says whether it is unchanged.
+    mutating func store(_ value: Value?, frame: Int, same: (Value, Value) -> Bool = (==))
+        -> TimelineStored<Value>
+    {
+        guard let value else {
+            last = nil
+            return .none
+        }
+        // A frame written again in place of the one that holds it stores it itself.
+        if let previous = last, previous.frame != frame, same(previous.value, value),
+            refresh.map({ frame - previous.frame < $0 }) ?? true
+        {
+            return .sameAs(previous.frame)
+        }
+        last = (value, frame)
+        return .here(value)
+    }
+}
+
 /// The recorder's side: each layer's last stored value and the frame it is in, so that a frame
 /// stores a layer only when it has changed and otherwise points back to it.
 struct TimelineLayerKeeper {
-    private struct Last<Value> {
-        var value: Value
-        var frame: Int
+    private var vents: TimelineStoredKeeper<TimelineLayers.Vents>
+    private var envelopeCodes: TimelineStoredKeeper<[UInt8]>
+    private var thermal: TimelineStoredKeeper<TimelineLayers.Thermal>
+    private var cloud: TimelineStoredKeeper<TimelineLayers.Cloud>
+
+    /// With `refresh`, as `TimelineStoredKeeper`.
+    init(refresh: Int? = nil) {
+        vents = .init(refresh: refresh)
+        envelopeCodes = .init(refresh: refresh)
+        thermal = .init(refresh: refresh)
+        cloud = .init(refresh: refresh)
     }
-    private var vents: Last<TimelineLayers.Vents>?
-    private var envelopeCodes: Last<[UInt8]>?
-    private var thermal: Last<TimelineLayers.Thermal>?
-    private var cloud: Last<TimelineLayers.Cloud>?
 
     /// `layers`, each a value or none, as frame `frame` stores them.
     mutating func store(_ layers: TimelineLayers, frame: Int) -> TimelineLayers {
-        func keep<V: Equatable>(_ layer: TimelineStored<V>, _ last: inout Last<V>?) -> TimelineStored<V> {
-            guard let value = layer.value else {
-                last = nil
-                return .none
-            }
-            // A frame written again in place of the one that holds it stores it itself.
-            if let previous = last, previous.frame != frame, previous.value == value {
-                return .sameAs(previous.frame)
-            }
-            last = Last(value: value, frame: frame)
-            return .here(value)
-        }
         var stored = TimelineLayers()
-        stored.vents = keep(layers.vents, &vents)
-        stored.envelopeCodes = keep(layers.envelopeCodes, &envelopeCodes)
+        stored.vents = vents.store(layers.vents.value, frame: frame)
+        stored.envelopeCodes = envelopeCodes.store(layers.envelopeCodes.value, frame: frame)
         // The thermal paint is the same while no more of its frames are reckoned.
-        if let value = layers.thermal.value, let previous = thermal, previous.frame != frame,
-            previous.value.frames == value.frames
-        {
-            stored.thermal = .sameAs(previous.frame)
-        } else {
-            stored.thermal = keep(layers.thermal, &thermal)
-        }
-        stored.cloud = keep(layers.cloud, &cloud)
+        stored.thermal = thermal.store(layers.thermal.value, frame: frame) { $0.frames == $1.frames }
+        stored.cloud = cloud.store(layers.cloud.value, frame: frame)
         return stored
     }
 }

@@ -150,6 +150,7 @@ extension SimulationModel {
                 player: player, title: run?.name ?? "This run", scenario: shown, kept: run.map(\.cloud),
                 craters: craters ?? [], commandQueue: commandQueue)
             renderer.setScene(shown, view: player.upload.view)
+            remoteRun?.isShown = false
             playback.onShow = { [weak self] in self?.showReplayedLayers() }
             self.playback = playback
             try playback.show(playback.positions - 1)
@@ -164,15 +165,21 @@ extension SimulationModel {
     /// Draws the replayed frame's vent panels and envelope colours as they were then; a recording
     /// of 0.6.0, which kept neither, shows no panels and no colours.
     func showReplayedLayers() {
-        guard let playback, let renderer else { return }
-        let layers = playback.layers
-        let panels = (playback.scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
+        guard let playback else { return }
+        showLayers(playback.layers, scenario: playback.scenario, recordsLayers: playback.recordsLayers)
+    }
+
+    /// Draws `layers`' vent panels and envelope colours over `scenario`; without `recordsLayers`,
+    /// no panels and no colours.
+    func showLayers(_ layers: TimelineLayers, scenario: Scenario, recordsLayers: Bool) {
+        guard let renderer else { return }
+        let panels = (scenario.ventPanels ?? []).filter { $0.releasePressure > 0 }
         if let opened = layers.vents.value?.panels, opened.count == panels.count {
             renderer.setVentPanels(zip(panels, opened).compactMap { $1 ? nil : $0.box })
         } else {
-            renderer.setVentPanels(playback.recordsLayers ? panels.map(\.box) : [])
+            renderer.setVentPanels(recordsLayers ? panels.map(\.box) : [])
         }
-        let objects = playback.scenario.envelopeObjects
+        let objects = scenario.envelopeObjects
         if showsEnvelopeDamage, let codes = layers.envelopeCodes.value, codes.count == objects.count {
             renderer.setEnvelopeDamage(
                 Dictionary(
@@ -191,8 +198,16 @@ extension SimulationModel {
         if let cache = replayPaintCache, cache.index == playback.index, cache.quantity == quantity {
             return cache.paint
         }
+        let paint = thermalPaint(playback.layers.thermal.value, quantity)
+        replayPaintCache = (playback.index, quantity, paint)
+        return paint
+    }
+
+    /// The thermal paint of `quantity` from the receivers' values recorded or sent; nil for none,
+    /// or where the scene's receivers are not those recorded.
+    func thermalPaint(_ recorded: TimelineLayers.Thermal?, _ quantity: ThermalQuantity) -> SurfacePaint? {
         var paint: SurfacePaint?
-        if let recorded = playback.layers.thermal.value, recorded.fluence.count == thermalReceivers.count {
+        if let recorded, recorded.fluence.count == thermalReceivers.count {
             var live = ThermalLive(receivers: 0)
             live.frames = recorded.frames
             live.fluence = recorded.fluence
@@ -211,7 +226,6 @@ extension SimulationModel {
                 }
             paint = values.map { SurfacePaint(grids: thermalGrids, shades: $0.map(quantity.shade)) }
         }
-        replayPaintCache = (playback.index, quantity, paint)
         return paint
     }
 
@@ -250,6 +264,7 @@ extension SimulationModel {
     func restoreLiveView() {
         guard let renderer, let solver else { return }
         renderer.setScene(scenario, solver: solver)
+        remoteRun?.isShown = false
         // The scene drew every panel closed again: show those opened, however many.
         openedVentPanels = -1
         showOpenedVentPanels(solver)

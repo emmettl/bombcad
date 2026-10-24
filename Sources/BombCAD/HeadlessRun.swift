@@ -570,13 +570,16 @@ enum HeadlessRun {
     /// `connect` starts a worker on a host named in `options.consumers`; tests stand in-process
     /// workers in for them. `costs` keeps what the consumers cost, for `auto` to place them by
     /// in this run and later ones. `view` is handed the solver at each frame, the frame's number,
-    /// and whether it is the run's last sample, which may fall between frames, for a viewer
-    /// elsewhere (see `WatchJob`), and `viewRequest` asked, before each frame's batch, for what it
+    /// whether it is the run's last sample, which may fall between frames, and what the view draws
+    /// over the scene then (`SceneOverlay`, gathered only when asked), for a viewer elsewhere (see
+    /// `WatchJob`); the last once the run has finished, and with `asApp` once the models fed
+    /// alongside have caught up, so that it holds the damage judged at the end, as a recording's
+    /// last frame does. `viewRequest` is asked, before each frame's batch, for what it
     /// will read of the air (a block, the view field) for the GPU to cut out. Cancelling the task stops the run.
     static func perform(
         _ document: ProjectDocument, options: Options, progress: ((Double) -> Void)? = nil,
         consumer injected: (any FrameConsumer)? = nil, costs store: ConsumerCostStore? = nil,
-        view: ((BlastSolver, Int, Bool) -> Void)? = nil,
+        view: ((BlastSolver, Int, Bool, () -> SceneOverlay) -> Void)? = nil,
         viewRequest: ((BlastSolver) -> FrameRequest)? = nil,
         paused: (() -> Bool)? = nil,
         probeTimeout: Duration? = .seconds(30),
@@ -786,6 +789,7 @@ enum HeadlessRun {
         }
         var handOver: CloudHandOver?
         let end = inputs.settings.duration
+        var lastView: Int?
         if framed || options.cloud != nil {
             var frame = 0
             var started = false
@@ -801,8 +805,12 @@ enum HeadlessRun {
                 // The last sample, at the end of the run, can fall between frames.
                 let index = (solver.time / interval).rounded()
                 if let view {
-                    let last = solver.time >= end - 1e-9
-                    if last || abs(solver.time - index * interval) < 1e-6 { view(solver, Int(index), last) }
+                    if solver.time >= end - 1e-9 {
+                        // Sent once the run has finished (below).
+                        lastView = Int(index)
+                    } else if abs(solver.time - index * interval) < 1e-6 {
+                        view(solver, Int(index), false) { model.sceneOverlay(solver) }
+                    }
                 }
                 if !started {
                     started = true
@@ -876,6 +884,9 @@ enum HeadlessRun {
         if options.asApp {
             // Kept as the app keeps a run: once the models fed alongside have caught up.
             try await waitUntil(model) { model.companionsCaughtUp }
+        }
+        if let view, let lastView, let solver = model.solver {
+            view(solver, lastView, true) { model.sceneOverlay(solver) }
         }
         if let exportError { throw exportError }
         try model.keepRun(named: name)

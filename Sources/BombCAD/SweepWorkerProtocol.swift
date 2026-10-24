@@ -91,7 +91,8 @@ enum SweepWorkerMessage: Codable, Equatable, Sendable {
 }
 
 struct SweepWorkerHello: Codable, Equatable, Sendable {
-    static let protocolVersion = 18
+    /// 19: a watched frame carries what is drawn over the scene view (`SceneOverlay`, emmettl/bombcad-work#73).
+    static let protocolVersion = 19
     var protocolVersion = Self.protocolVersion
     var solverVersion = SavedSimulationRun.solverVersion
     var device: String

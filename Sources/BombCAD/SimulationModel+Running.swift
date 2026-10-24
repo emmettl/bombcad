@@ -220,6 +220,7 @@ extension SimulationModel {
         traces = scenario.gauges.enumerated().map { GaugeTrace(id: $0.offset, name: $0.element.name) }
         if let solver {
             renderer.setScene(scenario, solver: solver)
+            remoteRun?.isShown = false
             applyFarFieldColours()
             sceneVersion += 1
         }

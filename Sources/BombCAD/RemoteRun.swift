@@ -68,6 +68,19 @@ final class RemoteRun {
 
     @ObservationIgnored var client: SweepWorkerClient?
     @ObservationIgnored var upload: ViewUpload?
+    /// What the view draws over the scene as of the last frame, every part resolved to its value
+    /// or none (`SceneOverlay`), and what resolves them.
+    @ObservationIgnored var overlay = SceneOverlay()
+    @ObservationIgnored var overlayResolver = SceneOverlayResolver()
+    /// The overlay's bytes received, before compression.
+    @ObservationIgnored var overlayBytes = 0
+    /// Whether the viewport shows this run's view, not this Mac's scene or a replay.
+    @ObservationIgnored var isShown = false
+    /// The fragments' launch speed, which their dots' colours are scaled by.
+    @ObservationIgnored var fragmentLaunchSpeed: Float?
+    /// The vents and envelope colours drawn last, and the thermal paint as last worked out.
+    @ObservationIgnored var layersShown: TimelineLayers?
+    @ObservationIgnored var paintCache: (frames: Int?, quantity: ThermalQuantity, paint: SurfacePaint?)?
     @ObservationIgnored var timeline: StreamedTimeline?
     @ObservationIgnored var task: Task<Void, Never>?
     @ObservationIgnored var lastHeard = ContinuousClock.now
@@ -96,15 +109,17 @@ final class RemoteRun {
                 : "")
         line += String(
             format:
-                "%d frames shown, %.0f kB each on average, %.1f MB in all; an update every %@; drawing here %.1f ms a frame",
+                "%d frames shown, %.0f kB each on average (%.1f kB of it, before compression, drawn over the scene), %.1f MB in all; an update every %@; drawing here %.1f ms a frame",
             framesShown, Double(bytesReceived) / 1e3 / Double(max(framesShown, 1)),
-            Double(bytesReceived) / 1e6,
+            Double(overlayBytes) / 1e3 / Double(max(framesShown, 1)), Double(bytesReceived) / 1e6,
             HeadlessWatch.median(intervals).map { String(format: "%.0f ms", $0) } ?? "–",
             1000 * drawSeconds / Double(max(framesShown, 1)))
         if let stats {
             line += String(
-                format: ". On %@: the run took %.1f s, frames held it %.1f ms each; lag %@",
+                format:
+                    ". On %@: the run took %.1f s, frames held it %.1f ms each (%.2f ms of it what is drawn over the scene); lag %@",
                 macName, stats.runSeconds, 1000 * stats.readSeconds / Double(max(stats.sent, 1)),
+                1000 * stats.overlaySeconds / Double(max(stats.sent, 1)),
                 HeadlessWatch.median(stats.lags.map { $0 * 1000 }).map { String(format: "%.0f ms", $0) }
                     ?? "–")
         }
@@ -125,7 +140,9 @@ final class StreamedTimeline {
     private var frames = 0
     private var pending: [(path: String, time: Double)] = []
     /// The latest frame not recorded, to record as the last.
-    private var latest: ViewFrame?
+    private var latest: TimelineFrame?
+    /// Each layer stored only when it has changed, as a recording here stores them.
+    private var keeper = TimelineLayerKeeper()
 
     init(setup raw: Data, fingerprint: String, duration: Double) throws {
         folder = RunTimelineRecorder.stagingRoot.appending(
@@ -142,7 +159,8 @@ final class StreamedTimeline {
         interval = max(duration / Double(RunTimelineRecorder.defaultFrames), 1e-6)
     }
 
-    func add(_ frame: ViewFrame) {
+    /// Takes a frame as it arrives, its layers each resolved to a value or none.
+    func add(_ frame: TimelineFrame) {
         guard frame.time >= nextTime - 1e-12 else {
             latest = frame
             return
@@ -150,12 +168,13 @@ final class StreamedTimeline {
         record(frame)
     }
 
-    private func record(_ frame: ViewFrame) {
+    private func record(_ frame: TimelineFrame) {
         latest = nil
         if let last = pending.last, last.time >= frame.time { return }
         let path = String(format: "frames/f-%06d.lzfse", frames)
-        writer.write(
-            TimelineFrame(view: frame, fragments: nil, freestanding: []), to: folder.appending(path: path))
+        var stored = frame
+        stored.layers = keeper.store(frame.layers, frame: frames)
+        writer.write(stored, to: folder.appending(path: path))
         pending.append((path, frame.time))
         frames += 1
         nextTime = frame.time + interval
@@ -186,6 +205,52 @@ final class StreamedTimeline {
 }
 
 extension SimulationModel {
+    /// The run elsewhere whose view the viewport shows now, if it shows one rather than this Mac's
+    /// scene or a replay.
+    var shownRemoteRun: RemoteRun? {
+        guard playback == nil, let remote = remoteRun, remote.isShown, remote.upload != nil else {
+            return nil
+        }
+        return remote
+    }
+
+    /// Draws the remote run's vent panels and envelope colours as its last frame had them, if they
+    /// changed (or `again`).
+    func showRemoteLayers(_ remote: RemoteRun, again: Bool = false) {
+        let layers = remote.overlay.layers
+        if !again, let shown = remote.layersShown, shown.vents == layers.vents,
+            shown.envelopeCodes == layers.envelopeCodes
+        {
+            return
+        }
+        remote.layersShown = layers
+        showLayers(layers, scenario: remote.scenario, recordsLayers: true)
+        applyFarFieldColours()
+    }
+
+    /// The remote run's thermal paint of `quantity` as its last frame had it.
+    func remoteThermalPaint(_ remote: RemoteRun, _ quantity: ThermalQuantity) -> SurfacePaint? {
+        let thermal = remote.overlay.layers.thermal.value
+        if let cache = remote.paintCache, cache.frames == thermal?.frames, cache.quantity == quantity {
+            return cache.paint
+        }
+        let paint = thermalPaint(thermal, quantity)
+        remote.paintCache = (thermal?.frames, quantity, paint)
+        return paint
+    }
+
+    /// The remote run's fragments, their strikes and its ground points as its last frame had them,
+    /// as the view draws them.
+    func remoteDots(_ remote: RemoteRun, _ settings: RenderSettings) -> [SIMD4<Float>] {
+        let overlay = remote.overlay
+        let ground =
+            settings.showGroundPoints
+            ? overlay.groundDots.value ?? groundShockSpec?.dots(on: remote.scenario.terrain) ?? [] : []
+        return fragmentDots(
+            overlay.fragments, strikes: overlay.strikes.value ?? [], launchSpeed: remote.fragmentLaunchSpeed,
+            showFragments: settings.showFragments, showTracers: settings.showTracers) + ground
+    }
+
     /// The Macs paired with this one that a run can be sent to, as `nearby:<name>`.
     var pairedMacs: [String] {
         NearbyWorkers.store.pairings().map { NearbyWorkers.host($0.peer.name) }.sorted()
@@ -248,6 +313,14 @@ extension SimulationModel {
             let remote = RemoteRun(
                 host: host, name: name, scenario: inputs.scenario, inputs: inputs, job: job)
             remote.sentSettings = settings
+            remote.fragmentLaunchSpeed = fragmentSpec.map {
+                $0.launchSpeed(chargeMass: inputs.scenario.charge.mass)
+            }
+            // The receivers its thermal paint is sent for, laid out here as there.
+            if let spec = thermalSpec, (try? spec.validate()) != nil {
+                stopThermal()
+                layOutThermalPaint(spec, scene: FragmentScene(inputs.scenario))
+            }
             remoteRun?.timeline?.discard()
             remoteRun = remote
             errorMessage = nil
@@ -289,6 +362,8 @@ extension SimulationModel {
             // Back to the run's view, should an edit here have shown this Mac's scene.
             fenceGPU()
             renderer.setScene(remote.scenario, view: upload.view)
+            remote.isShown = true
+            showRemoteLayers(remote, again: true)
             sceneVersion += 1
         }
     }
@@ -479,6 +554,8 @@ extension SimulationModel {
             fenceGPU()
             renderer.setScene(remote.scenario, view: upload.view)
             remote.upload = upload
+            remote.isShown = true
+            showRemoteLayers(remote, again: true)
             if remote.timeline == nil {
                 remote.timeline = try StreamedTimeline(
                     setup: raw,
@@ -498,11 +575,22 @@ extension SimulationModel {
         guard remoteRun === remote, let upload = remote.upload else { return }
         let start = ContinuousClock.now
         do {
-            guard let bytes = try WatchFrame.decode(header, payload: payload).scene else { return }
+            let decoded = try WatchFrame.decode(header, payload: payload)
+            guard let bytes = decoded.scene else { return }
             let frame = try SceneViewCodec.decodeFrame(bytes)
+            let sent = try decoded.overlay.map { try SceneOverlayCodec.decode($0, time: frame.time) }
             fenceGPU()
             try upload.apply(frame)
-            remote.timeline?.add(frame)
+            if let sent {
+                remote.overlay = remote.overlayResolver.resolve(sent, frame: header.frame)
+                remote.overlayBytes += decoded.overlay?.count ?? 0
+            }
+            let overlay = remote.overlay
+            remote.timeline?.add(
+                TimelineFrame(
+                    view: frame, fragments: overlay.fragments,
+                    freestanding: overlay.freestanding.value ?? [], layers: overlay.layers))
+            if remote.isShown { showRemoteLayers(remote) }
             remote.framesShown += 1
             remote.bytesReceived += payload.count
             remote.arrivals.append(start)
@@ -546,6 +634,12 @@ extension SimulationModel {
             runFolders[run.id] = folder
         }
         showHistories(of: run)
+        // The ground points as the run left them, as a run here leaves them for its replay.
+        if let ground = run.groundShock {
+            var result = ground.result
+            result.place(on: run.scenario.terrain)
+            groundShockLive = result
+        }
         remote.phase = .finished
         time = run.elapsedTime
         stepCount = run.stepCount

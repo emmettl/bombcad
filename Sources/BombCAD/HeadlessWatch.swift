@@ -100,8 +100,10 @@ enum WatchFrame {
         var quadsIncluded: Bool
         /// The volume's samples along each axis, zero without one.
         var volume = SIMD3<Int32>.zero
-        /// The scene view's bytes (`SceneViewCodec`), last, zero without one.
+        /// The scene view's bytes (`SceneViewCodec`), zero without one.
         var scene = 0
+        /// What is drawn over the scene view (`SceneOverlayCodec`), last, zero without one.
+        var overlay = 0
         /// Before compression.
         var rawBytes: Int
         var compression: ViewCompression
@@ -110,7 +112,7 @@ enum WatchFrame {
     /// The frame's values, packed (not yet compressed), and the header's sizes.
     static func pack(
         ground: GroundSlice, surface: StructureSurface?, includeQuads: Bool, volume: AirSlice? = nil,
-        scene: Data? = nil
+        scene: Data? = nil, overlay: Data? = nil
     ) -> Data {
         var data = Data(capacity: 2 * ground.values.count + 12 * (surface?.points.count ?? 0))
         ground.values.enumerated().map { half($0.element * groundScales[$0.offset % 3]) }
@@ -128,6 +130,7 @@ enum WatchFrame {
             .withUnsafeBytes { data.append(contentsOf: $0) }
         }
         if let scene { data.append(scene) }
+        if let overlay { data.append(overlay) }
         return data
     }
 
@@ -139,8 +142,9 @@ enum WatchFrame {
         var damage: [Float]
         var quads: [Int32]?
         var volume: [Float]
-        /// The scene view's frame, encoded, if sent.
+        /// The scene view's frame, encoded, if sent, and what is drawn over it.
         var scene: Data?
+        var overlay: Data?
 
         /// The largest peak overpressure on open ground, Pa.
         var peak: Float {
@@ -163,7 +167,7 @@ enum WatchFrame {
         let samples = Int(header.volume.x) * Int(header.volume.y) * Int(header.volume.z)
         let expected =
             2 * columns + 12 * header.points + 2 * header.faces
-            + (header.quadsIncluded ? 16 * header.faces : 0) + 2 * samples + header.scene
+            + (header.quadsIncluded ? 16 * header.faces : 0) + 2 * samples + header.scene + header.overlay
         guard raw.count == expected, raw.count == header.rawBytes else {
             throw ProjectFileError.invalid("A view frame held \(raw.count) bytes, not \(expected).")
         }
@@ -188,10 +192,13 @@ enum WatchFrame {
             let damage = take(header.faces, Float16.self).map(Float.init)
             let quads = header.quadsIncluded ? take(4 * header.faces, Int32.self) : nil
             let volume = take(samples, Float16.self).map(Float.init)
-            // Last, and copied whole: it is most of a frame with a scene view.
-            let scene = header.scene > 0 ? Data(raw.suffix(header.scene)) : nil
+            // Copied whole: it is most of a frame with a scene view.
+            let sceneEnd = raw.endIndex - header.overlay
+            let scene = header.scene > 0 ? raw.subdata(in: (sceneEnd - header.scene)..<sceneEnd) : nil
+            let overlay = header.overlay > 0 ? Data(raw.suffix(header.overlay)) : nil
             return Decoded(
-                ground: ground, points: points, damage: damage, quads: quads, volume: volume, scene: scene)
+                ground: ground, points: points, damage: damage, quads: quads, volume: volume, scene: scene,
+                overlay: overlay)
         }
     }
 }
@@ -210,6 +217,12 @@ struct ViewStats: Codable, Equatable, Sendable {
     /// compressing them on the writer's queue, the run not waiting.
     var readSeconds = 0.0
     var packSeconds = 0.0
+    /// What is drawn over the scene view (`SceneOverlay`): its bytes before compression, and
+    /// compressed alone; and the seconds gathering and encoding it took on the run's thread, which
+    /// `readSeconds` includes.
+    var overlayRawBytes = 0
+    var overlaySentBytes = 0
+    var overlaySeconds = 0.0
     /// The run's own seconds there, from start to its result.
     var runSeconds = 0.0
 }
@@ -226,6 +239,8 @@ final class ViewSender: @unchecked Sendable {
     private var lastFaces = -1
     /// Whether the scene view's setup has gone.
     private var setupSent = false
+    /// What the overlay sent last, to send only what has changed; touched only by `frame`.
+    private var overlayKeeper = SceneOverlayKeeper()
 
     init(id: UUID, writer: SweepWorkerWriter, spec: ViewSpec) {
         self.id = id
@@ -233,8 +248,11 @@ final class ViewSender: @unchecked Sendable {
         self.spec = spec
     }
 
-    /// Called on each frame the run reaches, while no batch is in flight.
-    func frame(_ solver: BlastSolver, number: Int, last: Bool) {
+    /// Called on each frame the run reaches, while no batch is in flight; `overlay` gives what the
+    /// view draws over the scene then, asked for only for a frame built with a scene view.
+    func frame(
+        _ solver: BlastSolver, number: Int, last: Bool, overlay: () -> SceneOverlay? = { nil }
+    ) {
         let wanted = lock.withLock {
             stats.frames += 1
             return last || inFlight.count < spec.window
@@ -247,7 +265,12 @@ final class ViewSender: @unchecked Sendable {
         let surface = spec.structure && spec.sceneStride == nil ? solver.structureSurface() : nil
         let volume = spec.volumeStride.map { solver.airSlice(region: Self.domain(solver), stride: $0) }
         let scene = spec.sceneStride.flatMap { sceneFrame(solver, stride: $0) }
+        let gathering = ContinuousClock.now
+        let overlayData =
+            scene == nil
+            ? nil : overlay().map { SceneOverlayCodec.encode(overlayKeeper.store($0, frame: number)) }
         let read = start.duration(to: .now)
+        let overlaySeconds = overlayData == nil ? 0 : gathering.duration(to: .now).seconds
         let faces = surface?.faceCount ?? 0
         let includeQuads = surface != nil && faces != lastFaces
         lastFaces = faces
@@ -256,27 +279,33 @@ final class ViewSender: @unchecked Sendable {
             frame: number, time: solver.time, cellSize: ground.cellSize, counts: ground.counts,
             points: surface?.points.count ?? 0, faces: faces, quadsIncluded: includeQuads,
             volume: volume?.counts ?? .zero, scene: scene.map(SceneViewCodec.size) ?? 0,
+            overlay: overlayData?.count ?? 0,
             rawBytes: 2 * columns + 12 * (surface?.points.count ?? 0) + 2 * faces
                 + (includeQuads ? 16 * faces : 0) + 2 * (volume?.values.count ?? 0) / 5
-                + (scene.map(SceneViewCodec.size) ?? 0),
+                + (scene.map(SceneViewCodec.size) ?? 0) + (overlayData?.count ?? 0),
             compression: spec.compression)
         lock.withLock {
             inFlight[number] = start
             stats.sent += 1
             stats.readSeconds += read.seconds
+            stats.overlaySeconds += overlaySeconds
+            stats.overlayRawBytes += overlayData?.count ?? 0
         }
         writer.enqueue(.view(id, header)) { [self] in
             let packing = ContinuousClock.now
             var payload = WatchFrame.pack(
                 ground: ground, surface: surface, includeQuads: includeQuads, volume: volume,
-                scene: scene.map(SceneViewCodec.encode))
+                scene: scene.map(SceneViewCodec.encode), overlay: overlayData)
             let raw = payload.count
             payload = Self.compress(payload, spec.compression)
             let took = packing.duration(to: .now)
+            // The overlay's share of what is sent, as it would compress alone.
+            let overlaySent = overlayData.map { Self.compress($0, spec.compression).count } ?? 0
             lock.withLock {
                 stats.rawBytes += raw
                 stats.sentBytes += payload.count
                 stats.packSeconds += took.seconds
+                stats.overlaySentBytes += overlaySent
             }
             return payload
         }
@@ -346,7 +375,7 @@ final class ViewSender: @unchecked Sendable {
 enum HeadlessWatch {
     static let usage = """
         Usage: BombCAD watch (<project.bombcad | layout.json> | --preset <layout>)
-                             (--on <ssh host> | --stdio) [--window <frames>]
+                             (--on <ssh host | nearby:<Mac> | here> | --stdio) [--as-app] [--window <frames>]
                              [--compression none|lz4|lzfse|zlib] [--no-structure] [--volume <stride>]
                              [--scene <stride>] [--render <folder> [--render-every <frames>]]
                              [--no-view] [--frame-interval <ms>] [--name <name>] [--out <new.bombcad>]
@@ -367,8 +396,11 @@ enum HeadlessWatch {
         layout (streetCanyon, officeTower, …) for its default duration in place of a project.
         --on starts the worker over SSH, copying this build there first; --stdio talks to a worker
         on this process's standard input and output, as when a worker on another Mac is piped to
-        this command over SSH, and then writes everything else to standard error. Prints what
-        crossing the link cost.
+        this command over SSH, and then writes everything else to standard error; --on here starts
+        a worker process on this Mac, to measure the sending side alone. --as-app runs it as the
+        app's Run on does: the project's fragments, thermal radiation, ground points and cloud fed
+        alongside there, and with --scene what is drawn over the scene (their dots, the paint, the
+        envelopes' damage) sent with each frame. Prints what crossing the link cost.
         """
 
     struct Options {
@@ -378,6 +410,8 @@ enum HeadlessWatch {
         var view: ViewSpec? = ViewSpec()
         /// A built-in layout to run in place of a project, with its own duration.
         var preset: ScenarioPreset?
+        /// Run as the app's own run would (`WatchJob.asApp`).
+        var asApp = false
         /// Where to write the scene view as the app's renderer draws it here, every `renderEvery`
         /// frames and the last.
         var render: URL?
@@ -392,6 +426,7 @@ enum HeadlessWatch {
             var preset: ScenarioPreset?
             var render: URL?
             var renderEvery = 10
+            var asApp = false
             var index = 0
             func value() throws -> String {
                 guard index + 1 < arguments.count else {
@@ -404,6 +439,7 @@ enum HeadlessWatch {
                 switch arguments[index] {
                 case "--on": host = try value()
                 case "--stdio": stdio = true
+                case "--as-app": asApp = true
                 case "--preset":
                     let name = try value()
                     guard let named = ScenarioPreset(rawValue: name) else {
@@ -450,7 +486,9 @@ enum HeadlessWatch {
             guard (host == nil) != !stdio else {
                 throw ProjectFileError.invalid("Give either --on <ssh host> or --stdio.")
             }
-            if let host { try RemoteSweepWorker.validate(host) }
+            if let host, host != "here", !NearbyWorkers.isNearby(host) {
+                try RemoteSweepWorker.validate(host)
+            }
             let run = try HeadlessRun.Options.parse(preset == nil ? rest : rest + ["/dev/null"])
             for (option, given) in [
                 ("--usd", run.usd != nil), ("--vdb", run.vdb != nil), ("--fragments", run.fragments != nil),
@@ -466,7 +504,7 @@ enum HeadlessWatch {
             }
             return Options(
                 run: run, host: host, stdio: stdio, view: view.map { _ in spec }, preset: preset,
-                render: render,
+                asApp: asApp, render: render,
                 renderEvery: renderEvery)
         }
     }
@@ -514,7 +552,9 @@ enum HeadlessWatch {
         let name = options.run.name ?? HeadlessRun.defaultName(avoiding: earlier)
         let connected = ContinuousClock.now
         let client: SweepWorkerClient
-        if let host = options.host {
+        if options.host == "here" {
+            client = try await RemoteSweepWorker.connectHere(name: "this Mac")
+        } else if let host = options.host {
             client = try await RemoteSweepWorker.connect(host: host)
         } else {
             client = SweepWorkerClient(
@@ -527,7 +567,7 @@ enum HeadlessWatch {
         let job = WatchJob(
             id: UUID(), name: name, project: SweepWorkerArchive(archive),
             frameInterval: options.run.frameInterval,
-            view: options.view)
+            view: options.view, asApp: options.asApp)
         let projectBytes = archive.files.values.reduce(0) { $0 + $1.count }
         let progressStream = options.stdio ? FileHandle.standardError : FileHandle.standardOutput
 
@@ -615,6 +655,16 @@ enum HeadlessWatch {
             "  Lag, frame read there to its acknowledgement back: "
                 + describe(stats.lags.map { $0 * 1000 }, unit: "ms"),
         ]
+        if stats.overlayRawBytes > 0 {
+            lines.append(
+                String(
+                    format:
+                        "  Drawn over the scene: %.1f kB a frame raw, %.1f kB compressed alone (%.2f ms at 40 MB/s); gathering and encoding it held the run %.2f ms a frame",
+                    Double(stats.overlayRawBytes) / 1e3 / Double(max(stats.sent, 1)),
+                    Double(stats.overlaySentBytes) / 1e3 / Double(max(stats.sent, 1)),
+                    Double(stats.overlaySentBytes) / 40e3 / Double(max(stats.sent, 1)),
+                    1000 * stats.overlaySeconds / Double(max(stats.sent, 1))))
+        }
         if let scene = watcher.scene {
             scene.finish()
             lines.append(scene.summary(stride: options.view?.sceneStride ?? 1))

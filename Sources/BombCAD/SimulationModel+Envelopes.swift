@@ -72,6 +72,11 @@ extension SimulationModel {
             showReplayedLayers()
             return
         }
+        // A run elsewhere, as its last frame was.
+        if let remote = shownRemoteRun {
+            showRemoteLayers(remote, again: true)
+            return
+        }
         if !protectionPlanChances.isEmpty {
             renderer?.setEnvelopeDamage(protectionPlanChances.mapValues { EnvelopeChanceColour.code($0) })
             return

@@ -251,7 +251,9 @@ enum SweepWorker {
                 document, options: options,
                 progress: { fraction in writer.enqueue(.progress(job.id, fraction)) },
                 view: sender.map { sender in
-                    { solver, frame, last in sender.frame(solver, number: frame, last: last) }
+                    { solver, frame, last, overlay in
+                        sender.frame(solver, number: frame, last: last, overlay: overlay)
+                    }
                 },
                 viewRequest: sender.map { sender in { sender.frameRequest($0) } },
                 paused: { paused.value }

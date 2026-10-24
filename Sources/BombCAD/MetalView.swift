@@ -106,18 +106,22 @@
                 settings.highlight = model.highlightedBox
                 settings.craters = model.shownCraters.map(CraterMark.init)
                 // The ground points read the project's points and the run's estimate, both observed.
+                // A run elsewhere draws what its last frame sent over its scene.
+                let remote = model.shownRemoteRun
                 let dots =
-                    (replay != nil
+                    remote.map { model.remoteDots($0, settings) }
+                    ?? ((replay != nil
                         ? model.fragmentDots(
                             replay?.1?.fragments, showFragments: settings.showFragments,
                             showTracers: settings.showTracers)
                         : model.fragmentDots(
                             showFragments: settings.showFragments, showTracers: settings.showTracers))
-                    + (settings.showGroundPoints ? model.groundShockDots() : [])
+                        + (settings.showGroundPoints ? model.groundShockDots() : []))
                 // A replay of a recording that keeps the paint and the cloud draws them as they were then.
                 let replayed = model.playback?.recordsLayers == true
-                let paint = settings.thermal.flatMap {
-                    replayed ? model.replayedThermalPaint($0) : model.thermalPaint($0)
+                let paint = settings.thermal.flatMap { quantity in
+                    remote.map { model.remoteThermalPaint($0, quantity) }
+                        ?? (replayed ? model.replayedThermalPaint(quantity) : model.thermalPaint(quantity))
                 }
                 // The cloud's outlines are its silhouettes from the eye, so they follow the camera.
                 let lines =
@@ -128,7 +132,8 @@
                     + model.refinedOutlines()
                 return Frame(
                     settings: settings, dots: dots, paint: paint, lines: lines, camera: model.camera,
-                    freestanding: replay.map { $0.1?.freestanding ?? [] } ?? model.freestandingBoxes())
+                    freestanding: replay.map { $0.1?.freestanding ?? [] }
+                        ?? remote.flatMap(\.overlay.freestanding.value) ?? model.freestandingBoxes())
             }
 
             func draw(in view: MTKView) {

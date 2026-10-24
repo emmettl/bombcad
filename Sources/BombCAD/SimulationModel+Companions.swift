@@ -353,12 +353,7 @@ extension SimulationModel {
         } else {
             thermal = LocalFrameConsumer(.thermal(spec, scene, live: true))
         }
-        thermalGrids = ThermalExposure.surfaceGrids(scene: scene, spec: spec)
-        thermalReceivers = thermalGrids.flatMap(\.receivers)
-        thermalHeating =
-            spec.heating.enabled
-            ? SurfaceHeating.Layout(spec: spec.heating, grids: thermalGrids, scene: scene) : nil
-        reckonedSpec = spec
+        layOutThermalPaint(spec, scene: scene)
         nextFireballTime = 0
         // A mapped start's clock starts at its solution's time: the fireball before it, a frame a
         // millisecond, from the one-dimensional solution, so that the record starts at detonation.
@@ -371,6 +366,19 @@ extension SimulationModel {
         }
         sendFireball(solver)
         updateThermalStatus()
+    }
+
+    /// Lays out the receivers that the thermal paint is drawn from, live or recorded, for `spec`
+    /// over `scene`.
+    func layOutThermalPaint(_ spec: ThermalSpec, scene: FragmentScene) {
+        thermalGrids = ThermalExposure.surfaceGrids(scene: scene, spec: spec)
+        thermalReceivers = thermalGrids.flatMap(\.receivers)
+        thermalHeating =
+            spec.heating.enabled
+            ? SurfaceHeating.Layout(spec: spec.heating, grids: thermalGrids, scene: scene) : nil
+        reckonedSpec = spec
+        thermalPaintCache = nil
+        replayPaintCache = nil
     }
 
     func stopThermal() {
@@ -601,35 +609,41 @@ extension SimulationModel {
             fragments?.fragmentLive ?? fragmentLive, showFragments: showFragments, showTracers: showTracers)
     }
 
-    /// `live`'s fragments and tracers in flight, and its strikes, as the view draws them.
-    func fragmentDots(_ live: FragmentLive?, showFragments: Bool, showTracers: Bool) -> [SIMD4<Float>] {
+    /// `live`'s fragments and tracers in flight, and its strikes (or `strikes`, as a run elsewhere
+    /// sends them), as the view draws them; their speeds over `launchSpeed`, this run's by default.
+    func fragmentDots(
+        _ live: FragmentLive?, strikes: [SIMD4<Float>]? = nil, launchSpeed: Float? = nil,
+        showFragments: Bool, showTracers: Bool
+    ) -> [SIMD4<Float>] {
         guard let live else { return [] }
+        let scale = max(launchSpeed ?? fragmentLaunchSpeed, 1)
         var dots: [SIMD4<Float>] = []
         dots.reserveCapacity(live.positions.count)
         for n in live.positions.indices {
             let fragment = n < live.fragmentCount
             if fragment, showFragments, !live.landed[n] {
-                dots.append(SIMD4(live.positions[n], min(live.speeds[n] / fragmentScale, 0.999)))
+                dots.append(SIMD4(live.positions[n], min(live.speeds[n] / scale, 0.999)))
             } else if !fragment, showTracers, !live.landed[n] {
                 dots.append(SIMD4(live.positions[n], 1))
             }
         }
-        if showFragments {
-            for impact in live.impacts {
-                if let outcome = impact.penetration?.outcome {
-                    // A strike on a judged target, by what it did (Render.metal's kind 4).
-                    let value: Float = outcome == .stopped ? 0.1 : outcome == .spalled ? 0.5 : 0.9
-                    dots.append(SIMD4(impact.position, 4 + value))
-                    continue
-                }
-                // log10 of the energy over 7 decades: 1 J to 10 MJ.
-                dots.append(SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999)))
-            }
-        }
+        if showFragments { dots += strikes ?? Self.strikeDots(live.impacts) }
         return dots
     }
 
-    private var fragmentScale: Float { max(fragmentLaunchSpeed, 1) }
+    /// Where fragments landed, coloured by their energy, and where they struck a judged target, by
+    /// what they did.
+    nonisolated static func strikeDots(_ impacts: [FragmentImpact]) -> [SIMD4<Float>] {
+        impacts.map { impact in
+            if let outcome = impact.penetration?.outcome {
+                // A strike on a judged target, by what it did (Render.metal's kind 4).
+                let value: Float = outcome == .stopped ? 0.1 : outcome == .spalled ? 0.5 : 0.9
+                return SIMD4(impact.position, 4 + value)
+            }
+            // log10 of the energy over 7 decades: 1 J to 10 MJ.
+            return SIMD4(impact.position, 2 + min(max(log10(max(impact.energy, 1)) / 7, 0), 0.999))
+        }
+    }
 
     /// Draws the ground points as the run has left them, or before a run where they will be.
     func groundShockDots() -> [SIMD4<Float>] {
