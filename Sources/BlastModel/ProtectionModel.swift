@@ -148,7 +148,8 @@ public enum ProtectionModel {
     /// A margin for the scatter of the loads from side to side (emmettl/bombcad-work#101,
     /// docs/protective-design.md): a side's chance averages over its load's scatter, but a run
     /// gives each side one load, so some of the sides a plan passes are over the target on it.
-    /// None by default.
+    /// `adopted` (flag at 2.5 standard deviations) unless another is given, since the user's
+    /// adoption of 25 October 2026 (emmettl/bombcad-work#102); `off` is the planner before it.
     public struct Margin: Codable, Sendable, Equatable, CustomStringConvertible {
         public enum Kind: String, Codable, Sendable {
             /// The search holds every side to the chance `value` instead of the target's.
@@ -160,6 +161,9 @@ public enum ProtectionModel {
             /// load at `value` standard deviations up is protected one step further: the cheapest
             /// dearer option with a smaller chance.
             case flag
+            /// No margin (`none` in text and JSON): the chances and the target as they are, the
+            /// planner before 25 October 2026.
+            case off = "none"
         }
         public var kind: Kind
         public var value: Double
@@ -169,20 +173,35 @@ public enum ProtectionModel {
             self.value = value
         }
 
-        /// The margin proposed on 25 October 2026, with the clear-top terms (emmettl/bombcad-work#101):
-        /// flag at 2.5 standard deviations. Not the default until the user adopts it.
-        public static let proposed = Margin(kind: .flag, value: 2.5)
+        /// The margin in use unless another is given: flag at 2.5 standard deviations, with the
+        /// clear-top terms, judged on the sparse district's runs (emmettl/bombcad-work#101) and
+        /// adopted by the user on 25 October 2026 (emmettl/bombcad-work#102).
+        public static let adopted = Margin(kind: .flag, value: 2.5)
 
-        /// `target:0.05`, `quantile:2.5` or `flag:2.5`.
+        /// No margin, as the planner was before 25 October 2026 (`none`).
+        public static let off = Margin(kind: .off, value: 0)
+
+        /// `target:0.05`, `quantile:2.5`, `flag:2.5` or `none`.
         public init?(_ text: String) {
+            if text == "none" {
+                self = .off
+                return
+            }
             let parts = text.split(separator: ":")
-            guard parts.count == 2, let kind = Kind(rawValue: String(parts[0])), let value = Double(parts[1])
+            guard parts.count == 2, let kind = Kind(rawValue: String(parts[0])), kind != .off,
+                let value = Double(parts[1])
             else { return nil }
             self.init(kind: kind, value: value)
         }
 
-        public var description: String { "\(kind.rawValue):\(value)" }
+        public var description: String { kind == .off ? "none" : "\(kind.rawValue):\(value)" }
     }
+
+    /// The façade terms the planner takes unless others are named: the clear-top terms, with their
+    /// load scatter, since the user's adoption of 25 October 2026 (emmettl/bombcad-work#102), with
+    /// `Margin.adopted`. Those of 23 October stay by name (`TermSet.fitted`); with `Margin.off`
+    /// they are the planner before.
+    public static let adoptedTerms = FacadeLoadSurrogate.TermSet.clearTop
 
     /// The user's file: the threat, the target, the changes allowed and their costs.
     public struct Inputs: Codable, Sendable {
@@ -194,7 +213,8 @@ public enum ProtectionModel {
         public var barriers: [Barrier]?
         public var draws: Int?
         public var seed: UInt64?
-        /// A margin for the load's scatter from side to side; none unless given.
+        /// A margin for the load's scatter from side to side; `Margin.adopted` unless given
+        /// (`Margin.off` for none).
         public var margin: Margin?
 
         public init(
@@ -267,7 +287,9 @@ public enum ProtectionModel {
         /// The target's chance, the user's: the problem's is the search's, lower under a `target`
         /// margin. Plans are judged on a run against this one.
         public let accepted: Double
+        /// The margin the search took: the inputs', else `Margin.adopted`; nil for none.
         public let margin: Margin?
+        public let terms: FacadeLoadSurrogate.TermSet
     }
 
     /// The constructions `plan` writes into the scene: each building with a side changed, its
@@ -347,13 +369,13 @@ public enum ProtectionModel {
     }
 
     /// The model of `scene`'s map buildings (those with a glazing mix) on cells `cellSize` m across,
-    /// on the façade terms `terms` and their load scatter: by default those of 23 October 2026
-    /// (`fitted`), which the planner was judged on. Judged again on the clear-top terms the quick
-    /// estimate took on 25 October (emmettl/bombcad-work#99, #100: docs/protective-design.md), it
-    /// keeps `fitted` until the user decides.
+    /// on the façade terms `terms` and their load scatter, with the inputs' margin: by default the
+    /// clear-top terms with flag 2.5 (`adoptedTerms`, `Margin.adopted`), adopted by the user on 25
+    /// October 2026 (emmettl/bombcad-work#102; judged in #100 and #101: docs/protective-design.md).
+    /// `terms: .fitted` with `Margin.off` is the planner before.
     public static func model(
         scene: Scenario, cellSize: Float, inputs: Inputs,
-        terms: FacadeLoadSurrogate.TermSet = .fitted
+        terms: FacadeLoadSurrogate.TermSet = adoptedTerms
     ) throws -> Model {
         let objects = scene.envelopeObjects
         let raster = FacadeLoadSurrogate.Raster(
@@ -400,7 +422,8 @@ public enum ProtectionModel {
             sides: sides, objects: objects, raster: raster, inputs: inputs, cellSize: cellSize,
             terms: terms, moves: moves, walls: walls, blocks: scene.boxes,
             terrain: scene.terrain)
-        let margin = inputs.margin
+        let given = inputs.margin ?? .adopted
+        let margin = given.kind == .off ? nil : given
         let quantile = margin?.kind == .quantile ? margin?.value : nil
         var upper: (@Sendable ([Int], Int, Int) -> Double)?
         if let margin, margin.kind == .flag {
@@ -420,7 +443,7 @@ public enum ProtectionModel {
             axes: sides.map(\.axis),
             outwards: sides.map(\.outward), mixes: sides.map(\.mix), glazing: inputs.glazing,
             objects: sides.map(\.object), draws: max(1, inputs.draws ?? 64), seed: inputs.seed ?? 1,
-            accepted: accepted, margin: margin)
+            accepted: accepted, margin: margin, terms: terms)
     }
 
     /// Draw `draw`'s glass strength for building `object` (by its index in the scene's envelopes),

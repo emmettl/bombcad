@@ -509,11 +509,15 @@ are shipped):
   place), drawn over the surrogate's scatter and each building's glass strength
   ([glass by chance](glass-probability.md)), the threats weighted. `--samples` takes the threat
   from `infer-charge --samples` instead, places about the scene's charge.
-- **A margin for the scatter between sides** (`--margin`, or the inputs' `margin`; none by
-  default). `flag:2.5` protects one step further each side whose plan passes on its chance but
-  not with its load 2.5 standard deviations of its scatter up; `quantile:` and `target:` are the
-  other two candidates judged. See
-  [the margin](#a-margin-for-the-scatter-between-sides-25-october-2026).
+- **The façade terms** (`--terms clear-top|fitted`): the clear-top terms and their scatter by
+  default since 25 October 2026, the terms of 23 October by name
+  ([adopted](#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026)).
+- **A margin for the scatter between sides** (`--margin`, or the inputs' `margin`; `flag:2.5` by
+  default since 25 October 2026, `none` for none). `flag:2.5` protects one step further each side
+  whose plan passes on its chance but not with its load 2.5 standard deviations of its scatter up;
+  `quantile:` and `target:` are the other two candidates judged. See
+  [the margin](#a-margin-for-the-scatter-between-sides-25-october-2026). `--terms fitted
+  --margin none` is the planner as it was before.
 - **Options.** The side as built (its map glazing mix, annealed), or any glazing allowed:
   security film (7 mil, wet glazed, unless `film` says: the [film](building-envelopes.md#security-film)
   holds the cracked pane until it tears or its anchorage lets go), toughened (the panes' strength
@@ -787,8 +791,8 @@ On 25 October the quick estimate, the glass chances and the far field took the c
 terms (`TermSet.clearTop`, emmettl/bombcad-work#99). The planner kept the terms of 23 October
 (`TermSet.fitted`) and their scatter, because it had not been judged on the new ones. This
 section judges it on both (emmettl/bombcad-work#100). `scenebench protect --terms clear-top|fitted`
-(and `ProtectionModel.model(…, terms:)`) runs either set. Without `--terms` the planner still
-takes `fitted`.
+(and `ProtectionModel.model(…, terms:)`) runs either set. Without `--terms` the planner took
+`fitted` until the adoption [below](#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026).
 
 **The judge** is the planner's own. On the sparse made-up district (51 buildings, 204 glazed
 sides, a 3b target at 10%, with film, toughened, laminated or infill offered), each plan is judged
@@ -859,9 +863,10 @@ should be judged on these runs. Moving would then be the user's decision.
 
 ## A margin for the scatter between sides (25 October 2026)
 
-emmettl/bombcad-work#101 built that margin and judged it on the runs. It is an option, off by
-default: `scenebench protect --margin flag:2.5`, or `"margin": {"kind": "flag", "value": 2.5}` in
-the inputs.
+emmettl/bombcad-work#101 built that margin and judged it on the runs. It was built as an option,
+off by default: `scenebench protect --margin flag:2.5`, or `"margin": {"kind": "flag", "value":
+2.5}` in the inputs. It became the default, with the clear-top terms, the same day
+([adopted](#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026)).
 
 **Why plans miss.** A side's chance is averaged over its load's scatter. A run gives each side one
 load, though, and a plan with 50–100 sides near the target leaves a few whose load is well up.
@@ -986,6 +991,32 @@ target on every run judged here. Defaults are the user's decision. Until then th
 the terms of 23 October with no margin, and `--terms clear-top --margin flag:2.5` gives the
 proposal. The app's Protective Design sheet would take both when adopted. The tables and scripts
 are in `$BOMBCAD_DATA/scratch/issue101` (`judge.py`, `heldout.py`, `doc_tables.py`).
+
+## Adopted: the clear-top terms with the flag margin (25 October 2026)
+
+The user adopted the proposal on 25 October 2026 ("Adopt both", emmettl/bombcad-work#102). The
+planner now takes the clear-top terms and their scatter, with the flag margin at 2.5 standard
+deviations, unless told otherwise.
+- **`scenebench protect`** without `--terms` or `--margin` is what `--terms clear-top --margin
+  flag:2.5` was. Its plans are those of the table above: all 16 cases meet the target on the
+  clear-top runs, the worst side at 9.4%, for 1.01–1.34 times the cost of the plans before (1.13 on
+  average).
+- **In code**, `ProtectionModel.model` takes `ProtectionModel.adoptedTerms` (`TermSet.clearTop`).
+  An inputs file without `margin` takes `Margin.adopted` (`flag:2.5`).
+- **The app's Protective Design sheet** takes both. Its "Planner of 23 October (earlier plans)"
+  toggle gives the planner as it was.
+- **The settings before stay by name.** `--terms fitted --margin none` gives the earlier plans:
+  `"margin": {"kind": "none", "value": 0}` in the inputs, or `Margin.off` in code.
+- **Checked.** On the sparse district at 1, 2, 5 and 20 t, both seeds, confirmed on the clear-top
+  runs, the defaults write #101's `--terms clear-top --margin flag:2.5` plans byte for byte. In
+  each case `--terms fitted --margin none` writes the plans of the planner before (#101's build
+  with `--terms fitted`) byte for byte (`$BOMBCAD_DATA/scratch/issue102/planner.sh`).
+- **What it costs in time.** The flag asks each option's chance again with the load up. On the
+  sparse district a search with its confirmation took 12–14 s on the defaults and 15–17 s on the
+  settings before, on a loaded Studio, so the margin costs no noticeable time.
+- **What it does not change.** The standing stays illustrative, as the margin's own was. The
+  margin was set on one made-up district's runs at 4 m, on its 204 sides and one target (3b at
+  10%). Another district, a finer run or another target would want the judge again.
 
 ## Open questions
 

@@ -13,11 +13,12 @@ extension ValidationTables {
             id: "structureChancesSkill", low: 0.60, high: 0.74,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
             quote: "Brier skill 0.60 for concrete walls moderate or worse, 0.74 for roofs"),
-        // Concrete walls' tenths: within 0.1 of the runs but one, that one's miss (emmettl/bombcad-work#99).
+        // Concrete walls' tenths: each within 0.1 of the runs, since the impulse took ×0.95 on 25
+        // October 2026 (emmettl/bombcad-work#102; at ×1.15 one tenth was 0.11 under, #99).
         Figure(
-            id: "structureChancesUnderCall", low: 0.1, high: 0.11,
+            id: "structureChancesUnderCall", low: 0.1, high: 0.1,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",
-            quote: "each tenth of chance within 0.1 of the share of runs but one, 0.11 under"),
+            quote: "each tenth of chance within 0.1 of the share of runs, which passes"),
         Figure(
             id: "structureChancesRoofLow", low: 0.11, high: 0.18,
             document: "validation.md#the-walls-and-roofs-chances-against-beiruts-runs",

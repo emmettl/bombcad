@@ -152,10 +152,29 @@ struct ProtectionSearchTests {
             threats: [.init(mass: 100, x: 10, y: 30)],
             target: .init(worseThan: "3b", chance: 0.1, buildings: nil),
             glazing: [.init(name: "toughened", kind: .toughened, costPerM2: 4)], draws: 4, seed: 1)
+        // By default the clear-top terms with flag 2.5, adopted on 25 October 2026
+        // (emmettl/bombcad-work#102); `none` and the terms of 23 October are the planner before.
+        let adopted = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)
+        #expect(
+            adopted.margin == .adopted && adopted.terms == .clearTop && adopted.problem.targetChance == 0.1)
+        #expect(ProtectionModel.Margin.adopted == .init(kind: .flag, value: 2.5))
+        inputs.margin = .off
         let plain = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)
         #expect(plain.margin == nil && plain.problem.targetChance == 0.1 && plain.accepted == 0.1)
+        for s in plain.problem.sides.indices {
+            #expect(adopted.problem.chance([], s, 0) == plain.problem.chance([], s, 0))
+            #expect(
+                plain.problem.upperChance([], s, 0) == nil && adopted.problem.upperChance([], s, 0) != nil)
+        }
+        let before = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs, terms: .fitted)
+        #expect(before.terms == .fitted && before.margin == nil)
         #expect(
-            ProtectionModel.Margin("flag:2.5") == .proposed && ProtectionModel.Margin.proposed.kind == .flag)
+            ProtectionModel.Margin("flag:2.5") == .adopted && ProtectionModel.Margin("none") == .off
+                && ProtectionModel.Margin.off.description == "none")
+        #expect(ProtectionModel.Margin("none:1") == nil)
+        let decoded = try JSONDecoder().decode(
+            ProtectionModel.Margin.self, from: Data(#"{"kind": "none", "value": 0}"#.utf8))
+        #expect(decoded == .off)
         #expect(ProtectionModel.Margin("quantile") == nil && ProtectionModel.Margin("wide:1") == nil)
         // Every side's chance with its load held at 0, 1 and 2 standard deviations up.
         let held = try [0.0, 1, 2].map { z in

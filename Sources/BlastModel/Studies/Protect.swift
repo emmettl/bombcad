@@ -11,9 +11,11 @@ import simd
 /// threat from `infer-charge --samples` instead (masses, and places about the scene's charge).
 /// `--confirm` re-judges the plans that leave the threat where it is on a run's saved façade
 /// histories (`district-compare --save-loads`) of the same scene, under each plan's glazing.
-/// `--margin target:<chance>|quantile:<sd>|flag:<sd>` (or the inputs' `margin`) searches with a
-/// margin for the loads' scatter from side to side (`ProtectionModel.Margin`,
-/// emmettl/bombcad-work#101); none without it.
+/// `--margin target:<chance>|quantile:<sd>|flag:<sd>|none` (or the inputs' `margin`) searches with
+/// a margin for the loads' scatter from side to side (`ProtectionModel.Margin`,
+/// emmettl/bombcad-work#101). Without `--terms` and `--margin` the planner takes the clear-top terms
+/// with flag 2.5, adopted on 25 October 2026 (emmettl/bombcad-work#102); `--terms fitted --margin
+/// none` is the planner before.
 package enum Protect {
     struct PlanJSON: Codable {
         var plan: String
@@ -85,18 +87,18 @@ package enum Protect {
             }
         }
         let start = ContinuousClock.now
-        // `--terms clear-top|fitted`: the façade terms and load scatter; the planner's own pin (those
-        // of 23 October, emmettl/bombcad-work#100) without it.
-        let terms = try SurrogateBench.termSet(args, otherwise: .fitted)
+        // `--terms clear-top|fitted`: the façade terms and load scatter; the planner's own
+        // (`ProtectionModel.adoptedTerms`, clear-top since 25 October 2026) without it.
+        let terms = try SurrogateBench.termSet(args, otherwise: ProtectionModel.adoptedTerms)
         print("Façade terms: \(terms.rawValue)")
         if let text = value("margin") {
             guard let margin = ProtectionModel.Margin(text) else {
-                throw BlastError.allocationFailed("--margin target:<chance>|quantile:<sd>|flag:<sd>")
+                throw BlastError.allocationFailed("--margin target:<chance>|quantile:<sd>|flag:<sd>|none")
             }
             inputs.margin = margin
         }
-        print("Margin for the scatter between sides: \(inputs.margin?.description ?? "none")")
         let model = try ProtectionModel.model(scene: scene, cellSize: cellSize, inputs: inputs, terms: terms)
+        print("Margin for the scatter between sides: \(model.margin?.description ?? "none")")
         let problem = model.problem
         if let path = value("option-table") {
             try optionTable(
@@ -212,7 +214,7 @@ package enum Protect {
         quantiles: [Double] = [-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3]
     ) throws {
         var plain = inputs
-        plain.margin = nil
+        plain.margin = ProtectionModel.Margin.off
         let models =
             try [ProtectionModel.model(scene: scene, cellSize: cellSize, inputs: plain, terms: terms)]
             + quantiles.map { z in

@@ -12,8 +12,9 @@ Against Beirut's clear-top runs:
 - The glass chances' blown out passes the protective-design test (Brier 0.027 against 0.038).
 - The far field's error in the share of sides blown out halves at every yield.
 
-Two things still fall short. Some glass broken reads low at 0.2 kt beyond 1.75 km. Concrete walls'
-chances, which keep their ×1.15, miss their tenths test by 0.01 in one tenth.
+Some glass broken still reads low at 0.2 kt beyond 1.75 km. Concrete walls' chances keep their
+peak ×1.15 and take their impulse ×0.95, and pass their tenths test narrowly (see the walls'
+fragment).
 
 The earlier terms stay by name, to reproduce earlier estimates: Envelope Damage ▸ "Façade terms of
 23 October", headless `--surrogate-terms fitted`, and `--terms fitted` in the benches. Projects

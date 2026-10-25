@@ -1135,6 +1135,9 @@ The user adopted the proposal on 25 October 2026 (emmettl/bombcad-work#99):
   times low ([charge inference](charge-inference.md#on-the-clear-top-façade-terms-25-october-2026)).
   The planner judges each side better, but its cheaper plans miss the target on a run a little
   more often ([protective design](protective-design.md#on-the-clear-top-façade-terms-25-october-2026)).
+  Later that day the planner took the clear-top terms with a margin for the scatter between sides,
+  on the user's decision (emmettl/bombcad-work#101, #102:
+  [adopted](protective-design.md#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026)).
 
 **Judged again on the defaults** (`$BOMBCAD_DATA/scratch/issue99`, `judges.sh`; the binary built
 from the change; the wall and glass judges in `gpu-slot`, 12–30 minutes and at most 10 GB each).
@@ -1171,6 +1174,44 @@ What #98 did not judge, and what the standing quotes, old against new:
   3,563); the structural levels do not move. The close calls fall from
   954 buildings in doubt to 711, and the nearest eight, their refined answers and the estimate's
   walls there (within 0.04) are the same.
+
+#### The walls' impulse ×0.95 (25 October 2026)
+
+The user's decision the same day was "judge, adopt if it passes" (emmettl/bombcad-work#102): the
+concrete walls' impulse at ×0.95 with the peak at ×1.15, the pair the refit picks held out, taken
+only if the fixed tenths test passes and Brier skill gets no worse beyond noise. It passes, so it
+is the default. In `FacadeLoadSurrogate.structureCalibration` concrete walls now take peak ×1.15,
+impulse ×0.95, as the field models' walls do.
+
+**The judge** is #99's: `wall-calibrate` against Beirut's ten near boxes, 0.15–1.5 kt, on air
+refined to 2 m, 2,053 buildings at each yield, 50 draws. It ran on the clear-top terms with the
+scatter the app draws, the grid of #99 (peak ×0.8–1.5, scatter ×½ or ×1, impulse over peak 0.826
+or 1) and both pairs fixed. `$BOMBCAD_DATA/scratch/issue102/judges.sh`, in gpu-slot at 10 GB, 16
+minutes.
+
+| Concrete walls (20,530 building-yields) | Peak ×1.15, impulse ×1.15 (until now) | Peak ×1.15, impulse ×0.95 (adopted) |
+|---|---|---|
+| Moderate or worse: Brier / skill | 0.0220 / 0.599 | 0.0218 / 0.601 |
+| … tenths of 50+ within 0.1 | **fail**: 0.8–0.9 says 0.84, 0.95 seen | **pass**: 0.8–0.9 says 0.84, 0.94 seen; 0.2–0.3 says 0.23, 0.30 seen |
+| Heavy or worse (illustrative): Brier / skill | 0.0086 / 0.511 | 0.0082 / 0.538 |
+| … its tenths at 0.1–0.5 | high by 0.09–0.23 | high by 0.09–0.17 |
+| Brier summed over the ten yields, walls (the grid's) | 451.5 | 448.4 |
+| Each yield held out: the refit's choice; pooled skill, tenths | peak ×1.15, impulse ×0.95 in 9 folds; ×1.3, ×1.3 at 1.5 kt; 0.577, pass | the same (the grid, not the default, chooses) |
+
+- **It passes, narrowly.** The 0.8–0.9 tenth moves from 0.11 under to within 0.1 (170 buildings,
+  so the share seen has a standard error of about 0.02). It is still on the unsafe side, and it
+  is at the edge: a different set of runs could put it back over.
+- **Nothing gets worse.** Skill rises by 0.002 for moderate or worse and 0.027 for heavy or worse.
+  The first is within noise, the second a small real gain. Roofs and stone don't use the factor and
+  don't move (0.740 and 0.688).
+- **The field models' walls hold** at their own peak ×1.15 and impulse ×0.95, which are now the
+  surrogate's too (`walls-a`, `walls-c` in the same script). Field model 1 scores Brier 0.0190,
+  skill 0.653, and passes; held out, it picks the same pair in every fold (0.653). Field model 2,
+  with its own scatter, scores 0.0190 / 0.653 and passes; held out, the impulse ×1.15 in eight
+  folds (0.652, passing). Both are #99's figures to the digit.
+- **In code** the impulse is ×0.95 exactly; the judge's ratio 0.826 gives ×0.9499.
+- **The standing** (`structureChancesUnderCall`) now says every tenth is within 0.1, and the skill
+  stays 0.60.
 
 ## Using it
 

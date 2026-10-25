@@ -6441,13 +6441,16 @@ they were first judged on read the walls' peaks 13–19% low at
 400–600 m of 0.5 kt (emmettl/bombcad-work#19; [the first look](surrogate-first-look.md#the-walls-chances-re-judged-on-2-m-references-22-october-2026)).
 
 - **Concrete walls, moderate or worse:** on the façade terms refitted on clear-top runs and
-  adopted on 25 October 2026, with the scatter they draw, Brier skill 0.60 for concrete walls
-  moderate or worse, 0.74 for roofs; for the walls, each tenth of chance within 0.1 of the share of
-  runs but one, 0.11 under (where they say 0.84, 0.95 were damaged), which misses the
-  protective-design report's test by 0.01 (the unsafe side). The walls' loads keep ×1.15, on the
-  rise it was set on (×1.3 on the façade terms before 23 October, ×1.0 against the 4 m runs); held
-  out yield by yield, the refit picks ×1.15 in nine folds of ten (with the impulse ×0.95) and ×1.3
-  in one, at skill 0.58, passing. On the terms of 23 October ×1.15 scored 0.61 and passed. With the
+  adopted on 25 October 2026, with the scatter they draw and the walls' peak ×1.15 and impulse
+  ×0.95 (adopted the same day, emmettl/bombcad-work#102), Brier skill 0.60 for concrete walls
+  moderate or worse, 0.74 for roofs (the walls 0.601, Brier 0.0218); for the walls, each tenth of chance
+  within 0.1 of the share of runs, which passes the protective-design report's test, narrowly:
+  where they say 0.84, 0.94 were damaged. With the
+  impulse ×1.15 as well, as until then, skill was 0.599 (Brier 0.0220) and that tenth 0.11 under,
+  missing the test by 0.01 (the unsafe side). The walls' peak keeps ×1.15, on the rise it was set
+  on (×1.3 on the façade terms before 23 October, ×1.0 against the 4 m runs); held out yield by
+  yield, the refit picks peak ×1.15 with the impulse ×0.95 in nine folds of ten and ×1.3 in one,
+  at skill 0.58, passing. On the terms of 23 October ×1.15 scored 0.61 and passed. With the
   learned field model's ground-floor peaks, its walls' peak ×1.15 and impulse ×0.95: 0.65 with the
   learned field model's peaks, against 0.60, and the test passes; with field model 2's, 0.653,
   and it passes (0.654 and 0.656 on the terms of 23 October;

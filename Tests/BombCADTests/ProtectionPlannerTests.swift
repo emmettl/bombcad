@@ -79,6 +79,11 @@ struct ProtectionPlannerTests {
         planner.offerLines(of: model.settings.scenario)
         #expect(planner.lines.map(\.name) == ["Fence"] && !planner.lines[0].allowed)
         #expect(planner.inputs(model.settings.scenario).standOffs?.isEmpty == true)
+        // The clear-top terms with the flag margin at 2.5 (25 October 2026), or the planner before.
+        #expect(planner.inputs(model.settings.scenario).margin == .adopted && planner.terms == .clearTop)
+        planner.earlierSettings = true
+        #expect(planner.inputs(model.settings.scenario).margin == .off && planner.terms == .fitted)
+        planner.earlierSettings = false
         planner.lines[0].allowed = true
         planner.lines[0].cost = 40
         let inputs = planner.inputs(model.settings.scenario)

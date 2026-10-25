@@ -38,12 +38,11 @@ extension FacadeLoadSurrogate {
             String(
                 format:
                     "Walls' and roofs' chances, against Beirut's near runs at ten yields on air refined to 2 m: Brier skill "
-                    + "%.2f for concrete walls damaged, each tenth of chance within %.1f of the runs but one, %.2f under "
-                    + "(the unsafe side); %.2f for roofs, "
+                    + "%.2f for concrete walls damaged, each tenth of chance within %.1f of the runs; %.2f for roofs, "
                     + "their middle chances %.2f–%.2f low (the unsafe side), with a load factor fitted to those runs; "
                     + "masonry's high. Drawn over an assumed strength scatter. Heavy damage is illustrative for "
                     + "concrete, and no chance of failure is given.",
-                skill.low, under.low, under.high, skill.high, roof.low, roof.high)
+                skill.low, under.high, skill.high, roof.low, roof.high)
         ]
     }()
 
@@ -62,15 +61,18 @@ extension FacadeLoadSurrogate {
 
     /// The factors on a building's walls' and roof's peak and impulse, and the scale on their load
     /// scatter, by what the walls are built of, and with `learned` for walls whose ground-floor
-    /// peaks are the learned field model's (emmettl/bombcad-work#67): calibrated against Beirut's
+    /// peaks are the learned field model's (emmettl/bombcad-work#67; the same factors as the
+    /// surrogate's since 25 October 2026, kept apart for a refit): calibrated against Beirut's
     /// near boxes at ten yields from 0.15 to 1.5 kt, refined to 2 m below the buildings' tops, each
     /// yield held out in turn (`scenebench wall-calibrate`; docs/glass-probability.md, "Walls and
     /// roofs"). Since the façade terms were refitted on 2 m air (23 October 2026,
     /// emmettl/bombcad-work#56) concrete walls take ×1.15 with the whole scatter, the refit's
     /// choice; on the terms before, fitted on 4 m cells, they took ×1.3. On the clear-top terms
-    /// adopted on 25 October 2026 (emmettl/bombcad-work#99) ×1.15 is kept: it misses the tenths
-    /// test by 0.01 in one tenth, and held out the refit picks it in nine folds of ten. With the field model, the
-    /// peak ×1.15 and the impulse ×0.95; stone ×1.0 with ½ and roofs ×1.3 with ½, as on 4 m cells.
+    /// adopted on 25 October 2026 (emmettl/bombcad-work#99) the peak keeps ×1.15 and, since the
+    /// user's decision that day (emmettl/bombcad-work#102), the impulse takes ×0.95, as with the
+    /// field model: the pair the refit picks held out in nine folds of ten, and with which the
+    /// tenths test passes (the impulse at ×1.15 missed it by 0.01 in one tenth). Stone ×1.0 with ½
+    /// and roofs ×1.3 with ½, as on 4 m cells.
     /// The 4 m runs read the walls' peaks 13–19% low at 400–600 m of 0.5 kt, and had given concrete
     /// ×1.0 (emmettl/bombcad-work#19).
     public static func structureCalibration(walls kind: EnvelopeConstruction.Kind, learned: Bool = false) -> (
@@ -78,7 +80,7 @@ extension FacadeLoadSurrogate {
         roof: (peak: Double, impulse: Double, scatter: Double)
     ) {
         let walls: (peak: Double, impulse: Double, scatter: Double) =
-            kind == .unreinforcedMasonry ? (1.0, 1.0, 0.5) : learned ? (1.15, 0.95, 1.0) : (1.15, 1.15, 1.0)
+            kind == .unreinforcedMasonry ? (1.0, 1.0, 0.5) : (1.15, 0.95, 1.0)
         return (walls, (1.3, 1.3, 0.5))
     }
 

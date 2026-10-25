@@ -33,6 +33,12 @@ final class ProtectionPlannerModel {
     ]
     /// Draws of the load's scatter and the glass's strength for each side's chance.
     var draws = 32
+    /// The planner as it was until 25 October 2026: the façade terms of 23 October and no margin
+    /// for the scatter between sides. Off, the clear-top terms with the flag margin at 2.5
+    /// standard deviations, adopted that day (emmettl/bombcad-work#102, docs/protective-design.md).
+    var earlierSettings = false
+    /// The façade terms the search takes.
+    var terms: FacadeLoadSurrogate.TermSet { earlierSettings ? .fitted : ProtectionModel.adoptedTerms }
 
     /// A stand-off line of the scene's the search may put up, with its cost: each charge it guards
     /// against stopped at it (`StandOffLine.stopPoint`).
@@ -87,7 +93,8 @@ final class ProtectionPlannerModel {
             standOffs: lines.filter(\.allowed).map {
                 ProtectionModel.StandOff(name: "stand-off at \($0.name)", cost: $0.cost, line: $0.name)
             },
-            barriers: nil, draws: draws, seed: 1)
+            barriers: nil, draws: draws, seed: 1,
+            margin: earlierSettings ? .off : .adopted)
     }
 
     /// Searches `scenario` on cells `cellSize` m across, off the main thread.
@@ -96,13 +103,15 @@ final class ProtectionPlannerModel {
         isRunning = true
         error = nil
         let inputs = inputs(scenario)
+        let terms = terms
         task = Task { [weak self] in
             let start = ContinuousClock.now
             let outcome = await Task.detached(priority: .userInitiated) {
                 () -> Result<(ProtectionModel.Model, [ProtectionSearch.Plan], ProtectionSearch.Plan), Error>
                 in
                 do {
-                    let model = try ProtectionModel.model(scene: scenario, cellSize: cellSize, inputs: inputs)
+                    let model = try ProtectionModel.model(
+                        scene: scenario, cellSize: cellSize, inputs: inputs, terms: terms)
                     ProtectionModel.prepare(model)
                     let problem = model.problem
                     let ranked = ProtectionSearch.ranked(problem, plans: ProtectionSearch.exact(problem))

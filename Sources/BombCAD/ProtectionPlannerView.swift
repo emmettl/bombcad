@@ -22,7 +22,7 @@ struct ProtectionPlannerView: View {
                     Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
                 }
                 Text(
-                    "The least costly glazing changes that keep each building side's chance of glass thrown worse than its target under the chance you accept, against the scene's charges. Each side's chance comes from the quick estimate's loads, drawn over their scatter and the glass's strength: an estimate, not a run. Walls and roofs are not searched."
+                    "The least costly glazing changes that keep each building side's chance of glass thrown worse than its target under the chance you accept, against the scene's charges. Each side's chance comes from the quick estimate's loads, drawn over their scatter and the glass's strength: an estimate, not a run. A side that passes on its chance, but not with its load well up its scatter, is given the next dearer change, so that a plan meets its target on a run's one load per side. Walls and roofs are not searched."
                 )
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 target(planner)
@@ -81,6 +81,13 @@ struct ProtectionPlannerView: View {
                     Text("for each side's chance; more are steadier and slower").font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+            GridRow {
+                Text("")
+                Toggle("Planner of 23 October (earlier plans)", isOn: $planner.earlierSettings)
+                    .help(
+                        "The façade terms of 23 October and no margin for the scatter between sides, as the planner was until 25 October 2026, to reproduce an earlier plan. Off, the clear-top terms, and a side that passes on its chance but not with its load 2.5 standard deviations of its scatter up is given the next dearer change (docs/protective-design.md)."
+                    )
             }
         }
     }

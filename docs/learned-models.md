@@ -2583,6 +2583,11 @@ What it says:
 The standing's figures (`learnedModel2Glass`, `learnedModel2GlassUpper`, `learnedModel2Walls`) quote
 this section since 25 October 2026.
 
+Later that day the surrogate's own concrete walls took the same pair, peak ×1.15 and impulse ×0.95,
+on the user's decision (emmettl/bombcad-work#102), and pass their tenths test with it. Judged again
+then, both field models' walls gave the figures above to the digit
+([the walls' impulse](surrogate-first-look.md#the-walls-impulse-095-25-october-2026)).
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up

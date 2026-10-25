@@ -460,6 +460,12 @@ a glazing mix (a district from a map, or constructions given glazing).
 - **Target**: the worst GSA condition allowed (2, 3a, 3b or 4) and the largest chance accepted of
   passing it, per side. **Draws** of the loads' scatter and the glass's strength make each side's
   chance; 32 by default, fewer for a quick look.
+- **A margin for the scatter between sides**, since 25 October 2026: each side's chance is from
+  the clear-top façade terms, and a side that passes on its chance but not with its load 2.5
+  standard deviations of their scatter up is given the next dearer change, so that a plan meets its
+  target on a run's one load per side ([adopted](protective-design.md#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026)).
+  **Planner of 23 October (earlier plans)** gives the planner as it was before: the façade terms of
+  23 October and no margin.
 - **Changes allowed**: security film (7 mil, wet glazed), toughened glass, laminated glass,
   filling the window in, or re-glazing with new glass (not allowed until ticked: new glass is
   stronger only while new), each with your cost per square metre of glass. The costs shown are only
