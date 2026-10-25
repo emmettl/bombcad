@@ -301,11 +301,13 @@ public enum ProtectionModel {
     }
 
     /// The model of `scene`'s map buildings (those with a glazing mix) on cells `cellSize` m across,
-    /// on the façade terms of 23 October 2026 (`Coefficients.fitted`) and their scatter: not judged
-    /// again on the clear-top terms the quick estimate took on 25 October (emmettl/bombcad-work#99).
+    /// on the façade terms `terms` and their load scatter: by default those of 23 October 2026
+    /// (`fitted`), which the planner was judged on. Judged again on the clear-top terms the quick
+    /// estimate took on 25 October (emmettl/bombcad-work#99, #100: docs/protective-design.md), it
+    /// keeps `fitted` until the user decides.
     public static func model(
         scene: Scenario, cellSize: Float, inputs: Inputs,
-        coefficients: FacadeLoadSurrogate.Coefficients = .fitted
+        terms: FacadeLoadSurrogate.TermSet = .fitted
     ) throws -> Model {
         let objects = scene.envelopeObjects
         let raster = FacadeLoadSurrogate.Raster(
@@ -350,7 +352,7 @@ public enum ProtectionModel {
             + (inputs.barriers ?? []).map { ProtectionSearch.SiteChange(name: $0.name, cost: $0.cost) }
         let evaluator = Evaluator(
             sides: sides, objects: objects, raster: raster, inputs: inputs, cellSize: cellSize,
-            coefficients: coefficients, moves: moves, walls: walls, blocks: scene.boxes,
+            terms: terms, moves: moves, walls: walls, blocks: scene.boxes,
             terrain: scene.terrain)
         let problem = ProtectionSearch.Problem(sides: searchSides, site: site, targetChance: accepted) {
             site, side, option in
@@ -393,6 +395,7 @@ public enum ProtectionModel {
         let inputs: Inputs
         let cellSize: Float
         let coefficients: FacadeLoadSurrogate.Coefficients
+        let loadScatter: [FacadeLoadSurrogate.Uncertainty.LoadScatter]
         let draws: Int
         let seed: UInt64
         let table = FacadeLoadSurrogate.GlassTable(binS: 0.7e-3)
@@ -407,7 +410,7 @@ public enum ProtectionModel {
 
         init(
             sides: [Side], objects: [SceneObject], raster: FacadeLoadSurrogate.Raster, inputs: Inputs,
-            cellSize: Float, coefficients: FacadeLoadSurrogate.Coefficients, moves: [[StandOff.Move]] = [],
+            cellSize: Float, terms: FacadeLoadSurrogate.TermSet, moves: [[StandOff.Move]] = [],
             walls: [Box] = [], blocks: [Box] = [], terrain: Terrain? = nil
         ) {
             self.sides = sides
@@ -415,7 +418,8 @@ public enum ProtectionModel {
             self.raster = raster
             self.inputs = inputs
             self.cellSize = cellSize
-            self.coefficients = coefficients
+            coefficients = terms.coefficients
+            loadScatter = terms.loadScatter
             self.moves = moves
             self.walls = walls
             self.blocks = blocks
@@ -490,10 +494,8 @@ public enum ProtectionModel {
             for threat in threats where threat.weight > 0 {
                 let features = features(side, threat, barriers: built)
                 let middle = features.map(\.distanceM).sorted()[features.count / 2]
-                let scatter = FacadeLoadSurrogate.Uncertainty(
-                    loadScatter: FacadeLoadSurrogate.Uncertainty.leaveOneOut
-                )
-                .scatter(atZ: middle / cbrt(threat.mass))
+                let scatter = FacadeLoadSurrogate.Uncertainty(loadScatter: loadScatter)
+                    .scatter(atZ: middle / cbrt(threat.mass))
                 var sum = 0.0
                 for k in 0..<draws {
                     let strength = ProtectionModel.strength(seed: seed, draw: k, object: s.object)

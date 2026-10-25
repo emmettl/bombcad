@@ -25,9 +25,12 @@ package enum SurrogateBench {
     }
 
     /// `--terms clear-top|fitted`: the named set of façade terms and load scatter to judge
-    /// (`FacadeLoadSurrogate.TermSet`), the adopted ones (clear-top since 25 October 2026) without it.
-    package static func termSet(_ args: [String]) throws -> FacadeLoadSurrogate.TermSet {
-        guard let name = value(args, "terms") else { return .adopted }
+    /// (`FacadeLoadSurrogate.TermSet`), `otherwise` without it: the adopted ones (clear-top since 25
+    /// October 2026) unless a consumer still pinned to others names its own.
+    package static func termSet(
+        _ args: [String], otherwise: FacadeLoadSurrogate.TermSet = .adopted
+    ) throws -> FacadeLoadSurrogate.TermSet {
+        guard let name = value(args, "terms") else { return otherwise }
         guard let set = FacadeLoadSurrogate.TermSet(rawValue: name) else {
             throw BlastError.allocationFailed(
                 "--terms " + FacadeLoadSurrogate.TermSet.allCases.map(\.rawValue).joined(separator: "|"))

@@ -27,7 +27,7 @@ struct SurrogateDamageTests {
             ChargeInference.SurrogateDamage(
                 scene: scene, observed: observed, reference: centre, placeRadius: 120, spacing: 60,
                 cellSize: 4,
-                maximumSides: 120, strengthLogSD: 0.25, coefficients: .fitted, tableCoarsening: 6)
+                maximumSides: 120, strengthLogSD: 0.25, terms: .fitted, tableCoarsening: 6)
         }
         let all = damage(every)
         #expect(all.sides.count > 50)

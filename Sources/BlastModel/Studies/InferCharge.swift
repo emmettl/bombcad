@@ -11,7 +11,16 @@ import Foundation
 ///     [--glazing apartments|older|commercial|industrial] [--exposure 1] [--exposure-spread 0.8]
 ///     [--glass-concentration 30] [--steps 3000] [--walkers 48] [--seed 1]
 ///     [--out posterior.json] [--samples samples.csv]
+///     [--scene-glass <district-scene's inputs> [--scene-radius 2500] [--terms fitted|clear-top]]
+///     [--no-arrivals]
 /// ```
+///
+/// `--scene-glass`: the glass weighed on the district scene's own buildings, as the app's Infer
+/// Charge sheet weighs it ("On this scene's buildings", `ChargeInference.SurrogateDamage`), in place
+/// of the free field: the scene built about `--centre` from the district's inputs (`--osm`, `--dem`,
+/// `--heights`, `--dx`, …) to `--scene-radius`, each surveyed façade put on its judged side, the
+/// sides' loads the façade load surrogate's on `--terms` (those of 23 October, the inference's pin,
+/// unless named; emmettl/bombcad-work#100). `--no-arrivals`: the glass alone.
 ///
 /// Observers: Rigby et al.'s CSV (video_ref, type, …, toa_best_s, toa_minus_err_s, lat_deg, lon_deg;
 /// the fireball's rows left out), or any CSV with `name,lat,lon,earliest_s,latest_s`. Glass:
@@ -74,6 +83,11 @@ package enum InferCharge {
         if let path = value("glass") {
             facades = try readFacades(URL(filePath: path), projection: projection)
         }
+        if args.contains("--no-arrivals") { arrivals = [] }
+        let damage =
+            try args.contains("--scene-glass")
+            ? sceneGlass(args, facades: facades, projection: projection) : nil
+        if damage != nil { facades = [] }
 
         var settings = ChargeInference.Settings()
         if let t = value("temperature").flatMap(Double.init) { settings.temperatureC = t }
@@ -126,7 +140,8 @@ package enum InferCharge {
                 + String(
                     format: "; reference %.6f N %.6f E, %.0f °C", centre.y, centre.x, settings.temperatureC))
         let start = ContinuousClock.now
-        let posterior = ChargeInference.infer(arrivals: arrivals, facades: facades, settings: settings)
+        let posterior = ChargeInference.infer(
+            arrivals: arrivals, facades: facades, damage: damage, settings: settings)
         let elapsed = ContinuousClock.now - start
         report(posterior, arrivals: arrivals, projection: projection, settings: settings)
         print("Standing:")
@@ -156,6 +171,54 @@ package enum InferCharge {
             }
             try text.write(to: URL(filePath: path), atomically: true, encoding: .utf8)
         }
+    }
+
+    /// The survey's façades on the district scene's judged sides, and the evidence they give
+    /// (`--scene-glass`), as the app's `ChargeInferenceModel.sceneDamage` makes it: the scene's corner
+    /// `--scene-radius` metres south-west of the centre, the places searched within `--radius` on a
+    /// grid no finer than 20 m.
+    static func sceneGlass(
+        _ args: [String], facades: [ChargeInference.Facade], projection: LocalProjection
+    ) throws -> ChargeInference.SurrogateDamage {
+        guard !facades.isEmpty else { throw BlastError.allocationFailed("--scene-glass needs --glass") }
+        let terms = try SurrogateBench.termSet(args, otherwise: .fitted)
+        let start = ContinuousClock.now
+        let district = try DistrictInputs.read(args)
+        let half = Float(SurrogateBench.value(args, "scene-radius").flatMap(Double.init) ?? 2500)
+        let (scene, _) = try district.scene(radius: half)
+        let cellSize = district.cellSize
+        let sides = ChargeInference.SurrogateDamage.judgedSides(scene: scene, cellSize: cellSize)
+        let centre = projection.centre
+        let corner = SIMD2(
+            centre.x - Double(half) / (ElevationGrid.metresPerDegree * cos(centre.y * .pi / 180)),
+            centre.y - Double(half) / ElevationGrid.metresPerDegree)
+        let placement = MapBuildingPlacement(origin: corner, resolution: 1)
+        let onScene = facades.map { facade in
+            var moved = facade
+            let place = placement.position(projection.lonLat(SIMD2(facade.east, facade.north)))
+            moved.east = place.x
+            moved.north = place.y
+            return moved
+        }
+        let observed = ChargeInference.SurrogateDamage.observed(facades: onScene, sides: sides, scene: scene)
+        guard !observed.isEmpty else {
+            throw BlastError.allocationFailed("no surveyed façade on a side of the scene's buildings")
+        }
+        let radius =
+            SurrogateBench.value(args, "radius").flatMap(Double.init)
+            ?? ChargeInference.Settings().placeRadius
+        let reference = placement.position(centre)
+        let damage = ChargeInference.SurrogateDamage(
+            scene: scene, observed: observed, reference: SIMD2(Float(reference.x), Float(reference.y)),
+            placeRadius: radius, spacing: max(20, radius / 15), cellSize: cellSize, terms: terms)
+        print(
+            String(
+                format:
+                    "Scene glass on %d buildings (%.0f m cells, terms %@): %d façades on %d judged sides, %d broken; %d weighed, %d broken (%.0f s)",
+                scene.envelopeObjects.count, cellSize, terms.rawValue as NSString, facades.count,
+                observed.count, observed.filter(\.damaged).count, damage.sides.count,
+                damage.sides.filter(\.damaged).count, StudyClock.seconds(start)))
+        return damage
     }
 
     // MARK: - Reporting

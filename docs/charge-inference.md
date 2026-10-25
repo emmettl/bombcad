@@ -282,6 +282,75 @@ envelope buildings with a glazing mix and façade strips on the air), and needs 
   the standing: illustrative. On Beirut it is circular, as the glazing mixes' openings curve was
   fitted there (`ChargeInference.sceneGlassStanding`).
 
+### On the clear-top façade terms (25 October 2026)
+
+On 25 October the quick estimate took the clear-top façade terms (`TermSet.clearTop`,
+emmettl/bombcad-work#99). `SurrogateDamage` kept the terms of 23 October (`TermSet.fitted`) and
+their load scatter, because it had not been judged on the new ones. This section judges it on
+both (emmettl/bombcad-work#100). The scatter by scaled distance, which `chances` used to take from
+`leaveOneOut` whatever the terms, now comes with the terms.
+
+Both sets can be run, and `fitted` stays the default everywhere:
+- `SurrogateDamage(…, terms:)` in code;
+- `infer-charge-study --forward-damage --terms clear-top|fitted`;
+- `infer-charge --scene-glass` (new): the glass on a district scene's own buildings, built from
+  the district's inputs, as the app's sheet weighs it, with `--no-arrivals` for the glass alone.
+
+The runs and outputs are in `$BOMBCAD_DATA/scratch/issue100` (`forward/`, `infer/`).
+
+**BombCAD's own charges** (`--forward-damage`: the four charges above, rerun with today's solver,
+each judged on both sets with the same runs and seeds):
+
+| | 4 m: 23 October | 4 m: clear-top | 2 m: 23 October | 2 m: clear-top |
+|---|---|---|---|---|
+| Glass alone, found / true (0.5, 2, 5, 1 t) | 0.92, 1.53, 1.27, 1.03 | 1.04, 1.36, 1.34, 1.09 | 1.17, 1.01, 2.38, 0.87 | 1.07, 0.89, 1.72, 0.79 |
+| Mean \|log(found / true)\| | 0.19 | 0.18 | 0.29 | 0.24 |
+| Truth in the 90% interval | 3 of 4 (not 2 t) | 3 of 4 (not 2 t) | 3 of 4 (not 0.5 t) | 3 of 4 (not 1 t) |
+| Place off | 42–76 m | 7–79 m | 36–145 m | 10–111 m |
+| Arrivals and glass, found / true | 1.31, 1.55, 1.64, 1.75 | 1.47, 1.53, 1.63, 1.70 | 1.39, 1.33, 1.30, 1.40 | 1.33, 1.29, 1.30, 1.31 |
+
+- **As well or better.** The yields are as good within the scatter. Each set holds the truth in
+  three intervals of four on each grid. The clear-top terms place the charge nearer in seven
+  cases of eight: within 43 m in six of the eight, against two of eight on the terms of 23 October.
+- **With the arrivals**, the arrivals decide the yield on both sets, as before.
+- Today's runs break fewer sides on 4 m cells than those of 20 October (47 of 192 at 500 kg,
+  against 62), so the 4 m column of 23 October no longer holds all four.
+
+**Beirut** (GEER's 9,175 façades put on the judged sides of the 2.5 km scene on 4 m cells: 2,295
+sides seen, 983 broken; 1,148 of them weighed, 495 broken; Rigby et al.'s 31 observers; 15 °C,
+Kingery–Bulmash):
+
+| | Terms of 23 October | Clear-top terms |
+|---|---|---|
+| Arrivals alone (no glass; for reference) | 0.54 kt (0.39–0.85), 25 m off | the same |
+| Glass alone, the place free | 0.076 kt (0.071–0.081), 476 m off (the search's edge) | **0.055 kt** (0.051–0.059), 466 m off |
+| Glass alone, the place held at Warehouse 12 | 0.040 kt (0.038–0.043) | **0.030 kt** (0.028–0.032) |
+| Arrivals and glass, the place free | 0.058 kt (0.038–0.068), 246 m off; observers 29% off | **0.041 kt** (0.036–0.048), 223 m off; 29% off |
+| Arrivals and glass, the place held | 0.041 kt (0.038–0.043); observers 18% off | **0.030 kt** (0.029–0.032); 19% off |
+
+The published estimates are Rigby et al.'s 0.50 kt (1.12 upper), Stennett et al.'s 0.64 kt
+(0.41–0.96) and Pilger et al.'s 0.13–2 kt.
+
+- **On Beirut both sets are far off, and the clear-top terms are further.** The glass on the
+  scene's own buildings wants a charge 7–13 times too small on the terms of 23 October. It wants
+  9–17 times too small on the clear-top terms. The clear-top yield is 25–30% lower at every
+  setting, and the 90% intervals overlap in one pair of four.
+- **With the arrivals the result is no better.** The glass overrides them: the observers are
+  then 18–29% off the model on either set, against 6% alone.
+- **Why.** The clear-top terms read Beirut's far façades higher (0.82–1.03 of a clear-top run at
+  0.5 kt, against 0.72–0.92). That is right for the loads. But more glass then breaks for each
+  kilotonne, and a smaller charge matches the survey's share broken. It is the free-field
+  glass's finding again ([above](#broken-glass)): the glass model breaks more than GEER's survey
+  counts, and better loads widen that gap.
+
+**Proposal: the inference's glass keeps the terms of 23 October.**
+- On BombCAD's own charges the clear-top terms do as well on the yield and better on the place.
+- On Beirut against the published estimates they do worse: 25–30% lower, on a result that was
+  already 7–13 times low. Neither set gives a usable yield there.
+- What keeps Beirut out of reach is the glass's own bias against the survey, not the loads.
+- Moving would put the sheet's glass on the same terms as the quick estimate beside it. It would
+  take a quarter to a third more off the Beirut yield. It is the user's decision.
+
 ## Against charges BombCAD ran
 
 ### Synthetic arrivals

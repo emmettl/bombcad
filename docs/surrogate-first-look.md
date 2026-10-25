@@ -1128,7 +1128,13 @@ The user adopted the proposal on 25 October 2026 (emmettl/bombcad-work#99):
   ([the hybrid far field](hybrid-far-field.md#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026)).
 - **Not moved:** the charge inference's glass (`ChargeInferenceSurrogate`, whose yields come from
   arrivals, not glass) and the protection planner (`ProtectionModel`) keep the terms of 23 October
-  and their scatter. Neither was judged on the new terms.
+  and their scatter. Neither was judged on the new terms. Judged on both the same day
+  (emmettl/bombcad-work#100), neither does better beyond noise on its own judge, and both keep
+  the terms of 23 October until the user decides. The inference places BombCAD's charges nearer
+  on the clear-top terms, but reads Beirut's yield 25–30% lower, from a reading already 7–13
+  times low ([charge inference](charge-inference.md#on-the-clear-top-façade-terms-25-october-2026)).
+  The planner judges each side better, but its cheaper plans miss the target on a run a little
+  more often ([protective design](protective-design.md#on-the-clear-top-façade-terms-25-october-2026)).
 
 **Judged again on the defaults** (`$BOMBCAD_DATA/scratch/issue99`, `judges.sh`; the binary built
 from the change; the wall and glass judges in `gpu-slot`, 12–30 minutes and at most 10 GB each).

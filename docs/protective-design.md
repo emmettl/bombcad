@@ -776,6 +776,82 @@ loads instead.
   search (2–3%). The fine runs say a barrier earns its cost only for façades within one or two of
   its heights behind it; protective design does not yet credit that.
 
+## On the clear-top façade terms (25 October 2026)
+
+On 25 October the quick estimate, the glass chances and the far field took the clear-top façade
+terms (`TermSet.clearTop`, emmettl/bombcad-work#99). The planner kept the terms of 23 October
+(`TermSet.fitted`) and their scatter, because it had not been judged on the new ones. This
+section judges it on both (emmettl/bombcad-work#100). `scenebench protect --terms clear-top|fitted`
+(and `ProtectionModel.model(…, terms:)`) runs either set. Without `--terms` the planner still
+takes `fitted`.
+
+**The judge** is the planner's own. On the sparse made-up district (51 buildings, 204 glazed
+sides, a 3b target at 10%, with film, toughened, laminated or infill offered), each plan is judged
+again on a run's saved façade histories (`--confirm`).
+- **Before today** that was done at 20 t only. That run was in both term sets' fits, and every
+  plan meets the target on it.
+- **Today the district was also run at 1, 2 and 5 t**, which neither set was fitted on. The runs
+  are on 4 m cells, as the planner predicts loads, run to 3.5 s, 3–6 s each. Each was run with a
+  clear top (200 m, #96's rule as #98 used it) and with the 20 t judge's 112 m top. The two tops
+  give the same plans and worst sides; the 112 m runs leave a side or two more over the target.
+  The table gives the clear top.
+- **Two seeds** of the planner's draws (`seed` 1 and 2: the glass strengths and the load scatter)
+  show how much of a plan's outcome is luck.
+- The inputs and outputs are in `$BOMBCAD_DATA/scratch/issue100/protect`.
+
+| Threat | Terms | Cheapest plan, seed 1 | Cost, seed 1 / 2 | On the run, seed 1 / 2: meets? worst side; sides over 10% | As built: Brier against the run, seed 1 / 2 |
+|---|---|---|---|---|---|
+| 1 t | 23 Oct | film on 98 sides | 19,368 / 20,316 | **yes** 9.4%; 0 / no 28%; 2 | 0.037 / 0.043 |
+| 1 t | clear-top | film on 71 sides | 14,776 / 15,400 | no 19%; 3 / no 28%; 4 | **0.014 / 0.017** |
+| 2 t | 23 Oct | film on 156 sides | 29,758 / 32,034 | no 31%; 8 / no 34%; 7 | 0.063 / 0.061 |
+| 2 t | clear-top | film on 133 sides | 27,660 / 28,276 | no 31%; 8 / no 34%; 6 | **0.027 / 0.025** |
+| 5 t | 23 Oct | film on 189, infill on 8 | 46,414 / 45,428 | **yes** 6.2%; 0 / no 25%; 2 | 0.036 / 0.038 |
+| 5 t | clear-top | film on 186, infill on 8 | 45,300 / 45,152 | no 16%; 2 / no 25%; 2 | **0.025 / 0.025** |
+| 20 t | 23 Oct | film on 188, infill on 16 | 49,618 | yes 0%; 0 | 0.006 |
+| 20 t | clear-top | the same | 49,618 | yes 0%; 0 | 0.005 |
+
+- **The clear-top terms judge the sides better.** As built, each side's chance of glass worse
+  than 3b is nearer the run's below 20 t: Brier 0.014–0.027 against 0.036–0.063. At 1–2 t the
+  terms of 23 October call 45–55 sides over the target that the run leaves within it; the
+  clear-top terms call 21–32.
+- **Their plans are cheaper, and miss a little more often.** The terms of 23 October read high,
+  and that was a margin. Without it, the clear-top plans cost 1–24% less.
+  - On the run at 1–5 t the clear-top plans meet the target in none of six cases, with 25 sides
+    over 10% in all. The plans of 23 October meet it in two of six, with 19 sides over.
+  - Both seeds' worst sides are the same for both sets: 28%, 31–34% and 25%. The two wins of the
+    terms of 23 October are seed 1's alone.
+  - So the difference is about the draws' noise. What both sets show is that the planner misses
+    its target at masses it was not fitted on. It misses on a few sides (2–8) that the surrogate
+    reads well within the target and the run reads at 16–34%: its scatter between sides.
+- **Stand-offs and barriers rank alike.** The test (`protect-site.json`) put each of the four
+  nearest blocks behind a 4 m wall 7 m in front of it, and offered a stand-off keeping the threat
+  450 m west of the district.
+  - Both sets buy the stand-off at 2 and 20 t. At 2 t it comes with film on 61 sides on the terms
+    of 23 October and on 54 on the clear-top terms (15,272 against 15,132).
+  - Neither set finds a wall worth its cost: no wall saves a side's film.
+  - A plan with a site-wide change cannot be confirmed on a run made without it.
+- **The barriers' shielding is the same on both.** Stage 1's layouts (L1 open; L4, L5 and L8's
+  walls; 1 t) were rerun on 1 m cells with their loads saved, and judged strip by strip
+  (`surrogate-judge --strips-out`). The measure is the log of the run's load over the surrogate's
+  behind the walls, less its median on the open layout's front strips.
+  - For the peak it is −0.32 on the terms of 23 October and −0.33 on the clear-top terms (log-SD
+    0.38 for both, 40 strips).
+  - For the impulse it is −0.24 and −0.18.
+  - So the walls take about a quarter more off than either set credits, the safe side, as stage
+    1 found.
+- **Film and liners keep their judges.** Film was judged on 67 GSA tests of filmed panes, and
+  liners on Ciornei's lined wall. Neither test uses the façade terms. The terms change only how
+  many sides a plan films (above). Liners are not in the search, because walls are not searched.
+
+**Proposal: the planner keeps the terms of 23 October for now.** On its own judge the clear-top
+terms are not better beyond noise. Their plans meet the target on the run in 0 of 6 cases at 1–5
+t against 2 of 6, with 25 sides over it against 19, and both seeds' worst sides are the same. Their
+better side-by-side calibration is real. But a plan fails on its worst side, and the old terms'
+over-reading was the planner's only margin for the scatter between sides. Before the planner
+moves, that scatter wants a margin of its own: a lower target chance for the search, or a test
+that flags any side whose chance is within the surrogate's scatter of the target. That margin
+should be judged on these runs. Moving would then be the user's decision.
+
 ## Open questions
 
 - **Shielding.**

@@ -3,7 +3,7 @@ import simd
 
 /// `scenebench protect (<district-scene's inputs> | --scene layout.json) [--dx 4] --inputs
 /// protect.json [--samples posterior.csv [--sample-count 24]] [--confirm loads-folder] [--out
-/// plans.json]`: the least costly glazing and stand-off changes that keep each building side's
+/// plans.json] [--terms clear-top|fitted]`: the least costly glazing and stand-off changes that keep each building side's
 /// chance of glass thrown worse than its target condition under the chance accepted
 /// (docs/protective-design.md, "In BombCAD"). The inputs file gives the threat, the target and
 /// the changes allowed with the user's costs (`ProtectionModel.Inputs`); `--samples` takes the
@@ -81,7 +81,11 @@ package enum Protect {
             }
         }
         let start = ContinuousClock.now
-        let model = try ProtectionModel.model(scene: scene, cellSize: cellSize, inputs: inputs)
+        // `--terms clear-top|fitted`: the façade terms and load scatter; the planner's own pin (those
+        // of 23 October, emmettl/bombcad-work#100) without it.
+        let terms = try SurrogateBench.termSet(args, otherwise: .fitted)
+        print("Façade terms: \(terms.rawValue)")
+        let model = try ProtectionModel.model(scene: scene, cellSize: cellSize, inputs: inputs, terms: terms)
         let problem = model.problem
         let options = problem.sides.first?.options.count ?? 0
         print(

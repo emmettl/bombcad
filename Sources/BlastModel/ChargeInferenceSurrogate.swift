@@ -47,6 +47,8 @@ extension ChargeInference {
         /// The cells the surrogate's loads are for (its cell term), m.
         let cellSize: Double
         let coefficients: FacadeLoadSurrogate.Coefficients
+        /// The load scatter the chances draw, by scaled distance: the terms' own.
+        let loadScatter: [FacadeLoadSurrogate.Uncertainty.LoadScatter]
         /// The glass strength's scatter, as the standard deviation of its log.
         let strengthLogSD: Double
         /// Each mix's breakage, by `sides`' mix names.
@@ -111,19 +113,21 @@ extension ChargeInference {
         /// `maximumSides` of them, taken evenly. `reference` is the inference's origin in the
         /// scene's metres; the charge is weighed within `placeRadius` metres of it, at the scene's
         /// charge's height above the ground. `cellSize` is the cells the surrogate's loads are for;
-        /// the façade terms are those of 23 October 2026 (`fitted`), not judged again on the clear-top
-        /// terms the quick estimate took on 25 October (emmettl/bombcad-work#99).
+        /// `terms` the façade terms and their load scatter: by default those of 23 October 2026
+        /// (`fitted`), which this was judged on. Judged again on the clear-top terms the quick
+        /// estimate took on 25 October (emmettl/bombcad-work#99, #100: docs/charge-inference.md), it
+        /// keeps `fitted` until the user decides.
         public init(
             scene: Scenario, observed: [(owner: UUID, axis: Int, outward: Int, damaged: Bool)],
             reference: SIMD2<Float>, placeRadius: Double, spacing: Double = 20, cellSize: Float,
             maximumSides: Int = 1500, strengthLogSD: Double = 0.25,
-            coefficients: FacadeLoadSurrogate.Coefficients = .fitted
+            terms: FacadeLoadSurrogate.TermSet = .fitted
         ) {
             self.init(
                 scene: scene, observed: observed, reference: reference, placeRadius: placeRadius,
                 spacing: spacing,
                 cellSize: cellSize, maximumSides: maximumSides, strengthLogSD: strengthLogSD,
-                coefficients: coefficients, tableCoarsening: 1)
+                terms: terms, tableCoarsening: 1)
         }
 
         /// With `tableCoarsening`, the breakage tables that many times coarser each way (for tests,
@@ -131,7 +135,7 @@ extension ChargeInference {
         init(
             scene: Scenario, observed: [(owner: UUID, axis: Int, outward: Int, damaged: Bool)],
             reference: SIMD2<Float>, placeRadius: Double, spacing: Double, cellSize: Float, maximumSides: Int,
-            strengthLogSD: Double, coefficients: FacadeLoadSurrogate.Coefficients, tableCoarsening: Int
+            strengthLogSD: Double, terms: FacadeLoadSurrogate.TermSet, tableCoarsening: Int
         ) {
             let start = ContinuousClock.now
             let objects = scene.envelopeObjects
@@ -190,7 +194,8 @@ extension ChargeInference {
             }
             self.features = features
             self.cellSize = Double(cellSize)
-            self.coefficients = coefficients
+            coefficients = terms.coefficients
+            loadScatter = terms.loadScatter
             self.strengthLogSD = strengthLogSD
             var tables: [String: BreakTable] = [:]
             for side in sides where tables[side.mix.name] == nil {
@@ -422,8 +427,7 @@ extension ChargeInference {
                 let rise = p.rise
                 let logDuration = log(2.0) + logImpulse - logPeak
                 let scaled = p.distance / root
-                let scatter =
-                    FacadeLoadSurrogate.Uncertainty.leaveOneOut.first { scaled <= $0.upToZ }?.peak ?? 0.3
+                let scatter = loadScatter.first { scaled <= $0.upToZ }?.peak ?? 0.3
                 let sigma = (scatter * scatter + strengthLogSD * strengthLogSD).squareRoot()
                 var none = 0.0
                 for (u, w) in zip(nodes, weights) {

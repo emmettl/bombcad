@@ -8,6 +8,7 @@ import Metal
 /// scenebench infer-charge-study --synthetic 200 [--spread 0.05] [--frame 0.0333] [--observers 25]
 ///     [--grid-checks 6] [--misses]
 /// scenebench infer-charge-study --forward [--fixture Fixtures/SyntheticDistrict] [--dx 2] [--frame 0.00833] [--passes 3]
+/// scenebench infer-charge-study --forward-damage [--dx 4] [--passes 3] [--side-load glass] [--terms clear-top|fitted]
 /// ```
 ///
 /// `--synthetic N`: N charges of random mass (100 kg to 1 kt) and place (within 300 m of the
@@ -37,6 +38,9 @@ enum InferChargeStudy {
             )
         }
         sideLoad = value("side-load") ?? "glass"
+        // `--terms clear-top|fitted`: the surrogate's façade terms and load scatter for the glass;
+        // the inference's own pin (those of 23 October, emmettl/bombcad-work#100) without it.
+        terms = try SurrogateBench.termSet(args, otherwise: .fitted)
         if args.contains("--forward-damage") {
             try forwardDamage(
                 fixture: URL(filePath: value("fixture") ?? "Fixtures/SyntheticDistrict"),
@@ -334,7 +338,7 @@ enum InferChargeStudy {
         }
         let probe = ChargeInference.SurrogateDamage(
             scene: scene, observed: everySide, reference: centre, placeRadius: 300, spacing: spacing,
-            cellSize: cellSize)
+            cellSize: cellSize, terms: terms)
         print(
             String(
                 format: "%d sides, grid %.0f m: features and tables in %.1f s", probe.sides.count, spacing,
@@ -352,7 +356,7 @@ enum InferChargeStudy {
             }
             let damage = ChargeInference.SurrogateDamage(
                 scene: scene, observed: observed, reference: centre, placeRadius: 300, spacing: spacing,
-                cellSize: cellSize)
+                cellSize: cellSize, terms: terms)
             let start = ContinuousClock.now
             let masses = stride(from: -1.0, through: 1.0, by: 0.1).map {
                 Double(charge.mass) * pow(10, $0 * 0.7)
@@ -417,7 +421,9 @@ enum InferChargeStudy {
         var settings = ChargeInference.Settings()
         settings.massRange = 10...1e6
         settings.placeRadius = 300
-        print("Forward with damage: the New District, \(cellSize) m cells, frame \(frame) s")
+        print(
+            "Forward with damage: the New District, \(cellSize) m cells, frame \(frame) s, façade terms \(terms.rawValue)"
+        )
         for (n, charge) in charges.enumerated() where only?.contains(n) ?? true {
             let start = ContinuousClock.now
             let observers = Array(
@@ -447,7 +453,7 @@ enum InferChargeStudy {
             let damage = ChargeInference.SurrogateDamage(
                 scene: scene, observed: observed, reference: SIMD2(half, half),
                 placeRadius: settings.placeRadius,
-                spacing: 20, cellSize: cellSize)
+                spacing: 20, cellSize: cellSize, terms: terms)
             let truth = (charge.mass, charge.east - reference.x, charge.north - reference.y)
             print(
                 String(
@@ -567,6 +573,8 @@ enum InferChargeStudy {
     /// mean load, the most loaded strip's peak, the load whose glass is the run's, or those loads'
     /// median for every side.
     nonisolated(unsafe) static var sideLoad = "glass"
+    /// `--terms`: the façade terms and load scatter the glass is weighed on.
+    nonisolated(unsafe) static var terms = FacadeLoadSurrogate.TermSet.fitted
 
     static func forward(fixture: URL, cellSize: Float, frame: Double, passes: Int) throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw BlastError.allocationFailed("Metal") }
