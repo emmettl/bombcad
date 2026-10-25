@@ -201,24 +201,27 @@ extension HybridFarField {
     /// After a near run of `near` on cells `cellSize`, whose components recorded `histories`, the
     /// far set `far` judged on the far field carried from it: the match over the run's façade strips
     /// from `trendFrom` (half the hand-over) and `seedFrom` (0.8 of it) to the hand-over, and its
-    /// arrivals against Kingery–Bulmash's from 500 m. With `glass`, the judged buildings' glass
-    /// chances too, drawn over it on the far field (`FacadeLoadSurrogate.glassProbabilities`).
+    /// arrivals against Kingery–Bulmash's from 500 m (none with the set's `matchFlat`: the match
+    /// carried flat). With `glass`, the judged buildings' glass chances too, drawn over it on the
+    /// far field (`FacadeLoadSurrogate.glassProbabilities`). The surrogate takes `coefficients`.
     public static func judge(
         near: Scenario, far set: FarFieldSet, histories: [EnvelopeComponentHistory], cellSize: Float,
         seedFrom: Double? = nil, trendFrom: Double? = nil, nearBeyond: Bool = true,
-        glass uncertainty: FacadeLoadSurrogate.Uncertainty? = nil
+        glass uncertainty: FacadeLoadSurrogate.Uncertainty? = nil,
+        coefficients: FacadeLoadSurrogate.Coefficients = .fitted
     ) throws -> Judgement {
         let start = ContinuousClock.now
         let handover = Double(set.handoverM)
         let combined = try set.combined(with: near)
-        var estimate = FacadeLoadSurrogate.estimate(scene: combined, cellSize: cellSize)
+        var estimate = FacadeLoadSurrogate.estimate(
+            scene: combined, cellSize: cellSize, coefficients: coefficients)
         let charge = combined.charge.position
         let mass = Double(combined.charge.mass)
         var recorded: [String: EnvelopeComponentHistory] = [:]
         for history in histories where !history.invalid { recorded[history.component.id] = history }
         let distances = estimate.features.map(\.distanceM)
         let seedFromM = seedFrom ?? 0.8 * handover
-        let trendFromM = trendFrom ?? 0.5 * handover
+        let trendFromM: Double? = set.matchFlat == true ? nil : trendFrom ?? 0.5 * handover
         var samples: [Sample] = []
         var arrivals: [(simulatedS: Double, kingeryBulmashS: Double, distanceM: Double)] = []
         for (n, component) in estimate.components.enumerated() where component.kind == .facade {
@@ -226,7 +229,7 @@ extension HybridFarField {
             guard d < handover, let history = recorded[component.id] else { continue }
             let load = EnvelopeComponentLoad(history)
             let net = load.netPa
-            if d >= min(seedFromM, trendFromM) {
+            if d >= min(seedFromM, trendFromM ?? seedFromM) {
                 samples.append(
                     Sample(
                         distanceM: d, nearPeakPa: net.max() ?? 0,
@@ -278,7 +281,8 @@ extension HybridFarField {
             }
             glass =
                 FacadeLoadSurrogate.glassProbabilities(
-                    sides: sides, mass: mass, cellSize: cellSize, uncertainty: uncertainty, farField: farField
+                    sides: sides, mass: mass, cellSize: cellSize, uncertainty: uncertainty,
+                    coefficients: coefficients, farField: farField
                 ).sides
         }
         let took = start.duration(to: .now)

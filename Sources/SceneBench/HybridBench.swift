@@ -7,8 +7,8 @@ import simd
 ///
 /// `scenebench hybrid-judge <district-scene's inputs> --radius 2500 --loads full-loads
 /// --near-loads near-loads --near-radius 1320 [--handover 1000] [--seed-from 800] [--trend-from 500] [--inside 0.85]
-/// [--full-report full/comparison.json] [--near-report near/comparison.json] [--coefficients fit.json]
-/// [--surrogate-dx m] [--out judged.json]`.
+/// [--full-report full/comparison.json] [--near-report near/comparison.json] [--coefficients fit.json |
+/// --terms adopted|clear-top] [--surrogate-dx m] [--out judged.json]`.
 ///
 /// The near run is the same district on a box reaching the hand-over and its open faces' clearance
 /// beyond (`--near-radius`, a multiple of the cells, so that its cells are the full run's), run
@@ -95,12 +95,9 @@ enum HybridBench {
         let charge = scene.charge.position
         let open = full.raster.openReach(around: charge)
         let cell = Double(full.predictionCell)
-        // `--coefficients fit.json`: the façades' terms to judge, as surrogate-judge takes them.
-        let coefficients =
-            try value("coefficients").map {
-                try JSONDecoder().decode(
-                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
-            } ?? .fitted
+        // `--coefficients fit.json` or `--terms`: the façades' terms to judge, as surrogate-judge
+        // takes them.
+        let coefficients = try SurrogateBench.coefficients(args)
 
         // The near run's strips, by their box from the charge.
         func key(_ reference: SurrogateBench.Reference, _ component: EnvelopeComponent) -> [Int32] {

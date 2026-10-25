@@ -713,6 +713,29 @@ final class SimulationModel {
     }
     /// Where the option and the weights' path are kept (a test's own store in tests).
     @ObservationIgnored var learnedDefaults = UserDefaults.standard
+    /// Whether the quick estimate and the far field take the candidate façade terms and load
+    /// scatter refitted on runs whose top clears the far façades (`FacadeLoadSurrogate.TermSet`,
+    /// emmettl/bombcad-work#98) in place of the adopted ones. Off unless chosen, and remembered.
+    var quickEstimateClearTopTerms = UserDefaults.standard.bool(forKey: SimulationModel.clearTopTermsKey) {
+        didSet {
+            learnedDefaults.set(quickEstimateClearTopTerms, forKey: Self.clearTopTermsKey)
+            if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
+            if !farFieldDamage.isEmpty { judgeFarField() }
+        }
+    }
+    static let clearTopTermsKey = "quickEstimate.clearTopTerms"
+    /// The façade terms and load scatter the quick estimate and the far field take.
+    var surrogateTerms: FacadeLoadSurrogate.TermSet { quickEstimateClearTopTerms ? .clearTop : .adopted }
+    /// Whether the far field carries the near run's match flat, with no trend with distance
+    /// (`FarFieldSet.matchFlat`, emmettl/bombcad-work#98): a candidate. Off unless chosen, and
+    /// remembered.
+    var farFieldMatchFlat = UserDefaults.standard.bool(forKey: SimulationModel.farFieldMatchFlatKey) {
+        didSet {
+            learnedDefaults.set(farFieldMatchFlat, forKey: Self.farFieldMatchFlatKey)
+            if !farFieldDamage.isEmpty { judgeFarField() }
+        }
+    }
+    static let farFieldMatchFlatKey = "farField.matchFlat"
     /// Where downloaded weights are kept: Application Support (a test's own folder in tests).
     @ObservationIgnored var learnedHome = LearnedField.defaultWeightsURL
     /// While the user is asked whether to download the weights; while they download; what the

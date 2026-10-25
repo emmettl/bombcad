@@ -138,7 +138,8 @@ extension FacadeLoadSurrogate {
             let component = estimate.components[n]
             var p = predict(
                 estimate.features[n], mass: mass, cellSize: Double(cellSize),
-                coefficients: component.kind == .roof ? roofCoefficients ?? coefficients : coefficients)
+                coefficients: component.kind == .roof
+                    ? roofCoefficients ?? coefficients : coefficients.forStructures)
             p.peakPa *= peak
             p.impulsePaS *= impulse
             var load = FacadeLoadSurrogate.load(component, p, binS: binS)

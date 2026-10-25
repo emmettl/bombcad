@@ -3,7 +3,7 @@ import simd
 
 /// `scenebench glass-calibrate <district-scene's inputs> [--radius 2500] --runs mass:folder,…
 /// [--masses samples.csv] [--geer Facade_damage.shp] [--draws 100] [--inside 0.85]
-/// [--coefficients fit.json] [--out calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
+/// [--coefficients fit.json | --terms adopted|clear-top] [--load-scatter scatter.json] [--out calibration.json]`: how well the façade glass chances (`FacadeLoadSurrogate.glassProbabilities`,
 /// docs/glass-probability.md) are calibrated.
 ///
 /// (a) Against the district's own runs at several yields (`district-compare --save-loads`): each
@@ -217,12 +217,10 @@ package enum GlassCalibration {
         let draws = value("draws").flatMap(Int.init) ?? 100
         let share = Float(value("inside").flatMap(Double.init) ?? 0.85)
         // `--coefficients fit.json`: the façades' terms to judge (fit-surrogate.py's JSON), as
-        // surrogate-judge takes them; the fitted ones without it.
-        let coefficients =
-            try value("coefficients").map {
-                try JSONDecoder().decode(
-                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
-            } ?? .fitted
+        // surrogate-judge takes them; else `--terms`' (the adopted ones without it), whose load
+        // scatter the chances draw unless `--load-scatter` gives one.
+        let coefficients = try SurrogateBench.coefficients(args)
+        let loadScatter = try SurrogateBench.loadScatter(args)
         print("Coefficients fitted to \(coefficients.fittedTo)")
         var timings: [String: Double] = [:]
 
@@ -347,7 +345,8 @@ package enum GlassCalibration {
             for (name, uncertainty) in [
                 (
                     "with the load scatter",
-                    FacadeLoadSurrogate.Uncertainty(masses: yields, strengthLogSD: 0, samples: draws)
+                    FacadeLoadSurrogate.Uncertainty(
+                        masses: yields, strengthLogSD: 0, loadScatter: loadScatter, samples: draws)
                 ),
                 (
                     "without it",
@@ -481,7 +480,9 @@ package enum GlassCalibration {
                 sides: used.map { all[$0] }, mass: Double(scene.charge.mass), cellSize: first.predictionCell,
                 uncertainty: FacadeLoadSurrogate.Uncertainty(
                     masses: masses, strengthMedian: value("strength-median").flatMap(Double.init) ?? 1,
-                    strengthLogSD: value("strength-sd").flatMap(Double.init) ?? 0.25, samples: draws),
+                    strengthLogSD: value("strength-sd").flatMap(Double.init) ?? 0.25,
+                    loadScatter: loadScatter,
+                    samples: draws),
                 coefficients: coefficients,
                 keepDraws: true)
             timings["GEER chances"] = seconds(clock)

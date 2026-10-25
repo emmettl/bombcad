@@ -32,6 +32,10 @@ public struct FarFieldSet: Codable, Sendable, Equatable {
     public var trendReach: Double?
     /// How the match fades past the reach (`HybridFarField.trendDamping`); nil holds it.
     public var trendDamping: Double?
+    /// Whether the match is carried flat, with no trend at all (emmettl/bombcad-work#98): a
+    /// candidate, not adopted. Against Beirut's runs with their top clear the trend fitted over the
+    /// near band fell and read the far field low (docs/hybrid-far-field.md); nil or false keeps it.
+    public var matchFlat: Bool?
 
     public init(
         handoverM: Float, buildings: [Building], constructions: [EnvelopeConstruction], terrain: Terrain?,

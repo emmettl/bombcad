@@ -95,6 +95,7 @@ extension SimulationModel {
         // The learned field model, if asked for: its network loaded once, its plan of the district
         // laid out once for every place of the charge.
         let learnedWanted = quickEstimateLearnedPeaks
+        let terms = surrogateTerms
         let weightsURL = learnedWeightsURL
         // Field model 2's second file, the levels network, if it is there.
         let levelsURL = learnedLevelsURL
@@ -146,14 +147,15 @@ extension SimulationModel {
                 let samples =
                     !waiting.preview
                     ? 100 : parts == .glass ? draws.glass : draws.structure
-                var uncertainty = FacadeLoadSurrogate.Uncertainty(yieldLogSD: logSD, samples: samples)
+                var uncertainty = FacadeLoadSurrogate.Uncertainty(
+                    yieldLogSD: logSD, loadScatter: terms.loadScatter, samples: samples)
                 // A preview's few yields spread evenly, not drawn: drawn, they share one error.
                 uncertainty.stratified = waiting.preview
                 let look = prepared.look(
                     charge: waiting.charge, mass: Double(scenario.charge.mass),
                     constructions: { scenario.envelopeConstruction(for: $0) },
                     uncertainty: uncertainty,
-                    preview: waiting.preview, parts: parts, learned: estimator)
+                    preview: waiting.preview, parts: parts, learned: estimator, terms: terms)
                 return (prepared, look, estimator, problem, networks)
             }.value
             guard let self else { return }

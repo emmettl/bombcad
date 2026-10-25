@@ -233,12 +233,15 @@ extension FacadeLoadSurrogate {
 
         /// With `learned`, the learned field model's peak at the ground-floor façade strips for the
         /// estimate's damage, glass and walls (emmettl/bombcad-work#67); if it cannot be run, the
-        /// look is the surrogate's alone and says why.
+        /// look is the surrogate's alone and says why. The components take `terms`' coefficients (the
+        /// adopted ones unless an option asks for others: emmettl/bombcad-work#98); the chances draw
+        /// `uncertainty`'s scatter.
         public func look(
             charge: SIMD3<Float>, mass: Double, constructions: (UUID) -> EnvelopeConstruction,
             uncertainty: Uncertainty, preview: Bool = false, parts: Parts = .all,
-            learned: LearnedField.Estimator? = nil
+            learned: LearnedField.Estimator? = nil, terms: TermSet = .adopted
         ) -> Look {
+            let coefficients = terms.coefficients
             func since(_ start: ContinuousClock.Instant) -> Double {
                 let took = start.duration(to: .now)
                 return Double(took.components.seconds) + Double(took.components.attoseconds) * 1e-18
@@ -260,9 +263,11 @@ extension FacadeLoadSurrogate {
             let estimate: Estimate
             let sides: [GlassSideStrips]
             if preview {
-                (estimate, sides) = self.preview(charge: charge, mass: mass, learned: peaks)
+                (estimate, sides) = self.preview(
+                    charge: charge, mass: mass, coefficients: coefficients, learned: peaks)
             } else {
-                estimate = self.estimate(charge: charge, mass: mass, learned: peaks)
+                estimate = self.estimate(
+                    charge: charge, mass: mass, coefficients: coefficients, learned: peaks)
                 sides = glassSides(estimate)
             }
             let estimateS = since(clock)
@@ -278,7 +283,7 @@ extension FacadeLoadSurrogate {
                 parts.contains(.glass)
                 ? glassProbabilities(
                     sides: sides, mass: mass, cellSize: cellSize, uncertainty: uncertainty,
-                    responses: glassResponses
+                    coefficients: coefficients, responses: glassResponses
                 ).sides : []
             let glassS = since(clock)
             clock = .now
@@ -287,7 +292,7 @@ extension FacadeLoadSurrogate {
                 ? SDOFResponseMemo.remembering(in: memo) {
                     structureProbabilities(
                         estimate, mass: mass, cellSize: cellSize, constructions: constructions,
-                        uncertainty: uncertainty,
+                        uncertainty: uncertainty, coefficients: coefficients,
                         learnedPeaks: estimate.features.contains { $0.learnedPeakFactor != 1 })
                 }.0.chances : []
             var look = Look(

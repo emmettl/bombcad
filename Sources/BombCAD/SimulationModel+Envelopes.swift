@@ -162,23 +162,29 @@ extension SimulationModel {
     /// Judges the far set on the far field carried from the run just finished, away from the main
     /// thread (`HybridFarField.judge`); a run started meanwhile discards it.
     func judgeFarField() {
-        guard let set = farFieldSet, let solver, stepCount > 0,
+        guard var set = farFieldSet, let solver, stepCount > 0,
             let histories = solver.envelopeComponentHistories()
         else { return }
+        let judgedSet = set
         let (near, cellSize, steps) = (scenario, grid?.cellSize ?? settings.resolution.cellSize, stepCount)
-        let uncertainty = farFieldUncertainty
+        // The candidates, if chosen (emmettl/bombcad-work#98): the clear-top terms and scatter, and
+        // the match carried flat.
+        let terms = surrogateTerms
+        var uncertainty = farFieldUncertainty
+        if terms != .adopted { uncertainty.loadScatter = terms.loadScatter }
+        if farFieldMatchFlat { set.matchFlat = true }
         judgingFarField = true
         farFieldStatus = "Judging the far field…"
         Task.detached(priority: .userInitiated) { [weak self] in
             let result = Result {
                 try HybridFarField.judge(
                     near: near, far: set, histories: histories, cellSize: cellSize, nearBeyond: false,
-                    glass: uncertainty)
+                    glass: uncertainty, coefficients: terms.coefficients)
             }
             await MainActor.run {
                 guard let self else { return }
                 self.judgingFarField = false
-                guard self.farFieldSet == set, self.stepCount == steps, !self.isRunning else { return }
+                guard self.farFieldSet == judgedSet, self.stepCount == steps, !self.isRunning else { return }
                 switch result {
                 case .success(let judged):
                     self.farFieldDamage = judged.buildings

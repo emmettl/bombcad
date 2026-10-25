@@ -464,6 +464,29 @@ The runs, scripts and judgements are in `$BOMBCAD_DATA/scratch/issue97`: `check/
 judge with the adopted and refit terms), and `sides.py`, `compare.py` and `hybtab.py` for the
 tables.
 
+### The terms refitted on clear-top runs, and the match carried flat (25 October 2026)
+
+emmettl/bombcad-work#98. The surrogate's fit runs had drained tops too, so they were remade with
+their tops clear and the terms, the rise share and the chances' scatter refitted on them
+([the surrogate](surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026), where the
+whole judgement is). Both are options, off by default: the candidate terms
+(`FacadeLoadSurrogate.TermSet.clearTop`, `hybrid-judge --terms clear-top`) and the match carried
+flat (`FarFieldSet.matchFlat`; `hybrid-judge` without `--trend-from`). Against the clear-top
+reference, over 1–2.5 km, mean error in the share of sides, some broken / blown out:
+
+| | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| Adopted terms, the trend held (the app's) | 0.294 / 0.040 | 0.063 / 0.170 | 0.001 / 0.221 |
+| Adopted terms, the match flat | 0.251 / 0.036 | 0.047 / 0.135 | 0.001 / 0.205 |
+| Candidate terms, the trend held | 0.266 / 0.031 | 0.045 / 0.129 | 0.001 / 0.152 |
+| **Candidate terms, the match flat** | **0.181 / 0.018** | **0.024 / 0.062** | **0.000 / 0.108** |
+
+- Each helps, and together they halve the error at every yield.
+- Their peaks over the reference's are 0.82–1.05 over 1–2.5 km, and the impulses 1.05–1.14.
+- At 0.2 kt the share with some glass broken is still 0.63 against the reference's 0.90 at
+  1.75–2 km, and 0.25 against 0.75 at 2–2.5 km.
+- Adopting both is proposed to the user.
+
 ## Using it
 
 - **Bench (headless):** two steps, the near run and then the district.
@@ -635,9 +658,11 @@ The results are in `$BOMBCAD_DATA/canyon/`:
 - **A hand-over chosen by the run**, where the shock has weakened past a threshold, rather than
   given.
 - **The far field low beyond 1.5 km** (25 October 2026). Against the clear-top reference it reads the
-  far peaks 0.67–0.86 at 0.2 kt and blows out too few sides at every yield. Two things to judge: the
-  trend from a near run on refined air (carried flat it does better at 0.2 and 0.5 kt), and the far
-  terms refitted on clear-top runs (the full-length peak refit already reads them higher).
+  far peaks 0.67–0.86 at 0.2 kt and blows out too few sides at every yield. The terms refitted on
+  clear-top runs and the match carried flat halve the error, and both wait on the user
+  ([above](#the-terms-refitted-on-clear-top-runs-and-the-match-carried-flat-25-october-2026)). What
+  is left is mostly at 0.2 kt, and in the share with some glass broken, which the far loads no
+  longer explain.
 - **The far edge at the small yield.** Neither holding the trend nor fading it to the surrogate's
   own form (above) closes the 0.2 kt shortfall at 1.75–2.5 km without overshooting the larger
   yields beyond 2.5 km. A trend fitted per yield from the near run's own spread, or a refit of the

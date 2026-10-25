@@ -87,6 +87,14 @@ struct EnvelopeDamageSection: View {
                     CloseCallsRow(model: model)
                 }
                 Toggle(
+                    "Façade terms refitted on clear-top runs (candidate)",
+                    isOn: $model.quickEstimateClearTopTerms
+                )
+                .help(
+                    "For Quick Estimate and the far field: the surrogate's peak and impulse terms, and the "
+                        + "scatter its chances draw, refitted on runs whose top clears the far façades "
+                        + "(docs/surrogate-first-look.md). A candidate, not adopted: off, the terms in use.")
+                Toggle(
                     "Learned field model for façade peaks",
                     isOn: Binding(
                         get: { model.quickEstimateLearnedPeaks }, set: { model.setLearnedPeaks($0) })
@@ -580,6 +588,11 @@ struct FarFieldSection: View {
                         set.buildings.count, Double(set.handoverM))
                 )
                 .font(.caption).fixedSize(horizontal: false, vertical: true)
+                Toggle("Carry the run's match flat (candidate)", isOn: $model.farFieldMatchFlat)
+                    .help(
+                        "The far field meets the run at the hand-over and carries that match on with no trend "
+                            + "with distance (docs/hybrid-far-field.md). A candidate, not adopted: off, the trend "
+                            + "the run's strips inside the hand-over give.")
                 if model.judgingFarField { ProgressView().controlSize(.small) }
                 if !model.farFieldStatus.isEmpty {
                     // An estimate must never pass for a run.

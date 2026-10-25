@@ -268,4 +268,49 @@ struct FacadeLoadSurrogateTests {
         #expect(memo.hits + memo.misses == answers.count)
         #expect(memo.misses >= loads.count)
     }
+
+    @Test("The clear-top terms are a named set apart, the adopted ones the default; far out they read higher")
+    func clearTopTerms() throws {
+        typealias S = FacadeLoadSurrogate
+        #expect(S.TermSet.adopted.coefficients == .fitted)
+        #expect(S.TermSet.adopted.loadScatter == S.Uncertainty.leaveOneOut)
+        #expect(S.Uncertainty().loadScatter == S.Uncertainty.leaveOneOut)
+        let clear = S.TermSet.clearTop.coefficients
+        // The peak's, impulse's and rise's terms refitted; close in, the branch and the scatter the
+        // walls were set on.
+        #expect(clear.peak != S.Coefficients.fitted.peak && clear.impulse != S.Coefficients.fitted.impulse)
+        #expect(clear.rise != S.Coefficients.fitted.rise && clear.closeIn == S.Coefficients.fitted.closeIn)
+        #expect(clear.scaledRange == S.Coefficients.fitted.scaledRange)
+        #expect(S.TermSet.clearTop.loadScatter.first == S.Uncertainty.leaveOneOut.first)
+        // The walls' chances keep the adopted rise their load factor was set on.
+        #expect(clear.forStructures.rise == S.Coefficients.fitted.rise)
+        #expect(clear.forStructures.peak == clear.peak && clear.forStructures.impulse == clear.impulse)
+        #expect(S.Coefficients.fitted.structureRise == nil && S.Coefficients.fitted.forStructures == .fitted)
+        #expect(S.TermSet.clearTop.loadScatter.last?.upToZ == .infinity)
+        // 2 km from 500 t (Z 25) behind four buildings: the clear-top runs' loads are higher.
+        var f = Self.facing(2_000)
+        f.buildingsCrossed = 4
+        let adopted = S.predict(f, mass: 500_000, cellSize: 4)
+        let candidate = S.predict(f, mass: 500_000, cellSize: 4, coefficients: clear)
+        #expect(candidate.peakPa > adopted.peakPa && candidate.impulsePaS > adopted.impulsePaS)
+        // Its pulse rises over about a third of its length, as the runs' do.
+        #expect(candidate.riseShare > 0.2 && candidate.riseShare < 0.45, "\(candidate.riseShare)")
+        // The benches' names for them.
+        #expect(try SurrogateBench.termSet([]) == .adopted)
+        #expect(try SurrogateBench.termSet(["--terms", "clear-top"]) == .clearTop)
+        #expect(throws: (any Error).self) { try SurrogateBench.termSet(["--terms", "drained"]) }
+        #expect(try SurrogateBench.coefficients(["--terms", "clear-top"]) == clear)
+    }
+
+    @Test("A far set saved before the flat match was an option reads with it off")
+    func farFieldSetFlatMatch() throws {
+        var set = FarFieldSet(
+            handoverM: 1_000, buildings: [], constructions: [], terrain: nil, trendReach: 1.5)
+        let old = try JSONEncoder().encode(set)
+        #expect(!String(decoding: old, as: UTF8.self).contains("matchFlat"))
+        #expect(try JSONDecoder().decode(FarFieldSet.self, from: old).matchFlat == nil)
+        set.matchFlat = true
+        let flat = try JSONDecoder().decode(FarFieldSet.self, from: JSONEncoder().encode(set))
+        #expect(flat.matchFlat == true)
+    }
 }

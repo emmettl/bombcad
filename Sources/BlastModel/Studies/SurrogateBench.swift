@@ -8,7 +8,7 @@ import simd
 /// features and its recorded peak and impulse, for fitting (`Scripts/fit-surrogate.py`).
 ///
 /// `scenebench surrogate-judge <inputs> [--radius 2500] --loads folder [--inside 0.85]
-/// [--coefficients fit.json] [--first-look] [--run-wall s] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
+/// [--coefficients fit.json | --terms adopted|clear-top] [--first-look] [--run-wall s] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
 /// through the same SDOF, side by side; and the surrogate's whole first look, timed.
 ///
 /// Strips saved before 19 October 2026 carry no boxes, so the scene is laid out again from the
@@ -22,6 +22,36 @@ import simd
 package enum SurrogateBench {
     package static func value(_ args: [String], _ name: String) -> String? {
         args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
+    }
+
+    /// `--terms adopted|clear-top`: the named set of façade terms and load scatter to judge
+    /// (`FacadeLoadSurrogate.TermSet`), the adopted ones without it.
+    package static func termSet(_ args: [String]) throws -> FacadeLoadSurrogate.TermSet {
+        guard let name = value(args, "terms") else { return .adopted }
+        guard let set = FacadeLoadSurrogate.TermSet(rawValue: name) else {
+            throw BlastError.allocationFailed(
+                "--terms " + FacadeLoadSurrogate.TermSet.allCases.map(\.rawValue).joined(separator: "|"))
+        }
+        return set
+    }
+
+    /// The façade terms a bench judges: `--coefficients fit.json` (fit-surrogate.py's JSON), else
+    /// those of `--terms`.
+    package static func coefficients(_ args: [String]) throws -> FacadeLoadSurrogate.Coefficients {
+        try value(args, "coefficients").map {
+            try JSONDecoder().decode(
+                FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
+        } ?? termSet(args).coefficients
+    }
+
+    /// The load scatter a bench's chances draw: `--load-scatter scatter.json` (a list of
+    /// `Uncertainty.LoadScatter`), else that of `--terms`.
+    package static func loadScatter(_ args: [String]) throws -> [FacadeLoadSurrogate.Uncertainty.LoadScatter]
+    {
+        try value(args, "load-scatter").map {
+            try JSONDecoder().decode(
+                [FacadeLoadSurrogate.Uncertainty.LoadScatter].self, from: Data(contentsOf: URL(filePath: $0)))
+        } ?? termSet(args).loadScatter
     }
 
     /// `--centre lon,lat`, as `DistrictInputs` reads it.
@@ -464,11 +494,7 @@ package enum SurrogateBench {
         let charge = scene.charge.position
         let open = reference.raster.openReach(around: charge)
 
-        let coefficients =
-            try value(args, "coefficients").map {
-                try JSONDecoder().decode(
-                    FacadeLoadSurrogate.Coefficients.self, from: Data(contentsOf: URL(filePath: $0)))
-            } ?? .fitted
+        let coefficients = try SurrogateBench.coefficients(args)
         print("Coefficients fitted to \(coefficients.fittedTo)")
         // `--roof-coefficients file`: the roofs' own terms (fit-surrogate.py --drop facing on roofs).
         let roofCoefficients =

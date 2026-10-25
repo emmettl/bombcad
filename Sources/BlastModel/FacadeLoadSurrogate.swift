@@ -521,6 +521,19 @@ public enum FacadeLoadSurrogate {
         public var fittedTo: String
         /// The close-in branch, below `scaledRange` (none: the terms held at its start there).
         public var closeIn: CloseIn?
+        /// The rise share's terms the walls' chances take (`structureProbabilities`), where they
+        /// differ from the glass's `rise` (nil: `rise`): the walls' load factor was set on the rise
+        /// they had (emmettl/bombcad-work#98).
+        public var structureRise: [Double]?
+
+        /// These terms as the walls' chances take them: with `structureRise` as their rise, if any.
+        public var forStructures: Coefficients {
+            guard let structureRise else { return self }
+            var walls = self
+            walls.rise = structureRise
+            walls.structureRise = nil
+            return walls
+        }
 
         public init(
             peak: [Double], impulse: [Double], rise: [Double], scaledRange: ClosedRange<Double>,

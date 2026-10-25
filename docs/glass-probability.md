@@ -252,6 +252,20 @@ The glass chances' standing says this since 25 October 2026. Calibrating them ag
 far terms, or the chances' load scatter, refitted on clear-top runs: a refit, and the user's
 decision.
 
+**Refitted on clear-top runs (25 October 2026, a candidate).** The surrogate's terms, its rise
+share and the chances' load scatter were refitted on its fit runs remade with their tops clear
+(emmettl/bombcad-work#98;
+[the surrogate](surrogate-first-look.md#refitted-on-clear-top-runs-25-october-2026)). Against the
+same clear-top runs:
+- blown out passes the test, each tenth within 0.1 (Brier 0.027, skill 0.74, against 0.038 and
+  0.64);
+- thrown past 3b scores Brier 0.047 against 0.096, and some broken 0.028 against 0.053, both
+  still failing, their middle tenths 0.2–0.35 under;
+- the openings against GEER do not move (skill 0.17).
+
+It is an option (`--terms clear-top`; in the app, "Façade terms refitted on clear-top runs"), not
+the default.
+
 ## Walls and roofs
 
 Since 20 October 2026 the quick estimate also gives each building three chances:

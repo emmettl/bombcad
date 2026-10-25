@@ -13,7 +13,8 @@ enum HeadlessRun {
                            [--csv <file.csv>] [--resolution coarse|medium|fine|<metres>] [--mass <kg TNT>]
                            [--charge <kg>@<x>,<y>,<z>[+<delay ms>]]…
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
-                           [--surrogate <file.json> [--surrogate-yields <samples.csv> | --surrogate-yield-within <factor>]]
+                           [--surrogate <file.json> [--surrogate-yields <samples.csv> | --surrogate-yield-within <factor>]
+                            [--surrogate-terms adopted|clear-top]]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -74,6 +75,8 @@ enum HeadlessRun {
         blown out, drawn over the yield (from `scenebench infer-charge --samples`' masses with
         --surrogate-yields, or within --surrogate-yield-within either way nine times in ten, 1.5 by
         default), each building's glass strength and the estimate's own scatter: the glass only.
+        --surrogate-terms clear-top takes the candidate façade terms and scatter refitted on runs
+        whose top clears the far façades (not adopted); adopted, the default, the terms in use.
         --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
         main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
@@ -152,6 +155,8 @@ enum HeadlessRun {
         /// first column the log10 of the mass in kg), or within a factor either way.
         var surrogateYields: URL?
         var surrogateYieldWithin = 1.5
+        /// The first look's façade terms and load scatter (`--surrogate-terms`).
+        var surrogateTerms = FacadeLoadSurrogate.TermSet.adopted
 
         /// The consumers `--consumer` can place.
         static let consumerNames = ["fragments", "thermal", "ground"]
@@ -194,7 +199,8 @@ enum HeadlessRun {
                             "cloud-results", "sounding", "ground-shock", "ground-results", "envelope-results",
                             "envelope-histories", "envelope-damage", "envelope-window", "debris-results",
                             "frame-interval", "worker", "standing", "advise", "ground", "water-table",
-                            "surrogate", "surrogate-yields", "surrogate-yield-within", "charge",
+                            "surrogate", "surrogate-yields", "surrogate-yield-within", "surrogate-terms",
+                            "charge",
                         ]
                         .contains(key)
                     else {
@@ -239,11 +245,18 @@ enum HeadlessRun {
                 }
                 options.surrogateYieldWithin = factor
             }
-            if options.surrogateYields != nil || values["surrogate-yield-within"] != nil,
+            if let text = values["surrogate-terms"] {
+                guard let terms = FacadeLoadSurrogate.TermSet(rawValue: text) else {
+                    throw ProjectFileError.invalid("--surrogate-terms takes adopted or clear-top.")
+                }
+                options.surrogateTerms = terms
+            }
+            if options.surrogateYields != nil || values["surrogate-yield-within"] != nil
+                || values["surrogate-terms"] != nil,
                 options.surrogate == nil
             {
                 throw ProjectFileError.invalid(
-                    "--surrogate-yields and --surrogate-yield-within need --surrogate.")
+                    "--surrogate-yields, --surrogate-yield-within and --surrogate-terms need --surrogate.")
             }
             if let text = values["advise"] {
                 guard let target = AdvisorTarget(text: text) else {
@@ -1234,11 +1247,13 @@ enum HeadlessRun {
             throw ProjectFileError.invalid("--surrogate needs envelope buildings.")
         }
         let cellSize = Resolution(rawValue: inputs.settings.resolution)!.cellSize
-        let estimate = FacadeLoadSurrogate.estimate(scene: scenario, cellSize: cellSize)
+        let terms = options.surrogateTerms
+        let estimate = FacadeLoadSurrogate.estimate(
+            scene: scenario, cellSize: cellSize, coefficients: terms.coefficients)
         let (buildings, damageS, _) = FacadeLoadSurrogate.damage(
             estimate, constructions: { scenario.envelopeConstruction(for: $0) })
         var uncertainty = FacadeLoadSurrogate.Uncertainty(
-            yieldLogSD: log(options.surrogateYieldWithin) / 1.645)
+            yieldLogSD: log(options.surrogateYieldWithin) / 1.645, loadScatter: terms.loadScatter)
         var drawnOver = String(
             format: "yield within ×%.2f nine times in ten, glass strength, the estimate's scatter",
             options.surrogateYieldWithin)
@@ -1253,12 +1268,13 @@ enum HeadlessRun {
             drawnOver = "yields from \(url.lastPathComponent), glass strength, the estimate's scatter"
         }
         let (glass, glassS) = FacadeLoadSurrogate.glassProbabilities(
-            scene: scenario, cellSize: cellSize, uncertainty: uncertainty)
+            scene: scenario, cellSize: cellSize, uncertainty: uncertainty, coefficients: terms.coefficients)
         let (walls, wallsS) = FacadeLoadSurrogate.structureProbabilities(
             estimate, mass: Double(scenario.charge.mass), cellSize: cellSize,
-            constructions: { scenario.envelopeConstruction(for: $0) }, uncertainty: uncertainty)
+            constructions: { scenario.envelopeConstruction(for: $0) }, uncertainty: uncertainty,
+            coefficients: terms.coefficients)
         let look = FirstLook(
-            method: FacadeLoadSurrogate.method, fittedTo: FacadeLoadSurrogate.Coefficients.fitted.fittedTo,
+            method: FacadeLoadSurrogate.method, fittedTo: terms.coefficients.fittedTo,
             standing: FacadeLoadSurrogate.standing + FacadeLoadSurrogate.glassStanding
                 + FacadeLoadSurrogate.structureStanding,
             components: estimate.loads.count, outsideFit: estimate.outsideFit,

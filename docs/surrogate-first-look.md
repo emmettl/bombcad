@@ -946,6 +946,169 @@ adopted; it is proposed again, for the user
 ([the judgement](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)).
 Neither set of terms calibrates the chances against the clear-top runs.
 
+### Refitted on clear-top runs (25 October 2026)
+
+emmettl/bombcad-work#98. The far field, the quick estimate and the glass chances read low beyond
+about 1.5 km against Beirut's clear-top reference, the unsafe side
+([the hybrid far field](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)).
+The terms are fitted on BombCAD's own runs, so the runs they were fitted on were checked against
+#96's rule: the top drains the far loads from about 5–6 times its clearance over the highest
+ground.
+
+**What the terms and the chances were drawn from.**
+- The terms (`Coefficients.fitted`, #56's): the made-up fit set on air refined to 2 m, dense at
+  20, 100 and 500 t under tops of 208, 256 and 320 m, and sparse at 20 t under 112 m; and Beirut's
+  near boxes at 150, 300, 500, 850 and 1300 t under 320 m, cut at 3 s. The dense district's
+  ground reaches 84 m, so its 208 m top drains from about 700 m, inside the fitted strips (to
+  1.56 km at the fair part's corners).
+- The glass chances' load scatter (`Uncertainty.leaveOneOut`): the four made-up runs of the first
+  fit, on 4 m cells under the same tops.
+- The 23 October full-length refit added the boxes run to their corners, still under 320 m.
+
+**The runs remade**, with a top at the highest ground plus a fifth of the farthest fitted strip's
+distance (the fair part's corner), otherwise as #56 ran them and full length, on main ad4e32af:
+dense under 400 m (84 + 1,563/5), sparse under 200 m (30 + 841/5), and the ten near boxes under
+440 m (102 + 1,587/5) to 5 s. Each took 10–136 s on the Studio and at most 20 GB, one at a time. Strip by strip, the
+remade runs over the old ones (peak / impulse, median):
+
+| Run | 800–1,000 m | 1,000–1,200 m | 1,200–1,400 m | 1,400–1,700 m |
+|---|---|---|---|---|
+| Dense, 20 t (208 → 400 m) | 1.00 / 1.22 | 1.09 / 1.58 | 1.31 / 2.06 | 1.42 / 2.50 |
+| Dense, 100 t (256 → 400 m) | 1.00 / 1.02 | 1.00 / 1.15 | 1.00 / 1.33 | 1.05 / 1.54 |
+| Dense, 500 t (320 → 400 m) | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.05 | 1.00 / 1.12 |
+| Sparse, 20 t (112 → 200 m), 400–550 m | 1.01 / 1.31 | | | |
+| Near boxes, 150 and 300 t (320 → 440 m) | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.03–1.04 | 1.00 / 1.19 |
+
+So the fit set's far impulses were drained most, and its 20 t peaks; the near boxes hardly.
+
+**The refit** (`$BOMBCAD_DATA/scratch/issue98`, `py/fit98.py`, #56's `fit_terms`), each run alike:
+- the peak's terms on the four made-up runs and the five boxes;
+- the impulse's on the same nine. With the boxes full length their impulses scatter by 0.13 about
+  the fit, where the cut ones had scattered by 0.8–1.5.
+- The rise share on the same runs' rise time, which it was meant to follow
+  ([the rise share's fit](#the-rise-shares-fit-20-october-2026)). The adopted terms give the
+  pulses a rise of 0.6–0.9 of their length deep in the district; the runs' is 0.22–0.35, and so is
+  the refit's. The slow rise had offset impulses the drained runs read low.
+- The walls' chances keep the adopted rise (`structureRise`). With the refitted rise, concrete walls
+  lose the tenths test at every factor tried from ×1.0 to ×1.15; the folds pick ×1.0–1.1.
+- The shielding, the canyon terms, the close-in branch and the range are kept.
+- The chances' scatter, as the first one was drawn: each of the nine runs held out of a fit to
+  the other eight, the root mean square of the log error, each run alike. Beyond Z 7 it is
+  0.28 / 0.24 / 0.21 / 0.19 / 0.19 in the peak and 0.16 / 0.14 / 0.14 / 0.11 / 0.12 in the impulse,
+  against the first fit's 0.30 / 0.25 / 0.24 / 0.23 / 0.30 and 0.19 / 0.16 / 0.17 / 0.21 / 0.26.
+  Within Z 7 it would be 0.54 / 0.41, from the boxes' close-in strips; the first fit's
+  0.41 / 0.26 is kept there, since the walls' factor was set on it.
+
+On the five boxes no fit saw (2 m, the 440 m top), the peaks over the run's go from 0.93–0.97 to
+1.00–1.01 at Z 7–20, and from 0.87 to 0.98 beyond; the impulses from 0.77–0.86 to 0.98–1.01.
+
+**The candidate** is built in as `Coefficients.clearTop` and `Uncertainty.clearTopLeaveOneOut`,
+the set `FacadeLoadSurrogate.TermSet.clearTop`. It is off by default:
+- in the app: Envelope Damage ▸ "Façade terms refitted on clear-top runs (candidate)", for Quick
+  Estimate and the far field;
+- headless: `BombCAD run --surrogate out.json --surrogate-terms clear-top`;
+- in the benches: `surrogate-judge`, `hybrid-judge` and `glass-calibrate --terms clear-top`, and
+  `glass-calibrate --load-scatter file.json` for another scatter.
+
+The far field's match carried flat is a second option (`FarFieldSet.matchFlat`; in the app, Far
+field ▸ "Carry the run's match flat (candidate)").
+
+**Judged** against #97's clear-top reference (8 m air refined to 4 m, a 640 m top, the surrogate
+predicting for 4 m cells), and on the near judges #56 set (`judges.sh`, `judges3.sh`,
+`near-judges.sh`, `py/near98.py`):
+
+| | Adopted | Candidate |
+|---|---|---|
+| **Quick estimate**, loads beyond Z 20 at 0.5 kt, peak; impulse (`surrogateFarLoads`) | 0.72–0.92; 0.70–0.79 | 0.82–1.03; 1.01–1.06 |
+| … glass by side deep in the district, 0.2 / 0.5 / 1.1 kt (`surrogateGlassSides`) | 0.54 / 0.75 / 0.72 | 0.66 / 0.86 / 0.80 |
+| … in sight; behind one to three buildings | 0.89 / 0.95 / 0.98; 0.93 / 0.97 / 0.98 | 0.88 / 0.92 / 0.98; 0.93 / 0.95 / 0.98 |
+| … inside 1.5 km, mean error in the shares some broken and blown out by band | 0.046 / 0.046 / 0.000 | 0.006 / 0.008 / 0.000 |
+| … façade strips as concrete / stone walls, at the run's level where either calls them damaged | 0.42 / 0.40 / 0.33; 0.50 / 0.50 / 0.53 | 0.41 / 0.39 / 0.30; 0.49 / 0.50 / 0.55 |
+| **Glass chances**, blown out: Brier / skill; the test | 0.038 / 0.64; fail | **0.027 / 0.74; pass** |
+| … thrown past 3b; some broken: Brier / skill | 0.096 / −2.79; 0.053 / −5.35 | 0.047 / −0.85; 0.028 / −2.34 |
+| … openings blown out against the runs; against GEER's W3 (skill) | 0.87; 0.18 | 0.87; 0.17 |
+| **Hybrid**, the trend held (the app's): peaks; impulses over 1–2.5 km (`hybridFarPeak`, `hybridFarImpulse`) | 0.70–0.99; 0.77–1.03 | 0.72–1.00; 0.95–1.03 |
+| … mean error some broken, 0.2 / 0.5 / 1.1 kt | 0.294 / 0.063 / 0.001 | 0.266 / 0.045 / 0.001 |
+| … blown out | 0.040 / 0.170 / 0.221 | 0.031 / 0.129 / 0.152 |
+| **Hybrid, the match carried flat**: peaks; impulses | 0.75–1.01; 0.84–1.08 | 0.82–1.05; 1.05–1.14 |
+| … mean error some broken; blown out | 0.251 / 0.047 / 0.001; 0.036 / 0.135 / 0.205 | **0.181 / 0.024 / 0.000; 0.018 / 0.062 / 0.108** |
+| **Near boxes** (2 m, the 440 m top), glass by side: exact / Heidke; blown out Brier / skill | 0.902 / 0.66; 0.066 / 0.40 | 0.947 / 0.78; 0.040 / 0.64 |
+| **#56's near judges**, peaks over the runs': streets held out (4 m), all; behind within Z 5 | 1.03; 1.22 | 1.06; 1.23 |
+| … Warehouse 12 (4 m); the made-up held-out pair (4 m), all; behind within Z 5 | 0.92, 1.15; 0.96, 0.99 | 0.97, 1.16; 0.98, 1.00 |
+| **Concrete walls** moderate or worse at ×1.15 (2 m boxes): Brier / skill; tenths | 0.0213 / 0.611; pass | 0.0219 / 0.601; **fail**, its 0.8–0.9 tenth 0.11 under (0.10 adopted) |
+| … each yield held out (the refit's choice) | 0.0213 / 0.612; fail, ×1.15 in every fold | 0.0218 / 0.602; pass, ×1.15 in every fold |
+| Roofs moderate or worse | 0.740 | 0.740 |
+
+The hybrid's glass by band, sides with some broken at 1.5–1.75 / 1.75–2 / 2–2.5 km (reference /
+adopted held / candidate held / candidate flat):
+- 0.2 kt: 0.98 / 0.68 / 0.72 / 0.85; 0.90 / 0.40 / 0.46 / 0.63; 0.75 / 0.12 / 0.15 / 0.25.
+- 0.5 kt: every band 0.99–1.00 to 2 km; at 2–2.5 km 0.99 / 0.71 / 0.79 / 0.88.
+- Blown out at 0.5 kt, 1.25–1.5 and 1.5–1.75 km: 0.84 / 0.33 / 0.43 / 0.65 and
+  0.25 / 0.04 / 0.08 / 0.19. The quick estimate alone, candidate, gives 0.77 and 0.25.
+- Blown out at 1.1 kt, 1.75–2 and 2–2.5 km: 0.79 / 0.35 / 0.51 / 0.65 and 0.57 / 0.06 / 0.12 / 0.18.
+
+What it shows:
+- **The quick estimate's far loads and glass come to the reference.** Its blown-out shares at
+  0.5 kt are within 0.07 of the reference's to 2.5 km, and the glass chances' blown out passes the
+  protective-design test, each tenth within 0.1.
+- **Some broken and thrown past 3b still read low**, by 0.2–0.35 in the middle tenths. Loads by
+  band now match the reference's on the median, so this is not the far terms. It is the shape of
+  the pulse or the strips' spread within a side, which a triangle and one scatter per side do not
+  carry.
+- **The hybrid stays low beyond 1.5 km at 0.2 kt** (some broken 0.46 against 0.90 at 1.75–2 km,
+  held), less so than with the adopted terms.
+  - With the candidate the near band's trend falls more steeply (−0.28 and −0.23 at 0.2 and
+    0.5 kt, from −0.14 and −0.12), so the trend undoes part of the gain.
+  - Carried flat, it halves the error at every yield, and does better than flat on the adopted
+    terms. Its impulses then read 1.05–1.14 of the reference's.
+- **GEER's far edge**: GEER's W3 is openings seen two months on, not glass. The candidate's glass
+  blown out at 1.25–1.5 / 1.5–1.75 / 1.75–2 / 2–2.5 km (posterior yields, with scatter) is
+  0.67 / 0.45 / 0.32 / 0.25, against 0.53 / 0.32 / 0.19 / 0.17 on the adopted terms and GEER's
+  0.17 / 0.09 / 0.02 / 0.16. So it moves further from the survey, as the reference does. The
+  openings' fragility, fitted on the survey, is 0.13 / 0.08 / 0.05 / 0.03 against
+  0.11 / 0.07 / 0.04 / 0.03.
+- **Close in nothing moves beyond a few per cent.** Behind buildings within Z 5 the peaks are 1.23
+  against 1.22 (streets), 1.16 against 1.15 (Warehouse 12) and 1.00 against 0.99 (made-up). The
+  held-out street charges read 3% higher overall, within the 4 m runs' known 9–13% shortfall
+  against 2 m. Close-in impulses rise by 2–14%.
+- **The walls' chances** (concrete at ×1.15, the walls' adopted rise) lose 0.010 of skill and miss
+  the tenths test by 0.01 in one tenth (where they say 0.84, 0.95 were damaged; 0.94 on the
+  adopted terms). Held out yield by yield, the refit still picks ×1.15 every time, and passes.
+  The façade strips judged as concrete walls in the deterministic first look take the refitted
+  rise and agree a little less often at 1.1 kt (0.30 against 0.33).
+
+**What leans on the surrogate.**
+- **The field models' peaks** replace the surrogate's at the strips they read
+  (`learnedPeakFactor` is taken over whichever terms are given), so they do not move.
+- **Their impulses** are the surrogate's, so they take the candidate's: 2–14% higher close in.
+- **Field model 2's scatter tables** (`LearnedField.Scatter`) are the networks' own peak scatter, and
+  do not move. The strips they do not cover draw the candidate's load scatter beyond Z 7, narrower
+  than the adopted (0.19–0.28 in the peak against 0.23–0.30).
+- **The field-model walls** (peak ×1.15, impulse ×0.95, chosen on the adopted terms' impulses)
+  were not judged again on the candidate.
+- **The hybrid far field and the glass chances** take the candidate through the option; the drag
+  preview through Quick Estimate.
+
+**For the user.** Defaults are the user's decision. The proposal is to adopt `TermSet.clearTop`
+as the default for the quick estimate, the glass chances and the far field, and the far field's
+match carried flat with it (`FarFieldSet.matchFlat` on for New District). Concrete walls keep
+×1.15 and roofs their terms.
+- **For:**
+  - the unsafe-side reading this issue was opened for narrows at every yield;
+  - the quick estimate's far glass comes within 0.07 of the reference at 0.5 kt;
+  - blown out passes the chances' test for the first time against a clear-top run;
+  - the near boxes' glass gains 0.045 of sides;
+  - close in, the shielding's gain of 23 October is kept.
+- **Against:**
+  - concrete walls at ×1.15 lose 0.010 of skill and miss the tenths test by 0.01 in one tenth;
+    the held-out refit passes and picks ×1.15 in every fold (heavy or worse 0.531 → 0.511);
+  - some broken and thrown past 3b still fail the test;
+  - the hybrid at 0.2 kt is still 0.3–0.5 low beyond 1.75 km;
+  - the five boxes in the fit are Beirut's, at the charge place of the reference;
+  - the field-model walls are not judged again.
+- **With it:** the standings `surrogateFarLoads`, `surrogateGlassSides`, `glassChances*`,
+  `hybridFarPeak` and `hybridFarImpulse` are re-derived from the tables above.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -957,6 +1120,10 @@ Neither set of terms calibrates the chances against the clear-top runs.
   does not run (`--resolution` and `--mass` change the inputs as for a run).
 - **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
   run of its near field with these loads, matched to the run where they meet.
+- **The candidate terms refitted on clear-top runs** (not adopted;
+  [above](#refitted-on-clear-top-runs-25-october-2026)): Envelope Damage ▸ "Façade terms refitted
+  on clear-top runs (candidate)" in the app, `--surrogate-terms clear-top` headless, `--terms
+  clear-top` in the benches.
 - **Bench**: `scenebench drag-time` times a drag and judges the preview (Sources/SceneBench/DragTime.swift,
   outputs under `bombcad/drag`); `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under
