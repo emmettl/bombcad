@@ -90,7 +90,11 @@ Things found and fixed on the way, and one that set the domain:
   the old stone houses fell far too readily, and the coarser the grid the more.
 - **The domain's top.** At 160 m, faces that copy the air out channel the wave (1.7 times
   Kingery–Bulmash's peak at 2.4 km) and far-field faces drain it (0.2–0.3 times beyond 1.5 km);
-  at 320 m the peaks are those of a 640 m top to 2.4 km, so the runs use 320 m.
+  at 320 m the peaks are those of a 640 m top to 2.4 km, so the runs use 320 m. That held on
+  the line of gauges over the sea. Over the hills south of the port it does not: there the 320 m
+  top drains the façade loads from about 1.25 km at every yield (a 640 m top reads their peaks
+  1.2–1.6 times higher at 1.5–2.25 km, up to 2.4 times to the south), and a 640 m top is needed (25 October 2026, [the hybrid far
+  field](hybrid-far-field.md#the-full-runs-top-drains-its-far-loads-25-october-2026)).
 
 ## What it is compared with
 
@@ -416,9 +420,14 @@ their rectangular and their detailed silos; the layouts are in `Samples/BeirutSi
   Kingery–Bulmash's and still rise on finer cells. The glass has converged by 4 m; the structure's
   damage has not, and 3 m cells crack more of it (above).
 - **Open faces.** The 320 m top is 4 m/kg^(1/3) at 0.5 kt (3.1 at 1.1 kt). On 8 m cells a 640 m
-  top gives the same glass and structure to within a building or two in every band. The side
-  faces are not that far from the outer buildings: those beyond about 2.2 km lie within
-  4 m/kg^(1/3) of one, so the outer bands are less sure.
+  top gives the same glass and structure to within a building or two in every band, but on 8 m
+  cells and one typical pane hardly any glass beyond 1.25 km broke with either top. Over the hills
+  south of the port the 320 m top drains the façade loads from about 1.25 km at every yield; with
+  the hybrid's glazing mixes a 640 m top breaks glass on 0.99 of the sides at 2–2.5 km at 0.5 kt
+  against the 320 m top's 0.71, and on 0.74 against 0.35 at 0.2 kt (8 m cells; [the hybrid far
+  field](hybrid-far-field.md#the-full-runs-top-drains-its-far-loads-25-october-2026)). The outer
+  bands beyond 1.25 km are low on that account. The side faces matter less: moved 500 m further
+  out they add nothing beyond the layouts' own 3%.
 - **No silos as they stood.** The map holds today's remains; run alone, the 2020 block takes about
   a tenth off the peaks to 600 m and more to the west (above).
 - **One TNT mass.** Dewey's analysis suggests the TNT equivalence of this ammonium nitrate rose

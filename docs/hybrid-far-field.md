@@ -29,7 +29,11 @@ Judged on Beirut against the full 4 m runs at 0.2, 0.5 and 1.1 kt ([Beirut,
 - **Does not: the loads at the large yield beyond 1.5 km.** At 1.1 kt the far field's peaks read
   1.12–1.19 of the full run's from 1.5 to 2.5 km and its impulses 1.6–2.0 times. At 0.2 kt, where
   the share broken fell 0.16–0.28 below the full run's on the terms before, it now falls 0.01–0.06
-  below.
+  below. **But the full run is not a fair judge there** (25 October 2026,
+  [below](#the-full-runs-top-drains-its-far-loads-25-october-2026)): its 320 m top drains the loads
+  beyond about 1.25 km over the hills south of the port, at every yield. Against a run with its top
+  clear, on 8 m cells, the far field reads low, not high: peaks 0.72–0.99 of the run's at
+  1.5–2.5 km.
 - **Does not: blown-out glass in every band.** Its share differs from the full run's by up to 0.19
   in a band (1.1 kt: 0.88 against 0.69 at 1.5–1.75 km; 0.5 kt: 0.42 against 0.60 at 1.25–1.5 km).
 - **Does not: walls and roofs beyond the hand-over.** They take the surrogate's standing, which
@@ -152,8 +156,8 @@ share of sides, against the full run (some broken / blown out):
 
 Fitting the trend only from Z 10 (where the refit's 2 m and the near run's 4 m cells agree) or not
 at all gave the same at 1.1 kt and worse impulses at 0.5 kt (up to 2.1 times). What is left at
-1.1 kt is the surrogate's own far over-read, part of it the full run's far faces
-([above](#against-the-full-run-by-band)). The judgements are in `$BOMBCAD_DATA/refit56/takeover`:
+1.1 kt was taken for the surrogate's own far over-read, part of it the full run's far faces. It is
+the full run's top ([below](#the-full-runs-top-drains-its-far-loads-25-october-2026)). The judgements are in `$BOMBCAD_DATA/refit56/takeover`:
 `judge-adopt/hybrid-*` before the hold, `hybrid-try/` with it (`base-*` carried, `held-*` as the
 app holds it) and the other trend bands.
 
@@ -195,6 +199,111 @@ the surrogate's own loads, unscaled and unreported (emmettl/bombcad-work#76).
   0.8 m further in 3-D than in plan.
 
 The judgements are in `$BOMBCAD_DATA/scratch/issue76` (`unheld/held-*`, `district/`).
+
+### The full run's top drains its far loads (25 October 2026)
+
+At 1.1 kt beyond 1.5 km the far field read 1.12–1.19 of the full run's peaks, and blew out 0.88
+of the sides at 1.5–1.75 km against the run's 0.69 (emmettl/bombcad-work#96). Two causes were
+suspected: the surrogate's own over-read at large yields, or the full run's open faces. The faces
+were checked first, and they are the cause.
+
+**Where the full run's loads fall.** By direction from the charge, the 4 m run's façade peaks over
+Kingery–Bulmash's reflected peak stay level to 2.25 km to the east, along the coast (0.48–0.53 at
+1.1 kt), and over the sea (the line of gauges north, 0.77–0.78 of the incident peak from 1.4 to
+2.4 km). To the south, over the hills (ground 60–100 m above the charge), they fall from 0.44 at
+1–1.5 km to 0.18 at 2–2.25 km. The fall starts at the same distance in metres at 0.2, 0.5 and
+1.1 kt, so it is not a scaled-distance effect. The surrogate over the run is 0.90–1.08 to the east
+and southeast within 2.25 km. To the south it is 1.34 at 1.5–1.75 km and 2.34 at 2–2.25 km
+(adopted terms, 1.1 kt; 0.2 and 0.5 kt alike). The far field's high reading is that sector.
+
+**The top moved.** The same district on 8 m cells at 1.1 kt, with the full run's faces (5 km
+box, 320 m top) and with others, façade strip by strip (peak over the 320 m top's, median):
+
+| Top, box | 1–1.25 km | 1.25–1.5 km | 1.5–1.75 km | 1.75–2 km | 2–2.25 km | 2.25–2.5 km | South, 2–2.25 km |
+|---|---|---|---|---|---|---|---|
+| 400 m, 5 km | 1.00 | 1.02 | 1.21 | 1.43 | 1.50 | 1.74 | 1.99 |
+| 480 m, 5 km | 1.00 | 1.02 | 1.21 | 1.43 | 1.55 | 1.97 | 2.45 |
+| 640 m, 5 km | 1.00 | 1.02 | 1.21 | 1.43 | 1.55 | 1.96 | 2.43 |
+| 960 or 1,280 m, 5 km | 1.00 | 1.02 | 1.21 | 1.43 | 1.55 | 1.96 | 2.43 |
+| 640 m, 6 km | 1.03 | 1.07 | 1.26 | 1.48 | 1.60 | 2.01 | 2.53 |
+
+(The 400 m row is from the 400 m top over the 640 m's, times the 640 m's over the 320 m's. The
+6 km box reads 3% higher even at 500 m: the two layouts' projection, not the side faces.)
+
+- **It is the top.** A top at 640 m or more gives the same loads to the third figure to 2.5 km.
+  Moving the side faces 500 m further out adds nothing beyond the layouts' own 3%.
+- **It is not scaled with the yield.** At 0.2 and 0.5 kt the 640 m top over the 320 m reads
+  1.17/1.37/1.47 and 1.19/1.40/1.51 at 1.5–1.75, 1.75–2 and 2–2.25 km, against 1.21/1.43/1.55 at
+  1.1 kt, although the 320 m top is 5.5, 4.0 and 3.1 m/kg^(1/3) above the charge. Over the sea the
+  north line is the same to 2.2 km with either top. The draining reaches the ground from about 5–6
+  times the top's clearance over it: 320 m over the 90 m hills drains the peaks from 1.25 km;
+  400 m from 1.75–2 km; 480 m leaves the peaks clear to 2.5 km and the impulses within 2–7% from
+  2 km; 640 m leaves both clear.
+- **Impulses** move more: ×1.57, 1.85 and 2.03 at 1.5–1.75, 1.75–2 and 2–2.25 km.
+- **Peak maps** (`field-export --levels`) agree: at 2 m over the ground, the 640 m top over the
+  320 m reads 1.4–3.2 to the south from 1.5 to 2.5 km, 1.0–2.1 to the southeast and southwest,
+  and within 1.0–1.1 to the east, north and west.
+
+So the Beirut runs' 320 m top, chosen because a 640 m top gave the same peaks over the sea to 2.4 km
+([Beirut](beirut-2020.md#the-recipe)), does not hold over the land south of the port. The
+full runs' loads there are low beyond about 1.25 km at every yield.
+
+**The judge with its top clear (8 m cells).** The whole chain run again on 8 m cells: near runs
+to 1,324 m (so that their cells are the full run's: 2,500 − 1,324 is a multiple of 8), the full run
+with the 320 m top and with a 640 m one, and `hybrid-judge` against each, the trend from 500 m as
+above. Far field over the full run's peak (median), and sides blown out / some glass broken
+(run / hybrid):
+
+| | 1.5–1.75 km | 1.75–2 km | 2–2.5 km | Blown out, 1.5–1.75 km | Some broken, 2–2.5 km |
+|---|---|---|---|---|---|
+| 1.1 kt, 320 m top | 1.18 | 1.36 | 1.43 | 0.62 / 0.67 | 0.94 / 0.99 |
+| 1.1 kt, 640 m top | **0.99** | **0.99** | **0.85** | 0.95 / 0.67 | 1.00 / 0.99 |
+| 0.5 kt, 320 m top | 1.11 | 1.24 | 1.25 | 0.05 / 0.02 | 0.71 / 0.67 |
+| 0.5 kt, 640 m top | **0.95** | **0.92** | **0.77** | 0.10 / 0.02 | 0.99 / 0.67 |
+| 0.2 kt, 320 m top | 1.07 | 1.14 | 1.15 | – | 0.35 / 0.11 |
+| 0.2 kt, 640 m top | **0.92** | **0.87** | **0.72** | – | 0.74 / 0.11 |
+
+Over 1–2.5 km, the mean error in the share of sides, some broken / blown out, against the run:
+
+| | 0.2 kt | 0.5 kt | 1.1 kt |
+|---|---|---|---|
+| 320 m top | 0.144 / 0.014 | 0.023 / 0.097 | 0.016 / 0.015 |
+| 640 m top | 0.293 / 0.013 | 0.071 / 0.127 | 0.001 / 0.199 |
+
+Holding the trend past 1.5 times the hand-over, as the app does, moves none of these by more than
+0.04 in the peak.
+
+- **On 8 m cells the judge reproduces the 4 m finding** (1.18–1.43 at 1.1 kt against the 320 m
+  top, 1.12–1.19 on 4 m cells), and with the top clear the over-read goes. **So the surrogate's
+  own over-read at large yields does not stand, and no far correction downward was built:** it
+  would take the far field further below a fair run.
+- **The far field reads low against a fair run**, the more so the smaller the yield and the
+  further out: peaks 0.85–0.99 at 1.1 kt, 0.77–0.95 at 0.5 kt and 0.72–0.92 at 0.2 kt over
+  1.5–2.5 km. Its glass then errs on the unsafe side. At 1.1 kt it blows out 0.67 of the sides at
+  1.5–1.75 km against the run's 0.95. At 0.2 kt it breaks glass on 0.11 of the sides at 2–2.5 km
+  against 0.74.
+- **The 4 m numbers above** (the tables since 19 October) are against the drained runs beyond
+  about 1.25 km, and so are the glass figures they quote there. A 4 m full run with its top clear
+  (640 m: 250 million cells, about 33 GB by these runs' footprints) does not fit on the shared
+  Studio. On 8 m cells refined once to 4 m under a ceiling, with the near runs refined the same
+  way, it would.
+- **Elsewhere.** The full runs are the reference for `glass-calibrate`, for the Beirut glass
+  against GEER, for the quick estimate's far loads (`surrogateFarLoads`) and for the 23 October
+  judgement that kept the full-length peak refit out ([the
+  surrogate](surrogate-first-look.md#the-peak-terms-on-the-full-length-boxes-23-october-2026)).
+  That refit read the far field higher than the adopted terms, which against a clear top would be
+  the right way. Each beyond about 1.25 km needs judging again. The surrogate's own fit runs reach
+  1.0–1.3 km under tops of 296–532 m, mostly inside the draining reach.
+- **New District's top** is 4 m/kg^(1/3) above the charge (`DistrictLayout.top`): 234 m at 0.2 kt,
+  320 m at 0.5 kt. A whole district run to 2.5 km over hills has the same problem. From these runs,
+  a top at the highest ground plus a fifth of the radius would keep the loads to the radius
+  (590 m for Beirut at 2.5 km: 1.85 times the cells at 0.5 kt). That is a default, and the user's
+  decision. The near run handing over at 12 m/kg^(1/3) is clear on flat ground. Over hills 90 m
+  high, at 0.2 kt, the reach, 5 × (234 − 90) m, is about the hand-over (702 m).
+
+The runs, extracts and judgements are in `$BOMBCAD_DATA/scratch/issue96`: `faces*/` (the tops and
+boxes, `faces.sh`, `faces-more.sh`), `strips/` (the 4 m runs' strips with the surrogate),
+`fieldmaps/`, `near8/` and `judge8/` (`judge8.sh`). Each 8 m run took 18–35 s on the Studio.
 
 ## Using it
 
