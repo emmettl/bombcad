@@ -150,6 +150,7 @@ The whole path has been run for real, with the `BombCAD-notary` profile, from 20
 | 0.7.0 (15) | `133685e0` | `24458f4e-01b3-4daa-a31f-26b09d6116c5` | Published 2026-10-22              |
 | 0.7.1 (16) | `e4434df6` | `6026e3d0-1d9d-4cb8-8615-30382779e280` | Published as v0.7.1           |
 | 0.7.2 (17) | `3eb8553e` | `7fec5f83-4313-47b6-8601-3e4f78e0d039` | Published as v0.7.2           |
+| 0.7.3 (18) | `a36961f9` | `3341c693-61a6-4abc-9ead-e1dd8284a3ca` | Published as v0.7.3           |
 
 For each, Apple accepted the submission, the ticket was stapled and validated, and Gatekeeper
 assessed the app as `Notarized Developer ID`. A fresh expansion of build 2's final ZIP matched
@@ -379,6 +380,22 @@ stapled ticket, passed `codesign --verify --deep --strict`, was accepted by `spc
 It was published on 2026-10-24 at the user's word, with tag `v0.7.2` on `3eb8553e`, as the latest
 release, its notes' links pointing at the docs as tagged. The copy downloaded back verified the
 same way. The Homebrew tap's cask is 0.7.2, and `brew audit --cask --strict --online` passed.
+
+Build 18 (0.7.3) was prepared on 2026-10-25 from `a36961f9` on main (in the worktree
+`$BOMBCAD_DATA/release-0.7.3`), with its notes assembled from five fragments and landed with the
+version by `make ship`. The user ran `make release` in the app's Terminal panel, once. It passed
+`make check` (446 app, 914 model and 664 core GPU tests, build-strict with no warnings; the log's
+"Full check: FAILED" is `test-nightly-suspects`' fixture, as before), the release smoke runs, and
+the app's own run and interface smoke from inside its bundle before signing and again before
+archiving. Apple accepted it (submission `3341c693-61a6-4abc-9ead-e1dd8284a3ca`). A fresh
+expansion of its ZIP (42,603,533 bytes) matched the checksum
+(`7548ba8eefb2ee9549390b29fdb17c1ef6d649df5ae3ab08a87d14cf41b693c2`), validated its stapled
+ticket, passed `codesign --verify --deep --strict`, was accepted by `spctl` as
+`Notarized Developer ID`, and is 0.7.3, build 18. It was published on 2026-10-25 at the user's
+word, with tag `v0.7.3` on `a36961f9`, as the latest release, its notes' links pointing at the docs
+as tagged. The copy downloaded back verified the same way. The Homebrew tap's cask is 0.7.3, with
+the release's checksum; `brew audit` was not run, as this Homebrew now refuses to load a tap that
+has not been trusted (`brew trust emmettl/tap`, the user's to run).
 
 The source is under the MIT licence (`LICENSE`). MIT asks for the notice to travel with every
 copy, so `make app` puts it in the app's resources and `release` refuses an app without it.
