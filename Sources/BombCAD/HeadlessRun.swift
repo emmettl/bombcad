@@ -14,7 +14,7 @@ enum HeadlessRun {
                            [--charge <kg>@<x>,<y>,<z>[+<delay ms>]]…
                            [--advise peak:20%|impulse:15%|deflection:30%|time:10m]
                            [--surrogate <file.json> [--surrogate-yields <samples.csv> | --surrogate-yield-within <factor>]
-                            [--surrogate-terms clear-top|fitted]]
+                            [--surrogate-terms clear-top|fitted|clear-top-front]]
                            [--duration <seconds>] [--ground rigid|soil|<MN/m³>|<ground type>] [--water-table <m>|deep]
                            [--usd <scene.usda>] [--vdb <folder>
                            [--vdb-fields overpressure,shock,peak,impulse]] [--frame-interval <ms>]
@@ -77,7 +77,8 @@ enum HeadlessRun {
         default), each building's glass strength and the estimate's own scatter: the glass only.
         --surrogate-terms names the façade terms and scatter: clear-top, the default since 25
         October 2026, refitted on runs whose top clears the far façades; fitted, those of 23
-        October, for earlier records.
+        October, for earlier records; clear-top-front, clear-top with the glass's pulses arriving
+        with a front (a candidate, emmettl/bombcad-work#103).
         --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
         main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the
@@ -248,7 +249,8 @@ enum HeadlessRun {
             }
             if let text = values["surrogate-terms"] {
                 guard let terms = FacadeLoadSurrogate.TermSet(rawValue: text) else {
-                    throw ProjectFileError.invalid("--surrogate-terms takes clear-top or fitted.")
+                    throw ProjectFileError.invalid(
+                        "--surrogate-terms takes clear-top, fitted or clear-top-front.")
                 }
                 options.surrogateTerms = terms
             }

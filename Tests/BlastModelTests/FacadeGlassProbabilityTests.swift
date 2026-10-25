@@ -208,4 +208,115 @@ struct FacadeGlassProbabilityTests {
         #expect(byDistance.first!.openingsBlownOut > byDistance.last!.openingsBlownOut)
         #expect(sides.allSatisfy { (0...1).contains($0.openingsBlownOut) })
     }
+
+    /// The glass front (emmettl/bombcad-work#103): the share of its peak a façade pulse reaches at
+    /// once, fitted on the clear-top fit runs by scaled distance; a candidate, off by default.
+    @Test(
+        "Without a front a pulse is the triangle bin for bin; with one it keeps the impulse and starts at its share"
+    )
+    func frontPulse() {
+        typealias S = FacadeLoadSurrogate
+        for (peak, impulse, rise) in [(800.0, 20.0, 0.3), (4_000, 60, 0.35), (20_000, 200, 0)] {
+            let triangle = S.pulse(peak: peak, impulse: impulse, riseShare: rise, binS: 0.7e-3)
+            #expect(
+                S.pulse(peak: peak, impulse: impulse, riseShare: rise, front: 0, binS: 0.7e-3) == triangle)
+            for front in [0.1, 0.3, 0.54] {
+                let fronted = S.pulse(
+                    peak: peak, impulse: impulse, riseShare: rise, front: front, binS: 0.7e-3)
+                let carried = fronted.reduce(0, +) * 0.7e-3
+                #expect(abs(carried - impulse) < 1e-9 * impulse, "\(carried) against \(impulse)")
+                #expect(fronted.max()! <= peak * (1 + 1e-12))
+                if rise > 0 {
+                    // Its first bin's mean is at least the front, and shorter than the triangle.
+                    #expect(fronted[0] >= front * peak * (1 - 1e-12))
+                    #expect(fronted.count <= triangle.count)
+                } else {
+                    #expect(fronted == triangle)
+                }
+            }
+        }
+        // The share, by scaled distance: none close in, growing far out, held beyond the fit.
+        let front = S.Coefficients.GlassFront.clearTop
+        #expect(front.share(atZ: 3) == 0 && front.share(atZ: 8.4) == 0)
+        #expect(abs(front.share(atZ: 23.7) - 0.19) < 1e-12)
+        #expect(front.share(atZ: 14) > 0.05 && front.share(atZ: 14) < 0.10)
+        #expect(front.share(atZ: 80) == front.share(atZ: 49))
+        // A prediction keeps its loads; only its front is set, and only by terms that have one.
+        let p = S.Prediction(peakPa: 3_000, impulsePaS: 80, riseShare: 0.3, arrivalS: 1)
+        #expect(S.Coefficients.clearTop.forGlass(p, distanceM: 1_500, mass: 500_000) == p)
+        let fronted = S.Coefficients.clearTopFront.forGlass(p, distanceM: 1_500, mass: 500_000)
+        #expect(fronted.peakPa == p.peakPa && fronted.impulsePaS == p.impulsePaS)
+        #expect(abs(fronted.frontShare - front.share(atZ: 1_500 / cbrt(500_000))) < 1e-12)
+    }
+
+    @Test("The glass front is a named candidate: the defaults, the walls and the loads stay as they were")
+    func frontCandidate() throws {
+        typealias S = FacadeLoadSurrogate
+        #expect(S.TermSet.adopted == .clearTop && S.Coefficients.adopted.glassFront == nil)
+        #expect(S.Coefficients.fitted.glassFront == nil)
+        let candidate = S.TermSet.clearTopFront
+        #expect(candidate.loadScatter == S.TermSet.clearTop.loadScatter)
+        var withoutFront = candidate.coefficients
+        withoutFront.glassFront = nil
+        #expect(withoutFront == .clearTop)
+        // The walls take no front, and the terms' loads are the same.
+        #expect(candidate.coefficients.forStructures == S.Coefficients.clearTop.forStructures)
+        let f = FacadeLoadSurrogateTests.facing(1_500)
+        #expect(
+            S.predict(f, mass: 500_000, cellSize: 4, coefficients: candidate.coefficients)
+                == S.predict(f, mass: 500_000, cellSize: 4))
+        #expect(try SurrogateBench.termSet(["--terms", "clear-top-front"]) == .clearTopFront)
+        // Saved terms without a front read as before, and a front survives JSON.
+        let data = try JSONEncoder().encode(S.Coefficients.clearTop)
+        #expect(!String(decoding: data, as: UTF8.self).contains("glassFront"))
+        let back = try JSONDecoder().decode(
+            S.Coefficients.self, from: try JSONEncoder().encode(candidate.coefficients))
+        #expect(back == candidate.coefficients)
+        // Whole from the fit's smallest charge (20 t), none below 2 t, evenly in the log between.
+        let front = try #require(candidate.coefficients.glassFront)
+        #expect(front.share(atZ: 30, mass: 20_000) == front.share(atZ: 30))
+        #expect(front.share(atZ: 30, mass: 2_000) == 0 && front.share(atZ: 30, mass: 500) == 0)
+        #expect(
+            abs(front.share(atZ: 30, mass: 2_000 * 10.0.squareRoot()) - 0.5 * front.share(atZ: 30)) < 1e-12)
+        // So a 100 kg charge's glass chances are as without it.
+        let scene = try Self.row()
+        let (plain, _) = S.glassProbabilities(scene: scene, cellSize: 2, uncertainty: .none)
+        let (small, _) = S.glassProbabilities(
+            scene: scene, cellSize: 2, uncertainty: .none, coefficients: candidate.coefficients)
+        #expect(plain == small)
+        // A façade 2.4 km from 500 t (Z 30), its load long against its panes' periods: its glass
+        // breaks more with the front, by more than a few per cent of its panes.
+        let table = S.GlassTable(binS: 0.7e-3)
+        let p = S.predict(FacadeLoadSurrogateTests.facing(2_400), mass: 500_000, cellSize: 4)
+        let fronted = candidate.coefficients.forGlass(p, distanceM: 2_400, mass: 500_000)
+        #expect(fronted.frontShare > 0.2 && fronted.frontShare < 0.3, "\(fronted.frontShare)")
+        for mix in [GlazingMix.olderLowRise, .apartments] {
+            let without = table.breakage(mix, prediction: p, areaM2: 200, strength: 1)
+            let with = table.breakage(mix, prediction: fronted, areaM2: 200, strength: 1)
+            #expect(
+                with.fraction > without.fraction && with.logNoneBroken < without.logNoneBroken, "\(mix.name)")
+        }
+    }
+
+    @Test("Charge inference's break table with fronts reads the unfronted table's values at no front")
+    func frontedBreakTable() {
+        typealias T = ChargeInference.BreakTable
+        let plain = T(.apartments, coarsening: 6)
+        let fronted = T(.apartments, coarsening: 6, fronted: true)
+        #expect(plain.fronts == [0] && fronted.fronts.count > 1)
+        for (peak, duration, rise) in [(800.0, 0.05, 0.3), (4_000, 0.2, 0.35), (20_000, 0.01, 0.1)] {
+            let a = plain.logNoneBrokenPerM2(logPeak: log(peak), logDuration: log(duration), rise: rise)
+            let b = fronted.logNoneBrokenPerM2(
+                logPeak: log(peak), logDuration: log(duration), rise: rise, front: 0)
+            #expect(abs(a - b) < 1e-12)
+            #expect(
+                plain.logNoneBrokenPerM2(
+                    logPeak: log(peak), logDuration: log(duration), rise: rise, front: 0.3) == a)
+            // On a load long against the panes' periods a front breaks more: the log of none broken
+            // no higher.
+            let c = fronted.logNoneBrokenPerM2(
+                logPeak: log(peak), logDuration: log(duration), rise: rise, front: 0.4)
+            if duration >= 0.05 { #expect(c <= b + 1e-9) }
+        }
+    }
 }

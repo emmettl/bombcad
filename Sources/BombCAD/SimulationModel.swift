@@ -725,8 +725,21 @@ final class SimulationModel {
         }
     }
     static let firstFitTermsKey = "quickEstimate.firstFitTerms"
+    /// Whether the glass chances' pulses arrive with a front (`FacadeLoadSurrogate.TermSet
+    /// .clearTopFront`, emmettl/bombcad-work#103): a candidate, off unless chosen, and remembered.
+    /// The terms of 23 October, where chosen, take precedence.
+    var quickEstimateGlassFront = UserDefaults.standard.bool(forKey: SimulationModel.glassFrontKey) {
+        didSet {
+            learnedDefaults.set(quickEstimateGlassFront, forKey: Self.glassFrontKey)
+            if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
+            if !farFieldDamage.isEmpty { judgeFarField() }
+        }
+    }
+    static let glassFrontKey = "quickEstimate.glassFront"
     /// The façade terms and load scatter the quick estimate and the far field take.
-    var surrogateTerms: FacadeLoadSurrogate.TermSet { quickEstimateFirstFitTerms ? .fitted : .adopted }
+    var surrogateTerms: FacadeLoadSurrogate.TermSet {
+        quickEstimateFirstFitTerms ? .fitted : quickEstimateGlassFront ? .clearTopFront : .adopted
+    }
     /// Whether the far field carries the near run's match flat, with no trend with distance: the
     /// far set's own choice (`FarFieldSet.matchFlat`, saved with the project), on for New District's
     /// sets since 25 October 2026 (emmettl/bombcad-work#99) and off for those saved before.

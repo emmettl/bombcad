@@ -269,6 +269,148 @@ this scatter by default, and the standing quotes them. The terms of 23 October s
 over the inferred yield, the openings' skill is 0.18 (0.19 on the terms of 23 October), and the glass
 blown out at 0.75–1 km 0.96 (0.93); the openings' fragility was not refitted.
 
+### Why some broken and thrown past 3b read low: the pulse's front and the far loads (25 October 2026)
+
+emmettl/bombcad-work#103. On the clear-top terms, blown out passes the test against Beirut's
+clear-top runs, but some broken (Brier 0.028) and thrown past 3b (0.047) read 0.2–0.35 low in the
+middle tenths. The loads match the reference's by band on the median, so #98 put it down to the
+pulse's shape or the spread of load within a side.
+
+**Diagnosed** with `blastmodel glass-diagnose` (Sources/BlastModel/Studies/GlassDiagnosis.swift)
+on the same three runs and sides as `glass-calibrate`. Each side's three states were worked out
+from its strips' loads taken apart one step at a time, and set beside the chances by tenth. Shares
+of runs in the tenths where the gaps are:
+
+| Tenth of chance (sides) | Chance | The run's histories | Positive part; first positive phase | Triangle of each strip's own peak, first impulse and rise | One load for the side | The surrogate's strips moved to the run's side mean | The surrogate's own loads |
+|---|---|---|---|---|---|---|---|
+| Some broken, 0.4–0.5 (1,181) | 0.46 | 0.77 | 0.77; 0.77 | 0.65 | 0.64 | 0.65 | 0.47 |
+| Some broken, 0.5–0.6 (2,125) | 0.56 | 0.83 | 0.83; 0.83 | 0.69 | 0.69 | 0.70 | 0.58 |
+| Thrown past 3b, 0.3–0.4 (2,089) | 0.35 | 0.67 | 0.67; 0.67 | 0.48 | 0.43 | 0.49 | 0.40 |
+| Thrown past 3b, 0.4–0.5 (2,835) | 0.45 | 0.73 | 0.73; 0.73 | 0.55 | 0.48 | 0.55 | 0.46 |
+| Blown out, 0.0–0.1 (8,213) | 0.03 | 0.12 | 0.12; 0.12 | 0.05 | 0.05 | 0.06 | 0.00 |
+
+Read across, the shortfall comes in two parts of about the same size:
+
+- **The pulse's shape: 0.12–0.14 of some broken, 0.18 of the throw.** The surrogate's triangle,
+  given each strip's own peak, first impulse and rise, breaks less glass than the strip's own
+  history.
+  - It is not the negative phase or later shocks: the positive part and the first positive phase
+    alone give the history's shares to the digit.
+  - Nor is it the rise share: the surrogate's rise in place of the run's moves it by 0.01.
+  - The 60 s stress of one pane (4 mm, 0.9 × 1.4 m) under the history, over the triangle's, is
+    1.02 within Z 10, 1.04 at Z 10–14, 1.09 at 14–20, 1.14 at 20–28, 1.22 at 28–40 and 1.32
+    beyond. It is the same at 0.2, 0.5 and 1.1 kt, and on the fit runs at 2 m (1.06–1.09,
+    1.12–1.18, 1.18–1.29, 1.30). With E1300's seventh power, 1.14 in stress is 2.5 times the
+    chance of a pane breaking.
+  - It is not fast content (the history averaged over 10 ms or 30 ms gives 1.14 and 1.17 at
+    Z 20–28) or Brown's integral on the pressure alone (1.04–1.06 at every distance).
+  - It is the pulse's front. The run's façade load arrives as a shock, a share of its peak, and
+    builds to the peak over about a third of the pulse as the air round the building fills. A pane,
+    whose period is far shorter than the load, is struck by that front as by a step, and
+    overshoots. The triangle rising from nothing has no step. The same triangle rising at once
+    (all front) overshoots far more, 1.5–2 times the history's stress beyond Z 14.
+- **The spread within a side: nothing.** One load for the whole side loses 0.07 of the throw, but
+  the surrogate's own strips, moved to the run's side mean, give the triangle's shares to 0.01: the
+  surrogate's features already carry the spread within a side. About the side's mean, the run's
+  strips spread by 0.07–0.13 in the log of the peak beyond Z 7, and over the surrogate's by
+  0.06–0.12.
+- **The far loads: 0.18 of some broken, 0.09 of the throw.** The middle tenths are the far sides,
+  2.2–2.7 km from the charge, and there the surrogate's side peaks are 0.69–0.78 of the run's
+  (the log of run over surrogate +0.25 to +0.37 at all three yields). By distance over every side,
+  the surrogate reads 6–12% high at 1–2 km and 14–21% low at 2.25–2.75 km, alike at every yield in
+  metres, not in scaled distance. It is worst on sides facing away and behind more than 30
+  buildings, and least near the box's edges, so it is not the reference's corners. The fit runs
+  reach 1.56 km at most, so this is the far terms carried past the city depths they were fitted
+  on.
+
+**The option: a front on the glass's pulses** (`FacadeLoadSurrogate.Coefficients.GlassFront`,
+in the term set `TermSet.clearTopFront`). The glass chances' pulses arrive with a share of their
+peak at once, and rise from there to the peak over the same rise share, their impulse kept. The
+share is fitted on the surrogate's own fit runs (#98's clear-top runs: the made-up districts at 20,
+100 and 500 t, sparse at 20 t, and Beirut's five near boxes; 2 m air), none of them the judge's.
+In each band of scaled distance it is the share at which a triangle of each strip's own peak,
+impulse and rise gives its mix's panes the 60 s stress their own history gives them, each run
+alike. It is none within Z 8.4, then 0.05 at Z 11.8, 0.10 at 16.7, 0.19 at 23.7, 0.28 at 33.5 and
+0.54 at 49.0 (one run beyond Z 40), even in the log of Z between those points. Matching the panes'
+mean seventh power instead gives the same shares within 0.02.
+- **Only for large charges.** The fit runs' charges are 20 t to 1.3 kt, whose loads last
+  0.1–0.5 s, long against a pane's period. A 100 kg charge's loads are short against it, and there
+  a front breaks less glass, not more. So the front is whole from 20 t and tapers, evenly in the log
+  of the charge, to none at 2 t. Below 20 t it is not fitted; the taper only keeps it without a
+  step while a charge is inferred.
+- **What takes it**: the glass chances (Quick Estimate's, the far field's and the drag preview's),
+  the glass judged by `surrogate-judge` and `hybrid-judge`, and charge inference's glass.
+- **What does not**: the walls' and roofs' chances (`forStructures` drops it), the first look's
+  loads and its deterministic damage. No load moves.
+- **Selected by**: `--terms clear-top-front` in the benches, `--surrogate-terms clear-top-front`
+  headless, and Envelope Damage ▸ "Glass pulses with a front (candidate)" in the app.
+- **Off by default.** With it off, every output is as before, bit for bit.
+
+**Judged** on Beirut's clear-top references (the surrogate predicting for 4 m cells), as #98's
+judges (`$BOMBCAD_DATA/scratch/issue103`: `diag.sh`, `judges.sh`, `near.sh`, `infer.sh`;
+`py/fitfront.py`, `py/deciles.py`, `py/hybsum.py`):
+
+| | Clear-top (default) | With the front |
+|---|---|---|
+| Chances against the runs, some broken: Brier / skill; worst tenth | 0.028 / −2.34; 0.35 under | **0.006 / 0.27**; 0.16 under (fail) |
+| … thrown past 3b | 0.047 / −0.85; 0.35 under | **0.017 / 0.32**; 0.23 under (fail) |
+| … blown out | 0.027 / 0.74; pass | 0.026 / 0.75; pass, worst 0.07 over |
+| The same, with each strip's own peak and impulse in the fronted pulse: some broken; blown out; thrown | 0.009; 0.023; 0.034 (all fail) | 0.001, pass; 0.015, pass; 0.013, fail (0.19 under) |
+| First look's glass by side, exact, 0.2 / 0.5 / 1.1 kt | 0.67 / 0.87 / 0.81 | 0.83 / 0.89 / 0.83 |
+| … some broken at 1.75–2 / 2–2.5 / 2.5–3 km, 0.2 kt (run 0.91 / 0.75 / 0.51) | 0.66 / 0.28 / 0.09 | 0.90 / 0.63 / 0.43 |
+| … blown out at 1.25–1.5 / 1.5–1.75 / 1.75–2 km, 0.5 kt (run 0.83 / 0.24 / 0.06) | 0.76 / 0.25 / 0.05 | 0.93 / 0.43 / 0.18 |
+| … blown out at 1.75–2 / 2–2.5 km, 1.1 kt (run 0.78 / 0.57) | 0.81 / 0.24 | 0.98 / 0.57 |
+| Hybrid, held (the app's): mean error some broken / blown out, 0.2 kt | 0.224 / 0.024 | **0.101 / 0.004** |
+| … 0.5 kt | 0.094 / 0.081 | **0.035 / 0.040** |
+| … 1.1 kt | 0.004 / 0.115 | **0.000 / 0.059** |
+| … some broken at 1.5–1.75 / 1.75–2 / 2–2.5 km, 0.2 kt (run 0.98 / 0.90 / 0.75) | 0.72 / 0.46 / 0.15 | 0.90 / 0.75 / 0.43 |
+| Hybrid, the match carried flat: mean error some broken / blown out, 0.2 / 0.5 / 1.1 kt | 0.166 / 0.015; 0.062 / 0.040; 0.001 / 0.089 | 0.034 / 0.016; 0.012 / 0.030; 0.000 / 0.054 |
+| Near boxes (2 m, 440 m top), chances: blown out Brier / skill; test | 0.039 / 0.64; fail | **0.035 / 0.68; pass** |
+| … some broken | 0.0004 / −0.80; fail | **0.0001 / 0.76; pass** |
+| … first look's glass by side, exact / Heidke | 0.947 / 0.78 | 0.947 / 0.78 |
+| GEER: openings blown out against W3, skill | 0.17 | 0.17 |
+| … the glass blown out at 1.25–1.5 / 1.5–1.75 / 1.75–2 / 2–2.5 km (GEER W3 0.17 / 0.09 / 0.02 / 0.16) | 0.67 / 0.45 / 0.32 / 0.25 | 0.74 / 0.57 / 0.47 / 0.37 |
+| Charge inference, glass alone (GEER on the scene's sides): place free | 0.055 kt, 466 m off | 0.023 kt, 218 m off |
+| … place held | 0.030 kt | 0.018 kt |
+| Concrete walls' chances, #56's near peaks, the first look's loads | — | the same, bit for bit (no load moves; the walls take no front) |
+
+What it shows:
+- **The pulse's part is fixed.** With each strip's own loads, the fronted pulse gives the runs'
+  shares of some broken (Brier 0.001, every tenth within 0.04) and blown out (each within 0.06).
+  The throw keeps 0.19 of its shortfall: the front gives the right break, but a broken pane's
+  throw under a front no longer follows the history's (on the fit runs the triangle throws a broken
+  pane more often beyond Z 28 and less at Z 10–20). No one front gives both.
+- **The far loads' part is not.** The chances' some broken and thrown still fail the test, their
+  middle tenths 0.10–0.23 under. Those tenths are the sides at 2.2–2.7 km, where the surrogate's
+  side peaks are 0.69–0.78 of the run's.
+- **The hybrid at 0.2 kt** comes from 0.72 / 0.46 / 0.15 to 0.90 / 0.75 / 0.43 at 1.5–2.5 km
+  (reference 0.98 / 0.90 / 0.75). The error in some broken halves or better at every yield, held
+  or flat; in blown out it halves held, and flat moves by 0.001 at 0.2 kt and falls at the others.
+- **The near boxes' chances pass** for the first time, blown out and some broken.
+- **The first look's glass blown out over-reads** by up to 0.19 in its transition band: 0.43
+  against 0.24 at 1.5–1.75 km at 0.5 kt, 0.98 against 0.78 at 1.75–2 km at 1.1 kt. The surrogate
+  reads 6–12% high at 1–2 km, which the triangle's missing front had offset there. The chances'
+  blown out passes all the same, its tenths up to 0.07 over.
+- **Further from GEER, and charge inference from glass alone reads lower.** More glass breaks per
+  kt: the yield from glass alone falls from 0.055 to 0.023 kt with the place free, and from 0.030 to
+  0.018 held. That is 22–28 times under the published 0.50–0.64 kt, where it was 9–17 times. The
+  place comes nearer the reference (218 m off, from 466 m). GEER's classes are openings seen two
+  months on ([above](#why-it-over-breaks-against-geer-19-october-2026)), and the glass model
+  already broke more than they counted. A front that brings the glass nearer the runs takes it
+  further from that survey. The openings' fragility, fitted to the survey on the peak alone, does
+  not move.
+
+**Proposal (the user's decision).** Not to adopt the front as the default yet. It fixes the
+pulse's part of the shortfall, and with it the hybrid's far glass and the near boxes' chances, but:
+- the chances' some broken and thrown still fail the test, on the far loads;
+- the first look's blown out over-reads in its transition band by up to 0.19;
+- charge inference from glass alone reads 22–28 times low, against 9–17.
+
+The next step is the far terms past 2 km of city: fit runs that reach 2–3 km across a city. The
+front would then be judged again with them. Alternatively the front could be adopted for the
+hybrid far field's glass alone, where it halves the error at every yield, if a split default is
+wanted.
+
 ## Walls and roofs
 
 Since 20 October 2026 the quick estimate also gives each building three chances:

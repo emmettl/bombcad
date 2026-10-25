@@ -95,6 +95,13 @@ struct EnvelopeDamageSection: View {
                         + "whose top drained the far loads, in use until 25 October 2026, to reproduce an earlier "
                         + "estimate. Off, the terms refitted on clear-top runs (docs/surrogate-first-look.md)."
                 )
+                Toggle("Glass pulses with a front (candidate)", isOn: $model.quickEstimateGlassFront)
+                    .disabled(model.quickEstimateFirstFitTerms)
+                    .help(
+                        "For Quick Estimate's glass chances and the far field's glass: each pulse arrives with a share "
+                            + "of its peak at once, as the runs' loads do, which breaks more glass far out "
+                            + "(docs/glass-probability.md). A candidate, off by default."
+                    )
                 Toggle(
                     "Learned field model for façade peaks",
                     isOn: Binding(

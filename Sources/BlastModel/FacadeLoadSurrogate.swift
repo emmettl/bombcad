@@ -525,14 +525,82 @@ public enum FacadeLoadSurrogate {
         /// differ from the glass's `rise` (nil: `rise`): the walls' load factor was set on the rise
         /// they had (emmettl/bombcad-work#98).
         public var structureRise: [Double]?
+        /// The front the glass chances' pulses arrive with (`GlassFront`; emmettl/bombcad-work#103),
+        /// nil for none: the triangle rising from nothing, as before. Only the glass chances' panes
+        /// take it, not the walls' (`forStructures`) or the first look's loads.
+        public var glassFront: GlassFront?
 
-        /// These terms as the walls' chances take them: with `structureRise` as their rise, if any.
+        /// `prediction` as these terms give it to a pane at `distanceM` from a charge of `mass` kg:
+        /// with their glass front, if any (`glassFront`); unchanged without one.
+        public func forGlass(_ prediction: Prediction, distanceM: Double, mass: Double) -> Prediction {
+            glassFront?.applied(to: prediction, distanceM: distanceM, mass: mass) ?? prediction
+        }
+
+        /// These terms as the walls' chances take them: with `structureRise` as their rise, if any,
+        /// and without the glass's front.
         public var forStructures: Coefficients {
-            guard let structureRise else { return self }
+            guard structureRise != nil || glassFront != nil else { return self }
             var walls = self
-            walls.rise = structureRise
+            walls.rise = structureRise ?? rise
             walls.structureRise = nil
+            walls.glassFront = nil
             return walls
+        }
+
+        /// The front a façade's pulse arrives with, for its glass (emmettl/bombcad-work#103;
+        /// docs/glass-probability.md): a share of its peak reached at once, the rest over its rise,
+        /// the impulse kept. A run's façade load arrives as a shock, a share of its peak, and builds
+        /// to the peak as the air round the building fills; a pane, whose period is far shorter than
+        /// the load, is struck by that front as by a step, and its stress overshoots the triangle's,
+        /// more the farther out, where the shock is a larger share of a peak built up more slowly.
+        /// The share is fitted on the surrogate's fit runs, as the share that gives the panes the
+        /// stress their own histories give them, by scaled distance. Their charges' loads last long
+        /// against a pane's period; a small charge's, short against it, strike a pane as an
+        /// impulse, where a front does not overshoot as it does there. So it is given whole only
+        /// from the fit's smallest charge (`minimumMassKg`), tapering to none at a tenth of it,
+        /// evenly in the log of the charge: not fitted, but without a step as a charge is inferred.
+        public struct GlassFront: Codable, Sendable, Equatable {
+            /// (scaled distance, m/kg^(1/3); the front's share of the peak), by distance: the share
+            /// between them goes evenly in the log of the distance, and is held beyond the ends.
+            public var points: [SIMD2<Double>]
+            /// The smallest charge it is given whole for, kg: the fit's smallest.
+            public var minimumMassKg: Double
+            /// What it was fitted to.
+            public var fittedTo: String
+
+            public init(points: [SIMD2<Double>], minimumMassKg: Double, fittedTo: String) {
+                self.points = points
+                self.minimumMassKg = minimumMassKg
+                self.fittedTo = fittedTo
+            }
+
+            /// `prediction` for a pane at `distanceM` from a charge of `mass` kg: with this front.
+            public func applied(to prediction: Prediction, distanceM: Double, mass: Double) -> Prediction {
+                var p = prediction
+                p.frontShare = share(atZ: distanceM / cbrt(mass), mass: mass)
+                return p
+            }
+
+            /// The front's share of the peak at scaled distance `z` from a charge of `mass` kg: whole
+            /// from `minimumMassKg`, none below a tenth of it.
+            public func share(atZ z: Double, mass: Double) -> Double {
+                guard mass < minimumMassKg else { return share(atZ: z) }
+                let taper = log(mass / (0.1 * minimumMassKg)) / log(10.0)
+                return taper > 0 ? taper * share(atZ: z) : 0
+            }
+
+            /// The front's share of the peak at scaled distance `z`.
+            public func share(atZ z: Double) -> Double {
+                guard let first = points.first, let last = points.last else { return 0 }
+                if z <= first.x { return first.y }
+                if z >= last.x { return last.y }
+                var i = 1
+                while i < points.count - 1, points[i].x < z { i += 1 }
+                let a = points[i - 1]
+                let b = points[i]
+                let f = log(z / a.x) / log(b.x / a.x)
+                return a.y + f * (b.y - a.y)
+            }
         }
 
         public init(
@@ -673,6 +741,9 @@ public enum FacadeLoadSurrogate {
         /// It lies outside the scaled distances the terms were fitted over
         /// (`Coefficients.scaledRange`), where they are held at the range's end: extrapolated.
         public var outsideFit = false
+        /// The share of its peak it reaches at once (`Coefficients.GlassFront`), for the glass
+        /// chances' panes; 0, the triangle rising from nothing, unless they are given a front.
+        public var frontShare = 0.0
 
         public init(
             peakPa: Double, impulsePaS: Double, riseShare: Double, arrivalS: Double, outsideFit: Bool = false
@@ -776,9 +847,11 @@ public enum FacadeLoadSurrogate {
     public static func load(_ component: EnvelopeComponent, _ prediction: Prediction, binS: Double)
         -> EnvelopeComponentLoad
     {
+        // A front (`Prediction.frontShare`), where a glass judge gave it one, to a hundredth.
         let pressures = pulse(
             peak: quantized(prediction.peakPa), impulse: quantized(prediction.impulsePaS),
-            riseShare: (prediction.riseShare * 20).rounded() / 20, binS: binS)
+            riseShare: (prediction.riseShare * 20).rounded() / 20,
+            front: (min(max(prediction.frontShare, 0), 1) * 100).rounded() / 100, binS: binS)
         return EnvelopeComponentLoad(
             id: component.id, owner: component.owner,
             kind: EnvelopeComponentLoad.Kind(rawValue: component.kind.rawValue)!,
@@ -786,6 +859,34 @@ public enum FacadeLoadSurrogate {
             axis: component.axis, binS: binS, outerPa: pressures,
             innerPa: [Double](repeating: 0, count: pressures.count),
             supportEdges: component.supportEdges, startS: prediction.arrivalS, outward: component.outward)
+    }
+
+    /// The same pulse arriving with a front (`Coefficients.GlassFront`): `front` times `peak` at
+    /// once, the rest over `riseShare` of its length, then falling straight to nothing, carrying
+    /// `impulse` Pa s; without a front (or a rise), the triangle below, bin for bin.
+    static func pulse(peak: Double, impulse: Double, riseShare: Double, front: Double, binS: Double)
+        -> [Double]
+    {
+        guard front > 0, riseShare > 0 else {
+            return pulse(peak: peak, impulse: impulse, riseShare: riseShare, binS: binS)
+        }
+        // A front of `front` times the peak at once, rising straight to the peak over its rise
+        // share, then falling straight to nothing: its length is what carries the impulse.
+        let duration = peak > 0 ? 2 * impulse / (peak * (1 + riseShare * front)) : 0
+        let rise = riseShare * duration
+        let count = max(1, Int((duration / binS).rounded(.up)))
+        func impulseTo(_ t: Double) -> Double {
+            guard duration > 0 else { return 0 }
+            let t = min(max(t, 0), duration)
+            if t <= rise { return peak * (front * t + (1 - front) * 0.5 * t * t / rise) }
+            let fall = duration - rise
+            let left = duration - t
+            return 0.5 * peak * rise * (1 + front) + 0.5 * peak * (fall - left * left / fall)
+        }
+        return (0..<count).map { n -> Double in
+            let a = Double(n) * binS
+            return (impulseTo(a + binS) - impulseTo(a)) / binS
+        }
     }
 
     /// A triangular pulse's bins' mean pressures, Pa: `peak` Pa reached over `riseShare` of its

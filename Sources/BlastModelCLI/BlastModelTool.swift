@@ -21,6 +21,10 @@ enum BlastModelTool {
         ),
         ("district-glass", "a district run's saved strips' glass, against GEER's survey", DistrictGlass.run),
         ("glass-calibrate", "the glass chances' reliability against runs and GEER", GlassCalibration.run),
+        (
+            "glass-diagnose", "the glass chances against a district's runs, their loads taken apart",
+            GlassDiagnosis.run
+        ),
         ("protect", "protective design on the surrogate, confirmed on a run's saved loads", Protect.run),
         ("infer-charge", "the charge's yield and place from arrivals (and glass)", InferCharge.run),
         (

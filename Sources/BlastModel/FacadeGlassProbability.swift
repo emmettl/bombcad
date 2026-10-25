@@ -358,6 +358,7 @@ extension FacadeLoadSurrogate {
                                 strip.features, mass: mass, cellSize: Double(cellSize),
                                 coefficients: coefficients)
                             if let farField { p = farField.apply(p, distanceM: strip.features.distanceM) }
+                            p = coefficients.forGlass(p, distanceM: strip.features.distanceM, mass: mass)
                             if let own = strip.features.learnedPeakScatter,
                                 let sd = LearnedField.Scatter.peak(
                                     own, atZ: strip.features.distanceM / cbrt(mass))
@@ -473,6 +474,8 @@ extension FacadeLoadSurrogate {
             /// For a throw: the strength it broke at; 0 for the stress.
             var strength: Int16 = 0
             var glass: GlazingMix.Glass?
+            /// The pulse's front, in hundredths of its peak (`Coefficients.GlassFront`); 0 for none.
+            var front: Int8 = 0
         }
         /// One part of the table, by its keys' hash, with its own lock: classes in a `let` array,
         /// so that writing one never touches the array the others are read through (as
@@ -504,6 +507,7 @@ extension FacadeLoadSurrogate {
             var peak: Int32
             var impulse: Int32
             var rise: Int8
+            var front: Int8
             let binS: Double
             private var made: [Double]?
 
@@ -518,6 +522,7 @@ extension FacadeLoadSurrogate {
                     prediction.impulsePaS > 0
                     ? Int32((log(prediction.impulsePaS) / step).rounded()) : Int32.min
                 rise = Int8((prediction.riseShare * 20).rounded())
+                front = Int8((min(max(prediction.frontShare, 0), 1) * 100).rounded())
                 self.binS = binS
             }
 
@@ -526,7 +531,7 @@ extension FacadeLoadSurrogate {
                 let p = peak == .min ? 0 : exp(Double(peak) * step)
                 let i = impulse == .min ? 0 : exp(Double(impulse) * step)
                 let load = FacadeLoadSurrogate.pulse(
-                    peak: p, impulse: i, riseShare: Double(rise) / 20, binS: binS)
+                    peak: p, impulse: i, riseShare: Double(rise) / 20, front: Double(front) / 100, binS: binS)
                 made = load
                 return load
             }
@@ -534,7 +539,7 @@ extension FacadeLoadSurrogate {
             func key(_ pane: GlazingMix.Pane, glass: GlazingMix.Glass?, strength: Int16 = 0) -> Key {
                 Key(
                     thickness: pane.thicknessM, width: pane.widthM, height: pane.heightM, peak: peak,
-                    impulse: impulse, rise: rise, strength: strength, glass: glass)
+                    impulse: impulse, rise: rise, strength: strength, glass: glass, front: front)
             }
         }
 

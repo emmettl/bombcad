@@ -10,6 +10,10 @@ extension FacadeLoadSurrogate {
     public enum TermSet: String, CaseIterable, Codable, Sendable {
         case clearTop = "clear-top"
         case fitted
+        /// `clearTop` with the glass chances' pulses arriving with a front
+        /// (`Coefficients.GlassFront.clearTop`; emmettl/bombcad-work#103): a candidate, off by
+        /// default. Its loads, its walls and its scatter are `clearTop`'s.
+        case clearTopFront = "clear-top-front"
 
         /// The set in use unless another is named: `clearTop` since 25 October 2026.
         public static let adopted = TermSet.clearTop
@@ -19,6 +23,7 @@ extension FacadeLoadSurrogate {
             switch self {
             case .fitted: .fitted
             case .clearTop: .clearTop
+            case .clearTopFront: .clearTopFront
             }
         }
 
@@ -26,7 +31,7 @@ extension FacadeLoadSurrogate {
         public var loadScatter: [Uncertainty.LoadScatter] {
             switch self {
             case .fitted: Uncertainty.leaveOneOut
-            case .clearTop: Uncertainty.clearTopLeaveOneOut
+            case .clearTop, .clearTopFront: Uncertainty.clearTopLeaveOneOut
             }
         }
     }
@@ -78,6 +83,35 @@ extension FacadeLoadSurrogate.Coefficients {
         c.fittedTo =
             "made-up districts (dense at 20, 100 and 500 t, sparse at 20 t) and Beirut's near boxes at 150, 300, "
             + "500, 850 and 1300 t, on air refined to 2 m with the top clear of the far façades, full length"
+        return c
+    }()
+}
+
+extension FacadeLoadSurrogate.Coefficients.GlassFront {
+    /// Fitted on 25 October 2026 (emmettl/bombcad-work#103; docs/glass-probability.md) on the
+    /// surrogate's clear-top fit runs (#98's: the made-up districts at 20, 100 and 500 t and sparse at
+    /// 20 t, Beirut's near boxes at 150, 300, 500, 850 and 1300 t, on air refined to 2 m): in each band
+    /// of scaled distance, the share at which a triangle of each strip's own peak, first impulse and
+    /// rise gives its mix's panes the 60 s stress the strip's own history gives them, the median of
+    /// the log ratio, each run alike. Within Z 8 the history and the triangle agree to 1%, so none.
+    /// Judged on Beirut's clear-top references, which none of the fit runs is. Below 20 t, the fit's
+    /// smallest charge, none.
+    public static let clearTop = Self(
+        points: [
+            SIMD2(8.4, 0), SIMD2(11.8, 0.05), SIMD2(16.7, 0.10), SIMD2(23.7, 0.19), SIMD2(33.5, 0.28),
+            SIMD2(49.0, 0.54),
+        ],
+        minimumMassKg: 20_000,
+        fittedTo:
+            "the clear-top fit runs (made-up districts at 20, 100 and 500 t, sparse at 20 t, Beirut's near boxes at "
+            + "150, 300, 500, 850 and 1300 t; 2 m air), the panes' stress under each strip's own history")
+}
+
+extension FacadeLoadSurrogate.Coefficients {
+    /// `clearTop` with the glass's front (`GlassFront.clearTop`), for `TermSet.clearTopFront`.
+    public static let clearTopFront: FacadeLoadSurrogate.Coefficients = {
+        var c = FacadeLoadSurrogate.Coefficients.clearTop
+        c.glassFront = .clearTop
         return c
     }()
 }

@@ -590,7 +590,11 @@ package enum SurrogateBench {
                     detail: "stone 0.5 m, assumed for the comparison")
                 let mix =
                     mixes[reference.index.buildings[strip.building].mix] ?? concrete.glazing ?? .apartments
-                func judged(_ load: EnvelopeComponentLoad) -> (Int, Int, GlazingBreakage, Double, Double) {
+                // The glass under `glass` where given (the surrogate's pulse with the terms' glass
+                // front), else under `load`, as the walls are.
+                func judged(_ load: EnvelopeComponentLoad, glass: EnvelopeComponentLoad? = nil) -> (
+                    Int, Int, GlazingBreakage, Double, Double
+                ) {
                     let c = EnvelopeDamageAssessment.assess(
                         load, construction: concrete, buildingTop: tops[n], buildingBase: bases[n])
                     let st = EnvelopeDamageAssessment.assess(
@@ -598,8 +602,8 @@ package enum SurrogateBench {
                     let net = load.netPa
                     return (
                         c?.levels.upperBound.rawValue ?? 0, st?.levels.upperBound.rawValue ?? 0,
-                        mix.breakage(netPa: net, binS: load.binS, areaM2: strip.areaM2), net.max() ?? 0,
-                        SurrogateBench.firstImpulse(net, binS: load.binS)
+                        mix.breakage(netPa: (glass ?? load).netPa, binS: load.binS, areaM2: strip.areaM2),
+                        net.max() ?? 0, SurrogateBench.firstImpulse(net, binS: load.binS)
                     )
                 }
                 // Both judged alike: the same strip, its edges taken as held, only the load differing.
@@ -612,18 +616,23 @@ package enum SurrogateBench {
                 var f = FacadeLoadSurrogate.features(
                     component, owner: n, charge: charge, raster: reference.raster)
                 f.chargeOpenM = open
-                var predicted = FacadeLoadSurrogate.load(
-                    component,
-                    FacadeLoadSurrogate.predict(
-                        f, mass: mass, cellSize: Double(reference.predictionCell), coefficients: coefficients),
-                    binS: strip.binS)
+                let prediction = FacadeLoadSurrogate.predict(
+                    f, mass: mass, cellSize: Double(reference.predictionCell), coefficients: coefficients)
+                var predicted = FacadeLoadSurrogate.load(component, prediction, binS: strip.binS)
                 predicted.supportEdges = nil
+                // With a glass front, the glass judged under its own pulse (emmettl/bombcad-work#103).
+                let glassLoad = coefficients.glassFront.map { _ in
+                    FacadeLoadSurrogate.load(
+                        component, coefficients.forGlass(prediction, distanceM: f.distanceM, mass: mass),
+                        binS: strip.binS)
+                }
                 var triangle = FacadeLoadSurrogate.load(
                     component, Self.oracle(recorded.netPa, binS: strip.binS), binS: strip.binS)
                 triangle.supportEdges = nil
                 let oracle = judged(triangle)
                 out[m] = Outcome(
-                    run: judged(recorded), surrogate: judged(predicted), oracle: (oracle.0, oracle.1),
+                    run: judged(recorded), surrogate: judged(predicted, glass: glassLoad),
+                    oracle: (oracle.0, oracle.1),
                     crossed: f.buildingsCrossed, distance: f.distanceM)
             }
         }

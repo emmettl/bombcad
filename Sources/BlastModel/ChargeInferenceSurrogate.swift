@@ -199,7 +199,8 @@ extension ChargeInference {
             self.strengthLogSD = strengthLogSD
             var tables: [String: BreakTable] = [:]
             for side in sides where tables[side.mix.name] == nil {
-                tables[side.mix.name] = BreakTable.cached(side.mix, coarsening: tableCoarsening)
+                tables[side.mix.name] = BreakTable.cached(
+                    side.mix, coarsening: tableCoarsening, fronted: coefficients.glassFront != nil)
             }
             self.tables = tables
             let took = start.duration(to: .now)
@@ -379,10 +380,11 @@ extension ChargeInference {
                     continue
                 }
                 let logDuration = log(2.0) + p.logImpulse - p.logPeak
+                let front = coefficients.glassFront?.share(atZ: p.distance / cbrt(massKg), mass: massKg) ?? 0
                 func logNone(_ change: Double) -> Double {
                     sides[k].areaM2
                         * table.logNoneBrokenPerM2(
-                            logPeak: p.logPeak + change, logDuration: logDuration, rise: p.rise)
+                            logPeak: p.logPeak + change, logDuration: logDuration, rise: p.rise, front: front)
                 }
                 // Its chance that none breaks falls as the load grows.
                 var low = -1.5
@@ -429,11 +431,12 @@ extension ChargeInference {
                 let scaled = p.distance / root
                 let scatter = loadScatter.first { scaled <= $0.upToZ }?.peak ?? 0.3
                 let sigma = (scatter * scatter + strengthLogSD * strengthLogSD).squareRoot()
+                let front = coefficients.glassFront?.share(atZ: scaled, mass: massKg) ?? 0
                 var none = 0.0
                 for (u, w) in zip(nodes, weights) {
                     let perArea = table.logNoneBrokenPerM2(
                         logPeak: logPeak + sigma * 1.4142135623730951 * u, logDuration: logDuration,
-                        rise: rise)
+                        rise: rise, front: front)
                     none += w * exp(sides[k].areaM2 * perArea)
                 }
                 return min(max(1 - none / 1.7724538509055159, 0), 1)
@@ -480,41 +483,50 @@ extension ChargeInference {
 
     /// A mix's façade glass under triangular pulses: the log of the chance that no pane breaks per
     /// square metre of façade, by the pulse's log peak (Pa), log duration (s) and the share of it
-    /// spent rising, as `GlazingMix.breakage` judges it.
+    /// spent rising, as `GlazingMix.breakage` judges it; with `fronted`, by its front too
+    /// (`Coefficients.GlassFront`, emmettl/bombcad-work#103), the duration then the triangle's of the
+    /// same peak and impulse, 2I/P.
     struct BreakTable: Sendable {
         let logPeaks: (low: Double, high: Double, count: Int)
         let logDurations: (low: Double, high: Double, count: Int)
         static let rises: [Double] = [0, 0.2, 0.45, 0.7, 0.9]
+        /// The fronts tabulated: none alone, or `frontGrid`.
+        let fronts: [Double]
+        static let frontGrid: [Double] = [0, 0.1, 0.2, 0.3, 0.4, 0.55, 0.7]
         let values: [Double]
 
         /// Tables made, by mix name and coarsening: a mix's glass answers the same each time.
         private static let made = Mutex<[String: BreakTable]>([:])
 
-        static func cached(_ mix: GlazingMix, coarsening: Int) -> BreakTable {
-            let key = "\(mix.name)/\(coarsening)"
+        static func cached(_ mix: GlazingMix, coarsening: Int, fronted: Bool = false) -> BreakTable {
+            let key = "\(mix.name)/\(coarsening)" + (fronted ? "/fronted" : "")
             if let known = made.withLock({ $0[key] }) { return known }
-            let table = BreakTable(mix, coarsening: coarsening)
+            let table = BreakTable(mix, coarsening: coarsening, fronted: fronted)
             made.withLock { $0[key] = table }
             return table
         }
 
-        init(_ mix: GlazingMix, coarsening: Int = 1) {
+        init(_ mix: GlazingMix, coarsening: Int = 1, fronted: Bool = false) {
             let p = (low: log(50.0), high: log(5e6), count: max(48 / max(coarsening, 1), 4))
             let d = (low: log(1e-4), high: log(2.0), count: max(30 / max(coarsening, 1), 4))
             logPeaks = p
             logDurations = d
             let r = Self.rises
-            var values = [Double](repeating: 0, count: p.count * d.count * r.count)
+            let f = fronted ? Self.frontGrid : [0]
+            fronts = f
+            var values = [Double](repeating: 0, count: p.count * d.count * r.count * f.count)
             values.withUnsafeMutableBufferPointer { out in
-                concurrently(iterations: d.count * r.count) { job in
+                concurrently(iterations: d.count * r.count * f.count) { job in
                     let duration = exp(d.low + Double(job % d.count) * (d.high - d.low) / Double(d.count - 1))
-                    let rise = r[job / d.count]
+                    let rise = r[job / d.count % r.count]
+                    let front = f[job / (d.count * r.count)]
                     let step = min(max(duration / 40, 2e-5), 1e-3)
                     for k in 0..<p.count {
                         let peak = exp(p.low + Double(k) * (p.high - p.low) / Double(p.count - 1))
-                        let pulse = Self.pulse(peak: peak, duration: duration, rise: rise, step: step)
+                        let pulse = Self.pulse(
+                            peak: peak, duration: duration, rise: rise, step: step, front: front)
                         let breakage = mix.breakage(netPa: pulse, binS: step, areaM2: 1)
-                        out[(job / d.count * d.count + job % d.count) * p.count + k] = breakage.logNoneBroken
+                        out[job * p.count + k] = breakage.logNoneBroken
                     }
                 }
             }
@@ -522,19 +534,51 @@ extension ChargeInference {
         }
 
         /// A triangle of `peak` lasting `duration`, rising over `rise` of it, in bins `step` long,
-        /// followed by stillness for the pane to swing back (80 ms).
-        static func pulse(peak: Double, duration: Double, rise: Double, step: Double) -> [Double] {
-            let up = rise * duration
-            let count = Int(((duration + 0.08) / step).rounded(.up))
+        /// followed by stillness for the pane to swing back (80 ms). With a `front`, it reaches that
+        /// share of its peak at once and lasts `duration` / (1 + `rise` `front`), so as to carry the
+        /// triangle's impulse.
+        static func pulse(peak: Double, duration: Double, rise: Double, step: Double, front: Double = 0)
+            -> [Double]
+        {
+            guard front > 0 else {
+                let up = rise * duration
+                let count = Int(((duration + 0.08) / step).rounded(.up))
+                return (0..<count).map { n in
+                    let t = (Double(n) + 0.5) * step
+                    if t < up { return peak * t / up }
+                    if t < duration { return peak * (duration - t) / max(duration - up, 1e-12) }
+                    return 0
+                }
+            }
+            let length = duration / (1 + rise * front)
+            let up = rise * length
+            let count = Int(((length + 0.08) / step).rounded(.up))
             return (0..<count).map { n in
                 let t = (Double(n) + 0.5) * step
-                if t < up { return peak * t / up }
-                if t < duration { return peak * (duration - t) / max(duration - up, 1e-12) }
+                if t < up { return peak * (front + (1 - front) * t / up) }
+                if t < length { return peak * (length - t) / max(length - up, 1e-12) }
                 return 0
             }
         }
 
-        func logNoneBrokenPerM2(logPeak: Double, logDuration: Double, rise: Double) -> Double {
+        /// With `front` (a fronted table's), between its tabulated fronts.
+        func logNoneBrokenPerM2(logPeak: Double, logDuration: Double, rise: Double, front: Double) -> Double {
+            guard fronts.count > 1 else {
+                return logNoneBrokenPerM2(logPeak: logPeak, logDuration: logDuration, rise: rise)
+            }
+            let f = fronts
+            let clamped = min(max(front, f.first!), f.last!)
+            let fi = min(f.lastIndex { $0 <= clamped } ?? 0, f.count - 2)
+            let ft = (clamped - f[fi]) / (f[fi + 1] - f[fi])
+            return (1 - ft)
+                * logNoneBrokenPerM2(logPeak: logPeak, logDuration: logDuration, rise: rise, plane: fi)
+                + ft
+                * logNoneBrokenPerM2(logPeak: logPeak, logDuration: logDuration, rise: rise, plane: fi + 1)
+        }
+
+        func logNoneBrokenPerM2(logPeak: Double, logDuration: Double, rise: Double, plane front: Int = 0)
+            -> Double
+        {
             let p = logPeaks
             let d = logDurations
             guard logPeak > p.low else { return 0 }
@@ -549,7 +593,10 @@ extension ChargeInference {
             let j = min(Int(y), d.count - 2)
             let s = x - Double(i)
             let t = y - Double(j)
-            func at(_ i: Int, _ j: Int, _ z: Int) -> Double { values[(z * d.count + j) * p.count + i] }
+            let base = front * r.count
+            func at(_ i: Int, _ j: Int, _ z: Int) -> Double {
+                values[((base + z) * d.count + j) * p.count + i]
+            }
             func plane(_ z: Int) -> Double {
                 (1 - t) * ((1 - s) * at(i, j, z) + s * at(i + 1, j, z)) + t
                     * ((1 - s) * at(i, j + 1, z) + s * at(i + 1, j + 1, z))

@@ -206,8 +206,12 @@ enum HybridBench {
                 }
                 let d = featureDistance[m]
                 let run = judged(full.net(s), binS: strip.binS)
+                // The glass's pulse, with the terms' glass front if any (emmettl/bombcad-work#103).
+                func glass(_ p: FacadeLoadSurrogate.Prediction) -> FacadeLoadSurrogate.Prediction {
+                    coefficients.forGlass(p, distanceM: d, mass: mass)
+                }
                 var prediction = predictions[m]
-                let surrogate = FacadeLoadSurrogate.load(component, prediction, binS: strip.binS)
+                let surrogate = FacadeLoadSurrogate.load(component, glass(prediction), binS: strip.binS)
                 let hybrid: (GlazingBreakage, Double, Double)
                 let held = d < handover ? nearOf[key(full, component)] : nil
                 if let j = held {
@@ -219,7 +223,7 @@ enum HybridBench {
                     // takes them.
                     prediction = far.apply(prediction, distanceM: d)
                     hybrid = judged(
-                        FacadeLoadSurrogate.load(component, prediction, binS: strip.binS).netPa,
+                        FacadeLoadSurrogate.load(component, glass(prediction), binS: strip.binS).netPa,
                         binS: strip.binS)
                 }
                 out[m] = Outcome(
