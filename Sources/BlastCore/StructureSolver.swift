@@ -1441,6 +1441,14 @@ public final class StructureSolver {
         return totals
     }
 
+    /// Each element's work by mechanism since the trace began, `WorkChannel.allCases.count` values
+    /// per element in storage order (`instanceBuffer`): the sums `workTotals` adds up, folded first.
+    /// A diagnostic of where each mechanism's work was done (`blastbench wholeevent --breakdown`).
+    public func workByElement() -> [Double] {
+        _ = workTotals()
+        return workSums
+    }
+
     /// Specialises the element kernel for air that holds the structures' outlines as cut cells
     /// (`SolverConfiguration.structureCutCells`): faces then read the pressure at the wall
     /// (`cutFaceOverpressure` in Structure.metal). A function constant rather than a uniform's

@@ -5756,7 +5756,10 @@ kind with BombCAD's law at its eight points
 - OA1 on 12 elements moved only from 438 to 422 kN (127%).
 
 So the struck beams' agreement leans on the stabilisation, and the record's standing on impact
-is lowered from moderate on one mesh to low (the Summary above). Saatci's and Ando's beams are
+is lowered from moderate on one mesh to low (the Summary above). On the large-panel block's whole-event run (two
+elements through its walls and floors) the same element takes hourglass control's share of the
+elements' work from 76% to 22%, none of it in cracked concrete, at five times the cost, and the
+bay comes down as far a second sooner ([whole-event simulation](whole-event.md#7-hinges-two-elements-deep-25-october-2026)). Saatci's and Ando's beams are
 reported as they were, but their agreement is no longer evidence that the cracked members' bending
 is right.
 

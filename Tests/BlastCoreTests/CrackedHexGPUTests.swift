@@ -758,4 +758,59 @@ struct CrackedHexGPUTests {
             print("  today's element: worst off section analysis \(worst(today.moments))")
         }
     }
+
+    // MARK: - The hourglass cap of an uncracked element (emmettl/bombcad-work#36)
+
+    /// One element of the large-panel block's concrete, never stretched at its centre, warped in
+    /// its fourth mode to half its cracking strain at the faces: the GPU's forces against the CPU
+    /// reference's with the shader's reading of the cap, which holds the mode at 2% of the
+    /// tensile strength.
+    @Test("An uncracked element warped in a mode: the GPU's cap is the CPU reference's, at 2% of f_t")
+    func warpedElement() throws {
+        let h = 0.0875
+        let mesh = CrackedHex.BoxMesh(nx: 1, ny: 1, nz: 1, h: h)
+        var material = StructureMaterial.concrete(name: "Wall", compressiveStrength: 31e6)
+        material.rateDependent = false
+        let base = (1 / Float(h)).rounded() * Float(h)
+        let model = StructureModel(
+            solids: [Box(min: SIMD3(0, 0, base), max: SIMD3(Float(h), Float(h), base + Float(h)))],
+            material: material, elementSize: Float(h), fixedBase: false)
+        let solver = try StructureSolver(device: device, model: model)
+        let statics = GPUStatics(solver: solver, mesh: mesh)
+        let concrete = CrackedHex.Concrete(
+            youngsModulus: Double(material.youngsModulus), compressiveStrength: 31e6,
+            tensileStrength: Double(material.tensileStrength),
+            fractureEnergy: Double(material.fractureEnergy),
+            bandWidth: h)
+        var element = CrackedHex.Element(
+            geometry: mesh.geometry(0, 0, 0), law: .concrete(concrete), formulation: .today)
+        element.uncrackedCapAtStrength = false
+        let a = 0.25 * h * concrete.crackingStrain
+        var local = Array(repeating: 0.0, count: 24)
+        for corner in 0..<8 {
+            let s = CrackedHex.corner(corner)
+            local[3 * corner] = a * s.x * s.y * s.z
+        }
+        let nodes = mesh.elementNodes(0, 0, 0)
+        var u = Array(repeating: 0.0, count: 3 * mesh.nodeCount)
+        for (corner, n) in nodes.enumerated() {
+            for c in 0..<3 { u[3 * n + c] = local[3 * corner + c] }
+        }
+        let gpu = statics.forces(u)
+        let cpu = element.evaluate(local, from: element.initialState).force
+        var worst = 0.0
+        var scale = 0.0
+        for (corner, n) in nodes.enumerated() {
+            for c in 0..<3 {
+                worst = max(worst, abs(gpu[3 * n + c] + cpu[3 * corner + c]))
+                scale = max(scale, abs(cpu[3 * corner + c]))
+            }
+        }
+        print("warped element: largest corner force \(scale) N, the GPU off by \(worst)")
+        let floor = 0.125 * 0.02 * concrete.tensileStrength * h * h
+        #expect(
+            abs(scale - floor) < 0.01 * floor,
+            "the reference's corner force \(scale) N against the floor's \(floor)")
+        #expect(worst <= 1e-2 * scale, "the GPU off the CPU reference by \(worst) of \(scale) N")
+    }
 }

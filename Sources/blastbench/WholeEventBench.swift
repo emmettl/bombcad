@@ -36,7 +36,10 @@ import simd
 // `--erode-crushed-bare` and `--release-bare-hourglass` turn on those two options. `--split-work`
 // splits the census by source each substep (`StructureSolver.traceExternalWork`), to
 // work-split.csv; `--trace-node i,j,k` (and `--trace-element i,j,k`) record one node's (and one
-// element's) forces each substep, to trace.csv (and element-trace.csv).
+// element's) forces each substep, to trace.csv (and element-trace.csv). `--assumed-strain` and the
+// other element options (`applyHourglassOptions`) apply to the block. `--breakdown <checkpoint>`
+// prints where the elements' work went in a saved state, by part and by state, and the hourglass
+// forces the elements hold (emmettl/bombcad-work#36 step 3, docs/whole-event.md section 7).
 
 private struct WholeEventState: Codable {
     var stepCount: Int
@@ -71,6 +74,12 @@ func runWholeEvent(device: MTLDevice) throws {
     // `--release-bare-hourglass`.
     if flag("erode-crushed-bare") { scenario.structure?.erodesCrushedBare = true }
     if flag("release-bare-hourglass") { scenario.structure?.releasesCrushedBareHourglass = true }
+    // The hourglass and element options (`--assumed-strain`, `--hourglass-secant`,
+    // `--hourglass-no-steel`, …; `applyHourglassOptions`), all off unless given.
+    if var structure = scenario.structure {
+        applyHourglassOptions(&structure)
+        scenario.structure = structure
+    }
     let cellSize = option("dx").flatMap { Float($0) } ?? 0.25
     let end = option("time").flatMap { Double($0) } ?? 10
     let every = option("every").flatMap { Double($0) } ?? 0.05
@@ -99,6 +108,12 @@ func runWholeEvent(device: MTLDevice) throws {
         solids.tracesWork = true
         let header = try solver.restoreCheckpoint(from: URL(filePath: inspect), scene: scenario)
         inspectFastest(solids, time: header.time)
+        return
+    }
+    if let path = option("breakdown") {
+        solids.tracesWork = true
+        let header = try solver.restoreCheckpoint(from: URL(filePath: path), scene: scenario)
+        breakdownWork(solids, time: header.time)
         return
     }
 
@@ -295,6 +310,11 @@ func runWholeEvent(device: MTLDevice) throws {
                     crushing / 1e6, steel / 1e6, hourglass / 1e6, residual / 1e6, c.fastestNode,
                     c.fastestParticle,
                     c.notFinite || summary.hasBlownUp ? " NOT FINITE" : ""))
+            if let pool = solids.assumedStrainSummary {
+                print(
+                    "  assumed strain: \(pool.switched) of \(pool.elements) switched\(pool.poolFull ? ", pool full" : "")"
+                )
+            }
             // `--nodes i,j,k;…`: those nodes at each sample, and how near each is to the others.
             if let list = option("nodes") {
                 let picked = list.split(separator: ";").map {
@@ -498,5 +518,171 @@ private func inspectFastest(_ s: StructureSolver, time: Double, count: Int = 15)
                     "  %.1f m/s, %.3g kg, lattice (%d, %d, %d) at (%.2f, %.2f, %.2f), flags %d; elements: %@",
                 entry.speed, entry.mass, entry.i, entry.j, entry.k, p.x, p.y, p.z, entry.flags,
                 around.joined(separator: " ")))
+    }
+}
+
+/// `--breakdown <checkpoint>`: where the elements' work since the settle went, from a saved
+/// state's per-element sums (the work trace's): by part (each material, floor or wall by the axis
+/// its solid is thinnest along, and how many elements through) and by each element's state as
+/// saved (uncracked, cracked, crushed, bare bars, gone), the hourglass control's work, below its
+/// cap and at it, against the rest. An element's state is its last, so a gone element's work
+/// includes what it did while whole.
+private func breakdownWork(_ s: StructureSolver, time: Double) {
+    typealias Channel = StructureSolver.WorkChannel
+    let channels = Channel.allCases.count
+    let sums = s.workByElement()
+    let count = s.elementCount
+    let instances = s.instanceBuffer.contents().bindMemory(to: UInt32.self, capacity: max(count, 1))
+    let flags = s.flagBuffer.contents().bindMemory(to: UInt8.self, capacity: s.ex * s.ey * s.ez)
+    let materialIndex = s.materialIndexBuffer.contents().bindMemory(to: UInt8.self, capacity: max(count, 1))
+    let states = s.stateBuffer.contents()
+    let stride = 196
+    var occupied = [Bool](repeating: false, count: s.ex * s.ey * s.ez)
+    for n in 0..<count { occupied[Int(instances[n])] = true }
+    func filled(_ at: SIMD3<Int>) -> Bool {
+        at.x >= 0 && at.y >= 0 && at.z >= 0 && at.x < s.ex && at.y < s.ey && at.z < s.ez
+            && occupied[at.x + s.ex * (at.y + s.ey * at.z)]
+    }
+    let classes = ["uncracked", "cracked", "crushed", "bare", "gone"]
+    struct Tally {
+        var elements = 0
+        var hourglass = 0.0
+        var capped = 0.0
+        var all = 0.0
+        var bars = 0.0
+        var fracture = 0.0
+    }
+    let fractureChannels: [Channel] = [
+        .tensionCracked, .tensionHairline, .crackShear, .crackShearPressed, .interlock, .interlockPressed,
+        .dowel, .kink, .compressionCrushed,
+    ]
+    var parts: [String] = []
+    var table: [String: [Tally]] = [:]
+    var total = Tally()
+    for n in 0..<count {
+        let index = Int(instances[n])
+        let (i, j, k) = s.elementCoordinates(index)
+        // The solid's thickness along each axis, up to five elements either way.
+        var runs = SIMD3<Int>(1, 1, 1)
+        for axis in 0..<3 {
+            for direction in [-1, 1] {
+                var at = SIMD3(i, j, k)
+                for _ in 1...5 {
+                    at[axis] += direction
+                    guard filled(at) else { break }
+                    runs[axis] += 1
+                }
+            }
+        }
+        let material = s.materials[Int(materialIndex[n] & 15)]
+        let thin = runs.min()
+        let axis = runs.x == thin ? 0 : (runs.y == thin ? 1 : 2)
+        let part = "\(material.name), \(axis == 2 ? "floor" : "wall") \(thin) through"
+        let base = states.advanced(by: n * stride)
+        let crack = (0..<3).map { base.load(fromByteOffset: 80 + 4 * $0, as: Float.self) }.max() ?? 0
+        let crush = (0..<3).map { base.load(fromByteOffset: 124 + 4 * $0, as: Float.self) }.max() ?? 0
+        let onset = material.youngsModulus > 0 ? material.tensileStrength / material.youngsModulus : 1
+        let kind: Int
+        switch flags[index] {
+        case 2, 3: kind = 4
+        case 4, 5, 6: kind = 3
+        default: kind = crush > 0.0035 ? 2 : (crack > 1.5 * onset ? 1 : 0)
+        }
+        if table[part] == nil {
+            table[part] = [Tally](repeating: Tally(), count: classes.count)
+            parts.append(part)
+        }
+        let w = Array(sums[(n * channels)..<((n + 1) * channels)])
+        var t = table[part]![kind]
+        t.elements += 1
+        t.hourglass += w[Channel.hourglass.rawValue]
+        t.capped += w[Channel.hourglassCapped.rawValue]
+        t.bars += w[Channel.bars.rawValue] + w[Channel.bond.rawValue]
+        t.all += w.reduce(0, +)
+        t.fracture += fractureChannels.reduce(0) { $0 + w[$1.rawValue] }
+        table[part]![kind] = t
+        total.elements += 1
+        total.hourglass += w[Channel.hourglass.rawValue]
+        total.capped += w[Channel.hourglassCapped.rawValue]
+        total.all += w.reduce(0, +)
+    }
+    // The hourglass forces each element holds now, as the capacity (MPa) a cap at that force
+    // would be (|q| / (h² / 8)), by part and state for elements whose work was mostly hourglass
+    // control: their quartiles, and how often each mode is the largest.
+    var held: [String: [Float]] = [:]
+    var largestMode: [String: [Int]] = [:]
+    var bendingShare: [String: [Double]] = [:]
+    let h = s.model.elementSize
+    for n in 0..<count {
+        let index = Int(instances[n])
+        guard flags[index] == 1 || flags[index] == 4 else { continue }
+        let w = sums[(n * channels)..<((n + 1) * channels)]
+        let hourglass =
+            w[w.startIndex + Channel.hourglass.rawValue] + w[w.startIndex + Channel.hourglassCapped.rawValue]
+        guard hourglass > 1 else { continue }
+        let base = states.advanced(by: n * stride)
+        var best: Float = 0
+        var mode = 0
+        var bendingSquared: Float = 0
+        var allSquared: Float = 0
+        for m in 0..<4 {
+            let q = SIMD3<Float>(
+                base.load(fromByteOffset: 32 + 12 * m, as: Float.self),
+                base.load(fromByteOffset: 36 + 12 * m, as: Float.self),
+                base.load(fromByteOffset: 40 + 12 * m, as: Float.self))
+            let size = (q * q).sum().squareRoot()
+            if size > best {
+                best = size
+                mode = m
+            }
+            // A mode's components along the axes its signs vary with stretch fibres across the
+            // element (its own bending); the others (and the fourth mode's) warp it.
+            let bends: SIMD3<Float> =
+                m == 0 ? [0, 1, 1] : m == 1 ? [1, 0, 1] : m == 2 ? [1, 1, 0] : [0, 0, 0]
+            bendingSquared += (q * q * bends).sum()
+            allSquared += (q * q).sum()
+        }
+        let key = "\(s.materials[Int(materialIndex[n] & 15)].name), \(flags[index] == 4 ? "bare" : "whole")"
+        bendingShare[key, default: [0, 0]][0] += Double(bendingSquared)
+        bendingShare[key, default: [0, 0]][1] += Double(allSquared)
+        held[key, default: []].append(best / (0.125 * h * h) / 1e6)
+        largestMode[key, default: [0, 0, 0, 0]][mode] += 1
+    }
+    for key in held.keys.sorted() {
+        let values = held[key]!.sorted()
+        let q = { (p: Double) in values[min(values.count - 1, Int(p * Double(values.count)))] }
+        print(
+            String(
+                format:
+                    "held now, %@ (%d elements with > 1 J of hourglass work): |q| as a cap %.3f / %.3f / %.3f MPa (quartiles), modes largest %@",
+                key, values.count, q(0.25), q(0.5), q(0.75),
+                largestMode[key]!.map(String.init).joined(separator: "/")))
+        let share = bendingShare[key]!
+        print(
+            String(
+                format: "  of |q|², in components that bend the element: %.0f%%",
+                100 * share[0] / max(share[1], 1e-30)))
+    }
+    let allHourglass = total.hourglass + total.capped
+    print(
+        String(
+            format:
+                "At %.4f s: %d elements, their work %.3f MJ, of which hourglass %.3f MJ (%.0f%%; %.3f at its cap)",
+            time, total.elements, total.all / 1e6, allHourglass / 1e6,
+            100 * allHourglass / max(total.all, 1e-9),
+            total.capped / 1e6))
+    print(
+        "part | state | elements | work MJ | hourglass MJ (at cap) | its share | fracture+crushing MJ | bars MJ | of all hourglass"
+    )
+    for part in parts {
+        for (kind, t) in table[part]!.enumerated() where t.elements > 0 {
+            let hourglass = t.hourglass + t.capped
+            print(
+                String(
+                    format: "%@ | %@ | %d | %.3f | %.3f (%.3f) | %.0f%% | %.3f | %.3f | %.1f%%", part,
+                    classes[kind], t.elements, t.all / 1e6, hourglass / 1e6, t.capped / 1e6,
+                    100 * hourglass / max(abs(t.all), 1e-9), t.fracture / 1e6, t.bars / 1e6,
+                    100 * hourglass / max(allHourglass, 1e-9)))
+        }
     }
 }

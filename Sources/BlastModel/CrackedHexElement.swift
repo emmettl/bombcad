@@ -49,6 +49,15 @@ extension CrackedHex {
         public let steel: Steel?
         public let bars: [Bar]
         public let formulation: Formulation
+        /// What of the bars' strength the one-point element's hourglass cap counts (today's: all
+        /// of it, `.smeared`).
+        public var hourglassSteel = HourglassSteel.smeared
+        /// With true (the reference as built for emmettl/bombcad-work#20), an element whose centre
+        /// has not cracked caps its hourglass forces at the full tensile strength; the shader caps
+        /// it at the tension its centre has reached, E times its largest tensile strain so far
+        /// (`tensionEnvelope` below the onset), so an element squeezed from the start bends no
+        /// more strongly than its bars and its squeeze allow. False matches the shader.
+        public var uncrackedCapAtStrength = true
         /// Each bar's strain along its axis as a row over the 24 displacements: at the centre, and
         /// at its own points (two along it, two across a mat), with their weights (steel volume).
         let barCentreRows: [[Double]]
@@ -240,12 +249,24 @@ extension CrackedHex {
             var limit = Double.infinity
             if case .concrete(let c) = law {
                 let most = state.centre.tension.max()
-                let remaining = most > c.crackingStrain ? c.tension(most).stress : c.tensileStrength
+                let remaining =
+                    most > c.crackingStrain || !uncrackedCapAtStrength
+                    ? c.tension(most).stress : c.tensileStrength
                 var steelCapacity = 0.0
-                if let steel {
-                    for bar in bars {
+                if let steel, hourglassSteel != .none {
+                    for (i, bar) in bars.enumerated() {
                         let ratio = bar.area * geometry.length(along: bar.axis) / geometry.volume
-                        steelCapacity += ratio * steel.yieldStress
+                        var share = 1.0
+                        if hourglassSteel == .remaining, !barsAtPoints {
+                            // A layer of steel spread through the element carrying a membrane
+                            // stress s bends no more than M_p (1 - (s / f_y)^2): what its axial
+                            // force uses is not there to bend it as well.
+                            var probe = state.barCentre[i]
+                            let strain = zip(barCentreRows[i], u).reduce(0.0) { $0 + $1.0 * $1.1 }
+                            let s = steel.stress(strain, state: &probe).stress / steel.yieldStress
+                            share = max(1 - s * s, 0)
+                        }
+                        steelCapacity += ratio * steel.yieldStress * share
                     }
                 }
                 let squeezed = max(-min(concreteStress[0], min(concreteStress[1], concreteStress[2])), 0)

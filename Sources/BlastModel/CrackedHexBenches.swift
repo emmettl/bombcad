@@ -479,6 +479,8 @@ extension CrackedHex {
         /// Elements switched to their eight points by the end, of all.
         public var switched: Int
         public var elements: Int
+        /// Each element's history at the last curvature reached, in the mesh's order.
+        public var states: [ElementHistory] = []
     }
 
     /// A length of the section two elements long and one wide, `n` elements through its depth,
@@ -490,7 +492,8 @@ extension CrackedHex {
     public static func momentCurvature(
         _ section: ReinforcedSection, elementsThroughDepth n: Int, formulation: Formulation,
         curvatures: [Double],
-        smearedBars: Bool, tolerance: Double = 1e-9
+        smearedBars: Bool, tolerance: Double = 1e-9, hourglassSteel: HourglassSteel = .smeared,
+        uncrackedCapAtStrength: Bool = true
     ) -> MomentCurvatureResult {
         let h = section.depth / Double(n)
         let mesh = BoxMesh(nx: 2, ny: 1, nz: n, h: h)
@@ -512,11 +515,13 @@ extension CrackedHex {
                 let zeta = 2 * (section.barHeight - bottom) / h - 1
                 bars.append(Bar(axis: 0, area: area, position: SIMD3(0, 0, zeta), spreadAcross: 1))
             }
-            elements.append(
-                Element(
-                    geometry: mesh.geometry(e.i, e.j, e.k), law: law, formulation: formulation,
-                    steel: section.steel,
-                    bars: bars))
+            var element = Element(
+                geometry: mesh.geometry(e.i, e.j, e.k), law: law, formulation: formulation,
+                steel: section.steel,
+                bars: bars)
+            element.hourglassSteel = hourglassSteel
+            element.uncrackedCapAtStrength = uncrackedCapAtStrength
+            elements.append(element)
         }
         var assembly = Assembly(
             elements: elements, connectivity: mesh.elements.map { mesh.elementNodes($0.i, $0.j, $0.k) },
@@ -576,6 +581,6 @@ extension CrackedHex {
         }
         return MomentCurvatureResult(
             curvatures: curvatures, moments: moments, switched: assembly.states.filter(\.switched).count,
-            elements: elements.count)
+            elements: elements.count, states: assembly.states)
     }
 }

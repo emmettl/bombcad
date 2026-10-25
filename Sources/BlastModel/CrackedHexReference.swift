@@ -38,6 +38,13 @@ public enum CrackedHex {
 
     public static func gaussPoint(_ g: Int) -> SIMD3<Double> { corner(g) * gauss }
 
+    /// What of an element's bars the one-point element's hourglass cap counts: all their yield
+    /// spread through the element (today's), none of it, or what their membrane stress at the
+    /// centre leaves, M_p (1 − (s / f_y)²) (emmettl/bombcad-work#36).
+    public enum HourglassSteel: Sendable, Equatable {
+        case smeared, none, remaining
+    }
+
     public enum Formulation: Sendable, Equatable {
         case onePointHourglass(coefficient: Double)
         case fullIntegration

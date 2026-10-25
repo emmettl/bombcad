@@ -18,6 +18,14 @@ their rubble, and bare elements pulled out of shape go (section 6): no node flie
 gram or two among bare bars on the ground pass 50 m/s for a sample.
 The collapse is still not earned: hourglass control does 60–76% of the elements' work.
 
+**25 October (section 7):** that work is mostly elements warping in modes the one-point element
+cannot see, at caps far below the concrete's strength, not the floors' hinges. Moving the cap
+changes nothing; the element that sees those modes as strain (`--assumed-strain`) makes the work
+the concrete's (hourglass control 22% of it, all in bare bars and rubble), at five times the cost,
+and the twelve-storey bay comes down as far (gravity's work 20.3 against 19.0 MJ by 3.5 s), a
+second sooner and in 2.6 times as many pieces; but that element's cracked concrete is too soft for
+the struck beams. Stopped, with the user's decision on what to offer.
+
 **In short (22 October 2026):** the energy gives out first. A joint between parts on a node whose
 concrete had turned to rubble rang beyond the step and blew the run up at 0.62 s; that is fixed.
 With it fixed, the run reaches 3.4 s, but from about 1.5 s the energy budget no longer closes: by
@@ -36,7 +44,8 @@ through it.
 blastbench wholeevent [--storeys 12] [--mass 500] [--dx 0.25] [--time 10] [--every 0.05]
                       [--budget 80] [--checkpoint-every 0.5] [--frames 1,2,4,6,8,10]
                       [--awake] [--no-rubble] [--dir …] [--continue] [--watch 20] [--inspect <checkpoint>]
-                      [--erode-crushed-bare] [--release-bare-hourglass]
+                      [--erode-crushed-bare] [--release-bare-hourglass] [--assumed-strain]
+                      [--breakdown <checkpoint>]
 ```
 
 The street preset (500 kg of TNT 8 m from the east flank wall, 670,560 solid elements of 87.5 mm,
@@ -358,6 +367,217 @@ Both are in rubble's code alone (default digests unchanged). After them:
   the ground reach 50–110 m/s for a sample and are slow again by the next: tens of joules at most,
   not thrown off.
 
+### 7. Hinges two elements deep (25 October 2026)
+
+Step 3 of emmettl/bombcad-work#36: find whether the hinges' dissipation can be made the
+concrete's, at a cost a whole-event run can bear.
+
+**Where the hourglass work goes.** `blastbench wholeevent --breakdown <checkpoint>` reads each
+element's work from a saved state (the work trace's per-element sums, kept in the checkpoint) and
+sorts it by part and by each element's state as saved. On the runs of section 6:
+
+| Twelve storeys, rubble, air awake, at 3.5 s | Elements | Their work | Hourglass's share of it | Of all the hourglass work |
+|---|---|---|---|---|
+| Walls (2 through), cracked, concrete whole | 70,148 | 3.85 MJ | 93% | 35% |
+| Floors (2 through), cracked | 106,069 | 2.58 MJ | 73% | 18% |
+| Walls, bare bars | 10,833 | 2.54 MJ | 70% | 17% |
+| Face walls (1 through), all states | 61,000 | 2.73 MJ | 64% | 17% |
+| Walls and floors gone (rubble) | 5,342 | 1.43 MJ | 65% | 9% |
+| Walls and floors uncracked | 412,019 | 0.18 MJ | 93% | 2% |
+| All | 670,560 | 13.6 MJ | 76% (93% of it at the cap) | |
+
+On three storeys at 1.5 s the shares are alike (cracked walls 44% of the hourglass work, cracked
+floors 18%, face walls 14%, bare and gone 16%); at 0.5 s, in the blast, it is already 57%, half of
+it in the flank and cross walls' cracked elements.
+
+**Not hinges, mostly.** A hinge bends an element in one or two of its twelve hourglass
+components (each of the four modes has three, along x, y and z, and of them six stretch the
+element's fibres across its depth). The forces the elements hold at the end are spread evenly over
+all twelve: in every part and state, 41–59% of their |q|² is in the six that bend, the other half
+in those that warp the element (twist and shear across it), where the one-point element sees no
+strain at all. And the caps they sit at are low: a cracked wall element holds its modes at a
+median of 0.7 MPa (as a stress, |q| / (h²/8)), a floor's at 1.7 MPa, where the concrete's
+tensile strength is 3.0. The shader caps an element's modes at the tension its centre can carry
+plus its bars' yield spread through it, or at its squeeze, and for the tension it takes the
+envelope at the centre's largest strain so far: E times that strain until the centre cracks. An
+element squeezed or never stretched at its centre, as most of a wall under its weight is, holds
+its modes at its bars (0.2 MPa in the walls), its squeeze or 0.02 f_t, and they yield there,
+dissipating, far below the concrete's strength.
+
+**What a hinge two elements deep carries** (`blastbench hinge-sections`: the block's sections bent
+statically on the cracked-hex reference, emmettl/bombcad-work#20, its cap read as the shader's;
+moment per metre width, kN m/m):
+
+| Section | Through | Section analysis, at cracking / cracked | Today's element | Its hourglass control's part, cracked | Assumed strain |
+|---|---|---|---|---|---|
+| Wall, 142 mm²/m mesh at mid-depth | 2 | 24.0 / 3.3 | 30.6 / 2.4 | a third | 24.6 / 2.6 |
+| | 4 | 25.5 / 3.6 | 27.6 / 3.3 | | 25.0 / 2.9 |
+| | 8 | 26.1 / 4.4 | 26.4 / 4.4 | | 26.1 / 4.2 |
+| Floor, sagging (524 mm²/m, 30 mm in) | 2 | 26.5 / 20.4 | 32.4 / 15.1 | a third | 27.0 / 18.1 |
+| Floor, hogging (no top steel) | 2 | 24.2 / 3.6 | 30.0 / 2.5 | nearly all (the bars in the compressed element) | 24.3 / 1.3 |
+
+(Cracked: at a curvature of 0.1 per metre, a rotation of 0.009 over an element. The reference as
+built for #20 capped an uncracked element at the full tensile strength, unlike the shader; read
+that way, today's two-through hinges would carry 2.4 times the section's moment.)
+
+On the mesh of the whole-event runs a coherent hinge in today's element is 22–28% strong to
+crack and 26–30% weak once cracked, a third of its moment in the hourglass control; the element
+that bends in its cracked concrete gets the cracking right and is 11–65% weak once cracked.
+Neither error is the 60–76%: the rest of the hourglass work is elements warping at their low caps.
+
+**The routes weighed at the desk.**
+1. **Refining through the thickness where elements crack or crush.** The structure is one
+   lattice of one element size per body; refining an element on failure needs hanging nodes, its
+   state and mass shared out, and a step half as long, for the whole body or subcycled. That is
+   weeks, not a day and a half, and the table above shows what it would buy: on four through
+   today's element is still 1–33% off a cracked section and the hourglass control still does a
+   quarter of a hinge. Edgerton and ContinuumKit have no refinement of solids to reuse (Edgerton's
+   are conforming meshes fixed before a run). Not built.
+2. **A physically capped hourglass control.** Flanagan and Belytschko's viscous form would make
+   the stabilisation's work rate-dependent and no more the material's; the stiffness form tied to
+   the cracked modulus is `hourglassFollowsCracking`, which folds the struck beams
+   ([validation](validation.md#hourglass-control)). What the breakdown points at is the cap, not
+   the stiffness: an uncracked element's modes yield at its bars or 0.02 f_t. Tried as an option,
+   below, and taken out: it changes nothing.
+3. **Enhanced or assumed strain for cracked elements.** `assumedStrainCracking` (#20) is this
+   element: Belytschko and Bindeman's assumed strain, switched on where a point would crack, with
+   BombCAD's law at eight points and no hourglass control. An enhanced-strain element (Simo and
+   Rifai's) bends a rectangular element the same way, so it would add nothing #20 lacked; what
+   #20 lacked was a struck beam that agrees with it (20% further than its test). Its warping modes
+   are strains it sees, so on the whole-event run all its work is the concrete's: run below.
+4. **Shells for the slabs and walls.** `ShellSolver` has layered concrete with its bars at their
+   depths, no hourglass in bending, but no rubble particles, no work trace, and joints between
+   parts that act at the nodes without moments, too crude for these walls' bearings
+   ([large-panel flats](large-panel-flats.md#the-building)); and on the slab test shells reach 124%
+   of the measured peak where solids reach 104–115%. Making it carry a whole-event run is weeks.
+   Not built.
+
+Edgerton (read only, and its tracker emmettl/edgerton-work) has gone the other way, to 27-node
+hexahedra fully integrated, for steel plates; it has no one-point element, hourglass control,
+enhanced strain, refinement on failure, layered or reinforced shells, or anything on hinges, and
+nothing planned on them. ContinuumKit has tetrahedra only. A change here duplicates neither.
+
+**Route 2, tried: the cap at the face's strength until it cracks** (25 October; not kept). In
+an option, the tension in an element's hourglass cap was what its most stretched face could still
+carry, that face's strain being the centre's largest normal strain now plus the modes' reach
+(2 |A| / h for a mode of amplitude A): the full tensile strength until it reached the onset, the
+softened envelope beyond, the bars' yield and the squeeze as before. An element's modes were then
+held elastically until its face would crack, and softened with that face's crack after. On the
+three-storey block to 1.5 s (rubble, the air asleep, the same build):
+
+| Three storeys, 1.5 s | Today's | The cap at the face's strength |
+|---|---|---|
+| Elements failed | 1,160 | 1,127 |
+| Elements' work; hourglass's share | 1.37 MJ; 61% (93% of it at the cap) | 1.35 MJ; 60% (92%) |
+| Cracked walls' own work in hourglass control | 60% | 59% |
+| Uncracked walls' own work in hourglass control | 90% | 91% |
+
+It changes nothing that matters: the elements that warp are warped well past their faces'
+cracking strain (f_t / E is 1.1 × 10⁻⁴), so their caps soften back to their bars and their
+squeeze at once, and they yield there as before. The hourglass work is not an artefact of where the cap sits; it is
+the elements' deformation in modes the one-point element cannot see, and while the element cannot
+see them, whatever resists them is the stabilisation's. The option was taken out again. What stays
+is the record of the cap's reading: `HingeSectionTests` (CPU: the hinge two through on the
+shader's reading, and an uncracked element warped in its fourth mode below cracking, held at
+0.02 f_t) and `CrackedHexGPUTests.warpedElement` (the GPU's forces on that element as the
+reference's, 56.7 N, the floor).
+
+
+**Route 3, judged: the element that bends in its cracked concrete on the whole event.** The
+existing option (`--assumed-strain`, now passed through `blastbench wholeevent`) sees the warping
+as strain at its eight points, with BombCAD's law there, so whatever resists it is the concrete's.
+On the large-panel block it switches nearly every element within the blast's first 50 ms (89% of
+the three-storey block by 0.05 s, 93% by 1.5 s; 79% of the twelve-storey block by 0.6 s): its
+cost is the whole of it, not a cracked minority.
+
+| Three storeys, rubble, air asleep, to 3 s | Today's | Assumed strain |
+|---|---|---|
+| Elements' work at 3 s; hourglass's share | 1.83 MJ; 64% | 3.03 MJ; 13% (all in bare bars and rubble; cracked elements' own 0–2%) |
+| Fracture and crushing; bars, at 3 s | 0.38; 0.27 MJ | 2.52; 1.46 MJ |
+| Elements failed at 0.05 / 0.5 / 1.5 / 3 s | 438 / 758 / 1,160 / 1,692 | 1,561 / 2,964 / 7,928 / 15,211 |
+| Gravity's work at 0.5 / 1.5 / 3 s (how far the block has come down) | 0.00 / 0.25 / 0.98 MJ | 0.05 / 1.55 / 5.45 MJ |
+| Kinetic energy at 1.5 / 3 s | 0.01 / 0.40 MJ | 0.45 / 0.88 MJ |
+| Fastest node after 0.3 s | 97 m/s, once | 331 m/s, once; 25–45 m/s late on |
+| Wall time to 3 s | 504 s | 2,278 s (×4.5) |
+
+On the slab tests the same element, run against today's on the same build:
+
+| Case | Measured | Today's | Assumed strain |
+|---|---|---|---|
+| Contest slab, 8 through: peak; left at 70 ms | 109; 91 mm | 113 (104%); 76 mm (83%) | 122 (112%); 89 mm (98%) |
+| Its hourglass share at the peak | | 6.8% | 0.03% |
+| Wu's S8 / D8 (1.6 kg at 0.5 m): peak | 18.0 / 13.9 mm | 16.4 / 16.5 mm | 17.1 / 17.5 mm (S8 spalls 573 cm² underneath, 353 elements removed) |
+| Run time | | 20 s; 446 / 499 s | 158 s (×7.9); 996 / 915 s (×2.0) |
+
+and from emmettl/bombcad-work#20 (the same option): Saatci's heavy drop 47.6 mm against 39.5
+measured and 39.3 today (+20%), SS0a-1 losing 621 elements against 193 (whole in the test), OA1 on
+12 elements 127% against 132%, Janney 95–96% but breaking at 13–26 mm against 42.
+
+On twelve storeys (rubble, the air awake, to 3.5 s; today's is section 6's run, which this build
+reproduces to the bit in every column to 1.35 s):
+
+| Twelve storeys | Today's | Assumed strain |
+|---|---|---|
+| Elements' work at 3.5 s; hourglass's share | 13.6 MJ; 76% | 8.1 MJ; 22% (bare bars 55% of it, rubble 43%; cracked elements' own 1%) |
+| Fracture and crushing; bars, at 3.5 s | 1.59; 1.63 MJ | 6.12; 2.43 MJ |
+| Elements failed at 0.5 / 1 / 2 / 3.5 s | 1,350 / 2,705 / 5,782 / 20,847 | 3,377 / 7,705 / 27,860 / 53,640 |
+| Gravity's work at 1 / 2 / 2.5 / 3.5 s | 3.2 / 10.4 / 14.7 / 19.0 MJ | 6.2 / 16.0 / 19.5 / 20.3 MJ |
+| Kinetic energy at 2.5 / 3 / 3.5 s | 6.1 / 4.3 / 0.4 MJ | 3.3 / 0.3 / 0.3 MJ |
+| Net work from outside at 3.5 s | −5.0 MJ | −11.9 MJ |
+| Fastest node after 0.3 s | 21.7 m/s median, 109 at most, 4 samples of 65 over 50 | 28.5 median, 127 at most, 7 over 50 |
+| Wall time to 3.5 s | 2,481 s | 12,406 s (×5.0), in three pieces |
+
+![The street charge with the element that bends in its cracked concrete, 3.5 s: the east bay down to the ground, its flank wall cracked over its whole face](whole-event-assumed-3500ms.png)
+
+- **The hinges' work becomes the concrete's.** Fracture does three quarters of the elements' work,
+  not an eighth; what hourglass control is left is in bars stripped of their concrete and in
+  rubble, which the element does not switch.
+- **The collapse comes down as far, a second sooner, in more pieces.** By the work gravity has
+  done, how far the block's mass has come down, the east bay falls 7% further by 3.5 s (20.3
+  against 19.0 MJ), but it is down by 2.5 s where today's is still falling at 3 s, and two and a
+  half times as many elements fail: by 3.5 s the flank wall is cracked over its whole face and the
+  bay lies as a pile of rubble at its foot. On three storeys it decides more: by 3 s today's
+  block has come down a fifth as far (gravity's work 0.98 against 5.45 MJ), only starting to
+  fall.
+- **The count is less exact.** The trace's elastic channels end at −1.2 MJ on twelve storeys and
+  −0.7 MJ on three, which stored energy cannot be: the split by mechanism is off by that much for
+  switched elements (not traced further). The budget still only falls after the blast.
+- **The cost is five times**, nearly every element switching in the blast's first 50 ms; 10 s of
+  the twelve-storey block would be about ten hours on the Studio.
+
+**The verdict: stopped.** No route makes the hinges' dissipation the concrete's at a cost a
+whole-event run can bear while the members with tests still agree.
+- Route 2 changes nothing: the work is in modes the one-point element cannot see, wherever its
+  cap sits.
+- Route 3 does make it the concrete's (hourglass control's part of the cracked elements' work from
+  73–93% to 1%), at four and a half to five times the cost, but the same element sends Saatci's
+  struck beam 20% further than its test (today's within 1%), breaks Janney's beam at 13–26 mm
+  against the test's 42, and leaves Wu's two-layer slab 26% too far (today's 19%): its cracked
+  concrete bends too softly under impact. A collapse it makes is the concrete's, on a concrete
+  the member tests say is too soft once cracked: no more earned than today's.
+- Routes 1 and 4 are weeks each, and the static sections show what the first would buy.
+
+What the runs show for the product: how far the twelve-storey bay comes down is nearly the same
+whichever mechanism takes the hinges' energy (gravity's work 19.0 against 20.3 MJ by 3.5 s), while
+how it breaks up (2.6 times the elements failed, 3.9 times the fracture work) and when (a second
+sooner) are not; on three storeys, nearer the margin, it decides whether the block comes down by
+3 s at all.
+
+**For the user's decision** (no default changed):
+1. Record this step as stopped and keep the collapse illustrative (the record above).
+2. Optionally, quote whole-event collapse as a bracket: today's element, its hinges held by the
+   stabilisation, and `--assumed-strain`, held by the concrete, at five times the cost. On the
+   twelve-storey block they agree within 7% on how far it comes down; on three storeys they
+   differ by a factor of five and a half by 3 s.
+3. The next attack on limitation 1 stays cracked concrete's stiffness and shear, now on the
+   assumed-strain element, where the hourglass control no longer hides it: the cracked-stiffness
+   study of 16 October was run on today's element. A bounded study would aim Saatci's heavy drops
+   back within 15% with the assumed strain, the contest slab, Wu, OA1 and Janney as guards.
+
+Runs and logs: `/Volumes/StudioData/bombcad/whole-event/hinge/` (`a0-default`, `a1-bending`,
+`a2-assumed` on three storeys; `c2-assumed` on twelve, `c0-default` its baseline's first 1.35 s;
+`cases/` the slab tests).
+
 ### Contact, the step and the memory: not near a limit
 
 - **Contact.** Of the 1.07 million nodes, 774,000–795,000 are listed for contact (not buried in
@@ -382,13 +602,16 @@ unearned"), and the run shows why it holds here:
 - **Hourglass control does most of the work.** Through the whole collapse, 58–76% of all the
   elements' work is hourglass control's (54–61% under the old count, which inflated the
   elastic channels), nearly all of it at its cap, where it dissipates; fracture does 12–19% and
-  the bars 12–15%. With two elements through each panel and floor, an
-  element's own bending is a third of the whole even elastically, and once cracked it is held at
-  the cap that counts the bars' strength as spread through the element. The cracked-element
+  the bars 12–15%. Most of it is not the floors' hinges but elements warping in modes the
+  one-point element cannot see, half in its bending components and half in its twisting and
+  shearing ones, at caps of a few tenths of a megapascal (section 7). The cracked-element
   study (emmettl/bombcad-work#20, [concrete model](concrete-model.md)) found the struck beams'
-  agreement leaning on exactly this, and lowered their standing to low; an element that bends in
-  its cracked concrete without it was stopped. So the hinges along which the floors fold here,
-  and the energy they take, are the stabilisation's, not the concrete's.
+  agreement leaning on the same stabilisation, and lowered their standing to low. So the energy
+  the folding floors and walls take is the stabilisation's, not the concrete's.
+- **The element that would make it the concrete's is too soft once cracked** (section 7): with
+  it, hourglass control's share falls to 22% (none of it in cracked concrete), the bay comes down
+  as far a second sooner, at five times the cost, and the struck beams go 20% further than their
+  tests.
 - **A finer mesh is out of reach.** Four elements through the 175 mm panels is 44 mm elements:
   eight times the elements and half the step, sixteen times the cost, some 4–6 hours per second
   simulated on the Studio.
@@ -447,5 +670,6 @@ Nothing is built for dust. What it would need, from what the model has:
    with its particle, so that no node is left with a few grams.
 2. **Then the 10 s run**, in pieces, with the residual held to a few per cent of gravity's work.
 3. **Collapse earned** only after limitation 1's next attack, cracked concrete's stiffness and
-   shear, which is not taken up.
+   shear, not taken up; since 25 October the case for running it on the assumed-strain element,
+   where the stabilisation no longer hides it (section 7).
 4. **Dust** after that, as sketched.
