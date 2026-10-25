@@ -145,6 +145,45 @@ public enum ProtectionModel {
         }
     }
 
+    /// A margin for the scatter of the loads from side to side (emmettl/bombcad-work#101,
+    /// docs/protective-design.md): a side's chance averages over its load's scatter, but a run
+    /// gives each side one load, so some of the sides a plan passes are over the target on it.
+    /// None by default.
+    public struct Margin: Codable, Sendable, Equatable, CustomStringConvertible {
+        public enum Kind: String, Codable, Sendable {
+            /// The search holds every side to the chance `value` instead of the target's.
+            case target
+            /// Each side's chance taken with its load (peak and impulse) at `value` standard
+            /// deviations of its scatter above the surrogate's, over the glass's strength alone.
+            case quantile
+            /// The chances as without a margin; a side whose plan passes on them but not with its
+            /// load at `value` standard deviations up is protected one step further: the cheapest
+            /// dearer option with a smaller chance.
+            case flag
+        }
+        public var kind: Kind
+        public var value: Double
+
+        public init(kind: Kind, value: Double) {
+            self.kind = kind
+            self.value = value
+        }
+
+        /// The margin proposed on 25 October 2026, with the clear-top terms (emmettl/bombcad-work#101):
+        /// flag at 2.5 standard deviations. Not the default until the user adopts it.
+        public static let proposed = Margin(kind: .flag, value: 2.5)
+
+        /// `target:0.05`, `quantile:2.5` or `flag:2.5`.
+        public init?(_ text: String) {
+            let parts = text.split(separator: ":")
+            guard parts.count == 2, let kind = Kind(rawValue: String(parts[0])), let value = Double(parts[1])
+            else { return nil }
+            self.init(kind: kind, value: value)
+        }
+
+        public var description: String { "\(kind.rawValue):\(value)" }
+    }
+
     /// The user's file: the threat, the target, the changes allowed and their costs.
     public struct Inputs: Codable, Sendable {
         public var threats: [Threat]
@@ -155,10 +194,12 @@ public enum ProtectionModel {
         public var barriers: [Barrier]?
         public var draws: Int?
         public var seed: UInt64?
+        /// A margin for the load's scatter from side to side; none unless given.
+        public var margin: Margin?
 
         public init(
             threats: [Threat], target: Target, glazing: [Glazing], standOffs: [StandOff]? = nil,
-            barriers: [Barrier]? = nil, draws: Int? = nil, seed: UInt64? = nil
+            barriers: [Barrier]? = nil, draws: Int? = nil, seed: UInt64? = nil, margin: Margin? = nil
         ) {
             self.threats = threats
             self.target = target
@@ -167,6 +208,7 @@ public enum ProtectionModel {
             self.barriers = barriers
             self.draws = draws
             self.seed = seed
+            self.margin = margin
         }
     }
 
@@ -222,6 +264,10 @@ public enum ProtectionModel {
         public let objects: [Int]
         public let draws: Int
         public let seed: UInt64
+        /// The target's chance, the user's: the problem's is the search's, lower under a `target`
+        /// margin. Plans are judged on a run against this one.
+        public let accepted: Double
+        public let margin: Margin?
     }
 
     /// The constructions `plan` writes into the scene: each building with a side changed, its
@@ -354,16 +400,27 @@ public enum ProtectionModel {
             sides: sides, objects: objects, raster: raster, inputs: inputs, cellSize: cellSize,
             terms: terms, moves: moves, walls: walls, blocks: scene.boxes,
             terrain: scene.terrain)
-        let problem = ProtectionSearch.Problem(sides: searchSides, site: site, targetChance: accepted) {
-            site, side, option in
-            evaluator.chance(site: site, side: side, option: option)
+        let margin = inputs.margin
+        let quantile = margin?.kind == .quantile ? margin?.value : nil
+        var upper: (@Sendable ([Int], Int, Int) -> Double)?
+        if let margin, margin.kind == .flag {
+            upper = { site, side, option in
+                evaluator.chance(site: site, side: side, option: option, quantile: margin.value)
+            }
         }
+        let problem = ProtectionSearch.Problem(
+            sides: searchSides, site: site,
+            targetChance: margin.flatMap { $0.kind == .target ? $0.value : nil } ?? accepted,
+            chance: { site, side, option in
+                evaluator.chance(site: site, side: side, option: option, quantile: quantile)
+            }, upper: upper)
         return Model(
             problem: problem, names: sides.map(\.name), glazedM2: sides.map(\.glazedM2),
             condition: sides.map(\.condition), owners: sides.map { objects[$0.object].id },
             axes: sides.map(\.axis),
             outwards: sides.map(\.outward), mixes: sides.map(\.mix), glazing: inputs.glazing,
-            objects: sides.map(\.object), draws: max(1, inputs.draws ?? 64), seed: inputs.seed ?? 1)
+            objects: sides.map(\.object), draws: max(1, inputs.draws ?? 64), seed: inputs.seed ?? 1,
+            accepted: accepted, margin: margin)
     }
 
     /// Draw `draw`'s glass strength for building `object` (by its index in the scene's envelopes),
@@ -383,7 +440,10 @@ public enum ProtectionModel {
                 }
             }
         }
-        concurrently(iterations: asks.count) { n in _ = problem.chance(asks[n].0, asks[n].1, asks[n].2) }
+        concurrently(iterations: asks.count) { n in
+            _ = problem.chance(asks[n].0, asks[n].1, asks[n].2)
+            _ = problem.upperChance(asks[n].0, asks[n].1, asks[n].2)
+        }
     }
 
     /// The chances behind the problem: the surrogate's loads for each threat place, remembered,
@@ -482,8 +542,9 @@ public enum ProtectionModel {
         }
 
         /// The chance that some pane of `side`, as option `option`, is thrown worse than its
-        /// target condition, the threats weighted, with the stand-offs `site` in place.
-        func chance(site: [Int], side: Int, option: Int) -> Double {
+        /// target condition, the threats weighted, with the stand-offs `site` in place: over the
+        /// load's scatter, or with `quantile`, with the load that many standard deviations up.
+        func chance(site: [Int], side: Int, option: Int, quantile: Double? = nil) -> Double {
             let s = sides[side]
             let mix = option == 0 ? s.mix : inputs.glazing[option - 1].applied(to: s.mix)
             guard mix.glazedFraction > 0 else { return 0 }
@@ -500,7 +561,9 @@ public enum ProtectionModel {
                 for k in 0..<draws {
                     let strength = ProtectionModel.strength(seed: seed, draw: k, object: s.object)
                     var errors = SIMD2<Double>.zero
-                    if let scatter {
+                    if let scatter, let quantile {
+                        errors = quantile * SIMD2(scatter.peak, scatter.impulse)
+                    } else if let scatter {
                         let a = FacadeLoadSurrogate.Random.normal(seed, 3, UInt64(k), UInt64(side))
                         let b = FacadeLoadSurrogate.Random.normal(seed, 4, UInt64(k), UInt64(side))
                         let r = scatter.correlation

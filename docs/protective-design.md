@@ -509,6 +509,11 @@ are shipped):
   place), drawn over the surrogate's scatter and each building's glass strength
   ([glass by chance](glass-probability.md)), the threats weighted. `--samples` takes the threat
   from `infer-charge --samples` instead, places about the scene's charge.
+- **A margin for the scatter between sides** (`--margin`, or the inputs' `margin`; none by
+  default). `flag:2.5` protects one step further each side whose plan passes on its chance but
+  not with its load 2.5 standard deviations of its scatter up; `quantile:` and `target:` are the
+  other two candidates judged. See
+  [the margin](#a-margin-for-the-scatter-between-sides-25-october-2026).
 - **Options.** The side as built (its map glazing mix, annealed), or any glazing allowed:
   security film (7 mil, wet glazed, unless `film` says: the [film](building-envelopes.md#security-film)
   holds the cracked pane until it tears or its anchorage lets go), toughened (the panes' strength
@@ -851,6 +856,136 @@ over-reading was the planner's only margin for the scatter between sides. Before
 moves, that scatter wants a margin of its own: a lower target chance for the search, or a test
 that flags any side whose chance is within the surrogate's scatter of the target. That margin
 should be judged on these runs. Moving would then be the user's decision.
+
+## A margin for the scatter between sides (25 October 2026)
+
+emmettl/bombcad-work#101 built that margin and judged it on the runs. It is an option, off by
+default: `scenebench protect --margin flag:2.5`, or `"margin": {"kind": "flag", "value": 2.5}` in
+the inputs.
+
+**Why plans miss.** A side's chance is averaged over its load's scatter. A run gives each side one
+load, though, and a plan with 50–100 sides near the target leaves a few whose load is well up.
+- **The scatter itself is honest.** Each side's load on the run, in the terms' own standard
+  deviations, was read from where its chance at the load's quantiles meets the run's chance. On
+  1,668 sides and options whose run chance is 3–97%, at 0.5–50 t, the clear-top terms give a
+  median of −0.27, an 84th percentile of +0.88, a 95th of +1.57 and a 98th of +2.15. A normal
+  gives 0, +1, +1.64 and +2.05.
+  - The tail is a little heavier: 1.1% are more than 2.5 above, against 0.6%.
+  - The terms of 23 October read higher (median −0.38), with about the same spread.
+- **The misses are the scatter's tail.** In the plans at 1–2 t without a margin, a load 2.5
+  standard deviations up would put 43–72 sides over the target (49–54 on the clear-top terms).
+  About one side in a hundred is that far up on the run.
+- **32 draws hardly see that tail.** One load draw in 44 is 2 standard deviations up, so a side
+  read well within the target often reads 0. A lower target cannot find these sides, which is why
+  it failed below.
+
+**The candidates.** All three take the terms' own scatter, `TermSet.loadScatter`, as the planner
+draws it.
+- **`target:t`.** The search holds every side to a lower chance `t`.
+- **`quantile:z`.** Each side's chance is taken with its load (peak and impulse) held `z`
+  standard deviations up, over the glass's strength alone. The search picks each side's cheapest
+  option that passes on that chance.
+- **`flag:z`.** The chances are as today. A side whose chosen option passes on them, but not with
+  its load `z` up, is flagged and given the next dearer option with a smaller chance: one step,
+  not the cheapest option that passes at `z`.
+
+**The judge.** It is #100's, at more masses.
+- The sparse district at 0.5, 1, 2, 3, 5, 10, 20 and 50 t, two seeds, both term sets. 0.5, 3,
+  10 and 50 t were run today, under the same 200 m clear top, 5–7 s each.
+- With no site-wide change each side's choice is its own. So every candidate's plan was found
+  from one table per case (`--option-table`): each side's cost and chance under each option, at
+  15 load quantiles, and on the run. The planner itself with `--margin flag:2.5`, at 1, 2, 5 and
+  20 t, both seeds and term sets, gives the table's plans: the same 16 costs, verdicts and worst
+  sides.
+- **Holding masses out.** Each candidate's setting is the weakest with which every training case
+  (both seeds) meets the target on its run. Three ways of holding out were used: fit on 1 and
+  5 t; fit on 2 and 10 t; and leave one mass out of the eight. 20 t is always judged.
+
+| Terms | Candidate | Fit on 1, 5 t: setting; judged on 6 masses, meets; sides over; worst | Fit on 2, 10 t: the same | Leave one mass out: settings; meets; over; worst | Cost × today's plan |
+|---|---|---|---|---|---:|
+| 23 Oct | none | –; 5/12; 30; 43% | –; 6/12; 18; 43% | –; 7/16; 34; 43% | 1 |
+| 23 Oct | target | 0.02; 8/12; 8; 34% | 0.001; 10/12; 3; 19% | 0.001 in all; 13/16; 6; 34% | 1.13 |
+| 23 Oct | quantile | 1.0; 4/12; 19; 37% | 2.0; 10/12; 3; 37% | 2–2.75; 13/16; 4; 37% | 1.21 |
+| 23 Oct | flag | 1.0; 5/12; 18; 37% | 3.0; 10/12; 2; 19% | 3 in all; 13/16; 4; 23% | 1.14 |
+| clear-top | none | –; 5/12; 31; 37% | –; 4/12; 27; 37% | –; 5/16; 42; 37% | 0.97 |
+| clear-top | target | 0.001; 11/12; 1; 15% | 0.001; 11/12; 1; 13% | 0.001 in all; 14/16; 2; 15% | 1.12 |
+| clear-top | quantile | 2.0; 7/12; 6; 18% | 2.25; 11/12; 1; 12% | 2.5 (2.25 once); 15/16; 1; 12% | 1.14 |
+| clear-top | **flag** | 2.0; 8/12; 5; 15% | 2.25; 11/12; 1; 12% | **2.5 (2.25 once); 15/16; 1; 12%** | **1.10** |
+
+The costs are the leave-one-out plans' summed costs against today's default (the terms of 23
+October, no margin). The target's settings sit at the grid's floor: no lower target makes every
+training case meet.
+
+**What it shows.**
+- **Two training masses are too few.** They choose 2–2.25 standard deviations, and plans then miss
+  on one to five held-out cases. With seven masses, seven folds of eight choose 2.5, and the
+  held-out mass meets in 15 of 16 cases. That 2.5 is also where about one side in a hundred lies on
+  the runs, about one side in a plan's 50–100 near the target.
+- **The terms of 23 October cannot be mended so.** Whatever the margin, on its terms a side at
+  0.5 t (14–19%) and one at 10 t (15%) miss. They read high on average and misjudge those sides.
+  The clear-top terms, which judge the sides better (#100), meet everywhere with flag 2.5.
+- **Flag is the cheapest margin that works.** It protects with one step what quantile protects with
+  the cheapest option passing 2.5 up. Both meet in all 16 cases on the clear-top terms, and flag
+  costs 4% less over them.
+
+**The proposal, case by case** (judged on the clear-top runs). "Today" is the terms of 23 October
+with no margin; the proposal is the clear-top terms with flag 2.5.
+
+| Threat | Seed | Today: meets? worst; sides over | Today's cost | Clear-top, flag 2.5: meets? worst; over | × today's cost | Its glazing | 23 Oct, flag 2.5: meets? worst; over | × today's cost |
+|---|---|---|---:|---|---:|---|---|---:|
+| 0.5 t | 1 | no 19%; 2 | 10,438 | **yes** 2%; 0 | 1.23 | film 63 | no 19%; 1 | 1.60 |
+| 0.5 t | 2 | no 37%; 4 | 10,962 | **yes** 6%; 0 | 1.20 | film 66 | no 14%; 1 | 1.63 |
+| 1 t | 1 | **yes** 9%; 0 | 19,368 | **yes** 9%; 0 | 1.29 | film 122 | **yes** 9%; 0 | 1.52 |
+| 1 t | 2 | no 28%; 2 | 20,316 | **yes** 9%; 0 | 1.20 | film 126 | **yes** 9%; 0 | 1.46 |
+| 2 t | 1 | no 31%; 8 | 29,758 | **yes** 3%; 0 | 1.34 | film 181, infill 1 | **yes** 6%; 0 | 1.39 |
+| 2 t | 2 | no 34%; 7 | 32,034 | **yes** 6%; 0 | 1.20 | film 181, infill 1 | no 23%; 2 | 1.35 |
+| 3 t | 1 | no 28%; 5 | 39,309 | **yes** 8%; 0 | 1.13 | film 186, infill 6 | **yes** 6%; 0 | 1.19 |
+| 3 t | 2 | no 43%; 3 | 39,591 | **yes** 0%; 0 | 1.13 | film 186, infill 6 | **yes** 0%; 0 | 1.15 |
+| 5 t | 1 | **yes** 6%; 0 | 46,414 | **yes** 0%; 0 | 1.02 | film 191, infill 9 | **yes** 0%; 0 | 1.04 |
+| 5 t | 2 | no 25%; 2 | 45,428 | **yes** 0%; 0 | 1.03 | film 193, infill 9 | **yes** 0%; 0 | 1.06 |
+| 10 t | 1 | no 15%; 1 | 48,860 | **yes** 0%; 0 | 1.01 | film 189, infill 15 | no 15%; 1 | 1.01 |
+| 10 t | 2 | **yes** 0%; 0 | 48,235 | **yes** 0%; 0 | 1.03 | film 188, infill 16 | **yes** 0%; 0 | 1.03 |
+| 20 t | 1 | **yes** 0%; 0 | 49,618 | **yes** 0%; 0 | 1.05 | film 180, infill 24 | **yes** 0%; 0 | 1.03 |
+| 20 t | 2 | **yes** 0%; 0 | 49,618 | **yes** 0%; 0 | 1.04 | film 181, infill 23 | **yes** 0%; 0 | 1.04 |
+| 50 t | 1 | **yes** 0%; 0 | 51,872 | **yes** 0%; 0 | 1.11 | film 155, infill 49 | **yes** 0%; 0 | 1.01 |
+| 50 t | 2 | **yes** 0%; 0 | 51,872 | **yes** 0%; 0 | 1.10 | film 156, infill 48 | **yes** 0%; 0 | 1.01 |
+
+- **On the clear-top runs.** Today's plans meet the target in 7 of 16 cases, with 34 sides over
+  and the worst at 43%. The proposal meets it in all 16, the worst at 9.4%, for 1.01–1.34 times
+  the cost (1.13 on average).
+  - On the six cases of #100 (1, 2 and 5 t) it meets in 6 of 6, against 2.
+  - With flag 2.5 the terms of 23 October meet in 12 of 16.
+- **On the 112 m-top runs** (#100's second reference, at 1, 2, 5 and 20 t) it meets in 6 of 8,
+  against 3. The two misses are one side at 1 t at 10.9%, within a draw of the target (3.5 of 32).
+  Today's misses there reach 34%.
+- **The choices still make sense.**
+  - Film stays the glazing nearly everywhere, and toughened and laminated are never bought, as
+    today.
+  - Infill grows where the load is high: at 50 t, from 24 sides to 48–49. Film's chance close in,
+    with the load 2.5 up, exceeds the target. Toughened and laminated read no better than film
+    there for a 3b target, so the next dearer option with a smaller chance is infill.
+- **Stand-off before film holds** (#100's site test, `protect-site.json`).
+  - At 2 t the exact search still buys the stand-off on both term sets: with film on 87 sides on
+    the clear-top terms (22,136) and on 98 on those of 23 October (23,820). Today it buys it with
+    film on 54–61 sides (15,132–15,272).
+  - At 20 t it buys the stand-off with film on 196 sides and infill on 4 (48,676, against
+    47,672–48,628 today).
+  - No wall is bought.
+  - Greedy misses the stand-off on the clear-top terms, with or without the margin, as it does
+    today. The exact search is what the planner reports first.
+- **Its standing.** The margin is set on one made-up district's runs at 4 m, on its 204 sides and
+  one target (3b at 10%). The scatter it takes is the terms' own, and the residuals above say that
+  scatter holds on these runs. A district whose sides the surrogate misjudges more, a finer run, or
+  another target would want the judge again. The runs' own chances are 32 draws, so a side within
+  a draw of the target (3%) is within their noise.
+
+**Proposal: the planner takes the clear-top terms with the flag margin at 2.5 standard
+deviations.** Both together, not either alone. The clear-top terms without a margin meet in 5 of
+16, and the terms of 23 October with it in 12 of 16. Plans would cost 1–34% more and meet the
+target on every run judged here. Defaults are the user's decision. Until then the planner keeps
+the terms of 23 October with no margin, and `--terms clear-top --margin flag:2.5` gives the
+proposal. The app's Protective Design sheet would take both when adopted. The tables and scripts
+are in `$BOMBCAD_DATA/scratch/issue101` (`judge.py`, `heldout.py`, `doc_tables.py`).
 
 ## Open questions
 

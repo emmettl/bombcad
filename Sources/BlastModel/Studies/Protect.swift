@@ -3,13 +3,17 @@ import simd
 
 /// `scenebench protect (<district-scene's inputs> | --scene layout.json) [--dx 4] --inputs
 /// protect.json [--samples posterior.csv [--sample-count 24]] [--confirm loads-folder] [--out
-/// plans.json] [--terms clear-top|fitted]`: the least costly glazing and stand-off changes that keep each building side's
-/// chance of glass thrown worse than its target condition under the chance accepted
+/// plans.json] [--terms clear-top|fitted] [--margin flag:2.5] [--option-table table.csv]`: the
+/// least costly glazing and stand-off changes that keep each building side's chance of glass
+/// thrown worse than its target condition under the chance accepted
 /// (docs/protective-design.md, "In BombCAD"). The inputs file gives the threat, the target and
 /// the changes allowed with the user's costs (`ProtectionModel.Inputs`); `--samples` takes the
 /// threat from `infer-charge --samples` instead (masses, and places about the scene's charge).
 /// `--confirm` re-judges the plans that leave the threat where it is on a run's saved façade
 /// histories (`district-compare --save-loads`) of the same scene, under each plan's glazing.
+/// `--margin target:<chance>|quantile:<sd>|flag:<sd>` (or the inputs' `margin`) searches with a
+/// margin for the loads' scatter from side to side (`ProtectionModel.Margin`,
+/// emmettl/bombcad-work#101); none without it.
 package enum Protect {
     struct PlanJSON: Codable {
         var plan: String
@@ -85,8 +89,21 @@ package enum Protect {
         // of 23 October, emmettl/bombcad-work#100) without it.
         let terms = try SurrogateBench.termSet(args, otherwise: .fitted)
         print("Façade terms: \(terms.rawValue)")
+        if let text = value("margin") {
+            guard let margin = ProtectionModel.Margin(text) else {
+                throw BlastError.allocationFailed("--margin target:<chance>|quantile:<sd>|flag:<sd>")
+            }
+            inputs.margin = margin
+        }
+        print("Margin for the scatter between sides: \(inputs.margin?.description ?? "none")")
         let model = try ProtectionModel.model(scene: scene, cellSize: cellSize, inputs: inputs, terms: terms)
         let problem = model.problem
+        if let path = value("option-table") {
+            try optionTable(
+                path: path, scene: scene, cellSize: cellSize, inputs: inputs, terms: terms, model: model,
+                reference: reference)
+            return
+        }
         let options = problem.sides.first?.options.count ?? 0
         print(
             "\(problem.sides.count) glazed sides, \(options) options each, \(problem.site.count) site-wide changes, "
@@ -112,13 +129,16 @@ package enum Protect {
             confirm(reference: reference, model: model, plans: plans.map(\.1).filter { $0.site.isEmpty })
         }
 
-        let target = problem.targetChance
+        let target = model.accepted
         var out: [PlanJSON] = []
         print(
             String(
                 format:
                     "Target: no pane thrown worse than the side's condition, except with a chance under %.0f%%",
                 target * 100))
+        if problem.targetChance != target {
+            print(String(format: "The search holds each side to %.1f%%", problem.targetChance * 100))
+        }
         print("| Plan | Cost | Meets | Sides expected to fail | Worst | Narrow | Changes | Standing |")
         print("|---|---:|---|---:|---:|---:|---|---|")
         for (label, plan) in plans {
@@ -180,6 +200,55 @@ package enum Protect {
         }
     }
 
+    /// `--option-table table.csv`, for tracing a margin (emmettl/bombcad-work#101): each side's cost
+    /// and chance under each option, without the site-wide changes; its chance again with the load
+    /// held at each of `quantiles` standard deviations of its scatter; and, with `--confirm`, its
+    /// chance on the run's histories. A side's chances are its own, so any per-side rule's plan can
+    /// be found from the table.
+    static func optionTable(
+        path: String, scene: Scenario, cellSize: Float, inputs: ProtectionModel.Inputs,
+        terms: FacadeLoadSurrogate.TermSet, model: ProtectionModel.Model,
+        reference: SurrogateBench.Reference?,
+        quantiles: [Double] = [-2, -1.5, -1, -0.5, 0, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3]
+    ) throws {
+        var plain = inputs
+        plain.margin = nil
+        let models =
+            try [ProtectionModel.model(scene: scene, cellSize: cellSize, inputs: plain, terms: terms)]
+            + quantiles.map { z in
+                var held = plain
+                held.margin = .init(kind: .quantile, value: z)
+                return try ProtectionModel.model(scene: scene, cellSize: cellSize, inputs: held, terms: terms)
+            }
+        for m in models { ProtectionModel.prepare(m) }
+        let problem = models[0].problem
+        let options = problem.sides.first?.options.count ?? 0
+        // Every side under each option at once: a plan per option, judged on the run.
+        let uniform = (0..<options).map {
+            ProtectionSearch.evaluate(
+                problem, site: [], choices: Array(repeating: $0, count: problem.sides.count),
+                method: "uniform")
+        }
+        let run = reference.map { confirm(reference: $0, model: model, plans: uniform) }
+        var rows = [
+            "side,name,glazedM2,option,glazing,cost,chance,"
+                + quantiles.map { String(format: "q%+.2f", $0) }.joined(separator: ",") + ",run"
+        ]
+        for (s, side) in problem.sides.enumerated() {
+            for (o, option) in side.options.enumerated() {
+                let held = models.dropFirst().map { String(format: "%.6g", $0.problem.chance([], s, o)) }
+                let judged =
+                    run?[uniform[o].choices]?.chances[side.name].map { String(format: "%.6g", $0) } ?? ""
+                rows.append(
+                    "\(s),\"\(side.name)\",\(String(format: "%.3f", model.glazedM2[s])),\(o),\(option.glazing),"
+                        + String(format: "%.4f,%.6g,", option.cost, problem.chance([], s, o))
+                        + held.joined(separator: ",") + ",\(judged)")
+            }
+        }
+        try rows.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+        print("Wrote \(problem.sides.count) sides' \(options) options to \(path)")
+    }
+
     /// Each plan's sides judged on a run's saved façade histories by `EnvelopeDamageAssessment`
     /// itself, its buildings under the plan's constructions (`ProtectionModel.constructions`): each
     /// side's chance that some pane is thrown worse than its condition, as the assessment gives it
@@ -200,6 +269,7 @@ package enum Protect {
                 outward: c.outward)
         }
         let problem = model.problem
+        let target = model.accepted
         let object = Dictionary(zip(model.owners, model.objects), uniquingKeysWith: { a, _ in a })
         var out: [[Int]: Confirmation] = [:]
         for plan in plans where out[plan.choices] == nil {
@@ -232,7 +302,7 @@ package enum Protect {
             }
             let judged = chances.indices.compactMap { s in chances[s].map { (problem.sides[s].name, $0) } }
             out[plan.choices] = Confirmation(
-                sides: judged.count, meets: judged.allSatisfy { $0.1 <= problem.targetChance },
+                sides: judged.count, meets: judged.allSatisfy { $0.1 <= target },
                 worst: judged.map(\.1).max() ?? 0, expectedFailing: judged.reduce(0) { $0 + $1.1 },
                 chances: Dictionary(judged, uniquingKeysWith: { a, b in max(a, b) }))
         }

@@ -52,24 +52,53 @@ public enum ProtectionSearch {
     /// A problem: its sides and site-wide changes, the largest chance accepted of a side passing
     /// its target, and each side's chance with an option under a choice of site-wide changes
     /// (`chance(site, side, option)`, the site's indices in increasing order), asked once each.
+    ///
+    /// With `upper`, each option's chance again with the side's load at an upper quantile of its
+    /// scatter: a side whose chosen option passes the target on `chance` but not on `upper` is
+    /// within its own scatter of the target (`flagged`), and `plan` protects it one step further
+    /// (emmettl/bombcad-work#101).
     public struct Problem: Sendable {
         public var sides: [Side]
         public var site: [SiteChange]
         public var targetChance: Double
         let chances: ChanceCache
+        let upper: ChanceCache?
 
         public init(
             sides: [Side], site: [SiteChange], targetChance: Double,
-            chance: @escaping @Sendable (_ site: [Int], _ side: Int, _ option: Int) -> Double
+            chance: @escaping @Sendable (_ site: [Int], _ side: Int, _ option: Int) -> Double,
+            upper: (@Sendable (_ site: [Int], _ side: Int, _ option: Int) -> Double)? = nil
         ) {
             self.sides = sides
             self.site = site
             self.targetChance = targetChance
             chances = ChanceCache(chance)
+            self.upper = upper.map(ChanceCache.init)
         }
 
         public func chance(_ site: [Int], _ side: Int, _ option: Int) -> Double {
             chances.value(site, side, option)
+        }
+
+        /// The chance at the upper quantile of the side's load, where the problem has one.
+        public func upperChance(_ site: [Int], _ side: Int, _ option: Int) -> Double? {
+            upper?.value(site, side, option)
+        }
+
+        /// Whether `option` passes the target on its chance but not at the upper quantile.
+        public func flagged(_ site: [Int], _ side: Int, _ option: Int) -> Bool {
+            guard let p = upperChance(site, side, option) else { return false }
+            return chance(site, side, option) <= targetChance && p > targetChance
+        }
+
+        /// A flagged side's next option: the cheapest dearer than `option` with a smaller chance.
+        func stepUp(_ site: [Int], _ side: Int, _ option: Int) -> Int? {
+            guard flagged(site, side, option) else { return nil }
+            let options = sides[side].options
+            let p = chance(site, side, option)
+            return options.indices
+                .filter { options[$0].cost > options[option].cost && chance(site, side, $0) < p }
+                .min { options[$0].cost < options[$1].cost }
         }
     }
 
@@ -143,6 +172,8 @@ public enum ProtectionSearch {
             if best == nil {
                 best = fallback
                 meets = false
+            } else if let o = problem.stepUp(site, s, best!.option) {
+                best = (o, side.options[o].cost, problem.chance(site, s, o))
             }
             choices.append(best!.option)
             chances.append(best!.chance)
@@ -266,7 +297,9 @@ public enum ProtectionSearch {
                 plan = trial
             }
         }
-        return plan
+        // The flagged sides protected a step further, as `plan` protects them.
+        let stepped = choices.indices.map { problem.stepUp(site, $0, choices[$0]) ?? choices[$0] }
+        return stepped == choices ? plan : evaluate(problem, site: site, choices: stepped, method: "greedy")
     }
 
     /// Simulated annealing over the site-wide changes, each side given its cheapest option, a plan

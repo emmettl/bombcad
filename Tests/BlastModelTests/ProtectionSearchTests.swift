@@ -118,6 +118,70 @@ struct ProtectionSearchTests {
         #expect(ProtectionSearch.greedy(problem).cost >= best.cost - 1e-9)
     }
 
+    @Test("A flag margin steps a side within its scatter of the target one option further; greedy alike")
+    func flagMargin() {
+        let options = [
+            ProtectionSearch.Option(glazing: "as built", wall: "as built", cost: 0),
+            ProtectionSearch.Option(glazing: "film", wall: "as built", cost: 1),
+            ProtectionSearch.Option(glazing: "toughened", wall: "as built", cost: 2),
+        ]
+        let sides = (0..<3).map { ProtectionSearch.Side(name: "side \($0)", options: options) }
+        // Each side's chance by option, and at the upper quantile of its load.
+        let chance: [[Double]] = [[0.08, 0.01, 0.005], [0.5, 0.05, 0.01], [0.01, 0.001, 0.001]]
+        let upper: [[Double]] = [[0.3, 0.05, 0.02], [0.9, 0.2, 0.05], [0.05, 0.01, 0.01]]
+        let plain = ProtectionSearch.Problem(sides: sides, site: [], targetChance: 0.1) { _, s, o in
+            chance[s][o]
+        }
+        let flagged = ProtectionSearch.Problem(
+            sides: sides, site: [], targetChance: 0.1, chance: { _, s, o in chance[s][o] },
+            upper: { _, s, o in upper[s][o] })
+        #expect(ProtectionSearch.plan(plain, site: []).choices == [0, 1, 0])
+        #expect(flagged.flagged([], 0, 0) && flagged.flagged([], 1, 1) && !flagged.flagged([], 2, 0))
+        let plan = ProtectionSearch.plan(flagged, site: [])
+        #expect(plan.choices == [1, 2, 0])
+        #expect(plan.meets && abs(plan.cost - 3) < 1e-12)
+        #expect(ProtectionSearch.greedy(flagged).choices == plan.choices)
+    }
+
+    @Test(
+        "Margins on BombCAD's model: the load held up raises a side's chance; a target margin is the search's"
+    )
+    func modelMargins() throws {
+        let scene = try FacadeGlassProbabilityTests.row()
+        var inputs = ProtectionModel.Inputs(
+            threats: [.init(mass: 100, x: 10, y: 30)],
+            target: .init(worseThan: "3b", chance: 0.1, buildings: nil),
+            glazing: [.init(name: "toughened", kind: .toughened, costPerM2: 4)], draws: 4, seed: 1)
+        let plain = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)
+        #expect(plain.margin == nil && plain.problem.targetChance == 0.1 && plain.accepted == 0.1)
+        #expect(
+            ProtectionModel.Margin("flag:2.5") == .proposed && ProtectionModel.Margin.proposed.kind == .flag)
+        #expect(ProtectionModel.Margin("quantile") == nil && ProtectionModel.Margin("wide:1") == nil)
+        // Every side's chance with its load held at 0, 1 and 2 standard deviations up.
+        let held = try [0.0, 1, 2].map { z in
+            inputs.margin = .init(kind: .quantile, value: z)
+            return try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs).problem
+        }
+        var raised = false
+        for s in plain.problem.sides.indices {
+            for o in 0..<2 {
+                let p = held.map { $0.chance([], s, o) }
+                #expect(p[0] <= p[1] && p[1] <= p[2])
+                raised = raised || p[2] > p[0]
+            }
+        }
+        #expect(raised)
+        inputs.margin = .init(kind: .target, value: 0.02)
+        let lower = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)
+        #expect(lower.problem.targetChance == 0.02 && lower.accepted == 0.1)
+        inputs.margin = .init(kind: .flag, value: 2)
+        let flag = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs).problem
+        for s in flag.sides.indices {
+            #expect(flag.chance([], s, 0) == plain.problem.chance([], s, 0))
+            #expect(flag.upperChance([], s, 0) == held[2].chance([], s, 0))
+        }
+    }
+
     @Test("A barrier wall is in the loads' way; a scene's stand-off line stops the charge at it")
     func barriersAndLines() throws {
         var scene = try FacadeGlassProbabilityTests.row()
