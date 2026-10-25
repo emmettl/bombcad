@@ -1438,6 +1438,118 @@ What #104 did not judge, old against new:
   are re-derived from #104's judges and the table above; the walls', the field models', the
   openings' and the hybrid's impulses are unchanged.
 
+### Beirut's 1–2 km over-read is the line's angle to the cells: recorded and stopped (26 October 2026)
+
+emmettl/bombcad-work#106. On the deep-city terms the surrogate reads Beirut's clear-top references
+(8 m refined to 4 m, the 640 m top) high at 1–2 km: median peak 1.04 / 1.08 / 1.09 of the run's at
+0.2 / 0.5 / 1.1 kt. That blocks the glass front, which over-reads blown out in the same band. The
+question was what Beirut's city has there that the made-up fit districts don't. It was answered at
+the desk, on the existing extracts (`$BOMBCAD_DATA/scratch/issue106`, `py/*.py`), and with the
+first look's glass side by side (`surrogate-judge --sides-out`, a study option added here; the six
+judges in `sides.sh`, a minute each on the CPU, give #104's bands to the digit).
+
+**The over-read lies on lines along the solver's cell axes.** Split by the angle between the line
+from the charge and the nearer cell axis, at 1–2 km (median predicted over run, the three yields
+pooled):
+
+| | Along an axis (0–15°) | Between (15–30°) | Diagonal (30–45°) | All |
+|---|---|---|---|---|
+| Beirut's references | 1.19 | 1.07 | **0.98** | 1.07 |
+| … each yield, diagonal lines by 0.25 km band to 2 km | | | 0.96–1.02 | |
+| The deep made-up runs (#104), deep-a / deep-b | 1.13 / 1.25 | 1.01 / 1.09 | 0.91 / 0.96 | 1.00 / 1.09 |
+| The 2 m fit runs (#98's nine) | 1.13 | 1.03 | 0.99 | 1.01 |
+| Strips in each, Beirut / deep / 2 m fit runs | 33% / 31–33% / 10% | 33% / 32–34% / 24% | 34% / 34–35% / 66% | |
+
+- **Every family shows it**: the 2 m runs, the deep runs and Beirut, at 0.5–1 km as at 1–2 km,
+  with the surrogate 14–30% further over on axis lines than on diagonal ones. In a free burst the
+  solver's peaks along a diagonal read 5–15% above those along an axis
+  ([large scenes](large-scenes.md)): the grid's own anisotropy. The surrogate has no term for it.
+- **It is not the references' air.** On 7,871 of Beirut's façades paired between the 2 m near boxes
+  (440 m top) and the references (4 m, 640 m top) at the same yield, the references' peaks are
+  0.97–1.00 of the near boxes' at 1–1.32 km on lines of every angle. The anisotropy is the same on
+  2 m air.
+- **The sectors are this split.** At 0.5 kt the sectors along the axes read 1.10–1.18 (east,
+  75–105°), 1.17–1.27 (south, 165–195°) and 1.16–1.35 (west, 255–285°); the diagonal ones
+  1.01–1.03 (120–150°) and 0.93–0.98 (210–240°).
+- **The fit runs lack axis lines where Beirut has them.** They are square boxes whose fair part
+  ends 1.1 km out along the axes, so two thirds of their strips past 1 km lie on the diagonals.
+  The references, 5 km boxes, hold axis lines to 2.1 km, a third of their strips. Past 2.1 km
+  they hold none, which is also why the far bands read low: at 2.25–3 km every reference strip (and
+  every deep-run strip, on which #104's far terms were fitted) lies on a box corner.
+
+**Each candidate, against the 2 m fit runs** (the share of Beirut's excess at 1–2 km, 1.074 against
+1.007 as mean log, that the candidate's own mix accounts for when the fit runs' readings in each
+stratum are given Beirut's shares; `py/decomp.py`):
+
+| Candidate | Alone | Crossed with the angle |
+|---|---|---|
+| The line's angle to the cells | 46% | (itself) |
+| Face orientation (cos) | 40% (tied to the angle: faces sit on the cells) | 45% |
+| Scaled distance | 5% | 57% |
+| Buildings crossed; plan cover along the line | 6%; −4% | 35%; 50% |
+| Heights and towers: building top, strip height, the last top, roofs along the line | 2%, 3%, 12%, 5% | 39–52% |
+| Streets: open air in front; canyon | 4%; 3% | 47%; 47% |
+| The port's water and the silos: narrow edges in the way | 0% | 43% |
+| … the coast's in-sight strips (270–300°, 915 of 59,782) | read 1.31–1.35, too few to move the median | |
+| Terrain: ground rise; ridge | 41% (17% of Beirut's strips beyond the fit runs' rise); −10% | 64%; 52% |
+| Façade length | 1% | 49% |
+
+So the angle accounts for about half. On top of it, distance adds 11 points and terrain 18 (with a
+sixth of Beirut's strips beyond the fit runs' rise); the others add at most 6. Against the deep
+runs, buildings crossed and plan cover "explain" 138–214%. Their streets run along the axes, so
+their few-crossed lines are axis lines. Terrain explains −75%, the wrong way:
+the deep runs' hills are bumps, Beirut's is a slope.
+
+**What it does to the glass.** The runs' own glass is anisotropic in the transition band. The
+first look's is not:
+
+| Blown out (sides): run / deep-city / deep-city with front | Axis lines | Between | Diagonal | All |
+|---|---|---|---|---|
+| 0.5 kt, 1.5–1.75 km | 0.20 / 0.37 / 0.54 | 0.22 / 0.25 / 0.41 | 0.28 / 0.19 / **0.40** | 0.24 / 0.25 / 0.44 |
+| 0.5 kt, 1.75–2 km | 0.01 / 0.09 / 0.24 | 0.06 / 0.05 / 0.22 | 0.09 / 0.00 / **0.08** | 0.06 / 0.05 / 0.18 |
+| 1.1 kt, 1.75–2 km | 0.49 / 0.87 / 0.95 | 0.85 / 0.92 / 0.99 | 0.97 / 0.88 / **1.00** | 0.78 / 0.89 / 0.98 |
+| 1.1 kt, 2–2.5 km | 0.29 / 0.38 / 0.88 | 0.48 / 0.37 / 0.94 | 0.64 / 0.22 / **0.76** | 0.57 / 0.27 / 0.82 |
+| Some broken, 0.2 kt, 2–2.5 km | 0.67 / 0.49 / 0.76 | 0.78 / 0.42 / 0.76 | 0.75 / 0.26 / **0.60** | 0.75 / 0.32 / 0.66 |
+
+- **At 1.75–2 km at 1.1 kt, the run blows out 0.49 of the sides on axis lines and 0.97 on the
+  diagonals**, at the same distance from the same charge. A real blast has no such direction. Most
+  of the front's over-read is on the axis and middle lines, where the run's loads are lowest.
+- **On the diagonals, the front set reads within 0.12 of the run** in blown out (0.40 / 0.28,
+  0.08 / 0.09, 1.00 / 0.97, 0.76 / 0.64) and 0.15 under in some broken. Without the front it
+  under-reads them by up to 0.42 (0.22 against 0.64).
+
+**Fixes tried, in numpy on the extracts** (`py/fit106.py`, `py/fitangle.py`):
+- The fourteen terms refitted with the angle (cos 4θ) as a nuisance, dropped when predicting.
+  Beirut at 1–2 km goes from 1.06–1.10 to 1.04–1.07, but 2.25–2.75 km goes from 0.87–0.91 to
+  0.83–0.87.
+- The deep runs added to the fourteen terms' fit: 1–2 km doesn't move.
+- An angle term kept in the prediction, fitted on the made-up runs only (deep-city held, −0.065
+  on cos 4θ). It narrows Beirut's spread by angle from 1.16–1.21 / 0.96–1.00 to 1.10–1.15 /
+  1.01–1.05, takes 0.013 off the log RMS at 1–2 km, and lifts 2.25–2.75 km by 5%. The 1–2 km
+  medians don't move, since a full disc averages the term to nothing. Held out run by run, it
+  helps six of the eight made-up runs past 1 km and hurts two (dense at 100 and 500 t).
+
+**Stopped.** No term from the made-up districts takes the 1–2 km level off without moving the far
+bands the wrong way, and the structure that remains is the solver's grid, not the city. A term for
+the angle would build the solver's grid orientation into the quick estimate for real places. So
+nothing was built, and every default stays as it is: digests are unchanged, since `--sides-out` is
+a study option and reads nothing by default.
+
+**For the user** (the decision is yours):
+- The glass front's case is better than the whole-band judges said. Where the reference is least
+  affected by the grid (the diagonals), it reads within 0.12 in blown out. Its over-read in the
+  transition band sits on the axis lines, where the run's own glass is half the diagonals'.
+- Next steps, in order of cost:
+  1. **Judge on lines balanced by angle**: report the glass judges on diagonal lines alongside
+     all, or reweight sides by angle (desk work, minutes).
+  2. **A Beirut reference with the grid turned 45°** at 0.5 kt (one run like #97's, about 20 GB
+     and two minutes on the Studio, when memory allows). It would show which direction carries
+     the error.
+  3. **A fix in the solver's anisotropy.** That is a solver change, with its digests and the
+     nightly suites.
+- #104's far terms were fitted on box corners only (the deep runs past 2.1 km), so on axis lines
+  past 2.1 km they are unjudged.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings

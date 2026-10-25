@@ -8,7 +8,7 @@ import simd
 /// features and its recorded peak and impulse, for fitting (`Scripts/fit-surrogate.py`).
 ///
 /// `scenebench surrogate-judge <inputs> [--radius 2500] --loads folder [--inside 0.85]
-/// [--coefficients fit.json | --terms deep-city|clear-top|fitted|…] [--first-look] [--run-wall s] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
+/// [--coefficients fit.json | --terms deep-city|clear-top|fitted|…] [--first-look] [--run-wall s] [--sides-out sides.csv] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
 /// through the same SDOF, side by side; and the surrogate's whole first look, timed.
 ///
 /// Strips saved before 19 October 2026 carry no boxes, so the scene is laid out again from the
@@ -705,6 +705,10 @@ package enum SurrogateBench {
 
         // GEER's bands, by building side over every matched strip (as district-glass).
         var bands: [Band] = []
+        // `--sides-out sides.csv`: each building side in GEER's bands, where it stands against the
+        // charge and its glass both ways, for tracing where the first look errs by direction
+        // (emmettl/bombcad-work#106).
+        var sideRows: [String] = []
         for band in DistrictGlass.geer {
             let members = indices.filter {
                 let strip = reference.index.strips[reference.strips[kept[$0]].saved]
@@ -722,6 +726,16 @@ package enum SurrogateBench {
                 counts.1 += surrogate.anyBroken
                 counts.2 += run.fraction >= DistrictGlass.blownOutFraction ? 1 : 0
                 counts.3 += surrogate.fraction >= DistrictGlass.blownOutFraction ? 1 : 0
+                if value(args, "sides-out") != nil, let first = list.first {
+                    let centre = FacadeLoadSurrogate.outerFace(reference.strips[kept[first]].component).centre
+                    sideRows.append(
+                        String(
+                            format: "%.0f,%d,%d,%d,%.1f,%.1f,%.1f,%.4f,%.4f,%.4f,%.4f,%d",
+                            band.from, sideOf[first][0], sideOf[first][1], sideOf[first][2],
+                            all[first].distance,
+                            Double(centre.x - charge.x), Double(centre.y - charge.y), run.fraction,
+                            surrogate.fraction, run.anyBroken, surrogate.anyBroken, all[first].crossed))
+                }
             }
             let k = Double(sides.count)
             bands.append(
@@ -729,6 +743,13 @@ package enum SurrogateBench {
                     from: band.from, to: band.to, runSidesAny: counts.0 / k, surrogateSidesAny: counts.1 / k,
                     runSidesBlown: counts.2 / k, surrogateSidesBlown: counts.3 / k, geer: band.damaged,
                     geerBlown: band.blownOut))
+        }
+        if let path = value(args, "sides-out") {
+            let header =
+                "band,object,axis,outward,distance,dx,dy,run_fraction,surrogate_fraction,run_any,surrogate_any,crossed"
+            try ([header] + sideRows).joined(separator: "\n").write(
+                toFile: path, atomically: true, encoding: .utf8)
+            print("Wrote \(sideRows.count) sides to \(path)")
         }
 
         let names = EnvelopeDamageLevel.allCases.map(\.label)
