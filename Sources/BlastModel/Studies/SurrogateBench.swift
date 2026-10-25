@@ -8,7 +8,7 @@ import simd
 /// features and its recorded peak and impulse, for fitting (`Scripts/fit-surrogate.py`).
 ///
 /// `scenebench surrogate-judge <inputs> [--radius 2500] --loads folder [--inside 0.85]
-/// [--coefficients fit.json | --terms clear-top|fitted] [--first-look] [--run-wall s] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
+/// [--coefficients fit.json | --terms deep-city|clear-top|fitted|…] [--first-look] [--run-wall s] [--out judged.json]`: each strip's damage from its recorded history and from the surrogate's pulse,
 /// through the same SDOF, side by side; and the surrogate's whole first look, timed.
 ///
 /// Strips saved before 19 October 2026 carry no boxes, so the scene is laid out again from the
@@ -24,9 +24,10 @@ package enum SurrogateBench {
         args.firstIndex(of: "--\(name)").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
     }
 
-    /// `--terms clear-top|fitted`: the named set of façade terms and load scatter to judge
-    /// (`FacadeLoadSurrogate.TermSet`), `otherwise` without it: the adopted ones (clear-top since 25
-    /// October 2026) unless a consumer still pinned to others names its own.
+    /// `--terms deep-city|clear-top|fitted|…`: the named set of façade terms and load scatter to
+    /// judge (`FacadeLoadSurrogate.TermSet`), `otherwise` without it: the adopted ones (deep-city
+    /// since the evening of 25 October 2026, clear-top that morning) unless a consumer still pinned
+    /// to others names its own.
     package static func termSet(
         _ args: [String], otherwise: FacadeLoadSurrogate.TermSet = .adopted
     ) throws -> FacadeLoadSurrogate.TermSet {

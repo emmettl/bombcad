@@ -4,7 +4,7 @@ import simd
 
 /// `scenebench field-refs <district-scene's inputs> [--radius 1320] --runs mass:folder,…
 /// --variants surrogate,name=weights.bcfw,name=upper.bcfw+ground.bcfw[@own],… [--inside 0.85] [--draws 50]
-/// [--scatter-tables tables.json] [--coefficients terms.json | --terms clear-top|fitted] [--out judged.json]`:
+/// [--scatter-tables tables.json] [--coefficients terms.json | --terms deep-city|clear-top|fitted] [--out judged.json]`:
 /// the quick estimate's glass by building side and its façade peaks at every storey, judged against
 /// a district's own runs at several yields (`district-compare --save-loads`; Beirut's near boxes on
 /// air refined to 2 m, emmettl/bombcad-work#19 and #69), as the app's estimate gives them:

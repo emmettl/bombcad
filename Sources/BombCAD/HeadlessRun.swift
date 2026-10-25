@@ -75,11 +75,12 @@ enum HeadlessRun {
         blown out, drawn over the yield (from `scenebench infer-charge --samples`' masses with
         --surrogate-yields, or within --surrogate-yield-within either way nine times in ten, 1.5 by
         default), each building's glass strength and the estimate's own scatter: the glass only.
-        --surrogate-terms names the façade terms and scatter: clear-top, the default since 25
-        October 2026, refitted on runs whose top clears the far façades; fitted, those of 23
-        October, for earlier records; clear-top-front, clear-top with the glass's pulses arriving
-        with a front (a candidate, emmettl/bombcad-work#103); deep-city and deep-city-front, the
-        same with far terms for façades deep in a city (candidates, emmettl/bombcad-work#104).
+        --surrogate-terms names the façade terms and scatter: deep-city, the default since 25
+        October 2026, refitted on runs whose top clears the far façades, with far terms for façades
+        deep in a city (emmettl/bombcad-work#104, #105); clear-top, the same without the far terms,
+        the default earlier that day, and fitted, those of 23 October, for earlier records;
+        deep-city-front and clear-top-front, each with the glass's pulses arriving with a front
+        (candidates, emmettl/bombcad-work#103).
         --charge adds a further charge of that much TNT at x, y, z m, fired the delay after the
         main charge (with it if none); give it again for more.
         --resolution and --mass change the inputs as a sweep case would, and --ground what the

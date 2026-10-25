@@ -45,9 +45,10 @@ struct SurrogateGapTests {
         }
     }
 
-    /// The two named sets of terms (emmettl/bombcad-work#99): the clear-top terms adopted on 25
-    /// October 2026 and those of 23 October, each pinned where its own fit puts it.
-    static let termSets: [FacadeLoadSurrogate.TermSet] = [.clearTop, .fitted]
+    /// The named sets of terms (emmettl/bombcad-work#99, #105): the deep-city terms adopted on 25
+    /// October 2026, the clear-top terms they are built on (adopted that morning), and those of 23
+    /// October, each pinned where its own fit puts it.
+    static let termSets: [FacadeLoadSurrogate.TermSet] = [.deepCity, .clearTop, .fitted]
 
     /// Where in `values` (as indices of the later one) a value rises above the one before it.
     private static func rises(_ values: [Double]) -> [Int] {

@@ -70,29 +70,31 @@ extension ValidationTables {
             document: "learned-models.md#on-the-clear-top-terms-25-october-2026",
             quote: "both pass the tenths test on the new terms, at skill 0.653"),
         Figure(
-            id: "dragPreviewGlass", low: 0.87, high: 0.94,
+            id: "dragPreviewGlass", low: 0.86, high: 0.94,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
-            quote: "within 0.1 of the full estimate's on 87–94% of sides"),
+            quote: "within 0.1 of the full estimate's on 86–94% of sides"),
         Figure(
             id: "dragPreviewWalls", low: 0.987, high: 0.999,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
             quote: "within 0.1 on 98.7–99.9% of buildings"),
         Figure(
-            id: "dragPreviewDamage", low: 0.996, high: 0.997,
+            id: "dragPreviewDamage", low: 0.996, high: 0.998,
             document: "surrogate-first-look.md#dragging-the-charge-20-october-2026",
-            quote: "the same for 99.6–99.7% of buildings"),
+            quote: "the same for 99.6–99.8% of buildings"),
+        // The glass chances, the quick estimate's loads and the hybrid on the deep-city terms
+        // adopted on 25 October 2026 (emmettl/bombcad-work#105; #104's judges).
         Figure(
-            id: "glassChancesBrier", low: 0.027, high: 0.104,
+            id: "glassChancesBrier", low: 0.025, high: 0.104,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "Brier score 0.027, against 0.104"),
+            quote: "Brier score 0.025, against 0.104"),
         Figure(
-            id: "glassChancesBins", low: 0.09, high: 0.09,
+            id: "glassChancesBins", low: 0.08, high: 0.08,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "up to 0.09 under the share of runs"),
+            quote: "up to 0.08 under the share of runs"),
         Figure(
-            id: "glassChancesThrown", low: 0.047, high: 0.025,
+            id: "glassChancesThrown", low: 0.038, high: 0.025,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
-            quote: "condition 3b: Brier 0.047, against 0.025"),
+            quote: "condition 3b: Brier 0.038, against 0.025"),
         Figure(
             id: "glassChancesTest", low: 0.1, high: 0.1,
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
@@ -110,9 +112,9 @@ extension ValidationTables {
             document: "validation.md#the-glass-chances-against-beiruts-runs-and-survey",
             quote: "skill 0.18 (Brier 0.139"),
         Figure(
-            id: "surrogateGlassSides", low: 0.66, high: 0.86,
+            id: "surrogateGlassSides", low: 0.68, high: 0.90,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "agrees with the run's for 66–86%"),
+            quote: "agrees with the run's for 68–90%"),
         Figure(
             id: "surrogateConcrete", low: 0.29, high: 0.51,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
@@ -130,13 +132,13 @@ extension ValidationTables {
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
             quote: "peaks 0.97–1.07"),
         Figure(
-            id: "surrogateFarLoads", low: 0.82, high: 1.03,
+            id: "surrogateFarLoads", low: 0.90, high: 1.05,
             document: "validation.md#the-quick-estimate-against-beiruts-runs",
-            quote: "0.82–1.03 times the run's on the median"),
+            quote: "0.90–1.05 times the run's on the median"),
         Figure(
-            id: "hybridFarPeak", low: 0.82, high: 1.05,
+            id: "hybridFarPeak", low: 0.87, high: 1.07,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",
-            quote: "façade peaks 0.82–1.05 of the full run's to 2.5 km"),
+            quote: "façade peaks 0.87–1.07 of the full run's to 2.5 km"),
         Figure(
             id: "hybridFarImpulse", low: 1.05, high: 1.14,
             document: "validation.md#the-hybrid-far-field-against-beiruts-runs",

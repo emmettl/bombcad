@@ -270,13 +270,14 @@ struct FacadeLoadSurrogateTests {
     }
 
     @Test(
-        "The clear-top terms are the default since 25 October, the first fit's kept by name; far out they read higher"
+        "The clear-top terms under the deep-city default since 25 October, the first fit's kept by name; far out they read higher"
     )
     func clearTopTerms() throws {
         typealias S = FacadeLoadSurrogate
-        // Adopted on 25 October 2026 (emmettl/bombcad-work#99): the defaults are the clear-top set's.
-        #expect(S.TermSet.adopted == .clearTop)
-        #expect(S.Coefficients.adopted == .clearTop)
+        // Adopted on 25 October 2026 (emmettl/bombcad-work#99, then #105): the defaults are the
+        // deep-city set's, the clear-top set with far terms, and its scatter the clear-top set's.
+        #expect(S.TermSet.adopted == .deepCity)
+        #expect(S.Coefficients.adopted == .deepCity)
         #expect(S.Uncertainty().loadScatter == S.Uncertainty.clearTopLeaveOneOut)
         #expect(S.Uncertainty.adoptedLoadScatter == S.Uncertainty.clearTopLeaveOneOut)
         // The terms of 23 October, by name, for earlier records.
@@ -295,7 +296,7 @@ struct FacadeLoadSurrogateTests {
         #expect(S.Coefficients.fitted.structureRise == nil && S.Coefficients.fitted.forStructures == .fitted)
         #expect(S.TermSet.clearTop.loadScatter.last?.upToZ == .infinity)
         // 2 km from 500 t (Z 25) behind four buildings: the clear-top runs' loads are higher, and
-        // they are what a prediction takes unless told otherwise.
+        // they are what a prediction takes unless told otherwise (the far terms add nothing there).
         var f = Self.facing(2_000)
         f.buildingsCrossed = 4
         let first = S.predict(f, mass: 500_000, cellSize: 4, coefficients: .fitted)
@@ -305,11 +306,13 @@ struct FacadeLoadSurrogateTests {
         // Its pulse rises over about a third of its length, as the runs' do.
         #expect(adopted.riseShare > 0.2 && adopted.riseShare < 0.45, "\(adopted.riseShare)")
         // The benches' names for them.
-        #expect(try SurrogateBench.termSet([]) == .clearTop)
+        #expect(try SurrogateBench.termSet([]) == .deepCity)
+        #expect(try SurrogateBench.termSet(["--terms", "deep-city"]) == .deepCity)
         #expect(try SurrogateBench.termSet(["--terms", "clear-top"]) == .clearTop)
         #expect(try SurrogateBench.termSet(["--terms", "fitted"]) == .fitted)
         #expect(throws: (any Error).self) { try SurrogateBench.termSet(["--terms", "drained"]) }
-        #expect(try SurrogateBench.coefficients([]) == clear)
+        #expect(try SurrogateBench.coefficients([]) == .deepCity)
+        #expect(try SurrogateBench.coefficients(["--terms", "clear-top"]) == clear)
         #expect(try SurrogateBench.coefficients(["--terms", "fitted"]) == .fitted)
         #expect(try SurrogateBench.loadScatter(["--terms", "fitted"]) == S.Uncertainty.leaveOneOut)
     }

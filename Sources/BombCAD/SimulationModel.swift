@@ -715,8 +715,9 @@ final class SimulationModel {
     @ObservationIgnored var learnedDefaults = UserDefaults.standard
     /// Whether the quick estimate and the far field take the façade terms and load scatter of 23
     /// October 2026, fitted on runs whose top drained the far loads (`FacadeLoadSurrogate.TermSet
-    /// .fitted`), in place of the clear-top terms adopted on 25 October (emmettl/bombcad-work#99):
-    /// to reproduce an earlier estimate. Off unless chosen, and remembered.
+    /// .fitted`), in place of the terms adopted since (emmettl/bombcad-work#99, #105): to reproduce
+    /// an earlier estimate. Off unless chosen, and remembered; it takes precedence over
+    /// `quickEstimateClearTopTerms`.
     var quickEstimateFirstFitTerms = UserDefaults.standard.bool(forKey: SimulationModel.firstFitTermsKey) {
         didSet {
             learnedDefaults.set(quickEstimateFirstFitTerms, forKey: Self.firstFitTermsKey)
@@ -726,8 +727,9 @@ final class SimulationModel {
     }
     static let firstFitTermsKey = "quickEstimate.firstFitTerms"
     /// Whether the glass chances' pulses arrive with a front (`FacadeLoadSurrogate.TermSet
-    /// .clearTopFront`, emmettl/bombcad-work#103): a candidate, off unless chosen, and remembered.
-    /// The terms of 23 October, where chosen, take precedence.
+    /// .deepCityFront`, or `.clearTopFront` on the terms of 25 October; emmettl/bombcad-work#103,
+    /// #104): a candidate, off unless chosen, and remembered. The terms of 23 October, where
+    /// chosen, take precedence.
     var quickEstimateGlassFront = UserDefaults.standard.bool(forKey: SimulationModel.glassFrontKey) {
         didSet {
             learnedDefaults.set(quickEstimateGlassFront, forKey: Self.glassFrontKey)
@@ -736,23 +738,26 @@ final class SimulationModel {
         }
     }
     static let glassFrontKey = "quickEstimate.glassFront"
-    /// Whether the façade terms take the far terms for façades deep in a city
-    /// (`FacadeLoadSurrogate.TermSet.deepCity`, with the glass front `.deepCityFront`;
-    /// emmettl/bombcad-work#104): a candidate, off unless chosen, and remembered. The terms of 23
-    /// October, where chosen, take precedence.
-    var quickEstimateDeepCity = UserDefaults.standard.bool(forKey: SimulationModel.deepCityKey) {
+    /// Whether the quick estimate and the far field take the clear-top façade terms of the morning of
+    /// 25 October 2026, without the far terms for façades deep in a city (`FacadeLoadSurrogate
+    /// .TermSet.clearTop`, with the glass front `.clearTopFront`), in place of the deep-city terms
+    /// adopted that evening (emmettl/bombcad-work#105): to reproduce an earlier estimate. Off unless
+    /// chosen, and remembered (the candidate toggle of #104 that chose the deep-city terms is
+    /// retired: they are the default). The terms of 23 October, where chosen, take precedence.
+    var quickEstimateClearTopTerms = UserDefaults.standard.bool(forKey: SimulationModel.clearTopTermsKey) {
         didSet {
-            learnedDefaults.set(quickEstimateDeepCity, forKey: Self.deepCityKey)
+            learnedDefaults.set(quickEstimateClearTopTerms, forKey: Self.clearTopTermsKey)
             if envelopeDamageIsEstimate, !envelopeDamage.isEmpty { requestLook(preview: false) }
             if !farFieldDamage.isEmpty { judgeFarField() }
         }
     }
-    static let deepCityKey = "quickEstimate.deepCity"
+    /// A key of its own: "quickEstimate.clearTopTerms" chose the clear-top candidate before #99.
+    static let clearTopTermsKey = "quickEstimate.clearTopTermsOf25October"
     /// The façade terms and load scatter the quick estimate and the far field take.
     var surrogateTerms: FacadeLoadSurrogate.TermSet {
         if quickEstimateFirstFitTerms { return .fitted }
-        if quickEstimateDeepCity { return quickEstimateGlassFront ? .deepCityFront : .deepCity }
-        return quickEstimateGlassFront ? .clearTopFront : .adopted
+        if quickEstimateClearTopTerms { return quickEstimateGlassFront ? .clearTopFront : .clearTop }
+        return quickEstimateGlassFront ? .deepCityFront : .adopted
     }
     /// Whether the far field carries the near run's match flat, with no trend with distance: the
     /// far set's own choice (`FarFieldSet.matchFlat`, saved with the project), on for New District's

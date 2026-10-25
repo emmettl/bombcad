@@ -4,8 +4,9 @@ import Testing
 @testable import BlastModel
 
 /// The façade surrogate's far terms (`FacadeLoadSurrogate.Coefficients.Far`, emmettl/bombcad-work#104;
-/// docs/surrogate-first-look.md): a named candidate that leaves every load the far terms do not reach
-/// as it was, and the default sets untouched.
+/// docs/surrogate-first-look.md): the default since the user adopted them on 25 October 2026
+/// (emmettl/bombcad-work#105), leaving every load the far terms do not reach as clear-top's, and the
+/// earlier sets untouched.
 @Suite("Façade far terms")
 struct SurrogateFarTermsTests {
     typealias S = FacadeLoadSurrogate
@@ -18,9 +19,11 @@ struct SurrogateFarTermsTests {
         return f
     }
 
-    @Test("The defaults and the earlier sets have no far terms, and save as they did")
+    @Test("The default has the far terms; the earlier sets have none, and save as they did")
     func defaultsUntouched() throws {
-        #expect(S.Coefficients.adopted.far == nil && S.Coefficients.fitted.far == nil)
+        #expect(S.TermSet.adopted == .deepCity && S.Coefficients.adopted.far == .deepCity)
+        #expect(S.Coefficients.adopted.glassFront == nil)
+        #expect(S.Coefficients.clearTop.far == nil && S.Coefficients.fitted.far == nil)
         #expect(S.Coefficients.clearTopFront.far == nil && S.Coefficients.roofs.far == nil)
         let data = try JSONEncoder().encode(S.Coefficients.clearTop)
         #expect(!String(decoding: data, as: UTF8.self).contains("\"far\""))

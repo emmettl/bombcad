@@ -461,7 +461,9 @@ a glazing mix (a district from a map, or constructions given glazing).
   passing it, per side. **Draws** of the loads' scatter and the glass's strength make each side's
   chance; 32 by default, fewer for a quick look.
 - **A margin for the scatter between sides**, since 25 October 2026: each side's chance is from
-  the clear-top façade terms, and a side that passes on its chance but not with its load 2.5
+  the quick estimate's façade terms (the deep-city terms,
+  [since that evening](protective-design.md#on-the-deep-city-terms-25-october-2026)), and a side
+  that passes on its chance but not with its load 2.5
   standard deviations of their scatter up is given the next dearer change, so that a plan meets its
   target on a run's one load per side ([adopted](protective-design.md#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026)).
   **Planner of 23 October (earlier plans)** gives the planner as it was before: the façade terms of

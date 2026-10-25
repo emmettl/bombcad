@@ -1,7 +1,7 @@
 import BlastCore
 import Foundation
 
-/// `scenebench surrogate-coefficients [--terms clear-top|fitted] [--in-sight-close-in] --out terms.json`:
+/// `scenebench surrogate-coefficients [--terms deep-city|clear-top|fitted] [--in-sight-close-in] --out terms.json`:
 /// the façade surrogate's terms as JSON (the adopted ones without `--terms`), for the benches'
 /// `--coefficients`; with
 /// `--in-sight-close-in`, the candidate whose close-in branch is taken only in sight of the charge

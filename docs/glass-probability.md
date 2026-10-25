@@ -425,7 +425,15 @@ the same clear-top runs:
   0.24 at 1.5–1.75 km at 0.5 kt), where the surrogate reads Beirut high inside the fitted depth;
 - glass alone infers 0.026 kt.
 
-Neither set is the default; that is the user's decision.
+**Adopted: the far terms, the front still off (25 October 2026).** The user adopted
+`TermSet.deepCity` as the default that evening, and kept the front an option ("Adopt deepCity,
+front off", emmettl/bombcad-work#105;
+[the surrogate](surrogate-first-look.md#adopted-the-deep-city-terms-25-october-2026)). The glass
+chances now take the far terms with the clear-top scatter. Against the clear-top runs, blown out
+scores Brier 0.025 against 0.104 giving every side the mean (skill 0.76), each tenth within 0.08
+of the share seen, and passes. Some broken (0.019) and thrown past 3b (0.038) still read low and
+fail. "Glass pulses with a front" in the app, or `deep-city-front`, gives the fronted set; the
+clear-top terms stay by name (`clear-top`, `clear-top-front`).
 
 ## Walls and roofs
 

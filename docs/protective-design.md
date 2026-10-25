@@ -509,9 +509,11 @@ are shipped):
   place), drawn over the surrogate's scatter and each building's glass strength
   ([glass by chance](glass-probability.md)), the threats weighted. `--samples` takes the threat
   from `infer-charge --samples` instead, places about the scene's charge.
-- **The façade terms** (`--terms clear-top|fitted`): the clear-top terms and their scatter by
-  default since 25 October 2026, the terms of 23 October by name
-  ([adopted](#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026)).
+- **The façade terms** (`--terms deep-city|clear-top|fitted`): the quick estimate's, the deep-city
+  terms and their scatter, by default since 25 October 2026; the clear-top terms (the default
+  earlier that day) and the terms of 23 October by name
+  ([adopted](#adopted-the-clear-top-terms-with-the-flag-margin-25-october-2026),
+  [on the deep-city terms](#on-the-deep-city-terms-25-october-2026)).
 - **A margin for the scatter between sides** (`--margin`, or the inputs' `margin`; `flag:2.5` by
   default since 25 October 2026, `none` for none). `flag:2.5` protects one step further each side
   whose plan passes on its chance but not with its load 2.5 standard deviations of its scatter up;
@@ -1017,6 +1019,38 @@ deviations, unless told otherwise.
 - **What it does not change.** The standing stays illustrative, as the margin's own was. The
   margin was set on one made-up district's runs at 4 m, on its 204 sides and one target (3b at
   10%). Another district, a finer run or another target would want the judge again.
+
+## On the deep-city terms (25 October 2026)
+
+That evening the user adopted the deep-city façade terms (`TermSet.deepCity`: the clear-top terms
+with far terms for façades deep in a city, emmettl/bombcad-work#104) as the default wherever the
+clear-top terms were, the planner included, the glass front still off ("Adopt deepCity, front
+off", emmettl/bombcad-work#105). The planner was to move only if, with flag 2.5, it still met its
+target in 16 of 16 cases on #101's judge.
+
+**The judge** is #101's and #102's: the sparse district at 0.5, 1, 2, 3, 5, 10, 20 and 50 t, two
+seeds, each plan confirmed on the clear-top run's façade histories (200 m top), with `--terms
+deep-city --margin flag:2.5` and `--terms clear-top --margin flag:2.5`
+(`$BOMBCAD_DATA/scratch/issue105/planner.sh`, `plansum.py`; the binary of b7372baa, which names
+both; 12–14 s a search).
+
+**It meets the target in 16 of 16 cases, for the same cost.** Every plan on the deep-city terms
+is the clear-top terms' byte for byte, at every mass and seed: the worst side 9.4% (1 t, seed 1),
+no side over 10% on any run, and 1.01–1.34 times the cost of the planner before 25 October (1.13
+on average), as in the table [above](#a-margin-for-the-scatter-between-sides-25-october-2026). At
+1, 2, 5 and 20 t they are also #101's confirmed plans byte for byte.
+
+**Why nothing moves.** The far terms are nothing unless a side stands behind more than 30
+buildings or faces away from a charge more than 1.75 km off. The sparse district has 51 buildings
+within 700 m, so no side there reaches either. The judge shows that the planner keeps its record
+on the new terms; it cannot show how the far terms plan, which would need a district deep and wide
+enough to reach them, with its runs.
+
+**So the planner takes the deep-city terms.** `ProtectionModel.adoptedTerms` is
+`TermSet.adopted` again, the quick estimate's, with `Margin.adopted`. `scenebench protect` without
+`--terms` or `--margin` is `--terms deep-city --margin flag:2.5`, and the app's Protective Design
+sheet takes the same. The clear-top terms stay by name (`--terms clear-top`), and "Planner of 23
+October (earlier plans)" still gives the planner before 25 October.
 
 ## Open questions
 

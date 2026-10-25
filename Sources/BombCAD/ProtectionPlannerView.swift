@@ -86,7 +86,7 @@ struct ProtectionPlannerView: View {
                 Text("")
                 Toggle("Planner of 23 October (earlier plans)", isOn: $planner.earlierSettings)
                     .help(
-                        "The façade terms of 23 October and no margin for the scatter between sides, as the planner was until 25 October 2026, to reproduce an earlier plan. Off, the clear-top terms, and a side that passes on its chance but not with its load 2.5 standard deviations of its scatter up is given the next dearer change (docs/protective-design.md)."
+                        "The façade terms of 23 October and no margin for the scatter between sides, as the planner was until 25 October 2026, to reproduce an earlier plan. Off, the quick estimate's façade terms, and a side that passes on its chance but not with its load 2.5 standard deviations of its scatter up is given the next dearer change (docs/protective-design.md)."
                     )
             }
         }

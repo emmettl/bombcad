@@ -1046,11 +1046,12 @@ extension FacadeLoadSurrogate {
         let shielded = ValidationTables.figure("surrogateCloseInShielded")
         return [
             "An estimate, not a run. Against Beirut's full runs at 0.2, 0.5 and 1.1 kt, their top clear (8 m air refined "
-                + "to 4 m; its terms, refitted on runs with their top clear, took five of Beirut's near boxes about the "
-                + "same charge, on 2 m air, not these runs):",
+                + "to 4 m; its terms, refitted on runs with their top clear and given far terms from runs to 3 km across "
+                + "made-up districts, took five of Beirut's near boxes about the same charge, on 2 m air, not these "
+                + "runs):",
             "Glass: each building side's state (none broken, some, blown out) agreed with the run's for \(glass.percent) "
                 + "of sides deep in the district, hardly ever two states apart; the share of sides broken by distance "
-                + "came within 0.1 of the run's to 1.5 km at 0.2 kt and 2.5 km at 0.5 kt, and at 0.2 kt fell short "
+                + "came within 0.1 of the run's to 1.75 km at 0.2 kt and 2.5 km at 0.5 kt, and at 0.2 kt fell short "
                 + "beyond: low, the unsafe side.",
             "Walls and roofs: not to be relied on. Of the components either called damaged, \(concrete.percent) of the "
                 + "concrete, \(stone.percent) of the stone and \(roof.percent) of the roofs took the run's level. Run the "

@@ -252,7 +252,7 @@ struct FacadeGlassProbabilityTests {
     @Test("The glass front is a named candidate: the defaults, the walls and the loads stay as they were")
     func frontCandidate() throws {
         typealias S = FacadeLoadSurrogate
-        #expect(S.TermSet.adopted == .clearTop && S.Coefficients.adopted.glassFront == nil)
+        #expect(S.TermSet.adopted == .deepCity && S.Coefficients.adopted.glassFront == nil)
         #expect(S.Coefficients.fitted.glassFront == nil)
         let candidate = S.TermSet.clearTopFront
         #expect(candidate.loadScatter == S.TermSet.clearTop.loadScatter)

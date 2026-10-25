@@ -52,6 +52,34 @@ struct ChargeDragTests {
         #expect(!model.blastHazardSummary.contains { $0.contains("Injury preview") })
     }
 
+    @Test("The estimate takes the deep-city terms unless the terms of 23 or 25 October are chosen")
+    func termToggles() throws {
+        // emmettl/bombcad-work#105: the deep-city terms are the default, the glass front an option on
+        // them; the clear-top terms of 25 October and those of 23 October stay as toggles, the
+        // latter taking precedence.
+        let temporary = try TemporaryDefaults()
+        defer { temporary.remove() }
+        let model = SimulationModel(
+            document: ProjectDocument(
+                scenario: Scenario(
+                    name: "Terms", domainSize: SIMD3(repeating: 4), boxes: [],
+                    charge: Charge(mass: 0.01, position: SIMD3(2, 2, 1)))))
+        model.learnedDefaults = temporary.defaults
+        model.quickEstimateFirstFitTerms = false
+        model.quickEstimateClearTopTerms = false
+        model.quickEstimateGlassFront = false
+        #expect(model.surrogateTerms == .adopted && model.surrogateTerms == .deepCity)
+        model.quickEstimateGlassFront = true
+        #expect(model.surrogateTerms == .deepCityFront)
+        model.quickEstimateClearTopTerms = true
+        #expect(model.surrogateTerms == .clearTopFront)
+        model.quickEstimateGlassFront = false
+        #expect(model.surrogateTerms == .clearTop)
+        #expect(temporary.defaults.bool(forKey: SimulationModel.clearTopTermsKey))
+        model.quickEstimateFirstFitTerms = true
+        #expect(model.surrogateTerms == .fitted)
+    }
+
     @Test("The estimate follows the dragged charge as a preview, then in full where it is let go")
     func follows() async throws {
         var scene = Scenario(

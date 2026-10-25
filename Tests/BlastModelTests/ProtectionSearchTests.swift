@@ -152,11 +152,12 @@ struct ProtectionSearchTests {
             threats: [.init(mass: 100, x: 10, y: 30)],
             target: .init(worseThan: "3b", chance: 0.1, buildings: nil),
             glazing: [.init(name: "toughened", kind: .toughened, costPerM2: 4)], draws: 4, seed: 1)
-        // By default the clear-top terms with flag 2.5, adopted on 25 October 2026
-        // (emmettl/bombcad-work#102); `none` and the terms of 23 October are the planner before.
+        // By default the quick estimate's terms (deep-city) with flag 2.5, adopted on 25 October 2026
+        // (emmettl/bombcad-work#102, #105); `none` and the terms of 23 October are the planner before.
         let adopted = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)
         #expect(
-            adopted.margin == .adopted && adopted.terms == .clearTop && adopted.problem.targetChance == 0.1)
+            adopted.margin == .adopted && adopted.terms == .deepCity && adopted.problem.targetChance == 0.1)
+        #expect(ProtectionModel.adoptedTerms == FacadeLoadSurrogate.TermSet.adopted)
         #expect(ProtectionModel.Margin.adopted == .init(kind: .flag, value: 2.5))
         inputs.margin = .off
         let plain = try ProtectionModel.model(scene: scene, cellSize: 2, inputs: inputs)

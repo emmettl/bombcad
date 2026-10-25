@@ -141,11 +141,11 @@ struct HybridGapTests {
     /// result) must say what holds inside the hand-over, beyond it, for arrivals, and for walls
     /// and roofs, in that order; and its figures must be the ones on the page it cites,
     /// docs/hybrid-far-field.md: the façade peaks' range beyond the hand-over to 2.5 km, the glass
-    /// agreeing within 0.05 to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at 1.1 kt, and the
+    /// agreeing within 0.05 to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt, and the
     /// shortfall at 0.2 kt from 1.5 to 2.5 km, each read off that page's table against the full
     /// runs with their top clear (emmettl/bombcad-work#97) on the defaults adopted on 25 October 2026
-    /// (the clear-top terms and the match carried flat, emmettl/bombcad-work#99). Nothing else reads
-    /// the standing.
+    /// (the clear-top terms and the match carried flat, emmettl/bombcad-work#99, with the far terms
+    /// for façades deep in a city that evening, #105). Nothing else reads the standing.
     @Test("The standing reports its four parts, its figures those of the page it cites")
     func standingMatchesPage() throws {
         let standing = HybridFarField.standing
@@ -163,7 +163,7 @@ struct HybridGapTests {
         let heading = try #require(
             text.range(
                 of:
-                    "### Adopted: the clear-top terms, the match carried flat and a higher top (25 October 2026)"
+                    "### Adopted: the far terms (25 October 2026)"
             ))
         let section = text[heading.upperBound...].prefix { _ in true }
         let refitted = String(section[..<(section.range(of: "\n## ")?.lowerBound ?? section.endIndex)])
@@ -192,15 +192,15 @@ struct HybridGapTests {
         let peaks = beyond.flatMap(\.peaks)
         let range = String(format: "%.2f–%.2f", try #require(peaks.min()), try #require(peaks.max()))
         #expect(standing[1].contains("façade peaks \(range)"), "the page's peaks run \(range)")
-        // Within 0.05 to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at 1.1 kt.
+        // Within 0.05 to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt.
         let within =
             rows.filter { $0.to <= 1.5 }.map { abs($0.glass[0].full - $0.glass[0].hybrid) }
             + rows.filter { $0.to <= 2 }.map { abs($0.glass[1].full - $0.glass[1].hybrid) }
-            + rows.filter { $0.to <= 2.5 }.map { abs($0.glass[2].full - $0.glass[2].hybrid) }
+            + rows.filter { $0.to <= 3 }.map { abs($0.glass[2].full - $0.glass[2].hybrid) }
         #expect((within.max() ?? 1) <= 0.05 + 1e-9, "\(within)")
         #expect(
             standing[1].contains(
-                "within 0.05 of its to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at 1.1 kt"))
+                "within 0.05 of its to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt"))
         // Under at 0.2 kt from 1.5 to 2.5 km.
         let shortfall = rows.filter { $0.from >= 1.5 && $0.to <= 2.5 }.map {
             $0.glass[0].full - $0.glass[0].hybrid

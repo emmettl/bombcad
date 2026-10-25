@@ -197,11 +197,14 @@ public enum ProtectionModel {
         public var description: String { kind == .off ? "none" : "\(kind.rawValue):\(value)" }
     }
 
-    /// The façade terms the planner takes unless others are named: the clear-top terms, with their
-    /// load scatter, since the user's adoption of 25 October 2026 (emmettl/bombcad-work#102), with
-    /// `Margin.adopted`. Those of 23 October stay by name (`TermSet.fitted`); with `Margin.off`
-    /// they are the planner before.
-    public static let adoptedTerms = FacadeLoadSurrogate.TermSet.clearTop
+    /// The façade terms the planner takes unless others are named: the quick estimate's
+    /// (`TermSet.adopted`), with `Margin.adopted`. The clear-top terms with their load scatter since
+    /// the user's adoption of 25 October 2026 (emmettl/bombcad-work#102), and from that evening the
+    /// deep-city terms, the clear-top ones with far terms (#105): on #101's judge their plans are the
+    /// clear-top terms' byte for byte, since the sparse district reaches neither far term. The
+    /// clear-top terms (`TermSet.clearTop`) and those of 23 October (`TermSet.fitted`) stay by name;
+    /// the latter with `Margin.off` are the planner before 25 October.
+    public static let adoptedTerms = FacadeLoadSurrogate.TermSet.deepCity
 
     /// The user's file: the threat, the target, the changes allowed and their costs.
     public struct Inputs: Codable, Sendable {
@@ -370,8 +373,9 @@ public enum ProtectionModel {
 
     /// The model of `scene`'s map buildings (those with a glazing mix) on cells `cellSize` m across,
     /// on the façade terms `terms` and their load scatter, with the inputs' margin: by default the
-    /// clear-top terms with flag 2.5 (`adoptedTerms`, `Margin.adopted`), adopted by the user on 25
-    /// October 2026 (emmettl/bombcad-work#102; judged in #100 and #101: docs/protective-design.md).
+    /// deep-city terms with flag 2.5 (`adoptedTerms`, `Margin.adopted`), adopted by the user on 25
+    /// October 2026 (emmettl/bombcad-work#102, #105; judged in #100, #101 and #105:
+    /// docs/protective-design.md).
     /// `terms: .fitted` with `Margin.off` is the planner before.
     public static func model(
         scene: Scenario, cellSize: Float, inputs: Inputs,

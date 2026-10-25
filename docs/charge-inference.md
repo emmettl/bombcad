@@ -351,6 +351,13 @@ The published estimates are Rigby et al.'s 0.50 kt (1.12 upper), Stennett et al.
 - Moving would put the sheet's glass on the same terms as the quick estimate beside it. It would
   take a quarter to a third more off the Beirut yield. It is the user's decision.
 
+**Still pinned on the deep-city terms (25 October 2026).** That evening the quick estimate, the
+far field and the planner took the deep-city terms, the clear-top ones with far terms for façades
+deep in a city (emmettl/bombcad-work#105). The inference's glass keeps the terms of 23 October,
+as the user decided. On the deep-city terms glass alone reads 0.055 kt with the place free and
+0.030 kt held, as on the clear-top terms
+([the surrogate](surrogate-first-look.md#far-terms-past-2-km-of-city-25-october-2026)).
+
 ## Against charges BombCAD ran
 
 ### Synthetic arrivals

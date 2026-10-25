@@ -93,7 +93,18 @@ struct EnvelopeDamageSection: View {
                 .help(
                     "For Quick Estimate and the far field: the surrogate's terms and scatter fitted on runs "
                         + "whose top drained the far loads, in use until 25 October 2026, to reproduce an earlier "
-                        + "estimate. Off, the terms refitted on clear-top runs (docs/surrogate-first-look.md)."
+                        + "estimate. Off, the terms in use (docs/surrogate-first-look.md)."
+                )
+                Toggle(
+                    "Façade terms of 25 October (earlier estimates)", isOn: $model.quickEstimateClearTopTerms
+                )
+                .disabled(model.quickEstimateFirstFitTerms)
+                .help(
+                    "For Quick Estimate and the far field: the terms refitted on clear-top runs without the far "
+                        + "terms for façades deep in a city, in use on 25 October 2026 until those were adopted, "
+                        + "to reproduce an earlier estimate. Off, the terms in use, which raise façade peaks behind "
+                        + "more than 30 buildings and on faces turned away beyond 1.75 km "
+                        + "(docs/surrogate-first-look.md)."
                 )
                 Toggle("Glass pulses with a front (candidate)", isOn: $model.quickEstimateGlassFront)
                     .disabled(model.quickEstimateFirstFitTerms)
@@ -101,13 +112,6 @@ struct EnvelopeDamageSection: View {
                         "For Quick Estimate's glass chances and the far field's glass: each pulse arrives with a share "
                             + "of its peak at once, as the runs' loads do, which breaks more glass far out "
                             + "(docs/glass-probability.md). A candidate, off by default."
-                    )
-                Toggle("Far terms for façades deep in a city (candidate)", isOn: $model.quickEstimateDeepCity)
-                    .disabled(model.quickEstimateFirstFitTerms)
-                    .help(
-                        "For Quick Estimate and the far field: façade peaks raised behind more than 30 buildings and on "
-                            + "faces turned away beyond 1.75 km, fitted on runs to 3 km across a city "
-                            + "(docs/surrogate-first-look.md). A candidate, off by default."
                     )
                 Toggle(
                     "Learned field model for façade peaks",

@@ -24,20 +24,22 @@ drained the far loads, and everything first judged against them beyond 1.25 km w
   all 14,169 buildings about a minute on the Studio. At 0.5 kt the whole district takes about
   7 minutes against 34.
 - **Holds: the glass to 1.5 km.** The share of building sides with some glass broken comes within
-  0.05 of the clear-top run's to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 2.5 km at 1.1 kt.
+  0.05 of the clear-top run's to 1.5 km at 0.2 kt, to 2 km at 0.5 kt and to 3 km at 1.1 kt.
 - **Holds: arrivals.** Beyond the hand-over, Kingery–Bulmash's arrival scaled to the near run's
   comes 2–4% before the full run's (1–4% before the clear-top run's). Against Rigby et al.'s observers past 1 km that is 0.95–1.08
   of the observed at 0.5 kt, and 0.91–1.02 at 1.1 kt.
-- **Holds: the loads to 2.5 km**, on the terms refitted on clear-top runs with the match carried
-  flat, both adopted on 25 October 2026
-  ([adopted](#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026)).
-  Against the clear-top run the far field's peaks are 0.82–1.05 of the run's over 1–2.5 km, the
-  lower the further out, and its impulses 1.05–1.14. On the terms and trend before they were
-  0.67–0.99 and 0.71–1.03, low; against the drained 4 m runs they had read 1.12–1.19 high at
-  1.1 kt ([why](#the-full-runs-top-drains-its-far-loads-25-october-2026)).
+- **Holds: the loads to 2.5 km**, on the terms refitted on clear-top runs with far terms for
+  façades deep in a city and the match carried flat, all adopted on 25 October 2026
+  ([adopted](#adopted-the-clear-top-terms-the-match-carried-flat-and-a-higher-top-25-october-2026),
+  [the far terms](#adopted-the-far-terms-25-october-2026)). Against the clear-top run the far
+  field's peaks are 0.87–1.07 of the run's over 1–2.5 km, the lower the further out, and its
+  impulses 1.05–1.14 (peaks 0.82–1.05 without the far terms). On the terms and trend of 23 October
+  they were 0.67–0.99 and 0.71–1.03, low; against the drained 4 m runs they had read 1.12–1.19 high
+  at 1.1 kt ([why](#the-full-runs-top-drains-its-far-loads-25-october-2026)).
 - **Does not: the glass beyond 1.5 km at the smallest yield. It reads low, the unsafe side.** At
-  0.2 kt it breaks glass on 0.63 of the sides at 1.75–2 km where the run breaks 0.90 (0.37 before
-  25 October), and on 0.25 at 2–2.5 km against 0.75.
+  0.2 kt it breaks glass on 0.65 of the sides at 1.75–2 km where the run breaks 0.90 (0.37 before
+  25 October), and on 0.29 at 2–2.5 km against 0.75: the pulse's front, not the loads
+  ([glass by chance](glass-probability.md#why-some-broken-and-thrown-past-3b-read-low-the-pulses-front-and-the-far-loads-25-october-2026)).
 - **Does not: blown-out glass beyond 1.25 km.** Its share falls short of the clear-top run's by up to
   0.39 in a band (1.1 kt: 0.18 against 0.57 at 2–2.5 km; 0.5 kt: 0.65 against 0.84 at
   1.25–1.5 km), against 0.52 before 25 October.
@@ -555,7 +557,42 @@ bands from 500 m, some broken / blown out:
 | deep-city with its front | **0.022 / 0.015** | **0.000 / 0.033** | **0.000 / 0.039** |
 
 At 0.2 kt, some broken at 2–2.5 / 2.5–3 km reads 0.63 / 0.46 with both, against the reference's
-0.75 / 0.50. The defaults have not changed; that is the user's decision.
+0.75 / 0.50.
+
+### Adopted: the far terms (25 October 2026)
+
+The user adopted the deep-city terms as the default that evening, the glass front still off
+("Adopt deepCity, front off", emmettl/bombcad-work#105). The far field takes them as the quick
+estimate does, with the match carried flat as New District sets it. The clear-top terms stay by
+name: `--terms clear-top` in the benches and Envelope Damage ▸ "Façade terms of 25 October
+(earlier estimates)" in the app. A district saved before needs nothing: its far set holds the
+buildings and the hand-over, not the terms, so it is judged on the defaults as #99's were.
+
+The far field as it now is, against the clear-top reference (sides with some glass broken,
+reference / hybrid; the hybrid's façade peak and impulse over the reference's, median; #104's
+`hybrid-deep-city-flat-*`, which the new defaults give to the digit,
+`$BOMBCAD_DATA/scratch/issue105`):
+
+| Distance | 0.2 kt | 0.5 kt | 1.1 kt | Peak, 0.2 / 0.5 / 1.1 kt | Impulse, 0.2 / 0.5 / 1.1 kt |
+|---|---|---|---|---|---|
+| 1–1.25 km | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 | 1.04 / 1.04 / 1.02 | 1.05 / 1.05 / 1.05 |
+| 1.25–1.5 km | 1.00 / 0.99 | 1.00 / 1.00 | 1.00 / 1.00 | 1.02 / 1.03 / 1.01 | 1.06 / 1.07 / 1.08 |
+| 1.5–1.75 km | 0.98 / 0.86 | 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.05 / 1.04 | 1.10 / 1.10 / 1.11 |
+| 1.75–2 km | 0.90 / 0.65 | 1.00 / 0.99 | 1.00 / 1.00 | 0.98 / 1.06 / 1.07 | 1.13 / 1.13 / 1.14 |
+| 2–2.5 km | 0.75 / 0.29 | 0.99 / 0.93 | 1.00 / 1.00 | 0.87 / 0.92 / 0.96 | 1.07 / 1.07 / 1.08 |
+| 2.5–3 km | 0.50 / 0.12 | 0.96 / 0.74 | 1.00 / 1.00 | 0.90 / 0.85 / 0.91 | 1.08 / 1.05 / 1.06 |
+
+- **Peaks 0.87–1.07 of the reference's over 1–2.5 km, impulses 1.05–1.14** (`hybridFarPeak`,
+  `hybridFarImpulse`), against 0.82–1.05 and the same impulses on the clear-top terms. The far
+  terms are peak only.
+- **Glass with some broken** is within 0.05 of the reference to 1.5 km at 0.2 kt, to 2 km at
+  0.5 kt and now to 3 km at 1.1 kt. At 0.2 kt it is 0.12–0.46 under at 1.5–2.5 km (0.13–0.50 on
+  the clear-top terms). Blown out is up to 0.36 under in a band (1.1 kt, 2–2.5 km: 0.21 against
+  0.57), against 0.39.
+- **The mean error over 1–2.5 km**, some broken / blown out: 0.168 / 0.018, 0.012 / 0.060 and
+  0.000 / 0.087 at 0.2, 0.5 and 1.1 kt, against 0.181 / 0.018, 0.024 / 0.062 and 0.000 / 0.108 on
+  the clear-top terms.
+- The arrivals do not move. The standing quotes this table since the adoption.
 
 ## Using it
 

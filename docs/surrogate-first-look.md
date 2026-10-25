@@ -13,20 +13,21 @@ own.
 ## What holds and what does not
 
 Judged against Beirut's full runs at 0.2, 0.5 and 1.1 kt. The terms, refitted on 25 October 2026
-on runs whose top clears the far façades and adopted the same day
-([below](#refitted-on-clear-top-runs-25-october-2026)), took five of Beirut's near boxes about the
-same charge on 2 m air, but not these runs:
+on runs whose top clears the far façades ([below](#refitted-on-clear-top-runs-25-october-2026)),
+with far terms for façades deep in a city fitted the same day on runs to 3 km across made-up
+districts, both adopted that day ([below](#adopted-the-deep-city-terms-25-october-2026)), took
+five of Beirut's near boxes about the same charge on 2 m air, but not these runs:
 
 - **Holds: the glass to about 1.5 km at 0.2 kt and 2.5 km at 0.5–1.1 kt.** The 4 m runs' top
   drained their loads beyond about 1.25 km, so the glass is judged against runs with their top
   clear (25 October 2026, [the hybrid far
   field](hybrid-far-field.md#judged-again-against-a-clear-top-reference-25-october-2026)). Each
   building side's glass state (none broken, some, blown out, as GEER classed façades) agrees with
-  theirs for 66–86% of the sides deep in the district and 88–98% of those in sight or behind one to
-  three buildings, never two states apart (54–75% and 89–98% on the terms of 23 October). The
-  share with some glass broken comes within 0.1 of the run's to 1.5 km at 0.2 kt, 2.5 km at 0.5 kt
-  and 3 km at 1.1 kt; the share blown out within 0.07 to 2.5 km at 0.5 kt, and short beyond 2 km at
-  1.1 kt.
+  theirs for 68–90% of the sides deep in the district and 88–98% of those in sight or behind one to
+  three buildings, never two states apart (66–86% without the far terms, 54–75% and 89–98% on the
+  terms of 23 October). The share with some glass broken comes within 0.1 of the run's to 1.75 km
+  at 0.2 kt, 2.5 km at 0.5 kt and 3 km at 1.1 kt; the share blown out within 0.07 to 2.5 km at
+  0.5 kt, and short beyond 2 km at 1.1 kt.
 - **Holds: the speed.** The whole first look over Beirut's 724,512 components takes 22–28 s on
   the Studio while other jobs share it: 7–10 s for the loads, 14–22 s for the damage, against
 25–41 minutes for a full run on the CI mini. On a
@@ -37,9 +38,11 @@ same charge on 2 m air, but not these runs:
   The few damaged components lie close in, where one wrong factor of 1.3 moves a wall across a
   level. Run the scene for the structure.
 - **Holds, mostly: the far loads.** Beyond Z = 20 m/kg^(1/3) (1.6 km at 0.5 kt) the surrogate's
-  loads are 0.82–1.03 of the clear-top run's on the median (0.72–0.92 on the terms of 23 October,
-  low). **Does not: the far edge at the smallest yields.** At 0.2 kt it breaks glass on 0.28 of
-  sides at 2–2.5 km where that run broke 0.75, and at 0.5 kt on 0.64 at 2.5–3 km against 0.96.
+  loads are 0.90–1.05 of the clear-top run's on the median (0.82–1.03 without the far terms,
+  0.72–0.92 on the terms of 23 October, low). **Does not: the far edge at the smallest yields.**
+  At 0.2 kt it breaks glass on 0.32 of sides at 2–2.5 km where that run broke 0.75, and at 0.5 kt
+  on 0.78 at 2.5–3 km against 0.96: what is missing there is the pulse's front, not the loads
+  ([below](#far-terms-past-2-km-of-city-25-october-2026)).
 
 ## How it predicts a load
 
@@ -423,14 +426,14 @@ on Beirut's district, with its standing still shown.
 
 **Against the full estimate** (Beirut's 4 m layout, 0.5 kt, yield within ×1.5, 100 draws; the
 charge where it was and 60 m east):
-- The glass's chances came within 0.1 of the full estimate's on 87–94% of sides: blown out 87%,
-  some broken 94%, with a mean difference of 0.03–0.05 and a bias of +0.01–0.02, on the façade
-  terms adopted on 25 October 2026 (89% and 92% on those of 23 October, 88% and 93% before). The
-  openings' came within 0.1 on all of them.
-- The walls' and roofs' chances came within 0.1 on 98.7–99.9% of buildings (98.8–99.9% on the
-  terms of 23 October).
-- The damage's colour was the same for 99.6–99.7% of buildings (99.7% on the terms of 23 October),
-  and never more than one colour apart.
+- The glass's chances came within 0.1 of the full estimate's on 86–94% of sides: blown out 86%,
+  some broken 94%, with a mean difference of 0.03–0.05 and a bias of +0.01–0.02, on the deep-city
+  terms adopted on 25 October 2026 (87% and 94% on the clear-top terms of that morning, 89% and 92%
+  on those of 23 October, 88% and 93% before). The openings' came within 0.1 on all of them.
+- The walls' and roofs' chances came within 0.1 on 98.7–99.9% of buildings (the same on the
+  clear-top terms, 98.8–99.9% on the terms of 23 October).
+- The damage's colour was the same for 99.6–99.8% of buildings (99.6–99.7% on the clear-top terms,
+  99.7% on the terms of 23 October), and never more than one colour apart.
 
 **Time a frame**, on the Studio while other sessions loaded it (load average 18–34 on 14 cores):
 
@@ -1380,6 +1383,61 @@ What it shows:
 Both sets stay selectable by name either way. The protection planner and charge inference keep
 their own terms (`ProtectionModel.adoptedTerms`, `ChargeInferenceSurrogate`'s) whatever is adopted.
 
+#### Adopted: the deep-city terms (25 October 2026)
+
+The user decided that evening: "Adopt deepCity, front off" (emmettl/bombcad-work#105).
+- **`TermSet.deepCity` is the default** (`TermSet.adopted`, `Coefficients.adopted`; the load
+  scatter is the clear-top set's, `Uncertainty.adoptedLoadScatter`, as before) wherever the
+  clear-top terms were: the quick estimate and its drag preview, the glass chances, the walls'
+  chances (on the rise their factors were set on), the far field and the hybrid, and the close
+  calls' choice of buildings.
+- **The protection planner moves with it**, with flag 2.5. On #101's judge its plans are the
+  clear-top terms' byte for byte, all 16 cases meeting the target
+  ([protective design](protective-design.md#on-the-deep-city-terms-25-october-2026)).
+- **The front stays off**: `deep-city-front`, and "Glass pulses with a front (candidate)" in the
+  app, give the fronted set.
+- **The clear-top terms stay by name**, as the terms of 23 October do: `--terms clear-top`,
+  `--surrogate-terms clear-top`, and Envelope Damage ▸ "Façade terms of 25 October (earlier
+  estimates)" in the app, which replaces #104's candidate toggle.
+- **Projects saved before** take the new default, as they did on #99's: no project holds the
+  façade terms (the far set holds its buildings, hand-over and match), so their estimates and far
+  fields are made on the terms in use. The app's choices of earlier terms are its own preferences;
+  the clear-top toggle has a new key, so no earlier choice turns it on.
+- **Not moved:** charge inference's glass keeps the terms of 23 October, as the user decided.
+
+**Judged again on the defaults** (`$BOMBCAD_DATA/scratch/issue105`, `judges.sh`, `planner.sh`;
+the binary built from the change; the GPU judges in gpu-slot, 11–16 minutes and at most 14 GB
+each). The defaults give #104's deep-city judges (`surrogate-judge`, `hybrid-judge`) to the digit.
+What #104 did not judge, old against new:
+
+| | Clear-top terms | Deep-city terms (adopted) |
+|---|---|---|
+| Beirut's quick look at 0.5 kt (2.5 km, 14,169 buildings): none / glass broken alone / moderate / heavy / hazardous / failed | 9,344 / 4,800 / 18 / 3 / 1 / 3 | 9,291 / 4,853 / 18 / 3 / 1 / 3 |
+| … the charge 60 m east | 9,304 / 4,834 / 25 / 3 / 1 / 2 | 9,243 / 4,895 / 25 / 3 / 1 / 2 |
+| Close calls (1 km, 1,554 buildings, yield within ×1.5): in doubt; the eight refined | 711; the eight of #99 | 711; the same eight, the same answers |
+| … the eight's walls, estimate against refined | 0.40–0.92 against 0.98–1.00 | the same |
+| Drag preview within 0.1 of the full estimate (10 draws): glass blown out / some broken; walls and roofs; damage colour | 87% / 94%; 98.7–99.9%; 99.6–99.7% | 86% / 94%; 98.7–99.9%; 99.6–99.8% |
+| Field model 1's and 2's concrete walls, peak ×1.15, impulse ×0.95, and each yield held out | 0.653, pass | the same, bit for bit |
+| Glass blown out on the near boxes (2 m, 320 m top): surrogate / field model 1 / field model 2, Brier / skill | 0.0397 / 0.64; 0.0365 / 0.66; 0.0307 / 0.72 | 0.0396 / 0.64; the same; the same |
+| Glass openings against GEER (4 m, inferred yield): skill; at 0.75–1 km (GEER 0.27) | 0.18; 0.36 | the same |
+| Protection planner, flag 2.5, sparse district at 0.5–50 t, two seeds: meets on the run; worst side; cost × the plans before 25 October | 16 of 16; 9.4%; 1.01–1.34 | the same plans, byte for byte |
+
+- **The quick look breaks glass on 53 more buildings at 0.5 kt** (4,853 against 4,800), where the
+  far terms reach: behind more than 30 buildings or facing away beyond 1.75 km. The structural
+  levels do not move.
+- **The close calls do not move.** Within 1 km the far terms change no building's call.
+- **The drag preview's blown out agrees a point less often** (86% against 87%). With the far terms
+  more sides have a blown-out chance above 0.02 (40,557 against 35,402 at 10 draws), so more of
+  them are judged.
+- **Nothing near the charge moves**: the walls (the surrogate's, as #104 found, and both field
+  models'), the field models' impulses, the near boxes' glass within 0.0001, and the openings
+  against GEER.
+- **The standings** `surrogateFarLoads` (0.90–1.05), `surrogateGlassSides` (68–90%),
+  `glassChancesBrier` (0.025), `glassChancesBins` (0.08), `glassChancesThrown` (0.038),
+  `hybridFarPeak` (0.87–1.07), `dragPreviewGlass` (86–94%) and `dragPreviewDamage` (99.6–99.8%)
+  are re-derived from #104's judges and the table above; the walls', the field models', the
+  openings' and the hybrid's impulses are unchanged.
+
 ## Using it
 
 - **In the app**: Simulation ▸ Quick Estimate of Envelope Damage colours the envelope buildings
@@ -1391,14 +1449,20 @@ their own terms (`ProtectionModel.adoptedTerms`, `ChargeInferenceSurrogate`'s) w
   does not run (`--resolution` and `--mass` change the inputs as for a run).
 - **Beyond a near run**: the [hybrid far field](hybrid-far-field.md) carries a district past a 3-D
   run of its near field with these loads, matched to the run where they meet.
-- **The terms of 23 October**, in use until the clear-top terms were adopted on 25 October 2026
+- **The terms in use** are the deep-city terms, adopted on 25 October 2026
+  ([above](#adopted-the-deep-city-terms-25-october-2026)): `--surrogate-terms deep-city` headless
+  and `--terms deep-city` in the benches name them, as no option does.
+- **The clear-top terms of 25 October**, in use that day until the far terms were adopted, for
+  earlier records: Envelope Damage ▸ "Façade terms of 25 October (earlier estimates)" in the app,
+  `--surrogate-terms clear-top` headless, `--terms clear-top` in the benches.
+- **The terms of 23 October**, in use until the clear-top terms were adopted
   ([above](#adopted-25-october-2026)), for earlier records: Envelope Damage ▸ "Façade terms of 23
-  October (earlier estimates)" in the app, `--surrogate-terms fitted` headless, `--terms fitted` in
+  October (earlier estimates)" in the app (it takes precedence over the toggle of 25 October),
+  `--surrogate-terms fitted` headless, `--terms fitted` in the benches.
+- **The glass front**, a candidate ([glass by chance](glass-probability.md)): Envelope Damage ▸
+  "Glass pulses with a front (candidate)" in the app, on whichever terms are chosen;
+  `--surrogate-terms deep-city-front` or `clear-top-front` headless, `--terms deep-city-front` in
   the benches.
-- **The far terms for façades deep in a city**, a candidate ([above](#far-terms-past-2-km-of-city-25-october-2026)):
-  Envelope Damage ▸ "Far terms for façades deep in a city (candidate)" in the app (with "Glass
-  pulses with a front" for the fronted set), `--surrogate-terms deep-city` or `deep-city-front`
-  headless, `--terms deep-city` or `deep-city-front` in the benches.
 - **Bench**: `scenebench drag-time` times a drag and judges the preview (Sources/SceneBench/DragTime.swift,
   outputs under `bombcad/drag`); `scenebench surrogate-extract` and `surrogate-judge` (Sources/BlastModel/Studies/SurrogateBench.swift)
   with `Scripts/fit-surrogate.py`; the runs, extracts, fits and judgements are on StudioData under

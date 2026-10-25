@@ -2588,6 +2588,29 @@ on the user's decision (emmettl/bombcad-work#102), and pass their tenths test wi
 then, both field models' walls gave the figures above to the digit
 ([the walls' impulse](surrogate-first-look.md#the-walls-impulse-095-25-october-2026)).
 
+## On the deep-city terms (25 October 2026)
+
+That evening the surrogate's default became the deep-city terms, the clear-top terms with far
+terms for façades behind more than 30 buildings or turned away beyond 1.75 km (peak only;
+emmettl/bombcad-work#104, adopted in #105,
+[the first look](surrogate-first-look.md#adopted-the-deep-city-terms-25-october-2026)). The field
+models take the surrogate's peaks where they do not read, and its impulses everywhere, so the same
+judges were run again on the new defaults (`$BOMBCAD_DATA/scratch/issue105`, `judges.sh walls-a
+walls-c glass`; 11–16 minutes each in gpu-slot, at most 10 GB):
+- **The walls do not move.** Field model 1's and field model 2's concrete walls, peak ×1.15 and
+  impulse ×0.95, give the clear-top terms' figures above bit for bit (Brier 0.0190, skill 0.653,
+  passing; the held-out folds the same). The walls a run damages lie well inside 1,320 m, nearer
+  than either far term reaches, as the surrogate's own walls showed in #104.
+- **The impulses do not move**: the far terms leave the impulse as it was.
+- **The glass hardly moves.** Blown out on the app's sides: the surrogate 0.0396 / 0.64 (0.0397
+  before), field model 1 0.0365 / 0.66 and field model 2 0.0307 / 0.72, as before; above the
+  ground floor 0.0392 / 0.65 (0.0393) and 0.0323 / 0.71. Glass by side, every storey, exact /
+  Heidke: 0.946 / 0.77, 0.951 / 0.79, 0.961 / 0.81, as before. These references keep the 320 m top,
+  and few of their sides are behind 30 buildings.
+
+The standing's figures (`learnedModel2Glass`, `learnedModel2GlassUpper`, `learnedModel2Walls`) are
+unchanged and still quote the section above.
+
 ## Not done yet
 
 - **The laptop's measured training times**, if it is to join the desktop. The desktop is set up

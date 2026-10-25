@@ -34,8 +34,9 @@ final class ProtectionPlannerModel {
     /// Draws of the load's scatter and the glass's strength for each side's chance.
     var draws = 32
     /// The planner as it was until 25 October 2026: the façade terms of 23 October and no margin
-    /// for the scatter between sides. Off, the clear-top terms with the flag margin at 2.5
-    /// standard deviations, adopted that day (emmettl/bombcad-work#102, docs/protective-design.md).
+    /// for the scatter between sides. Off, the quick estimate's façade terms (deep-city) with the
+    /// flag margin at 2.5 standard deviations, adopted that day (emmettl/bombcad-work#102, #105;
+    /// docs/protective-design.md).
     var earlierSettings = false
     /// The façade terms the search takes.
     var terms: FacadeLoadSurrogate.TermSet { earlierSettings ? .fitted : ProtectionModel.adoptedTerms }

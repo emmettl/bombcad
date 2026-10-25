@@ -1,12 +1,14 @@
 import Foundation
 
 extension FacadeLoadSurrogate {
-    /// Which façade terms and load scatter the surrogate takes (emmettl/bombcad-work#98, #99;
-    /// docs/surrogate-first-look.md): the terms refitted on runs whose top clears the far façades
-    /// (`Coefficients.clearTop`, `Uncertainty.clearTopLeaveOneOut`), adopted by the user on 25
-    /// October 2026 and the default (`adopted`); or those of 23 October, fitted on runs whose top
-    /// drained the far loads (`Coefficients.fitted`, `Uncertainty.leaveOneOut`), kept by name so
-    /// that earlier records can be reproduced.
+    /// Which façade terms and load scatter the surrogate takes (emmettl/bombcad-work#98, #99, #104,
+    /// #105; docs/surrogate-first-look.md): the terms refitted on runs whose top clears the far
+    /// façades with far terms for façades deep in a city (`Coefficients.deepCity`,
+    /// `Uncertainty.clearTopLeaveOneOut`), adopted by the user on 25 October 2026 and the default
+    /// (`adopted`); the same without the far terms (`clearTop`), the default earlier that day; or
+    /// those of 23 October, fitted on runs whose top drained the far loads (`Coefficients.fitted`,
+    /// `Uncertainty.leaveOneOut`). The sets before stay by name so that earlier records can be
+    /// reproduced.
     public enum TermSet: String, CaseIterable, Codable, Sendable {
         case clearTop = "clear-top"
         case fitted
@@ -15,15 +17,17 @@ extension FacadeLoadSurrogate {
         /// default. Its loads, its walls and its scatter are `clearTop`'s.
         case clearTopFront = "clear-top-front"
         /// `clearTop` with far terms for façades deep in a city (`Coefficients.deepCity`;
-        /// emmettl/bombcad-work#104), fitted on runs that reach 3 km across a city: a candidate,
-        /// off by default. Its near and in-district terms and its scatter are `clearTop`'s.
+        /// emmettl/bombcad-work#104), fitted on runs that reach 3 km across a city: the default
+        /// since the user adopted it on 25 October 2026 (emmettl/bombcad-work#105). Its near and
+        /// in-district terms and its scatter are `clearTop`'s.
         case deepCity = "deep-city"
         /// `deepCity` with the glass's front refitted alongside (`Coefficients.GlassFront.deepCity`):
         /// a candidate, off by default.
         case deepCityFront = "deep-city-front"
 
-        /// The set in use unless another is named: `clearTop` since 25 October 2026.
-        public static let adopted = TermSet.clearTop
+        /// The set in use unless another is named: `deepCity` since the evening of 25 October 2026
+        /// (emmettl/bombcad-work#105), `clearTop` from that morning (#99), `fitted` before.
+        public static let adopted = TermSet.deepCity
 
         /// The façade terms.
         public var coefficients: Coefficients {
@@ -47,19 +51,22 @@ extension FacadeLoadSurrogate {
 }
 
 extension FacadeLoadSurrogate.Coefficients {
-    /// The façade terms in use unless others are given: `TermSet.adopted`'s, `clearTop` since 25
-    /// October 2026 (emmettl/bombcad-work#99); `fitted` before.
+    /// The façade terms in use unless others are given: `TermSet.adopted`'s, `deepCity` since the
+    /// evening of 25 October 2026 (emmettl/bombcad-work#105), `clearTop` from that morning (#99),
+    /// `fitted` before.
     public static let adopted = FacadeLoadSurrogate.TermSet.adopted.coefficients
 }
 
 extension FacadeLoadSurrogate.Uncertainty {
     /// The load scatter the chances draw unless another is given: `TermSet.adopted`'s,
-    /// `clearTopLeaveOneOut` since 25 October 2026; `leaveOneOut` before.
+    /// `clearTopLeaveOneOut` since 25 October 2026 (with the clear-top and the deep-city terms
+    /// alike); `leaveOneOut` before.
     public static let adoptedLoadScatter = FacadeLoadSurrogate.TermSet.adopted.loadScatter
 }
 
 extension FacadeLoadSurrogate.Coefficients {
-    /// Adopted on 25 October 2026 (emmettl/bombcad-work#98, #99): `fitted` with the peak's, impulse's and
+    /// Adopted on 25 October 2026 (emmettl/bombcad-work#98, #99), and the base of `deepCity`, which
+    /// took its place as the default that evening (#105): `fitted` with the peak's, impulse's and
     /// rise share's terms refitted by #56's fit on its runs remade with their top clear of the far façades
     /// (#96's rule, the highest ground plus a fifth of the farthest fitted strip's distance; the
     /// runs #56 fitted on had tops of 112–320 m, which drained their loads from about five times the
@@ -161,7 +168,8 @@ extension FacadeLoadSurrogate.Coefficients.Far {
 
 extension FacadeLoadSurrogate.Coefficients {
     /// `clearTop` with the far terms (`Far.deepCity`), for `TermSet.deepCity`
-    /// (emmettl/bombcad-work#104): a candidate, off by default.
+    /// (emmettl/bombcad-work#104): the default since the user adopted it on 25 October 2026
+    /// (`adopted`, emmettl/bombcad-work#105).
     public static let deepCity: FacadeLoadSurrogate.Coefficients = {
         var c = FacadeLoadSurrogate.Coefficients.clearTop
         c.far = .deepCity

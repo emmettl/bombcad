@@ -116,7 +116,8 @@ extension ChargeInference {
         /// `terms` the façade terms and their load scatter: by default those of 23 October 2026
         /// (`fitted`), which this was judged on. Judged again on the clear-top terms the quick
         /// estimate took on 25 October (emmettl/bombcad-work#99, #100: docs/charge-inference.md), it
-        /// keeps `fitted` until the user decides.
+        /// keeps `fitted` until the user decides; the deep-city terms the quick estimate took that
+        /// evening (#105) leave it pinned too.
         public init(
             scene: Scenario, observed: [(owner: UUID, axis: Int, outward: Int, damaged: Bool)],
             reference: SIMD2<Float>, placeRadius: Double, spacing: Double = 20, cellSize: Float,
